@@ -1,0 +1,692 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mor Sedero — Composer & Sound Designer</title>
+<meta name="description" content="Music and sound design for video games and film — orchestral depth, hybrid textures, and detail work that serves the story.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Fredoka:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+<!-- letterbox bars -->
+<div class="letterbox letterbox-top"></div>
+<div class="letterbox letterbox-bottom"></div>
+
+<!-- scanline / grain overlay -->
+<div class="crt-overlay"></div>
+
+<!-- HUD side nav -->
+<nav class="hud-nav" id="hudNav">
+  <button data-target="top" class="hud-node active"><span class="hud-label">HOME</span></button>
+  <button data-target="projects" class="hud-node"><span class="hud-label">PROJECTS</span></button>
+  <button data-target="services" class="hud-node"><span class="hud-label">SERVICES</span></button>
+  <button data-target="worked" class="hud-node"><span class="hud-label">WORKED WITH</span></button>
+  <button data-target="contact" class="hud-node"><span class="hud-label">CONTACT</span></button>
+</nav>
+
+<main>
+
+  <!-- HOME: logo + about, set apart with its own background -->
+  <div class="home-zone">
+  <div class="home-glow" aria-hidden="true">
+    <img class="home-glow-img home-glow-img--a" src="assets/covers/monster-punk-new.jpg" alt="">
+    <img class="home-glow-img home-glow-img--b" src="assets/covers/araratfm.jpg" alt="">
+  </div>
+  <!-- LOGO / NAME MARK -->
+  <header class="site-logo-bar" id="top">
+    <div class="site-logo-block">
+      <a href="#top" class="site-logo" id="siteLogo">
+        <span class="site-logo-mark" aria-hidden="true">
+          <img src="assets/logos/mor-logo-mark.png" alt="" class="site-logo-mark-img">
+        </span>
+        <span class="site-logo-mor">MOR</span><span class="site-logo-sedero">SEDERO</span>
+      </a>
+      <div class="site-role">
+        <span class="rec-dot"></span>
+        COMPOSER · SOUND DESIGNER · MUSIC PRODUCER
+      </div>
+    </div>
+    <div class="site-socials">
+      <a href="https://www.youtube.com/@MorSederoMusic" aria-label="YouTube" target="_blank" rel="noopener">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="5.5" width="19" height="13" rx="3.5"/><path d="M10.5 9v6l5-3z" fill="currentColor" stroke="none"/></svg>
+      </a>
+      <a href="https://www.facebook.com/mor.sedero/" aria-label="Facebook" target="_blank" rel="noopener">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9.5"/><path d="M14 8.5h-1.5c-.9 0-1.5.6-1.5 1.6V12h3l-.4 3h-2.6v6"/></svg>
+      </a>
+      <a href="https://www.instagram.com/mor_sedero/" aria-label="Instagram" target="_blank" rel="noopener">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4.2"/><circle cx="17" cy="7" r=".6" fill="currentColor" stroke="none"/></svg>
+      </a>
+      <a href="https://www.linkedin.com/in/mor-sedero-7165261b9/" aria-label="LinkedIn" target="_blank" rel="noopener">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="8" cy="8.3" r=".4" fill="currentColor" stroke="none"/><path d="M8 11v6"/><path d="M12 17v-3.6c0-1.3.9-2.1 2-2.1s2 .8 2 2.1V17"/></svg>
+      </a>
+    </div>
+  </header>
+
+  <!-- PUNCH LINE -->
+  <div class="home-punch">
+    <h1 class="home-punch-title">Music and Sound</h1>
+  </div>
+
+  <!-- SHOWREEL : fixed size, click to play, no grow/collapse -->
+  <div class="home-showreel">
+    <div class="redesign-grid redesign-grid--single">
+      <div class="redesign-card" data-video="https://www.youtube.com/embed/4PsquJhbejo" data-title="Composer Showreel">
+        <div class="redesign-thumb">
+          <img src="assets/covers/showreel-composer.jpg" alt="Composer Showreel" loading="lazy">
+          <div class="redesign-play"><span>▶</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ABOUT : short bio + photo, "more" opens a third column instead of touching the photo -->
+  <section class="section chapter" id="about">
+    <div class="about-row" id="aboutRow">
+      <div class="about-short">
+        <p>Mor is a composer and sound designer specializing in immersive music and audio for video games, films, and multimedia — blending orchestral depth, hybrid textures, and detailed sound design that serves the story.</p>
+        <button class="about-more-toggle" aria-expanded="false">Read more <span>▾</span></button>
+      </div>
+      <div class="about-photo">
+        <img src="assets/covers/mor-portrait.jpg" alt="Mor Sedero portrait">
+      </div>
+      <div class="about-extra">
+        <p>Beyond composing, he builds the systems that bring sound to life in interactive worlds, implementing dynamic, adaptive audio in Unity, Unreal, and FMOD. He approaches every project with curiosity, care, and a commitment to unforgettable sonic experiences.</p>
+      </div>
+    </div>
+  </section>
+  </div>
+
+  <!-- PROJECTS : GAMES / SOUND REDESIGN / FILM & VIDEO TABS -->
+  <!-- PROJECTS -->
+  <section class="section chapter" id="projects">
+    <div class="chapter-head">
+      <h2 class="chapter-title">PROJECTS</h2>
+      <p class="chapter-sub">Games, film, and sound redesign.</p>
+    </div>
+
+    <div class="project-group">
+      <h3 class="project-group-title">Games</h3>
+      <div class="level-select">
+      <article class="level-card">
+        <button class="level-toggle" aria-expanded="false">
+          <div class="level-cover"><img src="assets/covers/monster-punk-new.jpg" alt="Monster Punk cover art" loading="lazy"><span class="coming-soon-badge">COMING SOON</span></div>
+          <div class="level-quick">
+            <h3 class="level-quick-title">Monster Punk</h3>
+            <div class="level-quick-fields">
+              <p class="level-role"><span class="level-field-label">Role:</span> Composer & sound designer</p>
+              <p><span class="level-field-label">Company:</span> Fooya Games</p>
+              <p><span class="level-field-label">Released:</span> Coming Soon</p>
+            </div>
+            <span class="level-quick-hint">Details <span class="level-quick-arrow">▾</span></span>
+          </div>
+        </button>
+        <div class="level-details">
+          <div class="level-details-inner">
+          <div class="photo-roller">
+            <div class="photo-roller-track">
+              <img src="assets/covers/monster-punk.jpg" alt="Monster Punk photo">
+              <img src="assets/covers/monster-punk-shot1.jpg" alt="Monster Punk screenshot">
+              <img src="assets/covers/mp-extra1.jpg" alt="Monster Punk screenshot">
+              <img src="assets/covers/mp-extra2.jpg" alt="Monster Punk photo">
+              <img src="assets/covers/mp-extra3.jpg" alt="Monster Punk screenshot">
+              <img src="assets/covers/mp-extra4.jpg" alt="Monster Punk screenshot">
+              <img src="assets/covers/mp-extra5.jpg" alt="Monster Punk screenshot">
+              <img src="assets/covers/mp-extra6.jpg" alt="Monster Punk screenshot">
+            </div>
+          </div>
+          <div class="level-info">
+            <p class="level-desc">Dominate the ultimate motorsport roguelite. Smash, blast, and pull off wild stunts through extreme arena challenges. Fight through each run alone or in co-op, defeat brutal bosses, and earn the cash to upgrade your ride. Lose, and your run is over. Rise from "nobody" to Arena Champion.</p>
+            <a href="https://store.steampowered.com/app/3506750/Monster_Punk/" class="level-link" target="_blank" rel="noopener">Wishlist on Steam ↗</a>
+          </div>
+          <div class="level-media">
+            <div class="video-embed">
+              <iframe data-src="https://www.youtube.com/embed/vNIQP16sweM?start=4" title="Monster Punk trailer" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
+            </div>
+          </div>
+          </div>
+        </div>
+      </article>
+      <article class="level-card">
+        <button class="level-toggle" aria-expanded="false">
+          <div class="level-cover"><img src="assets/covers/party-pooper.jpg" alt="Party Pooper cover art" loading="lazy"><span class="coming-soon-badge">COMING SOON</span></div>
+          <div class="level-quick">
+            <h3 class="level-quick-title">Party Pooper</h3>
+            <div class="level-quick-fields">
+              <p class="level-role"><span class="level-field-label">Role:</span> Composer & sound designer</p>
+              <p><span class="level-field-label">Company:</span> Lembido Games</p>
+              <p><span class="level-field-label">Released:</span> Coming Soon</p>
+            </div>
+            <span class="level-quick-hint">Details <span class="level-quick-arrow">▾</span></span>
+          </div>
+        </button>
+        <div class="level-details">
+          <div class="level-details-inner">
+          <div class="photo-roller">
+            <div class="photo-roller-track">
+              <img src="assets/covers/party-pooper.jpg" alt="Party Pooper photo">
+              <img src="assets/covers/party-pooper-shot1.jpg" alt="Party Pooper screenshot">
+              <img src="assets/covers/pp-extra1.jpg" alt="Party Pooper screenshot">
+              <img src="assets/covers/pp-extra2.jpg" alt="Party Pooper screenshot">
+            </div>
+          </div>
+          <div class="level-info">
+            <p class="level-desc">Party Pooper is a chaotic 4-player battle platformer where everyone is fighting, flying, and flinging each other to be the first to poop in the sacred toilet before their time runs out. Poop to survive, fail to poop and explode, last butt standing wins.</p>
+            <a href="https://store.steampowered.com/app/4085550/Party_Pooper/" class="level-link" target="_blank" rel="noopener">Wishlist on Steam ↗</a>
+          </div>
+          </div>
+        </div>
+      </article>
+      <article class="level-card">
+        <button class="level-toggle" aria-expanded="false">
+          <div class="level-cover"><img src="assets/covers/trials-mask-cover.jpg" alt="Trials of the Mask cover art" loading="lazy"></div>
+          <div class="level-quick">
+            <h3 class="level-quick-title">Trials of the Mask</h3>
+            <div class="level-quick-fields">
+              <p class="level-role"><span class="level-field-label">Role:</span> Composer & Sound Designer</p>
+              <p><span class="level-field-label">Event:</span> Global Game Jam 2026</p>
+              <p><span class="level-field-label">Released:</span> January 2026</p>
+            </div>
+            <span class="level-quick-hint">Details <span class="level-quick-arrow">▾</span></span>
+          </div>
+        </button>
+        <div class="level-details">
+          <div class="level-details-inner">
+          <div class="photo-roller">
+            <div class="photo-roller-track">
+              <img src="assets/covers/trials-mask-shot1.jpg" alt="Trials of the Mask screenshot">
+              <img src="assets/covers/trials-mask-shot2.jpg" alt="Trials of the Mask screenshot">
+              <img src="assets/covers/trials-mask-shot3.jpg" alt="Trials of the Mask screenshot">
+            </div>
+          </div>
+          <div class="level-info">
+            <p class="level-desc">A great horrible beast had come to your forest, it came to destroy your community and the forest itself. You have been chosen to try and pass the trials of the mask. If you succeed you will collect the three mask parts. Choose unique synergies of mask powers, a total of 27 possible power combinations.</p>
+            <p class="level-desc">Meat for mask, mask for power, power for survival…</p>
+            <a href="https://yuvalsedero.itch.io/trials-of-the-mask" class="level-link" target="_blank" rel="noopener">Play on itch.io ↗</a>
+          </div>
+          <div class="level-media">
+            <div class="music-embed music-embed--album">
+              <iframe data-src="https://w.soundcloud.com/player/?url=https%3A%2F%2Fsoundcloud.com%2Fmguioaafei0t%2Fsets%2Ftrials-of-the-mask&color=%23ff5a3c&auto_play=false&show_user=true" title="Trials of the Mask soundtrack album on SoundCloud" loading="lazy" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"></iframe>
+            </div>
+          </div>
+          </div>
+        </div>
+      </article>
+      <article class="level-card">
+        <button class="level-toggle" aria-expanded="false">
+          <div class="level-cover"><img src="assets/covers/i-come-in-peace.jpg" alt="I Come In Peace cover art" loading="lazy"></div>
+          <div class="level-quick">
+            <h3 class="level-quick-title">I Come In Peace</h3>
+            <div class="level-quick-fields">
+              <p class="level-role"><span class="level-field-label">Role:</span> Composer</p>
+              <p><span class="level-field-label">Company:</span> Fooya Games</p>
+              <p><span class="level-field-label">Released:</span> April 2025</p>
+            </div>
+            <span class="level-quick-hint">Details <span class="level-quick-arrow">▾</span></span>
+          </div>
+        </button>
+        <div class="level-details">
+          <div class="level-details-inner">
+          <div class="photo-roller">
+            <div class="photo-roller-track">
+              <img src="assets/covers/i-come-in-peace.jpg" alt="I Come In Peace photo">
+              <img src="assets/covers/i-come-in-peace-shot1.jpg" alt="I Come In Peace screenshot">
+              <img src="assets/covers/icip-extra1.jpg" alt="I Come In Peace photo">
+              <img src="assets/covers/icip-extra2.jpg" alt="I Come In Peace photo">
+              <img src="assets/covers/icip-extra3.jpg" alt="I Come In Peace screenshot">
+            </div>
+          </div>
+          <div class="level-info">
+            <p class="level-desc">Don't panic! Survive this bullet hell action! As a goofy pacifist alien that crashed on Earth, use your defense abilities to evade paranoid humans whose deadly attacks on you cause destruction and mayhem. Navigate the chaos, collect your spaceship parts, and run the hell out of this planet!</p>
+            <a href="https://store.steampowered.com/app/3141860/I_Come_In_Peace/" class="level-link" target="_blank" rel="noopener">View on Steam ↗</a>
+            <div class="badge-award badge-award--small">
+              <span class="badge-icon">★</span>
+              Nominee — Israeli Indies Awards 2025, Best Game Soundtrack
+            </div>
+          </div>
+          <div class="level-media">
+            <div class="video-embed">
+              <iframe data-src="https://www.youtube.com/embed/JFWMCknbrIw" title="I Come In Peace reveal trailer" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
+            </div>
+            <div class="video-embed">
+              <iframe data-src="https://www.youtube.com/embed/3xdY6XVbUfQ" title="I Come In Peace gameplay trailer" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
+            </div>
+            <div class="music-embed music-embed--album">
+              <iframe data-src="https://open.spotify.com/embed/album/5JDM1nEeIJeTlr79f6CNdb?utm_source=generator" title="I Come In Peace soundtrack on Spotify" loading="lazy" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"></iframe>
+            </div>
+          </div>
+          </div>
+        </div>
+      </article>
+      <article class="level-card">
+        <button class="level-toggle" aria-expanded="false">
+          <div class="level-cover"><img src="assets/covers/underwear.jpg" alt="Underwear cover art" loading="lazy"></div>
+          <div class="level-quick">
+            <h3 class="level-quick-title">Bottoms & Tops</h3>
+            <div class="level-quick-fields">
+              <p class="level-role"><span class="level-field-label">Role:</span> Composer & Sound Designer</p>
+              <p><span class="level-field-label">Company:</span> Rugelach Games</p>
+              <p><span class="level-field-label">Released:</span> February 2024</p>
+            </div>
+            <span class="level-quick-hint">Details <span class="level-quick-arrow">▾</span></span>
+          </div>
+        </button>
+        <div class="level-details">
+          <div class="level-details-inner">
+          <div class="photo-roller">
+            <div class="photo-roller-track">
+              <img src="assets/covers/underwear.jpg" alt="Underwear photo">
+              <img src="assets/covers/underwear-extra1.jpg" alt="Underwear photo">
+              <img src="assets/covers/underwear-extra2.jpg" alt="Underwear photo">
+            </div>
+          </div>
+          <div class="level-info">
+            <p class="level-desc">Help pack boxes of donations for soldiers and volunteers — we're counting on you! Ages 7+. Rugelach Games are made to give kids fun activities, encourage volunteering, and connect them to the situation in the country. The games are developed voluntarily by professionals from education, psychology, and programming.</p>
+            <a href="https://www.games4israel.com/post/%D7%AA%D7%97%D7%AA%D7%95%D7%A0%D7%99%D7%9D-%D7%95%D7%92%D7%95%D7%A4%D7%99%D7%95%D7%AA" class="level-link" target="_blank" rel="noopener">Play on WebGL ↗</a>
+          </div>
+          <div class="level-media">
+            <div class="music-embed">
+              <iframe data-src="https://w.soundcloud.com/player/?url=https%3A%2F%2Fsoundcloud.com%2Fmguioaafei0t%2Fbottoms-tops&color=%23ff5a3c&auto_play=false&show_user=true" title="Bottoms & Tops on SoundCloud" loading="lazy" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"></iframe>
+            </div>
+          </div>
+          </div>
+        </div>
+      </article>
+      <article class="level-card">
+        <button class="level-toggle" aria-expanded="false">
+          <div class="level-cover"><img src="assets/covers/araratfm.jpg" alt="AraratFM cover art" loading="lazy"></div>
+          <div class="level-quick">
+            <h3 class="level-quick-title">AraratFM</h3>
+            <div class="level-quick-fields">
+              <p class="level-role"><span class="level-field-label">Role:</span> Composer & Sound Designer</p>
+              <p><span class="level-field-label">Released:</span> May 2023</p>
+            </div>
+            <span class="level-quick-hint">Details <span class="level-quick-arrow">▾</span></span>
+          </div>
+        </button>
+        <div class="level-details">
+          <div class="level-details-inner">
+          <div class="photo-roller">
+            <div class="photo-roller-track">
+              <img src="assets/covers/araratfm.jpg" alt="AraratFM photo">
+              <img src="assets/covers/araratfm-roller1.jpg" alt="AraratFM poster">
+              <img src="assets/covers/araratfm-roller2.jpg" alt="AraratFM poster">
+              <img src="assets/covers/araratfm-extra1.jpg" alt="AraratFM photo">
+              <img src="assets/covers/araratfm-extra2.jpg" alt="AraratFM poster">
+            </div>
+          </div>
+          <div class="level-info">
+            <p class="level-desc">When the old world doesn't fit anymore, it's time to sail away. The voice of Ararat heard from the radio encourage you to reach the new land.</p>
+            <p class="level-desc">Will you get to Ararat?</p>
+            <p class="level-desc">Does Ararat really exist?</p>
+            <a href="https://araratfm.itch.io/araratfm" class="level-link" target="_blank" rel="noopener">Play on itch.io ↗</a>
+          </div>
+          <div class="level-media">
+            <div class="video-embed">
+              <iframe data-src="https://www.youtube.com/embed/dU9MQvvuO84" title="AraratFM trailer" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
+            </div>
+            <div class="music-embed music-embed--album">
+              <iframe data-src="https://w.soundcloud.com/player/?url=https%3A%2F%2Fsoundcloud.com%2Fmguioaafei0t%2Fsets%2Fararatfm-mobile-game-soundtrack&color=%23ff5a3c&auto_play=false&show_user=true" title="AraratFM soundtrack album on SoundCloud" loading="lazy" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"></iframe>
+            </div>
+          </div>
+          </div>
+        </div>
+      </article>
+      </div>
+    </div>
+
+    <div class="project-group">
+      <h3 class="project-group-title">Sound Redesign</h3>
+      <div class="redesign-grid">
+      <div class="redesign-card" data-video="https://www.youtube.com/embed/aH-g1sPtOPM" data-title="Overwatch New Trailer Redesign">
+        <div class="redesign-thumb">
+          <img src="assets/covers/overwatch-redesign.jpg" alt="Overwatch New Trailer Redesign" loading="lazy">
+          <div class="redesign-play"><span>▶</span></div>
+        </div>
+      </div>
+
+      <div class="redesign-card" data-video="https://www.youtube.com/embed/VCBvkODmzGg" data-title="Horizon Forbidden West Redesign">
+        <div class="redesign-thumb">
+          <img src="assets/covers/horizon-redesign.jpg" alt="Horizon Forbidden West Redesign" loading="lazy">
+          <div class="redesign-play"><span>▶</span></div>
+        </div>
+      </div>
+
+      <div class="redesign-card" data-video="https://www.youtube.com/embed/tntfzySvwkU" data-title="Anime Clip Sound Redesign">
+        <div class="redesign-thumb">
+          <img src="assets/covers/redesign-anime.jpg" alt="Anime Clip Sound Redesign" loading="lazy">
+          <div class="redesign-play"><span>▶</span></div>
+        </div>
+      </div>
+      </div>
+    </div>
+
+    <div class="project-group project-group--film">
+      <h3 class="project-group-title">Film &amp; Video</h3>
+      <div class="level-select level-select--film">
+      <article class="level-card">
+        <button class="level-toggle" aria-expanded="false">
+          <div class="level-cover"><img src="assets/covers/spackle-card.jpg" alt="Spackle cover art" loading="lazy"></div>
+          <div class="level-quick">
+            <h3 class="level-quick-title">Spackle</h3>
+            <div class="level-quick-fields">
+              <p class="level-role"><span class="level-field-label">Role:</span> Composer</p>
+              <p><span class="level-field-label">Director:</span> Alin Vais</p>
+              <p class="level-quick-meta">Israel, 2023 · 19 min · Light / drama</p>
+            </div>
+            <span class="level-quick-hint">Details <span class="level-quick-arrow">▾</span></span>
+          </div>
+        </button>
+        <div class="level-details">
+          <div class="level-details-inner">
+          <div class="photo-roller">
+            <div class="photo-roller-track">
+              <img src="assets/covers/spackle-square.jpg" alt="Spackle photo">
+              <img src="assets/covers/spackle-horizontal.jpg" alt="Spackle photo">
+            </div>
+          </div>
+          <div class="level-info">
+          </div>
+          <div class="level-media">
+            <div class="video-embed">
+              <iframe data-src="https://www.youtube.com/embed/SJNvq8qXyJk" title="Spackle Official Movie Trailer" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
+            </div>
+            <div class="music-embed music-embed--album">
+              <iframe data-src="https://w.soundcloud.com/player/?url=https%3A%2F%2Fsoundcloud.com%2Fmguioaafei0t%2Fsets%2Fspackle-a-short-film-soundtrack&color=%23ff5a3c&auto_play=false&show_user=true" title="Spackle soundtrack album on SoundCloud" loading="lazy" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"></iframe>
+            </div>
+          </div>
+          </div>
+        </div>
+      </article>
+      <article class="level-card">
+        <button class="level-toggle" aria-expanded="false">
+          <div class="level-cover"><img src="assets/covers/adane-yaleo.jpg" alt="Adane And Yaleo cover art" loading="lazy"></div>
+          <div class="level-quick">
+            <h3 class="level-quick-title">Adane And Yaleo</h3>
+            <div class="level-quick-fields">
+              <p class="level-role"><span class="level-field-label">Role:</span> Co-composer (Mog Sound)</p>
+              <p><span class="level-field-label">Director:</span> Oz Zirlin</p>
+              <p class="level-quick-meta">Israel, 2022 · 22 min · Psychedelic / tense</p>
+            </div>
+            <span class="level-quick-hint">Details <span class="level-quick-arrow">▾</span></span>
+          </div>
+        </button>
+        <div class="level-details">
+          <div class="level-details-inner">
+          <div class="photo-roller">
+            <div class="photo-roller-track">
+              <img src="assets/covers/adane-yaleo.jpg" alt="Adane And Yaleo photo">
+              <img src="assets/covers/adane-yaleo-reward.jpg" alt="Adane And Yaleo award">
+              <img src="assets/covers/adane-yaleo-horizontal.jpg" alt="Adane And Yaleo photo">
+            </div>
+          </div>
+          <div class="level-info">
+            <a href="https://13tv.co.il/allshows/3757289/" class="level-link" target="_blank" rel="noopener">Watch the full film ↗</a>
+          </div>
+          <div class="level-media">
+            <div class="video-embed">
+              <iframe data-src="https://www.youtube.com/embed/WsLXMBJtqBY?start=30" title="Adane And Yaleo trailer" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
+            </div>
+          </div>
+          </div>
+        </div>
+      </article>
+      <article class="level-card">
+        <button class="level-toggle" aria-expanded="false">
+          <div class="level-cover"><img src="assets/covers/mothers-last-show-vertical.jpg" alt="Mother's Last Show cover art" loading="lazy"></div>
+          <div class="level-quick">
+            <h3 class="level-quick-title">Mother's Last Show</h3>
+            <div class="level-quick-fields">
+              <p class="level-role"><span class="level-field-label">Role:</span> Composer</p>
+              <p><span class="level-field-label">Director:</span> Michal Tsur</p>
+              <p class="level-quick-meta">Israel, 2021 · 23 min · Comedy</p>
+            </div>
+            <span class="level-quick-hint">Details <span class="level-quick-arrow">▾</span></span>
+          </div>
+        </button>
+        <div class="level-details">
+          <div class="level-details-inner">
+          <div class="photo-roller">
+            <div class="photo-roller-track">
+              <img src="assets/covers/mothers-last-show.jpg" alt="Mother's Last Show photo">
+              <img src="assets/covers/mothers-last-show-vertical.jpg" alt="Mother's Last Show poster">
+              <img src="assets/covers/mothers-last-show-reward1.jpg" alt="Mother's Last Show award">
+              <img src="assets/covers/mothers-last-show-reward2.jpg" alt="Mother's Last Show award">
+              <img src="assets/covers/mothers-last-show-reward3.jpg" alt="Mother's Last Show award">
+              <img src="assets/covers/mothers-last-show-reward4.jpg" alt="Mother's Last Show award">
+              <img src="assets/covers/mothers-last-show-reward5.jpg" alt="Mother's Last Show award">
+              <img src="assets/covers/mothers-last-show-horizontal1.jpg" alt="Mother's Last Show photo">
+              <img src="assets/covers/mothers-last-show-horizontal2.jpg" alt="Mother's Last Show photo">
+              <img src="assets/covers/mothers-last-show-horizontal3.jpg" alt="Mother's Last Show photo">
+              <img src="assets/covers/mothers-last-show-horizontal4.jpg" alt="Mother's Last Show photo">
+            </div>
+          </div>
+          <div class="level-info">
+          </div>
+          <div class="level-media">
+            <div class="music-embed music-embed--album">
+              <iframe data-src="https://w.soundcloud.com/player/?url=https%3A%2F%2Fsoundcloud.com%2Fmguioaafei0t%2Fsets%2Fmothers-last-show&color=%23ff5a3c&auto_play=false&show_user=true" title="Mother's Last Show soundtrack album on SoundCloud" loading="lazy" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"></iframe>
+            </div>
+          </div>
+          </div>
+        </div>
+      </article>
+      <article class="level-card">
+        <button class="level-toggle" aria-expanded="false">
+          <div class="level-cover"><img src="assets/covers/messiah-vertical.jpg" alt="Messiah cover art" loading="lazy"></div>
+          <div class="level-quick">
+            <h3 class="level-quick-title">Messiah</h3>
+            <div class="level-quick-fields">
+              <p class="level-role"><span class="level-field-label">Role:</span> Composer</p>
+              <p><span class="level-field-label">Director:</span> Robert Dimitrov</p>
+              <p class="level-quick-meta">Israel, 2020 · 23 min · Dark / drama</p>
+            </div>
+            <span class="level-quick-hint">Details <span class="level-quick-arrow">▾</span></span>
+          </div>
+        </button>
+        <div class="level-details">
+          <div class="level-details-inner">
+          <div class="photo-roller">
+            <div class="photo-roller-track">
+              <img src="assets/covers/messiah.jpg" alt="Messiah photo">
+              <img src="assets/covers/messiah-vertical.jpg" alt="Messiah poster">
+              <img src="assets/covers/messiah-horizontal.jpg" alt="Messiah photo">
+            </div>
+          </div>
+          <div class="level-info">
+          </div>
+          <div class="level-media">
+            <div class="music-embed music-embed--album">
+              <iframe data-src="https://w.soundcloud.com/player/?url=https%3A%2F%2Fsoundcloud.com%2Fmguioaafei0t%2Fsets%2Fmessiah-a-short-film-soundtrack&color=%23ff5a3c&auto_play=false&show_user=true" title="Messiah soundtrack album on SoundCloud" loading="lazy" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"></iframe>
+            </div>
+          </div>
+          </div>
+        </div>
+      </article>
+      <article class="level-card">
+        <button class="level-toggle" aria-expanded="false">
+          <div class="level-cover"><img src="assets/covers/nina.jpg" alt="NINA cover art" loading="lazy"></div>
+          <div class="level-quick">
+            <h3 class="level-quick-title">NINA</h3>
+            <div class="level-quick-fields">
+              <p class="level-role"><span class="level-field-label">Role:</span> Composer & sound designer</p>
+              <p><span class="level-field-label">Director:</span> Shahar Katzenstein</p>
+              <p class="level-quick-meta">Israel, 2019 · 23 min · Tense / dark</p>
+            </div>
+            <span class="level-quick-hint">Details <span class="level-quick-arrow">▾</span></span>
+          </div>
+        </button>
+        <div class="level-details">
+          <div class="level-details-inner">
+          <div class="photo-roller">
+            <div class="photo-roller-track">
+              <img src="assets/covers/nina.jpg" alt="NINA photo">
+              <img src="assets/covers/nina-horizontal.jpg" alt="NINA photo">
+            </div>
+          </div>
+          <div class="level-info">
+          </div>
+          <div class="level-media">
+            <div class="music-embed music-embed--album">
+              <iframe data-src="https://w.soundcloud.com/player/?url=https%3A%2F%2Fsoundcloud.com%2Fmguioaafei0t%2Fsets%2Fnina-a-short-film-soundtrack&color=%23ff5a3c&auto_play=false&show_user=true" title="NINA soundtrack album on SoundCloud" loading="lazy" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"></iframe>
+            </div>
+          </div>
+          </div>
+        </div>
+      </article>
+      <article class="level-card">
+        <button class="level-toggle" aria-expanded="false">
+          <div class="level-cover"><img src="assets/covers/residual-noise.jpg" alt="Residual Noise cover art" loading="lazy"></div>
+          <div class="level-quick">
+            <h3 class="level-quick-title">Residual Noise</h3>
+            <div class="level-quick-fields">
+              <p class="level-role"><span class="level-field-label">Role:</span> Foley & sound designer</p>
+              <p><span class="level-field-label">Director:</span> Tova Dorfman</p>
+              <p class="level-quick-meta">Israel, 2019 · 15 min · Light / drama</p>
+            </div>
+            <span class="level-quick-hint">Details <span class="level-quick-arrow">▾</span></span>
+          </div>
+        </button>
+        <div class="level-details">
+          <div class="level-details-inner">
+          <div class="photo-roller">
+            <div class="photo-roller-track">
+              <img src="assets/covers/residual-noise.jpg" alt="Residual Noise photo">
+              <img src="assets/covers/residual-noise-extra1.jpg" alt="Residual Noise photo">
+            </div>
+          </div>
+          <div class="level-info">
+          </div>
+          <div class="level-media">
+            <div class="video-embed">
+              <iframe data-src="https://www.youtube.com/embed/ex2eO9SMyTE" title="Residual Noise" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
+            </div>
+          </div>
+          </div>
+        </div>
+      </article>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- SERVICES : SKILL TREE -->
+  <section class="section chapter" id="services">
+    <div class="chapter-head">
+      <h2 class="chapter-title">SERVICES</h2>
+      <p class="chapter-sub">What Mor brings to a project.</p>
+    </div>
+
+    <div class="skill-tree">
+      <div class="skill-node">
+        <h3>Music<br>Composition</h3>
+        <p>Original scores for games and film, written from the story outward rather than the other way around. Mor draws on a decade-plus as a multi-instrumentalist and recording engineer to move between orchestral, hybrid, and electronic palettes — real instruments and performance woven in wherever it serves the moment. The aim is always music that disappears into the experience, not music that announces itself.</p>
+      </div>
+      <div class="skill-node">
+        <h3>Sound<br>Design</h3>
+        <p>From weapons and sci-fi tech to full ambiences, Mor designs sound that feels tactile and specific. Foley is recorded both in-studio and out in the field, then shaped alongside synthesis to build textures that don't exist in nature. He also voices creatures and unique characters — in English or full gibberish — layering and processing performances until they land somewhere between human and imagined. Every sound leaves the desk polished and ready to drop in.</p>
+      </div>
+      <div class="skill-node">
+        <h3>Technical<br>Implementation</h3>
+        <p>Building the systems that make sound respond to what's actually happening on screen. In Unreal, that means Blueprints wiring gameplay actions directly to sound cues and MetaSounds for variation that never repeats the same way twice. In FMOD, it's deeper interactive and responsive work — full adaptive music and sound systems that react to the whole game, not just a single trigger. Unity rounds it out for projects that live there instead.</p>
+        <div class="skill-tags">
+          <span class="skill-tag">Unity</span>
+          <span class="skill-tag">Unreal</span>
+          <span class="skill-tag">FMOD</span>
+        </div>
+      </div>
+      <div class="skill-node">
+        <h3>Post<br>Production</h3>
+        <p>Final polish across music and dialogue so the mix holds up everywhere it's heard — from a phone speaker to a cinema system. That includes mixing trailers built to cut through the noise on social media and hold up in publisher presentations, and the same care applied to commercials: a mix that makes the spot land in the first three seconds, wherever it's playing.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- WORKED WITH -->
+  <section class="section chapter" id="worked">
+    <div class="chapter-head">
+      <h2 class="chapter-title">WORKED WITH</h2>
+      <p class="chapter-sub">Brands & studios.</p>
+    </div>
+
+    <div class="brand-marquee">
+      <div class="brand-track" id="brandTrack">
+        <div class="brand-card">
+          <div class="brand-logo" data-brand="simply"><img src="assets/logos/simply.png" alt="Simply (formerly Joytunes) logo" loading="lazy" onerror="this.parentElement.classList.add('brand-logo--empty')"></div>
+          <span class="brand-name">Simply (formerly Joytunes)</span>
+        </div>
+        <div class="brand-card">
+          <div class="brand-logo" data-brand="cowboy"><img src="assets/logos/cowboy-productions.png" alt="Cowboy Productions logo" loading="lazy" onerror="this.parentElement.classList.add('brand-logo--empty')"></div>
+          <span class="brand-name">Cowboy Productions</span>
+        </div>
+        <div class="brand-card">
+          <div class="brand-logo" data-brand="output"><img src="assets/logos/output.png" alt="Output logo" loading="lazy" onerror="this.parentElement.classList.add('brand-logo--empty')"></div>
+          <span class="brand-name">Output</span>
+        </div>
+        <div class="brand-card">
+          <div class="brand-logo" data-brand="fooya"><img src="assets/logos/fooya-games.jpg" alt="Fooya Games logo" loading="lazy" onerror="this.parentElement.classList.add('brand-logo--empty')"></div>
+          <span class="brand-name">Fooya Games</span>
+        </div>
+        <div class="brand-card">
+          <div class="brand-logo" data-brand="jewish-agency"><img src="assets/logos/jewish-agency.jpg" alt="The Jewish Agency for the Land of Israel logo" loading="lazy" onerror="this.parentElement.classList.add('brand-logo--empty')"></div>
+          <span class="brand-name">The Jewish Agency for the Land of Israel</span>
+        </div>
+        <div class="brand-card">
+          <div class="brand-logo" data-brand="reshet13"><img src="assets/logos/reshet13.png" alt="Reshet 13 logo" loading="lazy" onerror="this.parentElement.classList.add('brand-logo--empty')"></div>
+          <span class="brand-name">Reshet 13</span>
+        </div>
+        <div class="brand-card">
+          <div class="brand-logo" data-brand="lembido"><img src="assets/logos/lembido-games.svg" alt="Lembido Games logo" loading="lazy" onerror="this.parentElement.classList.add('brand-logo--empty')"></div>
+          <span class="brand-name">Lembido Games</span>
+        </div>
+        <div class="brand-card">
+          <div class="brand-logo" data-brand="iai-studio"><img src="assets/logos/iai-studio.jpg" alt="iAi Studio logo" loading="lazy" onerror="this.parentElement.classList.add('brand-logo--empty')"></div>
+          <span class="brand-name">iAi Studio</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CONTACT : FINAL BOSS -->
+  <section class="section chapter contact-section" id="contact">
+    <div class="contact-layout">
+      <div class="contact-photo">
+        <img src="assets/covers/mor-studio-2.jpg" alt="Mor Sedero in his studio" loading="lazy">
+      </div>
+      <div class="contact-main">
+        <span class="contact-eyebrow">Contact</span>
+        <h2 class="contact-cta">Let's score<br>something.</h2>
+        <div class="contact-chips">
+          <a href="mailto:morsedero@gmail.com" class="chip">morsedero@gmail.com</a>
+          <a href="tel:+972524448932" class="chip">+972 52 444 8932</a>
+        </div>
+        <div class="contact-socials site-socials">
+          <a href="https://www.youtube.com/@MorSederoMusic" aria-label="YouTube" target="_blank" rel="noopener">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="5.5" width="19" height="13" rx="3.5"/><path d="M10.5 9v6l5-3z" fill="currentColor" stroke="none"/></svg>
+          </a>
+          <a href="https://www.facebook.com/mor.sedero/" aria-label="Facebook" target="_blank" rel="noopener">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9.5"/><path d="M14 8.5h-1.5c-.9 0-1.5.6-1.5 1.6V12h3l-.4 3h-2.6v6"/></svg>
+          </a>
+          <a href="https://www.instagram.com/mor_sedero/" aria-label="Instagram" target="_blank" rel="noopener">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4.2"/><circle cx="17" cy="7" r=".6" fill="currentColor" stroke="none"/></svg>
+          </a>
+          <a href="https://www.linkedin.com/in/mor-sedero-7165261b9/" aria-label="LinkedIn" target="_blank" rel="noopener">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="8" cy="8.3" r=".4" fill="currentColor" stroke="none"/><path d="M8 11v6"/><path d="M12 17v-3.6c0-1.3.9-2.1 2-2.1s2 .8 2 2.1V17"/></svg>
+          </a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer class="site-footer">
+    <p>© 2026 Mor Sedero. Built to be tweaked.</p>
+  </footer>
+
+</main>
+
+<script src="js/main.js"></script>
+</body>
+</html>

@@ -1,0 +1,5 @@
+# Local Netlify folder
+.netlify
+
+# Raw/original uploads not needed in the repo (large, unprocessed source files)
+Files for upload/
