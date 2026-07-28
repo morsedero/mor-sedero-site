@@ -465,13 +465,15 @@ ul{ list-style:none; }
 .redesign-grid--single{ grid-template-columns:1fr; width:100%; max-width:900px; margin:0 auto; }
 .redesign-grid--duo{ grid-template-columns:repeat(2, 1fr); width:100%; max-width:900px; margin:0 auto; }
 @media (max-width:600px){ .redesign-grid--duo{ grid-template-columns:1fr; } }
-/* Subtle warm/cool duotone: music reads warm, sound design reads cool — no label needed */
+/* Subtle warm/cool cue: music reads warm, sound design reads cool — no label needed.
+   Uses a normal-blend corner vignette (not mix-blend-mode:color) so it still reads
+   on very dark thumbnails, where color-blend tints vanish at near-zero luminosity. */
 .redesign-card--music .redesign-thumb::before,
 .redesign-card--sound .redesign-thumb::before{
-  content:""; position:absolute; inset:0; pointer-events:none; mix-blend-mode:color;
+  content:""; position:absolute; inset:0; pointer-events:none;
 }
-.redesign-card--music .redesign-thumb::before{ background:var(--accent); opacity:.22; }
-.redesign-card--sound .redesign-thumb::before{ background:var(--accent-2); opacity:.22; }
+.redesign-card--music .redesign-thumb::before{ background:linear-gradient(155deg, rgba(255,122,82,.4), rgba(255,122,82,0) 60%); }
+.redesign-card--sound .redesign-thumb::before{ background:linear-gradient(155deg, rgba(94,230,197,.4), rgba(94,230,197,0) 60%); }
 .redesign-card{
   display:flex; flex-direction:column;
   border-radius:4px; overflow:hidden; background:var(--panel); border:1px solid var(--line);
