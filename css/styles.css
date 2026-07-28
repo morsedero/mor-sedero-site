@@ -463,17 +463,27 @@ ul{ list-style:none; }
 @media (max-width:900px){ .redesign-grid{ grid-template-columns:repeat(2, 1fr); } }
 @media (max-width:600px){ .redesign-grid{ grid-template-columns:1fr; } }
 .redesign-grid--single{ grid-template-columns:1fr; width:100%; max-width:900px; margin:0 auto; }
-.redesign-grid--duo{ grid-template-columns:repeat(2, 1fr); width:100%; max-width:900px; margin:0 auto; }
+.redesign-grid--duo{ grid-template-columns:repeat(2, 1fr); width:100%; max-width:900px; margin:0 auto; position:relative; }
 @media (max-width:600px){ .redesign-grid--duo{ grid-template-columns:1fr; } }
-/* Subtle warm/cool cue: music reads warm, sound design reads cool — no label needed.
-   Uses a normal-blend corner vignette (not mix-blend-mode:color) so it still reads
-   on very dark thumbnails, where color-blend tints vanish at near-zero luminosity. */
-.redesign-card--music .redesign-thumb::before,
-.redesign-card--sound .redesign-thumb::before{
-  content:""; position:absolute; inset:0; pointer-events:none;
+
+/* Showreel side labels: pop up beside each video on hover, on the outward side
+   (left label to the left of the left video, right label to the right of the
+   right video). Needs room in the gutter, so only shown once the layout has
+   space for it. */
+.showreel-hint{
+  position:absolute; top:50%; width:180px;
+  font-family:var(--font-body); font-size:.9rem; font-weight:600; letter-spacing:.01em;
+  color:var(--ink); line-height:1.4; opacity:0; pointer-events:none;
+  transition:opacity .25s ease, transform .25s ease;
+  display:none;
 }
-.redesign-card--music .redesign-thumb::before{ background:linear-gradient(155deg, rgba(255,122,82,.4), rgba(255,122,82,0) 60%); }
-.redesign-card--sound .redesign-thumb::before{ background:linear-gradient(155deg, rgba(94,230,197,.4), rgba(94,230,197,0) 60%); }
+.showreel-hint--music{ right:calc(100% + 26px); text-align:right; transform:translateY(-50%) translateX(10px); }
+.showreel-hint--sound{ left:calc(100% + 26px); text-align:left; transform:translateY(-50%) translateX(-10px); }
+.redesign-grid--duo:has(.redesign-card--music:hover) .showreel-hint--music,
+.redesign-grid--duo:has(.redesign-card--sound:hover) .showreel-hint--sound{
+  opacity:1; transform:translateY(-50%) translateX(0);
+}
+@media (min-width:1100px){ .showreel-hint{ display:block; } }
 .redesign-card{
   display:flex; flex-direction:column;
   border-radius:4px; overflow:hidden; background:var(--panel); border:1px solid var(--line);
