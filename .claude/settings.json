@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(netlify status *)",
+      "PowerShell(netlify status 2>&1)"
+    ]
+  }
+}

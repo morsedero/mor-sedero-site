@@ -147,7 +147,7 @@ ul{ list-style:none; }
 /* ---------- HUD side nav: dock-style magnify + proximity label reveal ---------- */
 .hud-nav{
   position:fixed; right:18px; top:50%; transform:translateY(-50%); z-index:65;
-  display:flex; flex-direction:column; gap:14px; align-items:flex-end;
+  display:flex; flex-direction:column; gap:24px; align-items:flex-end;
 }
 .hud-node{
   background:none; border:none; cursor:pointer; display:flex; align-items:center; gap:10px;
@@ -197,7 +197,7 @@ ul{ list-style:none; }
 @keyframes panelIn{ from{ opacity:0; transform:translateX(14px); } to{ opacity:1; transform:translateX(0); } }
 
 /* ============ LEVEL SELECT (games / film): a list of wide info rows, not a tile grid ============ */
-.level-select{ display:flex; flex-direction:column; gap:16px; }
+.level-select{ display:flex; flex-direction:column; gap:22px; }
 .level-card{
   position:relative; background:var(--panel); border:1px solid var(--line); border-radius:4px;
   overflow:hidden; width:100%; scroll-margin-top:90px;
@@ -207,15 +207,68 @@ ul{ list-style:none; }
 
 .level-toggle{
   all:unset; box-sizing:border-box; width:100%; cursor:pointer;
-  display:flex; align-items:stretch;
+  display:flex; align-items:center;
 }
 @media (max-width:640px){ .level-toggle{ flex-direction:column; } }
 .level-cover{
-  position:relative; flex:0 0 300px; width:300px; aspect-ratio:16/9; background:var(--bg-alt); overflow:hidden;
+  position:relative; flex:0 0 320px; width:320px; aspect-ratio:16/9; background:var(--bg-alt); overflow:hidden;
 }
 @media (max-width:640px){ .level-cover{ flex:none; width:100%; } }
-.level-select--film .level-cover{ flex-basis:220px; width:220px; aspect-ratio:2/3; }
-@media (max-width:640px){ .level-select--film .level-cover{ width:100%; aspect-ratio:2/3; max-height:420px; } }
+/* Film & Video: an always-looping poster strip (same physics as the brand marquee) —
+   closed cards never leave this strip. Opening a card physically moves just that
+   one card into .film-expanded-slot below, where it falls back to plain .level-card
+   styling (i.e. looks like Games) since these narrow overrides no longer match it. */
+.level-select--film{
+  overflow:hidden; padding:2px 2px 12px; cursor:grab;
+  -webkit-mask-image:linear-gradient(90deg, transparent, black 1.5%, black 98.5%, transparent);
+  mask-image:linear-gradient(90deg, transparent, black 1.5%, black 98.5%, transparent);
+}
+.level-select--film.dragging{ cursor:grabbing; }
+.film-track{
+  display:flex; flex-direction:row; gap:18px; width:max-content;
+  touch-action:pan-y; user-select:none; will-change:transform;
+}
+.film-track img{ -webkit-user-drag:none; user-select:none; pointer-events:none; }
+.level-select--film .level-card{ flex:0 0 260px; width:260px; }
+.level-select--film .level-toggle{ flex-direction:column; }
+.level-select--film .level-cover{ flex:none; width:100%; aspect-ratio:2/3; }
+.level-select--film .level-quick{ padding:14px 16px; gap:7px; }
+.level-select--film .level-quick-title{ font-size:1rem; }
+.level-select--film .level-quick-fields{ gap:4px; }
+.level-select--film .level-quick-fields p{ font-size:.78rem; }
+
+.film-expanded-slot:empty{ display:none; }
+/* Layout once a film is open: identical left/videos/soundtrack split to an
+   open Games card (see .level-card.expanded further below) — title+meta in
+   a left column, screenshots+trailer beside it, soundtrack (when there is
+   one) further right, all top-aligned. The whole card is physically
+   relocated into this slot rather than expanding in place, so unlike Games
+   there's no accordion animation to keep separate for .level-details — the
+   jump to this slot is already an instant cut, so .level-info can just show
+   immediately too instead of needing its own display toggle. */
+/* .level-info now lives outside .level-details (see .level-left above), so
+   its visibility isn't covered by the accordion's 0-height collapse anymore
+   — needs an explicit hide while still in the marquee, matching Games'
+   collapsed default. */
+.level-select--film .level-info{ display:none; }
+.film-expanded-slot .level-cover{ display:none; }
+.film-expanded-slot .level-left{ display:flex; flex-direction:column; }
+.film-expanded-slot .level-info{ display:flex; }
+.film-expanded-slot .level-card{ padding:16px; }
+@media (min-width:900px){
+  /* Same full-width breakout as an open Games card (see .level-card.expanded
+     further below) — applied to the card itself, not the slot around it, so
+     the card's own background/border reaches the true viewport edge and only
+     its content is inset. Padding the slot instead left a gap of bare page
+     background down the left edge where the card's panel should have been. */
+  .film-expanded-slot .level-card{
+    width:100vw; margin-left:calc(50% - 50vw); margin-right:calc(50% - 50vw);
+    padding-left:max(24px, 4vw); padding-right:max(24px, 4vw);
+    display:grid; grid-template-columns: minmax(200px,260px) 1fr; column-gap:28px; align-items:start;
+  }
+  .film-expanded-slot .level-card > .level-left{ grid-column:1; }
+  .film-expanded-slot .level-card > .level-details{ grid-column:2; }
+}
 .level-cover img{
   width:100%; height:100%; object-fit:cover; display:block;
   transition:transform .4s ease;
@@ -231,12 +284,12 @@ ul{ list-style:none; }
 
 .level-quick{
   flex:1; min-width:0; display:flex; flex-direction:column; justify-content:center;
-  padding:22px 26px; text-align:left; gap:10px;
+  padding:24px 28px; text-align:left; gap:13px;
 }
 .level-quick-title{
-  font-family:var(--font-display); font-weight:600; font-size:1.3rem; letter-spacing:-.005em; color:var(--ink);
+  font-family:var(--font-body); font-weight:700; font-size:1.3rem; letter-spacing:-.005em; color:var(--ink);
 }
-.level-quick-fields{ display:flex; flex-direction:column; gap:8px; }
+.level-quick-fields{ display:flex; flex-direction:column; align-items:flex-start; gap:9px; }
 .level-quick-fields p{ font-size:.88rem; color:var(--ink-dim); }
 .level-quick-meta{ font-size:.85rem; color:var(--ink-dim); }
 .level-quick-hint{
@@ -247,6 +300,11 @@ ul{ list-style:none; }
 .level-quick-arrow{ display:inline-block; transition:transform .3s ease; }
 .level-card.expanded .level-quick-arrow{ transform:rotate(180deg); }
 .level-toggle:hover .level-quick-hint{ color:var(--accent); }
+/* Swap the hint's own label to make it obvious the same control closes the
+   card again, instead of just flipping the arrow (easy to miss on its own). */
+.level-quick-hint-open{ display:none; }
+.level-card.expanded .level-quick-hint-closed{ display:none; }
+.level-card.expanded .level-quick-hint-open{ display:inline; }
 
 /* accordion reveal, animated via grid-rows so height needs no guessing */
 .level-details{
@@ -261,29 +319,84 @@ ul{ list-style:none; }
 .level-card.expanded .level-details-inner{ padding:20px; }
 .level-details-inner .photo-roller{ grid-column:1 / -1; margin-bottom:12px; }
 @media (min-width:640px){
-  .level-details-inner:has(.video-embed, .music-embed){ grid-template-columns:1fr 1fr; }
+  /* Direct-child :has() only — Games' own media lives beside the toggle now
+     (see .level-left below), not inside here. Without the > this also matched
+     Monster Punk's case-study, which still nests its own video-embed a level
+     deeper, wrongly halving .level-info's width. */
+  .level-details-inner:has(> .video-embed, > .music-embed){ grid-template-columns:1fr 1fr; }
 }
 
-.level-info{ display:flex; flex-direction:column; align-items:flex-start; gap:8px; padding-bottom:16px; }
-.level-field-label{ font-family:var(--font-body); color:var(--accent-2); font-weight:600; }
-.level-role{
-  display:inline-flex; align-items:center; gap:6px;
-  padding:5px 12px; border:1px solid var(--accent); border-radius:3px; color:var(--ink);
-  background:
-    repeating-linear-gradient(135deg, rgba(255,255,255,.06) 0px, rgba(255,255,255,.06) 1px, transparent 1px, transparent 3px),
-    rgba(255,122,82,.1);
-  box-shadow:1px 1px 0 rgba(0,0,0,.35);
-}
-.level-role .level-field-label{ color:var(--accent); }
+.level-info{ display:flex; flex-direction:column; align-items:flex-start; gap:8px; padding:0 28px 16px; }
+.level-field-label{ font-family:var(--font-body); color:var(--ink); font-weight:600; }
+.level-field-sep{ color:var(--ink-dim); margin:0 8px; }
+.level-role{ display:inline-flex; align-items:flex-start; gap:6px; color:var(--ink); }
 .level-desc{ color:var(--ink-dim); font-size:.92rem; line-height:1.6; margin:6px 0 4px; }
 
-.level-media{ display:flex; flex-direction:column; gap:12px; padding-bottom:16px; }
+.level-media{ display:flex; flex-direction:column; gap:24px; padding-bottom:16px; }
+.level-media-group{ display:flex; flex-direction:column; gap:12px; }
+/* Behind-the-scenes clips are vertical (9:16) and would otherwise stack in a
+   tall single-file column — lay a group of them out side by side instead. */
+.level-media-group:has(.video-embed--vertical){ flex-direction:row; flex-wrap:wrap; }
+.level-media-group:has(.video-embed--vertical) .video-embed--vertical{ flex:1 1 200px; max-width:280px; margin:0; }
+
+/* Games: description | screenshots+videos | soundtrack as three parallel
+   columns once there's room, instead of one long stacked feed — modeled on
+   Mick Gordon's site, which lays out credits, media, and the album embed
+   side by side.
+
+   .level-left wraps the toggle (title/role/fields — always visible, open or
+   closed) together with .level-info (description+link, hidden until open)
+   as ONE grid item, so it and .level-details (screenshots/videos/soundtrack)
+   both start at the exact same top. Putting .level-info inside .level-details
+   instead — so it could keep animating open with the accordion — was tried
+   first, but then it and .level-details were two separately-sized rows, and
+   a tall videos column spanning both to reach the toggle's height inflates
+   BOTH rows' auto-height (not just the last one), leaving a dead gap before
+   the description. Folding description into .level-left avoids that
+   entirely; the trade-off is it now pops in with the toggle row's own
+   reflow instead of sliding open — only the videos/soundtrack columns still
+   animate via the existing accordion on .level-details. */
+.level-select:not(.level-select--film):not(.film-expanded-slot) .level-left{ display:flex; flex-direction:column; }
+.level-select:not(.level-select--film):not(.film-expanded-slot) .level-card.expanded .level-cover{ display:none; }
+.level-select:not(.level-select--film):not(.film-expanded-slot) .level-left .level-info{ display:none; }
+.level-select:not(.level-select--film):not(.film-expanded-slot) .level-card.expanded .level-left .level-info{ display:flex; }
+.level-videos-col, .level-music-col{ display:flex; flex-direction:column; gap:20px; padding-bottom:16px; min-width:0; }
+@media (min-width:900px){
+  /* Break the expanded card out of .section's 1400px reading-width column so
+     it spreads across the browser window instead of staying boxed in — with
+     its own smaller side padding standing in for the section's 8vw gutter,
+     not literally edge-to-edge. Standard 100vw/negative-margin breakout;
+     safe because body already has overflow-x:hidden for exactly this. */
+  .level-select:not(.level-select--film):not(.film-expanded-slot) .level-card.expanded{
+    width:100vw; margin-left:calc(50% - 50vw); margin-right:calc(50% - 50vw);
+    padding-left:max(24px, 4vw); padding-right:max(24px, 4vw);
+    display:grid; grid-template-columns: minmax(200px,260px) 1fr; column-gap:28px; align-items:start;
+  }
+  .level-select:not(.level-select--film):not(.film-expanded-slot) .level-card.expanded > .level-left{ grid-column:1; }
+  .level-select:not(.level-select--film):not(.film-expanded-slot) .level-card.expanded > .level-details{ grid-column:2; }
+  /* minmax(0, …) on the flexible tracks, not bare fr units — otherwise the
+     photo-roller's track (deliberately width:max-content, and doubled for
+     the seamless drag loop) reports its full unrolled width as this column's
+     content-based minimum, and blows the grid column out to thousands of px
+     instead of sharing the row like every other column. */
+  .level-details-inner:has(.level-videos-col):not(:has(.level-music-col)){
+    grid-template-columns: minmax(0,1fr);
+  }
+  .level-details-inner:has(.level-videos-col):has(.level-music-col){
+    grid-template-columns: minmax(0,1.3fr) minmax(0,1fr);
+  }
+  .level-details-inner:has(.level-videos-col){ align-items:start; }
+}
 
 .photo-roller{
   overflow:hidden; border-radius:4px;
   -webkit-mask-image:linear-gradient(90deg, transparent, black 6%, black 94%, transparent);
   mask-image:linear-gradient(90deg, transparent, black 6%, black 94%, transparent);
 }
+/* Games: roller gets relocated to sit directly before the toggle (main photo)
+   when expanded — a plain DOM sibling, not inside a gapped grid/flex, so it
+   needs its own separation from the toggle below it. */
+.level-card > .photo-roller{ margin-bottom:16px; }
 .photo-roller-track{
   display:flex; gap:10px; width:max-content; touch-action:pan-y;
   cursor:grab; will-change:transform; user-select:none; -webkit-user-drag:none;
@@ -293,14 +406,35 @@ ul{ list-style:none; }
   height:140px; width:auto; max-width:240px; object-fit:cover; border-radius:4px; flex:none;
   -webkit-user-drag:none; user-select:none; pointer-events:none; display:block;
 }
+.case-study{
+  grid-column:1/-1; background:var(--panel); border:1px solid rgba(94,230,197,.35);
+  border-radius:6px; padding:18px 20px; margin-top:4px;
+}
+.case-study-eyebrow{
+  display:flex; align-items:center; gap:10px; font-family:var(--font-body); font-size:11px;
+  font-weight:700; letter-spacing:.14em; text-transform:uppercase; color:var(--accent-2); margin-bottom:10px;
+}
+.case-study-draft-tag{
+  font-size:10px; letter-spacing:.06em; color:#0a0906; background:var(--gold); padding:3px 9px; border-radius:999px;
+}
+.case-study-body{ color:var(--ink-dim); font-size:.92rem; line-height:1.65; margin:0 0 14px; }
+.case-study-video-placeholder{
+  aspect-ratio:16/9; border:1px dashed var(--line); border-radius:4px;
+  display:flex; align-items:center; justify-content:center; background:var(--bg-alt);
+  color:var(--ink-dim); font-family:var(--font-body); font-size:.85rem; letter-spacing:.04em; text-transform:uppercase;
+}
+
 .video-embed{
   position:relative; width:100%; aspect-ratio:16/9; border-radius:4px; overflow:hidden; background:#000;
 }
 .video-embed iframe{ position:absolute; inset:0; width:100%; height:100%; border:0; }
+/* YouTube Shorts / BTS clips are vertical, not 16:9 — keep them from being squeezed */
+.video-embed--vertical{ aspect-ratio:9/16; max-width:320px; margin:0 auto; }
 
 .music-embed{ width:100%; border-radius:4px; overflow:hidden; }
 .music-embed iframe{ width:100%; height:152px; display:block; border:0; }
-.music-embed--album iframe{ height:300px; }
+.music-embed--album iframe{ height:480px; }
+.level-music-col .music-embed--album iframe{ height:560px; }
 
 .level-link{
   font-family:var(--font-body); font-size:12px; color:var(--gold); border-bottom:1px solid transparent;
@@ -349,8 +483,35 @@ ul{ list-style:none; }
   transition:border-color .2s ease, color .2s ease;
 }
 .redesign-card:hover .redesign-play span{ border-color:var(--accent); color:var(--accent); }
-.redesign-video{ position:relative; width:100%; aspect-ratio:16/9; background:#000; }
+.redesign-video{ position:relative; width:100%; aspect-ratio:16/9; background:#000; transition:aspect-ratio .35s ease, width .35s ease; }
 .redesign-video iframe{ position:absolute; inset:0; width:100%; height:100%; border:0; }
+.redesign-close{
+  position:absolute; top:10px; right:10px; z-index:2;
+  width:32px; height:32px; padding:0; border-radius:50%;
+  background:rgba(8,9,12,.65); border:1px solid rgba(255,255,255,.4); color:#fff;
+  font-size:20px; line-height:1; cursor:pointer;
+  display:flex; align-items:center; justify-content:center;
+  transition:border-color .2s ease, color .2s ease, background .2s ease;
+}
+.redesign-close:hover{ border-color:var(--accent); color:var(--accent); background:rgba(8,9,12,.85); }
+
+.redesign-grid--list{ grid-template-columns:1fr; gap:18px; }
+.redesign-grid--list .redesign-card{ flex-direction:row; }
+.redesign-grid--list .redesign-thumb{ width:320px; flex:0 0 320px; }
+.redesign-grid--list .redesign-video{ width:320px; flex:0 0 320px; }
+.redesign-grid--list .redesign-info{
+  display:flex; flex-direction:column; justify-content:center; gap:8px; padding:18px 24px;
+}
+.redesign-grid--list .redesign-card.is-playing .redesign-video{
+  width:520px; flex:0 0 520px; aspect-ratio:16/9;
+}
+.redesign-grid--list .redesign-title{ font-family:var(--font-body); font-weight:700; font-size:1.05rem; color:var(--ink); margin:0; }
+.redesign-grid--list .redesign-desc{ color:var(--ink-dim); font-size:.92rem; line-height:1.6; margin:0; }
+@media (max-width:700px){
+  .redesign-grid--list .redesign-card{ flex-direction:column; }
+  .redesign-grid--list .redesign-thumb,
+  .redesign-grid--list .redesign-video{ width:100%; flex:none; }
+}
 
 /* ============ BRAND MARQUEE (worked with) ============ */
 .brand-marquee{
@@ -390,6 +551,10 @@ ul{ list-style:none; }
   font-family:var(--font-display); font-weight:600; font-size:clamp(2.2rem,5.4vw,3.8rem);
   letter-spacing:-.01em; line-height:1; color:var(--ink);
 }
+.home-punch-sub{
+  font-family:var(--font-body); color:var(--ink-dim); font-size:clamp(1rem,1.6vw,1.2rem);
+  margin-top:14px; letter-spacing:.01em;
+}
 .home-showreel{ position:relative; z-index:1; max-width:1400px; margin:0 auto; padding:32px 8vw 0; }
 
 /* ============ ABOUT: short bio + photo, "more" opens a third column ============ */
@@ -421,6 +586,10 @@ ul{ list-style:none; }
 /* ============ CONTACT ============ */
 .contact-layout{ display:grid; grid-template-columns:1fr 1.15fr; gap:48px; align-items:center; }
 @media (max-width:900px){ .contact-layout{ grid-template-columns:1fr; } }
+.contact-layout--no-photo{ grid-template-columns:1fr; max-width:720px; margin:0 auto; text-align:center; }
+.contact-layout--no-photo .contact-main{ text-align:center; }
+.contact-layout--no-photo .contact-chips{ justify-content:center; }
+.contact-layout--no-photo .contact-socials{ justify-content:center; }
 .contact-photo{
   width:100%; aspect-ratio:3/2; border:1px solid var(--accent); border-radius:4px;
   overflow:hidden; background:radial-gradient(circle at 30% 20%, rgba(255,122,82,.15), transparent 60%);
