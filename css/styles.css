@@ -463,6 +463,8 @@ ul{ list-style:none; }
 @media (max-width:900px){ .redesign-grid{ grid-template-columns:repeat(2, 1fr); } }
 @media (max-width:600px){ .redesign-grid{ grid-template-columns:1fr; } }
 .redesign-grid--single{ grid-template-columns:1fr; width:100%; max-width:900px; margin:0 auto; }
+.redesign-grid--duo{ grid-template-columns:repeat(2, 1fr); width:100%; max-width:900px; margin:0 auto; }
+@media (max-width:600px){ .redesign-grid--duo{ grid-template-columns:1fr; } }
 .redesign-card{
   display:flex; flex-direction:column;
   border-radius:4px; overflow:hidden; background:var(--panel); border:1px solid var(--line);
