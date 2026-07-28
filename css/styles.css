@@ -465,6 +465,13 @@ ul{ list-style:none; }
 .redesign-grid--single{ grid-template-columns:1fr; width:100%; max-width:900px; margin:0 auto; }
 .redesign-grid--duo{ grid-template-columns:repeat(2, 1fr); width:100%; max-width:900px; margin:0 auto; }
 @media (max-width:600px){ .redesign-grid--duo{ grid-template-columns:1fr; } }
+/* Subtle warm/cool duotone: music reads warm, sound design reads cool — no label needed */
+.redesign-card--music .redesign-thumb::before,
+.redesign-card--sound .redesign-thumb::before{
+  content:""; position:absolute; inset:0; pointer-events:none; mix-blend-mode:color;
+}
+.redesign-card--music .redesign-thumb::before{ background:var(--accent); opacity:.22; }
+.redesign-card--sound .redesign-thumb::before{ background:var(--accent-2); opacity:.22; }
 .redesign-card{
   display:flex; flex-direction:column;
   border-radius:4px; overflow:hidden; background:var(--panel); border:1px solid var(--line);
