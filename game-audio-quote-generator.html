@@ -1,0 +1,743 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<title>מחולל הצעות מחיר — מוזיקה ואפקטים קוליים למשחקים</title>
+<style>
+    body {
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        background-color: #f0f4f8;
+        color: #1e293b;
+        padding: 15px;
+        margin: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 95vh;
+    }
+
+    .container {
+        width: 100%;
+        max-width: 1100px;
+        background: white;
+        padding: 25px;
+        border-radius: 12px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+        box-sizing: border-box;
+    }
+    h1 {
+        color: #1e3a8a;
+        font-size: 18px;
+        margin-bottom: 15px;
+        border-bottom: 2px solid #e2e8f0;
+        padding-bottom: 6px;
+        margin-top: 0;
+    }
+
+    .main-fields-row {
+        display: flex;
+        gap: 15px;
+        margin-bottom: 15px;
+    }
+    .form-group {
+        flex: 1;
+        margin-bottom: 10px;
+    }
+    .form-group label {
+        display: block;
+        font-weight: 600;
+        margin-bottom: 4px;
+        font-size: 13px;
+    }
+
+    .services-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 15px;
+        background: #f1f5f9;
+        padding: 12px;
+        border-radius: 6px;
+        margin-bottom: 15px;
+    }
+    .service-check {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-weight: 600;
+        font-size: 13px;
+        color: #1e3a8a;
+        cursor: pointer;
+    }
+
+    .component-row {
+        background: #f8fafc;
+        padding: 8px 12px;
+        border-radius: 6px;
+        border: 1px solid #e2e8f0;
+        margin-bottom: 6px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+    .main-check {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex: 2;
+    }
+    .main-check label {
+        margin-bottom: 0;
+        cursor: pointer;
+        font-weight: 500;
+        font-size: 13px;
+    }
+    .inputs-inline {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        flex: 3;
+        justify-content: flex-end;
+        flex-wrap: wrap;
+    }
+    .inputs-inline label {
+        font-weight: 500;
+        font-size: 12px;
+        margin-bottom: 0; white-space: nowrap;
+    }
+    .inputs-inline input, .inputs-inline select {
+        padding: 4px 6px;
+        border: 1px solid #cbd5e1;
+        border-radius: 4px;
+        font-size: 12px;
+        box-sizing: border-box;
+    }
+    .short-input { width: 50px; }
+    .medium-input { width: 80px; }
+
+    .calculator-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 12px;
+        background: #f8fafc;
+        padding: 15px;
+        border-radius: 6px;
+        border: 1px solid #e2e8f0;
+    }
+    .calc-box-title {
+        grid-column: 1 / -1;
+        font-size: 13px;
+        font-weight: bold;
+        color: #1e3a8a;
+        margin-top: 5px;
+        border-bottom: 1px dashed #cbd5e1;
+        padding-bottom: 3px;
+    }
+
+    input[type="text"], input[type="number"] {
+        padding: 8px;
+        border: 1px solid #cbd5e1;
+        border-radius: 6px;
+        box-sizing: border-box;
+        font-size: 14px;
+    }
+    .form-group input[type="text"], .form-group input[type="number"] {
+        width: 100%;
+    }
+    input[type="checkbox"] {
+        width: 16px;
+        height: 16px;
+        cursor: pointer;
+        margin: 0;
+    }
+
+    .submit-btn {
+        background-color: #2563eb;
+        color: white;
+        border: none;
+        padding: 12px 20px;
+        font-size: 14px;
+        font-weight: bold;
+        border-radius: 6px;
+        cursor: pointer;
+        width: 100%;
+        margin-top: 12px;
+        transition: background 0.2s;
+    }
+    .submit-btn:hover {
+        background-color: #1d4ed8;
+    }
+
+    /* עיצוב הלשוניות */
+    .tabs-header {
+        display: flex;
+        border-bottom: 2px solid #e2e8f0;
+        margin-bottom: 15px;
+        gap: 5px;
+    }
+    .tab-btn {
+        background: none;
+        border: none;
+        padding: 8px 16px;
+        font-size: 13px;
+        font-weight: 600;
+        color: #64748b;
+        cursor: pointer;
+        border-bottom: 2px solid transparent;
+        margin-bottom: -2px;
+        transition: all 0.2s;
+    }
+    .tab-btn.active {
+        color: #2563eb;
+        border-bottom-color: #2563eb;
+    }
+    .tab-content {
+        display: none;
+    }
+    .tab-content.active {
+        display: block;
+    }
+
+    /* עיצוב הפופ-אפ */
+    .modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(15, 23, 42, 0.6);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 9999;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.25s ease;
+    }
+    .modal-overlay.active {
+        opacity: 1;
+        pointer-events: auto;
+    }
+    .modal-box {
+        background: white;
+        width: 90%;
+        max-width: 880px;
+        height: 85vh;
+        border-radius: 12px;
+        box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        transform: scale(0.95);
+        transition: transform 0.25s ease;
+    }
+    .modal-overlay.active .modal-box {
+        transform: scale(1);
+    }
+    .modal-header {
+        background: #f1f5f9;
+        padding: 10px 20px;
+        border-bottom: 1px solid #e2e8f0;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    .modal-header h2 {
+        margin: 0;
+        font-size: 15px;
+        color: #475569;
+    }
+    .close-btn {
+        background: none;
+        border: none;
+        font-size: 20px;
+        font-weight: bold;
+        color: #64748b;
+        cursor: pointer;
+        padding: 0;
+    }
+    .close-btn:hover {
+        color: #1e293b;
+    }
+    .modal-body {
+        flex: 1;
+        overflow: auto;
+        background: #f8fafc;
+    }
+    iframe {
+        width: 100%;
+        height: 100%;
+        border: none;
+        display: block;
+    }
+    .modal-footer {
+        padding: 10px 20px;
+        background: #f1f5f9;
+        border-top: 1px solid #e2e8f0;
+        display: flex;
+        justify-content: flex-end;
+        gap: 10px;
+    }
+    .pop-download-btn {
+        background-color: #10b981;
+        color: white;
+        border: none;
+        padding: 8px 16px;
+        font-size: 13px;
+        font-weight: bold;
+        border-radius: 4px;
+        cursor: pointer;
+    }
+    .pop-download-btn:hover {
+        background-color: #059669;
+    }
+</style>
+</head>
+<body>
+
+<div class="container">
+    <div class="tabs-header">
+        <button class="tab-btn active" onclick="switchTab('tabProduction')">📋 פרטי לקוח והפקה</button>
+        <button class="tab-btn" onclick="switchTab('tabCalculator')">⚙️ הגדרות מחשבון תמחור</button>
+    </div>
+
+    <div id="tabProduction" class="tab-content active">
+        <div class="main-fields-row">
+            <div class="form-group">
+                <label for="gameName">שם המשחק / הסטודיו:</label>
+                <input type="text" id="gameName" value="" placeholder="הכנס את שם המשחק">
+            </div>
+        </div>
+
+        <label style="color: #1e3a8a; margin-bottom: 4px;">שירותי ליבה כלולים בפרויקט:</label>
+        <div class="services-grid">
+            <label class="service-check"><input type="checkbox" id="includeMusic" checked> מוזיקה (Music)</label>
+            <label class="service-check"><input type="checkbox" id="includeSFX" checked> אפקטים קוליים (SFX)</label>
+        </div>
+
+        <div class="form-group">
+            <label style="color: #1e3a8a; margin-bottom: 6px;">פירוט המוזיקה והאפקטים הנדרשים:</label>
+
+            <div class="component-row">
+                <div class="main-check">
+                    <label for="musicTrackCount">מספר רצועות מוזיקה:</label>
+                </div>
+                <div class="inputs-inline">
+                    <label>כמות רצועות:</label>
+                    <input type="number" id="musicTrackCount" class="short-input" value="1" min="1">
+                    <label>אורך ממוצע לרצועה (דק'):</label>
+                    <input type="number" id="musicAvgLength" class="short-input" value="1" step="0.5" min="0.5">
+                </div>
+            </div>
+
+            <div class="component-row">
+                <div class="main-check">
+                    <label for="sfxCount">מספר אפקטים קוליים (SFX):</label>
+                </div>
+                <div class="inputs-inline">
+                    <label>כמות צלילים:</label>
+                    <input type="number" id="sfxCount" class="medium-input" value="1" min="1">
+                </div>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label style="color: #1e3a8a; margin-bottom: 6px;">רכיבי הפרויקט הנדרשים הנוספים:</label>
+
+            <div class="component-row">
+                <div class="main-check">
+                    <input type="checkbox" id="needPreProd">
+                    <label for="needPreProd">פגישת הכנה / כיוון יצירתי (Pre-Production)?</label>
+                </div>
+                <div class="inputs-inline">
+                    <label>כמות:</label>
+                    <input type="number" id="preProdCount" class="short-input" value="1" min="1">
+                    <label>עלות לפגישה:</label>
+                    <input type="number" id="preProdPrice" class="medium-input" value="350" step="50">
+                    <label>₪</label>
+                </div>
+            </div>
+
+            <div class="component-row">
+                <div class="main-check">
+                    <input type="checkbox" id="needIntegration">
+                    <label for="needIntegration">תמיכת אינטגרציה למנוע המשחק (Wwise/FMOD/Unity)?</label>
+                </div>
+                <div class="inputs-inline">
+                    <label>עלות כוללת:</label>
+                    <input type="number" id="integrationPrice" class="medium-input" value="500" step="50">
+                    <label>₪</label>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="tabCalculator" class="tab-content">
+        <div class="calculator-grid">
+            <div class="calc-box-title">פרמטרים קבועים למוזיקה (Music)</div>
+            <div class="form-group">
+                <label>מחיר בסיס לרצועה של דקה אחת (₪):</label>
+                <input type="number" id="cfgMusicBase" value="800">
+            </div>
+            <div class="form-group">
+                <label>תוספת לכל דקה נוספת (₪):</label>
+                <input type="number" id="cfgMusicExtraPerMin" value="200">
+            </div>
+            <div class="form-group">
+                <label>הנחת נפח מוזיקה (%):</label>
+                <input type="number" id="cfgMusicDiscount" value="15">
+            </div>
+            <div class="form-group">
+                <label>מינימום רצועות להנחת נפח:</label>
+                <input type="number" id="cfgMinTracksForDiscount" value="5" min="1">
+            </div>
+
+            <div class="calc-box-title">פרמטרים קבועים לאפקטים קוליים (SFX)</div>
+            <div class="form-group">
+                <label>מחיר לצליל (₪):</label>
+                <input type="number" id="cfgSfxPrice" value="60">
+            </div>
+            <div class="form-group">
+                <label>הנחת נפח SFX (%):</label>
+                <input type="number" id="cfgSfxDiscount" value="10">
+            </div>
+            <div class="form-group">
+                <label>מינימום צלילים להנחת נפח:</label>
+                <input type="number" id="cfgMinSfxForDiscount" value="20" min="1">
+            </div>
+
+            <div class="calc-box-title">הנחת חבילה משולבת (Bundle)</div>
+            <div class="form-group">
+                <label>הנחת Bundle נוספת (%):</label>
+                <input type="number" id="cfgBundleDiscount" value="10">
+            </div>
+        </div>
+    </div>
+
+    <button type="button" class="submit-btn" onclick="generateProposal()">הפק הצעת מחיר</button>
+</div>
+
+<div id="modalOverlay" class="modal-overlay">
+    <div class="modal-box">
+        <div class="modal-header">
+            <h2>👁️ תצוגה מקדימה של ההצעה המופקת ללקוח</h2>
+            <button class="close-btn" onclick="closeModal()">✕</button>
+        </div>
+        <div class="modal-body">
+            <iframe id="previewIframe"></iframe>
+        </div>
+        <div class="modal-footer">
+            <button class="pop-download-btn" onclick="downloadHTML()">📥 הורד קובץ HTML סופי לשליחה</button>
+        </div>
+    </div>
+</div>
+
+<script>
+let generatedHTMLContent = "";
+let currentGameName = "";
+
+function switchTab(tabId) {
+    document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+
+    document.getElementById(tabId).classList.add('active');
+    event.currentTarget.classList.add('active');
+}
+
+function generateProposal() {
+    // מניעת שגיאה אם שם המשחק נשאר ריק
+    currentGameName = document.getElementById('gameName').value.trim() || "המשחק";
+
+    const includeMusic = document.getElementById('includeMusic').checked;
+    const includeSFX = document.getElementById('includeSFX').checked;
+
+    let trackCountInput = parseInt(document.getElementById('musicTrackCount').value);
+    const trackCount = isNaN(trackCountInput) || trackCountInput < 0 ? 1 : trackCountInput;
+    const avgLength = parseFloat(document.getElementById('musicAvgLength').value) || 1;
+
+    let sfxCountInput = parseInt(document.getElementById('sfxCount').value);
+    const sfxCount = isNaN(sfxCountInput) || sfxCountInput < 0 ? 1 : sfxCountInput;
+
+    const needPreProd = document.getElementById('needPreProd').checked;
+    const preProdCount = parseInt(document.getElementById('preProdCount').value) || 1;
+    const preProdPrice = parseFloat(document.getElementById('preProdPrice').value) || 0;
+    const needIntegration = document.getElementById('needIntegration').checked;
+    const integrationPrice = parseFloat(document.getElementById('integrationPrice').value) || 0;
+
+    const cfgMusicBase = parseFloat(document.getElementById('cfgMusicBase').value) || 0;
+    const cfgMusicExtraPerMin = parseFloat(document.getElementById('cfgMusicExtraPerMin').value) || 0;
+    const rawMusicDiscountPct = parseFloat(document.getElementById('cfgMusicDiscount').value) || 0;
+    const cfgMinTracksForDiscount = parseInt(document.getElementById('cfgMinTracksForDiscount').value) || 5;
+
+    const cfgSfxPrice = parseFloat(document.getElementById('cfgSfxPrice').value) || 0;
+    const rawSfxDiscountPct = parseFloat(document.getElementById('cfgSfxDiscount').value) || 0;
+    const cfgMinSfxForDiscount = parseInt(document.getElementById('cfgMinSfxForDiscount').value) || 20;
+
+    const allCoreServicesSelected = (includeMusic && includeSFX);
+    const rawBundleDiscountPct = parseFloat(document.getElementById('cfgBundleDiscount').value) || 0;
+
+    // --- חישובים לפני הנחה (מחיר מלא מעוגל כלפי מטה) ---
+    const extraMinutes = Math.max(0, avgLength - 1);
+    const perTrackRaw = Math.floor(cfgMusicBase + (extraMinutes * cfgMusicExtraPerMin));
+
+    const musicRawTotal = includeMusic ? (perTrackRaw * trackCount) : 0;
+    const sfxRawTotal = includeSFX ? Math.floor(cfgSfxPrice * sfxCount) : 0;
+
+    const subTotalFullRaw = musicRawTotal + sfxRawTotal;
+
+    // --- חישוב שורות ההנחה הדינמיות (מעוגלות כלפי מטה) ---
+    let discountRowsHTML = "";
+
+    const musicEligibleForDiscount = includeMusic && (trackCount >= cfgMinTracksForDiscount) && rawMusicDiscountPct > 0;
+    const sfxEligibleForDiscount = includeSFX && (sfxCount >= cfgMinSfxForDiscount) && rawSfxDiscountPct > 0;
+
+    const musicSavings = musicEligibleForDiscount ? Math.floor(musicRawTotal * (rawMusicDiscountPct / 100)) : 0;
+    const sfxSavings = sfxEligibleForDiscount ? Math.floor(sfxRawTotal * (rawSfxDiscountPct / 100)) : 0;
+    const totalVolumeSavings = musicSavings + sfxSavings;
+
+    if (totalVolumeSavings > 0) {
+        let detailParts = [];
+        if (musicSavings > 0) detailParts.push(`${rawMusicDiscountPct}% על ${trackCount} רצועות מוזיקה`);
+        if (sfxSavings > 0) detailParts.push(`${rawSfxDiscountPct}% על ${sfxCount} אפקטים קוליים`);
+        discountRowsHTML += `<tr>
+            <td><strong>הנחת נפח פרויקט</strong></td>
+            <td colspan="2" style="color: #64748b; font-size: 12px;">הנחת נפח: ${detailParts.join(', ')}</td>
+            <td style="color: #b91c1c; font-weight: 500; text-align: left;">-₪${totalVolumeSavings.toLocaleString()}</td>
+        </tr>`;
+    }
+
+    const subTotalAfterVolumeDiscount = subTotalFullRaw - totalVolumeSavings;
+    let totalBundleSavings = 0;
+
+    if (allCoreServicesSelected && rawBundleDiscountPct > 0) {
+        totalBundleSavings = Math.floor(subTotalAfterVolumeDiscount * (rawBundleDiscountPct / 100));
+        discountRowsHTML += `<tr>
+            <td><strong>הנחת חבילה משולבת (Bundle)</strong></td>
+            <td colspan="2" style="color: #64748b; font-size: 12px;">הנחת חבילה בגובה ${rawBundleDiscountPct}% על שילוב מוזיקה ואפקטים קוליים יחד</td>
+            <td style="color: #b91c1c; font-weight: 500; text-align: left;">-₪${totalBundleSavings.toLocaleString()}</td>
+        </tr>`;
+    }
+
+    const totalWorkFinal = subTotalFullRaw - totalVolumeSavings - totalBundleSavings;
+
+    const preProdCost = needPreProd ? Math.floor(preProdPrice * preProdCount) : 0;
+    const integrationCost = needIntegration ? Math.floor(integrationPrice) : 0;
+
+    const finalProjectTotal = preProdCost + totalWorkFinal + integrationCost;
+
+    const preProdWord = preProdCount > 1 ? "פגישות" : "פגישה";
+    let preProdDetailText = "";
+    let projectStagesHTML = "";
+
+    if (needPreProd) {
+        if (preProdCount === 1) {
+            preProdDetailText = "פגישה ממוקדת לגיבוש הכיוון היצירתי והאווירה הסאונדית של המשחק";
+            projectStagesHTML += `<li><strong>פגישת הכנה (Pre-Production):</strong> חידוד כיוון סאונד, רפרנסים ותכנון העבודה.</li>`;
+        } else {
+            preProdDetailText = `${preProdCount} פגישות ממוקדות לגיבוש הכיוון היצירתי והאווירה הסאונדית של המשחק`;
+            projectStagesHTML += `<li><strong>פגישות הכנה (Pre-Production):</strong> חידוד כיוון סאונד, רפרנסים ותכנון העבודה (${preProdCount} פגישות).</li>`;
+        }
+    }
+
+    let costRowsHTML = "";
+    if (needPreProd) {
+        costRowsHTML += `<tr><td><strong>פגישת הכנה (Pre-Production)</strong></td><td>${preProdDetailText}</td><td>₪${preProdCost.toLocaleString()}</td></tr>`;
+    }
+
+    let coreServicesName = [];
+    if (includeMusic) coreServicesName.push("מוזיקה");
+    if (includeSFX) coreServicesName.push("אפקטים קוליים (SFX)");
+    let coreServicesLabel = coreServicesName.join(", ");
+    if (coreServicesLabel === "") coreServicesLabel = "עבודת סאונד מותאמת";
+
+    costRowsHTML += `<tr><td><strong>הפקת ${coreServicesLabel}</strong></td><td>כולל הנחת נפח וחבילה במידה וחלות</td><td>₪${totalWorkFinal.toLocaleString()}</td></tr>`;
+
+    if (needIntegration) {
+        costRowsHTML += `<tr><td><strong>אינטגרציה למנוע המשחק</strong></td><td>הטמעת קבצי הסאונד והמוזיקה במערכת האודיו האינטראקטיבית (Wwise / FMOD / Unity)</td><td>₪${integrationCost.toLocaleString()}</td></tr>`;
+    }
+
+    if (includeMusic) {
+        projectStagesHTML += `<li><strong>הלחנה והפקת מוזיקה מקורית:</strong> כתיבה, עיבוד והפקה של רצועות מוזיקה בהתאמה אישית לאווירה ולרגעי המשחק.</li>`;
+    }
+    if (includeSFX) {
+        projectStagesHTML += `<li><strong>עיצוב אפקטים קוליים (SFX):</strong> יצירה ועיבוד של אפקטי סאונד לפעולות, אירועים ואלמנטים במשחק.</li>`;
+    }
+    if (needIntegration) {
+        projectStagesHTML += `<li><strong>אינטגרציה:</strong> ליווי בהטמעת הקבצים במנוע המשחק ובמערכת האודיו האינטראקטיבית.</li>`;
+    }
+
+    let singleItemRowsHTML = "";
+    if (includeMusic) {
+        singleItemRowsHTML += `<tr><td><strong>מוזיקה (Music) — לרצועה</strong></td><td>₪${perTrackRaw.toLocaleString()}</td><td>${trackCount}</td><td style="text-align: left;">₪${musicRawTotal.toLocaleString()}</td></tr>`;
+    }
+    if (includeSFX) {
+        singleItemRowsHTML += `<tr><td><strong>אפקטים קוליים (SFX) — לצליל</strong></td><td>₪${cfgSfxPrice.toLocaleString()}</td><td>${sfxCount}</td><td style="text-align: left;">₪${sfxRawTotal.toLocaleString()}</td></tr>`;
+    }
+
+    const totalMusicMinutes = includeMusic ? (trackCount * avgLength) : 0;
+
+    generatedHTMLContent = `<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<title>הצעת מחיר למוזיקה ואפקטים קוליים — ${currentGameName}</title>
+<style>
+    body { font-family: 'Arial', sans-serif; color: #1e293b; line-height: 1.6; background-color: #f8fafc; padding: 40px 20px; margin: 0; }
+    .wrapper { max-width: 800px; margin: 0 auto; background: white; padding: 40px; border-radius: 8px; box-shadow: 0 1px 4px rgba(0,0,0,0.05); border: 1px solid #e2e8f0; }
+    .header-area { border-bottom: 2px solid #1e3a8a; padding-bottom: 20px; margin-bottom: 30px; }
+    .header-area h1 { margin: 0; font-size: 24px; color: #1e3a8a; font-weight: 700; }
+    .subtitle { font-size: 14px; color: #64748b; margin-top: 5px; }
+    .meta-box { display: flex; justify-content: space-around; background: #f8fafc; padding: 15px; border-radius: 6px; margin-bottom: 30px; text-align: center; border: 1px solid #e2e8f0; }
+    .meta-box .meta-item { flex: 1; }
+    .meta-label { font-size: 11px; color: #64748b; font-weight: 600; text-transform: uppercase; }
+    .meta-value { font-size: 16px; font-weight: bold; color: #1e3a8a; margin-top: 4px; }
+    h2 { color: #1e3a8a; font-size: 16px; border-bottom: 1px solid #e2e8f0; padding-bottom: 6px; margin-top: 30px; margin-bottom: 15px; }
+    p { color: #334155; }
+
+    table { width: 100%; border-collapse: collapse; margin: 20px 0; table-layout: fixed; }
+    th, td { padding: 12px 10px; border-bottom: 1px solid #e2e8f0; font-size: 13px; color: #334155; overflow: hidden; text-overflow: ellipsis; }
+    th { background-color: #f1f5f9; color: #1e3a8a; font-weight: bold; text-align: right; font-size: 13px; border-bottom: 2px solid #cbd5e1; }
+
+    th:nth-child(1), td:nth-child(1) { width: 45%; }
+    th:nth-child(2), td:nth-child(2) { width: 20%; }
+    th:nth-child(3), td:nth-child(3) { width: 10%; text-align: center; }
+    th:nth-child(4), td:nth-child(4) { width: 25%; text-align: left; }
+
+    .total-row td {
+        font-weight: bold;
+        color: #000000;
+        border-top: 1px solid #cbd5e1;
+        background-color: #ffffff;
+    }
+
+    .sub-total-calc td {
+        font-size: 13px;
+        color: #000000;
+        background-color: #f8fafc;
+        padding: 14px 12px;
+        border-top: 1px solid #cbd5e1;
+        border-bottom: 1px solid #cbd5e1;
+    }
+    .flex-row-space { display: flex; justify-content: space-between; align-items: center; width: 100%; }
+
+    .math-expr-container { display: inline-flex; direction: ltr; align-items: center; gap: 6px; font-size: 13px; color: #334155; font-weight: normal; }
+    .math-expr-container .bold-result { font-weight: bold; color: #000000; font-size: 14px; }
+
+    .grand-total-box { background-color: #f0f4f8; border: 1px solid #cbd5e1; border-radius: 6px; padding: 20px; text-align: center; margin-top: 35px; }
+    .grand-total-box .price { font-size: 32px; font-weight: bold; color: #1e3a8a; margin: 5px 0; }
+    ul { padding-right: 20px; margin: 15px 0; }
+    li { margin-bottom: 8px; color: #334155; }
+    .rights-text { color: #8c9ba5; font-style: italic; font-size: 12px; margin-top: 15px !important; }
+</style>
+</head>
+<body>
+<div class="wrapper">
+    <div class="header-area">
+        <h1>הצעת מחיר למוזיקה ואפקטים קוליים למשחק</h1>
+        <div class="subtitle">עיצוב סאונד והפקה מוזיקלית מקצועית עבור ${currentGameName}</div>
+    </div>
+    <div class="meta-box">
+        <div class="meta-item">
+            <div class="meta-label">רצועות מוזיקה</div>
+            <div class="meta-value">${includeMusic ? trackCount : 0} רצועות</div>
+        </div>
+        <div class="meta-item" style="border-right: 1px solid #e2e8f0; border-left: 1px solid #e2e8f0;">
+            <div class="meta-label">אפקטים קוליים (SFX)</div>
+            <div class="meta-value">${includeSFX ? sfxCount : 0} צלילים</div>
+        </div>
+        <div class="meta-item">
+            <div class="meta-label">זמן מוזיקה כולל</div>
+            <div class="meta-value">~${totalMusicMinutes.toFixed(1)} דקות</div>
+        </div>
+    </div>
+    <h2>תיאור הפרויקט ושלבי העבודה</h2>
+    <p>הפקת סאונד מקיפה למשחק, הכוללת את שלבי היצירה הבאים:</p>
+    <ul>${projectStagesHTML}</ul>
+    <h2>תמחור לפי פריט</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>שירות</th>
+                <th>מחיר ליחידה</th>
+                <th style="text-align: center;">כמות</th>
+                <th style="text-align: left;">סה"כ</th>
+            </tr>
+        </thead>
+        <tbody>
+            ${singleItemRowsHTML}
+
+            <tr class="total-row">
+                <td colspan="3">סה"כ מוזיקה ואפקטים קוליים (לפני הנחות):</td>
+                <td style="text-align: left;">₪${subTotalFullRaw.toLocaleString()}</td>
+            </tr>
+
+            ${discountRowsHTML}
+
+            <tr class="sub-total-calc">
+                <td colspan="4">
+                    <div class="flex-row-space">
+                        <div style="font-weight: bold; color: #1e3a8a;">סך הכל עבור מוזיקה ואפקטים קוליים:</div>
+                        <div class="math-expr-container">
+                            <span class="bold-result">₪${totalWorkFinal.toLocaleString()}</span>
+                        </div>
+                    </div>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+    <h2>פירוט העלויות וסיכום הפרויקט</h2>
+    <table style="table-layout: auto;">
+        <thead>
+            <tr>
+                <th>מרכיב בהפקה</th>
+                <th>פירוט</th>
+                <th>עלות</th>
+            </tr>
+        </thead>
+        <tbody>${costRowsHTML}</tbody>
+    </table>
+    <div class="grand-total-box">
+        <div style="font-size: 13px; color: #64748b; font-weight: 500;">מחיר סופי לפרויקט:</div>
+        <div class="price">₪${finalProjectTotal.toLocaleString()}</div>
+        <div style="font-size: 11px; color: #64748b;">(כולל את כל מרכיבי ההפקה שנבחרו)</div>
+    </div>
+    <h2>תנאים מסחריים ופרטים נוספים</h2>
+    <ul>
+        <li>המחיר כולל תיקונים ושיפורים בהתאם לצורך ובגבול סביר, עד להגעה לתוצאה מקצועית ומדויקת לפרויקט.</li>
+        <li><strong>תנאי תשלום:</strong> 50% בתחילת הפרויקט ו-50% עם סיומו, או חלוקה של עד 6 תשלומים שווים לאורך הפרויקט.</li>
+        <li><strong>זמינות וליווי:</strong> ליווי צמוד וזמינות מלאה לשיחות ופגישות עבודה לאורך כל הדרך.</li>
+        <li class="rights-text">* כל הזכויות על המוזיקה והאפקטים הקוליים שיוצרו יהיו שייכות ל${currentGameName} בלבד, בכפוף לתנאי הרישיון שיוסכמו.</li>
+    </ul>
+</div>
+</body>
+</html>`;
+
+    document.getElementById('modalOverlay').classList.add('active');
+
+    const iframe = document.getElementById('previewIframe');
+    const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+    iframeDoc.open();
+    iframeDoc.write(generatedHTMLContent);
+    iframeDoc.close();
+}
+
+function closeModal() {
+    document.getElementById('modalOverlay').classList.remove('active');
+}
+
+function downloadHTML() {
+    if (!generatedHTMLContent) return;
+    const blob = new Blob([generatedHTMLContent], { type: "text/html;charset=utf-8" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = "הצעת_מחיר_סאונד_" + currentGameName.replace(/\s+/g, '_') + ".html";
+    link.click();
+}
+
+document.getElementById('modalOverlay').addEventListener('click', function(e) {
+    if (e.target === this) closeModal();
+});
+</script>
+</body>
+</html>
