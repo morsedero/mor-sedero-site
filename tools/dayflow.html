@@ -267,6 +267,13 @@ button{font:inherit;color:inherit;}
 .daycol.drop-active{background:var(--accent-soft);box-shadow:inset 0 0 0 2px var(--accent-line);}
 .hourline{position:absolute;left:0;right:0;border-top:1px solid var(--line);pointer-events:none;}
 .hourline.half{border-top-style:dotted;opacity:.55;}
+/* outside the 09:00–20:00 scheduling window: visibly not in play */
+.offhours{
+  position:absolute;left:0;right:0;pointer-events:none;
+  background:repeating-linear-gradient(45deg,transparent,transparent 7px,var(--line) 7px,var(--line) 8px);
+  opacity:.32;
+}
+.gutter .hr.half{font-size:9px;opacity:.62;}
 
 .colhead{
   background:var(--bg);border-bottom:1px solid var(--line);
@@ -298,9 +305,27 @@ button{font:inherit;color:inherit;}
 .ev:hover{box-shadow:var(--shadow-lg);z-index:5;}
 .ev.dragging{opacity:.62;cursor:grabbing;box-shadow:var(--shadow-lg);z-index:9;}
 .ev .ev-t{font-family:var(--mono);font-size:9.5px;color:var(--ink-3);font-variant-numeric:tabular-nums;}
-.ev .ev-n{font-weight:520;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.ev.compact{padding:1px 7px;}
-.ev.compact .ev-t{display:none;}
+/* shrink-to-fit so an RTL title sits beside its timestamp instead of being
+   flung to the far edge of a wide column — the text itself still lays out
+   in its own direction. */
+.ev .ev-n{
+  display:inline-block;max-width:100%;vertical-align:top;
+  font-weight:520;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+/* short blocks put the time and title on one row — the stamp is never dropped */
+.ev.inline{display:flex;align-items:baseline;gap:8px;padding:2px 8px;}
+.ev.inline .ev-t{flex:0 0 auto;}
+.ev.inline .ev-n{flex:0 1 auto;min-width:0;}
+.ev .ev-dur{
+  float:right;font-family:var(--mono);font-size:9px;color:var(--ink-3);
+  font-variant-numeric:tabular-nums;letter-spacing:.04em;
+}
+/* time already passed — present but receded */
+.ev.past{opacity:.52;}
+.ev.past:hover{opacity:.9;}
+/* happening right now */
+.ev.now{box-shadow:0 0 0 2px var(--accent), var(--shadow);}
+.ev.now .ev-t{color:var(--accent-ink);font-weight:600;}
 
 /* real meeting */
 .ev.real{background:var(--surface);border-color:var(--line-2);}
@@ -423,6 +448,20 @@ button{font:inherit;color:inherit;}
 .badge.at{background:var(--accent-soft);color:var(--accent-ink);}
 
 .card .row{display:flex;align-items:center;gap:6px;justify-content:space-between;}
+.card .ctrls{display:flex;align-items:center;gap:4px;flex:0 0 auto;}
+/* stat rows live outside .card, so they carry their own layout */
+.statrow{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:3px 4px;}
+.statrow .cname{font-size:12px;min-width:0;overflow:hidden;text-overflow:ellipsis;}
+/* delete — mirrors the calendar block's remove action, same confirm step */
+.del{
+  width:19px;height:19px;border-radius:50%;padding:0;
+  border:1.5px solid transparent;background:transparent;cursor:pointer;
+  display:grid;place-items:center;color:var(--ink-3);font-size:13px;line-height:1;
+  opacity:0;transition:opacity .15s ease,color .15s ease,border-color .15s ease,transform .2s cubic-bezier(.2,.8,.25,1);
+}
+.card:hover .del,.del:focus-visible{opacity:1;}
+.del:hover{color:var(--crit);border-color:var(--crit);transform:scale(1.12);}
+@media (hover:none){.del{opacity:1;}}
 .tick{
   flex:0 0 auto;width:19px;height:19px;border-radius:50%;
   border:1.5px solid var(--line-2);background:transparent;cursor:pointer;
@@ -488,7 +527,7 @@ button{font:inherit;color:inherit;}
 }
 .dialog .dh{padding:13px 15px 10px;border-bottom:1px solid var(--line);}
 .dialog .dh h3{margin:0;font-size:14.5px;}
-.dialog .dh p{margin:4px 0 0;font-size:12.5px;color:var(--ink-2);}
+.dialog .dh p{margin:4px 0 0;font-size:12.5px;color:var(--ink-2);white-space:pre-line;overflow-wrap:anywhere;}
 .dialog .db{padding:11px 15px;display:flex;flex-direction:column;gap:7px;}
 .dialog .df{padding:11px 15px;border-top:1px solid var(--line);display:flex;gap:8px;justify-content:flex-end;background:var(--surface-2);}
 .slot{
@@ -640,7 +679,9 @@ const STALL_DAYS    = 3;
 
 /* view constants */
 const GRID_START_H = 6, GRID_END_H = 23;
-const PPM_DAY = 1.15, PPM_WEEK = 0.78;
+/* day view is generous enough that a 15-minute block still reads;
+   week view stays dense because it carries seven columns. */
+const PPM_DAY = 1.9, PPM_WEEK = 0.78;
 
 /* markers */
 const DF_MARK   = "[dayflow]";
@@ -1160,6 +1201,38 @@ async function completeCard(card){
   }
 }
 
+/* Delete a card — the same shape as removing a calendar block: confirm, then
+   one immediate write. Trello's delete is an archive (recoverable from the
+   board's archive), and any calendar block linked to the card goes with it so
+   nothing is left pointing at something that no longer exists. */
+async function deleteCard(card){
+  const linked = allEvents().filter(e => e.isTask && card.shortLink && e.cardShort === card.shortLink);
+  const detail = card.name + (linked.length
+    ? `\n\nIts ${linked.length} calendar block${linked.length===1?"":"s"} will be removed too.`
+    : "");
+  const ok = await confirmDialog("Delete this card?", detail, "Delete");
+  if(!ok) return;
+  if(S.pending.has(card.id)) return;
+  S.pending.add(card.id); render();
+  try{
+    await callTool(TRELLO, "trelloWriteCard", { action:"archive", cardId:card.id });
+    for(const ev of linked){
+      try{ await deleteBlock(ev.id); }
+      catch(e){ toast(errCopy(e), true); }
+    }
+    const st = bumpCategory(card.boardName, "skipped");
+    if(st.rollovers) delete st.rollovers[card.id];
+    await saveStats(st);
+    await S.mcp.invalidate(TRELLO, "trelloReadCard").catch(()=>{});
+    if(linked.length) await refreshCalendar();
+    toast(linked.length ? `Card deleted, ${linked.length} block${linked.length===1?"":"s"} removed.` : "Card deleted.");
+  }catch(e){
+    toast(errCopy(e), true);
+  }finally{
+    S.pending.delete(card.id); render();
+  }
+}
+
 async function moveCardToList(cardId, listId){
   try{
     await callTool(TRELLO, "trelloWriteCard", { action:"move", cardId, listId, pos:"top" });
@@ -1428,6 +1501,12 @@ function renderCalendar(){
     const t = el("div","hr", pad2(h)+":00");
     t.style.top = ((h-GRID_START_H)*60*ppm)+"px";
     gut.appendChild(t);
+    /* half-hour stamps once there is room for them */
+    if(ppm >= 1.5 && h < GRID_END_H){
+      const half = el("div","hr half", pad2(h)+":30");
+      half.style.top = (((h-GRID_START_H)*60+30)*ppm)+"px";
+      gut.appendChild(half);
+    }
   }
   wrap.appendChild(gut);
 
@@ -1438,6 +1517,14 @@ function renderCalendar(){
     for(let h=GRID_START_H; h<=GRID_END_H; h++){
       const ln = el("div","hourline"); ln.style.top=((h-GRID_START_H)*60*ppm)+"px"; col.appendChild(ln);
       if(h<GRID_END_H){ const hf=el("div","hourline half"); hf.style.top=((h-GRID_START_H)*60+30)*ppm+"px"; col.appendChild(hf); }
+    }
+    /* shade the hours the scheduler will never use */
+    for(const [a,b] of [[GRID_START_H*60, DAY_START_H*60],[DAY_END_H*60, GRID_END_H*60]]){
+      if(b <= a) continue;
+      const oh = el("div","offhours");
+      oh.style.top = ((a-GRID_START_H*60)*ppm)+"px";
+      oh.style.height = ((b-a)*ppm)+"px";
+      col.appendChild(oh);
     }
     layoutDay(col, d, ppm);
     wireDropTarget(col, d, ppm);
@@ -1503,10 +1590,24 @@ function drawEvent(col, e, s, en, lane, total, d, ppm){
     node.style.height = Math.max(15, dur*ppm - 2)+"px";
     node.style.left   = `calc(${(lane/total)*100}% + 3px)`;
     node.style.width  = `calc(${(1/total)*100}% - 7px)`;
-    if(dur*ppm < 30) node.classList.add("compact");
 
-    node.appendChild(el("div","ev-t", fmtRange(e.start,e.end)));
+    /* the timestamp is never dropped — short blocks just wear it inline */
+    const tight = dur*ppm < 40;
+    if(tight) node.classList.add("inline");
+    const tEl = el("div","ev-t", tight ? hhmm(e.start) : fmtRange(e.start,e.end));
+    node.appendChild(tEl);
+    if(!tight && dur >= 45){
+      const h = Math.floor(dur/60), m = dur%60;
+      tEl.appendChild(el("span","ev-dur", h ? (m ? `${h}h ${m}m` : `${h}h`) : `${m}m`));
+    }
     const nm = el("div","ev-n"); bidi(nm, e.summary); node.appendChild(nm);
+
+    /* past / now, only meaningful on today's column */
+    if(sameDay(d, new Date())){
+      const nowM = minsOf(new Date());
+      if(en <= nowM) node.classList.add("past");
+      else if(s <= nowM && en > nowM) node.classList.add("now");
+    }
     node.title = fmtRange(e.start,e.end) + " — " + e.summary + (
       !e.isTask ? " (real event — protected)"
       : e.mine  ? " (DayFlow block · drag to move, double-click to remove)"
@@ -1843,14 +1944,27 @@ function renderCard(c, isHighlight){
   const nm = el("div","cname"); bidi(nm, c.name);
   row.appendChild(nm);
 
+  const ctrls = el("div","ctrls");
+  const del = el("button","del");
+  del.type="button";
+  del.setAttribute("aria-label","Delete card");
+  del.title = "Delete this card (double-click the card works too)";
+  del.textContent = "✕";
+  del.addEventListener("click", ev => { ev.stopPropagation(); deleteCard(c); });
+  ctrls.appendChild(del);
+
   const tick = el("button","tick"+(c.dueComplete?" on":""));
   tick.type="button";
   tick.setAttribute("aria-label","Mark done");
   tick.textContent = "✓";
   if(S.pending.has(c.id)) tick.style.opacity=".5";
   tick.addEventListener("click", ev => { ev.stopPropagation(); if(!c.dueComplete) completeCard(c); });
-  row.appendChild(tick);
+  ctrls.appendChild(tick);
+  row.appendChild(ctrls);
   node.appendChild(row);
+
+  /* same gesture the calendar uses for removing a block */
+  node.addEventListener("dblclick", ev => { ev.preventDefault(); deleteCard(c); });
 
   const meta = el("div","meta");
   if(aging) meta.appendChild(el("span","badge age", `aging · ${ageDays(c)}d`));
@@ -1887,8 +2001,8 @@ function renderStatsPanel(){
     const L = el("div","list");
     for(const [name,v] of cats.sort((a,b)=>(b[1].done/b[1].picked)-(a[1].done/a[1].picked))){
       const r = v.picked ? Math.round(100*v.done/v.picked) : 0;
-      const row = el("div","row"); row.style.padding="3px 4px";
-      const n = el("div","cname"); n.style.fontSize="12px"; bidi(n, name);
+      const row = el("div","statrow");
+      const n = el("div","cname"); bidi(n, name);
       row.appendChild(n);
       row.appendChild(el("span","badge "+(r>=60?"ok":(r>=30?"age":"crit")), r+"%"));
       L.appendChild(row);
