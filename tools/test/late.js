@@ -24,14 +24,16 @@ async function go(label,stub,when,scheme,fn){
     left:(document.querySelector("#hubLeft")||{}).textContent||null,
     over:!!(document.querySelector("#hubMeter")||{classList:{contains:()=>false}}).classList.contains("over"),
     state:(document.querySelector(".state h2")||{}).textContent||null,
+    ask:!!document.querySelector(".ask"),
     sections:[...document.querySelectorAll(".later .lh .eyebrow:first-child")].map(x=>x.textContent)}));
   console.log(`[${label}]`,errs.length?("ERR "+errs.join("|")):"ok",JSON.stringify(r));
   await p.screenshot({path:`late-${label}.png`,fullPage:true});await ctx.close();
 }
 await go("friday-2056-real",realStub,"2026-08-14T20:56:00+03:00");
 await go("friday-2056-light",realStub,"2026-08-14T20:56:00+03:00","light");
-await go("friday-noblocks",noBlocks,"2026-08-14T09:00:00+03:00");   // prompt should still gate
+// the prompt now sits above the day instead of replacing it
+await go("friday-noblocks",noBlocks,"2026-08-14T09:00:00+03:00");
 await go("friday-answer-persists",noBlocks,"2026-08-14T09:00:00+03:00","dark",async p=>{
-  await p.locator(".opt").nth(1).click(); await p.waitForTimeout(900);   // "Only what's already there"
+  await p.locator(".ask-head .mini").click(); await p.waitForTimeout(900);   // dismiss = keep
 });
 await b.close();})();

@@ -354,15 +354,22 @@ button{font:inherit;color:inherit;}
 .state p{margin:0 auto;max-width:38ch;color:var(--ink-2);font-size:14px;}
 .state .acts{margin-top:20px;display:flex;gap:8px;justify-content:center;flex-wrap:wrap;}
 
-.opts{display:flex;flex-direction:column;gap:9px;margin-top:20px;text-align:left;}
-.opt{
-  padding:13px 15px;border-radius:11px;border:1px solid var(--line);
-  background:var(--surface-2);cursor:pointer;
-  transition:border-color .15s,transform .15s,background .15s;
+/* Friday's question — a strip above the day, never a replacement for it */
+.ask{
+  border:1px solid var(--accent-line);border-radius:14px;
+  background:var(--accent-soft);padding:12px 14px;margin-bottom:12px;
 }
-.opt:hover{border-color:var(--accent);background:var(--accent-soft);transform:translateY(-1px);}
-.opt .ot{display:block;font-weight:600;font-size:14px;}
-.opt .od{color:var(--ink-2);font-size:12.5px;}
+.ask-head{display:flex;align-items:center;justify-content:space-between;}
+.ask h3{margin:2px 0 10px;font-size:15px;font-weight:600;letter-spacing:-.01em;}
+.ask-opts{display:flex;gap:8px;flex-wrap:wrap;}
+.opt-sm{
+  flex:1 1 0;min-width:76px;padding:9px 12px;border-radius:9px;
+  border:1px solid var(--line-2);background:var(--surface);cursor:pointer;
+  font-size:14px;font-weight:560;
+  transition:border-color .15s,background .15s,transform .12s;
+}
+.opt-sm:hover{border-color:var(--accent);background:var(--surface-2);transform:translateY(-1px);}
+.opt-sm:active{transform:translateY(0);}
 
 .banner{
   border-radius:11px;padding:11px 14px;font-size:13px;margin-bottom:16px;
@@ -823,8 +830,10 @@ function findSlots(busy, winS, winE, dur, pad, max, fromMin){
 }
 function planFor(date, mode, picked, ignore){
   const have = existingBlocks(date, ignore);
-  const smallCap = Math.max(0, (mode==="short"?2:MAX_SMALL) - have.small);
-  const deepCap  = Math.max(0, (mode==="short"?0:MAX_DEEP)  - have.deep);
+  const capS = mode==="off" ? 0 : mode==="short" ? 2 : MAX_SMALL;
+  const capD = mode==="off" ? 0 : mode==="short" ? 0 : MAX_DEEP;
+  const smallCap = Math.max(0, capS - have.small);
+  const deepCap  = Math.max(0, capD - have.deep);
 
   const winS = DAY_START_H*60, winE = DAY_END_H*60;
   const nowMin = sameDay(date,new Date()) ? Math.ceil(minsOf(new Date())/SNAP_MIN)*SNAP_MIN : null;
@@ -1102,15 +1111,13 @@ function paint(){
     main.appendChild(stateCard("🕯️","Shabbat",""));
     return;
   }
-  /* Friday: ask before planning anything — but only when there is nothing to
-     show yet. Once the day has tasks (or you've answered, ever), the hub wins;
-     a prompt that hides your day every reload is worse than no prompt. */
-  if(sameDay(d,today) && d.getDay() === 5 && !S.fridayAnswered
-     && !fridayAnswered(d) && !(S.stats && S.stats.plans && S.stats.plans[dayKey(d)])
-     && !agenda().some(i => i.task)){
-    main.appendChild(fridayCard());
-    return;
-  }
+  /* Friday asks before it plans. It sits above the day rather than replacing
+     it, so the question and the answer are both visible — and it never runs
+     the caps behind your back. */
+  const askFriday = sameDay(d,today) && d.getDay() === 5
+    && !S.fridayAnswered && !fridayAnswered(d)
+    && !(S.stats && S.stats.plans && S.stats.plans[dayKey(d)]);
+  if(askFriday) main.appendChild(fridayCard());
 
   const { current, meetingNow, rest, missed, doneCount, open } = splitAgenda();
 
@@ -1401,22 +1408,28 @@ async function answerFriday(mode){
 }
 
 function fridayCard(){
-  const s = el("div","state");
-  s.appendChild(el("div","big","🌤️"));
-  s.appendChild(el("h2",null,"What do you want today to look like?"));
-  s.appendChild(el("p",null,"Nothing is scheduled until you choose."));
-  const opts = el("div","opts");
-  const mk = (t,d,fn) => {
-    const b = el("button","opt"); b.type="button";
-    b.appendChild(el("span","ot",t)); b.appendChild(el("span","od",d));
-    b.addEventListener("click", fn); return b;
+  const s = el("div","ask");
+  const head = el("div","ask-head");
+  head.appendChild(el("span","eyebrow","Friday"));
+  const x = el("button","mini","✕");
+  x.setAttribute("aria-label","Leave the day as it is");
+  x.addEventListener("click", ()=>answerFriday("keep"));
+  head.appendChild(x);
+  s.appendChild(head);
+  s.appendChild(el("h3",null,"How big is today?"));
+
+  const opts = el("div","ask-opts");
+  const mk = (t, mode) => {
+    const b = el("button","opt-sm", t); b.type="button";
+    b.addEventListener("click", async ()=>{
+      await answerFriday(mode);
+      applyPlan(startOfDay(new Date()), mode, null, true);
+    });
+    return b;
   };
-  opts.appendChild(mk("Short day","Two quick tasks, no session.",
-    async ()=>{ await answerFriday("short"); applyPlan(startOfDay(new Date()),"short",null,true); }));
-  opts.appendChild(mk("Leave it","Nothing added.",
-    ()=>answerFriday("keep")));
-  opts.appendChild(mk("Day off","",
-    ()=>{ answerFriday("off"); toast("Day off."); }));
+  opts.appendChild(mk("Short", "short"));   // 2 quick, no session
+  opts.appendChild(mk("Full", "normal"));   // 3 quick + 1 session
+  opts.appendChild(mk("Off", "off"));       // clear the day
   s.appendChild(opts);
   return s;
 }
