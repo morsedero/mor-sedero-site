@@ -354,22 +354,6 @@ button{font:inherit;color:inherit;}
 .state p{margin:0 auto;max-width:38ch;color:var(--ink-2);font-size:14px;}
 .state .acts{margin-top:20px;display:flex;gap:8px;justify-content:center;flex-wrap:wrap;}
 
-/* Friday's question — a strip above the day, never a replacement for it */
-.ask{
-  border:1px solid var(--accent-line);border-radius:14px;
-  background:var(--accent-soft);padding:12px 14px;margin-bottom:12px;
-}
-.ask-head{display:flex;align-items:center;justify-content:space-between;}
-.ask h3{margin:2px 0 10px;font-size:15px;font-weight:600;letter-spacing:-.01em;}
-.ask-opts{display:flex;gap:8px;flex-wrap:wrap;}
-.opt-sm{
-  flex:1 1 0;min-width:76px;padding:9px 12px;border-radius:9px;
-  border:1px solid var(--line-2);background:var(--surface);cursor:pointer;
-  font-size:14px;font-weight:560;
-  transition:border-color .15s,background .15s,transform .12s;
-}
-.opt-sm:hover{border-color:var(--accent);background:var(--surface-2);transform:translateY(-1px);}
-.opt-sm:active{transform:translateY(0);}
 
 .banner{
   border-radius:11px;padding:11px 14px;font-size:13px;margin-bottom:16px;
@@ -512,7 +496,7 @@ const S = {
   ticking:new Set(),   // check items with a write in flight
   stats:null, statsCardId:null,
   calRange:null, calUnsub:null,
-  fridayAnswered:false, muted:false,
+  muted:false,
   pending:new Set()
 };
 const DEFAULT_STATS = { v:1, streak:0, lastCompletionDate:null, history:[], categories:{}, rollovers:{}, plans:{}, mute:false };
@@ -830,10 +814,8 @@ function findSlots(busy, winS, winE, dur, pad, max, fromMin){
 }
 function planFor(date, mode, picked, ignore){
   const have = existingBlocks(date, ignore);
-  const capS = mode==="off" ? 0 : mode==="short" ? 2 : MAX_SMALL;
-  const capD = mode==="off" ? 0 : mode==="short" ? 0 : MAX_DEEP;
-  const smallCap = Math.max(0, capS - have.small);
-  const deepCap  = Math.max(0, capD - have.deep);
+  const smallCap = Math.max(0, MAX_SMALL - have.small);
+  const deepCap  = Math.max(0, MAX_DEEP  - have.deep);
 
   const winS = DAY_START_H*60, winE = DAY_END_H*60;
   const nowMin = sameDay(date,new Date()) ? Math.ceil(minsOf(new Date())/SNAP_MIN)*SNAP_MIN : null;
@@ -1111,13 +1093,6 @@ function paint(){
     main.appendChild(stateCard("🕯️","Shabbat",""));
     return;
   }
-  /* Friday asks before it plans. It sits above the day rather than replacing
-     it, so the question and the answer are both visible — and it never runs
-     the caps behind your back. */
-  const askFriday = sameDay(d,today) && d.getDay() === 5
-    && !S.fridayAnswered && !fridayAnswered(d)
-    && !(S.stats && S.stats.plans && S.stats.plans[dayKey(d)]);
-  if(askFriday) main.appendChild(fridayCard());
 
   const { current, meetingNow, rest, missed, doneCount, open } = splitAgenda();
 
@@ -1392,48 +1367,6 @@ function agendaRow(item){
   return wrap;
 }
 
-/* Friday answers persist in the state card, so the prompt never re-gates a day
-   you already decided about. */
-const fridayAnswered = d => !!(S.stats && S.stats.fridayAnswers && S.stats.fridayAnswers[dayKey(d)]);
-async function answerFriday(mode){
-  S.fridayAnswered = true;
-  const st = S.stats || { ...DEFAULT_STATS };
-  st.fridayAnswers = st.fridayAnswers || {};
-  st.fridayAnswers[dayKey(new Date())] = mode;
-  const keys = Object.keys(st.fridayAnswers).sort();
-  while(keys.length > 12) delete st.fridayAnswers[keys.shift()];
-  S.stats = st;
-  render();
-  await saveStats(st);
-}
-
-function fridayCard(){
-  const s = el("div","ask");
-  const head = el("div","ask-head");
-  head.appendChild(el("span","eyebrow","Friday"));
-  const x = el("button","mini","✕");
-  x.setAttribute("aria-label","Leave the day as it is");
-  x.addEventListener("click", ()=>answerFriday("keep"));
-  head.appendChild(x);
-  s.appendChild(head);
-  s.appendChild(el("h3",null,"How big is today?"));
-
-  const opts = el("div","ask-opts");
-  const mk = (t, mode) => {
-    const b = el("button","opt-sm", t); b.type="button";
-    b.addEventListener("click", async ()=>{
-      await answerFriday(mode);
-      applyPlan(startOfDay(new Date()), mode, null, true);
-    });
-    return b;
-  };
-  opts.appendChild(mk("Short", "short"));   // 2 quick, no session
-  opts.appendChild(mk("Full", "normal"));   // 3 quick + 1 session
-  opts.appendChild(mk("Off", "off"));       // clear the day
-  s.appendChild(opts);
-  return s;
-}
-
 /* ---------------------------------------------------------------- dialog */
 function confirmDialog(title, detail, okLabel){
   return new Promise(resolve => {
@@ -1577,7 +1510,7 @@ setInterval(render, 60000);   // keep "now" honest
 
     const d = new Date();
     const planned = S.stats.plans && S.stats.plans[dayKey(d)];
-    if(!planned && d.getDay()!==6 && d.getDay()!==5) await applyPlan(startOfDay(d),"normal",null,true);
+    if(!planned && d.getDay()!==6) await applyPlan(startOfDay(d),"normal",null,true);
     render();
   }, 400);
   setTimeout(()=>{ clearInterval(settle); if(!S.ready){ S.ready=true; render(); } }, 20000);
