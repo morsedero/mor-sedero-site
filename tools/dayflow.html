@@ -231,6 +231,7 @@ button{font:inherit;color:inherit;}
 .swatch{width:11px;height:11px;border-radius:3px;background:var(--surface-3);border:1px solid var(--line-2);}
 .swatch.task{background:var(--accent-soft);border-color:var(--accent-line);border-left:3px solid var(--accent);}
 .swatch.deepc{background:var(--deep-soft);border-color:var(--deep);border-left:3px solid var(--deep);}
+.swatch.ext{background:var(--surface-2);border-color:var(--line-2);border-left:3px dashed var(--ink-3);}
 
 .cal-scroll{flex:1;overflow:auto;position:relative;}
 
@@ -309,6 +310,8 @@ button{font:inherit;color:inherit;}
 /* task-generated block — soft left-border accent */
 .ev.task{background:var(--accent-soft);border-color:var(--accent-line);border-left:3px solid var(--accent);}
 .ev.task.deep{background:var(--deep-soft);border-color:var(--deep);border-left:3px solid var(--deep);}
+/* card-linked block DayFlow did not author (e.g. the morning routine) */
+.ev.task.external{border-left-style:dashed;}
 .ev.buffer{
   background:repeating-linear-gradient(135deg,var(--surface-2),var(--surface-2) 5px,transparent 5px,transparent 10px);
   border:1px dashed var(--line-2);box-shadow:none;cursor:default;z-index:2;
@@ -558,7 +561,8 @@ button{font:inherit;color:inherit;}
     <div class="kpis">
       <div class="kpi streak"><span class="lbl">Streak</span><span class="v" id="kStreak">—</span></div>
       <div class="kpi rate"><span class="lbl">Completion</span><span class="v" id="kRate">—</span></div>
-      <div class="kpi"><span class="lbl">Planned today</span><span class="v" id="kToday">—</span></div>
+      <div class="kpi"><span class="lbl">Quick tasks</span><span class="v" id="kSmall">—</span></div>
+      <div class="kpi"><span class="lbl">Sessions</span><span class="v" id="kDeep">—</span></div>
     </div>
 
     <button class="btn" id="muteBtn" title="Toggle sound">🔊</button>
@@ -572,6 +576,7 @@ button{font:inherit;color:inherit;}
           <span><i class="swatch"></i> Real event</span>
           <span><i class="swatch task"></i> Task block</span>
           <span><i class="swatch deepc"></i> Work session</span>
+          <span><i class="swatch ext"></i> Other source</span>
         </div>
         <span class="lbl" id="calNote"></span>
       </div>
@@ -830,11 +835,12 @@ function allEvents(){
   return list.filter(e => e.status !== "cancelled").map(e => {
     const d = e.description || "";
     const link = shortLinkOf(d);
-    const isTask = d.includes(DF_MARK) || !!link;
+    const mine = d.includes(DF_MARK);          // DayFlow wrote this one
+    const isTask = mine || !!link;             // any card-linked block occupies the day
     return {
       raw:e, id:e.id, summary:e.summary||"(untitled)",
       start:evStart(e), end:evEnd(e), allDay:isAllDay(e),
-      isTask, cardShort:link,
+      isTask, mine, cardShort:link,
       recurring: !!e.recurringEventId,
       deep: (e.colorId === "5")
     };
@@ -862,11 +868,12 @@ function busyFor(date, ignoreEventId){
   return out;
 }
 
-/* task blocks already sitting on a given day, split by kind */
+/* task blocks already sitting on a given day, split by kind and by author */
 function existingBlocks(date){
   const evs = allEvents().filter(e => e.isTask && !e.allDay && overlapsDay(e, date));
   const deep = evs.filter(e => e.deep).length;
-  return { deep, small: evs.length - deep, total: evs.length };
+  const foreign = evs.filter(e => !e.mine).length;
+  return { deep, small: evs.length - deep, total: evs.length, foreign };
 }
 
 /* ---------------------------------------------------------------- stats store */
@@ -1490,7 +1497,7 @@ function layoutDay(col, d, ppm){
 
 function drawEvent(col, e, s, en, lane, total, d, ppm){
   {
-    const node = el("div","ev "+(e.isTask ? ("task"+(e.deep?" deep":"")) : "real"));
+    const node = el("div","ev "+(e.isTask ? ("task"+(e.deep?" deep":"")+(e.mine?"":" external")) : "real"));
     const dur = en - s;
     node.style.top    = ((s-GRID_START_H*60)*ppm)+"px";
     node.style.height = Math.max(15, dur*ppm - 2)+"px";
@@ -1500,7 +1507,10 @@ function drawEvent(col, e, s, en, lane, total, d, ppm){
 
     node.appendChild(el("div","ev-t", fmtRange(e.start,e.end)));
     const nm = el("div","ev-n"); bidi(nm, e.summary); node.appendChild(nm);
-    node.title = `${fmtRange(e.start,e.end)} — ${e.summary}${e.isTask?" (task block · drag to move, double-click to remove)":" (real event — protected)"}`;
+    node.title = fmtRange(e.start,e.end) + " — " + e.summary + (
+      !e.isTask ? " (real event — protected)"
+      : e.mine  ? " (DayFlow block · drag to move, double-click to remove)"
+      :           " (task block from another source — counts against today's cap)");
 
     if(e.isTask){
       node.appendChild(el("div","grip"));
@@ -1661,6 +1671,23 @@ function renderRail(){
     b.appendChild(c);
     host.appendChild(b);
     return;
+  }
+
+  /* Blocks DayFlow didn't author still fill the day — say so plainly, because
+     they consume the caps and are the usual reason nothing new gets placed. */
+  if(S.events){
+    const have = existingBlocks(new Date());
+    if(have.foreign && (have.small > MAX_SMALL || have.deep > MAX_DEEP || have.foreign === have.total)){
+      const b = el("div","banner warn");
+      const c = el("div");
+      c.appendChild(el("strong","bt", `${have.foreign} block${have.foreign===1?"":"s"} today came from another source`));
+      c.appendChild(el("div",null,
+        `DayFlow didn't place ${have.foreign===1?"it":"them"} — most likely your scheduled morning routine. ` +
+        `They still count against today's limits (${have.small}/${MAX_SMALL} quick, ${have.deep}/${MAX_DEEP} session), ` +
+        `so DayFlow won't add more until the day frees up. Dashed left edge marks them.`));
+      b.appendChild(c);
+      host.appendChild(b);
+    }
   }
 
   host.appendChild(renderHighlights());
@@ -1895,8 +1922,17 @@ function renderChrome(){
   }
   $("#kRate").textContent = rate;
 
-  const todayBlocks = allEvents().filter(e=>e.isTask && !e.allDay && overlapsDay(e,new Date())).length;
-  $("#kToday").textContent = S.events ? String(todayBlocks) : "—";
+  /* cap usage, counting every card-linked block on the day whoever made it */
+  if(S.events){
+    const have = existingBlocks(new Date());
+    const sEl = $("#kSmall"), dEl = $("#kDeep");
+    sEl.textContent = `${have.small}/${MAX_SMALL}`;
+    dEl.textContent = `${have.deep}/${MAX_DEEP}`;
+    sEl.style.color = have.small > MAX_SMALL ? "var(--crit)" : "";
+    dEl.style.color = have.deep  > MAX_DEEP  ? "var(--crit)" : "";
+  }else{
+    $("#kSmall").textContent = "—"; $("#kDeep").textContent = "—";
+  }
 
   $("#muteBtn").textContent = S.muted ? "🔇" : "🔊";
   $("#replanBtn").disabled = !!S.busy || !S.ready;
@@ -1909,8 +1945,13 @@ function renderChrome(){
   const stale = S.events && S.events.storedAt ? "synced "+hhmm(new Date(S.events.storedAt)) : "waiting for data";
   $("#syncNote").textContent = S.ready ? stale : "connecting…";
 
-  const nTask = allEvents().filter(e=>e.isTask).length;
-  $("#calNote").textContent = S.events ? `${allEvents().length} events · ${nTask} task blocks` : "";
+  if(S.events){
+    const evs = allEvents();
+    const mine = evs.filter(e=>e.isTask && e.mine).length;
+    const ext  = evs.filter(e=>e.isTask && !e.mine).length;
+    $("#calNote").textContent =
+      `${evs.length} events · ${mine} by DayFlow` + (ext ? ` · ${ext} from elsewhere` : "");
+  }else $("#calNote").textContent = "";
 }
 
 /* ---------------------------------------------------------------- day curtains */
