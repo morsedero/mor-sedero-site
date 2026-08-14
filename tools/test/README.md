@@ -8,7 +8,8 @@ Google Calendar calls. No network, no real writes.
 
 | script | what it checks |
 |---|---|
-| `assert.js` | scheduling rules: no task overlaps a real event, nothing intrudes on a work-session buffer, no task-on-task overlap |
+| `assert.js` | scheduling rules across light / packed / late-start days: no overlap with a meeting, buffers kept clear, caps held, everything inside the working window |
+| `late.js`   | the hub late in the day, and Friday prompt gating |
 | `mini.js`   | the hub, "Not now" postponing, completion writes |
 | `states.js` | midday / empty day / Friday prompt / Shabbat |
 | `dead.js`   | expired auth, unreachable server, no connector |

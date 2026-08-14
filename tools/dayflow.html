@@ -999,10 +999,14 @@ function splitAgenda(){
   const nowMin = minsOf(new Date());
   const open = items.filter(i => i.task && !i.done);
 
+  /* The hub must always answer "what now" while work remains. Prefer what is
+     running, then what is next — and if the whole day is behind you, the
+     earliest thing still unfinished rather than an empty screen. */
   let current = null;
   if(isToday){
     current = open.find(i => i.s <= nowMin && i.e2 > nowMin)     // happening now
            || open.find(i => i.e2 > nowMin)                       // next up
+           || open[0]                                             // day's over, still open
            || null;
   }else{
     current = open[0] || null;
@@ -1064,8 +1068,12 @@ function paint(){
     main.appendChild(stateCard("🕯️","Shabbat","No scheduling today. Enjoy it."));
     return;
   }
-  /* Friday: ask before planning anything */
-  if(sameDay(d,today) && d.getDay() === 5 && !S.fridayAnswered && !(S.stats && S.stats.plans && S.stats.plans[dayKey(d)])){
+  /* Friday: ask before planning anything — but only when there is nothing to
+     show yet. Once the day has tasks (or you've answered, ever), the hub wins;
+     a prompt that hides your day every reload is worse than no prompt. */
+  if(sameDay(d,today) && d.getDay() === 5 && !S.fridayAnswered
+     && !fridayAnswered(d) && !(S.stats && S.stats.plans && S.stats.plans[dayKey(d)])
+     && !agenda().some(i => i.task)){
     main.appendChild(fridayCard());
     return;
   }
@@ -1129,8 +1137,10 @@ function nowCard(item){
   clock.appendChild(el("span","sec", ":" + pad2(now.getSeconds())));
   top.appendChild(clock);
 
+  const overdueSlot = isToday && item.e2 <= nowMin;
   const status = el("div","hub-status");
-  status.appendChild(el("span","eyebrow", live ? "On it" : (isToday ? "Up next" : "First up")));
+  status.appendChild(el("span","eyebrow",
+    live ? "On it" : overdueSlot ? "Still open" : isToday ? "Up next" : "First up"));
   if(c) { const b = el("span","chip board"); bidi(b, c.boardName); status.appendChild(b); }
   else if(!item.ev.mine) status.appendChild(el("span","chip","external"));
   top.appendChild(status);
@@ -1216,8 +1226,10 @@ function paintMeter(meter, fill, leftEl, item, isToday){
     leftEl.textContent = left < 60 ? `${left} min left` : `${Math.floor(left/60)}h ${left%60}m left`;
     meter.classList.remove("over");
   }else{
+    /* an overrun counter only means something while you're plausibly still on
+       it; once the slot is well past, say when it was rather than tick upward */
     const over = Math.abs(left);
-    leftEl.textContent = over < 60 ? `${over} min over` : `${Math.floor(over/60)}h ${over%60}m over`;
+    leftEl.textContent = over <= 60 ? `${over} min over` : `slot ended ${hhmm(item.ev.end)}`;
     meter.classList.add("over");
   }
 }
@@ -1332,6 +1344,21 @@ function agendaRow(item){
   return wrap;
 }
 
+/* Friday answers persist in the state card, so the prompt never re-gates a day
+   you already decided about. */
+const fridayAnswered = d => !!(S.stats && S.stats.fridayAnswers && S.stats.fridayAnswers[dayKey(d)]);
+async function answerFriday(mode){
+  S.fridayAnswered = true;
+  const st = S.stats || { ...DEFAULT_STATS };
+  st.fridayAnswers = st.fridayAnswers || {};
+  st.fridayAnswers[dayKey(new Date())] = mode;
+  const keys = Object.keys(st.fridayAnswers).sort();
+  while(keys.length > 12) delete st.fridayAnswers[keys.shift()];
+  S.stats = st;
+  render();
+  await saveStats(st);
+}
+
 function fridayCard(){
   const s = el("div","state");
   s.appendChild(el("div","big","🌤️"));
@@ -1344,11 +1371,11 @@ function fridayCard(){
     b.addEventListener("click", fn); return b;
   };
   opts.appendChild(mk("Normal, but short","Two quick tasks, no work session.",
-    ()=>{ S.fridayAnswered=true; applyPlan(startOfDay(new Date()),"short",null,true); }));
+    async ()=>{ await answerFriday("short"); applyPlan(startOfDay(new Date()),"short",null,true); }));
   opts.appendChild(mk("Only what's already there","Keep the day as it stands — nothing added.",
-    ()=>{ S.fridayAnswered=true; render(); }));
+    ()=>answerFriday("keep")));
   opts.appendChild(mk("Take the day off","Nothing scheduled.",
-    ()=>{ S.fridayAnswered=true; render(); toast("Day off."); }));
+    ()=>{ answerFriday("off"); toast("Day off."); }));
   s.appendChild(opts);
   return s;
 }

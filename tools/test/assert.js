@@ -1,82 +1,88 @@
-/* Rule assertions against the live DOM after an auto-plan. */
-const fs = require("fs"), path = require("path");
+/* Scheduling-rule assertions, checked against the engine rather than the DOM.
+   Verifies the guarantees the widget promises about a planned day. */
+const fs = require("fs"), vm = require("vm");
 const { chromium } = require("playwright");
-const H = fs.readFileSync(path.join(__dirname, "harness.js"), "utf8");
 
-// reuse the harness fixture + stub by re-evaluating its top section
-const page_html = fs.readFileSync(path.join(__dirname, "dayflow.html"), "utf8");
-const stubMatch = /const stub = `([\s\S]*?)\n`;/.exec(H);
-if (!stubMatch) { console.error("could not extract stub"); process.exit(1); }
+const H = fs.readFileSync(__dirname + "/harness.js", "utf8");
+const page_html = fs.readFileSync(__dirname + "/dayflow.html", "utf8");
+const sb = { require, __dirname, module: { exports: {} }, exports: {}, console, process };
+vm.runInNewContext(H.split("(async () => {")[0] + "\nmodule.exports={stub};", sb);
+const BASE = sb.module.exports.stub;
 
-// rebuild stub by running harness in a sandbox to get the interpolated string
-const vm = require("vm");
-const sandbox = { require, __dirname, module: { exports: {} }, exports: {}, console, process };
-const src = H.split("(async () => {")[0] + "\nmodule.exports = { stub, page_html };";
-vm.runInNewContext(src, sandbox);
-const stub = sandbox.module.exports.stub;
+const REAL = JSON.parse(fs.readFileSync(__dirname + "/real-events.json", "utf8")).events
+  .map(e => JSON.parse(JSON.stringify(e).split("2026-08-14").join("2026-08-17")));
 
-const doc = extra => `<!doctype html><html><head><meta charset="utf-8">
-<script>${extra}${stub}<\/script></head><body>${page_html}</body></html>`;
+const clock = t => `const R=Date;const O=new R("${t}").getTime()-R.now();
+window.Date=class extends R{constructor(...a){if(a.length===0)super(R.now()+O);else super(...a);}static now(){return R.now()+O;}};`;
 
-const monday = `
-  window.__EVENT_DAY = "2026-08-17";
-  const RealDate = Date;
-  const OFFSET = new RealDate("2026-08-17T08:30:00+03:00").getTime() - RealDate.now();
-  window.Date = class extends RealDate {
-    constructor(...a){ if(a.length===0) super(RealDate.now()+OFFSET); else super(...a); }
-    static now(){ return RealDate.now()+OFFSET; }
-  };
-`;
+const SCENARIOS = [
+  { name: "light day",  stub: BASE.replace(/const DAY = [^;]+;/, 'const DAY = "2026-08-17";'), at: "2026-08-17T08:30:00+03:00" },
+  { name: "packed day", stub: BASE.replace(/const EVENTS = [^;]+;/, "const EVENTS = " + JSON.stringify(REAL) + ";"), at: "2026-08-17T08:30:00+03:00" },
+  { name: "late start", stub: BASE.replace(/const DAY = [^;]+;/, 'const DAY = "2026-08-17";'), at: "2026-08-17T17:40:00+03:00" }
+];
 
 (async () => {
   const browser = await chromium.launch({ executablePath: "/opt/pw-browsers/chromium-1194/chrome-linux/chrome" });
-  const ctx0 = await browser.newContext({ viewport:{width:1440,height:940}, timezoneId:"Asia/Jerusalem" }); const p = await ctx0.newPage();
-  const errs = [];
-  p.on("pageerror", e => errs.push(e.message));
-  await p.setContent(doc(monday), { waitUntil: "load" });
-  await p.waitForTimeout(3000);
+  let failures = 0;
 
-  const data = await p.evaluate(() => {
-    const PPM = PPM_DAY, GS = GRID_START_H * 60;
-    const toMin = node => {
-      const top = parseFloat(node.style.top), h = parseFloat(node.style.height);
-      return { s: Math.round(GS + top / PPM), e: Math.round(GS + (top + h + 2) / PPM) };
-    };
-    const out = { real: [], task: [], deep: [], buffer: [], calls: window.__calls.length };
-    document.querySelectorAll(".daycol .ev").forEach(n => {
-      const m = toMin(n);
-      m.name = (n.querySelector(".ev-n") || {}).textContent || "";
-      if (n.classList.contains("buffer")) out.buffer.push(m);
-      else if (n.classList.contains("real")) out.real.push(m);
-      else { out.task.push(m); if (n.classList.contains("deep")) out.deep.push(m); }
+  for (const sc of SCENARIOS) {
+    const ctx = await browser.newContext({ viewport: { width: 760, height: 900 }, timezoneId: "Asia/Jerusalem" });
+    const p = await ctx.newPage();
+    const errs = [];
+    p.on("pageerror", e => errs.push(e.message));
+    await p.setContent(`<!doctype html><html><head><meta charset="utf-8"><script>${clock(sc.at)}${sc.stub}<\/script></head><body>${page_html}</body></html>`, { waitUntil: "load" });
+    await p.waitForTimeout(2800);
+
+    const r = await p.evaluate(() => {
+      const d = new Date();
+      const blocks = allEvents().filter(e => e.isTask && !e.allDay && overlapsDay(e, d))
+        .map(e => ({ n: e.summary, s: minsOf(e.start), e: minsOf(e.end), deep: e.deep }));
+      const real = allEvents().filter(e => !e.isTask && !e.allDay && overlapsDay(e, d))
+        .map(e => ({ n: e.summary, s: minsOf(e.start), e: minsOf(e.end) }));
+      const have = existingBlocks(d);
+      return { blocks, real, have, winS: DAY_START_H * 60, winE: DAY_END_H * 60, buf: BUFFER_MIN,
+               maxSmall: MAX_SMALL, maxDeep: MAX_DEEP };
     });
-    return out;
-  });
 
-  const ov = (a, b) => a.s < b.e && a.e > b.s;
-  const fails = [];
+    const ov = (a, b) => a.s < b.e && a.e > b.s;
+    const fails = [];
 
-  for (const t of data.task)
-    for (const r of data.real)
-      if (ov(t, r)) fails.push(`task "${t.name}" ${t.s}-${t.e} overlaps REAL "${r.name}" ${r.s}-${r.e}`);
+    // 1. never on top of a real meeting
+    for (const t of r.blocks)
+      for (const m of r.real)
+        if (ov(t, m)) fails.push(`"${t.n}" ${t.s}-${t.e} overlaps meeting "${m.n}" ${m.s}-${m.e}`);
 
-  for (const t of data.task)
-    for (const b of data.buffer)
-      if (ov(t, b)) fails.push(`task "${t.name}" ${t.s}-${t.e} intrudes on BUFFER ${b.s}-${b.e}`);
+    // 2. work sessions keep their buffer clear on both sides
+    for (const dpe of r.blocks.filter(b => b.deep))
+      for (const t of r.blocks)
+        if (t !== dpe && ov(t, { s: dpe.s - r.buf, e: dpe.e + r.buf }))
+          fails.push(`"${t.n}" intrudes on the buffer around session "${dpe.n}"`);
 
-  for (let i = 0; i < data.task.length; i++)
-    for (let j = i + 1; j < data.task.length; j++)
-      if (ov(data.task[i], data.task[j]))
-        fails.push(`task "${data.task[i].name}" overlaps task "${data.task[j].name}"`);
+    // 3. task blocks never overlap each other
+    for (let i = 0; i < r.blocks.length; i++)
+      for (let j = i + 1; j < r.blocks.length; j++)
+        if (ov(r.blocks[i], r.blocks[j])) fails.push(`"${r.blocks[i].n}" overlaps "${r.blocks[j].n}"`);
 
-  const smalls = data.task.filter(t => !data.deep.some(d => d.s === t.s));
-  console.log("page errors :", errs.length ? errs : "none");
-  console.log("real events :", data.real.length);
-  console.log("task blocks :", data.task.length, "(deep:", data.deep.length + ")");
-  console.log("buffers     :", data.buffer.length);
-  console.log("write calls :", data.calls);
-  console.log(data.task.map(t => `  ${Math.floor(t.s/60)}:${String(t.s%60).padStart(2,"0")}-${Math.floor(t.e/60)}:${String(t.e%60).padStart(2,"0")}  ${t.name}`).join("\n"));
-  console.log(fails.length ? "\nFAILURES:\n" + fails.map(f => " ✗ " + f).join("\n") : "\n✓ all placement rules hold");
+    // 4. daily caps hold after a run
+    if (r.have.small > r.maxSmall) fails.push(`${r.have.small} quick tasks exceeds cap ${r.maxSmall}`);
+    if (r.have.deep > r.maxDeep) fails.push(`${r.have.deep} sessions exceeds cap ${r.maxDeep}`);
+
+    // 5. everything sits inside the working window
+    for (const t of r.blocks)
+      if (t.s < r.winS || t.e > r.winE)
+        fails.push(`"${t.n}" ${t.s}-${t.e} falls outside ${r.winS}-${r.winE}`);
+
+    const fmt = m => `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
+    console.log(`\n=== ${sc.name} (${sc.at.slice(11, 16)}) ===`);
+    console.log(`  page errors: ${errs.length ? errs.join(" | ") : "none"}`);
+    console.log(`  ${r.have.small}/${r.maxSmall} quick · ${r.have.deep}/${r.maxDeep} session · ${r.real.length} meetings`);
+    r.blocks.sort((a, b) => a.s - b.s).forEach(t => console.log(`    ${fmt(t.s)}-${fmt(t.e)} ${t.deep ? "[session] " : ""}${t.n}`));
+    console.log(fails.length ? "  FAIL:\n" + fails.map(f => "    ✗ " + f).join("\n") : "  ✓ all rules hold");
+    failures += fails.length + errs.length;
+    await ctx.close();
+  }
+
   await browser.close();
-  process.exit(fails.length ? 1 : 0);
+  console.log(failures ? `\n${failures} failure(s)` : "\nall scenarios pass");
+  process.exit(failures ? 1 : 0);
 })();
