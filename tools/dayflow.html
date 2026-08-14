@@ -647,18 +647,20 @@ function existingBlocks(date, ignore){
   return { deep, small: evs.length-deep, total: evs.length, foreign: evs.filter(e=>!e.mine).length };
 }
 
-/* Blocks a re-plan is allowed to clear and lay out again. Every card-linked
-   block counts — including ones the morning routine created — but never a
-   real meeting, never something already finished, and never the past. */
+/* Blocks a run may clear. Every card-linked block counts, including ones the
+   morning routine made and ones whose slot has already passed: an unfinished
+   block is not a record, and clearing it loses nothing — the Trello card is
+   the source of truth and tomorrow's run picks it up again.
+   Never a real meeting, never finished work, never what you're on right now. */
 function clearableBlocks(date){
   const now = new Date();
   const isToday = sameDay(date, now);
   const nowMin = minsOf(now);
   return allEvents().filter(e => {
     if(!e.isTask || e.allDay || !overlapsDay(e,date)) return false;
-    if(isToday && minsOf(e.end) <= nowMin) return false;   // don't rewrite the past
     const c = cardFor(e);
-    if(c && c.dueComplete) return false;                    // keep finished work
+    if(c && c.dueComplete) return false;                                    // you did it
+    if(isToday && minsOf(e.start) <= nowMin && minsOf(e.end) > nowMin) return false;  // you're on it
     return true;
   });
 }
@@ -887,8 +889,8 @@ async function applyPlan(date, mode, picked, rebuild){
   await saveStats(st);
   await refreshCalendar();
   S.busy = false;
-  if(ok) toast(cleared ? `Rebuilt: ${ok} task${ok===1?"":"s"}, cleared ${cleared}.` : `Scheduled ${ok} task${ok===1?"":"s"}.`);
-  else if(cleared) toast(`Cleared ${cleared}.`);
+  if(ok) toast(cleared ? `${ok} task${ok===1?"":"s"} · cleared ${cleared}` : `Scheduled ${ok} task${ok===1?"":"s"}.`);
+  else if(cleared) toast(`Cleared ${cleared} · rolls to the next day`);
   else toast("Day is full.");
   render();
 }
@@ -1297,6 +1299,8 @@ function detailPanel(card){
 
 function emptyNow(doneCount){
   if(doneCount) return stateCard("✓","Day clear", `${doneCount} done.`, true);
+  const past = sameDay(S.anchor, new Date()) && minsOf(new Date()) >= DAY_END_H*60;
+  if(past) return stateCard("—","Day's over","", false);
   return stateCard("—","Nothing scheduled","", true);
 }
 
