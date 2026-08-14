@@ -27,8 +27,8 @@ window.Date=class extends R{constructor(...a){if(a.length===0)super(R.now()+O);e
     const bad=[];
     if(r.prompt) bad.push("a prompt was shown");
     if(label==="saturday"){
-      if(r.state!=="Shabbat") bad.push("Shabbat state missing");
-      if(r.small||r.deep) bad.push("scheduled something on Shabbat");
+      if(r.state!=="Day off") bad.push("day-off state missing");
+      if(r.small||r.deep) bad.push("scheduled something on the day off");
     }else{
       if(r.small>r.maxS) bad.push(`${r.small} quick > cap ${r.maxS}`);
       if(r.deep>r.maxD)  bad.push(`${r.deep} sessions > cap ${r.maxD}`);

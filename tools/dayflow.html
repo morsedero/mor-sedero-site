@@ -535,8 +535,7 @@ function loadCfg(stats){
   CFG = { ...DEFAULTS, ...saved,
           colors:{ ...(saved.colors || {}) },
           openEvents: Array.isArray(saved.openEvents) ? saved.openEvents.slice() : DEFAULTS.openEvents.slice() };
-  /* settings saved before quick tasks shared one window */
-  if(saved.smallMin && !saved.quickTotal) CFG.quickTotal = (+saved.smallMin) * (+saved.maxSmall || 3);
+  /* smallMin was a per-task length, not a window — it does not carry over */
   delete CFG.smallMin;
   CFG.dayStart   = clamp(+CFG.dayStart||0, 0, 23);
   CFG.dayEnd     = clamp(+CFG.dayEnd||0, CFG.dayStart+1, 24);
@@ -548,7 +547,7 @@ function loadCfg(stats){
   applyColors();
 }
 /* how long each quick task gets when they share the hour */
-const quickSlice = n => Math.max(5, Math.round((CFG.quickTotal / Math.max(1,n)) / 5) * 5);
+const quickSlice = () => Math.max(5, Math.round((CFG.quickTotal / Math.max(1, CFG.maxSmall)) / 5) * 5);
 
 /* Meetings tasks may run inside: anything you've marked open, plus anything
    Google itself marks Free — that is what "Free" means. */
@@ -966,7 +965,7 @@ function planFor(date, mode, picked, ignore){
   if(quick.length){
     let n = quick.length, slot = null, slice = 0;
     while(n > 0){
-      slice = quickSlice(n);
+      slice = quickSlice();
       slot = findSlots(live, winS, winE, n*slice, 0, 1, nowMin)[0];
       if(slot) break;
       n--;
@@ -979,8 +978,11 @@ function planFor(date, mode, picked, ignore){
       live.push({ s:slot.s, e:slot.s + n*slice });
     }
   }
-  placed.sort((a,b)=>a.s-b.s);
-  return placed;
+  /* a card never gets two blocks in one run */
+  const seen = new Set();
+  const unique = placed.filter(p => !seen.has(p.card.id) && seen.add(p.card.id));
+  unique.sort((a,b)=>a.s-b.s);
+  return unique;
 }
 /* A run rebuilds the day: every card-linked block it is allowed to touch is
    cleared and the day is laid out again under the caps. That is what keeps a
@@ -1221,9 +1223,9 @@ function paint(){
   }
   if(!S.ready || !S.events){ main.appendChild(el("div","skel")); return; }
 
-  /* Saturday: nothing, quietly */
-  if(sameDay(d,today) && d.getDay() === CFG.dayOff){
-    main.appendChild(stateCard("🕯️","Shabbat",""));
+  /* the day off shows nothing, whichever day you are looking at */
+  if(d.getDay() === CFG.dayOff){
+    main.appendChild(stateCard("🕯️","Day off",""));
     return;
   }
 
@@ -1747,8 +1749,7 @@ $("#setBtn").addEventListener("click", settingsPanel);
 $("#replanBtn").addEventListener("click", ()=>replan());
 
 async function replan(){
-  const d = new Date();
-  if(sameDay(S.anchor,d) && d.getDay()===CFG.dayOff){ toast("It's Shabbat — nothing gets scheduled."); return; }
+  if(S.anchor.getDay() === CFG.dayOff){ toast("Day off — nothing gets scheduled."); return; }
   const date = startOfDay(S.anchor);
   const clearable = clearableBlocks(date);
   if(clearable.length){
