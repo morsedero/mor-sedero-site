@@ -1,635 +1,314 @@
 <title>DayFlow</title>
 <style>
 /* ============================================================
-   DayFlow — studio console
+   DayFlow — one day, one question: what's next?
    Light palette on bare :root; dark redefines TOKENS ONLY.
    ============================================================ */
 :root{
-  --bg:#E8E9EB;
+  --bg:#EDEEEF;
   --surface:#FFFFFF;
-  --surface-2:#F1F2F4;
-  --surface-3:#E4E6E9;
-  --ink:#15181C;
-  --ink-2:#565D66;
-  --ink-3:#848C96;
-  --line:#D3D6DA;
-  --line-2:#C0C4CA;
+  --surface-2:#F4F5F6;
+  --ink:#14171A;
+  --ink-2:#5A626A;
+  --ink-3:#8A939B;
+  --line:#DEE1E4;
+  --line-2:#C7CCD1;
 
   --accent:#0E7C86;
   --accent-ink:#0A5C64;
-  --accent-soft:rgba(14,124,134,.10);
-  --accent-line:rgba(14,124,134,.34);
+  --accent-soft:rgba(14,124,134,.09);
+  --accent-line:rgba(14,124,134,.30);
+  --on-accent:#FFFFFF;
 
   --crit:#B3352F;
-  --crit-soft:rgba(179,53,47,.10);
   --age:#B8761F;
   --age-soft:rgba(184,118,31,.12);
   --done:#2E7D4F;
-  --done-soft:rgba(46,125,79,.12);
-
   --deep:#5B4BA8;
-  --deep-soft:rgba(91,75,168,.12);
+  --deep-soft:rgba(91,75,168,.10);
 
-  --on-accent:#FFFFFF;
+  --shadow:0 1px 2px rgba(16,20,26,.05), 0 8px 24px rgba(16,20,26,.06);
+  --shadow-lg:0 18px 50px rgba(16,20,26,.16);
 
-  --shadow:0 1px 2px rgba(16,20,26,.06), 0 6px 18px rgba(16,20,26,.07);
-  --shadow-lg:0 12px 40px rgba(16,20,26,.18);
-
-  --r:10px;
-  --r-sm:7px;
   --sans:system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans Hebrew","Arial Hebrew",Arial,sans-serif;
   --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
 }
 @media (prefers-color-scheme:dark){
   :root:not([data-theme="light"]){
-    --bg:#101317;
-    --surface:#171B20;
-    --surface-2:#1D2229;
-    --surface-3:#252B33;
-    --ink:#E9ECEF;
-    --ink-2:#A2ABB5;
-    --ink-3:#6F7982;
-    --line:#2A3038;
-    --line-2:#39414B;
+    --bg:#0F1215;
+    --surface:#171B1F;
+    --surface-2:#1E2328;
+    --ink:#EAEDEF;
+    --ink-2:#A4ADB5;
+    --ink-3:#6E777F;
+    --line:#272D33;
+    --line-2:#3A424A;
 
     --accent:#4FD1DB;
     --accent-ink:#8BE4EB;
-    --accent-soft:rgba(79,209,219,.12);
-    --accent-line:rgba(79,209,219,.40);
-
-    --crit:#F2756B;
-    --crit-soft:rgba(242,117,107,.14);
-    --age:#E8A14B;
-    --age-soft:rgba(232,161,75,.15);
-    --done:#5FC98A;
-    --done-soft:rgba(95,201,138,.15);
-
-    --deep:#A99CF0;
-    --deep-soft:rgba(169,156,240,.15);
-
+    --accent-soft:rgba(79,209,219,.10);
+    --accent-line:rgba(79,209,219,.34);
     --on-accent:#0B1013;
 
-    --shadow:0 1px 2px rgba(0,0,0,.4), 0 6px 18px rgba(0,0,0,.34);
-    --shadow-lg:0 14px 44px rgba(0,0,0,.55);
+    --crit:#F2756B;
+    --age:#E8A14B;
+    --age-soft:rgba(232,161,75,.14);
+    --done:#5FC98A;
+    --deep:#A99CF0;
+    --deep-soft:rgba(169,156,240,.13);
+
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 24px rgba(0,0,0,.3);
+    --shadow-lg:0 18px 50px rgba(0,0,0,.5);
   }
 }
 :root[data-theme="dark"]{
-  --bg:#101317;
-  --surface:#171B20;
-  --surface-2:#1D2229;
-  --surface-3:#252B33;
-  --ink:#E9ECEF;
-  --ink-2:#A2ABB5;
-  --ink-3:#6F7982;
-  --line:#2A3038;
-  --line-2:#39414B;
+  --bg:#0F1215;
+  --surface:#171B1F;
+  --surface-2:#1E2328;
+  --ink:#EAEDEF;
+  --ink-2:#A4ADB5;
+  --ink-3:#6E777F;
+  --line:#272D33;
+  --line-2:#3A424A;
 
   --accent:#4FD1DB;
   --accent-ink:#8BE4EB;
-  --accent-soft:rgba(79,209,219,.12);
-  --accent-line:rgba(79,209,219,.40);
-
-  --crit:#F2756B;
-  --crit-soft:rgba(242,117,107,.14);
-  --age:#E8A14B;
-  --age-soft:rgba(232,161,75,.15);
-  --done:#5FC98A;
-  --done-soft:rgba(95,201,138,.15);
-
-  --deep:#A99CF0;
-  --deep-soft:rgba(169,156,240,.15);
-
+  --accent-soft:rgba(79,209,219,.10);
+  --accent-line:rgba(79,209,219,.34);
   --on-accent:#0B1013;
 
-  --shadow:0 1px 2px rgba(0,0,0,.4), 0 6px 18px rgba(0,0,0,.34);
-  --shadow-lg:0 14px 44px rgba(0,0,0,.55);
+  --crit:#F2756B;
+  --age:#E8A14B;
+  --age-soft:rgba(232,161,75,.14);
+  --done:#5FC98A;
+  --deep:#A99CF0;
+  --deep-soft:rgba(169,156,240,.13);
+
+  --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 24px rgba(0,0,0,.3);
+  --shadow-lg:0 18px 50px rgba(0,0,0,.5);
 }
 
 *{box-sizing:border-box;}
 body{
-  margin:0;
-  background:var(--bg);
-  color:var(--ink);
-  font-family:var(--sans);
-  font-size:14px;
-  line-height:1.45;
+  margin:0;background:var(--bg);color:var(--ink);
+  font-family:var(--sans);font-size:15px;line-height:1.5;
   -webkit-font-smoothing:antialiased;
 }
 button{font:inherit;color:inherit;}
-:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:4px;}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:6px;}
 
-.lbl{
-  font-family:var(--mono);
-  font-size:10px;
-  letter-spacing:.13em;
-  text-transform:uppercase;
-  color:var(--ink-3);
-}
-.num{font-family:var(--mono);font-variant-numeric:tabular-nums;}
-
-/* ---------- shell ---------- */
-.app{
-  height:100vh;
-  display:grid;
-  grid-template-rows:auto 1fr;
-  overflow:hidden;
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums;}
+.eyebrow{
+  font-family:var(--mono);font-size:10px;letter-spacing:.16em;
+  text-transform:uppercase;color:var(--ink-3);
 }
 
-/* ---------- console bar ---------- */
-.topbar{
-  display:flex;align-items:center;gap:18px;
-  padding:10px 16px;
-  background:var(--surface);
-  border-bottom:1px solid var(--line);
-  flex-wrap:wrap;
-}
-.brand{display:flex;align-items:baseline;gap:9px;flex:0 0 auto;}
-.brand h1{
-  margin:0;font-size:16px;font-weight:640;letter-spacing:-.015em;
-}
-.brand .dot{
-  width:7px;height:7px;border-radius:50%;background:var(--accent);
-  box-shadow:0 0 0 3px var(--accent-soft);
-  align-self:center;
-}
-.brand .tag{font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3);}
+/* ---------------- shell ---------------- */
+.wrap{max-width:560px;margin:0 auto;padding:28px 20px 64px;}
 
-.datenav{display:flex;align-items:center;gap:6px;}
-.datenav .today-label{
-  font-family:var(--mono);font-size:12px;font-variant-numeric:tabular-nums;
-  min-width:158px;text-align:center;color:var(--ink-2);
+.head{
+  display:flex;align-items:center;justify-content:space-between;
+  gap:12px;margin-bottom:26px;
 }
-.iconbtn{
-  background:var(--surface-2);border:1px solid var(--line);
-  border-radius:var(--r-sm);width:28px;height:28px;
-  display:grid;place-items:center;cursor:pointer;
-  transition:background .15s ease,border-color .15s ease,transform .12s ease;
+.head .date{display:flex;align-items:baseline;gap:10px;min-width:0;}
+.head .date h1{margin:0;font-size:17px;font-weight:600;letter-spacing:-.01em;white-space:nowrap;}
+.head .date .rel{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3);}
+.nav{display:flex;gap:4px;align-items:center;}
+.nav button{
+  width:28px;height:28px;border-radius:7px;border:1px solid transparent;
+  background:transparent;color:var(--ink-3);cursor:pointer;
+  display:grid;place-items:center;
+  transition:background .15s,color .15s,border-color .15s;
 }
-.iconbtn:hover{background:var(--surface-3);border-color:var(--line-2);}
-.iconbtn:active{transform:scale(.94);}
+.nav button:hover{background:var(--surface);border-color:var(--line);color:var(--ink);}
+.nav .todaybtn{width:auto;padding:0 11px;font-size:12px;}
 
-.segmented{
-  display:flex;background:var(--surface-2);border:1px solid var(--line);
-  border-radius:var(--r-sm);padding:2px;gap:2px;
+/* ---------------- the answer ---------------- */
+.now{
+  background:var(--surface);border:1px solid var(--line);
+  border-radius:16px;padding:20px;box-shadow:var(--shadow);
+  position:relative;overflow:hidden;
 }
-.segmented button{
-  border:0;background:transparent;cursor:pointer;
-  padding:4px 12px;border-radius:5px;
-  font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;
-  color:var(--ink-3);
-  transition:background .18s ease,color .18s ease;
+.now.live{border-color:var(--accent-line);}
+.now.live::before{
+  content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--accent);
 }
-.segmented button[aria-pressed="true"]{background:var(--surface);color:var(--ink);box-shadow:var(--shadow);}
+.now .when{
+  display:flex;align-items:center;gap:9px;margin-bottom:12px;flex-wrap:wrap;
+}
+.now .clock{
+  font-family:var(--mono);font-size:19px;font-variant-numeric:tabular-nums;
+  font-weight:600;letter-spacing:-.01em;
+}
+.now.live .clock{color:var(--accent-ink);}
+.now h2{
+  margin:0 0 14px;font-size:21px;line-height:1.32;font-weight:600;
+  letter-spacing:-.015em;text-wrap:balance;overflow-wrap:anywhere;
+}
+.now .tags{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px;}
+.now .acts{display:flex;gap:8px;flex-wrap:wrap;}
 
-.spacer{flex:1 1 auto;}
-
-.kpis{display:flex;gap:8px;align-items:stretch;}
-.kpi{
-  background:var(--surface-2);border:1px solid var(--line);
-  border-radius:var(--r-sm);padding:5px 11px;min-width:74px;
-  display:flex;flex-direction:column;gap:1px;
+.chip{
+  font-family:var(--mono);font-size:9.5px;letter-spacing:.09em;text-transform:uppercase;
+  padding:2px 7px;border-radius:4px;background:var(--surface-2);color:var(--ink-2);
+  border:1px solid var(--line);white-space:nowrap;
 }
-.kpi .v{font-family:var(--mono);font-size:15px;font-variant-numeric:tabular-nums;line-height:1.15;font-weight:600;}
-.kpi.streak .v{color:var(--age);}
-.kpi.rate .v{color:var(--done);}
-.kpi .v.dim{color:var(--ink-3);font-weight:500;}
+.chip.crit{background:transparent;color:var(--crit);border-color:var(--crit);}
+.chip.age{background:var(--age-soft);color:var(--age);border-color:transparent;}
+.chip.deep{background:var(--deep-soft);color:var(--deep);border-color:transparent;}
+.chip.live{background:var(--accent-soft);color:var(--accent-ink);border-color:var(--accent-line);}
 
 .btn{
-  background:var(--surface-2);border:1px solid var(--line);
-  border-radius:var(--r-sm);padding:6px 13px;cursor:pointer;
-  font-size:12.5px;font-weight:530;
-  display:inline-flex;align-items:center;gap:7px;
-  transition:background .15s ease,border-color .15s ease,transform .12s ease;
+  border:1px solid var(--line-2);background:var(--surface);
+  border-radius:9px;padding:9px 16px;cursor:pointer;
+  font-size:14px;font-weight:530;
+  transition:background .15s,border-color .15s,transform .12s,opacity .15s;
 }
-.btn:hover{background:var(--surface-3);border-color:var(--line-2);}
+.btn:hover{background:var(--surface-2);border-color:var(--ink-3);}
 .btn:active{transform:translateY(1px);}
 .btn.primary{background:var(--accent);border-color:var(--accent);color:var(--on-accent);}
-.btn.primary:hover{filter:brightness(1.07);}
-.btn[disabled]{opacity:.5;cursor:not-allowed;}
+.btn.primary:hover{filter:brightness(1.07);background:var(--accent);}
+.btn.quiet{border-color:transparent;background:transparent;color:var(--ink-2);padding:9px 12px;}
+.btn.quiet:hover{background:var(--surface-2);color:var(--ink);}
+.btn[disabled]{opacity:.45;cursor:not-allowed;}
 
-/* ---------- panes ---------- */
-.panes{
-  display:grid;
-  grid-template-columns:minmax(0,1fr) 372px;
-  gap:0;min-height:0;overflow:hidden;
+/* meeting-in-progress note above the answer */
+.meeting-now{
+  display:flex;align-items:center;gap:9px;
+  padding:10px 14px;margin-bottom:10px;
+  border-radius:11px;border:1px dashed var(--line-2);color:var(--ink-2);
+  font-size:13.5px;background:var(--surface-2);
 }
-.cal-pane{position:relative;min-width:0;display:flex;flex-direction:column;overflow:hidden;background:var(--bg);}
-.rail{
-  border-left:1px solid var(--line);
-  background:var(--surface);
-  display:flex;flex-direction:column;min-height:0;overflow:hidden;
-}
+.meeting-now .mn-time{font-family:var(--mono);font-size:11.5px;color:var(--ink-3);flex:0 0 auto;}
+.meeting-now .mn-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 
-/* ---------- calendar ---------- */
-.cal-head{
-  display:flex;align-items:center;justify-content:space-between;
-  padding:9px 16px 8px;border-bottom:1px solid var(--line);
-  background:var(--bg);
-}
-.legend{display:flex;gap:14px;align-items:center;flex-wrap:wrap;}
-.legend span{display:inline-flex;align-items:center;gap:6px;font-family:var(--mono);font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3);}
-.swatch{width:11px;height:11px;border-radius:3px;background:var(--surface-3);border:1px solid var(--line-2);}
-.swatch.task{background:var(--accent-soft);border-color:var(--accent-line);border-left:3px solid var(--accent);}
-.swatch.deepc{background:var(--deep-soft);border-color:var(--deep);border-left:3px solid var(--deep);}
-.swatch.ext{background:var(--surface-2);border-color:var(--line-2);border-left:3px dashed var(--ink-3);}
+/* ---------------- later ---------------- */
+.later{margin-top:30px;}
+.later .lh{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:10px;}
+.rows{display:flex;flex-direction:column;}
 
-.cal-scroll{flex:1;overflow:auto;position:relative;}
+.row{
+  display:flex;align-items:center;gap:12px;
+  padding:11px 4px;border-bottom:1px solid var(--line);
+  transition:opacity .2s;
+}
+.row:last-child{border-bottom:0;}
+.row .t{
+  font-family:var(--mono);font-size:12px;font-variant-numeric:tabular-nums;
+  color:var(--ink-3);flex:0 0 42px;
+}
+.row .n{flex:1 1 auto;min-width:0;font-size:14px;overflow-wrap:anywhere;}
+.row .n .sub{display:block;margin-top:2px;}
+/* shrink-to-fit titles: RTL text stays next to its timestamp */
+.nt{display:inline-block;max-width:100%;vertical-align:top;}
+.row.meeting{color:var(--ink-2);}
+.row.meeting .n{font-style:normal;}
+.row.deep .t{color:var(--deep);}
+.row.done{opacity:.42;}
+.row.done .n{text-decoration:line-through;text-decoration-thickness:1px;}
 
-.allday{
-  display:flex;gap:6px;padding:6px 12px 6px 62px;
-  border-bottom:1px solid var(--line);background:var(--bg);
-  position:relative;z-index:1;flex-wrap:wrap;min-height:31px;align-items:center;
+.acts-inline{display:flex;gap:2px;flex:0 0 auto;opacity:0;transition:opacity .15s;}
+.row:hover .acts-inline,.acts-inline:focus-within{opacity:1;}
+@media (hover:none){.acts-inline{opacity:1;}}
+.mini{
+  width:28px;height:28px;border-radius:7px;border:1px solid transparent;
+  background:transparent;color:var(--ink-3);cursor:pointer;
+  display:grid;place-items:center;font-size:13px;line-height:1;
+  transition:background .14s,color .14s,border-color .14s,transform .18s;
 }
-.allday .lbl{position:absolute;left:12px;top:11px;}
-.chip-allday{
-  background:var(--surface-3);border:1px solid var(--line-2);
-  border-radius:20px;padding:2px 11px;font-size:11.5px;color:var(--ink-2);
-}
+.mini:hover{background:var(--surface);border-color:var(--line-2);transform:scale(1.06);}
+.mini.ok:hover{color:var(--done);border-color:var(--done);}
+.mini.later-btn:hover{color:var(--accent);border-color:var(--accent);}
+.mini.del:hover{color:var(--crit);border-color:var(--crit);}
 
-.grid-wrap{position:relative;display:flex;}
-.gutter{
-  width:62px;flex:0 0 62px;position:relative;
-  border-right:1px solid var(--line);background:var(--bg);
-  z-index:2;
+/* ---------------- footer ---------------- */
+.foot{
+  margin-top:34px;padding-top:16px;border-top:1px solid var(--line);
+  display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;
 }
-.gutter .hr{
-  position:absolute;right:8px;transform:translateY(-50%);
-  font-family:var(--mono);font-size:10px;color:var(--ink-3);font-variant-numeric:tabular-nums;
-}
-.cols{flex:1;display:flex;position:relative;min-width:0;}
-.daycol{
-  flex:1 1 0;min-width:0;position:relative;
-  border-right:1px solid var(--line);
-}
-.daycol:last-child{border-right:0;}
-.daycol.is-weekend{background:var(--surface-2);}
-.daycol.is-today{background:var(--accent-soft);}
-.daycol.drop-active{background:var(--accent-soft);box-shadow:inset 0 0 0 2px var(--accent-line);}
-.hourline{position:absolute;left:0;right:0;border-top:1px solid var(--line);pointer-events:none;}
-.hourline.half{border-top-style:dotted;opacity:.55;}
-/* outside the 09:00–20:00 scheduling window: visibly not in play */
-.offhours{
-  position:absolute;left:0;right:0;pointer-events:none;
-  background:repeating-linear-gradient(45deg,transparent,transparent 7px,var(--line) 7px,var(--line) 8px);
-  opacity:.32;
-}
-.gutter .hr.half{font-size:9px;opacity:.62;}
+.foot .stats{display:flex;gap:16px;align-items:baseline;}
+.foot .stat{display:flex;align-items:baseline;gap:5px;}
+.foot .stat .v{font-family:var(--mono);font-size:13px;font-variant-numeric:tabular-nums;font-weight:600;}
+.foot .stat .v.streak{color:var(--age);}
+.foot .stat .k{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3);}
 
-.colhead{
-  background:var(--bg);border-bottom:1px solid var(--line);
-  padding:6px 0 5px;text-align:center;
+/* ---------------- states ---------------- */
+.state{
+  text-align:center;padding:44px 24px;
+  background:var(--surface);border:1px solid var(--line);border-radius:16px;
 }
-.colhead .dow{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3);}
-.colhead .dnum{font-family:var(--mono);font-size:15px;font-variant-numeric:tabular-nums;line-height:1.2;}
-.colhead.is-today .dnum{color:var(--accent);font-weight:650;}
+.state .big{font-size:34px;line-height:1;margin-bottom:14px;}
+.state h2{margin:0 0 8px;font-size:19px;letter-spacing:-.01em;text-wrap:balance;}
+.state p{margin:0 auto;max-width:38ch;color:var(--ink-2);font-size:14px;}
+.state .acts{margin-top:20px;display:flex;gap:8px;justify-content:center;flex-wrap:wrap;}
 
-.headrow{display:flex;position:sticky;top:0;z-index:7;background:var(--bg);}
-.headrow .gutter-h{width:62px;flex:0 0 62px;border-right:1px solid var(--line);border-bottom:1px solid var(--line);background:var(--bg);}
-.headrow .cols-h{flex:1;display:flex;min-width:0;}
-.headrow .cols-h > div{flex:1 1 0;min-width:0;border-right:1px solid var(--line);}
-.headrow .cols-h > div:last-child{border-right:0;}
-
-/* events */
-.ev{
-  position:absolute;left:3px;right:5px;
-  border-radius:var(--r-sm);
-  padding:3px 7px;
-  background:var(--surface);
-  border:1px solid var(--line-2);
-  box-shadow:var(--shadow);
-  overflow:hidden;cursor:grab;
-  font-size:11.5px;line-height:1.3;
-  transition:box-shadow .18s ease, transform .18s cubic-bezier(.2,.8,.25,1), opacity .2s ease;
-  z-index:3;
-}
-.ev:hover{box-shadow:var(--shadow-lg);z-index:5;}
-.ev.dragging{opacity:.62;cursor:grabbing;box-shadow:var(--shadow-lg);z-index:9;}
-.ev .ev-t{font-family:var(--mono);font-size:9.5px;color:var(--ink-3);font-variant-numeric:tabular-nums;}
-/* shrink-to-fit so an RTL title sits beside its timestamp instead of being
-   flung to the far edge of a wide column — the text itself still lays out
-   in its own direction. */
-.ev .ev-n{
-  display:inline-block;max-width:100%;vertical-align:top;
-  font-weight:520;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
-}
-/* short blocks put the time and title on one row — the stamp is never dropped */
-.ev.inline{display:flex;align-items:baseline;gap:8px;padding:2px 8px;}
-.ev.inline .ev-t{flex:0 0 auto;}
-.ev.inline .ev-n{flex:0 1 auto;min-width:0;}
-.ev .ev-dur{
-  float:right;font-family:var(--mono);font-size:9px;color:var(--ink-3);
-  font-variant-numeric:tabular-nums;letter-spacing:.04em;
-}
-/* time already passed — present but receded */
-.ev.past{opacity:.52;}
-.ev.past:hover{opacity:.9;}
-/* happening right now */
-.ev.now{box-shadow:0 0 0 2px var(--accent), var(--shadow);}
-.ev.now .ev-t{color:var(--accent-ink);font-weight:600;}
-
-/* real meeting */
-.ev.real{background:var(--surface);border-color:var(--line-2);}
-.ev.real::after{
-  content:"";position:absolute;inset:0 auto 0 0;width:3px;background:var(--ink-3);opacity:.5;
-}
-/* task-generated block — soft left-border accent */
-.ev.task{background:var(--accent-soft);border-color:var(--accent-line);border-left:3px solid var(--accent);}
-.ev.task.deep{background:var(--deep-soft);border-color:var(--deep);border-left:3px solid var(--deep);}
-/* card-linked block DayFlow did not author (e.g. the morning routine) */
-.ev.task.external{border-left-style:dashed;}
-.ev.buffer{
-  background:repeating-linear-gradient(135deg,var(--surface-2),var(--surface-2) 5px,transparent 5px,transparent 10px);
-  border:1px dashed var(--line-2);box-shadow:none;cursor:default;z-index:2;
-}
-.ev.buffer .ev-n{color:var(--ink-3);font-weight:400;font-size:10px;}
-.ev .grip{
-  position:absolute;left:0;right:0;bottom:0;height:6px;cursor:ns-resize;
-}
-.ev .grip::after{
-  content:"";position:absolute;left:50%;bottom:2px;transform:translateX(-50%);
-  width:20px;height:2px;border-radius:2px;background:var(--line-2);opacity:0;transition:opacity .15s;
-}
-.ev:hover .grip::after{opacity:1;}
-
-.playhead{position:absolute;left:0;right:0;height:0;border-top:2px solid var(--crit);z-index:8;pointer-events:none;}
-.playhead::before{
-  content:"";position:absolute;left:-4px;top:-5px;width:8px;height:8px;border-radius:50%;background:var(--crit);
-}
-.nowpill{
-  position:absolute;z-index:9;pointer-events:none;
-  transform:translateY(-50%);left:6px;
-  font-family:var(--mono);font-size:9px;color:#fff;background:var(--crit);
-  padding:1px 5px;border-radius:3px;font-variant-numeric:tabular-nums;
-}
-
-/* month */
-.month{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:1px;background:var(--line);padding:0 0 1px;}
-.month .mh{background:var(--bg);padding:6px 0;text-align:center;}
-.mcell{background:var(--surface);min-height:96px;padding:5px 6px;display:flex;flex-direction:column;gap:3px;}
-.mcell.out{background:var(--surface-2);}
-.mcell.today .mday{color:var(--accent);font-weight:680;}
-.mday{font-family:var(--mono);font-size:11.5px;font-variant-numeric:tabular-nums;color:var(--ink-2);}
-.mchip{
-  font-size:10.5px;border-radius:4px;padding:1px 5px;
-  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
-  background:var(--surface-3);border-left:3px solid var(--ink-3);
-}
-.mchip.task{background:var(--accent-soft);border-left-color:var(--accent);}
-.mchip.deep{background:var(--deep-soft);border-left-color:var(--deep);}
-.mmore{font-family:var(--mono);font-size:9.5px;color:var(--ink-3);}
-
-/* ---------- rail ---------- */
-.rail-scroll{overflow:auto;padding:12px;display:flex;flex-direction:column;gap:12px;min-height:0;}
-
-.highlights{
-  border:1px solid var(--accent-line);
-  border-radius:var(--r);
-  background:linear-gradient(180deg,var(--accent-soft),transparent 62%),var(--surface);
-  box-shadow:var(--shadow);
-  overflow:hidden;flex:0 0 auto;
-}
-.highlights .hh{
-  display:flex;align-items:center;justify-content:space-between;
-  padding:9px 12px 7px;border-bottom:1px solid var(--line);
-}
-.highlights .hh .t{display:flex;align-items:center;gap:7px;font-weight:620;font-size:13px;}
-.pulse{width:7px;height:7px;border-radius:50%;background:var(--crit);}
-@media (prefers-reduced-motion:no-preference){
-  .pulse{animation:pulse 2.4s ease-in-out infinite;}
-  @keyframes pulse{0%,100%{box-shadow:0 0 0 0 var(--crit-soft);}50%{box-shadow:0 0 0 6px transparent;}}
-}
-.highlights .hlist{padding:6px;display:flex;flex-direction:column;gap:5px;max-height:290px;overflow:auto;}
-
-.board{border:1px solid var(--line);border-radius:var(--r);background:var(--surface);overflow:hidden;flex:0 0 auto;}
-.board > .bh{
-  display:flex;align-items:center;justify-content:space-between;gap:8px;
-  padding:8px 12px;border-bottom:1px solid var(--line);background:var(--surface-2);
-  cursor:pointer;user-select:none;
-}
-.board > .bh .bn{font-weight:600;font-size:12.5px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.board > .bh .cnt{font-family:var(--mono);font-size:10px;color:var(--ink-3);}
-.board .lists{padding:8px;display:flex;flex-direction:column;gap:9px;}
-.board[data-collapsed="true"] .lists{display:none;}
-
-.list{border-radius:var(--r-sm);background:var(--surface-2);border:1px solid var(--line);padding:6px;}
-.list.drop-active{background:var(--accent-soft);border-color:var(--accent-line);}
-.list .lh{display:flex;justify-content:space-between;align-items:center;padding:1px 4px 5px;}
-.list .cards{display:flex;flex-direction:column;gap:5px;min-height:8px;}
-
-.card{
-  background:var(--surface);border:1px solid var(--line);
-  border-left:3px solid var(--line-2);
-  border-radius:var(--r-sm);padding:6px 8px;
-  cursor:grab;box-shadow:0 1px 1px rgba(16,20,26,.04);
-  transition:transform .16s cubic-bezier(.2,.8,.25,1),box-shadow .16s ease,opacity .18s ease,border-color .16s ease;
-  display:flex;flex-direction:column;gap:3px;
-}
-.card:hover{transform:translateY(-1px);box-shadow:var(--shadow);border-color:var(--line-2);}
-.card.dragging{opacity:.5;cursor:grabbing;}
-.card.tier-1,.card.tier-2{border-left-color:var(--crit);}
-.card.tier-3{border-left-color:var(--age);}
-.card.tier-4{border-left-color:var(--ink-3);}
-.card.deepwork{border-left-color:var(--deep);}
-.card.scheduled{background:var(--accent-soft);}
-.card.done{opacity:.5;}
-.card.done .cname{text-decoration:line-through;text-decoration-thickness:1px;}
-.card .cname{font-size:12.5px;line-height:1.35;font-weight:500;overflow-wrap:anywhere;}
-.card .meta{display:flex;gap:6px;align-items:center;flex-wrap:wrap;}
-
-.badge{
-  font-family:var(--mono);font-size:9px;letter-spacing:.07em;text-transform:uppercase;
-  padding:1px 5px;border-radius:3px;background:var(--surface-3);color:var(--ink-2);
-  white-space:nowrap;
-}
-.badge.crit{background:var(--crit-soft);color:var(--crit);}
-.badge.age{background:var(--age-soft);color:var(--age);}
-.badge.deep{background:var(--deep-soft);color:var(--deep);}
-.badge.ok{background:var(--done-soft);color:var(--done);}
-.badge.at{background:var(--accent-soft);color:var(--accent-ink);}
-
-.card .row{display:flex;align-items:center;gap:6px;justify-content:space-between;}
-.card .ctrls{display:flex;align-items:center;gap:4px;flex:0 0 auto;}
-/* stat rows live outside .card, so they carry their own layout */
-.statrow{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:3px 4px;}
-.statrow .cname{font-size:12px;min-width:0;overflow:hidden;text-overflow:ellipsis;}
-/* delete — mirrors the calendar block's remove action, same confirm step */
-.del{
-  width:19px;height:19px;border-radius:50%;padding:0;
-  border:1.5px solid transparent;background:transparent;cursor:pointer;
-  display:grid;place-items:center;color:var(--ink-3);font-size:13px;line-height:1;
-  opacity:0;transition:opacity .15s ease,color .15s ease,border-color .15s ease,transform .2s cubic-bezier(.2,.8,.25,1);
-}
-.card:hover .del,.del:focus-visible{opacity:1;}
-.del:hover{color:var(--crit);border-color:var(--crit);transform:scale(1.12);}
-@media (hover:none){.del{opacity:1;}}
-.tick{
-  flex:0 0 auto;width:19px;height:19px;border-radius:50%;
-  border:1.5px solid var(--line-2);background:transparent;cursor:pointer;
-  display:grid;place-items:center;color:transparent;
-  transition:border-color .16s ease,background .16s ease,color .16s ease,transform .2s cubic-bezier(.2,.8,.25,1);
-}
-.tick:hover{border-color:var(--done);color:var(--done);transform:scale(1.12);}
-.tick.on{background:var(--done);border-color:var(--done);color:#fff;}
-
-/* aging nag */
-.card.aging{border-left-color:var(--age);background:var(--age-soft);}
-@media (prefers-reduced-motion:no-preference){
-  .card.aging{animation:nag 5.5s ease-in-out infinite;}
-  @keyframes nag{0%,92%,100%{transform:translateX(0);}94%{transform:translateX(-2px);}96%{transform:translateX(2px);}98%{transform:translateX(-1px);}}
-}
-
-/* ---------- states / banners ---------- */
-.banner{
-  border-radius:var(--r-sm);padding:9px 11px;font-size:12px;
-  border:1px solid var(--line-2);background:var(--surface-2);
-  display:flex;gap:9px;align-items:flex-start;
-}
-.banner.warn{border-color:var(--age);background:var(--age-soft);}
-.banner.crit{border-color:var(--crit);background:var(--crit-soft);}
-.banner .bt{font-weight:620;display:block;margin-bottom:1px;}
-.banner .stale{font-family:var(--mono);font-size:10px;color:var(--ink-3);}
-
-.empty{padding:16px;text-align:center;color:var(--ink-3);font-size:12px;}
-.skeleton{height:44px;border-radius:var(--r-sm);background:linear-gradient(90deg,var(--surface-2),var(--surface-3),var(--surface-2));background-size:200% 100%;}
-@media (prefers-reduced-motion:no-preference){.skeleton{animation:sh 1.5s linear infinite;}@keyframes sh{to{background-position:-200% 0;}}}
-
-/* day-off / friday */
-.curtain{
-  position:absolute;inset:0;z-index:20;display:grid;place-items:center;
-  background:var(--bg);
-}
-.curtain .inner{max-width:430px;text-align:center;padding:28px;}
-.curtain h2{margin:0 0 8px;font-size:22px;letter-spacing:-.02em;text-wrap:balance;}
-.curtain p{margin:0 0 18px;color:var(--ink-2);font-size:13.5px;}
-.opts{display:flex;flex-direction:column;gap:8px;}
+.opts{display:flex;flex-direction:column;gap:9px;margin-top:20px;text-align:left;}
 .opt{
-  text-align:left;padding:11px 13px;border-radius:var(--r-sm);
-  border:1px solid var(--line);background:var(--surface);cursor:pointer;
-  transition:border-color .16s ease,transform .16s ease,background .16s;
+  padding:13px 15px;border-radius:11px;border:1px solid var(--line);
+  background:var(--surface-2);cursor:pointer;
+  transition:border-color .15s,transform .15s,background .15s;
 }
-.opt:hover{border-color:var(--accent);transform:translateY(-1px);background:var(--accent-soft);}
-.opt .ot{font-weight:600;font-size:13px;display:block;}
-.opt .od{color:var(--ink-2);font-size:12px;}
+.opt:hover{border-color:var(--accent);background:var(--accent-soft);transform:translateY(-1px);}
+.opt .ot{display:block;font-weight:600;font-size:14px;}
+.opt .od{color:var(--ink-2);font-size:12.5px;}
 
-/* ---------- dialog ---------- */
-.scrim{
-  position:fixed;inset:0;z-index:60;background:rgba(10,14,18,.42);
-  display:grid;place-items:center;padding:20px;
-  backdrop-filter:blur(2px);
+.banner{
+  border-radius:11px;padding:11px 14px;font-size:13px;margin-bottom:16px;
+  border:1px solid var(--line-2);background:var(--surface-2);color:var(--ink-2);
 }
-.dialog{
-  background:var(--surface);border:1px solid var(--line-2);border-radius:var(--r);
-  box-shadow:var(--shadow-lg);max-width:440px;width:100%;overflow:hidden;
-}
+.banner.crit{border-color:var(--crit);color:var(--ink);}
+.banner strong{display:block;color:var(--ink);margin-bottom:2px;}
+.skel{height:112px;border-radius:16px;background:var(--surface-2);}
 @media (prefers-reduced-motion:no-preference){
-  .dialog{animation:pop .22s cubic-bezier(.2,.9,.3,1);}
+  .skel{animation:pulse 1.6s ease-in-out infinite;}
+  @keyframes pulse{50%{opacity:.55;}}
+}
+
+/* ---------------- dialog / toast ---------------- */
+.scrim{position:fixed;inset:0;z-index:60;background:rgba(10,14,18,.44);display:grid;place-items:center;padding:20px;}
+.dialog{background:var(--surface);border:1px solid var(--line-2);border-radius:14px;box-shadow:var(--shadow-lg);max-width:390px;width:100%;overflow:hidden;}
+@media (prefers-reduced-motion:no-preference){
+  .dialog{animation:pop .2s cubic-bezier(.2,.9,.3,1);}
   @keyframes pop{from{transform:translateY(8px) scale(.985);opacity:0;}}
 }
-.dialog .dh{padding:13px 15px 10px;border-bottom:1px solid var(--line);}
-.dialog .dh h3{margin:0;font-size:14.5px;}
-.dialog .dh p{margin:4px 0 0;font-size:12.5px;color:var(--ink-2);white-space:pre-line;overflow-wrap:anywhere;}
-.dialog .db{padding:11px 15px;display:flex;flex-direction:column;gap:7px;}
-.dialog .df{padding:11px 15px;border-top:1px solid var(--line);display:flex;gap:8px;justify-content:flex-end;background:var(--surface-2);}
-.slot{
-  display:flex;align-items:center;justify-content:space-between;gap:10px;
-  padding:9px 11px;border:1px solid var(--line);border-radius:var(--r-sm);
-  background:var(--surface-2);cursor:pointer;text-align:left;
-  transition:border-color .15s,background .15s,transform .15s;
-}
-.slot:hover{border-color:var(--accent);background:var(--accent-soft);transform:translateX(2px);}
-.slot .st{font-family:var(--mono);font-size:12.5px;font-variant-numeric:tabular-nums;font-weight:600;}
-.slot .sd{font-size:11px;color:var(--ink-2);}
-.conflict-with{
-  font-size:12px;padding:8px 11px;border-radius:var(--r-sm);
-  background:var(--crit-soft);border:1px solid var(--crit);color:var(--ink);
-}
+.dialog .dh{padding:16px 17px 12px;}
+.dialog .dh h3{margin:0;font-size:15px;}
+.dialog .dh p{margin:6px 0 0;font-size:13px;color:var(--ink-2);white-space:pre-line;overflow-wrap:anywhere;}
+.dialog .df{padding:12px 17px;border-top:1px solid var(--line);display:flex;gap:8px;justify-content:flex-end;background:var(--surface-2);}
 
-/* toast */
-.toasts{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);z-index:80;display:flex;flex-direction:column;gap:7px;align-items:center;}
-.toast{
-  background:var(--surface);border:1px solid var(--line-2);box-shadow:var(--shadow-lg);
-  border-radius:20px;padding:7px 15px;font-size:12.5px;display:flex;align-items:center;gap:8px;
-}
+.toasts{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:80;display:flex;flex-direction:column;gap:7px;align-items:center;}
+.toast{background:var(--surface);border:1px solid var(--line-2);box-shadow:var(--shadow-lg);border-radius:22px;padding:8px 16px;font-size:13px;}
 .toast.err{border-color:var(--crit);}
 @media (prefers-reduced-motion:no-preference){
-  .toast{animation:tin .26s cubic-bezier(.2,.9,.3,1);}
+  .toast{animation:tin .24s cubic-bezier(.2,.9,.3,1);}
   @keyframes tin{from{transform:translateY(10px);opacity:0;}}
 }
 #fx{position:fixed;inset:0;pointer-events:none;z-index:90;}
-
-.foot{
-  padding:8px 12px;border-top:1px solid var(--line);
-  display:flex;justify-content:space-between;align-items:center;gap:8px;background:var(--surface-2);
-}
-
-@media (max-width:1080px){
-  .panes{grid-template-columns:minmax(0,1fr) 330px;}
-}
-@media (max-width:860px){
-  .app{height:auto;overflow:visible;}
-  .panes{grid-template-columns:minmax(0,1fr);overflow:visible;}
-  .rail{border-left:0;border-top:1px solid var(--line);}
-  .cal-scroll{max-height:70vh;}
-  .rail-scroll{overflow:visible;}
-}
 </style>
 
-<div class="app">
-  <header class="topbar">
-    <div class="brand">
-      <span class="dot"></span>
-      <h1>DayFlow</h1>
-      <span class="tag" id="tagline">boot</span>
+<div class="wrap">
+  <header class="head">
+    <div class="date">
+      <h1 id="dateLabel">—</h1>
+      <span class="rel" id="dateRel"></span>
     </div>
-
-    <div class="datenav">
-      <button class="iconbtn" id="prev" aria-label="Previous">‹</button>
-      <button class="btn" id="todayBtn">Today</button>
-      <button class="iconbtn" id="next" aria-label="Next">›</button>
-      <span class="today-label" id="rangeLabel">—</span>
-    </div>
-
-    <div class="segmented" role="group" aria-label="Calendar view">
-      <button data-view="day" aria-pressed="true">Day</button>
-      <button data-view="week" aria-pressed="false">Week</button>
-      <button data-view="month" aria-pressed="false">Month</button>
-    </div>
-
-    <div class="spacer"></div>
-
-    <div class="kpis">
-      <div class="kpi streak"><span class="lbl">Streak</span><span class="v" id="kStreak">—</span></div>
-      <div class="kpi rate"><span class="lbl">Completion</span><span class="v" id="kRate">—</span></div>
-      <div class="kpi"><span class="lbl">Quick tasks</span><span class="v" id="kSmall">—</span></div>
-      <div class="kpi"><span class="lbl">Sessions</span><span class="v" id="kDeep">—</span></div>
-    </div>
-
-    <button class="btn" id="muteBtn" title="Toggle sound">🔊</button>
-    <button class="btn primary" id="replanBtn">Re-plan day</button>
+    <nav class="nav">
+      <button id="prev" aria-label="Previous day">‹</button>
+      <button id="todayBtn" class="todaybtn">Today</button>
+      <button id="next" aria-label="Next day">›</button>
+    </nav>
   </header>
 
-  <div class="panes">
-    <section class="cal-pane">
-      <div class="cal-head">
-        <div class="legend">
-          <span><i class="swatch"></i> Real event</span>
-          <span><i class="swatch task"></i> Task block</span>
-          <span><i class="swatch deepc"></i> Work session</span>
-          <span><i class="swatch ext"></i> Other source</span>
-        </div>
-        <span class="lbl" id="calNote"></span>
-      </div>
-      <div class="cal-scroll" id="calScroll"></div>
-    </section>
+  <main id="main"><div class="skel"></div></main>
 
-    <aside class="rail">
-      <div class="rail-scroll" id="rail"></div>
-      <div class="foot">
-        <span class="lbl" id="syncNote">connecting…</span>
-        <button class="btn" id="refreshBtn">Refresh</button>
-      </div>
-    </aside>
-  </div>
+  <footer class="foot" id="foot" hidden>
+    <div class="stats">
+      <span class="stat"><span class="v streak" id="sStreak">0</span><span class="k">streak</span></span>
+      <span class="stat"><span class="v" id="sDone">0</span><span class="k">done today</span></span>
+      <span class="stat"><span class="v" id="sLeft">0</span><span class="k">left</span></span>
+    </div>
+    <button class="btn quiet" id="replanBtn">Re-plan day</button>
+  </footer>
 </div>
 
 <div class="toasts" id="toasts"></div>
@@ -638,11 +317,15 @@ button{font:inherit;color:inherit;}
 <script>
 "use strict";
 /* ==========================================================================
-   DayFlow
-   A live daily command center over Trello + Google Calendar.
+   DayFlow — minimal daily focus.
 
-   Connector call shapes below were observed from real request/response pairs
-   before this page was written; nothing here is guessed.
+   Answers two questions and nothing else:
+     1. What do I do right now?
+     2. What else is left today?
+   Plus one escape hatch: "not now" pushes a task to the next free slot
+   later the same day.
+
+   Connector call shapes were observed from real request/response pairs.
    ========================================================================== */
 
 /* ---------------------------------------------------------------- config */
@@ -658,81 +341,56 @@ const BOARDS = [
   { key:"projects", id:bAri("692abd49a69c853bb71cb728"), name:"PROJECTS",   kind:"deep"  },
   { key:"sidurim",  id:bAri("693683bc8be8844147bbe82c"), name:"סידורים",    kind:"small" },
   { key:"sedco",    id:bAri("6a718220df5bd657f0636bc7"), name:"סדקו",       kind:"small" },
-  { key:"today",    id:bAri("6a7a17e2ed53384c4f792d87"), name:"היום — עדיפות עליונה", kind:"today" }
+  { key:"today",    id:bAri("6a7a17e2ed53384c4f792d87"), name:"היום",       kind:"today" }
 ];
-const TODAY_BOARD = BOARDS[3].id;
-const LIST_TODAY  = lAri("6a7a17e6498e4a01d6e8a7ad");   // 🔴 היום (Today)
-const LIST_DONE   = lAri("6a7a17e6fa8d1b840074ed07");   // ✅ בוצע (Done)
+const LIST_DONE = lAri("6a7a17e6fa8d1b840074ed07");
 const STATS_CARD_NAME = "📊 DayFlow Stats";
 
-/* scheduling constants */
-const DAY_START_H   = 9;
-const DAY_END_H     = 20;
-const MAX_SMALL     = 3;
-const SMALL_MIN     = 30;
-const MAX_DEEP      = 1;
-const DEEP_DEFAULT  = 90;
-const BUFFER_MIN    = 15;
-const SNAP_MIN      = 15;
-const AGING_DAYS    = 5;
-const STALL_DAYS    = 3;
+const DAY_START_H = 9, DAY_END_H = 20;
+const MAX_SMALL = 3, SMALL_MIN = 30;
+const MAX_DEEP = 1,  DEEP_DEFAULT = 90;
+const BUFFER_MIN = 15, SNAP_MIN = 15;
+const AGING_DAYS = 5, STALL_DAYS = 3;
 
-/* view constants */
-const GRID_START_H = 6, GRID_END_H = 23;
-/* day view is generous enough that a 15-minute block still reads;
-   week view stays dense because it carries seven columns. */
-const PPM_DAY = 1.9, PPM_WEEK = 0.78;
-
-/* markers */
-const DF_MARK   = "[dayflow]";
-const ST_OPEN   = "<!--DAYFLOW_STATE_V1";
-const ST_CLOSE  = "DAYFLOW_STATE_V1-->";
+const DF_MARK  = "[dayflow]";
+const ST_OPEN  = "<!--DAYFLOW_STATE_V1";
+const ST_CLOSE = "DAYFLOW_STATE_V1-->";
 
 /* ---------------------------------------------------------------- utils */
-const $  = s => document.querySelector(s);
+const $ = s => document.querySelector(s);
 const el = (t,c,x) => { const n=document.createElement(t); if(c)n.className=c; if(x!=null)n.textContent=x; return n; };
-const esc = s => String(s==null?"":s);
-const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 const pad2 = n => String(n).padStart(2,"0");
+const clamp = (v,a,b) => Math.max(a,Math.min(b,v));
 
-const dayKey = d => `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`;
 const startOfDay = d => { const x=new Date(d); x.setHours(0,0,0,0); return x; };
 const addDays = (d,n) => { const x=new Date(d); x.setDate(x.getDate()+n); return x; };
-const startOfWeek = d => { const x=startOfDay(d); x.setDate(x.getDate()-x.getDay()); return x; }; // Sun
-const sameDay = (a,b)=>dayKey(a)===dayKey(b);
+const dayKey = d => `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`;
+const sameDay = (a,b) => dayKey(a)===dayKey(b);
 const hhmm = d => `${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
 const minsOf = d => d.getHours()*60 + d.getMinutes();
 const atMin = (base,m) => { const x=startOfDay(base); x.setMinutes(m); return x; };
 const iso = d => new Date(d).toISOString();
-const daysBetween = (a,b)=>Math.floor((startOfDay(b)-startOfDay(a))/86400000);
+const daysBetween = (a,b) => Math.floor((startOfDay(b)-startOfDay(a))/86400000);
+const fmtRange = (a,b) => `${hhmm(a)}–${hhmm(b)}`;
+const DOW = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+const MON = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
-const fmtRange = (a,b)=>`${hhmm(a)}–${hhmm(b)}`;
-const DOW = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
-const MON = ["January","February","March","April","May","June","July","August","September","October","November","December"];
-
-/* Hebrew/Arabic aware: we never flip the app; each *field* gets dir="auto". */
-function bidi(node, text){ node.setAttribute("dir","auto"); node.textContent = esc(text); return node; }
-
-function shortLinkOf(url){ const m=/trello\.com\/c\/([A-Za-z0-9]+)/.exec(url||""); return m?m[1]:null; }
+/* per-field direction; the app chrome never flips */
+function bidi(node,text){ node.setAttribute("dir","auto"); node.textContent = text==null?"":String(text); return node; }
+/* An RTL title inside a wide LTR row would sit against the far edge, away from
+   its timestamp. Wrapping it in a shrink-to-fit span keeps it beside the time
+   while the text itself still lays out in its own direction. */
+function bidiSpan(text){ const s = el("span","nt"); return bidi(s, text); }
+const shortLinkOf = url => { const m=/trello\.com\/c\/([A-Za-z0-9]+)/.exec(url||""); return m?m[1]:null; };
 
 /* ---------------------------------------------------------------- state */
 const S = {
-  view:"day",
-  anchor:startOfDay(new Date()),
-  mcp:null,
-  ready:false,
-  cards:{},          // boardKey -> {nodes, storedAt}
-  lists:{},          // boardKey -> [{id,name,position}]
-  events:null,       // {events:[...], storedAt}
-  errs:{},           // key -> {code,message}
-  calRange:null,
-  calUnsub:null,
-  stats:null,        // parsed state object
-  statsCardId:null,
-  plan:null,         // today's plan (in-memory mirror)
-  fridayAnswered:false,
-  busy:false,
-  muted:false,
+  anchor: startOfDay(new Date()),
+  mcp:null, ready:false, busy:false,
+  cards:{}, events:null, errs:{},
+  stats:null, statsCardId:null,
+  calRange:null, calUnsub:null,
+  fridayAnswered:false, muted:false,
   pending:new Set()
 };
 const DEFAULT_STATS = { v:1, streak:0, lastCompletionDate:null, history:[], categories:{}, rollovers:{}, plans:{}, mute:false };
@@ -742,43 +400,38 @@ const AUTHZ = new Set(["needs_reauth","server_not_connected","selection_required
 const LIFECYCLE = new Set(["not_granted","capability_disabled","capability_removed"]);
 
 function errCopy(e){
-  const s = e && e.server ? e.server : "the connector";
+  const s = (e && e.server) || "the connector";
   switch(e && e.code){
     case "needs_reauth":         return `Reconnect ${s} in claude.ai → Settings → Connectors.`;
     case "server_not_connected": return `Add ${s} in claude.ai → Settings → Connectors.`;
     case "selection_required":   return `Choose which ${s} account to use, then reload.`;
     case "blocked_by_policy":    return `Your organization blocks this ${s} tool.`;
-    case "approval_required":    return `This ${s} action needs approval that artifacts can't request yet.`;
-    case "server_unavailable":   return `${s} is unreachable right now. Retrying.`;
+    case "approval_required":    return `This ${s} action needs approval artifacts can't request yet.`;
+    case "server_unavailable":   return `${s} is unreachable right now. Retrying shortly.`;
     case "not_in_manifest":      return `This page isn't allowed to call that ${s} tool.`;
     case "tool_error":           return (e.message || `${s} rejected the request.`);
     case "rate_limited":         return `Too many ${s} requests. Pausing briefly.`;
     case "not_granted":
     case "capability_disabled":
-    case "capability_removed":   return `Live data isn't available in this view.`;
+    case "capability_removed":   return "Live data isn't available in this view.";
     default:                     return (e && e.message) || `${s} call failed.`;
   }
 }
-
 async function callTool(server, tool, input, opts){
   if(!S.mcp) throw { code:"capability_disabled", message:"no mcp", server };
   return S.mcp.callTool(server, tool, input, opts);
 }
-
 function onWatch(key, ev, assign){
   if(ev.type === "data"){
     delete S.errs[key];
     assign(ev.result);
-    render();
   }else{
     const e = ev.error || {};
-    S.errs[key] = { code:e.code, message:errCopy(e), server:e.server };
-    // authz denials retract data; transient failures keep last-good visible
-    if(AUTHZ.has(e.code) || LIFECYCLE.has(e.code)) assign(null, true);
-    render();
+    S.errs[key] = { code:e.code, message:errCopy(e) };
+    if(AUTHZ.has(e.code) || LIFECYCLE.has(e.code)) assign(null, true);   // retract
   }
+  render();
 }
-
 function startWatches(){
   for(const b of BOARDS){
     S.mcp.watchTool(TRELLO, "trelloReadCard",
@@ -787,27 +440,19 @@ function startWatches(){
         S.cards[b.key] = drop ? null : { payload:res.payload, storedAt: res.cache ? res.cache.storedAt : Date.now() };
       }),
       { refetchInterval:180000, cache:{ staleTime:60000 } });
-
-    S.mcp.watchTool(TRELLO, "trelloReadList",
-      { action:"list_by_board", boardId:b.id, limit:50 },
-      ev => onWatch("lists:"+b.key, ev, (res,drop) => {
-        S.lists[b.key] = drop ? null : (res.payload && res.payload.lists) || [];
-      }),
-      { refetchInterval:300000, cache:{ staleTime:120000 } });
   }
   syncCalendarWatch();
 }
-
-/* calendar watch identity depends on the visible range → re-register on change */
+/* only ever the day in view — one watch, re-registered when the day changes */
 function syncCalendarWatch(){
-  const [a,b] = visibleRange();
-  const key = iso(a)+"|"+iso(b);
+  const a = startOfDay(S.anchor), b = addDays(a,1);
+  const key = iso(a);
   if(S.calRange === key) return;
   S.calRange = key;
-  if(S.calUnsub){ try{ S.calUnsub(); }catch(_){} S.calUnsub = null; }
+  if(S.calUnsub){ try{ S.calUnsub(); }catch(_){} S.calUnsub=null; }
   if(!S.mcp) return;
   S.calUnsub = S.mcp.watchTool(GCAL, "list_events",
-    { calendarId:CAL_ID, startTime:iso(a), endTime:iso(b), pageSize:250 },
+    { calendarId:CAL_ID, startTime:iso(a), endTime:iso(b), pageSize:100 },
     ev => onWatch("cal", ev, (res,drop) => {
       S.events = drop ? null : { payload:res.payload, storedAt: res.cache ? res.cache.storedAt : Date.now() };
     }),
@@ -815,203 +460,159 @@ function syncCalendarWatch(){
 }
 
 /* ---------------------------------------------------------------- model */
-function allCards(){
-  const out=[];
-  for(const b of BOARDS){
-    const bag = S.cards[b.key];
-    if(!bag || !bag.payload) continue;
-    const nodes = (bag.payload.cards && bag.payload.cards.nodes) || [];
-    for(const n of nodes) out.push(normCard(n,b));
-  }
-  return out;
-}
-
 const BLOCK_RE = /(תקוע|חסום|מחכה|ממתין|blocked|waiting|stuck|on hold)/i;
 const EST_RE   = /(?:~|est[:\s]|estimate[:\s]|\[)\s*(\d{1,3})\s*(m|min|minutes|h|hr|hours)?\b/i;
 
 function normCard(n, board){
-  const name = n.name||"";
-  const desc = n.desc||"";
-  const due  = n.due ? new Date(n.due) : null;
+  const name = n.name||"", desc = n.desc||"";
+  const due = n.due ? new Date(n.due) : null;
   const last = n.lastActivityAt ? new Date(n.lastActivityAt) : null;
-  const now  = new Date();
-  const stalled = last ? daysBetween(last, now) >= STALL_DAYS : false;
-  const blocked = BLOCK_RE.test(name) || BLOCK_RE.test(desc);
-
+  const now = new Date();
   let est = null;
   const m = EST_RE.exec(desc) || EST_RE.exec(name);
-  if(m){
-    const v = parseInt(m[1],10);
-    const u = (m[2]||"m").toLowerCase();
-    est = (u[0]==="h") ? v*60 : v;
-    if(!(est>0 && est<=480)) est = null;
-  }
-
-  const overdue = !!(due && !n.dueComplete && due < now && !sameDay(due, now));
-  const dueToday = !!(due && sameDay(due, now));
-
+  if(m){ const v=parseInt(m[1],10), u=(m[2]||"m").toLowerCase();
+         est = u[0]==="h" ? v*60 : v; if(!(est>0 && est<=480)) est=null; }
   return {
     id:n.id, name, desc,
     url:n.url || n.webUrl || "",
     shortLink: shortLinkOf(n.url || n.webUrl),
     listId: n.list ? n.list.id : null,
-    listName: n.list ? n.list.name : "",
-    boardKey: board.key, boardName: board.name, boardKind: board.kind,
-    labels: n.labels||[],
-    due, dueComplete: !!n.dueComplete, lastActivityAt: last,
-    stalled, blocked, est,
-    overdue, dueToday,
-    deep: board.kind === "deep",
+    boardKey:board.key, boardName:board.name,
+    due, dueComplete:!!n.dueComplete, lastActivityAt:last,
+    stalled: last ? daysBetween(last, now) >= STALL_DAYS : false,
+    blocked: BLOCK_RE.test(name) || BLOCK_RE.test(desc),
+    overdue: !!(due && !n.dueComplete && due < now && !sameDay(due, now)),
+    dueToday: !!(due && sameDay(due, now)),
+    est, deep: board.kind === "deep",
     isStats: name === STATS_CARD_NAME
   };
 }
-
-function evStart(e){ return e.start && e.start.dateTime ? new Date(e.start.dateTime) : (e.start && e.start.date ? new Date(e.start.date) : null); }
-function evEnd(e){   return e.end   && e.end.dateTime   ? new Date(e.end.dateTime)   : (e.end   && e.end.date   ? new Date(e.end.date)   : null); }
-function isAllDay(e){ return !!(e.start && e.start.date && !e.start.dateTime); }
+function allCards(){
+  const out=[];
+  for(const b of BOARDS){
+    const bag = S.cards[b.key];
+    if(!bag || !bag.payload) continue;
+    for(const n of ((bag.payload.cards && bag.payload.cards.nodes) || [])) out.push(normCard(n,b));
+  }
+  return out;
+}
+const evStart = e => e.start && e.start.dateTime ? new Date(e.start.dateTime) : (e.start && e.start.date ? new Date(e.start.date) : null);
+const evEnd   = e => e.end   && e.end.dateTime   ? new Date(e.end.dateTime)   : (e.end   && e.end.date   ? new Date(e.end.date)   : null);
 
 function allEvents(){
   const p = S.events && S.events.payload;
-  const list = (p && p.events) || [];
-  return list.filter(e => e.status !== "cancelled").map(e => {
-    const d = e.description || "";
-    const link = shortLinkOf(d);
-    const mine = d.includes(DF_MARK);          // DayFlow wrote this one
-    const isTask = mine || !!link;             // any card-linked block occupies the day
-    return {
-      raw:e, id:e.id, summary:e.summary||"(untitled)",
-      start:evStart(e), end:evEnd(e), allDay:isAllDay(e),
-      isTask, mine, cardShort:link,
-      recurring: !!e.recurringEventId,
-      deep: (e.colorId === "5")
-    };
-  }).filter(e => e.start && e.end);
+  return ((p && p.events) || [])
+    .filter(e => e.status !== "cancelled")
+    .map(e => {
+      const d = e.description || "";
+      const link = shortLinkOf(d);
+      const mine = d.includes(DF_MARK);
+      return {
+        raw:e, id:e.id, summary:e.summary || "(untitled)",
+        start:evStart(e), end:evEnd(e),
+        allDay: !!(e.start && e.start.date && !e.start.dateTime),
+        isTask: mine || !!link, mine, cardShort:link,
+        deep: e.colorId === "5"
+      };
+    })
+    .filter(e => e.start && e.end);
 }
+const overlapsDay = (e,d) => { const a=startOfDay(d), b=addDays(a,1); return e.start < b && e.end > a; };
 
-function overlapsDay(e, d){
-  const a = startOfDay(d), b = addDays(a,1);
-  return e.start < b && e.end > a;
-}
-
-/* Everything that occupies the day, with the work-session buffer already
-   baked in — an existing deep block reserves its 15 min on each side just
-   like one we place ourselves, so nothing is ever scheduled flush against it. */
+/* occupied minutes, work-session buffers baked in */
 function busyFor(date, ignoreEventId){
-  const out = [];
+  const out=[];
   for(const e of allEvents()){
-    if(e.allDay || !overlapsDay(e, date)) continue;
+    if(e.allDay || !overlapsDay(e,date)) continue;
     if(ignoreEventId && e.id === ignoreEventId) continue;
     const pad = (e.isTask && e.deep) ? BUFFER_MIN : 0;
     const s  = sameDay(e.start,date) ? minsOf(e.start) : 0;
     const en = sameDay(e.end,date)   ? minsOf(e.end)   : 24*60;
-    out.push({ s:s-pad, e:en+pad, name:e.summary });
+    out.push({ s:s-pad, e:en+pad });
   }
   return out;
 }
-
-/* task blocks already sitting on a given day, split by kind and by author */
 function existingBlocks(date){
-  const evs = allEvents().filter(e => e.isTask && !e.allDay && overlapsDay(e, date));
+  const evs = allEvents().filter(e => e.isTask && !e.allDay && overlapsDay(e,date));
   const deep = evs.filter(e => e.deep).length;
-  const foreign = evs.filter(e => !e.mine).length;
-  return { deep, small: evs.length - deep, total: evs.length, foreign };
+  return { deep, small: evs.length-deep, total: evs.length, foreign: evs.filter(e=>!e.mine).length };
 }
 
-/* ---------------------------------------------------------------- stats store */
+/* card behind a block, if we can resolve one */
+function cardFor(ev){
+  if(!ev.cardShort) return null;
+  return allCards().find(c => c.shortLink === ev.cardShort && !c.isStats) || null;
+}
+
+/* ---------------------------------------------------------------- stats */
 function parseStats(card){
   if(!card) return null;
-  const d = card.desc||"";
+  const d = card.desc || "";
   const i = d.indexOf(ST_OPEN), j = d.indexOf(ST_CLOSE);
   if(i<0 || j<0) return { ...DEFAULT_STATS };
-  try{
-    const raw = d.slice(i+ST_OPEN.length, j).trim();
-    const o = JSON.parse(raw);
-    return Object.assign({}, DEFAULT_STATS, o);
-  }catch(_){ return { ...DEFAULT_STATS }; }
+  try{ return Object.assign({}, DEFAULT_STATS, JSON.parse(d.slice(i+ST_OPEN.length, j).trim())); }
+  catch(_){ return { ...DEFAULT_STATS }; }
 }
-function statsCard(){ return allCards().find(c => c.isStats) || null; }
+const statsCard = () => allCards().find(c => c.isStats) || null;
 
 async function saveStats(next){
   S.stats = next;
   const card = statsCard();
   const id = card ? card.id : S.statsCardId;
-  if(!id) return;                                  // no store card → skip silently
+  if(!id) return;
   S.statsCardId = id;
-  const body =
-    "DayFlow widget state store. Machine-managed — edit via the widget, not by hand.\n\n" +
-    ST_OPEN + "\n" + JSON.stringify(next) + "\n" + ST_CLOSE + "\n";
+  const body = "DayFlow widget state store. Machine-managed — edit via the widget, not by hand.\n\n"
+             + ST_OPEN + "\n" + JSON.stringify(next) + "\n" + ST_CLOSE + "\n";
   try{
     await callTool(TRELLO, "trelloWriteCard", { action:"update", cardId:id, desc:body });
     await S.mcp.invalidate(TRELLO, "trelloReadCard").catch(()=>{});
-  }catch(e){
-    toast(errCopy(e), true);
-  }
+  }catch(e){ toast(errCopy(e), true); }
 }
-
-/* category weighting: boards that finish fast get a small boost, stallers a penalty */
-function catWeight(cat){
-  const c = S.stats && S.stats.categories && S.stats.categories[cat];
-  if(!c || !c.picked) return 0;
-  const rate = c.done / c.picked;                 // 0..1
-  return (rate - 0.5) * 0.8;                      // ±0.4 nudge, never flips a tier
-}
-
 function bumpCategory(cat, field){
   const st = S.stats || { ...DEFAULT_STATS };
   st.categories = st.categories || {};
   const c = st.categories[cat] || { picked:0, done:0, skipped:0 };
-  c[field] = (c[field]||0) + 1;
+  c[field] = (c[field]||0)+1;
   st.categories[cat] = c;
   return st;
 }
+function catWeight(cat){
+  const c = S.stats && S.stats.categories && S.stats.categories[cat];
+  if(!c || !c.picked) return 0;
+  return ((c.done/c.picked) - 0.5) * 0.8;
+}
+const rollInfo = c => (S.stats && S.stats.rollovers && S.stats.rollovers[c.id]) || null;
+const ageDays = c => { const r = rollInfo(c); return r ? (r.count||0) : 0; };
+const isAging = c => ageDays(c) >= AGING_DAYS;
 
-/* ---------------------------------------------------------------- scheduling engine */
-/* tiering: overdue+blocked → overdue → due today → blocked/stalled → due soon */
+/* ---------------------------------------------------------------- engine */
 function tierOf(c){
   if(c.overdue && (c.blocked||c.stalled)) return 1;
-  if(c.overdue)                            return 2;
-  if(c.dueToday)                           return 3;
-  if(c.blocked || c.stalled)               return 4;
-  if(c.due)                                return 5;
+  if(c.overdue) return 2;
+  if(c.dueToday) return 3;
+  if(c.blocked || c.stalled) return 4;
+  if(c.due) return 5;
   return 6;
 }
-function rollInfo(c){
-  const r = S.stats && S.stats.rollovers && S.stats.rollovers[c.id];
-  return r || null;
-}
-function ageDays(c){ const r = rollInfo(c); return r ? (r.count||0) : 0; }
-function isAging(c){ return ageDays(c) >= AGING_DAYS; }
-
 function candidates(){
-  return allCards().filter(c =>
-    !c.isStats && !c.dueComplete &&
-    c.boardKey !== "today" &&                       // Today board mirrors originals
-    c.listId !== LIST_DONE
-  );
+  return allCards().filter(c => !c.isStats && !c.dueComplete && c.boardKey !== "today" && c.listId !== LIST_DONE);
 }
-
 function rankCards(pool){
   return pool.slice().sort((a,b) => {
-    const ta = tierOf(a), tb = tierOf(b);
-    if(ta !== tb) return ta - tb;
-    const aa = isAging(a) ? 1 : 0, ab = isAging(b) ? 1 : 0;
-    if(aa !== ab) return ab - aa;                   // aging surfaces first inside a tier
-    const wa = catWeight(a.boardName), wb = catWeight(b.boardName);
-    if(Math.abs(wa-wb) > 0.001) return wb - wa;
-    const da = a.due ? a.due.getTime() : Infinity;
-    const db = b.due ? b.due.getTime() : Infinity;
-    if(da !== db) return da - db;
-    const la = a.lastActivityAt ? a.lastActivityAt.getTime() : 0;
-    const lb = b.lastActivityAt ? b.lastActivityAt.getTime() : 0;
-    return la - lb;                                  // stalest first
+    const ta=tierOf(a), tb=tierOf(b);
+    if(ta!==tb) return ta-tb;
+    const aa=isAging(a)?1:0, ab=isAging(b)?1:0;
+    if(aa!==ab) return ab-aa;
+    const wa=catWeight(a.boardName), wb=catWeight(b.boardName);
+    if(Math.abs(wa-wb)>0.001) return wb-wa;
+    const da=a.due?a.due.getTime():Infinity, db=b.due?b.due.getTime():Infinity;
+    if(da!==db) return da-db;
+    return (a.lastActivityAt?a.lastActivityAt.getTime():0) - (b.lastActivityAt?b.lastActivityAt.getTime():0);
   });
 }
-
-/* merge + invert busy intervals into free windows */
 function freeWindows(busy, winS, winE){
-  const b = busy.slice().sort((x,y)=>x.s-y.s);
   const merged=[];
-  for(const iv of b){
+  for(const iv of busy.slice().sort((x,y)=>x.s-y.s)){
     if(!merged.length || iv.s > merged[merged.length-1].e) merged.push({s:iv.s,e:iv.e});
     else merged[merged.length-1].e = Math.max(merged[merged.length-1].e, iv.e);
   }
@@ -1022,13 +623,10 @@ function freeWindows(busy, winS, winE){
     if(cur >= winE) break;
   }
   if(cur < winE) free.push({ s:cur, e:winE });
-  return free.filter(f => f.e - f.s > 0);
+  return free.filter(f => f.e-f.s > 0);
 }
-
-/* find placements of `dur` minutes; pad = buffer required on BOTH sides */
 function findSlots(busy, winS, winE, dur, pad, max, fromMin){
-  const need = dur + pad*2;
-  const out=[];
+  const need = dur + pad*2, out=[];
   for(const f of freeWindows(busy, winS, winE)){
     let s = Math.max(f.s, fromMin==null?winS:fromMin);
     s = Math.ceil(s/SNAP_MIN)*SNAP_MIN;
@@ -1040,42 +638,33 @@ function findSlots(busy, winS, winE, dur, pad, max, fromMin){
   }
   return out;
 }
-
 function planFor(date, mode, picked){
-  /* daily caps count what is ALREADY on the calendar, not just this run's picks */
   const have = existingBlocks(date);
-  const smallCap = Math.max(0, (mode==="short" ? 2 : MAX_SMALL) - have.small);
-  const deepCap  = Math.max(0, (mode==="short" ? 0 : MAX_DEEP)  - have.deep);
+  const smallCap = Math.max(0, (mode==="short"?2:MAX_SMALL) - have.small);
+  const deepCap  = Math.max(0, (mode==="short"?0:MAX_DEEP)  - have.deep);
 
-  const busy = busyFor(date);
   const winS = DAY_START_H*60, winE = DAY_END_H*60;
-  const nowMin = sameDay(date, new Date()) ? Math.ceil(minsOf(new Date())/SNAP_MIN)*SNAP_MIN : null;
+  const nowMin = sameDay(date,new Date()) ? Math.ceil(minsOf(new Date())/SNAP_MIN)*SNAP_MIN : null;
 
   let pool = candidates();
-  if(mode === "pick" && picked && picked.length){
+  if(mode==="pick" && picked && picked.length){
     const set = new Set(picked);
     pool = pool.filter(c => set.has(c.id));
   }
-  const scheduledShorts = new Set(
-    allEvents().filter(e => e.isTask && overlapsDay(e, date) && e.cardShort).map(e => e.cardShort)
-  );
-  pool = pool.filter(c => !c.shortLink || !scheduledShorts.has(c.shortLink));
+  const already = new Set(allEvents().filter(e => e.isTask && overlapsDay(e,date) && e.cardShort).map(e => e.cardShort));
+  pool = pool.filter(c => !c.shortLink || !already.has(c.shortLink));
 
   const ranked = rankCards(pool);
-  const smalls = ranked.filter(c => !c.deep).slice(0, smallCap);
-  const deeps  = ranked.filter(c =>  c.deep).slice(0, deepCap);
+  const placed = [], live = busyFor(date);
 
-  const placed = [];
-  const live = busy.slice();
-
-  for(const c of deeps){
+  for(const c of ranked.filter(x=>x.deep).slice(0,deepCap)){
     const dur = c.est || DEEP_DEFAULT;
     const s = findSlots(live, winS, winE, dur, BUFFER_MIN, 1, nowMin)[0];
     if(!s) continue;
     placed.push({ card:c, s:s.s, e:s.e, kind:"deep" });
-    live.push({ s:s.s-BUFFER_MIN, e:s.e+BUFFER_MIN });   // reserve the buffer
+    live.push({ s:s.s-BUFFER_MIN, e:s.e+BUFFER_MIN });
   }
-  for(const c of smalls){
+  for(const c of ranked.filter(x=>!x.deep).slice(0,smallCap)){
     const s = findSlots(live, winS, winE, SMALL_MIN, 0, 1, nowMin)[0];
     if(!s) continue;
     placed.push({ card:c, s:s.s, e:s.e, kind:"small" });
@@ -1084,31 +673,22 @@ function planFor(date, mode, picked){
   placed.sort((a,b)=>a.s-b.s);
   return placed;
 }
-
 async function applyPlan(date, mode, picked){
   if(S.busy) return;
   S.busy = true; render();
   const placed = planFor(date, mode, picked);
-  if(!placed.length){
-    S.busy = false;
-    toast(mode==="off" ? "Day off — nothing scheduled." : "No free slots that respect your meetings.");
-    render();
-    return;
-  }
-  let ok=0, fail=0;
+  let ok=0;
   for(const p of placed){
     try{
       await createBlock(p.card, atMin(date,p.s), atMin(date,p.e), p.kind==="deep");
       ok++;
-      const st = bumpCategory(p.card.boardName, "picked");
+      const st = bumpCategory(p.card.boardName,"picked");
       st.rollovers = st.rollovers || {};
-      const r = st.rollovers[p.card.id] || { first:dayKey(date), count:0 };
-      st.rollovers[p.card.id] = r;
+      st.rollovers[p.card.id] = st.rollovers[p.card.id] || { first:dayKey(date), count:0 };
       S.stats = st;
     }catch(e){
-      fail++;
       toast(errCopy(e), true);
-      if(AUTHZ.has(e && e.code)) break;             // pointless to keep trying
+      if(AUTHZ.has(e && e.code)) break;
     }
   }
   const st = S.stats || { ...DEFAULT_STATS };
@@ -1119,174 +699,376 @@ async function applyPlan(date, mode, picked){
   await saveStats(st);
   await refreshCalendar();
   S.busy = false;
-  toast(fail ? `Scheduled ${ok}, ${fail} failed.` : `Scheduled ${ok} block${ok===1?"":"s"}.`);
+  if(ok) toast(`Scheduled ${ok} task${ok===1?"":"s"}.`);
+  else if(placed.length===0) toast("Nothing to add — the day is already full.");
   render();
 }
-
-/* rollover sweep: anything planned on an earlier day and still open gains a day */
 async function rolloverSweep(){
   const st = S.stats || { ...DEFAULT_STATS };
   const today = dayKey(new Date());
   if(st.lastSweep === today) return;
   st.rollovers = st.rollovers || {};
   const open = new Set(candidates().map(c=>c.id));
-  let touched=false;
   for(const [id,r] of Object.entries(st.rollovers)){
-    if(!open.has(id)){ delete st.rollovers[id]; touched=true; continue; }
-    if(r.last !== today){ r.count = (r.count||0)+1; r.last = today; touched=true; }
+    if(!open.has(id)){ delete st.rollovers[id]; continue; }
+    if(r.last !== today){ r.count = (r.count||0)+1; r.last = today; }
   }
   st.lastSweep = today;
-  if(touched || st.lastSweep) await saveStats(st);
+  await saveStats(st);
 }
 
 /* ---------------------------------------------------------------- writes */
-function emojiFor(c){ return c.deep ? "🎵 " : "•  "; }
-
 async function createBlock(card, start, end, deep){
   const res = await callTool(GCAL, "create_event", {
-    calendarId: CAL_ID,
-    summary: emojiFor(card) + card.name,
-    startTime: iso(start),
-    endTime:   iso(end),
-    description: `${DF_MARK} DayFlow block.\nOriginal: ${card.url}`,
+    calendarId:CAL_ID,
+    summary:(deep?"🎵 ":"• ") + card.name,
+    startTime:iso(start), endTime:iso(end),
+    description:`${DF_MARK} DayFlow block.\nOriginal: ${card.url}`,
     colorId: deep ? "5" : "9"
   });
   return res.payload;
 }
-async function moveBlock(evId, start, end){
-  const res = await callTool(GCAL, "update_event", {
-    calendarId: CAL_ID, eventId: evId,
-    startTime: iso(start), endTime: iso(end),
-    notificationLevel: "NONE"
-  });
-  return res.payload;
-}
-async function deleteBlock(evId){
-  return callTool(GCAL, "delete_event", { calendarId:CAL_ID, eventId:evId, notificationLevel:"NONE" });
-}
-async function refreshCalendar(){
-  try{ await S.mcp.invalidate(GCAL, "list_events"); }catch(_){}
-}
+const moveBlock = (id,start,end) => callTool(GCAL, "update_event",
+  { calendarId:CAL_ID, eventId:id, startTime:iso(start), endTime:iso(end), notificationLevel:"NONE" });
+const deleteBlock = id => callTool(GCAL, "delete_event",
+  { calendarId:CAL_ID, eventId:id, notificationLevel:"NONE" });
+async function refreshCalendar(){ try{ await S.mcp.invalidate(GCAL, "list_events"); }catch(_){} }
 
-async function completeCard(card){
-  if(S.pending.has(card.id)) return;
-  S.pending.add(card.id); render();
+async function completeItem(item){
+  const card = item.card;
+  const key = card ? card.id : item.ev.id;
+  if(S.pending.has(key)) return;
+  S.pending.add(key); render();
   try{
-    await callTool(TRELLO, "trelloWriteCard", { action:"mark_done", cardId:card.id });
-    if(card.boardKey === "today" && card.listId !== LIST_DONE){
-      await callTool(TRELLO, "trelloWriteCard", { action:"move", cardId:card.id, listId:LIST_DONE, pos:"top" });
+    if(card){
+      await callTool(TRELLO, "trelloWriteCard", { action:"mark_done", cardId:card.id });
+      if(card.boardKey === "today" && card.listId !== LIST_DONE)
+        await callTool(TRELLO, "trelloWriteCard", { action:"move", cardId:card.id, listId:LIST_DONE, pos:"top" });
     }
     celebrate();
-
-    const st = bumpCategory(card.boardName, "done");
+    const st = bumpCategory(card ? card.boardName : "—", "done");
     const today = dayKey(new Date());
     st.history = st.history || [];
     let h = st.history.find(x=>x.d===today);
-    if(!h){ h = { d:today, done:0 }; st.history.push(h); }
+    if(!h){ h={ d:today, done:0 }; st.history.push(h); }
     h.done++;
     while(st.history.length > 60) st.history.shift();
     if(st.lastCompletionDate !== today){
-      const y = dayKey(addDays(new Date(),-1));
-      st.streak = (st.lastCompletionDate === y) ? (st.streak||0)+1 : 1;
+      st.streak = (st.lastCompletionDate === dayKey(addDays(new Date(),-1))) ? (st.streak||0)+1 : 1;
       st.lastCompletionDate = today;
     }
-    if(st.rollovers) delete st.rollovers[card.id];
+    if(card && st.rollovers) delete st.rollovers[card.id];
     await saveStats(st);
     await S.mcp.invalidate(TRELLO, "trelloReadCard").catch(()=>{});
-    toast("Done. Nice.");
-  }catch(e){
-    toast(errCopy(e), true);
-  }finally{
-    S.pending.delete(card.id); render();
-  }
-}
-
-/* Delete a card — the same shape as removing a calendar block: confirm, then
-   one immediate write. Trello's delete is an archive (recoverable from the
-   board's archive), and any calendar block linked to the card goes with it so
-   nothing is left pointing at something that no longer exists. */
-async function deleteCard(card){
-  const linked = allEvents().filter(e => e.isTask && card.shortLink && e.cardShort === card.shortLink);
-  const detail = card.name + (linked.length
-    ? `\n\nIts ${linked.length} calendar block${linked.length===1?"":"s"} will be removed too.`
-    : "");
-  const ok = await confirmDialog("Delete this card?", detail, "Delete");
-  if(!ok) return;
-  if(S.pending.has(card.id)) return;
-  S.pending.add(card.id); render();
-  try{
-    await callTool(TRELLO, "trelloWriteCard", { action:"archive", cardId:card.id });
-    for(const ev of linked){
-      try{ await deleteBlock(ev.id); }
-      catch(e){ toast(errCopy(e), true); }
-    }
-    const st = bumpCategory(card.boardName, "skipped");
-    if(st.rollovers) delete st.rollovers[card.id];
-    await saveStats(st);
-    await S.mcp.invalidate(TRELLO, "trelloReadCard").catch(()=>{});
-    if(linked.length) await refreshCalendar();
-    toast(linked.length ? `Card deleted, ${linked.length} block${linked.length===1?"":"s"} removed.` : "Card deleted.");
-  }catch(e){
-    toast(errCopy(e), true);
-  }finally{
-    S.pending.delete(card.id); render();
-  }
-}
-
-async function moveCardToList(cardId, listId){
-  try{
-    await callTool(TRELLO, "trelloWriteCard", { action:"move", cardId, listId, pos:"top" });
-    await S.mcp.invalidate(TRELLO, "trelloReadCard").catch(()=>{});
-    toast("Card moved.");
+    toast("Done.");
   }catch(e){ toast(errCopy(e), true); }
-  render();
+  finally{ S.pending.delete(key); render(); }
 }
 
-/* ---------------------------------------------------------------- conflicts */
-function conflictsAt(date, s, e, ignoreEventId){
-  const hits=[];
-  for(const ev of allEvents()){
-    if(ev.allDay) continue;                        // all-day events never block
-    if(ignoreEventId && ev.id === ignoreEventId) continue;
-    if(!overlapsDay(ev, date)) continue;
-    const a = minsOf(ev.start), b = minsOf(ev.end);
-    const pad = (ev.isTask && ev.deep) ? BUFFER_MIN : 0;   // guard the session's buffer
-    if(s < b+pad && e > a-pad)
-      hits.push({ ev, s:a, e:b, real: !ev.isTask, buffered: pad>0 && (s >= b || e <= a) });
+/* "Not now" — push this task to the next free slot later the SAME day. */
+async function postpone(item){
+  const date = startOfDay(S.anchor);
+  const dur = Math.max(SNAP_MIN, minsOf(item.ev.end) - minsOf(item.ev.start));
+  const pad = item.ev.deep ? BUFFER_MIN : 0;
+  const nowMin = sameDay(date, new Date()) ? minsOf(new Date()) : DAY_START_H*60;
+  /* must land strictly after both "now" and where it currently sits */
+  const from = Math.ceil((Math.max(nowMin, minsOf(item.ev.end)) + 1)/SNAP_MIN)*SNAP_MIN;
+
+  const slot = findSlots(busyFor(date, item.ev.id), DAY_START_H*60, DAY_END_H*60, dur, pad, 1, from)[0];
+  if(!slot){
+    toast("No free time left today — try Re-plan or move it to tomorrow.", true);
+    return;
   }
-  return hits;
-}
-
-function suggestSlots(date, dur, pad, ignoreEventId, fromMin){
-  const busy = busyFor(date, ignoreEventId);
-  const nowMin = sameDay(date,new Date()) ? Math.ceil(minsOf(new Date())/SNAP_MIN)*SNAP_MIN : null;
-  const from = fromMin!=null ? fromMin : nowMin;
-  const seen = new Set(), out = [];
-  for(const s of findSlots(busy, DAY_START_H*60, DAY_END_H*60, dur, pad, 3, from)
-        .concat(findSlots(busy, DAY_START_H*60, DAY_END_H*60, dur, pad, 3, null))){
-    if(seen.has(s.s)) continue;
-    seen.add(s.s); out.push(s);
-    if(out.length === 3) break;
-  }
-  return out;
-}
-
-/* remove a task block (never touches real events — only task blocks get this handler) */
-async function confirmDelete(ev){
-  const ok = await confirmDialog(
-    "Remove this block?",
-    `${fmtRange(ev.start, ev.end)} — ${ev.summary}`,
-    "Remove"
-  );
-  if(!ok) return;
+  if(S.pending.has(item.ev.id)) return;
+  S.pending.add(item.ev.id); render();
   try{
-    await deleteBlock(ev.id);
+    await moveBlock(item.ev.id, atMin(date,slot.s), atMin(date,slot.e));
+    if(item.card) await saveStats(bumpCategory(item.card.boardName, "skipped"));
     await refreshCalendar();
-    toast("Block removed.");
+    toast(`Moved to ${fmtRange(atMin(date,slot.s), atMin(date,slot.e))}.`);
   }catch(e){ toast(errCopy(e), true); }
-  render();
+  finally{ S.pending.delete(item.ev.id); render(); }
 }
 
+async function removeItem(item){
+  const name = item.card ? item.card.name : item.ev.summary;
+  const ok = await confirmDialog("Remove this?", name + (item.card ? "\n\nThe card is archived in Trello and its time block is cleared." : "\n\nThe time block is cleared."), "Remove");
+  if(!ok) return;
+  S.pending.add(item.ev.id); render();
+  try{
+    if(item.card){
+      await callTool(TRELLO, "trelloWriteCard", { action:"archive", cardId:item.card.id });
+      const st = bumpCategory(item.card.boardName, "skipped");
+      if(st.rollovers) delete st.rollovers[item.card.id];
+      await saveStats(st);
+      await S.mcp.invalidate(TRELLO, "trelloReadCard").catch(()=>{});
+    }
+    await deleteBlock(item.ev.id);
+    await refreshCalendar();
+    toast("Removed.");
+  }catch(e){ toast(errCopy(e), true); }
+  finally{ S.pending.delete(item.ev.id); render(); }
+}
+
+/* ---------------------------------------------------------------- agenda */
+/* One ordered list for the viewed day: task blocks (actionable) + meetings. */
+function agenda(){
+  const date = startOfDay(S.anchor);
+  const items = allEvents()
+    .filter(e => !e.allDay && overlapsDay(e,date))
+    .map(e => {
+      const card = e.isTask ? cardFor(e) : null;
+      return {
+        ev:e, card,
+        task:e.isTask,
+        title: card ? card.name : e.summary,
+        s:minsOf(e.start), e2:minsOf(e.end),
+        done: !!(card && card.dueComplete)
+      };
+    })
+    .sort((a,b) => a.s - b.s || a.e2 - b.e2);
+  return items;
+}
+function splitAgenda(){
+  const items = agenda();
+  const isToday = sameDay(S.anchor, new Date());
+  const nowMin = minsOf(new Date());
+  const open = items.filter(i => i.task && !i.done);
+
+  let current = null;
+  if(isToday){
+    current = open.find(i => i.s <= nowMin && i.e2 > nowMin)     // happening now
+           || open.find(i => i.e2 > nowMin)                       // next up
+           || null;
+  }else{
+    current = open[0] || null;
+  }
+  const meetingNow = isToday
+    ? items.find(i => !i.task && i.s <= nowMin && i.e2 > nowMin) || null
+    : null;
+
+  /* a task whose slot already passed isn't "later" — it's unfinished.
+     It keeps its own group so "Later today" stays a truthful forecast. */
+  const missed = isToday
+    ? items.filter(i => i !== current && i.task && !i.done && i.e2 <= nowMin)
+    : [];
+  const rest = items.filter(i =>
+    i !== current && i !== meetingNow && missed.indexOf(i) < 0 && (!isToday || i.e2 > nowMin));
+  const doneCount = items.filter(i => i.task && i.done).length;
+  return { items, current, meetingNow, rest, missed, doneCount, open };
+}
+
+/* ---------------------------------------------------------------- render */
+function render(){
+  if(render._q) return;
+  render._q = true;
+  requestAnimationFrame(()=>{
+    render._q = false;
+    try{ paint(); }catch(e){ console.error(e); }
+  });
+}
+
+function paint(){
+  const d = S.anchor, today = new Date();
+  $("#dateLabel").textContent = `${DOW[d.getDay()]} ${d.getDate()} ${MON[d.getMonth()]}`;
+  const delta = daysBetween(today, d);
+  $("#dateRel").textContent = delta===0 ? "today" : delta===1 ? "tomorrow" : delta===-1 ? "yesterday" : "";
+
+  const main = $("#main");
+  main.innerHTML = "";
+  $("#foot").hidden = true;
+
+  /* no connector bridge at all in this view */
+  if(S.noMcp){
+    main.appendChild(stateCard("🔌","Live data isn't available here",
+      "DayFlow needs the Trello and Google Calendar connectors. Open it from claude.ai with both connected."));
+    return;
+  }
+  /* Without the day's events there is nothing truthful to show — say why,
+     rather than rendering an empty day as though it were a real one. */
+  const firstErr = Object.values(S.errs)[0];
+  if(!S.events && firstErr){
+    const transient = !AUTHZ.has(firstErr.code) && !LIFECYCLE.has(firstErr.code);
+    main.appendChild(stateCard("🔌","Can't reach your data",
+      firstErr.message + (transient ? " Your day will appear as soon as it responds." : "")));
+    return;
+  }
+  if(!S.ready || !S.events){ main.appendChild(el("div","skel")); return; }
+
+  /* Saturday: nothing, quietly */
+  if(sameDay(d,today) && d.getDay() === 6){
+    main.appendChild(stateCard("🕯️","Shabbat","No scheduling today. Enjoy it."));
+    return;
+  }
+  /* Friday: ask before planning anything */
+  if(sameDay(d,today) && d.getDay() === 5 && !S.fridayAnswered && !(S.stats && S.stats.plans && S.stats.plans[dayKey(d)])){
+    main.appendChild(fridayCard());
+    return;
+  }
+
+  const { current, meetingNow, rest, missed, doneCount, open } = splitAgenda();
+
+  if(meetingNow) main.appendChild(meetingNowRow(meetingNow));
+
+  if(current) main.appendChild(nowCard(current));
+  else main.appendChild(emptyNow(doneCount));
+
+  const upcoming = rest.filter(i => !i.done);
+  if(upcoming.length) main.appendChild(section("Later today", upcoming));
+  if(missed.length)   main.appendChild(section("Earlier — not done", missed));
+
+  /* transient trouble: keep data, say it once, quietly */
+  const soft = Object.values(S.errs).find(e => !AUTHZ.has(e.code) && !LIFECYCLE.has(e.code));
+  if(soft){
+    const b = el("div","banner");
+    b.style.marginTop = "20px";
+    b.appendChild(el("div",null,soft.message));
+    main.appendChild(b);
+  }
+
+  $("#foot").hidden = false;
+  $("#sStreak").textContent = (S.stats && S.stats.streak) || 0;
+  $("#sDone").textContent = doneCount;
+  $("#sLeft").textContent = open.length;
+  $("#replanBtn").disabled = !!S.busy;
+  $("#replanBtn").textContent = S.busy ? "Planning…" : "Re-plan day";
+}
+
+function section(label, list){
+  const sec = el("section","later");
+  const lh = el("div","lh");
+  lh.appendChild(el("span","eyebrow",label));
+  lh.appendChild(el("span","eyebrow", String(list.length)));
+  sec.appendChild(lh);
+  const rows = el("div","rows");
+  for(const i of list) rows.appendChild(agendaRow(i));
+  sec.appendChild(rows);
+  return sec;
+}
+
+function nowCard(item){
+  const isToday = sameDay(S.anchor, new Date());
+  const nowMin = minsOf(new Date());
+  const live = isToday && item.s <= nowMin && item.e2 > nowMin;
+
+  const box = el("div","now" + (live ? " live" : ""));
+  const when = el("div","when");
+  when.appendChild(el("span","eyebrow", live ? "Now" : "Next"));
+  when.appendChild(el("span","clock", fmtRange(item.ev.start, item.ev.end)));
+  if(live) when.appendChild(el("span","chip live","in progress"));
+  else if(isToday){
+    const mins = item.s - nowMin;
+    if(mins > 0) when.appendChild(el("span","chip", mins < 60 ? `in ${mins} min` : `in ${Math.round(mins/60)}h`));
+  }
+  box.appendChild(when);
+
+  const h = el("h2"); h.appendChild(bidiSpan(item.title)); box.appendChild(h);
+
+  const tags = el("div","tags");
+  const c = item.card;
+  if(c){
+    if(isAging(c))      tags.appendChild(el("span","chip age", `waiting ${ageDays(c)} days`));
+    else if(c.overdue)  tags.appendChild(el("span","chip crit","overdue"));
+    else if(c.dueToday) tags.appendChild(el("span","chip","due today"));
+    if(c.blocked)       tags.appendChild(el("span","chip","blocked"));
+    if(c.deep)          tags.appendChild(el("span","chip deep","work session"));
+    const bn = el("span","chip"); bidi(bn, c.boardName); tags.appendChild(bn);
+  }else if(!item.ev.mine){
+    tags.appendChild(el("span","chip","from your morning routine"));
+  }
+  if(tags.children.length) box.appendChild(tags);
+
+  const acts = el("div","acts");
+  const doneBtn = el("button","btn primary","Done");
+  doneBtn.addEventListener("click", ()=>completeItem(item));
+  const laterBtn = el("button","btn","Not now");
+  laterBtn.title = "Move to the next free slot later today";
+  laterBtn.addEventListener("click", ()=>postpone(item));
+  const skipBtn = el("button","btn quiet","Remove");
+  skipBtn.addEventListener("click", ()=>removeItem(item));
+  if(S.pending.has(item.ev.id) || (item.card && S.pending.has(item.card.id))){
+    doneBtn.disabled = laterBtn.disabled = skipBtn.disabled = true;
+  }
+  acts.appendChild(doneBtn); acts.appendChild(laterBtn); acts.appendChild(skipBtn);
+  box.appendChild(acts);
+  return box;
+}
+
+function emptyNow(doneCount){
+  if(doneCount) return stateCard("✓","Day clear", `${doneCount} task${doneCount===1?"":"s"} done. Nothing else scheduled.`, true);
+  return stateCard("—","Nothing scheduled","Re-plan to pull in today's priorities.", true);
+}
+
+function stateCard(glyph, title, body, withReplan){
+  const s = el("div","state");
+  s.appendChild(el("div","big",glyph));
+  s.appendChild(el("h2",null,title));
+  s.appendChild(el("p",null,body));
+  if(withReplan){
+    const a = el("div","acts");
+    const b = el("button","btn","Re-plan day");
+    b.disabled = !!S.busy;
+    b.addEventListener("click", ()=>applyPlan(startOfDay(S.anchor),"normal"));
+    a.appendChild(b); s.appendChild(a);
+  }
+  return s;
+}
+
+function meetingNowRow(item){
+  const r = el("div","meeting-now");
+  r.appendChild(el("span","mn-time", fmtRange(item.ev.start, item.ev.end)));
+  const n = el("span","mn-name"); bidi(n, item.title); r.appendChild(n);
+  return r;
+}
+
+function agendaRow(item){
+  const r = el("div","row" + (item.task ? "" : " meeting") + (item.ev.deep ? " deep" : "") + (item.done ? " done" : ""));
+  r.appendChild(el("span","t", hhmm(item.ev.start)));
+  const n = el("span","n");
+  n.appendChild(bidiSpan(item.title));
+  if(!item.task) n.appendChild(el("span","eyebrow sub","meeting"));
+  r.appendChild(n);
+
+  if(item.task){
+    const acts = el("div","acts-inline");
+    const ok = el("button","mini ok","✓");
+    ok.title = "Done"; ok.setAttribute("aria-label","Mark done");
+    ok.addEventListener("click", ()=>completeItem(item));
+    const lt = el("button","mini later-btn","↷");
+    lt.title = "Not now — move later today"; lt.setAttribute("aria-label","Move later today");
+    lt.addEventListener("click", ()=>postpone(item));
+    const dl = el("button","mini del","✕");
+    dl.title = "Remove"; dl.setAttribute("aria-label","Remove");
+    dl.addEventListener("click", ()=>removeItem(item));
+    if(S.pending.has(item.ev.id)) [ok,lt,dl].forEach(b=>b.disabled=true);
+    acts.appendChild(ok); acts.appendChild(lt); acts.appendChild(dl);
+    r.appendChild(acts);
+  }
+  return r;
+}
+
+function fridayCard(){
+  const s = el("div","state");
+  s.appendChild(el("div","big","🌤️"));
+  s.appendChild(el("h2",null,"What do you want today to look like?"));
+  s.appendChild(el("p",null,"It's Friday. Nothing is scheduled until you choose."));
+  const opts = el("div","opts");
+  const mk = (t,d,fn) => {
+    const b = el("button","opt"); b.type="button";
+    b.appendChild(el("span","ot",t)); b.appendChild(el("span","od",d));
+    b.addEventListener("click", fn); return b;
+  };
+  opts.appendChild(mk("Normal, but short","Two quick tasks, no work session.",
+    ()=>{ S.fridayAnswered=true; applyPlan(startOfDay(new Date()),"short"); }));
+  opts.appendChild(mk("Only what's already there","Keep the day as it stands — nothing added.",
+    ()=>{ S.fridayAnswered=true; render(); }));
+  opts.appendChild(mk("Take the day off","Nothing scheduled.",
+    ()=>{ S.fridayAnswered=true; render(); toast("Day off."); }));
+  s.appendChild(opts);
+  return s;
+}
+
+/* ---------------------------------------------------------------- dialog */
 function confirmDialog(title, detail, okLabel){
   return new Promise(resolve => {
     const scrim = el("div","scrim");
@@ -1297,11 +1079,12 @@ function confirmDialog(title, detail, okLabel){
     const p = el("p"); bidi(p, detail); h.appendChild(p);
     dlg.appendChild(h);
     const f = el("div","df");
-    const cancel = el("button","btn","Keep it");
+    const cancel = el("button","btn quiet","Keep");
     const go = el("button","btn primary",okLabel);
     cancel.addEventListener("click", ()=>{ close(); resolve(false); });
     go.addEventListener("click", ()=>{ close(); resolve(true); });
-    f.appendChild(cancel); f.appendChild(go); dlg.appendChild(f);
+    f.appendChild(cancel); f.appendChild(go);
+    dlg.appendChild(f);
     function close(){ scrim.remove(); document.removeEventListener("keydown", onKey); }
     function onKey(e){ if(e.key==="Escape"){ close(); resolve(false); } }
     document.addEventListener("keydown", onKey);
@@ -1310,85 +1093,23 @@ function confirmDialog(title, detail, okLabel){
   });
 }
 
-/* Returns a chosen {s,e} or null if the user cancelled. `override` allowed. */
-function resolveConflict(date, want, dur, pad, ignoreEventId, hits){
-  return new Promise(resolve => {
-    const scrim = el("div","scrim");
-    const dlg = el("div","dialog");
-    dlg.setAttribute("role","dialog");
-    dlg.setAttribute("aria-modal","true");
-
-    const h = el("div","dh");
-    h.appendChild(el("h3",null,"That time is already taken"));
-    h.appendChild(el("p",null,`${fmtRange(atMin(date,want.s),atMin(date,want.e))} overlaps something on your calendar.`));
-    dlg.appendChild(h);
-
-    const body = el("div","db");
-    for(const c of hits.slice(0,3)){
-      const w = el("div","conflict-with");
-      const strong = el("strong"); bidi(strong, c.ev.summary);
-      w.appendChild(strong);
-      const why = c.buffered ? " · needs 15 min clear either side"
-                : c.real    ? " · real event — protected"
-                :             " · task block";
-      w.appendChild(el("div","num", fmtRange(c.ev.start,c.ev.end) + why));
-      body.appendChild(w);
-    }
-    const slots = suggestSlots(date, dur, pad, ignoreEventId, null);
-    if(slots.length){
-      const lb = el("div","lbl","Free instead"); lb.style.marginTop="4px";
-      body.appendChild(lb);
-      for(const s of slots){
-        const btn = el("button","slot");
-        btn.type="button";
-        const L = el("div");
-        L.appendChild(el("div","st", fmtRange(atMin(date,s.s), atMin(date,s.e))));
-        L.appendChild(el("div","sd", pad ? `${dur} min + ${pad} min buffer each side` : `${dur} min, clear`));
-        btn.appendChild(L);
-        btn.appendChild(el("span","badge ok","Free"));
-        btn.addEventListener("click", ()=>{ close(); resolve(s); });
-        body.appendChild(btn);
-      }
-    }else{
-      body.appendChild(el("div","empty","No free window today that respects your meetings."));
-    }
-    dlg.appendChild(body);
-
-    const f = el("div","df");
-    const cancel = el("button","btn","Cancel");
-    const force  = el("button","btn","Place anyway");
-    cancel.addEventListener("click", ()=>{ close(); resolve(null); });
-    force.addEventListener("click",  ()=>{ close(); resolve(want); });
-    f.appendChild(cancel); f.appendChild(force);
-    dlg.appendChild(f);
-
-    function close(){ scrim.remove(); document.removeEventListener("keydown", onKey); }
-    function onKey(e){ if(e.key==="Escape"){ close(); resolve(null); } }
-    document.addEventListener("keydown", onKey);
-    scrim.addEventListener("click", e => { if(e.target===scrim){ close(); resolve(null); } });
-
-    scrim.appendChild(dlg);
-    document.body.appendChild(scrim);
-    force.focus();
-  });
-}
-
-/* ---------------------------------------------------------------- celebration (cosmetic only) */
-const fx = $("#fx"); const fxc = fx.getContext("2d");
+/* ---------------------------------------------------------------- flourish */
+const fx = $("#fx"), fxc = fx.getContext("2d");
 let parts=[], raf=null;
-function fitFx(){ fx.width = innerWidth*devicePixelRatio; fx.height = innerHeight*devicePixelRatio; fxc.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0); }
+function fitFx(){ fx.width=innerWidth*devicePixelRatio; fx.height=innerHeight*devicePixelRatio; fxc.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0); }
 addEventListener("resize", fitFx); fitFx();
-
 function celebrate(){
   chime();
   if(matchMedia("(prefers-reduced-motion: reduce)").matches) return;
   const cs = getComputedStyle(document.documentElement);
-  const cols = ["--accent","--done","--age","--deep"].map(v=>cs.getPropertyValue(v).trim()||"#0E7C86");
-  const ox = innerWidth-190, oy = 84;
-  for(let i=0;i<70;i++){
-    const a = (Math.random()*Math.PI*2), sp = 2+Math.random()*5.5;
-    parts.push({ x:ox, y:oy, vx:Math.cos(a)*sp, vy:Math.sin(a)*sp-2.2,
-                 r:2+Math.random()*3.2, c:cols[i%cols.length], life:1, rot:Math.random()*6 });
+  const cols = ["--accent","--done","--age"].map(v => cs.getPropertyValue(v).trim() || "#0E7C86");
+  const host = document.querySelector(".now") || document.querySelector(".state");
+  const r = host ? host.getBoundingClientRect() : { left:innerWidth/2, top:innerHeight/3, width:0, height:0 };
+  const ox = r.left + r.width/2, oy = r.top + r.height/2;
+  for(let i=0;i<54;i++){
+    const a = Math.random()*Math.PI*2, sp = 2+Math.random()*4.5;
+    parts.push({ x:ox, y:oy, vx:Math.cos(a)*sp, vy:Math.sin(a)*sp-2, r:2+Math.random()*2.6,
+                 c:cols[i%cols.length], life:1, rot:Math.random()*6 });
   }
   if(!raf) raf = requestAnimationFrame(tick);
 }
@@ -1396,8 +1117,9 @@ function tick(){
   fxc.clearRect(0,0,innerWidth,innerHeight);
   parts = parts.filter(p=>p.life>0);
   for(const p of parts){
-    p.vy += 0.13; p.x += p.vx; p.y += p.vy; p.life -= 0.012; p.rot += 0.14;
-    fxc.save(); fxc.globalAlpha = Math.max(0,p.life); fxc.translate(p.x,p.y); fxc.rotate(p.rot);
+    p.vy += 0.14; p.x += p.vx; p.y += p.vy; p.life -= 0.014; p.rot += 0.15;
+    fxc.save(); fxc.globalAlpha = Math.max(0,p.life);
+    fxc.translate(p.x,p.y); fxc.rotate(p.rot);
     fxc.fillStyle = p.c; fxc.fillRect(-p.r,-p.r*0.6,p.r*2,p.r*1.2); fxc.restore();
   }
   raf = parts.length ? requestAnimationFrame(tick) : (fxc.clearRect(0,0,innerWidth,innerHeight), null);
@@ -1412,753 +1134,34 @@ function chime(){
       const o=actx.createOscillator(), g=actx.createGain();
       o.type="sine"; o.frequency.value=f;
       g.gain.setValueAtTime(0,t+i*0.08);
-      g.gain.linearRampToValueAtTime(0.09,t+i*0.08+0.012);
-      g.gain.exponentialRampToValueAtTime(0.0001,t+i*0.08+0.42);
-      o.connect(g); g.connect(actx.destination); o.start(t+i*0.08); o.stop(t+i*0.08+0.45);
+      g.gain.linearRampToValueAtTime(0.075,t+i*0.08+0.012);
+      g.gain.exponentialRampToValueAtTime(0.0001,t+i*0.08+0.4);
+      o.connect(g); g.connect(actx.destination); o.start(t+i*0.08); o.stop(t+i*0.08+0.42);
     });
   }catch(_){}
 }
 function toast(msg, isErr){
   const t = el("div","toast"+(isErr?" err":""));
-  t.appendChild(el("span",null,isErr?"⚠":"✓"));
-  const s = el("span"); bidi(s,msg); t.appendChild(s);
+  bidi(t, msg);
   $("#toasts").appendChild(t);
   setTimeout(()=>{ t.style.opacity="0"; t.style.transition="opacity .3s"; setTimeout(()=>t.remove(),320); }, 3400);
 }
 
-/* ---------------------------------------------------------------- range */
-function visibleRange(){
-  if(S.view === "day")   return [startOfDay(S.anchor), addDays(startOfDay(S.anchor),1)];
-  if(S.view === "week"){ const a = startOfWeek(S.anchor); return [a, addDays(a,7)]; }
-  const first = new Date(S.anchor.getFullYear(), S.anchor.getMonth(), 1);
-  const gridA = startOfWeek(first);
-  return [gridA, addDays(gridA,42)];
-}
-function rangeLabel(){
-  if(S.view==="day")  return `${DOW[S.anchor.getDay()]} ${S.anchor.getDate()} ${MON[S.anchor.getMonth()].slice(0,3)} ${S.anchor.getFullYear()}`;
-  if(S.view==="week"){ const a=startOfWeek(S.anchor), b=addDays(a,6);
-    return `${a.getDate()} ${MON[a.getMonth()].slice(0,3)} – ${b.getDate()} ${MON[b.getMonth()].slice(0,3)} ${b.getFullYear()}`; }
-  return `${MON[S.anchor.getMonth()]} ${S.anchor.getFullYear()}`;
-}
-
-/* ---------------------------------------------------------------- render: calendar */
-function renderCalendar(){
-  const host = $("#calScroll");
-  host.innerHTML = "";
-
-  if(!S.ready && !S.errs.cal){
-    for(let i=0;i<7;i++){ const s=el("div","skeleton"); s.style.margin="8px 12px"; host.appendChild(s); }
-    return;
-  }
-  const err = S.errs.cal;
-  if(err){
-    const b = el("div","banner "+(AUTHZ.has(err.code)||LIFECYCLE.has(err.code)?"crit":"warn"));
-    b.style.margin="10px 12px";
-    const c = el("div");
-    c.appendChild(el("strong","bt","Calendar"));
-    c.appendChild(el("div",null,err.message));
-    if(S.events && S.events.storedAt)
-      c.appendChild(el("div","stale","Showing data from "+hhmm(new Date(S.events.storedAt))));
-    b.appendChild(c);
-    host.appendChild(b);
-    if(AUTHZ.has(err.code)||LIFECYCLE.has(err.code)) return;
-  }
-
-  if(S.view === "month") return renderMonth(host);
-
-  const days = S.view === "day" ? [startOfDay(S.anchor)]
-                                : Array.from({length:7},(_,i)=>addDays(startOfWeek(S.anchor),i));
-  const ppm = S.view === "day" ? PPM_DAY : PPM_WEEK;
-  const H = (GRID_END_H-GRID_START_H)*60*ppm;
-
-  /* all-day strip */
-  const ad = el("div","allday");
-  ad.appendChild(el("span","lbl","All-day"));
-  const adEvents = allEvents().filter(e => e.allDay && days.some(d=>overlapsDay(e,d)));
-  if(!adEvents.length) ad.appendChild(el("span","lbl","—"));
-  for(const e of adEvents){ const c = el("span","chip-allday"); bidi(c, e.summary); ad.appendChild(c); }
-  host.appendChild(ad);
-
-  /* sticky header row */
-  const head = el("div","headrow");
-  head.appendChild(el("div","gutter-h"));
-  const ch = el("div","cols-h");
-  for(const d of days){
-    const cell = el("div");
-    const inner = el("div","colhead"+(sameDay(d,new Date())?" is-today":""));
-    inner.appendChild(el("div","dow",DOW[d.getDay()]));
-    inner.appendChild(el("div","dnum",String(d.getDate())));
-    cell.appendChild(inner);
-    ch.appendChild(cell);
-  }
-  head.appendChild(ch);
-  host.appendChild(head);
-
-  /* grid */
-  const wrap = el("div","grid-wrap");
-  const gut = el("div","gutter"); gut.style.height = H+"px";
-  for(let h=GRID_START_H; h<=GRID_END_H; h++){
-    const t = el("div","hr", pad2(h)+":00");
-    t.style.top = ((h-GRID_START_H)*60*ppm)+"px";
-    gut.appendChild(t);
-    /* half-hour stamps once there is room for them */
-    if(ppm >= 1.5 && h < GRID_END_H){
-      const half = el("div","hr half", pad2(h)+":30");
-      half.style.top = (((h-GRID_START_H)*60+30)*ppm)+"px";
-      gut.appendChild(half);
-    }
-  }
-  wrap.appendChild(gut);
-
-  const cols = el("div","cols"); cols.style.height = H+"px";
-  for(const d of days){
-    const col = el("div","daycol"+((d.getDay()===5||d.getDay()===6)?" is-weekend":"")+(sameDay(d,new Date())?" is-today":""));
-    col.dataset.day = dayKey(d);
-    for(let h=GRID_START_H; h<=GRID_END_H; h++){
-      const ln = el("div","hourline"); ln.style.top=((h-GRID_START_H)*60*ppm)+"px"; col.appendChild(ln);
-      if(h<GRID_END_H){ const hf=el("div","hourline half"); hf.style.top=((h-GRID_START_H)*60+30)*ppm+"px"; col.appendChild(hf); }
-    }
-    /* shade the hours the scheduler will never use */
-    for(const [a,b] of [[GRID_START_H*60, DAY_START_H*60],[DAY_END_H*60, GRID_END_H*60]]){
-      if(b <= a) continue;
-      const oh = el("div","offhours");
-      oh.style.top = ((a-GRID_START_H*60)*ppm)+"px";
-      oh.style.height = ((b-a)*ppm)+"px";
-      col.appendChild(oh);
-    }
-    layoutDay(col, d, ppm);
-    wireDropTarget(col, d, ppm);
-    if(sameDay(d,new Date())){
-      const nm = minsOf(new Date());
-      if(nm >= GRID_START_H*60 && nm <= GRID_END_H*60){
-        const ph = el("div","playhead"); ph.style.top = ((nm-GRID_START_H*60)*ppm)+"px"; col.appendChild(ph);
-        const pill = el("div","nowpill", hhmm(new Date())); pill.style.top = ((nm-GRID_START_H*60)*ppm)+"px"; col.appendChild(pill);
-      }
-    }
-    cols.appendChild(col);
-  }
-  wrap.appendChild(cols);
-  host.appendChild(wrap);
-
-  /* only recentre when the view or day actually changed — never on a repaint */
-  const stamp = S.view+"|"+dayKey(S.anchor);
-  if(S.scrollStamp !== stamp){
-    S.scrollStamp = stamp;
-    const nm = sameDay(S.anchor,new Date()) ? minsOf(new Date()) : DAY_START_H*60;
-    const top = Math.max(0,(nm-GRID_START_H*60)*ppm - 150);
-    requestAnimationFrame(()=>{ host.scrollTop = top; });
-  }
-}
-
-/* overlap-aware column layout: cluster → lanes → equal widths within the cluster */
-function layoutDay(col, d, ppm){
-  const evs = allEvents().filter(e => !e.allDay && overlapsDay(e,d))
-    .map(e => ({
-      e,
-      s:  Math.max(sameDay(e.start,d) ? minsOf(e.start) : 0, GRID_START_H*60),
-      en: sameDay(e.end,d) ? Math.min(minsOf(e.end), GRID_END_H*60) : GRID_END_H*60
-    }))
-    .filter(x => x.en > x.s)
-    .sort((a,b)=> a.s - b.s || b.en - a.en);
-
-  /* split into clusters of transitively-overlapping events */
-  const clusters=[]; let cur=[], curEnd=-1;
-  for(const x of evs){
-    if(cur.length && x.s >= curEnd){ clusters.push(cur); cur=[]; curEnd=-1; }
-    cur.push(x); curEnd = Math.max(curEnd, x.en);
-  }
-  if(cur.length) clusters.push(cur);
-
-  for(const cl of clusters){
-    const laneEnds=[];
-    for(const x of cl){
-      let lane = laneEnds.findIndex(end => end <= x.s);
-      if(lane === -1){ laneEnds.push(x.en); lane = laneEnds.length-1; }
-      else laneEnds[lane] = x.en;
-      x.lane = lane;
-    }
-    const total = Math.max(1, laneEnds.length);
-    for(const x of cl) drawEvent(col, x.e, x.s, x.en, x.lane, total, d, ppm);
-  }
-}
-
-function drawEvent(col, e, s, en, lane, total, d, ppm){
-  {
-    const node = el("div","ev "+(e.isTask ? ("task"+(e.deep?" deep":"")+(e.mine?"":" external")) : "real"));
-    const dur = en - s;
-    node.style.top    = ((s-GRID_START_H*60)*ppm)+"px";
-    node.style.height = Math.max(15, dur*ppm - 2)+"px";
-    node.style.left   = `calc(${(lane/total)*100}% + 3px)`;
-    node.style.width  = `calc(${(1/total)*100}% - 7px)`;
-
-    /* the timestamp is never dropped — short blocks just wear it inline */
-    const tight = dur*ppm < 40;
-    if(tight) node.classList.add("inline");
-    const tEl = el("div","ev-t", tight ? hhmm(e.start) : fmtRange(e.start,e.end));
-    node.appendChild(tEl);
-    if(!tight && dur >= 45){
-      const h = Math.floor(dur/60), m = dur%60;
-      tEl.appendChild(el("span","ev-dur", h ? (m ? `${h}h ${m}m` : `${h}h`) : `${m}m`));
-    }
-    const nm = el("div","ev-n"); bidi(nm, e.summary); node.appendChild(nm);
-
-    /* past / now, only meaningful on today's column */
-    if(sameDay(d, new Date())){
-      const nowM = minsOf(new Date());
-      if(en <= nowM) node.classList.add("past");
-      else if(s <= nowM && en > nowM) node.classList.add("now");
-    }
-    node.title = fmtRange(e.start,e.end) + " — " + e.summary + (
-      !e.isTask ? " (real event — protected)"
-      : e.mine  ? " (DayFlow block · drag to move, double-click to remove)"
-      :           " (task block from another source — counts against today's cap)");
-
-    if(e.isTask){
-      node.appendChild(el("div","grip"));
-      wireEventDrag(node, e, d, ppm);
-      node.addEventListener("dblclick", () => confirmDelete(e));
-    }else{
-      node.style.cursor = "default";
-    }
-    col.appendChild(node);
-
-    /* buffer shading around deep-work blocks */
-    if(e.isTask && e.deep){
-      for(const off of [[-BUFFER_MIN,0],[0,BUFFER_MIN]]){
-        const bs = off[0]<0 ? s-BUFFER_MIN : en;
-        const bh = BUFFER_MIN;
-        if(bs < GRID_START_H*60) continue;
-        const bnode = el("div","ev buffer");
-        bnode.style.top=((bs-GRID_START_H*60)*ppm)+"px";
-        bnode.style.height=(bh*ppm-2)+"px";
-        bnode.style.left=`calc(${(lane/total)*100}% + 3px)`;
-        bnode.style.width=`calc(${(1/total)*100}% - 7px)`;
-        bnode.appendChild(el("div","ev-n","buffer"));
-        col.appendChild(bnode);
-      }
-    }
-  }
-}
-
-function renderMonth(host){
-  const [gridA] = visibleRange();
-  const m = S.anchor.getMonth();
-  const grid = el("div","month");
-  for(const d of DOW){ const h=el("div","mh"); h.appendChild(el("div","lbl",d)); grid.appendChild(h); }
-  for(let i=0;i<42;i++){
-    const day = addDays(gridA,i);
-    const cell = el("div","mcell"+(day.getMonth()!==m?" out":"")+(sameDay(day,new Date())?" today":""));
-    cell.appendChild(el("div","mday",String(day.getDate())));
-    const evs = allEvents().filter(e=>overlapsDay(e,day)).sort((a,b)=>a.start-b.start);
-    for(const e of evs.slice(0,3)){
-      const c = el("div","mchip"+(e.isTask?(e.deep?" task deep":" task"):""));
-      bidi(c, (e.allDay?"":hhmm(e.start)+" ")+e.summary);
-      cell.appendChild(c);
-    }
-    if(evs.length>3) cell.appendChild(el("div","mmore",`+${evs.length-3} more`));
-    cell.addEventListener("dblclick", ()=>{ S.anchor=startOfDay(day); S.view="day"; syncView(); });
-    grid.appendChild(cell);
-  }
-  host.appendChild(grid);
-}
-
-/* ---------------------------------------------------------------- drag: card → calendar */
-let DRAG = null;
-
-function wireDropTarget(col, date, ppm){
-  col.addEventListener("dragover", e => {
-    if(!DRAG || DRAG.type!=="card") return;
-    e.preventDefault(); e.dataTransfer.dropEffect="copy";
-    col.classList.add("drop-active");
-  });
-  col.addEventListener("dragleave", ()=>col.classList.remove("drop-active"));
-  col.addEventListener("drop", async e => {
-    col.classList.remove("drop-active");
-    if(!DRAG || DRAG.type!=="card") return;
-    e.preventDefault();
-    const card = DRAG.card;
-    const rect = col.getBoundingClientRect();
-    const min = GRID_START_H*60 + (e.clientY - rect.top)/ppm;
-    let s = Math.round(min/SNAP_MIN)*SNAP_MIN;
-    const dur = card.deep ? (card.est||DEEP_DEFAULT) : SMALL_MIN;
-    const pad = card.deep ? BUFFER_MIN : 0;
-    s = clamp(s, GRID_START_H*60, GRID_END_H*60-dur);
-    let want = { s, e:s+dur };
-
-    const hits = conflictsAt(date, want.s-pad, want.e+pad, null);
-    if(hits.length){
-      const chosen = await resolveConflict(date, want, dur, pad, null, hits);
-      if(!chosen) return;
-      want = chosen;
-    }
-    try{
-      await createBlock(card, atMin(date,want.s), atMin(date,want.e), card.deep);
-      const st = bumpCategory(card.boardName,"picked");
-      await saveStats(st);
-      await refreshCalendar();
-      toast(`Scheduled ${fmtRange(atMin(date,want.s),atMin(date,want.e))}.`);
-    }catch(err){ toast(errCopy(err), true); }
-    render();
-  });
-}
-
-/* ---------------------------------------------------------------- drag: event move / resize */
-function wireEventDrag(node, ev, date, ppm){
-  let mode=null, startY=0, origS=0, origE=0, ghostS=0, ghostE=0;
-
-  const onDown = e => {
-    if(e.button!==0) return;
-    mode = e.target.classList.contains("grip") ? "resize" : "move";
-    startY = e.clientY;
-    origS = minsOf(ev.start); origE = minsOf(ev.end);
-    ghostS = origS; ghostE = origE;
-    node.classList.add("dragging");
-    node.setPointerCapture(e.pointerId);
-    e.preventDefault();
-  };
-  const onMove = e => {
-    if(!mode) return;
-    const dMin = Math.round(((e.clientY-startY)/ppm)/SNAP_MIN)*SNAP_MIN;
-    if(mode==="move"){ ghostS = origS+dMin; ghostE = origE+dMin; }
-    else { ghostE = Math.max(origS+SNAP_MIN, origE+dMin); }
-    ghostS = clamp(ghostS, GRID_START_H*60, GRID_END_H*60-SNAP_MIN);
-    ghostE = clamp(ghostE, ghostS+SNAP_MIN, GRID_END_H*60);
-    node.style.top    = ((ghostS-GRID_START_H*60)*ppm)+"px";
-    node.style.height = Math.max(15,(ghostE-ghostS)*ppm-2)+"px";
-    const t = node.querySelector(".ev-t");
-    if(t) t.textContent = fmtRange(atMin(date,ghostS), atMin(date,ghostE));
-  };
-  const onUp = async e => {
-    if(!mode) return;
-    const m = mode; mode=null;
-    node.classList.remove("dragging");
-    try{ node.releasePointerCapture(e.pointerId); }catch(_){}
-    if(ghostS===origS && ghostE===origE){ render(); return; }
-
-    const dur = ghostE-ghostS;
-    const pad = ev.deep ? BUFFER_MIN : 0;
-    let want = { s:ghostS, e:ghostE };
-    const hits = conflictsAt(date, want.s-pad, want.e+pad, ev.id);
-    if(hits.length){
-      const chosen = await resolveConflict(date, want, dur, pad, ev.id, hits);
-      if(!chosen){ render(); return; }
-      want = chosen;
-    }
-    try{
-      await moveBlock(ev.id, atMin(date,want.s), atMin(date,want.e));
-      await refreshCalendar();
-      toast(m==="resize" ? "Block resized." : "Block moved.");
-    }catch(err){ toast(errCopy(err), true); }
-    render();
-  };
-  node.addEventListener("pointerdown", onDown);
-  node.addEventListener("pointermove", onMove);
-  node.addEventListener("pointerup", onUp);
-  node.addEventListener("pointercancel", ()=>{ mode=null; node.classList.remove("dragging"); render(); });
-}
-
-/* ---------------------------------------------------------------- render: rail */
-function renderRail(){
-  const host = $("#rail");
-  host.innerHTML = "";
-
-  /* connector-level failure: one page message, not one per section */
-  const codes = Object.values(S.errs).map(e=>e.code);
-  if(codes.length >= 5 && new Set(codes).size === 1 && (AUTHZ.has(codes[0]) || LIFECYCLE.has(codes[0]))){
-    const b = el("div","banner crit");
-    const c = el("div");
-    c.appendChild(el("strong","bt","DayFlow can't reach your data"));
-    c.appendChild(el("div",null, Object.values(S.errs)[0].message));
-    b.appendChild(c);
-    host.appendChild(b);
-    return;
-  }
-
-  /* Blocks DayFlow didn't author still fill the day — say so plainly, because
-     they consume the caps and are the usual reason nothing new gets placed. */
-  if(S.events){
-    const have = existingBlocks(new Date());
-    if(have.foreign && (have.small > MAX_SMALL || have.deep > MAX_DEEP || have.foreign === have.total)){
-      const b = el("div","banner warn");
-      const c = el("div");
-      c.appendChild(el("strong","bt", `${have.foreign} block${have.foreign===1?"":"s"} today came from another source`));
-      c.appendChild(el("div",null,
-        `DayFlow didn't place ${have.foreign===1?"it":"them"} — most likely your scheduled morning routine. ` +
-        `They still count against today's limits (${have.small}/${MAX_SMALL} quick, ${have.deep}/${MAX_DEEP} session), ` +
-        `so DayFlow won't add more until the day frees up. Dashed left edge marks them.`));
-      b.appendChild(c);
-      host.appendChild(b);
-    }
-  }
-
-  host.appendChild(renderHighlights());
-
-  for(const b of BOARDS){
-    if(b.key === "today") continue;
-    host.appendChild(renderBoard(b));
-  }
-  host.appendChild(renderStatsPanel());
-}
-
-function renderHighlights(){
-  const box = el("div","highlights");
-  const hh = el("div","hh");
-  const t = el("div","t");
-  t.appendChild(el("span","pulse"));
-  t.appendChild(el("span",null,"Today's Highlights"));
-  hh.appendChild(t);
-
-  const err = S.errs["cards:today"];
-  const bag = S.cards.today;
-  const cards = bag && bag.payload
-    ? ((bag.payload.cards && bag.payload.cards.nodes) || [])
-        .map(n => normCard(n, BOARDS[3]))
-        .filter(c => c.listId === LIST_TODAY && !c.isStats)
-    : [];
-
-  hh.appendChild(el("span","badge at", String(cards.length)));
-  box.appendChild(hh);
-
-  const list = el("div","hlist");
-  if(err && !bag){
-    const b = el("div","banner "+(AUTHZ.has(err.code)?"crit":"warn"));
-    const c = el("div"); c.appendChild(el("strong","bt","Highlights")); c.appendChild(el("div",null,err.message));
-    b.appendChild(c); list.appendChild(b);
-  }else if(!bag){
-    for(let i=0;i<3;i++) list.appendChild(el("div","skeleton"));
-  }else if(!cards.length){
-    list.appendChild(el("div","empty","Nothing in 🔴 היום. Clean slate."));
-  }else{
-    if(err){
-      const w = el("div","banner warn");
-      const c = el("div"); c.appendChild(el("div",null,err.message));
-      if(bag.storedAt) c.appendChild(el("div","stale","Last updated "+hhmm(new Date(bag.storedAt))));
-      w.appendChild(c); list.appendChild(w);
-    }
-    for(const c of cards) list.appendChild(renderCard(c,true));
-  }
-  box.appendChild(list);
-  return box;
-}
-
-function renderBoard(b){
-  const box = el("div","board");
-  box.dataset.collapsed = "false";
-
-  const bh = el("div","bh");
-  const nm = el("div","bn"); bidi(nm, b.name);
-  bh.appendChild(nm);
-  const right = el("div"); right.style.display="flex"; right.style.gap="6px"; right.style.alignItems="center";
-  const bag = S.cards[b.key];
-  const nodes = bag && bag.payload ? ((bag.payload.cards&&bag.payload.cards.nodes)||[]) : [];
-  const open = nodes.map(n=>normCard(n,b)).filter(c=>!c.dueComplete && !c.isStats);
-  right.appendChild(el("span","cnt", String(open.length)));
-  right.appendChild(el("span","badge"+(b.kind==="deep"?" deep":""), b.kind==="deep"?"deep work":"quick"));
-  bh.appendChild(right);
-  bh.addEventListener("click", ()=>{ box.dataset.collapsed = box.dataset.collapsed==="true" ? "false":"true"; });
-  box.appendChild(bh);
-
-  const lists = el("div","lists");
-  const err = S.errs["cards:"+b.key];
-  if(err && !bag){
-    const bn = el("div","banner "+(AUTHZ.has(err.code)?"crit":"warn"));
-    const c = el("div"); c.appendChild(el("strong","bt","Board unavailable")); c.appendChild(el("div",null,err.message));
-    bn.appendChild(c); lists.appendChild(bn);
-    box.appendChild(lists); return box;
-  }
-  if(!bag){
-    for(let i=0;i<2;i++) lists.appendChild(el("div","skeleton"));
-    box.appendChild(lists); return box;
-  }
-  if(err){
-    const w = el("div","banner warn");
-    const c = el("div"); c.appendChild(el("div",null,err.message));
-    if(bag.storedAt) c.appendChild(el("div","stale","Last updated "+hhmm(new Date(bag.storedAt))));
-    w.appendChild(c); lists.appendChild(w);
-  }
-
-  const declared = S.lists[b.key] || [];
-  const seen = new Map();
-  for(const n of nodes){ if(n.list && !seen.has(n.list.id)) seen.set(n.list.id, n.list.name); }
-  const listDefs = declared.length
-    ? declared.map(l=>({id:l.id,name:l.name}))
-    : Array.from(seen, ([id,name])=>({id,name}));
-
-  for(const ld of listDefs){
-    const cards = nodes.map(n=>normCard(n,b)).filter(c=>c.listId===ld.id && !c.isStats);
-    if(!cards.length && declared.length && listDefs.length>4) continue;   // hide noise, keep drop targets when few
-    const L = el("div","list");
-    L.dataset.listId = ld.id;
-    const lh = el("div","lh");
-    const ln = el("div","lbl"); bidi(ln, ld.name); lh.appendChild(ln);
-    lh.appendChild(el("span","cnt lbl", String(cards.length)));
-    L.appendChild(lh);
-    const cc = el("div","cards");
-    for(const c of cards) cc.appendChild(renderCard(c,false));
-    if(!cards.length) cc.appendChild(el("div","empty","Drop here"));
-    L.appendChild(cc);
-    wireListDrop(L, ld.id);
-    lists.appendChild(L);
-  }
-  box.appendChild(lists);
-  return box;
-}
-
-function wireListDrop(L, listId){
-  L.addEventListener("dragover", e => {
-    if(!DRAG || DRAG.type!=="card") return;
-    e.preventDefault(); e.dataTransfer.dropEffect="move"; L.classList.add("drop-active");
-  });
-  L.addEventListener("dragleave", ()=>L.classList.remove("drop-active"));
-  L.addEventListener("drop", e => {
-    L.classList.remove("drop-active");
-    if(!DRAG || DRAG.type!=="card") return;
-    e.preventDefault(); e.stopPropagation();
-    const card = DRAG.card;
-    if(card.listId === listId) return;
-    moveCardToList(card.id, listId);
-  });
-}
-
-function scheduledShortLinks(){
-  const set = new Set();
-  for(const e of allEvents()) if(e.isTask && e.cardShort) set.add(e.cardShort);
-  return set;
-}
-
-function renderCard(c, isHighlight){
-  const sched = scheduledShortLinks();
-  const tier = tierOf(c);
-  const aging = isAging(c);
-  const node = el("div","card tier-"+tier+(c.deep?" deepwork":"")+(aging?" aging":"")+(c.dueComplete?" done":"")+
-                          ((c.shortLink && sched.has(c.shortLink))?" scheduled":""));
-  node.draggable = true;
-  node.addEventListener("dragstart", e => {
-    DRAG = { type:"card", card:c };
-    node.classList.add("dragging");
-    try{ e.dataTransfer.setData("text/plain", c.name); e.dataTransfer.effectAllowed="copyMove"; }catch(_){}
-  });
-  node.addEventListener("dragend", ()=>{ DRAG=null; node.classList.remove("dragging"); });
-
-  const row = el("div","row");
-  const nm = el("div","cname"); bidi(nm, c.name);
-  row.appendChild(nm);
-
-  const ctrls = el("div","ctrls");
-  const del = el("button","del");
-  del.type="button";
-  del.setAttribute("aria-label","Delete card");
-  del.title = "Delete this card (double-click the card works too)";
-  del.textContent = "✕";
-  del.addEventListener("click", ev => { ev.stopPropagation(); deleteCard(c); });
-  ctrls.appendChild(del);
-
-  const tick = el("button","tick"+(c.dueComplete?" on":""));
-  tick.type="button";
-  tick.setAttribute("aria-label","Mark done");
-  tick.textContent = "✓";
-  if(S.pending.has(c.id)) tick.style.opacity=".5";
-  tick.addEventListener("click", ev => { ev.stopPropagation(); if(!c.dueComplete) completeCard(c); });
-  ctrls.appendChild(tick);
-  row.appendChild(ctrls);
-  node.appendChild(row);
-
-  /* same gesture the calendar uses for removing a block */
-  node.addEventListener("dblclick", ev => { ev.preventDefault(); deleteCard(c); });
-
-  const meta = el("div","meta");
-  if(aging) meta.appendChild(el("span","badge age", `aging · ${ageDays(c)}d`));
-  else if(tier===1) meta.appendChild(el("span","badge crit","overdue + blocked"));
-  else if(tier===2) meta.appendChild(el("span","badge crit","overdue"));
-  else if(tier===3) meta.appendChild(el("span","badge age","due today"));
-  else if(c.blocked) meta.appendChild(el("span","badge","blocked"));
-  else if(c.stalled) meta.appendChild(el("span","badge",`stalled ${daysBetween(c.lastActivityAt,new Date())}d`));
-
-  if(c.due) meta.appendChild(el("span","badge", `due ${c.due.getDate()}/${c.due.getMonth()+1}`));
-  if(c.deep) meta.appendChild(el("span","badge deep", (c.est||DEEP_DEFAULT)+"m session"));
-  if(c.shortLink && sched.has(c.shortLink)) meta.appendChild(el("span","badge at","on calendar"));
-  if(isHighlight && c.boardName) { const bn=el("span","badge"); bidi(bn,c.boardName); meta.appendChild(bn); }
-  if(meta.children.length) node.appendChild(meta);
-
-  return node;
-}
-
-function renderStatsPanel(){
-  const box = el("div","board");
-  const bh = el("div","bh");
-  bh.appendChild(el("div","bn","Signal"));
-  bh.appendChild(el("span","cnt","learned weights"));
-  box.appendChild(bh);
-  const body = el("div","lists");
-
-  const st = S.stats;
-  if(!st){ body.appendChild(el("div","empty","Stats store not loaded yet.")); box.appendChild(body); return box; }
-
-  const cats = Object.entries(st.categories||{}).filter(([,v])=>v.picked);
-  if(!cats.length){
-    body.appendChild(el("div","empty","No history yet — plan a day and this fills in."));
-  }else{
-    const L = el("div","list");
-    for(const [name,v] of cats.sort((a,b)=>(b[1].done/b[1].picked)-(a[1].done/a[1].picked))){
-      const r = v.picked ? Math.round(100*v.done/v.picked) : 0;
-      const row = el("div","statrow");
-      const n = el("div","cname"); bidi(n, name);
-      row.appendChild(n);
-      row.appendChild(el("span","badge "+(r>=60?"ok":(r>=30?"age":"crit")), r+"%"));
-      L.appendChild(row);
-    }
-    body.appendChild(L);
-    const note = el("div","empty");
-    note.style.textAlign="left"; note.style.padding="6px 4px 0";
-    note.textContent = "Higher-completion boards get a small ranking boost; chronic stallers get nudged down.";
-    body.appendChild(note);
-  }
-  box.appendChild(body);
-  return box;
-}
-
-/* ---------------------------------------------------------------- render: chrome */
-function renderChrome(){
-  $("#rangeLabel").textContent = rangeLabel();
-  document.querySelectorAll(".segmented button").forEach(b =>
-    b.setAttribute("aria-pressed", String(b.dataset.view===S.view)));
-
-  const st = S.stats;
-  $("#kStreak").textContent = st ? (st.streak? `${st.streak}🔥` : "0") : "—";
-  if(st && !st.streak) $("#kStreak").classList.add("dim"); else $("#kStreak").classList.remove("dim");
-
-  let rate = "—";
-  if(st){
-    const cats = Object.values(st.categories||{});
-    const picked = cats.reduce((a,c)=>a+(c.picked||0),0);
-    const done   = cats.reduce((a,c)=>a+(c.done||0),0);
-    rate = picked ? Math.round(100*done/picked)+"%" : "—";
-  }
-  $("#kRate").textContent = rate;
-
-  /* cap usage, counting every card-linked block on the day whoever made it */
-  if(S.events){
-    const have = existingBlocks(new Date());
-    const sEl = $("#kSmall"), dEl = $("#kDeep");
-    sEl.textContent = `${have.small}/${MAX_SMALL}`;
-    dEl.textContent = `${have.deep}/${MAX_DEEP}`;
-    sEl.style.color = have.small > MAX_SMALL ? "var(--crit)" : "";
-    dEl.style.color = have.deep  > MAX_DEEP  ? "var(--crit)" : "";
-  }else{
-    $("#kSmall").textContent = "—"; $("#kDeep").textContent = "—";
-  }
-
-  $("#muteBtn").textContent = S.muted ? "🔇" : "🔊";
-  $("#replanBtn").disabled = !!S.busy || !S.ready;
-  $("#replanBtn").textContent = S.busy ? "Planning…" : "Re-plan day";
-
-  const d = new Date();
-  const dow = d.getDay();
-  $("#tagline").textContent = dow===6 ? "shabbat" : (dow===5 ? "friday" : "on duty");
-
-  const stale = S.events && S.events.storedAt ? "synced "+hhmm(new Date(S.events.storedAt)) : "waiting for data";
-  $("#syncNote").textContent = S.ready ? stale : "connecting…";
-
-  if(S.events){
-    const evs = allEvents();
-    const mine = evs.filter(e=>e.isTask && e.mine).length;
-    const ext  = evs.filter(e=>e.isTask && !e.mine).length;
-    $("#calNote").textContent =
-      `${evs.length} events · ${mine} by DayFlow` + (ext ? ` · ${ext} from elsewhere` : "");
-  }else $("#calNote").textContent = "";
-}
-
-/* ---------------------------------------------------------------- day curtains */
-function renderCurtain(){
-  const pane = document.querySelector(".cal-pane");
-  const old = pane.querySelector(".curtain");
-  if(old) old.remove();
-  const d = new Date();
-  const isToday = sameDay(S.anchor, d);
-  if(!isToday) return;
-
-  if(d.getDay() === 6){                       // Saturday — no scheduling at all
-    const c = el("div","curtain");
-    const i = el("div","inner");
-    i.appendChild(el("h2","","Shabbat — day off"));
-    i.appendChild(el("p",null,"DayFlow doesn't schedule today. Your calendar is still here if you need it."));
-    const b = el("button","btn","Show the calendar anyway");
-    b.addEventListener("click", ()=>c.remove());
-    i.appendChild(b);
-    c.appendChild(i); pane.appendChild(c);
-    return;
-  }
-  if(d.getDay() === 5 && !S.fridayAnswered && S.ready){   // Friday — ask first
-    const c = el("div","curtain");
-    const i = el("div","inner");
-    i.appendChild(el("h2","","What do you want today to look like?"));
-    i.appendChild(el("p",null,"It's Friday. Nothing gets scheduled until you choose."));
-    const opts = el("div","opts");
-    const mk = (t,dsc,fn) => {
-      const b = el("button","opt"); b.type="button";
-      b.appendChild(el("span","ot",t)); b.appendChild(el("span","od",dsc));
-      b.addEventListener("click", fn); return b;
-    };
-    opts.appendChild(mk("Normal, but short","Two quick tasks, no deep-work session.",
-      ()=>{ S.fridayAnswered=true; c.remove(); applyPlan(startOfDay(new Date()),"short"); }));
-    opts.appendChild(mk("Only what I pick","Nothing auto-placed — drag the cards you want onto the calendar.",
-      ()=>{ S.fridayAnswered=true; c.remove(); render(); toast("Drag cards onto the calendar to schedule them."); }));
-    opts.appendChild(mk("Take the day off","No blocks. The calendar stays as it is.",
-      ()=>{ S.fridayAnswered=true; c.remove(); render(); toast("Day off. Nothing scheduled."); }));
-    i.appendChild(opts);
-    c.appendChild(i); pane.appendChild(c);
-  }
-}
-
-/* ---------------------------------------------------------------- render root */
-let rafR=null;
-function render(){
-  if(rafR) return;
-  rafR = requestAnimationFrame(()=>{
-    rafR=null;
-    try{
-      renderChrome();
-      renderCalendar();
-      renderRail();
-      renderCurtain();
-    }catch(e){ console.error(e); }
-  });
-}
-
 /* ---------------------------------------------------------------- boot */
-function syncView(){ syncCalendarWatch(); render(); }
-
-document.querySelectorAll(".segmented button").forEach(b =>
-  b.addEventListener("click", ()=>{ S.view=b.dataset.view; syncView(); }));
-$("#prev").addEventListener("click", ()=>{
-  S.anchor = S.view==="day" ? addDays(S.anchor,-1)
-           : S.view==="week"? addDays(S.anchor,-7)
-           : new Date(S.anchor.getFullYear(), S.anchor.getMonth()-1, 1);
-  syncView();
-});
-$("#next").addEventListener("click", ()=>{
-  S.anchor = S.view==="day" ? addDays(S.anchor,1)
-           : S.view==="week"? addDays(S.anchor,7)
-           : new Date(S.anchor.getFullYear(), S.anchor.getMonth()+1, 1);
-  syncView();
-});
-$("#todayBtn").addEventListener("click", ()=>{ S.anchor=startOfDay(new Date()); syncView(); });
-$("#muteBtn").addEventListener("click", async ()=>{
-  S.muted = !S.muted;
-  if(S.stats){ S.stats.mute = S.muted; await saveStats(S.stats); }
+function goDay(n){
+  S.anchor = n===0 ? startOfDay(new Date()) : addDays(S.anchor, n);
+  syncCalendarWatch();
   render();
-});
-$("#refreshBtn").addEventListener("click", async ()=>{
-  try{ await S.mcp.invalidate(); toast("Refreshing…"); }
-  catch(_){ toast("Nothing cached to refresh."); }
-});
+}
+$("#prev").addEventListener("click", ()=>goDay(-1));
+$("#next").addEventListener("click", ()=>goDay(1));
+$("#todayBtn").addEventListener("click", ()=>goDay(0));
 $("#replanBtn").addEventListener("click", ()=>{
   const d = new Date();
-  if(sameDay(S.anchor,d) && d.getDay()===6){ toast("It's Shabbat — DayFlow doesn't schedule today."); return; }
+  if(sameDay(S.anchor,d) && d.getDay()===6){ toast("It's Shabbat — nothing gets scheduled."); return; }
   applyPlan(startOfDay(S.anchor), "normal");
 });
-
-setInterval(()=>{ if(S.view!=="month") render(); }, 60000);   // keep the playhead honest
+setInterval(render, 60000);   // keep "now" honest
 
 (async function boot(){
   render();
@@ -2166,23 +1169,10 @@ setInterval(()=>{ if(S.view!=="month") render(); }, 60000);   // keep the playhe
   try{ mcp = await (window.claude && window.claude.use ? window.claude.use("mcp") : null); }
   catch(_){ mcp = null; }
 
-  if(!mcp){
-    S.ready = true;
-    const host = $("#rail");
-    host.innerHTML = "";
-    const b = el("div","banner crit");
-    const c = el("div");
-    c.appendChild(el("strong","bt","Live data isn't available here"));
-    c.appendChild(el("div",null,"DayFlow needs the Trello and Google Calendar connectors, which this view can't reach. Open the artifact from claude.ai with both connected."));
-    b.appendChild(c); host.appendChild(b);
-    $("#syncNote").textContent = "offline";
-    $("#replanBtn").disabled = true;
-    return;
-  }
+  if(!mcp){ S.noMcp = true; S.ready = true; render(); return; }
   S.mcp = mcp;
   startWatches();
 
-  /* first data arrival: hydrate stats, sweep rollovers, auto-plan once per day */
   const settle = setInterval(async ()=>{
     if(!S.cards.today || !S.events) return;
     clearInterval(settle);
@@ -2196,11 +1186,8 @@ setInterval(()=>{ if(S.view!=="month") render(); }, 60000);   // keep the playhe
     await rolloverSweep();
 
     const d = new Date();
-    const today = dayKey(d);
-    const planned = S.stats.plans && S.stats.plans[today];
-    if(!planned && d.getDay()!==6 && d.getDay()!==5){
-      await applyPlan(startOfDay(d), "normal");     // morning auto-plan, weekdays only
-    }
+    const planned = S.stats.plans && S.stats.plans[dayKey(d)];
+    if(!planned && d.getDay()!==6 && d.getDay()!==5) await applyPlan(startOfDay(d),"normal");
     render();
   }, 400);
   setTimeout(()=>{ clearInterval(settle); if(!S.ready){ S.ready=true; render(); } }, 20000);
