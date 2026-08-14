@@ -227,7 +227,9 @@ button{font:inherit;color:inherit;}
 .btn.primary{background:var(--accent);border-color:var(--accent);color:var(--on-accent);}
 .btn.primary:hover{filter:brightness(1.07);background:var(--accent);}
 .btn.quiet{border-color:transparent;background:transparent;color:var(--ink-2);padding:9px 12px;}
-.btn.icon{padding:9px 13px;font-size:15px;line-height:1;}
+.btn.icon{padding:0;width:42px;height:40px;display:grid;place-items:center;font-size:16px;line-height:1;}
+.btn.icon.quiet{border-color:var(--line);background:transparent;}
+.now .acts{gap:7px;}
 .btn.quiet:hover{background:var(--surface-2);color:var(--ink);}
 .btn[disabled]{opacity:.45;cursor:not-allowed;}
 
@@ -279,12 +281,14 @@ button{font:inherit;color:inherit;}
 .row:hover .acts-inline,.acts-inline:focus-within{opacity:1;}
 @media (hover:none){.acts-inline{opacity:1;}}
 .mini{
-  width:28px;height:28px;border-radius:7px;border:1px solid transparent;
-  background:transparent;color:var(--ink-3);cursor:pointer;
-  display:grid;place-items:center;font-size:13px;line-height:1;
+  width:30px;height:30px;border-radius:8px;border:1px solid var(--line);
+  background:var(--surface);color:var(--ink-2);cursor:pointer;
+  display:grid;place-items:center;font-size:14px;line-height:1;
   transition:background .14s,color .14s,border-color .14s,transform .18s;
 }
-.mini:hover{background:var(--surface);border-color:var(--line-2);transform:scale(1.06);}
+.mini:hover{background:var(--surface-2);border-color:var(--ink-3);color:var(--ink);transform:translateY(-1px);}
+.mini:disabled{opacity:.4;cursor:not-allowed;}
+.mini.on{border-color:var(--accent);color:var(--accent);}
 .mini.ok:hover{color:var(--done);border-color:var(--done);}
 .mini.later-btn:hover{color:var(--accent);border-color:var(--accent);}
 .mini.del:hover{color:var(--crit);border-color:var(--crit);}
@@ -417,6 +421,18 @@ button{font:inherit;color:inherit;}
 }
 .toggle.on{background:var(--accent);border-color:var(--accent);color:var(--on-accent);}
 
+.pick{padding:8px 10px 4px;max-height:56vh;overflow:auto;display:flex;flex-direction:column;gap:2px;}
+.pick-row{
+  display:flex;align-items:center;gap:10px;width:100%;text-align:left;
+  padding:9px 10px;border-radius:9px;border:1px solid transparent;
+  background:transparent;cursor:pointer;font-size:14px;color:var(--ink);
+  transition:background .14s,border-color .14s;
+}
+.pick-row:hover{background:var(--surface-2);border-color:var(--line-2);}
+.pick-row .dot{flex:0 0 auto;width:8px;height:8px;border-radius:3px;background:var(--bc,var(--b-none));}
+.pick-row .n{flex:1 1 auto;min-width:0;overflow:hidden;}
+.pick .muted{padding:14px;text-align:center;color:var(--ink-3);font-size:13px;}
+
 .toasts{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:80;display:flex;flex-direction:column;gap:7px;align-items:center;}
 .toast{background:var(--surface);border:1px solid var(--line-2);box-shadow:var(--shadow-lg);border-radius:22px;padding:8px 16px;font-size:13px;}
 .toast.err{border-color:var(--crit);}
@@ -495,14 +511,15 @@ const AGING_DAYS = 5, STALL_DAYS = 3;
    editable from the settings panel; it persists in the Trello state card. */
 const DEFAULTS = {
   dayStart:9, dayEnd:20,
-  maxSmall:3, smallMin:30,
+  maxSmall:3, quickTotal:60,   // all quick tasks share one contiguous window
   maxDeep:1,  deepMin:90,
   buffer:15,
   dayOff:6,          // 0 Sun … 6 Sat; -1 = none
   sound:true,
-  colors:{}          // boardKey -> hex, empty means the theme's own hue
+  colors:{},         // boardKey -> hex, empty means the theme's own hue
+  openEvents:["חמל"] // meetings tasks may run inside, by title
 };
-let CFG = { ...DEFAULTS, colors:{} };
+let CFG = { ...DEFAULTS, colors:{}, openEvents:DEFAULTS.openEvents.slice() };
 
 function applyColors(){
   const root = document.documentElement;
@@ -514,15 +531,37 @@ function applyColors(){
   }
 }
 function loadCfg(stats){
-  CFG = { ...DEFAULTS, ...(stats && stats.settings), colors:{ ...((stats && stats.settings && stats.settings.colors) || {}) } };
-  CFG.dayStart = clamp(+CFG.dayStart||0, 0, 23);
-  CFG.dayEnd   = clamp(+CFG.dayEnd||0, CFG.dayStart+1, 24);
-  CFG.maxSmall = clamp(Math.round(+CFG.maxSmall||0), 0, 12);
-  CFG.maxDeep  = clamp(Math.round(+CFG.maxDeep||0), 0, 6);
-  CFG.smallMin = clamp(Math.round((+CFG.smallMin||30)/5)*5, 5, 240);
-  CFG.deepMin  = clamp(Math.round((+CFG.deepMin||90)/5)*5, 15, 480);
-  CFG.buffer   = clamp(Math.round(+CFG.buffer||0), 0, 60);
+  const saved = (stats && stats.settings) || {};
+  CFG = { ...DEFAULTS, ...saved,
+          colors:{ ...(saved.colors || {}) },
+          openEvents: Array.isArray(saved.openEvents) ? saved.openEvents.slice() : DEFAULTS.openEvents.slice() };
+  /* settings saved before quick tasks shared one window */
+  if(saved.smallMin && !saved.quickTotal) CFG.quickTotal = (+saved.smallMin) * (+saved.maxSmall || 3);
+  delete CFG.smallMin;
+  CFG.dayStart   = clamp(+CFG.dayStart||0, 0, 23);
+  CFG.dayEnd     = clamp(+CFG.dayEnd||0, CFG.dayStart+1, 24);
+  CFG.maxSmall   = clamp(Math.round(+CFG.maxSmall||0), 0, 12);
+  CFG.maxDeep    = clamp(Math.round(+CFG.maxDeep||0), 0, 6);
+  CFG.quickTotal = clamp(Math.round((+CFG.quickTotal||60)/5)*5, 5, 480);
+  CFG.deepMin    = clamp(Math.round((+CFG.deepMin||90)/5)*5, 15, 480);
+  CFG.buffer     = clamp(Math.round(+CFG.buffer||0), 0, 60);
   applyColors();
+}
+/* how long each quick task gets when they share the hour */
+const quickSlice = n => Math.max(5, Math.round((CFG.quickTotal / Math.max(1,n)) / 5) * 5);
+
+/* Meetings tasks may run inside: anything you've marked open, plus anything
+   Google itself marks Free — that is what "Free" means. */
+function permeable(e){
+  if(!e || e.isTask) return false;
+  if(e.raw && (e.raw.transparency === "transparent" || e.raw.availability === "AVAILABILITY_FREE")) return true;
+  return (CFG.openEvents || []).indexOf(e.summary) >= 0;
+}
+async function toggleOpenEvent(name){
+  const list = CFG.openEvents || (CFG.openEvents = []);
+  const i = list.indexOf(name);
+  if(i >= 0) list.splice(i,1); else list.push(name);
+  await saveCfg();
 }
 async function saveCfg(){
   const st = S.stats || { ...DEFAULT_STATS };
@@ -712,6 +751,7 @@ function busyFor(date, ignore){
   for(const e of allEvents()){
     if(e.allDay || !overlapsDay(e,date)) continue;
     if(ignored(e.id, ignore)) continue;
+    if(permeable(e)) continue;                      // you said tasks may run inside
     const pad = (e.isTask && e.deep) ? CFG.buffer : 0;
     const s  = sameDay(e.start,date) ? minsOf(e.start) : 0;
     const en = sameDay(e.end,date)   ? minsOf(e.end)   : 24*60;
@@ -920,11 +960,24 @@ function planFor(date, mode, picked, ignore){
     placed.push({ card:c, s:s.s, e:s.e, kind:"deep" });
     live.push({ s:s.s-CFG.buffer, e:s.e+CFG.buffer });
   }
-  for(const c of ranked.filter(x=>!x.deep).slice(0,smallCap)){
-    const s = findSlots(live, winS, winE, CFG.smallMin, 0, 1, nowMin)[0];
-    if(!s) continue;
-    placed.push({ card:c, s:s.s, e:s.e, kind:"small" });
-    live.push({ s:s.s, e:s.e });
+  /* Quick tasks share one contiguous window rather than scattering across the
+     day. Shrink the group until it fits somewhere. */
+  const quick = ranked.filter(x=>!x.deep).slice(0, smallCap);
+  if(quick.length){
+    let n = quick.length, slot = null, slice = 0;
+    while(n > 0){
+      slice = quickSlice(n);
+      slot = findSlots(live, winS, winE, n*slice, 0, 1, nowMin)[0];
+      if(slot) break;
+      n--;
+    }
+    if(slot){
+      for(let i=0;i<n;i++){
+        const s = slot.s + i*slice;
+        placed.push({ card:quick[i], s, e:s+slice, kind:"small" });
+      }
+      live.push({ s:slot.s, e:slot.s + n*slice });
+    }
   }
   placed.sort((a,b)=>a.s-b.s);
   return placed;
@@ -1280,15 +1333,19 @@ function nowCard(item){
   const doneBtn = el("button","btn primary","Done");
   doneBtn.addEventListener("click", ()=>completeItem(item));
   const laterBtn = el("button","btn icon","↷");
-  laterBtn.setAttribute("aria-label","Later today");
+  laterBtn.title = "Later today"; laterBtn.setAttribute("aria-label","Later today");
+  const swapBtn = el("button","btn icon","⇄");
+  swapBtn.title = "Swap for another task"; swapBtn.setAttribute("aria-label","Swap task");
+  swapBtn.addEventListener("click", ()=>swapPicker(item));
   laterBtn.addEventListener("click", ()=>postpone(item));
-  const skipBtn = el("button","btn quiet","✕");
-  skipBtn.setAttribute("aria-label","Remove");
+  const skipBtn = el("button","btn icon quiet","✕");
+  skipBtn.title = "Remove"; skipBtn.setAttribute("aria-label","Remove");
   skipBtn.addEventListener("click", ()=>removeItem(item));
   if(S.pending.has(item.ev.id) || (c && S.pending.has(c.id))){
-    doneBtn.disabled = laterBtn.disabled = skipBtn.disabled = true;
+    doneBtn.disabled = laterBtn.disabled = skipBtn.disabled = swapBtn.disabled = true;
   }
-  acts.appendChild(doneBtn); acts.appendChild(laterBtn); acts.appendChild(skipBtn);
+  acts.appendChild(doneBtn); acts.appendChild(laterBtn);
+  acts.appendChild(swapBtn); acts.appendChild(skipBtn);
   body.appendChild(acts);
 
   /* details open on their own when the card has any */
@@ -1425,16 +1482,19 @@ function agendaRow(item){
       acts.appendChild(info);
     }
     const ok = el("button","mini ok","✓");
-    ok.setAttribute("aria-label","Done");
+    ok.title = "Done"; ok.setAttribute("aria-label","Done");
     ok.addEventListener("click", ()=>completeItem(item));
     const lt = el("button","mini later-btn","↷");
-    lt.setAttribute("aria-label","Later today");
+    lt.title = "Later today"; lt.setAttribute("aria-label","Later today");
+    const sw = el("button","mini","⇄");
+    sw.title = "Swap"; sw.setAttribute("aria-label","Swap task");
+    sw.addEventListener("click", ()=>swapPicker(item));
     lt.addEventListener("click", ()=>postpone(item));
     const dl = el("button","mini del","✕");
-    dl.setAttribute("aria-label","Remove");
+    dl.title = "Remove"; dl.setAttribute("aria-label","Remove");
     dl.addEventListener("click", ()=>removeItem(item));
-    if(S.pending.has(item.ev.id)) [ok,lt,dl].forEach(b=>b.disabled=true);
-    acts.appendChild(ok); acts.appendChild(lt); acts.appendChild(dl);
+    if(S.pending.has(item.ev.id)) [ok,lt,sw,dl].forEach(b=>b.disabled=true);
+    acts.appendChild(ok); acts.appendChild(lt); acts.appendChild(sw); acts.appendChild(dl);
     r.appendChild(acts);
     wrap.appendChild(r);
     if(item.card && hasDetail(item.card) && !S.collapsed.has(key)){
@@ -1443,11 +1503,79 @@ function agendaRow(item){
     }
     return wrap;
   }
+  else {
+    const open = permeable(item.ev);
+    const t = el("button","mini" + (open ? " on" : ""), open ? "⊙" : "⊘");
+    t.title = open ? "Tasks may run inside" : "Blocks tasks";
+    t.setAttribute("aria-label", t.title);
+    t.addEventListener("click", async ()=>{ await toggleOpenEvent(item.ev.summary); replan(); });
+    const acts = el("div","acts-inline"); acts.appendChild(t); r.appendChild(acts);
+  }
   wrap.appendChild(r);
   return wrap;
 }
 
 /* ---------------------------------------------------------------- dialog */
+/* ---------------------------------------------------------------- swap */
+/* Replace what's in a slot with a card you pick. The slot keeps its time. */
+function swapPicker(item){
+  const scheduled = new Set(allEvents()
+    .filter(e => e.isTask && overlapsDay(e, S.anchor) && e.cardShort).map(e => e.cardShort));
+  const pool = rankCards(candidates().filter(c =>
+    (!c.shortLink || !scheduled.has(c.shortLink)) && (!item.card || c.id !== item.card.id)));
+
+  const scrim = el("div","scrim");
+  const dlg = el("div","dialog sheet");
+  dlg.setAttribute("role","dialog"); dlg.setAttribute("aria-modal","true");
+
+  const h = el("div","dh");
+  h.appendChild(el("h3",null, fmtRange(item.ev.start, item.ev.end)));
+  dlg.appendChild(h);
+
+  const body = el("div","pick");
+  if(!pool.length) body.appendChild(el("div","muted","Nothing else open."));
+  for(const c of pool.slice(0,40)){
+    const b = el("button","pick-row " + boardClass(c));
+    b.type = "button";
+    b.appendChild(el("span","dot"));
+    const n = el("span","n"); n.appendChild(bidiSpan(c.name)); b.appendChild(n);
+    const t = tierOf(c);
+    if(isAging(c))    b.appendChild(el("span","chip age", ageDays(c)+"d"));
+    else if(c.overdue)b.appendChild(el("span","chip crit","!"));
+    else if(c.deep)   b.appendChild(el("span","chip deep","∎"));
+    b.addEventListener("click", ()=>{ close(); swapTo(item, c); });
+    body.appendChild(b);
+  }
+  dlg.appendChild(body);
+
+  const f = el("div","df");
+  const cancel = el("button","btn quiet","Cancel");
+  cancel.addEventListener("click", close);
+  f.appendChild(cancel);
+  dlg.appendChild(f);
+
+  function close(){ scrim.remove(); document.removeEventListener("keydown", onKey); }
+  function onKey(e){ if(e.key==="Escape") close(); }
+  document.addEventListener("keydown", onKey);
+  scrim.addEventListener("click", e => { if(e.target===scrim) close(); });
+  scrim.appendChild(dlg); document.body.appendChild(scrim);
+  cancel.focus();
+}
+
+async function swapTo(item, card){
+  if(S.pending.has(item.ev.id)) return;
+  S.pending.add(item.ev.id); render();
+  const start = item.ev.start, end = item.ev.end;
+  try{
+    await deleteBlock(item.ev.id);
+    await createBlock(card, start, end, card.deep);
+    await saveStats(bumpCategory(card.boardName, "picked"));
+    await refreshCalendar();
+    toast("Swapped.");
+  }catch(e){ toast(errCopy(e), true); }
+  finally{ S.pending.delete(item.ev.id); render(); }
+}
+
 /* ---------------------------------------------------------------- settings */
 const DAYS = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
 
@@ -1484,7 +1612,7 @@ function settingsPanel(){
   row("Off", off);
 
   body.appendChild(el("div","set-h","Load"));
-  row("Quick", num("maxSmall",0,12), el("span","set-dash","×"), num("smallMin",5,240,5), el("span","set-u","min"));
+  row("Quick", num("maxSmall",0,12), el("span","set-dash","in"), num("quickTotal",5,480,5), el("span","set-u","min"));
   row("Sessions", num("maxDeep",0,6), el("span","set-dash","×"), num("deepMin",15,480,5), el("span","set-u","min"));
   row("Buffer", num("buffer",0,60,5), el("span","set-u","min"));
 

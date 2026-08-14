@@ -18,7 +18,7 @@ for(const when of ["2026-08-14T07:30:00+03:00","2026-08-14T12:10:00+03:00","2026
   await p.waitForTimeout(3400);
   const r=await p.evaluate(()=>{const h=existingBlocks(new Date());
     const rows=document.querySelectorAll(".rows .row").length;
-    return {small:h.small,deep:h.deep,visibleTasks:document.querySelectorAll(".rows .acts-inline").length,
+    return {small:h.small,deep:h.deep,visibleTasks:document.querySelectorAll(".rows .mini.ok").length,
       hub:!!document.querySelector(".now"),state:(document.querySelector(".state h2")||{}).textContent||null,
       dels:window.__calls.filter(c=>c.tool==="delete_event").length,
       creates:window.__calls.filter(c=>c.tool==="create_event").length,

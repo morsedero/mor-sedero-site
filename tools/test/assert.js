@@ -37,17 +37,20 @@ const SCENARIOS = [
       const d = new Date();
       const blocks = allEvents().filter(e => e.isTask && !e.allDay && overlapsDay(e, d))
         .map(e => ({ n: e.summary, s: minsOf(e.start), e: minsOf(e.end), deep: e.deep }));
-      const real = allEvents().filter(e => !e.isTask && !e.allDay && overlapsDay(e, d))
+      /* permeable meetings are ones you've said tasks may run inside */
+      const real = allEvents().filter(e => !e.isTask && !e.allDay && overlapsDay(e, d) && !permeable(e))
         .map(e => ({ n: e.summary, s: minsOf(e.start), e: minsOf(e.end) }));
+      const open = allEvents().filter(e => !e.isTask && !e.allDay && overlapsDay(e, d) && permeable(e))
+        .map(e => e.summary);
       const have = existingBlocks(d);
-      return { blocks, real, have, winS: CFG.dayStart * 60, winE: CFG.dayEnd * 60, buf: CFG.buffer,
-               maxSmall: CFG.maxSmall, maxDeep: CFG.maxDeep };
+      return { blocks, real, open, have, winS: CFG.dayStart * 60, winE: CFG.dayEnd * 60, buf: CFG.buffer,
+               maxSmall: CFG.maxSmall, maxDeep: CFG.maxDeep, quickTotal: CFG.quickTotal };
     });
 
     const ov = (a, b) => a.s < b.e && a.e > b.s;
     const fails = [];
 
-    // 1. never on top of a real meeting
+    // 1. never on top of a meeting that blocks (permeable ones are allowed)
     for (const t of r.blocks)
       for (const m of r.real)
         if (ov(t, m)) fails.push(`"${t.n}" ${t.s}-${t.e} overlaps meeting "${m.n}" ${m.s}-${m.e}`);
@@ -58,10 +61,16 @@ const SCENARIOS = [
         if (t !== dpe && ov(t, { s: dpe.s - r.buf, e: dpe.e + r.buf }))
           fails.push(`"${t.n}" intrudes on the buffer around session "${dpe.n}"`);
 
-    // 3. task blocks never overlap each other
+    // 3. task blocks never overlap each other (touching is fine — quick tasks
+    //    share one contiguous window by design)
     for (let i = 0; i < r.blocks.length; i++)
       for (let j = i + 1; j < r.blocks.length; j++)
         if (ov(r.blocks[i], r.blocks[j])) fails.push(`"${r.blocks[i].n}" overlaps "${r.blocks[j].n}"`);
+
+    // 3b. all quick tasks fit inside one window of CFG.quickTotal
+    const q = r.blocks.filter(b => !b.deep).sort((a, b) => a.s - b.s);
+    if (q.length && (q[q.length - 1].e - q[0].s) > r.quickTotal)
+      fails.push(`quick tasks span ${q[q.length-1].e - q[0].s}min > ${r.quickTotal}`);
 
     // 4. daily caps hold after a run
     if (r.have.small > r.maxSmall) fails.push(`${r.have.small} quick tasks exceeds cap ${r.maxSmall}`);
@@ -75,7 +84,8 @@ const SCENARIOS = [
     const fmt = m => `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
     console.log(`\n=== ${sc.name} (${sc.at.slice(11, 16)}) ===`);
     console.log(`  page errors: ${errs.length ? errs.join(" | ") : "none"}`);
-    console.log(`  ${r.have.small}/${r.maxSmall} quick · ${r.have.deep}/${r.maxDeep} session · ${r.real.length} meetings`);
+    console.log(`  ${r.have.small}/${r.maxSmall} quick · ${r.have.deep}/${r.maxDeep} session · ${r.real.length} blocking` +
+      (r.open.length ? ` · open: ${r.open.join(", ")}` : ""));
     r.blocks.sort((a, b) => a.s - b.s).forEach(t => console.log(`    ${fmt(t.s)}-${fmt(t.e)} ${t.deep ? "[session] " : ""}${t.n}`));
     console.log(fails.length ? "  FAIL:\n" + fails.map(f => "    ✗ " + f).join("\n") : "  ✓ all rules hold");
     failures += fails.length + errs.length;

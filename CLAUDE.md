@@ -29,12 +29,18 @@ user's home-screen shortcut pointing at a stale copy.
 - **Caps, day window, block lengths, buffer, day off, board colours and
   the chime are user settings** (gear icon), stored in the Trello state
   card under `settings` and read into `CFG` at boot. `DEFAULTS` holds
-  the shipped values: 3 quick x 30 min, 1 session x 90 min, 15 min
-  buffer, 09:00-20:00, Saturday off. Never hard-code these again.
+  the shipped values: 3 quick tasks sharing one 60-min window, 1 session
+  x 90 min, 15 min buffer, 09:00-20:00, Saturday off. Never hard-code
+  these again.
+- **Quick tasks share one contiguous window** (`quickTotal`), split
+  evenly between them — they do not scatter across the day. The group
+  shrinks until it fits somewhere.
 - Caps count blocks already on the calendar, including ones this widget
   did not create.
-- **Real meetings are never scheduled over.** All-day events are the
-  only exception.
+- **Meetings are never scheduled over**, except *permeable* ones:
+  all-day events, anything Google marks Free, and titles listed in
+  `CFG.openEvents` (ships with `חמל`, toggled from the ⊙/⊘ control on a
+  meeting row).
 - The day off schedules nothing. Every other day is ordinary.
 - A run **clears and re-lays** the day's card-linked blocks. It never
   touches a real meeting, finished work, or the block in progress.
