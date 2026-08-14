@@ -40,8 +40,8 @@ const SCENARIOS = [
       const real = allEvents().filter(e => !e.isTask && !e.allDay && overlapsDay(e, d))
         .map(e => ({ n: e.summary, s: minsOf(e.start), e: minsOf(e.end) }));
       const have = existingBlocks(d);
-      return { blocks, real, have, winS: DAY_START_H * 60, winE: DAY_END_H * 60, buf: BUFFER_MIN,
-               maxSmall: MAX_SMALL, maxDeep: MAX_DEEP };
+      return { blocks, real, have, winS: CFG.dayStart * 60, winE: CFG.dayEnd * 60, buf: CFG.buffer,
+               maxSmall: CFG.maxSmall, maxDeep: CFG.maxDeep };
     });
 
     const ov = (a, b) => a.s < b.e && a.e > b.s;

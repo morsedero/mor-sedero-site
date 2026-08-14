@@ -141,7 +141,7 @@ button{font:inherit;color:inherit;}
   transition:background .15s,color .15s,border-color .15s;
 }
 .nav button:hover{background:var(--surface);border-color:var(--line);color:var(--ink);}
-.nav .todaybtn{width:auto;padding:0 11px;font-size:12px;}
+.nav .todaybtn{font-size:17px;line-height:1;}
 
 /* board identity: every element that represents a task carries its board hue */
 .bk-projects{--bc:var(--b-projects);--bc-soft:var(--b-projects-soft);}
@@ -227,6 +227,7 @@ button{font:inherit;color:inherit;}
 .btn.primary{background:var(--accent);border-color:var(--accent);color:var(--on-accent);}
 .btn.primary:hover{filter:brightness(1.07);background:var(--accent);}
 .btn.quiet{border-color:transparent;background:transparent;color:var(--ink-2);padding:9px 12px;}
+.btn.icon{padding:9px 13px;font-size:15px;line-height:1;}
 .btn.quiet:hover{background:var(--surface-2);color:var(--ink);}
 .btn[disabled]{opacity:.45;cursor:not-allowed;}
 
@@ -241,7 +242,8 @@ button{font:inherit;color:inherit;}
 .meeting-now .mn-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 
 /* ---------------- later ---------------- */
-.later{margin-top:30px;}
+.later{margin-top:26px;}
+.later.miss .row .t{color:var(--crit);}
 .later .lh{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:10px;}
 .rows{display:flex;flex-direction:column;}
 
@@ -339,7 +341,7 @@ button{font:inherit;color:inherit;}
   display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;
 }
 .foot .stats{display:flex;gap:16px;align-items:baseline;}
-.foot .stat{display:flex;align-items:baseline;gap:5px;}
+.foot .stat{display:flex;align-items:baseline;gap:4px;font-size:12px;color:var(--ink-3);}
 .foot .stat .v{font-family:var(--mono);font-size:13px;font-variant-numeric:tabular-nums;font-weight:600;}
 .foot .stat .v.streak{color:var(--age);}
 .foot .stat .k{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3);}
@@ -379,6 +381,42 @@ button{font:inherit;color:inherit;}
 .dialog .dh p{margin:6px 0 0;font-size:13px;color:var(--ink-2);white-space:pre-line;overflow-wrap:anywhere;}
 .dialog .df{padding:12px 17px;border-top:1px solid var(--line);display:flex;gap:8px;justify-content:flex-end;background:var(--surface-2);}
 
+/* settings */
+.dialog.sheet{max-width:340px;}
+.set{padding:14px 16px 6px;display:flex;flex-direction:column;gap:2px;}
+.set-h{
+  font-family:var(--mono);font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;
+  color:var(--ink-3);margin:12px 0 6px;
+}
+.set-h:first-child{margin-top:0;}
+.set-row{
+  display:flex;align-items:center;justify-content:space-between;gap:10px;
+  padding:5px 0;font-size:14px;
+}
+.set-k{color:var(--ink-2);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.set-v{display:flex;align-items:center;gap:6px;flex:0 0 auto;}
+.set-dash,.set-u{font-family:var(--mono);font-size:11px;color:var(--ink-3);}
+.num-in{
+  width:52px;padding:5px 7px;border-radius:7px;
+  border:1px solid var(--line-2);background:var(--surface-2);color:var(--ink);
+  font-family:var(--mono);font-size:13px;font-variant-numeric:tabular-nums;text-align:center;
+}
+.num-in.wide{width:76px;text-align:left;}
+.num-in:focus{border-color:var(--accent);outline:none;}
+.col-in{
+  width:34px;height:26px;padding:0;border:1px solid var(--line-2);
+  border-radius:7px;background:transparent;cursor:pointer;
+}
+.col-in::-webkit-color-swatch-wrapper{padding:2px;}
+.col-in::-webkit-color-swatch{border:0;border-radius:5px;}
+.toggle{
+  padding:5px 12px;border-radius:99px;cursor:pointer;
+  border:1px solid var(--line-2);background:var(--surface-2);color:var(--ink-3);
+  font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;
+  transition:background .15s,color .15s,border-color .15s;
+}
+.toggle.on{background:var(--accent);border-color:var(--accent);color:var(--on-accent);}
+
 .toasts{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:80;display:flex;flex-direction:column;gap:7px;align-items:center;}
 .toast{background:var(--surface);border:1px solid var(--line-2);box-shadow:var(--shadow-lg);border-radius:22px;padding:8px 16px;font-size:13px;}
 .toast.err{border-color:var(--crit);}
@@ -397,8 +435,9 @@ button{font:inherit;color:inherit;}
     </div>
     <nav class="nav">
       <button id="prev" aria-label="Previous day">‹</button>
-      <button id="todayBtn" class="todaybtn">Today</button>
+      <button id="todayBtn" class="todaybtn" aria-label="Today">•</button>
       <button id="next" aria-label="Next day">›</button>
+      <button id="setBtn" aria-label="Settings">⚙</button>
     </nav>
   </header>
 
@@ -406,11 +445,11 @@ button{font:inherit;color:inherit;}
 
   <footer class="foot" id="foot" hidden>
     <div class="stats">
-      <span class="stat"><span class="v streak" id="sStreak">0</span><span class="k">streak</span></span>
-      <span class="stat"><span class="v" id="sDone">0</span><span class="k">done</span></span>
-      <span class="stat"><span class="v" id="sLeft">0</span><span class="k">left</span></span>
+      <span class="stat" title="Streak">🔥<span class="v streak" id="sStreak">0</span></span>
+      <span class="stat" title="Done today">✓<span class="v" id="sDone">0</span></span>
+      <span class="stat" title="Left today">◦<span class="v" id="sLeft">0</span></span>
     </div>
-    <button class="btn quiet" id="replanBtn">Re-plan day</button>
+    <button class="btn quiet" id="replanBtn" aria-label="Re-plan day">↻</button>
   </footer>
 </div>
 
@@ -449,11 +488,50 @@ const BOARDS = [
 const LIST_DONE = lAri("6a7a17e6fa8d1b840074ed07");
 const STATS_CARD_NAME = "📊 DayFlow Stats";
 
-const DAY_START_H = 9, DAY_END_H = 20;
-const MAX_SMALL = 3, SMALL_MIN = 30;
-const MAX_DEEP = 1,  DEEP_DEFAULT = 90;
-const BUFFER_MIN = 15, SNAP_MIN = 15;
+const SNAP_MIN = 15;
 const AGING_DAYS = 5, STALL_DAYS = 3;
+
+/* Everything the scheduler is allowed to argue about lives here and is
+   editable from the settings panel; it persists in the Trello state card. */
+const DEFAULTS = {
+  dayStart:9, dayEnd:20,
+  maxSmall:3, smallMin:30,
+  maxDeep:1,  deepMin:90,
+  buffer:15,
+  dayOff:6,          // 0 Sun … 6 Sat; -1 = none
+  sound:true,
+  colors:{}          // boardKey -> hex, empty means the theme's own hue
+};
+let CFG = { ...DEFAULTS, colors:{} };
+
+function applyColors(){
+  const root = document.documentElement;
+  for(const b of BOARDS){
+    const v = CFG.colors && CFG.colors[b.key];
+    const prop = "--b-" + b.key;
+    if(v) root.style.setProperty(prop, v);
+    else  root.style.removeProperty(prop);
+  }
+}
+function loadCfg(stats){
+  CFG = { ...DEFAULTS, ...(stats && stats.settings), colors:{ ...((stats && stats.settings && stats.settings.colors) || {}) } };
+  CFG.dayStart = clamp(+CFG.dayStart||0, 0, 23);
+  CFG.dayEnd   = clamp(+CFG.dayEnd||0, CFG.dayStart+1, 24);
+  CFG.maxSmall = clamp(Math.round(+CFG.maxSmall||0), 0, 12);
+  CFG.maxDeep  = clamp(Math.round(+CFG.maxDeep||0), 0, 6);
+  CFG.smallMin = clamp(Math.round((+CFG.smallMin||30)/5)*5, 5, 240);
+  CFG.deepMin  = clamp(Math.round((+CFG.deepMin||90)/5)*5, 15, 480);
+  CFG.buffer   = clamp(Math.round(+CFG.buffer||0), 0, 60);
+  applyColors();
+}
+async function saveCfg(){
+  const st = S.stats || { ...DEFAULT_STATS };
+  st.settings = { ...CFG };
+  S.stats = st;
+  applyColors();
+  render();
+  await saveStats(st);
+}
 
 const DF_MARK  = "[dayflow]";
 const ST_OPEN  = "<!--DAYFLOW_STATE_V1";
@@ -634,7 +712,7 @@ function busyFor(date, ignore){
   for(const e of allEvents()){
     if(e.allDay || !overlapsDay(e,date)) continue;
     if(ignored(e.id, ignore)) continue;
-    const pad = (e.isTask && e.deep) ? BUFFER_MIN : 0;
+    const pad = (e.isTask && e.deep) ? CFG.buffer : 0;
     const s  = sameDay(e.start,date) ? minsOf(e.start) : 0;
     const en = sameDay(e.end,date)   ? minsOf(e.end)   : 24*60;
     out.push({ s:s-pad, e:en+pad });
@@ -816,10 +894,10 @@ function findSlots(busy, winS, winE, dur, pad, max, fromMin){
 }
 function planFor(date, mode, picked, ignore){
   const have = existingBlocks(date, ignore);
-  const smallCap = Math.max(0, MAX_SMALL - have.small);
-  const deepCap  = Math.max(0, MAX_DEEP  - have.deep);
+  const smallCap = Math.max(0, CFG.maxSmall - have.small);
+  const deepCap  = Math.max(0, CFG.maxDeep  - have.deep);
 
-  const winS = DAY_START_H*60, winE = DAY_END_H*60;
+  const winS = CFG.dayStart*60, winE = CFG.dayEnd*60;
   const nowMin = sameDay(date,new Date()) ? Math.ceil(minsOf(new Date())/SNAP_MIN)*SNAP_MIN : null;
 
   let pool = candidates();
@@ -836,14 +914,14 @@ function planFor(date, mode, picked, ignore){
   const placed = [], live = busyFor(date, ignore);
 
   for(const c of ranked.filter(x=>x.deep).slice(0,deepCap)){
-    const dur = c.est || DEEP_DEFAULT;
-    const s = findSlots(live, winS, winE, dur, BUFFER_MIN, 1, nowMin)[0];
+    const dur = c.est || CFG.deepMin;
+    const s = findSlots(live, winS, winE, dur, CFG.buffer, 1, nowMin)[0];
     if(!s) continue;
     placed.push({ card:c, s:s.s, e:s.e, kind:"deep" });
-    live.push({ s:s.s-BUFFER_MIN, e:s.e+BUFFER_MIN });
+    live.push({ s:s.s-CFG.buffer, e:s.e+CFG.buffer });
   }
   for(const c of ranked.filter(x=>!x.deep).slice(0,smallCap)){
-    const s = findSlots(live, winS, winE, SMALL_MIN, 0, 1, nowMin)[0];
+    const s = findSlots(live, winS, winE, CFG.smallMin, 0, 1, nowMin)[0];
     if(!s) continue;
     placed.push({ card:c, s:s.s, e:s.e, kind:"small" });
     live.push({ s:s.s, e:s.e });
@@ -960,12 +1038,12 @@ async function completeItem(item){
 async function postpone(item){
   const date = startOfDay(S.anchor);
   const dur = Math.max(SNAP_MIN, minsOf(item.ev.end) - minsOf(item.ev.start));
-  const pad = item.ev.deep ? BUFFER_MIN : 0;
-  const nowMin = sameDay(date, new Date()) ? minsOf(new Date()) : DAY_START_H*60;
+  const pad = item.ev.deep ? CFG.buffer : 0;
+  const nowMin = sameDay(date, new Date()) ? minsOf(new Date()) : CFG.dayStart*60;
   /* must land strictly after both "now" and where it currently sits */
   const from = Math.ceil((Math.max(nowMin, minsOf(item.ev.end)) + 1)/SNAP_MIN)*SNAP_MIN;
 
-  const slot = findSlots(busyFor(date, item.ev.id), DAY_START_H*60, DAY_END_H*60, dur, pad, 1, from)[0];
+  const slot = findSlots(busyFor(date, item.ev.id), CFG.dayStart*60, CFG.dayEnd*60, dur, pad, 1, from)[0];
   if(!slot){
     toast("No room left today.", true);
     return;
@@ -1067,7 +1145,7 @@ function paint(){
   const d = S.anchor, today = new Date();
   $("#dateLabel").textContent = `${DOW[d.getDay()]} ${d.getDate()} ${MON[d.getMonth()]}`;
   const delta = daysBetween(today, d);
-  $("#dateRel").textContent = delta===0 ? "today" : delta===1 ? "tomorrow" : delta===-1 ? "yesterday" : "";
+  $("#dateRel").textContent = delta===0 ? "" : delta>0 ? `+${delta}` : String(delta);
 
   const main = $("#main");
   main.innerHTML = "";
@@ -1091,7 +1169,7 @@ function paint(){
   if(!S.ready || !S.events){ main.appendChild(el("div","skel")); return; }
 
   /* Saturday: nothing, quietly */
-  if(sameDay(d,today) && d.getDay() === 6){
+  if(sameDay(d,today) && d.getDay() === CFG.dayOff){
     main.appendChild(stateCard("🕯️","Shabbat",""));
     return;
   }
@@ -1112,8 +1190,8 @@ function paint(){
   else main.appendChild(emptyNow(doneCount));
 
   const upcoming = rest.filter(i => !i.done);
-  if(upcoming.length) main.appendChild(section("Later", upcoming));
-  if(missed.length)   main.appendChild(section("Missed", missed));
+  if(upcoming.length) main.appendChild(section(upcoming, false));
+  if(missed.length)   main.appendChild(section(missed, true));
 
   /* transient trouble: keep data, say it once, quietly */
   const soft = Object.values(S.errs).find(e => !AUTHZ.has(e.code) && !LIFECYCLE.has(e.code));
@@ -1129,15 +1207,12 @@ function paint(){
   $("#sDone").textContent = doneCount;
   $("#sLeft").textContent = open.length;
   $("#replanBtn").disabled = !!S.busy;
-  $("#replanBtn").textContent = S.busy ? "Planning…" : "Re-plan day";
+  $("#replanBtn").textContent = S.busy ? "…" : "↻";
 }
 
-function section(label, list){
-  const sec = el("section","later");
-  const lh = el("div","lh");
-  lh.appendChild(el("span","eyebrow",label));
-  lh.appendChild(el("span","eyebrow", String(list.length)));
-  sec.appendChild(lh);
+/* Missed rows are marked by a red timestamp, which says it without a heading. */
+function section(list, missed){
+  const sec = el("section","later" + (missed ? " miss" : ""));
   const rows = el("div","rows");
   for(const i of list) rows.appendChild(agendaRow(i));
   sec.appendChild(rows);
@@ -1204,7 +1279,8 @@ function nowCard(item){
   const acts = el("div","acts");
   const doneBtn = el("button","btn primary","Done");
   doneBtn.addEventListener("click", ()=>completeItem(item));
-  const laterBtn = el("button","btn","Later");
+  const laterBtn = el("button","btn icon","↷");
+  laterBtn.setAttribute("aria-label","Later today");
   laterBtn.addEventListener("click", ()=>postpone(item));
   const skipBtn = el("button","btn quiet","✕");
   skipBtn.setAttribute("aria-label","Remove");
@@ -1268,7 +1344,7 @@ function detailPanel(card){
     if(!items.length) continue;
     const done = items.filter(i => i.state === "COMPLETE").length;
     const head = el("div","clname");
-    const nm = el("span"); bidi(nm, cl.name || ""); head.appendChild(nm);
+    const nm = el("span"); bidi(nm, /^checklist$/i.test(cl.name||"") ? "" : (cl.name||"")); head.appendChild(nm);
     head.appendChild(el("span",null, `${done}/${items.length}`));
     d.appendChild(head);
 
@@ -1299,7 +1375,7 @@ function detailPanel(card){
 
 function emptyNow(doneCount){
   if(doneCount) return stateCard("✓","Day clear", `${doneCount} done.`, true);
-  const past = sameDay(S.anchor, new Date()) && minsOf(new Date()) >= DAY_END_H*60;
+  const past = sameDay(S.anchor, new Date()) && minsOf(new Date()) >= CFG.dayEnd*60;
   if(past) return stateCard("—","Day's over","", false);
   return stateCard("—","Nothing scheduled","", true);
 }
@@ -1372,6 +1448,86 @@ function agendaRow(item){
 }
 
 /* ---------------------------------------------------------------- dialog */
+/* ---------------------------------------------------------------- settings */
+const DAYS = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+
+function settingsPanel(){
+  const scrim = el("div","scrim");
+  const dlg = el("div","dialog sheet");
+  dlg.setAttribute("role","dialog"); dlg.setAttribute("aria-modal","true");
+
+  const body = el("div","set");
+
+  const row = (label, ...controls) => {
+    const r = el("label","set-row");
+    r.appendChild(el("span","set-k", label));
+    const w = el("span","set-v");
+    controls.forEach(c => w.appendChild(c));
+    r.appendChild(w);
+    body.appendChild(r);
+    return r;
+  };
+  const num = (key, min, max, step) => {
+    const i = el("input","num-in");
+    i.type="number"; i.min=min; i.max=max; i.step=step||1; i.value=CFG[key];
+    i.addEventListener("change", ()=>{ CFG[key]=+i.value; loadCfg({settings:CFG}); i.value=CFG[key]; saveCfg(); });
+    return i;
+  };
+
+  body.appendChild(el("div","set-h","Day"));
+  row("Hours", num("dayStart",0,23), el("span","set-dash","–"), num("dayEnd",1,24));
+  const off = el("select","num-in wide");
+  [["-1","none"]].concat(DAYS.map((d,i)=>[String(i),d])).forEach(([v,t])=>{
+    const o=el("option",null,t); o.value=v; if(+v===CFG.dayOff) o.selected=true; off.appendChild(o);
+  });
+  off.addEventListener("change", ()=>{ CFG.dayOff=+off.value; saveCfg(); });
+  row("Off", off);
+
+  body.appendChild(el("div","set-h","Load"));
+  row("Quick", num("maxSmall",0,12), el("span","set-dash","×"), num("smallMin",5,240,5), el("span","set-u","min"));
+  row("Sessions", num("maxDeep",0,6), el("span","set-dash","×"), num("deepMin",15,480,5), el("span","set-u","min"));
+  row("Buffer", num("buffer",0,60,5), el("span","set-u","min"));
+
+  body.appendChild(el("div","set-h","Colour"));
+  for(const b of BOARDS){
+    const c = el("input","col-in");
+    c.type="color";
+    c.value = (CFG.colors && CFG.colors[b.key]) ||
+      (getComputedStyle(document.documentElement).getPropertyValue("--b-"+b.key).trim() || "#888888");
+    c.addEventListener("input", ()=>{ CFG.colors[b.key]=c.value; applyColors(); });
+    c.addEventListener("change", saveCfg);
+    const rst = el("button","mini","↺");
+    rst.setAttribute("aria-label","Reset colour");
+    rst.addEventListener("click", e=>{ e.preventDefault(); delete CFG.colors[b.key]; saveCfg(); close(); settingsPanel(); });
+    const r = row(b.name, c, rst);
+    r.querySelector(".set-k").setAttribute("dir","auto");
+  }
+
+  body.appendChild(el("div","set-h","Sound"));
+  const snd = el("button","toggle" + (CFG.sound ? " on" : ""), CFG.sound ? "on" : "off");
+  snd.type="button";
+  snd.addEventListener("click", ()=>{ CFG.sound=!CFG.sound; snd.textContent=CFG.sound?"on":"off";
+    snd.classList.toggle("on",CFG.sound); saveCfg(); });
+  row("Chime", snd);
+
+  dlg.appendChild(body);
+
+  const f = el("div","df");
+  const reset = el("button","btn quiet","Reset");
+  reset.addEventListener("click", async ()=>{ CFG={...DEFAULTS,colors:{}}; await saveCfg(); close(); });
+  const done = el("button","btn primary","Done");
+  done.addEventListener("click", ()=>close());
+  f.appendChild(reset); f.appendChild(done);
+  dlg.appendChild(f);
+
+  function close(){ scrim.remove(); document.removeEventListener("keydown", onKey); render(); }
+  function onKey(e){ if(e.key==="Escape") close(); }
+  document.addEventListener("keydown", onKey);
+  scrim.addEventListener("click", e => { if(e.target===scrim) close(); });
+  scrim.appendChild(dlg); document.body.appendChild(scrim);
+  done.focus();
+}
+
 function confirmDialog(title, detail, okLabel){
   return new Promise(resolve => {
     const scrim = el("div","scrim");
@@ -1429,7 +1585,7 @@ function tick(){
 }
 let actx=null;
 function chime(){
-  if(S.muted) return;
+  if(!CFG.sound) return;
   try{
     actx = actx || new (window.AudioContext||window.webkitAudioContext)();
     const t = actx.currentTime;
@@ -1459,17 +1615,18 @@ function goDay(n){
 $("#prev").addEventListener("click", ()=>goDay(-1));
 $("#next").addEventListener("click", ()=>goDay(1));
 $("#todayBtn").addEventListener("click", ()=>goDay(0));
+$("#setBtn").addEventListener("click", settingsPanel);
 $("#replanBtn").addEventListener("click", ()=>replan());
 
 async function replan(){
   const d = new Date();
-  if(sameDay(S.anchor,d) && d.getDay()===6){ toast("It's Shabbat — nothing gets scheduled."); return; }
+  if(sameDay(S.anchor,d) && d.getDay()===CFG.dayOff){ toast("It's Shabbat — nothing gets scheduled."); return; }
   const date = startOfDay(S.anchor);
   const clearable = clearableBlocks(date);
   if(clearable.length){
     const ok = await confirmDialog(
       "Rebuild today?",
-      `Clears ${clearable.length} block${clearable.length===1?"":"s"} and re-lays the day: ${MAX_SMALL} quick, ${MAX_DEEP} session.\n\nMeetings, finished and past work stay.`,
+      `Clears ${clearable.length} block${clearable.length===1?"":"s"} and re-lays the day: ${CFG.maxSmall} quick, ${CFG.maxDeep} session.\n\nMeetings, finished and past work stay.`,
       "Rebuild");
     if(!ok) return;
   }
@@ -1508,13 +1665,13 @@ setInterval(render, 60000);   // keep "now" honest
     const sc = statsCard();
     S.stats = parseStats(sc) || { ...DEFAULT_STATS };
     if(sc) S.statsCardId = sc.id;
-    S.muted = !!S.stats.mute;
+    loadCfg(S.stats);
 
     await rolloverSweep();
 
     const d = new Date();
     const planned = S.stats.plans && S.stats.plans[dayKey(d)];
-    if(!planned && d.getDay()!==6) await applyPlan(startOfDay(d),"normal",null,true);
+    if(!planned && d.getDay()!==CFG.dayOff) await applyPlan(startOfDay(d),"normal",null,true);
     render();
   }, 400);
   setTimeout(()=>{ clearInterval(settle); if(!S.ready){ S.ready=true; render(); } }, 20000);

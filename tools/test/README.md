@@ -12,6 +12,7 @@ Google Calendar calls. No network, no real writes.
 | `late.js`   | the hub late in the day, once every slot is behind you |
 | `fri.js`    | Friday plans itself to the caps with no prompt; Shabbat schedules nothing |
 | `cap.js`    | the caps hold whatever hour the widget is opened (07:30 / 12:10 / 16:30 / 21:54) |
+| `cfg.js`    | settings persist and actually change what the scheduler does |
 | `mini.js`   | the hub, "Not now" postponing, completion writes |
 | `states.js` | midday / empty day / Friday prompt / Shabbat |
 | `dead.js`   | expired auth, unreachable server, no connector |

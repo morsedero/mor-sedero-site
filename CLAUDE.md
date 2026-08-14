@@ -26,12 +26,16 @@ user's home-screen shortcut pointing at a stale copy.
 
 ### Rules that are deliberate, not accidental
 
-- **3 quick tasks + 1 work session per day.** Caps count blocks already
-  on the calendar, including ones this widget did not create.
-- **15 min buffer** either side of a work session.
+- **Caps, day window, block lengths, buffer, day off, board colours and
+  the chime are user settings** (gear icon), stored in the Trello state
+  card under `settings` and read into `CFG` at boot. `DEFAULTS` holds
+  the shipped values: 3 quick x 30 min, 1 session x 90 min, 15 min
+  buffer, 09:00-20:00, Saturday off. Never hard-code these again.
+- Caps count blocks already on the calendar, including ones this widget
+  did not create.
 - **Real meetings are never scheduled over.** All-day events are the
   only exception.
-- **Shabbat schedules nothing.** Friday is an ordinary day.
+- The day off schedules nothing. Every other day is ordinary.
 - A run **clears and re-lays** the day's card-linked blocks. It never
   touches a real meeting, finished work, or the block in progress.
 - Hebrew card text is rendered RTL per field via `dir="auto"`; the app

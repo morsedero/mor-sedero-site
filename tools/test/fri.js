@@ -23,7 +23,7 @@ window.Date=class extends R{constructor(...a){if(a.length===0)super(R.now()+O);e
       return {small:h.small,deep:h.deep,prompt:!!document.querySelector(".ask"),
               hub:!!document.querySelector(".now"),
               state:(document.querySelector(".state h2")||{}).textContent||null,
-              maxS:MAX_SMALL,maxD:MAX_DEEP};});
+              maxS:CFG.maxSmall,maxD:CFG.maxDeep};});
     const bad=[];
     if(r.prompt) bad.push("a prompt was shown");
     if(label==="saturday"){

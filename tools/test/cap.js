@@ -22,7 +22,7 @@ for(const when of ["2026-08-14T07:30:00+03:00","2026-08-14T12:10:00+03:00","2026
       hub:!!document.querySelector(".now"),state:(document.querySelector(".state h2")||{}).textContent||null,
       dels:window.__calls.filter(c=>c.tool==="delete_event").length,
       creates:window.__calls.filter(c=>c.tool==="create_event").length,
-      maxS:MAX_SMALL,maxD:MAX_DEEP};});
+      maxS:CFG.maxSmall,maxD:CFG.maxDeep};});
   const bad=[];
   if(r.small>r.maxS) bad.push(`${r.small} quick > ${r.maxS}`);
   if(r.deep>r.maxD)  bad.push(`${r.deep} sessions > ${r.maxD}`);
