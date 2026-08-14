@@ -15,6 +15,7 @@ Google Calendar calls. No network, no real writes.
 | `dead.js`   | expired auth, unreachable server, no connector |
 | `det.js`    | expandable description + checklist |
 | `hub.js`    | rebuild-on-run, board colours, clock and remaining-time meter |
+| `tick.js`   | details auto-opening, and ticking a checklist item through to Trello |
 
 `real-events.json` is a snapshot of one real calendar day, used to test against
 a genuinely packed schedule rather than a tidy fixture.

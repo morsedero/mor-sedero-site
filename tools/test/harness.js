@@ -108,6 +108,12 @@ window.claude = {
       window.__calls.push({ server, tool, input });
       if(tool === "trelloReadChecklist" || tool === "trelloReadCard" || tool === "trelloReadList" || tool === "list_events")
         return { payload: payloadFor(server, tool, input) };
+      if(tool === "trelloWriteChecklist" && input.action === "update_item"){
+        for(const k in CHECKLISTS) for(const cl of CHECKLISTS[k]) for(const it of cl.checkItems)
+          if(it.id === input.itemId){ it.state = input.checked ? "COMPLETE" : "INCOMPLETE";
+            return { payload: { id:it.id, name:it.name, state:it.state, position:it.position } }; }
+        throw { code:"tool_error", message:"item not found" };
+      }
       if(tool === "create_event"){
         const ev = { id:"new"+window.__calls.length, colorId:input.colorId, summary:input.summary,
                      description:input.description, status:"confirmed",
