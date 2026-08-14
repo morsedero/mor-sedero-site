@@ -27,6 +27,14 @@
   --deep:#5B4BA8;
   --deep-soft:rgba(91,75,168,.10);
 
+  /* one hue per board — hues chosen to stay clear of the state colours
+     (red overdue / amber aging / green done), which always carry text too */
+  --b-projects:#5B4BA8;  --b-projects-soft:rgba(91,75,168,.11);
+  --b-sidurim:#1F6FB2;   --b-sidurim-soft:rgba(31,111,178,.11);
+  --b-sedco:#B85C22;     --b-sedco-soft:rgba(184,92,34,.11);
+  --b-today:#A8348C;     --b-today-soft:rgba(168,52,140,.11);
+  --b-none:#8A939B;      --b-none-soft:rgba(138,147,155,.10);
+
   --shadow:0 1px 2px rgba(16,20,26,.05), 0 8px 24px rgba(16,20,26,.06);
   --shadow-lg:0 18px 50px rgba(16,20,26,.16);
 
@@ -57,6 +65,12 @@
     --deep:#A99CF0;
     --deep-soft:rgba(169,156,240,.13);
 
+    --b-projects:#A99CF0;  --b-projects-soft:rgba(169,156,240,.14);
+    --b-sidurim:#6FC0F5;   --b-sidurim-soft:rgba(111,192,245,.14);
+    --b-sedco:#F0A05C;     --b-sedco-soft:rgba(240,160,92,.14);
+    --b-today:#ED8FD4;     --b-today-soft:rgba(237,143,212,.14);
+    --b-none:#6E777F;      --b-none-soft:rgba(110,119,127,.14);
+
     --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 24px rgba(0,0,0,.3);
     --shadow-lg:0 18px 50px rgba(0,0,0,.5);
   }
@@ -83,6 +97,12 @@
   --done:#5FC98A;
   --deep:#A99CF0;
   --deep-soft:rgba(169,156,240,.13);
+
+  --b-projects:#A99CF0;  --b-projects-soft:rgba(169,156,240,.14);
+  --b-sidurim:#6FC0F5;   --b-sidurim-soft:rgba(111,192,245,.14);
+  --b-sedco:#F0A05C;   --b-sedco-soft:rgba(240,160,92,.14);
+  --b-today:#ED8FD4;   --b-today-soft:rgba(237,143,212,.14);
+  --b-none:#6E777F;    --b-none-soft:rgba(110,119,127,.14);
 
   --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 24px rgba(0,0,0,.3);
   --shadow-lg:0 18px 50px rgba(0,0,0,.5);
@@ -123,36 +143,74 @@ button{font:inherit;color:inherit;}
 .nav button:hover{background:var(--surface);border-color:var(--line);color:var(--ink);}
 .nav .todaybtn{width:auto;padding:0 11px;font-size:12px;}
 
-/* ---------------- the answer ---------------- */
+/* board identity: every element that represents a task carries its board hue */
+.bk-projects{--bc:var(--b-projects);--bc-soft:var(--b-projects-soft);}
+.bk-sidurim {--bc:var(--b-sidurim); --bc-soft:var(--b-sidurim-soft);}
+.bk-sedco   {--bc:var(--b-sedco);   --bc-soft:var(--b-sedco-soft);}
+.bk-today   {--bc:var(--b-today);   --bc-soft:var(--b-today-soft);}
+.bk-none    {--bc:var(--b-none);    --bc-soft:var(--b-none-soft);}
+
+/* ---------------- the hub ---------------- */
 .now{
   background:var(--surface);border:1px solid var(--line);
-  border-radius:16px;padding:20px;box-shadow:var(--shadow);
+  border-radius:16px;padding:0;box-shadow:var(--shadow);
   position:relative;overflow:hidden;
 }
-.now.live{border-color:var(--accent-line);}
-.now.live::before{
-  content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--accent);
+.now::before{
+  content:"";position:absolute;left:0;top:0;bottom:0;width:4px;
+  background:var(--bc,var(--b-none));
 }
-.now .when{
-  display:flex;align-items:center;gap:9px;margin-bottom:12px;flex-wrap:wrap;
+.now.live{border-color:var(--bc,var(--accent-line));}
+
+/* top strip: wall clock + status */
+.hub-top{
+  display:flex;align-items:center;justify-content:space-between;gap:10px;
+  padding:12px 18px 10px;border-bottom:1px solid var(--line);
+  background:var(--bc-soft,transparent);
 }
-.now .clock{
-  font-family:var(--mono);font-size:19px;font-variant-numeric:tabular-nums;
-  font-weight:600;letter-spacing:-.01em;
+.hub-clock{
+  font-family:var(--mono);font-size:26px;font-variant-numeric:tabular-nums;
+  font-weight:600;letter-spacing:-.02em;line-height:1;
 }
-.now.live .clock{color:var(--accent-ink);}
+.hub-clock .sec{font-size:14px;color:var(--ink-3);margin-left:1px;}
+.hub-status{display:flex;align-items:center;gap:7px;flex-wrap:wrap;justify-content:flex-end;}
+
+.hub-body{padding:16px 18px 18px;}
+.now .slot{
+  font-family:var(--mono);font-size:12px;color:var(--ink-2);
+  font-variant-numeric:tabular-nums;margin-bottom:6px;
+}
 .now h2{
   margin:0 0 14px;font-size:21px;line-height:1.32;font-weight:600;
   letter-spacing:-.015em;text-wrap:balance;overflow-wrap:anywhere;
 }
 .now .tags{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px;}
-.now .acts{display:flex;gap:8px;flex-wrap:wrap;}
+.now .acts{display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
+
+/* remaining-time meter */
+.meter{margin:0 0 14px;}
+.meter .bar{
+  height:6px;border-radius:99px;background:var(--surface-2);
+  overflow:hidden;border:1px solid var(--line);
+}
+.meter .fill{
+  height:100%;background:var(--bc,var(--accent));
+  border-radius:99px;transition:width .9s linear;
+}
+.meter .lbl{
+  display:flex;justify-content:space-between;gap:8px;margin-top:6px;
+  font-family:var(--mono);font-size:11px;font-variant-numeric:tabular-nums;color:var(--ink-3);
+}
+.meter .left{color:var(--ink);font-weight:600;}
+.meter.over .left{color:var(--crit);}
+.meter.over .fill{background:var(--crit);}
 
 .chip{
   font-family:var(--mono);font-size:9.5px;letter-spacing:.09em;text-transform:uppercase;
   padding:2px 7px;border-radius:4px;background:var(--surface-2);color:var(--ink-2);
   border:1px solid var(--line);white-space:nowrap;
 }
+.chip.board{background:var(--bc-soft);color:var(--bc);border-color:transparent;font-weight:600;}
 .chip.crit{background:transparent;color:var(--crit);border-color:var(--crit);}
 .chip.age{background:var(--age-soft);color:var(--age);border-color:transparent;}
 .chip.deep{background:var(--deep-soft);color:var(--deep);border-color:transparent;}
@@ -187,16 +245,24 @@ button{font:inherit;color:inherit;}
 .later .lh{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:10px;}
 .rows{display:flex;flex-direction:column;}
 
+/* a row plus its expanded panel read as one unit, so the divider sits on the
+   wrapper rather than between a row and its own details */
+.item{display:flex;flex-direction:column;border-bottom:1px solid var(--line);}
+.item:last-child{border-bottom:0;}
 .row{
   display:flex;align-items:center;gap:12px;
-  padding:11px 4px;border-bottom:1px solid var(--line);
+  padding:11px 4px;
   transition:opacity .2s;
 }
-.row:last-child{border-bottom:0;}
 .row .t{
   font-family:var(--mono);font-size:12px;font-variant-numeric:tabular-nums;
   color:var(--ink-3);flex:0 0 42px;
 }
+.row .dot{
+  flex:0 0 auto;width:8px;height:8px;border-radius:3px;
+  background:var(--bc,var(--b-none));
+}
+.row.meeting .dot{background:transparent;border:1px solid var(--line-2);}
 .row .n{flex:1 1 auto;min-width:0;font-size:14px;overflow-wrap:anywhere;}
 .row .n .sub{display:block;margin-top:2px;}
 /* shrink-to-fit titles: RTL text stays next to its timestamp */
@@ -220,6 +286,48 @@ button{font:inherit;color:inherit;}
 .mini.ok:hover{color:var(--done);border-color:var(--done);}
 .mini.later-btn:hover{color:var(--accent);border-color:var(--accent);}
 .mini.del:hover{color:var(--crit);border-color:var(--crit);}
+
+/* ---------------- expandable card detail ---------------- */
+.details{
+  margin-top:14px;padding-top:14px;border-top:1px solid var(--line);
+  font-size:13.5px;color:var(--ink-2);
+}
+/* indented to line up under the row's title, not its timestamp */
+.item > .details{
+  margin:0 4px 12px 62px;padding:11px 13px;border-top:0;
+  background:var(--surface-2);border:1px solid var(--line);border-radius:10px;
+}
+@media (max-width:520px){ .item > .details{margin-left:16px;} }
+.details .desc{white-space:pre-wrap;overflow-wrap:anywhere;margin-bottom:12px;}
+.details .desc:last-child{margin-bottom:0;}
+.details .clname{
+  font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--ink-3);display:flex;justify-content:space-between;gap:8px;margin:10px 0 6px;
+}
+.details ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:5px;}
+.details li{display:flex;gap:8px;align-items:flex-start;line-height:1.4;}
+.details li .box{
+  flex:0 0 auto;width:14px;height:14px;border-radius:4px;margin-top:2px;
+  border:1.5px solid var(--line-2);display:grid;place-items:center;
+  font-size:9px;color:transparent;
+}
+.details li.on .box{background:var(--done);border-color:var(--done);color:#fff;}
+.details li.on .it{color:var(--ink-3);text-decoration:line-through;text-decoration-thickness:1px;}
+.details .it{min-width:0;overflow-wrap:anywhere;}
+.details .muted{color:var(--ink-3);font-size:12.5px;}
+.details .prog{
+  height:4px;border-radius:99px;background:var(--surface);border:1px solid var(--line);
+  overflow:hidden;margin-bottom:8px;
+}
+.details .prog i{display:block;height:100%;background:var(--done);}
+
+.expand{
+  border:0;background:transparent;color:var(--ink-3);cursor:pointer;
+  font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;
+  padding:6px 8px;border-radius:6px;
+  transition:color .15s,background .15s;
+}
+.expand:hover{color:var(--ink);background:var(--surface-2);}
 
 /* ---------------- footer ---------------- */
 .foot{
@@ -388,6 +496,8 @@ const S = {
   anchor: startOfDay(new Date()),
   mcp:null, ready:false, busy:false,
   cards:{}, events:null, errs:{},
+  lists:{},            // cardId -> {loading|checklists|error}
+  open:new Set(),      // ids of expanded items
   stats:null, statsCardId:null,
   calRange:null, calUnsub:null,
   fridayAnswered:false, muted:false,
@@ -519,12 +629,15 @@ function allEvents(){
 }
 const overlapsDay = (e,d) => { const a=startOfDay(d), b=addDays(a,1); return e.start < b && e.end > a; };
 
+/* `ignore` may be a single id or a Set of ids */
+const ignored = (id, ignore) => !!ignore && (typeof ignore === "string" ? ignore === id : ignore.has(id));
+
 /* occupied minutes, work-session buffers baked in */
-function busyFor(date, ignoreEventId){
+function busyFor(date, ignore){
   const out=[];
   for(const e of allEvents()){
     if(e.allDay || !overlapsDay(e,date)) continue;
-    if(ignoreEventId && e.id === ignoreEventId) continue;
+    if(ignored(e.id, ignore)) continue;
     const pad = (e.isTask && e.deep) ? BUFFER_MIN : 0;
     const s  = sameDay(e.start,date) ? minsOf(e.start) : 0;
     const en = sameDay(e.end,date)   ? minsOf(e.end)   : 24*60;
@@ -532,16 +645,52 @@ function busyFor(date, ignoreEventId){
   }
   return out;
 }
-function existingBlocks(date){
-  const evs = allEvents().filter(e => e.isTask && !e.allDay && overlapsDay(e,date));
+function existingBlocks(date, ignore){
+  const evs = allEvents().filter(e => e.isTask && !e.allDay && overlapsDay(e,date) && !ignored(e.id, ignore));
   const deep = evs.filter(e => e.deep).length;
   return { deep, small: evs.length-deep, total: evs.length, foreign: evs.filter(e=>!e.mine).length };
+}
+
+/* Blocks a re-plan is allowed to clear and lay out again. Every card-linked
+   block counts — including ones the morning routine created — but never a
+   real meeting, never something already finished, and never the past. */
+function clearableBlocks(date){
+  const now = new Date();
+  const isToday = sameDay(date, now);
+  const nowMin = minsOf(now);
+  return allEvents().filter(e => {
+    if(!e.isTask || e.allDay || !overlapsDay(e,date)) return false;
+    if(isToday && minsOf(e.end) <= nowMin) return false;   // don't rewrite the past
+    const c = cardFor(e);
+    if(c && c.dueComplete) return false;                    // keep finished work
+    return true;
+  });
 }
 
 /* card behind a block, if we can resolve one */
 function cardFor(ev){
   if(!ev.cardShort) return null;
   return allCards().find(c => c.shortLink === ev.cardShort && !c.isStats) || null;
+}
+
+/* board hue class; falls back to neutral when the card can't be resolved */
+const boardClass = card => card ? "bk-" + card.boardKey : "bk-none";
+
+/* ------------------------------------------------- checklists (lazy) */
+/* Fetched only when a card is expanded — one call per card, then cached. */
+function loadChecklists(card){
+  if(!card || S.lists[card.id]) return;
+  S.lists[card.id] = { loading:true };
+  render();
+  callTool(TRELLO, "trelloReadChecklist",
+    { action:"list_by_card", cardId:card.id, limit:25 },
+    { cache:{ staleTime:120000 } })
+    .then(res => {
+      const p = res.payload || {};
+      S.lists[card.id] = { loading:false, checklists: p.checklists || [] };
+    })
+    .catch(e => { S.lists[card.id] = { loading:false, error:errCopy(e) }; })
+    .then(render);
 }
 
 /* ---------------------------------------------------------------- stats */
@@ -638,8 +787,8 @@ function findSlots(busy, winS, winE, dur, pad, max, fromMin){
   }
   return out;
 }
-function planFor(date, mode, picked){
-  const have = existingBlocks(date);
+function planFor(date, mode, picked, ignore){
+  const have = existingBlocks(date, ignore);
   const smallCap = Math.max(0, (mode==="short"?2:MAX_SMALL) - have.small);
   const deepCap  = Math.max(0, (mode==="short"?0:MAX_DEEP)  - have.deep);
 
@@ -651,11 +800,13 @@ function planFor(date, mode, picked){
     const set = new Set(picked);
     pool = pool.filter(c => set.has(c.id));
   }
-  const already = new Set(allEvents().filter(e => e.isTask && overlapsDay(e,date) && e.cardShort).map(e => e.cardShort));
+  const already = new Set(allEvents()
+    .filter(e => e.isTask && overlapsDay(e,date) && e.cardShort && !ignored(e.id, ignore))
+    .map(e => e.cardShort));
   pool = pool.filter(c => !c.shortLink || !already.has(c.shortLink));
 
   const ranked = rankCards(pool);
-  const placed = [], live = busyFor(date);
+  const placed = [], live = busyFor(date, ignore);
 
   for(const c of ranked.filter(x=>x.deep).slice(0,deepCap)){
     const dur = c.est || DEEP_DEFAULT;
@@ -673,10 +824,22 @@ function planFor(date, mode, picked){
   placed.sort((a,b)=>a.s-b.s);
   return placed;
 }
-async function applyPlan(date, mode, picked){
+/* A run rebuilds the day: every card-linked block it is allowed to touch is
+   cleared and the day is laid out again under the caps. That is what keeps a
+   day stuffed with Trello-generated blocks from staying stuffed. */
+async function applyPlan(date, mode, picked, rebuild){
   if(S.busy) return;
+  const clearable = rebuild ? clearableBlocks(date) : [];
+  const ignore = new Set(clearable.map(e => e.id));
+
   S.busy = true; render();
-  const placed = planFor(date, mode, picked);
+  const placed = planFor(date, mode, picked, ignore);
+
+  let cleared = 0;
+  for(const e of clearable){
+    try{ await deleteBlock(e.id); cleared++; }
+    catch(err){ toast(errCopy(err), true); }
+  }
   let ok=0;
   for(const p of placed){
     try{
@@ -699,8 +862,9 @@ async function applyPlan(date, mode, picked){
   await saveStats(st);
   await refreshCalendar();
   S.busy = false;
-  if(ok) toast(`Scheduled ${ok} task${ok===1?"":"s"}.`);
-  else if(placed.length===0) toast("Nothing to add — the day is already full.");
+  if(ok) toast(cleared ? `Rebuilt: ${ok} task${ok===1?"":"s"}, cleared ${cleared}.` : `Scheduled ${ok} task${ok===1?"":"s"}.`);
+  else if(cleared) toast(`Cleared ${cleared} block${cleared===1?"":"s"} — nothing left to schedule.`);
+  else toast("Nothing to add — the day is already full.");
   render();
 }
 async function rolloverSweep(){
@@ -946,37 +1110,61 @@ function section(label, list){
   return sec;
 }
 
+/* The hub: wall clock, what you're on, and how long is left on it. */
 function nowCard(item){
-  const isToday = sameDay(S.anchor, new Date());
-  const nowMin = minsOf(new Date());
+  const now = new Date();
+  const isToday = sameDay(S.anchor, now);
+  const nowMin = minsOf(now);
   const live = isToday && item.s <= nowMin && item.e2 > nowMin;
+  const c = item.card;
 
-  const box = el("div","now" + (live ? " live" : ""));
-  const when = el("div","when");
-  when.appendChild(el("span","eyebrow", live ? "Now" : "Next"));
-  when.appendChild(el("span","clock", fmtRange(item.ev.start, item.ev.end)));
-  if(live) when.appendChild(el("span","chip live","in progress"));
-  else if(isToday){
-    const mins = item.s - nowMin;
-    if(mins > 0) when.appendChild(el("span","chip", mins < 60 ? `in ${mins} min` : `in ${Math.round(mins/60)}h`));
-  }
-  box.appendChild(when);
+  S.hubItem = item;
+  const box = el("div","now " + boardClass(c) + (live ? " live" : ""));
 
-  const h = el("h2"); h.appendChild(bidiSpan(item.title)); box.appendChild(h);
+  /* --- top strip: the wall clock --- */
+  const top = el("div","hub-top");
+  const clock = el("div","hub-clock");
+  clock.id = "hubClock";
+  clock.appendChild(el("span","hh", hhmm(now)));
+  clock.appendChild(el("span","sec", ":" + pad2(now.getSeconds())));
+  top.appendChild(clock);
+
+  const status = el("div","hub-status");
+  status.appendChild(el("span","eyebrow", live ? "On it" : (isToday ? "Up next" : "First up")));
+  if(c) { const b = el("span","chip board"); bidi(b, c.boardName); status.appendChild(b); }
+  else if(!item.ev.mine) status.appendChild(el("span","chip","external"));
+  top.appendChild(status);
+  box.appendChild(top);
+
+  /* --- body --- */
+  const body = el("div","hub-body");
+  body.appendChild(el("div","slot", fmtRange(item.ev.start, item.ev.end)));
+
+  const h = el("h2"); h.appendChild(bidiSpan(item.title)); body.appendChild(h);
+
+  /* how long you have */
+  const total = Math.max(1, item.e2 - item.s);
+  const m = el("div","meter"); m.id = "hubMeter";
+  const bar = el("div","bar");
+  const fill = el("i","fill"); fill.id = "hubFill";
+  bar.appendChild(fill); m.appendChild(bar);
+  const lbl = el("div","lbl");
+  const leftEl = el("span","left"); leftEl.id = "hubLeft";
+  const endEl = el("span",null, "ends " + hhmm(item.ev.end));
+  lbl.appendChild(leftEl); lbl.appendChild(endEl);
+  m.appendChild(lbl);
+  body.appendChild(m);
+  paintMeter(m, fill, leftEl, item, isToday);
 
   const tags = el("div","tags");
-  const c = item.card;
   if(c){
     if(isAging(c))      tags.appendChild(el("span","chip age", `waiting ${ageDays(c)} days`));
     else if(c.overdue)  tags.appendChild(el("span","chip crit","overdue"));
     else if(c.dueToday) tags.appendChild(el("span","chip","due today"));
     if(c.blocked)       tags.appendChild(el("span","chip","blocked"));
     if(c.deep)          tags.appendChild(el("span","chip deep","work session"));
-    const bn = el("span","chip"); bidi(bn, c.boardName); tags.appendChild(bn);
-  }else if(!item.ev.mine){
-    tags.appendChild(el("span","chip","from your morning routine"));
   }
-  if(tags.children.length) box.appendChild(tags);
+  if(tags.children.length) body.appendChild(tags);
 
   const acts = el("div","acts");
   const doneBtn = el("button","btn primary","Done");
@@ -986,12 +1174,92 @@ function nowCard(item){
   laterBtn.addEventListener("click", ()=>postpone(item));
   const skipBtn = el("button","btn quiet","Remove");
   skipBtn.addEventListener("click", ()=>removeItem(item));
-  if(S.pending.has(item.ev.id) || (item.card && S.pending.has(item.card.id))){
+  if(S.pending.has(item.ev.id) || (c && S.pending.has(c.id))){
     doneBtn.disabled = laterBtn.disabled = skipBtn.disabled = true;
   }
   acts.appendChild(doneBtn); acts.appendChild(laterBtn); acts.appendChild(skipBtn);
-  box.appendChild(acts);
+
+  if(c && (c.desc || true)){
+    const key = "hub:"+item.ev.id;
+    const ex = el("button","expand", S.open.has(key) ? "Hide details ▴" : "Details ▾");
+    ex.addEventListener("click", ()=>{
+      if(S.open.has(key)) S.open.delete(key);
+      else { S.open.add(key); loadChecklists(c); }
+      render();
+    });
+    acts.appendChild(ex);
+  }
+  body.appendChild(acts);
+
+  if(c && S.open.has("hub:"+item.ev.id)) body.appendChild(detailPanel(c));
+  box.appendChild(body);
   return box;
+}
+
+/* remaining time on the current block; counts over if it has run past */
+function paintMeter(meter, fill, leftEl, item, isToday){
+  const nowMin = minsOf(new Date()) + new Date().getSeconds()/60;
+  const total = Math.max(1, item.e2 - item.s);
+  if(!isToday || nowMin < item.s){
+    fill.style.width = "0%";
+    const until = Math.round(item.s - nowMin);
+    leftEl.textContent = isToday && until > 0
+      ? (until < 60 ? `starts in ${until} min` : `starts in ${Math.floor(until/60)}h ${until%60}m`)
+      : `${total} min block`;
+    meter.classList.remove("over");
+    return;
+  }
+  const elapsed = nowMin - item.s;
+  const left = Math.ceil(item.e2 - nowMin);
+  fill.style.width = clamp((elapsed/total)*100, 0, 100) + "%";
+  if(left > 0){
+    leftEl.textContent = left < 60 ? `${left} min left` : `${Math.floor(left/60)}h ${left%60}m left`;
+    meter.classList.remove("over");
+  }else{
+    const over = Math.abs(left);
+    leftEl.textContent = over < 60 ? `${over} min over` : `${Math.floor(over/60)}h ${over%60}m over`;
+    meter.classList.add("over");
+  }
+}
+
+/* description + checklists, read-only */
+function detailPanel(card){
+  const d = el("div","details");
+  if(card.desc && card.desc.trim()){
+    const p = el("div","desc"); bidi(p, card.desc.trim()); d.appendChild(p);
+  }
+  const bag = S.lists[card.id];
+  if(!bag || bag.loading){ d.appendChild(el("div","muted","Loading checklist…")); return d; }
+  if(bag.error){ d.appendChild(el("div","muted", bag.error)); return d; }
+
+  const lists = bag.checklists || [];
+  if(!lists.length){
+    if(!card.desc || !card.desc.trim()) d.appendChild(el("div","muted","No description or checklist on this card."));
+    return d;
+  }
+  for(const cl of lists){
+    const items = cl.checkItems || [];
+    const done = items.filter(i => i.state === "COMPLETE").length;
+    const head = el("div","clname");
+    const nm = el("span"); bidi(nm, cl.name || "Checklist"); head.appendChild(nm);
+    head.appendChild(el("span",null, `${done}/${items.length}`));
+    d.appendChild(head);
+    if(items.length){
+      const prog = el("div","prog");
+      const i = el("i"); i.style.width = Math.round(100*done/items.length) + "%";
+      prog.appendChild(i); d.appendChild(prog);
+    }
+    const ul = el("ul");
+    for(const it of items){
+      const li = el("li", it.state === "COMPLETE" ? "on" : "");
+      const box = el("span","box","✓");
+      li.appendChild(box);
+      const t = el("span","it"); bidi(t, it.name); li.appendChild(t);
+      ul.appendChild(li);
+    }
+    d.appendChild(ul);
+  }
+  return d;
 }
 
 function emptyNow(doneCount){
@@ -1008,7 +1276,7 @@ function stateCard(glyph, title, body, withReplan){
     const a = el("div","acts");
     const b = el("button","btn","Re-plan day");
     b.disabled = !!S.busy;
-    b.addEventListener("click", ()=>applyPlan(startOfDay(S.anchor),"normal"));
+    b.addEventListener("click", ()=>replan());
     a.appendChild(b); s.appendChild(a);
   }
   return s;
@@ -1022,15 +1290,28 @@ function meetingNowRow(item){
 }
 
 function agendaRow(item){
-  const r = el("div","row" + (item.task ? "" : " meeting") + (item.ev.deep ? " deep" : "") + (item.done ? " done" : ""));
+  const wrap = el("div","item");
+  const r = el("div","row " + boardClass(item.card) + (item.task ? "" : " meeting") + (item.ev.deep ? " deep" : "") + (item.done ? " done" : ""));
   r.appendChild(el("span","t", hhmm(item.ev.start)));
+  r.appendChild(el("span","dot"));
   const n = el("span","n");
   n.appendChild(bidiSpan(item.title));
   if(!item.task) n.appendChild(el("span","eyebrow sub","meeting"));
   r.appendChild(n);
 
   if(item.task){
+    const key = "row:"+item.ev.id;
     const acts = el("div","acts-inline");
+    if(item.card){
+      const info = el("button","mini info", S.open.has(key) ? "▴" : "▾");
+      info.title = "Description and checklist"; info.setAttribute("aria-label","Show details");
+      info.addEventListener("click", ()=>{
+        if(S.open.has(key)) S.open.delete(key);
+        else { S.open.add(key); loadChecklists(item.card); }
+        render();
+      });
+      acts.appendChild(info);
+    }
     const ok = el("button","mini ok","✓");
     ok.title = "Done"; ok.setAttribute("aria-label","Mark done");
     ok.addEventListener("click", ()=>completeItem(item));
@@ -1043,8 +1324,12 @@ function agendaRow(item){
     if(S.pending.has(item.ev.id)) [ok,lt,dl].forEach(b=>b.disabled=true);
     acts.appendChild(ok); acts.appendChild(lt); acts.appendChild(dl);
     r.appendChild(acts);
+    wrap.appendChild(r);
+    if(item.card && S.open.has(key)) wrap.appendChild(detailPanel(item.card));
+    return wrap;
   }
-  return r;
+  wrap.appendChild(r);
+  return wrap;
 }
 
 function fridayCard(){
@@ -1059,7 +1344,7 @@ function fridayCard(){
     b.addEventListener("click", fn); return b;
   };
   opts.appendChild(mk("Normal, but short","Two quick tasks, no work session.",
-    ()=>{ S.fridayAnswered=true; applyPlan(startOfDay(new Date()),"short"); }));
+    ()=>{ S.fridayAnswered=true; applyPlan(startOfDay(new Date()),"short",null,true); }));
   opts.appendChild(mk("Only what's already there","Keep the day as it stands — nothing added.",
     ()=>{ S.fridayAnswered=true; render(); }));
   opts.appendChild(mk("Take the day off","Nothing scheduled.",
@@ -1156,11 +1441,35 @@ function goDay(n){
 $("#prev").addEventListener("click", ()=>goDay(-1));
 $("#next").addEventListener("click", ()=>goDay(1));
 $("#todayBtn").addEventListener("click", ()=>goDay(0));
-$("#replanBtn").addEventListener("click", ()=>{
+$("#replanBtn").addEventListener("click", ()=>replan());
+
+async function replan(){
   const d = new Date();
   if(sameDay(S.anchor,d) && d.getDay()===6){ toast("It's Shabbat — nothing gets scheduled."); return; }
-  applyPlan(startOfDay(S.anchor), "normal");
-});
+  const date = startOfDay(S.anchor);
+  const clearable = clearableBlocks(date);
+  if(clearable.length){
+    const ok = await confirmDialog(
+      "Rebuild today?",
+      `${clearable.length} task block${clearable.length===1?"":"s"} will be cleared and the day laid out again — at most ${MAX_SMALL} quick tasks and ${MAX_DEEP} work session.\n\nMeetings, finished work and anything already past are untouched.`,
+      "Rebuild");
+    if(!ok) return;
+  }
+  applyPlan(date, "normal", null, true);
+}
+/* the wall clock and the remaining-time meter tick every second without
+   repainting the whole page */
+function tickHub(){
+  const clock = $("#hubClock");
+  if(clock && clock.firstChild && clock.lastChild){
+    const n = new Date();
+    clock.firstChild.textContent = hhmm(n);
+    clock.lastChild.textContent = ":" + pad2(n.getSeconds());
+  }
+  const meter = $("#hubMeter"), fill = $("#hubFill"), left = $("#hubLeft");
+  if(meter && fill && left && S.hubItem) paintMeter(meter, fill, left, S.hubItem, sameDay(S.anchor, new Date()));
+}
+setInterval(tickHub, 1000);
 setInterval(render, 60000);   // keep "now" honest
 
 (async function boot(){
@@ -1187,7 +1496,7 @@ setInterval(render, 60000);   // keep "now" honest
 
     const d = new Date();
     const planned = S.stats.plans && S.stats.plans[dayKey(d)];
-    if(!planned && d.getDay()!==6 && d.getDay()!==5) await applyPlan(startOfDay(d),"normal");
+    if(!planned && d.getDay()!==6 && d.getDay()!==5) await applyPlan(startOfDay(d),"normal",null,true);
     render();
   }, 400);
   setTimeout(()=>{ clearInterval(settle); if(!S.ready){ S.ready=true; render(); } }, 20000);
