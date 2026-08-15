@@ -37,7 +37,10 @@ user's home-screen shortcut pointing at a stale copy.
   (3h), orange = long session / work day (8h). `card.size` and
   `event.size` (read back from the Google Calendar colorId: 9 quick, 5
   short, 11 long) drive every scheduling decision — board is now only
-  colour identity plus the today-board exclusion.
+  colour identity. `BOARDS` lists the three real work boards (PROJECTS,
+  סידורים, סדקו); there is no separate "today priority" board — this
+  widget's own live schedule replaces that. The hidden DayFlow state
+  card lives on סידורים, in its own "📊 DayFlow (widget state)" list.
 - **Quick tasks share one contiguous window** (`quickTotal`), split
   evenly between them — they do not scatter across the day. The group
   shrinks until it fits somewhere.

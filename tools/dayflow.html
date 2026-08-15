@@ -32,7 +32,6 @@
   --b-projects:#6D3BEA;  --b-projects-soft:rgba(109,59,234,.14);
   --b-sidurim:#0B6BF0;   --b-sidurim-soft:rgba(11,107,240,.14);
   --b-sedco:#E85D04;     --b-sedco-soft:rgba(232,93,4,.15);
-  --b-today:#D6008F;     --b-today-soft:rgba(214,0,143,.13);
   --b-none:#8A939B;      --b-none-soft:rgba(138,147,155,.11);
 
   --shadow:0 1px 2px rgba(16,20,26,.05), 0 8px 24px rgba(16,20,26,.06);
@@ -68,7 +67,6 @@
     --b-projects:#B69CFF;  --b-projects-soft:rgba(182,156,255,.18);
     --b-sidurim:#5AB4FF;   --b-sidurim-soft:rgba(90,180,255,.18);
     --b-sedco:#FF9A3D;     --b-sedco-soft:rgba(255,154,61,.18);
-    --b-today:#FF7AD9;     --b-today-soft:rgba(255,122,217,.18);
     --b-none:#6E777F;      --b-none-soft:rgba(110,119,127,.16);
 
     --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 24px rgba(0,0,0,.3);
@@ -101,7 +99,6 @@
   --b-projects:#B69CFF;  --b-projects-soft:rgba(182,156,255,.18);
   --b-sidurim:#5AB4FF;   --b-sidurim-soft:rgba(90,180,255,.18);
   --b-sedco:#FF9A3D;   --b-sedco-soft:rgba(255,154,61,.18);
-  --b-today:#FF7AD9;   --b-today-soft:rgba(255,122,217,.18);
   --b-none:#6E777F;    --b-none-soft:rgba(110,119,127,.16);
 
   --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 24px rgba(0,0,0,.3);
@@ -147,7 +144,6 @@ button{font:inherit;color:inherit;}
 .bk-projects{--bc:var(--b-projects);--bc-soft:var(--b-projects-soft);}
 .bk-sidurim {--bc:var(--b-sidurim); --bc-soft:var(--b-sidurim-soft);}
 .bk-sedco   {--bc:var(--b-sedco);   --bc-soft:var(--b-sedco-soft);}
-.bk-today   {--bc:var(--b-today);   --bc-soft:var(--b-today-soft);}
 .bk-none    {--bc:var(--b-none);    --bc-soft:var(--b-none-soft);}
 
 /* ---------------- the hub ---------------- */
@@ -498,15 +494,14 @@ const GCAL   = "Google Calendar";
 const CAL_ID = "morsedero@gmail.com";
 
 /* Board no longer decides quick/short/long — the card's own label does
-   (sizeFromLabels). Board still drives colour identity and the today-board
-   exclusion from scheduling. */
+   (sizeFromLabels). Board now only drives colour identity: there is no
+   separate "today priority" board any more — this app, with its own live
+   schedule, is that board. */
 const BOARDS = [
   { key:"projects", id:bAri("692abd49a69c853bb71cb728"), name:"PROJECTS" },
   { key:"sidurim",  id:bAri("693683bc8be8844147bbe82c"), name:"סידורים" },
-  { key:"sedco",    id:bAri("6a718220df5bd657f0636bc7"), name:"סדקו" },
-  { key:"today",    id:bAri("6a7a17e2ed53384c4f792d87"), name:"היום" }
+  { key:"sedco",    id:bAri("6a718220df5bd657f0636bc7"), name:"סדקו" }
 ];
-const LIST_DONE = lAri("6a7a17e6fa8d1b840074ed07");
 const STATS_CARD_NAME = "📊 DayFlow Stats";
 
 const SNAP_MIN = 15;
@@ -914,7 +909,7 @@ function tierOf(c){
   return 6;
 }
 function candidates(){
-  return allCards().filter(c => !c.isStats && !c.dueComplete && c.boardKey !== "today" && c.listId !== LIST_DONE);
+  return allCards().filter(c => !c.isStats && !c.dueComplete);
 }
 function rankCards(pool){
   return pool.slice().sort((a,b) => {
@@ -1114,8 +1109,6 @@ async function completeItem(item){
   try{
     if(card){
       await callTool(TRELLO, "trelloWriteCard", { action:"mark_done", cardId:card.id });
-      if(card.boardKey === "today" && card.listId !== LIST_DONE)
-        await callTool(TRELLO, "trelloWriteCard", { action:"move", cardId:card.id, listId:LIST_DONE, pos:"top" });
     }
     celebrate();
     const st = bumpCategory(card ? card.boardName : "—", "done");
@@ -1843,7 +1836,7 @@ setInterval(render, 60000);   // keep "now" honest
   startWatches();
 
   const settle = setInterval(async ()=>{
-    if(!S.cards.today || !S.events) return;
+    if(!BOARDS.every(b => S.cards[b.key]) || !S.events) return;
     clearInterval(settle);
     S.ready = true;
 

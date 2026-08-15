@@ -23,10 +23,7 @@ const card = (id, name, listId, listName, boardId, boardName, o = {}) => ({
   lastActivityAt: o.last || "2026-08-14T09:00:00.000Z", members: []
 });
 
-const TODAY_B = "6a7a17e2ed53384c4f792d87";
-const L_TODAY = "6a7a17e6498e4a01d6e8a7ad";
-const L_DONE  = "6a7a17e6fa8d1b840074ed07";
-const L_DF    = "6a7f122bfaae567f2d12af95";
+const L_DF    = "6a7fe7139743ddfb8c0c902f";   // widget-state list, lives on סידורים now
 
 const FIX = {
   "692abd49a69c853bb71cb728": [   // PROJECTS — size now comes from the label, not the board
@@ -34,32 +31,25 @@ const FIX = {
     card("6a57724dc9a3b2a279542008", "לקבל אישור SFX V3", "6945507695274f7bf6ec669d", "Party Pooper", "692abd49a69c853bb71cb728", "PROJECTS", { desc: "תקוע — waiting", last: "2026-07-15T11:43:10.004Z", short: "OG77QlEj" }),
     card("6a7a16b78f083be2881704de", "רשימת SFX דחופה (Urgent SFX Punch List)", "692ad0f8af173930081b8cc0", "MonsterPunk", "692abd49a69c853bb71cb728", "PROJECTS", { desc: "🔴 URGENT — full punch list", last: "2026-08-10T09:00:00.000Z", short: "03GLnjpt", size: "long" })
   ],
-  "693683bc8be8844147bbe82c": [   // סידורים
+  "693683bc8be8844147bbe82c": [   // סידורים — also hosts the widget's own hidden state card
     card("6942b6c70120be08ee10477f", "ארנונה", "692ad30a3c912740b99aebba", "יאלללהלהלה", "693683bc8be8844147bbe82c", "סידורים", { due: "2026-08-13T06:00:00.000Z", last: "2026-08-11T20:30:12.676Z", short: "TXxCAu3T" }),
     card("6a7b85c078d48893cd304370", "טיפול דרך צה\"ל", "692ad30a3c912740b99aebba", "יאלללהלהלה", "693683bc8be8844147bbe82c", "סידורים", { due: "2026-08-17T06:00:00.000Z", last: "2026-08-11T20:29:53.156Z" }),
-    card("695e184a125fc0d87373fae5", "סרטונים קצרים של מערכות סאונד", "692ad344119a1755d3ce76a1", "עיצוב אתר", "693683bc8be8844147bbe82c", "סידורים", { last: "2026-01-07T08:29:53.828Z", short: "rhgdTRFD" })
+    card("695e184a125fc0d87373fae5", "סרטונים קצרים של מערכות סאונד", "692ad344119a1755d3ce76a1", "עיצוב אתר", "693683bc8be8844147bbe82c", "סידורים", { last: "2026-01-07T08:29:53.828Z", short: "rhgdTRFD" }),
+    card("6a7f123751886d625eda3c24", "📊 DayFlow Stats", L_DF, "📊 DayFlow (widget state — do not edit)", "693683bc8be8844147bbe82c", "סידורים",
+      { desc: 'DayFlow widget state store.\n\n<!--DAYFLOW_STATE_V1\n{"v":1,"streak":4,"lastCompletionDate":"2026-08-13","history":[],"categories":{"סדקו":{"picked":10,"done":7},"PROJECTS":{"picked":6,"done":2}},"rollovers":{"' + WSC + '6a71830a641f324ff3551517":{"first":"2026-08-06","count":6,"last":"2026-08-13"}},"plans":{},"mute":false}\nDAYFLOW_STATE_V1-->\n' })
   ],
   "6a718220df5bd657f0636bc7": [   // סדקו
     card("6a7182f4349203169ce7fa4b", "לסגור מקום לחתונה", "6a7182a99c4984af4dfe290e", "יאללה היום!", "6a718220df5bd657f0636bc7", "סדקו", { due: "2026-08-14T06:00:00.000Z", last: "2026-08-13T18:24:02.671Z", short: "Y9SpnlTP" }),
     card("6a7182d9ba4edcf3ef5add6d", "לתקן מזגן מקצר חדר שינה", "6a7182a99c4984af4dfe290e", "יאללה היום!", "6a718220df5bd657f0636bc7", "סדקו", { desc: "מחכה לתשובה מיוסי", due: "2026-08-21T06:00:00.000Z", last: "2026-08-14T07:05:10.974Z", short: "svkJStfN" }),
     card("6a71830a641f324ff3551517", "לסדר את המחסן", "6a71841f0bac3afffd2fc607", "משימותתתת", "6a718220df5bd657f0636bc7", "סדקו", { due: "2026-08-25T08:31:00.000Z", last: "2026-08-11T10:16:45.339Z", short: "mByvGrzM", size: "short" }),
     card("6a71835602e51f5dc1e2e7a3", "ברבקטו לסופי", "6a71841f0bac3afffd2fc607", "משימותתתת", "6a718220df5bd657f0636bc7", "סדקו", {})
-  ],
-  [TODAY_B]: [
-    card("6a7ed991f988fbbbd59def7e", "🔴 תקוע+איחור: לסגור מקום לחתונה — overdue + blocked", L_TODAY, "🔴 היום (Today)", TODAY_B, "היום - עדיפות עליונה (Today's Priorities)", {}),
-    card("6a7ed993c56bdd32067c8bc2", "🔴 OVERDUE: ארנונה — 1 day overdue", L_TODAY, "🔴 היום (Today)", TODAY_B, "היום - עדיפות עליונה (Today's Priorities)", {}),
-    card("6a7ed99594a720272bcafaba", "⚠️ תקוע: לתקן מזגן — waiting on Yossi", L_TODAY, "🔴 היום (Today)", TODAY_B, "היום - עדיפות עליונה (Today's Priorities)", {}),
-    card("6a7a278aba6a75a3148fc0da", "🔴 P1: דוח למנטור (Mentor report)", L_DONE, "✅ בוצע (Done)", TODAY_B, "היום - עדיפות עליונה (Today's Priorities)", { done: true }),
-    card("6a7f123751886d625eda3c24", "📊 DayFlow Stats", L_DF, "📊 DayFlow (widget state — do not edit)", TODAY_B, "היום - עדיפות עליונה (Today's Priorities)",
-      { desc: 'DayFlow widget state store.\n\n<!--DAYFLOW_STATE_V1\n{"v":1,"streak":4,"lastCompletionDate":"2026-08-13","history":[],"categories":{"סדקו":{"picked":10,"done":7},"PROJECTS":{"picked":6,"done":2}},"rollovers":{"' + WSC + '6a71830a641f324ff3551517":{"first":"2026-08-06","count":6,"last":"2026-08-13"}},"plans":{},"mute":false}\nDAYFLOW_STATE_V1-->\n' })
   ]
 };
 
 const LISTS = {
   "692abd49a69c853bb71cb728": [["692ad0f8af173930081b8cc0", "MonsterPunk"], ["6945507695274f7bf6ec669d", "Party Pooper"]],
-  "693683bc8be8844147bbe82c": [["692ad30a3c912740b99aebba", "יאלללהלהלה"], ["692ad1da2e76e1fe6c1f9699", "MONEY MONEY"], ["692ad344119a1755d3ce76a1", "עיצוב אתר"]],
-  "6a718220df5bd657f0636bc7": [["6a7182a99c4984af4dfe290e", "יאללה היום!"], ["6a71841f0bac3afffd2fc607", "משימותתתת"]],
-  [TODAY_B]: [[L_TODAY, "🔴 היום (Today)"], [L_DONE, "✅ בוצע (Done)"], [L_DF, "📊 DayFlow (widget state — do not edit)"]]
+  "693683bc8be8844147bbe82c": [["692ad30a3c912740b99aebba", "יאלללהלהלה"], ["692ad1da2e76e1fe6c1f9699", "MONEY MONEY"], ["692ad344119a1755d3ce76a1", "עיצוב אתר"], [L_DF, "📊 DayFlow (widget state — do not edit)"]],
+  "6a718220df5bd657f0636bc7": [["6a7182a99c4984af4dfe290e", "יאללה היום!"], ["6a71841f0bac3afffd2fc607", "משימותתתת"]]
 };
 
 /* events for 2026-08-14 (Friday) — mix of all-day, real meetings, task blocks */
