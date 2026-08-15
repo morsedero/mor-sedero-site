@@ -55,7 +55,10 @@ user's home-screen shortcut pointing at a stale copy.
 - **Meetings are never scheduled over**, except *permeable* ones:
   all-day events, anything Google marks Free, and titles listed in
   `CFG.openEvents` (ships with `חמל`, toggled from the ⊙/⊘ control on a
-  meeting row).
+  meeting row) — and even there, only quick tasks may land inside.
+  Short and long sessions treat every meeting as blocking, permeable or
+  not (`busyFor(..., forSession)`); the swap picker hides session-sized
+  cards for a slot that's inside one.
 - The day off schedules nothing. Every other day is ordinary.
 - A run **clears and re-lays** the day's card-linked blocks. It never
   touches a real meeting, finished work, or the block in progress.

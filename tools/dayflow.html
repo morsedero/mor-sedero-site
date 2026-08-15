@@ -764,13 +764,16 @@ const overlapsDay = (e,d) => { const a=startOfDay(d), b=addDays(a,1); return e.s
 /* `ignore` may be a single id or a Set of ids */
 const ignored = (id, ignore) => !!ignore && (typeof ignore === "string" ? ignore === id : ignore.has(id));
 
-/* occupied minutes, work-session buffers baked in */
-function busyFor(date, ignore){
+/* occupied minutes, work-session buffers baked in.
+   Permeable meetings (all-day, Free, or listed in CFG.openEvents) are only
+   skipped — treated as free — when placing a quick task. A short or long
+   session may never land inside one: pass forSession to keep them busy. */
+function busyFor(date, ignore, forSession){
   const out=[];
   for(const e of allEvents()){
     if(e.allDay || !overlapsDay(e,date)) continue;
     if(ignored(e.id, ignore)) continue;
-    if(permeable(e)) continue;                      // you said tasks may run inside
+    if(permeable(e) && !forSession) continue;
     const pad = (e.isTask && e.deep) ? CFG.buffer : 0;
     const s  = sameDay(e.start,date) ? minsOf(e.start) : 0;
     const en = sameDay(e.end,date)   ? minsOf(e.end)   : 24*60;
@@ -968,7 +971,12 @@ function planFor(date, mode, picked, ignore){
   pool = pool.filter(c => !c.shortLink || !already.has(c.shortLink));
 
   const ranked = rankCards(pool);
-  const placed = [], live = busyFor(date, ignore);
+  const placed = [];
+  /* Two busy sets: sessions may never land inside a permeable meeting
+     (חמל included), quick tasks still can. Every placed block — whichever
+     pass placed it — has to occupy both, so later passes see it. */
+  const sessionLive = busyFor(date, ignore, true);
+  const quickLive   = busyFor(date, ignore, false);
 
   /* A long session claims the day. Whether one is worth attempting today —
      rather than a shorter alternative — is decided by the same urgency
@@ -979,20 +987,22 @@ function planFor(date, mode, picked, ignore){
   const longCap = Math.max(0, CFG.maxLong - have.long);
   for(const c of ranked.filter(x=>x.size==="long").slice(0,longCap)){
     const dur = c.est || CFG.longMin;
-    const s = findSlots(live, winS, winE, dur, CFG.buffer, 1, nowMin)[0];
+    const s = findSlots(sessionLive, winS, winE, dur, CFG.buffer, 1, nowMin)[0];
     if(!s) continue;
     placed.push({ card:c, s:s.s, e:s.e, kind:"long" });
-    live.push({ s:s.s-CFG.buffer, e:s.e+CFG.buffer });
+    sessionLive.push({ s:s.s-CFG.buffer, e:s.e+CFG.buffer });
+    quickLive.push({ s:s.s-CFG.buffer, e:s.e+CFG.buffer });
     workDay = true;
   }
 
   const shortCap = Math.max(0, CFG.maxShort - have.short);
   for(const c of ranked.filter(x=>x.size==="short").slice(0,shortCap)){
     const dur = c.est || CFG.shortMin;
-    const s = findSlots(live, winS, winE, dur, CFG.buffer, 1, nowMin)[0];
+    const s = findSlots(sessionLive, winS, winE, dur, CFG.buffer, 1, nowMin)[0];
     if(!s) continue;
     placed.push({ card:c, s:s.s, e:s.e, kind:"short" });
-    live.push({ s:s.s-CFG.buffer, e:s.e+CFG.buffer });
+    sessionLive.push({ s:s.s-CFG.buffer, e:s.e+CFG.buffer });
+    quickLive.push({ s:s.s-CFG.buffer, e:s.e+CFG.buffer });
   }
 
   /* A day that fits a full work day gets no quick tasks — the whole point
@@ -1004,7 +1014,7 @@ function planFor(date, mode, picked, ignore){
       let n = quick.length, slot = null, slice = 0;
       while(n > 0){
         slice = quickSlice();
-        slot = findSlots(live, winS, winE, n*slice, 0, 1, nowMin)[0];
+        slot = findSlots(quickLive, winS, winE, n*slice, 0, 1, nowMin)[0];
         if(slot) break;
         n--;
       }
@@ -1013,7 +1023,7 @@ function planFor(date, mode, picked, ignore){
           const s = slot.s + i*slice;
           placed.push({ card:quick[i], s, e:s+slice, kind:"quick" });
         }
-        live.push({ s:slot.s, e:slot.s + n*slice });
+        quickLive.push({ s:slot.s, e:slot.s + n*slice });
       }
     }
   }
@@ -1139,7 +1149,7 @@ async function postpone(item){
   /* must land strictly after both "now" and where it currently sits */
   const from = Math.ceil((Math.max(nowMin, minsOf(item.ev.end)) + 1)/SNAP_MIN)*SNAP_MIN;
 
-  const slot = findSlots(busyFor(date, item.ev.id), CFG.dayStart*60, CFG.dayEnd*60, dur, pad, 1, from)[0];
+  const slot = findSlots(busyFor(date, item.ev.id, item.ev.deep), CFG.dayStart*60, CFG.dayEnd*60, dur, pad, 1, from)[0];
   if(!slot){
     toast("No room left today.", true);
     return;
@@ -1562,11 +1572,19 @@ function agendaRow(item){
 /* ---------------------------------------------------------------- dialog */
 /* ---------------------------------------------------------------- swap */
 /* Replace what's in a slot with a card you pick. The slot keeps its time. */
+/* true when ev's own slot sits inside a permeable meeting — a session
+   can't be swapped into that slot, only another quick task can. */
+function withinPermeable(ev, date){
+  return allEvents().some(m => !m.isTask && permeable(m) && overlapsDay(m,date) &&
+    sameDay(m.start,date) && minsOf(m.start) <= minsOf(ev.start) && minsOf(m.end) >= minsOf(ev.end));
+}
 function swapPicker(item){
   const scheduled = new Set(allEvents()
     .filter(e => e.isTask && overlapsDay(e, S.anchor) && e.cardShort).map(e => e.cardShort));
+  const insideMeeting = withinPermeable(item.ev, S.anchor);
   const pool = rankCards(candidates().filter(c =>
-    (!c.shortLink || !scheduled.has(c.shortLink)) && (!item.card || c.id !== item.card.id)));
+    (!c.shortLink || !scheduled.has(c.shortLink)) && (!item.card || c.id !== item.card.id) &&
+    (!insideMeeting || c.size === "quick")));
 
   const scrim = el("div","scrim");
   const dlg = el("div","dialog sheet");

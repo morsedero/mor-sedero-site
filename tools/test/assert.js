@@ -40,20 +40,26 @@ const SCENARIOS = [
       /* permeable meetings are ones you've said tasks may run inside */
       const real = allEvents().filter(e => !e.isTask && !e.allDay && overlapsDay(e, d) && !permeable(e))
         .map(e => ({ n: e.summary, s: minsOf(e.start), e: minsOf(e.end) }));
-      const open = allEvents().filter(e => !e.isTask && !e.allDay && overlapsDay(e, d) && permeable(e))
-        .map(e => e.summary);
+      const openEvs = allEvents().filter(e => !e.isTask && !e.allDay && overlapsDay(e, d) && permeable(e))
+        .map(e => ({ n: e.summary, s: minsOf(e.start), e: minsOf(e.end) }));
+      const open = openEvs.map(e => e.n);
       const have = existingBlocks(d);
-      return { blocks, real, open, have, winS: CFG.dayStart * 60, winE: CFG.dayEnd * 60, buf: CFG.buffer,
+      return { blocks, real, open, openEvs, have, winS: CFG.dayStart * 60, winE: CFG.dayEnd * 60, buf: CFG.buffer,
                maxSmall: CFG.maxSmall, maxShort: CFG.maxShort, maxLong: CFG.maxLong, quickTotal: CFG.quickTotal };
     });
 
     const ov = (a, b) => a.s < b.e && a.e > b.s;
     const fails = [];
 
-    // 1. never on top of a meeting that blocks (permeable ones are allowed)
+    // 1. never on top of a meeting that blocks (permeable ones are allowed for quick tasks)
     for (const t of r.blocks)
       for (const m of r.real)
         if (ov(t, m)) fails.push(`"${t.n}" ${t.s}-${t.e} overlaps meeting "${m.n}" ${m.s}-${m.e}`);
+
+    // 1b. sessions may never land inside a permeable meeting either — only quick tasks can
+    for (const t of r.blocks.filter(b => b.deep))
+      for (const m of r.openEvs)
+        if (ov(t, m)) fails.push(`session "${t.n}" ${t.s}-${t.e} overlaps permeable meeting "${m.n}" ${m.s}-${m.e}`);
 
     // 2. work sessions keep their buffer clear on both sides
     for (const dpe of r.blocks.filter(b => b.deep))

@@ -13,10 +13,13 @@ const BASE = sb.module.exports.stub;
 const clock = t => `const R=Date;const O=new R("${t}").getTime()-R.now();
 window.Date=class extends R{constructor(...a){if(a.length===0)super(R.now()+O);else super(...a);}static now(){return R.now()+O;}};`;
 
-/* an open Monday: only חמל on it (already permeable by default), so an
-   8-hour block genuinely has room in the 09:00-20:00 window */
+/* an open Monday: חמל ends before the 09:00 window even opens, so an
+   8-hour block genuinely has room. A session may never land inside a
+   permeable meeting (only quick tasks can), so if חמל overlapped the
+   window here it would rightly push the long session out — that's
+   split-day-declines below, not this one. */
 const OPEN_DAY = [
-  { id: "hamal", summary: "חמל", start: { dateTime: "2026-08-17T06:00:00+03:00" }, end: { dateTime: "2026-08-17T14:00:00+03:00" }, status: "confirmed" }
+  { id: "hamal", summary: "חמל", start: { dateTime: "2026-08-17T06:00:00+03:00" }, end: { dateTime: "2026-08-17T08:30:00+03:00" }, status: "confirmed" }
 ];
 const openStub = BASE
   .replace(/const DAY = [^;]+;/, 'const DAY = "2026-08-17";')
@@ -25,6 +28,16 @@ const openStub = BASE
 /* a Friday whose real meeting (16:00-17:00) splits the window so 8.5h with
    buffer never fits anywhere — the long tier should just decline */
 const splitStub = BASE; // ships with ישיבה עם אסתר 16:00-17:00 on 2026-08-14
+
+/* חמל is permeable and spans most of the morning (06:00-14:00) — plenty of
+   room after it for the short session, and quick tasks may still land
+   inside it. Only sessions have to stay out. */
+const PERMEABLE_DAY = [
+  { id: "hamal", summary: "חמל", start: { dateTime: "2026-08-17T06:00:00+03:00" }, end: { dateTime: "2026-08-17T14:00:00+03:00" }, status: "confirmed" }
+];
+const permeableStub = BASE
+  .replace(/const DAY = [^;]+;/, 'const DAY = "2026-08-17";')
+  .replace(/const EVENTS = [^;]+;/, "const EVENTS = " + JSON.stringify(PERMEABLE_DAY) + ";");
 
 (async () => {
   const browser = await chromium.launch({ executablePath: "/opt/pw-browsers/chromium-1194/chrome-linux/chrome" });
@@ -66,6 +79,18 @@ const splitStub = BASE; // ships with ישיבה עם אסתר 16:00-17:00 on 20
     const bad = [];
     if (r.have.long !== 0) bad.push(`expected the long session to decline (no 8.5h window fits), got ${r.have.long}`);
     if (r.have.quick === 0) bad.push("expected quick tasks to still be scheduled when no long session fit");
+    return bad;
+  });
+
+  await run("session-skips-permeable-quick-doesnt", permeableStub, "2026-08-17T08:00:00+03:00", r => {
+    const bad = [];
+    const hamal = { s: 360, e: 840 };
+    const ov = (a, b) => a.s < b.e && a.e > b.s;
+    const short = r.blocks.find(b => b.size === "short");
+    if (!short) bad.push("expected the short session to still get scheduled, just not inside חמל");
+    else if (ov(short, hamal)) bad.push(`short session ${short.s}-${short.e} landed inside חמל`);
+    const quick = r.blocks.filter(b => b.size === "quick");
+    if (!quick.some(t => ov(t, hamal))) bad.push("expected at least one quick task to land inside חמל");
     return bad;
   });
 
