@@ -44,7 +44,7 @@ const SCENARIOS = [
         .map(e => e.summary);
       const have = existingBlocks(d);
       return { blocks, real, open, have, winS: CFG.dayStart * 60, winE: CFG.dayEnd * 60, buf: CFG.buffer,
-               maxSmall: CFG.maxSmall, maxDeep: CFG.maxDeep, quickTotal: CFG.quickTotal };
+               maxSmall: CFG.maxSmall, maxShort: CFG.maxShort, maxLong: CFG.maxLong, quickTotal: CFG.quickTotal };
     });
 
     const ov = (a, b) => a.s < b.e && a.e > b.s;
@@ -73,18 +73,23 @@ const SCENARIOS = [
       fails.push(`quick tasks span ${q[q.length-1].e - q[0].s}min > ${r.quickTotal}`);
 
     // 4. daily caps hold after a run
-    if (r.have.small > r.maxSmall) fails.push(`${r.have.small} quick tasks exceeds cap ${r.maxSmall}`);
-    if (r.have.deep > r.maxDeep) fails.push(`${r.have.deep} sessions exceeds cap ${r.maxDeep}`);
+    if (r.have.quick > r.maxSmall) fails.push(`${r.have.quick} quick tasks exceeds cap ${r.maxSmall}`);
+    if (r.have.short > r.maxShort) fails.push(`${r.have.short} short sessions exceeds cap ${r.maxShort}`);
+    if (r.have.long > r.maxLong) fails.push(`${r.have.long} long sessions exceeds cap ${r.maxLong}`);
 
     // 5. everything sits inside the working window
     for (const t of r.blocks)
       if (t.s < r.winS || t.e > r.winE)
         fails.push(`"${t.n}" ${t.s}-${t.e} falls outside ${r.winS}-${r.winE}`);
 
+    // 6. a long (work-day) session excludes quick tasks that day
+    if (r.have.long > 0 && r.have.quick > 0)
+      fails.push(`${r.have.quick} quick task(s) scheduled alongside a long session`);
+
     const fmt = m => `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
     console.log(`\n=== ${sc.name} (${sc.at.slice(11, 16)}) ===`);
     console.log(`  page errors: ${errs.length ? errs.join(" | ") : "none"}`);
-    console.log(`  ${r.have.small}/${r.maxSmall} quick · ${r.have.deep}/${r.maxDeep} session · ${r.real.length} blocking` +
+    console.log(`  ${r.have.quick}/${r.maxSmall} quick · ${r.have.short}/${r.maxShort} short · ${r.have.long}/${r.maxLong} long · ${r.real.length} blocking` +
       (r.open.length ? ` · open: ${r.open.join(", ")}` : ""));
     r.blocks.sort((a, b) => a.s - b.s).forEach(t => console.log(`    ${fmt(t.s)}-${fmt(t.e)} ${t.deep ? "[session] " : ""}${t.n}`));
     console.log(fails.length ? "  FAIL:\n" + fails.map(f => "    ✗ " + f).join("\n") : "  ✓ all rules hold");

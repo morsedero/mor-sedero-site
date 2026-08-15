@@ -29,12 +29,24 @@ user's home-screen shortcut pointing at a stale copy.
 - **Caps, day window, block lengths, buffer, day off, board colours and
   the chime are user settings** (gear icon), stored in the Trello state
   card under `settings` and read into `CFG` at boot. `DEFAULTS` holds
-  the shipped values: 3 quick tasks sharing one 60-min window, 1 session
-  x 90 min, 15 min buffer, 09:00-20:00, Saturday off. Never hard-code
-  these again.
+  the shipped values: 3 quick tasks sharing one 60-min window, 1 short
+  session x 3h, 1 long session x 8h, 15 min buffer, 09:00-20:00,
+  Saturday off. Never hard-code these again.
+- **A card's size comes from its Trello label, not its board**
+  (`sizeFromLabels`): no label = quick task, yellow = short session
+  (3h), orange = long session / work day (8h). `card.size` and
+  `event.size` (read back from the Google Calendar colorId: 9 quick, 5
+  short, 11 long) drive every scheduling decision — board is now only
+  colour identity plus the today-board exclusion.
 - **Quick tasks share one contiguous window** (`quickTotal`), split
   evenly between them — they do not scatter across the day. The group
   shrinks until it fits somewhere.
+- **A long session takes the whole day**: if one fits (ranked by the
+  same urgency order as everything else — refining that ranking by
+  due-date distance or project scale is future work, not done), no
+  quick tasks are scheduled alongside it. Short sessions aren't
+  explicitly excluded, but an 8h block plus buffers rarely leaves room
+  for one anyway.
 - Caps count blocks already on the calendar, including ones this widget
   did not create.
 - **Meetings are never scheduled over**, except *permeable* ones:

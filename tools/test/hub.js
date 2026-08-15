@@ -26,10 +26,11 @@ const realStub=BASE.replace(/const EVENTS = [^;]+;/,"const EVENTS = "+JSON.strin
   await p.locator("#replanBtn").click(); await p.waitForTimeout(500);
   const dlg=await p.evaluate(()=>{const d=document.querySelector(".dialog");return d?d.querySelector("p").textContent:null;});
   await p.locator(".dialog .btn.primary").click(); await p.waitForTimeout(2500);
-  const after=await p.evaluate(()=>({blocks:allEvents().filter(e=>e.isTask).length,
-    small:existingBlocks(new Date()).small,deep:existingBlocks(new Date()).deep,
+  const after=await p.evaluate(()=>{const h=existingBlocks(new Date());
+    return {blocks:allEvents().filter(e=>e.isTask).length,
+    quick:h.quick,short:h.short,long:h.long,
     dels:window.__calls.filter(c=>c.tool==="delete_event").length,
-    creates:window.__calls.filter(c=>c.tool==="create_event").length}));
+    creates:window.__calls.filter(c=>c.tool==="create_event").length};});
   console.log("[rebuild] errs:",p.__errs.length?p.__errs:"none");
   console.log("  before:",JSON.stringify(before),"\n  dialog:",JSON.stringify(dlg),"\n  after:",JSON.stringify(after));
   await p.screenshot({path:"hub-rebuild.png",fullPage:true});await ctx.close();
@@ -46,7 +47,7 @@ const realStub=BASE.replace(/const EVENTS = [^;]+;/,"const EVENTS = "+JSON.strin
     dotColors:[...document.querySelectorAll(".rows .row")].slice(0,5)
       .map(r=>getComputedStyle(r.querySelector(".dot")).backgroundColor)
   }));
-  await p.locator(".now .expand").click(); await p.waitForTimeout(900);
+  await p.waitForTimeout(900);   // details open on their own now — nothing to click
   const det=await p.evaluate(()=>({
     desc:(document.querySelector(".now .details .desc")||{}).textContent||null,
     clName:(document.querySelector(".now .details .clname")||{}).textContent||null,

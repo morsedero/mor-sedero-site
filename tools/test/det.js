@@ -11,12 +11,7 @@ const p=await ctx.newPage();const errs=[];
 p.on("pageerror",e=>errs.push(e.message));p.on("console",m=>{if(m.type()==="error")errs.push(m.text());});
 await p.setContent(`<!doctype html><html><head><meta charset="utf-8"><script>${clock("2026-08-17T09:00:00+03:00")}${stub}<\/script></head><body>${page_html}</body></html>`,{waitUntil:"load"});
 await p.waitForTimeout(2800);
-// expand hub
-if(await p.locator(".now .expand").count()) { await p.locator(".now .expand").click(); await p.waitForTimeout(800); }
-// expand every row that offers details
-const infos=p.locator(".rows .mini.info");
-const n=await infos.count();
-for(let i=0;i<n;i++){ await infos.nth(i).click(); await p.waitForTimeout(450); }
+// details open on their own now — nothing to click, on the hub or on rows
 const out=await p.evaluate(()=>({
   hubTitle:(document.querySelector(".now h2")||{}).textContent,
   panels:[...document.querySelectorAll(".details")].map(d=>({

@@ -18,18 +18,21 @@ for(const when of ["2026-08-14T07:30:00+03:00","2026-08-14T12:10:00+03:00","2026
   await p.waitForTimeout(3400);
   const r=await p.evaluate(()=>{const h=existingBlocks(new Date());
     const rows=document.querySelectorAll(".rows .row").length;
-    return {small:h.small,deep:h.deep,visibleTasks:document.querySelectorAll(".rows .mini.ok").length,
+    return {quick:h.quick,short:h.short,long:h.long,visibleTasks:document.querySelectorAll(".rows .mini.ok").length,
       hub:!!document.querySelector(".now"),state:(document.querySelector(".state h2")||{}).textContent||null,
       dels:window.__calls.filter(c=>c.tool==="delete_event").length,
       creates:window.__calls.filter(c=>c.tool==="create_event").length,
-      maxS:CFG.maxSmall,maxD:CFG.maxDeep};});
+      maxS:CFG.maxSmall,maxSh:CFG.maxShort,maxL:CFG.maxLong};});
   const bad=[];
-  if(r.small>r.maxS) bad.push(`${r.small} quick > ${r.maxS}`);
-  if(r.deep>r.maxD)  bad.push(`${r.deep} sessions > ${r.maxD}`);
+  if(r.quick>r.maxS) bad.push(`${r.quick} quick > ${r.maxS}`);
+  if(r.short>r.maxSh) bad.push(`${r.short} short > ${r.maxSh}`);
+  if(r.long>r.maxL)  bad.push(`${r.long} long > ${r.maxL}`);
+  if(r.long>0 && r.quick>0) bad.push(`${r.quick} quick task(s) alongside a long session`);
   const shown=r.visibleTasks+(r.hub?1:0);
-  if(shown>r.maxS+r.maxD) bad.push(`${shown} tasks on screen > ${r.maxS+r.maxD}`);
+  const cap=r.maxS+r.maxSh+r.maxL;
+  if(shown>cap) bad.push(`${shown} tasks on screen > ${cap}`);
   console.log(`[${when.slice(11,16)}] ${errs.length?"ERR "+errs.join("|"):"ok"} ` +
-    `${r.small}/${r.maxS}q ${r.deep}/${r.maxD}s · on screen ${shown} · -${r.dels}/+${r.creates}` +
+    `${r.quick}/${r.maxS}q ${r.short}/${r.maxSh}sh ${r.long}/${r.maxL}lg · on screen ${shown} · -${r.dels}/+${r.creates}` +
     (r.state?` · "${r.state}"`:"") + (bad.length?"\n   ✗ "+bad.join("\n   ✗ "):"   ✓"));
   fails+=bad.length+errs.length; await ctx.close();
 }

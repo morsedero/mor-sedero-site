@@ -10,13 +10,16 @@ const WSB = "ari:cloud:trello::board/workspace/6047bc9723ed9c3e9036b496/";
 const WSL = "ari:cloud:trello::list/workspace/6047bc9723ed9c3e9036b496/";
 const WSC = "ari:cloud:trello::card/workspace/6047bc9723ed9c3e9036b496/";
 
+/* o.size: "short" -> one yellow label, "long" -> one orange label, else none */
+const SIZE_LABEL = { short: [{ id: "lbl-y", name: "", color: "yellow" }],
+                      long:  [{ id: "lbl-o", name: "", color: "orange" }] };
 const card = (id, name, listId, listName, boardId, boardName, o = {}) => ({
   id: WSC + id, name, desc: o.desc || "",
   url: `https://trello.com/c/${o.short || id.slice(0, 8)}/1-x`,
   webUrl: `https://trello.com/c/${o.short || id.slice(0, 8)}/1-x`,
   list: { id: WSL + listId, name: listName },
   board: { id: WSB + boardId, name: boardName },
-  labels: [], due: o.due || null, dueComplete: !!o.done,
+  labels: o.labels || SIZE_LABEL[o.size] || [], due: o.due || null, dueComplete: !!o.done,
   lastActivityAt: o.last || "2026-08-14T09:00:00.000Z", members: []
 });
 
@@ -26,19 +29,20 @@ const L_DONE  = "6a7a17e6fa8d1b840074ed07";
 const L_DF    = "6a7f122bfaae567f2d12af95";
 
 const FIX = {
-  "692abd49a69c853bb71cb728": [   // PROJECTS (deep)
-    card("6a7a16b45edb755b2107cf9d", "לולאת מוזיקה לבמה הראשית (Main Stage Music Loop)", "692ad0f8af173930081b8cc0", "MonsterPunk", "692abd49a69c853bb71cb728", "PROJECTS", { desc: "🔴 URGENT — top priority. ~120m", last: "2026-08-01T09:00:00.000Z", short: "aWUJk3a8" }),
-    card("6a57724dc9a3b2a279542008", "לקבל אישור SFX V3", "6945507695274f7bf6ec669d", "Party Pooper", "692abd49a69c853bb71cb728", "PROJECTS", { desc: "תקוע — waiting", last: "2026-07-15T11:43:10.004Z", short: "OG77QlEj" })
+  "692abd49a69c853bb71cb728": [   // PROJECTS — size now comes from the label, not the board
+    card("6a7a16b45edb755b2107cf9d", "לולאת מוזיקה לבמה הראשית (Main Stage Music Loop)", "692ad0f8af173930081b8cc0", "MonsterPunk", "692abd49a69c853bb71cb728", "PROJECTS", { desc: "🔴 URGENT — top priority. ~120m", last: "2026-08-01T09:00:00.000Z", short: "aWUJk3a8", size: "short" }),
+    card("6a57724dc9a3b2a279542008", "לקבל אישור SFX V3", "6945507695274f7bf6ec669d", "Party Pooper", "692abd49a69c853bb71cb728", "PROJECTS", { desc: "תקוע — waiting", last: "2026-07-15T11:43:10.004Z", short: "OG77QlEj" }),
+    card("6a7a16b78f083be2881704de", "רשימת SFX דחופה (Urgent SFX Punch List)", "692ad0f8af173930081b8cc0", "MonsterPunk", "692abd49a69c853bb71cb728", "PROJECTS", { desc: "🔴 URGENT — full punch list", last: "2026-08-10T09:00:00.000Z", short: "03GLnjpt", size: "long" })
   ],
-  "693683bc8be8844147bbe82c": [   // סידורים (small)
+  "693683bc8be8844147bbe82c": [   // סידורים
     card("6942b6c70120be08ee10477f", "ארנונה", "692ad30a3c912740b99aebba", "יאלללהלהלה", "693683bc8be8844147bbe82c", "סידורים", { due: "2026-08-13T06:00:00.000Z", last: "2026-08-11T20:30:12.676Z", short: "TXxCAu3T" }),
     card("6a7b85c078d48893cd304370", "טיפול דרך צה\"ל", "692ad30a3c912740b99aebba", "יאלללהלהלה", "693683bc8be8844147bbe82c", "סידורים", { due: "2026-08-17T06:00:00.000Z", last: "2026-08-11T20:29:53.156Z" }),
     card("695e184a125fc0d87373fae5", "סרטונים קצרים של מערכות סאונד", "692ad344119a1755d3ce76a1", "עיצוב אתר", "693683bc8be8844147bbe82c", "סידורים", { last: "2026-01-07T08:29:53.828Z", short: "rhgdTRFD" })
   ],
-  "6a718220df5bd657f0636bc7": [   // סדקו (small)
+  "6a718220df5bd657f0636bc7": [   // סדקו
     card("6a7182f4349203169ce7fa4b", "לסגור מקום לחתונה", "6a7182a99c4984af4dfe290e", "יאללה היום!", "6a718220df5bd657f0636bc7", "סדקו", { due: "2026-08-14T06:00:00.000Z", last: "2026-08-13T18:24:02.671Z", short: "Y9SpnlTP" }),
     card("6a7182d9ba4edcf3ef5add6d", "לתקן מזגן מקצר חדר שינה", "6a7182a99c4984af4dfe290e", "יאללה היום!", "6a718220df5bd657f0636bc7", "סדקו", { desc: "מחכה לתשובה מיוסי", due: "2026-08-21T06:00:00.000Z", last: "2026-08-14T07:05:10.974Z", short: "svkJStfN" }),
-    card("6a71830a641f324ff3551517", "לסדר את המחסן", "6a71841f0bac3afffd2fc607", "משימותתתת", "6a718220df5bd657f0636bc7", "סדקו", { due: "2026-08-25T08:31:00.000Z", last: "2026-08-11T10:16:45.339Z", short: "mByvGrzM" }),
+    card("6a71830a641f324ff3551517", "לסדר את המחסן", "6a71841f0bac3afffd2fc607", "משימותתתת", "6a718220df5bd657f0636bc7", "סדקו", { due: "2026-08-25T08:31:00.000Z", last: "2026-08-11T10:16:45.339Z", short: "mByvGrzM", size: "short" }),
     card("6a71835602e51f5dc1e2e7a3", "ברבקטו לסופי", "6a71841f0bac3afffd2fc607", "משימותתתת", "6a718220df5bd657f0636bc7", "סדקו", {})
   ],
   [TODAY_B]: [

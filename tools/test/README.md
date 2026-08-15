@@ -8,11 +8,12 @@ Google Calendar calls. No network, no real writes.
 
 | script | what it checks |
 |---|---|
-| `assert.js` | scheduling rules across light / packed / late-start days: no overlap with a meeting, buffers kept clear, caps held, everything inside the working window |
+| `assert.js` | scheduling rules across light / packed / late-start days: no overlap with a blocking meeting, buffers kept clear, caps held per tier, everything inside the working window, a long session excludes quick tasks |
+| `work.js`   | the work-day rule itself: an 8h long session gets picked and blocks all quick tasks when it fits; falls through to short + quick when it doesn't |
 | `late.js`   | the hub late in the day, once every slot is behind you |
 | `fri.js`    | Friday plans itself to the caps with no prompt; Shabbat schedules nothing |
-| `cap.js`    | the caps hold whatever hour the widget is opened (07:30 / 12:10 / 16:30 / 21:54) |
-| `cfg.js`    | settings persist and actually change what the scheduler does |
+| `cap.js`    | the caps hold — per tier — whatever hour the widget is opened (07:30 / 12:10 / 16:30 / 21:54) |
+| `cfg.js`    | settings persist and actually change what the scheduler does, across all three tiers |
 | `hour.js`   | quick tasks share one window, permeable meetings, swapping a task |
 | `sat.js`    | the day off is never planned from any vantage point; legacy settings migrate |
 | `mini.js`   | the hub, "Not now" postponing, completion writes |

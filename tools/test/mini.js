@@ -28,7 +28,7 @@ const snap = p => p.evaluate(()=>({
   meetingNow:(document.querySelector(".meeting-now .mn-name")||{}).textContent||null,
   later:[...document.querySelectorAll(".rows .row")].map(r=>r.querySelector(".t").textContent+" "+r.querySelector(".n").textContent.replace("meeting","")),
   state:(document.querySelector(".state h2")||{}).textContent||null,
-  foot:[...document.querySelectorAll(".foot .stat")].map(s=>s.querySelector(".k").textContent+"="+s.querySelector(".v").textContent)
+  foot:[...document.querySelectorAll(".foot .stat")].map(s=>(s.getAttribute("title")||"?")+"="+(s.querySelector(".v")||{}).textContent)
 }));
 
 (async()=>{const b=await chromium.launch({executablePath:"/opt/pw-browsers/chromium-1194/chrome-linux/chrome"});
@@ -44,13 +44,16 @@ await run(b,"real-dark",realStub,"2026-08-17T14:20:00+03:00",async p=>{
   s.calls=await p.evaluate(()=>window.__calls.filter(c=>c.tool==="update_event").length);
   return s;
 });
-// 2. lighter day -> postpone should actually move it
+// 2. lighter day -> postpone should actually move it. A 3h short session now
+//    fills more of the default window than the old 90-min one did, so widen
+//    it first — the point here is the successful-move path, not the cap.
 await run(b,"light-day",lightStub,"2026-08-17T09:40:00+03:00",async p=>{
   const before=await snap(p);
+  await p.evaluate(()=>{ CFG.dayEnd = 22; });
   await p.locator('.now .btn').nth(1).click();
   await p.waitForTimeout(1000);
   const mv=await p.evaluate(()=>window.__calls.filter(c=>c.tool==="update_event").map(c=>c.input.startTime));
-  return {before:before.now,clock:before.clock,moved:mv,toast:await p.locator('.toast').first().textContent().catch(()=>null)};
+  return {before:before.now,clock:before.clock,moved:mv,toast:await p.locator('.toast').last().textContent().catch(()=>null)};
 });
 // 3. completion
 await run(b,"done",lightStub,"2026-08-17T09:40:00+03:00",async p=>{
