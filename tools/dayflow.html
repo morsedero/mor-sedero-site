@@ -550,7 +550,11 @@ html,body{overflow:hidden;}
 }
 
 /* ---------------- dialog / toast ---------------- */
-.scrim{position:fixed;inset:0;z-index:60;background:rgba(10,10,20,.5);display:grid;place-items:center;padding:20px;}
+/* padding leaves room for the notch/home-indicator on phones too, not just a
+   flat 20px — a dialog taller than the space between them used to be able to
+   overlap the top or bottom edge of the screen instead of just shrinking */
+.scrim{position:fixed;inset:0;z-index:60;background:rgba(10,10,20,.5);display:grid;place-items:center;
+  padding:max(18px,env(safe-area-inset-top)) 16px max(18px,env(safe-area-inset-bottom));}
 .dialog{
   background:var(--glass-2,var(--surface));backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);
   border:1.5px solid var(--line-2);border-radius:26px;box-shadow:var(--shadow-lg);max-width:390px;width:100%;overflow:hidden;
@@ -564,30 +568,42 @@ html,body{overflow:hidden;}
 .dialog .dh p{margin:6px 0 0;font-size:13px;font-weight:600;color:var(--ink-2);white-space:pre-line;overflow-wrap:anywhere;}
 .dialog .df{padding:12px 17px;border-top:1.5px dashed var(--line);display:flex;gap:8px;justify-content:flex-end;background:transparent;}
 
-/* settings */
-.dialog.sheet{max-width:90vw;max-height:min(600px,90vh);display:flex;flex-direction:column;}
-.set{padding:12px 14px 6px;display:flex;flex-wrap:wrap;gap:8px;align-content:flex-start;overflow-y:auto;min-height:0;flex:1 1 auto;}
+/* settings — sized to fit the viewport in one screen rather than a fixed
+   600px, so it only ever scrolls internally as a last resort on a genuinely
+   short window; the grid row layout keeps every value lined up in one
+   column instead of drifting with each label's own width. */
+.dialog.sheet{
+  max-width:min(420px,90vw);
+  max-height:calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 36px);
+  display:flex;flex-direction:column;
+}
+.set{padding:12px 18px 4px;display:flex;flex-direction:column;gap:0;overflow-y:auto;min-height:0;flex:1 1 auto;}
 .set-h{
-  font-family:var(--font-display);font-weight:400;font-size:11px;letter-spacing:.01em;
-  color:var(--bc,var(--accent-ink));margin:6px 0 2px;padding-top:4px;
+  font-family:var(--font-display);font-weight:400;font-size:11px;letter-spacing:.05em;text-transform:uppercase;
+  color:var(--bc,var(--accent-ink));margin:8px 0 2px;padding-top:6px;border-top:1.5px dashed var(--line);
 }
-.set-h:first-child{margin-top:0;}
+.set-h:first-child{margin-top:0;padding-top:0;border-top:none;}
 .set-row{
-  display:flex;align-items:center;gap:6px;
-  padding:2px 0;font-size:12px;font-weight:600;flex:0 0 auto;
+  display:grid;grid-template-columns:104px 1fr;align-items:center;
+  gap:10px;padding:6px 0;font-size:12.5px;font-weight:700;
 }
-.set-k{color:var(--ink-2);flex:0 0 auto;white-space:nowrap;}
-.set-v{display:flex;align-items:center;gap:6px;flex:0 0 auto;}
+/* the swatch row skips the label column entirely — "Colour" is already said
+   by the section header above it, and on a narrow phone that 104px back was
+   the difference between three swatches fitting on one line or wrapping to
+   two and roughly doubling the row's height */
+.set-row.tall{grid-template-columns:1fr;align-items:flex-start;padding-top:4px;}
+.set-k{color:var(--ink-2);white-space:nowrap;}
+.set-v{display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
 .set-dash,.set-u{font-family:var(--mono);font-size:11px;color:var(--ink-3);}
 .num-in{
-  width:54px;padding:6px 7px;border-radius:12px;
+  width:54px;padding:7px;border-radius:12px;
   border:1.5px solid var(--line-2);background:var(--surface-2);color:var(--ink);
   font-family:var(--mono);font-size:13px;font-weight:700;font-variant-numeric:tabular-nums;text-align:center;
 }
 .num-in.wide{width:80px;text-align:left;}
 .num-in:focus{border-color:var(--accent);outline:none;}
 .col-in{
-  width:36px;height:28px;padding:0;border:1.5px solid var(--line-2);
+  width:34px;height:28px;padding:0;border:1.5px solid var(--line-2);
   border-radius:12px;background:transparent;cursor:pointer;
 }
 .col-in::-webkit-color-swatch-wrapper{padding:2px;}
@@ -599,8 +615,17 @@ html,body{overflow:hidden;}
   transition:background .15s,color .15s,border-color .15s;
 }
 .toggle.on{background:var(--accent);border-color:var(--accent-ink);color:var(--on-accent);}
-.set .legend{font-size:12.5px;font-weight:600;line-height:1.6;color:var(--ink-3);padding:2px 0 4px;}
+.set .legend{font-size:11.5px;font-weight:600;line-height:1.4;color:var(--ink-3);padding:1px 0 3px;}
 .set .legend b{font-weight:800;}
+/* three board swatches side by side instead of one row each — the biggest
+   single space saving in the panel, since colour is rarely touched */
+.set-v.swatches{gap:16px;row-gap:10px;}
+.swatch-card{display:flex;flex-direction:column;align-items:center;gap:4px;}
+.swrow{display:flex;align-items:center;gap:4px;}
+.swname{
+  font-size:9.5px;font-weight:700;color:var(--ink-3);max-width:60px;text-align:center;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
 
 /* pending popup: reuses .details' textarea/checklist styling, just needs
    its own scroll box and no redundant top border under the dialog header */
@@ -780,7 +805,7 @@ const AGING_DAYS = 5, STALL_DAYS = 3;
    editable from the settings panel; it persists in the Trello state card. */
 const DEFAULTS = {
   dayStart:9, dayEnd:20,
-  maxSmall:3, quickTotal:60,   // all quick tasks share one contiguous window
+  maxSmall:1, quickTotal:60,   // all quick tasks share one contiguous window
   maxShort:1, shortMin:180,    // short session: yellow label, 3h
   maxLong:1,  longMin:480,     // long session / work day: orange label, 8h
   buffer:15,
@@ -1688,6 +1713,52 @@ function applyLocalMove(id, start, end){
   S.evVer[id] = (S.evVer[id] || 0) + 1;
   return prevRaw;
 }
+/* Same idea one level up, for the actions that add or take away a block
+   rather than re-time one: Done, Swap, Remove and Pending all used to hold
+   the whole UI still behind `S.pending` while two or three round trips to
+   Trello and Google Calendar finished, which is exactly the wait that made
+   dragging feel slow before commitMove existed. Each returns an undo closure
+   so the background write's failure path can put the model back. */
+const rawEvents = () => (S.events && S.events.payload && S.events.payload.events) || null;
+function dropLocalEvent(id){
+  const list = rawEvents();
+  if(!list) return () => {};
+  const i = list.findIndex(e => e.id === id);
+  if(i < 0) return () => {};
+  const [gone] = list.splice(i,1);
+  return () => { if(!list.includes(gone)) list.splice(Math.min(i,list.length), 0, gone); };
+}
+function addLocalEvent(raw){
+  const list = rawEvents();
+  if(!list) return () => {};
+  list.push(raw);
+  return () => { const i = list.indexOf(raw); if(i>=0) list.splice(i,1); };
+}
+/* A stand-in for a block Google hasn't given us an id for yet. It carries the
+   same marker and colorId the real one will, so allEvents() reads it back as
+   the right size and links it to its card exactly like the real thing. */
+function localBlock(card, start, end, size){
+  return {
+    id: "local-" + Math.random().toString(36).slice(2),
+    colorId: size === "long" ? "11" : size === "short" ? "5" : "9",
+    summary: (size === "long" ? "🗓️ " : size === "short" ? "🎵 " : "• ") + card.name,
+    description: `${DF_MARK} ${card.name}\n\nOriginal: ${card.url}`,
+    start:{ dateTime: iso(start) }, end:{ dateTime: iso(end) },
+    status:"confirmed"
+  };
+}
+/* Optimistic card-field patch: normCard() rebuilds the decorated card from
+   the raw payload node on every render, so the change has to land there. */
+function patchLocalCard(card, fields){
+  const raw = rawCardNode(card);
+  const prev = {};
+  for(const k in fields){
+    prev[k] = raw ? raw[k] : card[k];
+    if(raw) raw[k] = fields[k];
+    card[k] = fields[k];
+  }
+  return () => { for(const k in prev){ if(raw) raw[k] = prev[k]; card[k] = prev[k]; } };
+}
 function commitMove(id, start, end, prevRaw, label){
   const ver = S.evVer[id];
   moveBlock(id, start, end).then(
@@ -1715,58 +1786,99 @@ function commitMove(id, start, end, prevRaw, label){
   );
 }
 
-async function completeItem(item){
+/* Done is the action that most needs to feel instant — it's the one you press
+   dozens of times a day — so the card strikes through and the progress pill
+   moves on the same frame as the tap, and Trello hears about it afterwards.
+   The whole stats bump (streak, history, rollover clear) happens locally too:
+   S.stats is the in-memory source of truth and saveStats already writes it in
+   the background with its own retry/unsaved handling. */
+function completeItem(item){
   const card = item.card;
   const key = card ? card.id : item.ev.id;
   if(S.pending.has(key)) return;
-  S.pending.add(key); render();
-  try{
-    if(card){
-      await callTool(TRELLO, "trelloWriteCard", { action:"mark_done", cardId:card.id });
+
+  const undo = card ? patchLocalCard(card, { dueComplete:true }) : (()=>{});
+  celebrate();
+
+  const st = bumpCategory(card ? card.boardName : "—", "done");
+  const today = dayKey(new Date());
+  st.history = st.history || [];
+  let h = st.history.find(x=>x.d===today);
+  if(!h){ h={ d:today, done:0 }; st.history.push(h); }
+  h.done++;
+  while(st.history.length > 60) st.history.shift();
+  if(st.lastCompletionDate !== today){
+    st.streak = (st.lastCompletionDate === dayKey(addDays(new Date(),-1))) ? (st.streak||0)+1 : 1;
+    st.lastCompletionDate = today;
+  }
+  if(card && st.rollovers) delete st.rollovers[card.id];
+  render();
+
+  if(!card){ saveStats(st); return; }
+
+  S.pending.add(key);
+  const write = () => callTool(TRELLO, "trelloWriteCard", { action:"mark_done", cardId:card.id })
+    .then(()=>{ S.mcp.invalidate(TRELLO, "trelloReadCard").catch(()=>{}); });
+  write().then(
+    ()=>{ S.pending.delete(key); saveStats(st); render(); },
+    e =>{
+      S.pending.delete(key);
+      undo();                       // the strike-through comes back off
+      toast(errCopy(e), true);
+      queueFailed(`Done: ${card.name}`, async () => {
+        const again = patchLocalCard(card, { dueComplete:true });
+        try{ await write(); saveStats(st); render(); }
+        catch(err){ again(); render(); throw err; }
+      });
+      render();
     }
-    celebrate();
-    const st = bumpCategory(card ? card.boardName : "—", "done");
-    const today = dayKey(new Date());
-    st.history = st.history || [];
-    let h = st.history.find(x=>x.d===today);
-    if(!h){ h={ d:today, done:0 }; st.history.push(h); }
-    h.done++;
-    while(st.history.length > 60) st.history.shift();
-    if(st.lastCompletionDate !== today){
-      st.streak = (st.lastCompletionDate === dayKey(addDays(new Date(),-1))) ? (st.streak||0)+1 : 1;
-      st.lastCompletionDate = today;
-    }
-    if(card && st.rollovers) delete st.rollovers[card.id];
-    await saveStats(st);
-    await S.mcp.invalidate(TRELLO, "trelloReadCard").catch(()=>{});
-    toast("Done.");
-  }catch(e){ toast(errCopy(e), true); }
-  finally{ S.pending.delete(key); render(); }
+  );
 }
 
-async function removeItem(item){
+function removeItem(item){
   const name = item.card ? item.card.name : item.ev.summary;
-  const ok = await confirmDialog("Remove this?", name + (item.card ? "\n\nArchives the card and clears its block." : "\n\nClears the block."), "Remove");
-  if(!ok) return;
-  S.pending.add(item.ev.id); render();
-  try{
-    /* Block first, card second. Archiving first meant a failed delete left an
-       archived card still holding a live block — invisible in Trello, still
-       eating the slot, and not recoverable from inside the widget. Clearing
-       the block first is the reversible half: if the archive then fails, the
-       worst case is an unscheduled card that's still open. */
-    await deleteBlock(item.ev.id);
-    await refreshCalendar();
-    if(item.card){
-      await callTool(TRELLO, "trelloWriteCard", { action:"archive", cardId:item.card.id });
-      const st = bumpCategory(item.card.boardName, "skipped");
-      if(st.rollovers) delete st.rollovers[item.card.id];
-      await saveStats(st);
+  return confirmDialog("Remove this?", name + (item.card ? "\n\nArchives the card and clears its block." : "\n\nClears the block."), "Remove")
+    .then(ok => { if(ok) doRemove(item); });
+}
+function doRemove(item){
+  const id = item.ev.id, card = item.card;
+  const label = card ? card.name : (item.ev.summary || "block");
+  if(S.pending.has(id)) return;
+  S.pending.add(id);
+
+  /* the block leaves the list on the tap, not two round trips later */
+  const restore = dropLocalEvent(id);
+  const st = card ? bumpCategory(card.boardName, "skipped") : null;
+  if(st && st.rollovers && card) delete st.rollovers[card.id];
+  render();
+  toast("Removed.");
+
+  /* Block first, card second. Archiving first meant a failed delete left an
+     archived card still holding a live block — invisible in Trello, still
+     eating the slot, and not recoverable from inside the widget. Clearing the
+     block first is the reversible half: if the archive then fails, the worst
+     case is an unscheduled card that's still open. */
+  const write = async () => {
+    await deleteBlock(id);
+    if(card){
+      await callTool(TRELLO, "trelloWriteCard", { action:"archive", cardId:card.id });
       await S.mcp.invalidate(TRELLO, "trelloReadCard").catch(()=>{});
     }
-    toast("Removed.");
-  }catch(e){ toast(errCopy(e), true); }
-  finally{ S.pending.delete(item.ev.id); render(); }
+  };
+  write().then(
+    ()=>{ S.pending.delete(id); if(st) saveStats(st); refreshCalendar().then(render); },
+    e =>{
+      S.pending.delete(id);
+      restore();
+      toast(errCopy(e), true);
+      queueFailed(`Remove: ${label}`, async () => {
+        const again = dropLocalEvent(id);
+        try{ await write(); if(st) saveStats(st); render(); }
+        catch(err){ again(); render(); throw err; }
+      });
+      render();
+    }
+  );
 }
 
 /* A card that's actively waiting on someone/something else: not done, not
@@ -1781,29 +1893,52 @@ async function removeItem(item){
    pendingDialog() — lets "why is this waiting" get written down (and a
    subtask ticked off) in the same motion that parks the card, instead of
    a separate trip back into the card afterward. */
-async function pendingItem(item, edits){
+function pendingItem(item, edits){
   const card = item.card;
-  if(!card || S.pending.has(item.ev.id)) return;
-  S.pending.add(item.ev.id); render();
-  try{
+  const id = item.ev.id;
+  if(!card || S.pending.has(id)) return;
+  S.pending.add(id);
+
+  /* The dialog has already been confirmed at this point, so the card is off
+     today either way — take the block off screen now and let the description
+     write and the calendar delete happen behind it. */
+  const restore = dropLocalEvent(id);
+  const body = (()=>{
+    if(card.blocked) return null;
+    const raw = edits ? edits.desc : card.desc;
+    const trimmed = (raw || "").trim();
+    const mark = pendingMark(edits && edits.until);
+    return trimmed ? mark + "\n\n" + trimmed : mark.trim();
+  })();
+  const undoDesc = body === null ? (()=>{}) : patchLocalCard(card, { desc:body });
+  render();
+  toast("Set aside as pending.");
+
+  const write = async () => {
     if(edits && edits.items){
       for(const {cl, it, text, checked} of edits.items){
         if(checked !== (it.state === "COMPLETE")) await toggleItem(card, cl.id, it);
         if(text !== (it.name || "")) await saveItemText(cl.id, it, text);
       }
     }
-    if(!card.blocked){
-      const raw = edits ? edits.desc : card.desc;
-      const trimmed = (raw || "").trim();
-      const mark = pendingMark(edits && edits.until);
-      const body = trimmed ? mark + "\n\n" + trimmed : mark.trim();
-      await writeCardDesc(card, body);
+    if(body !== null) await writeCardDesc(card, body);
+    await deleteBlock(id);
+  };
+  write().then(
+    ()=>{ S.pending.delete(id); refreshCalendar().then(render); },
+    e =>{
+      S.pending.delete(id);
+      restore(); undoDesc();
+      toast(errCopy(e), true);
+      queueFailed(`Pending: ${card.name}`, async () => {
+        const againEv = dropLocalEvent(id);
+        const againDesc = body === null ? (()=>{}) : patchLocalCard(card, { desc:body });
+        try{ await write(); render(); }
+        catch(err){ againEv(); againDesc(); render(); throw err; }
+      });
+      render();
     }
-    await deleteBlock(item.ev.id);
-    await refreshCalendar();
-    toast("Set aside as pending.");
-  }catch(e){ toast(errCopy(e), true); }
-  finally{ S.pending.delete(item.ev.id); render(); }
+  );
 }
 
 /* Popup that opens on Pending: lets you edit the description and tick/edit
@@ -3077,24 +3212,48 @@ function swapPicker(item){
   cancel.focus();
 }
 
-async function swapTo(item, card){
-  if(S.pending.has(item.ev.id)) return;
-  S.pending.add(item.ev.id); render();
+function swapTo(item, card){
+  const id = item.ev.id;
+  if(S.pending.has(id)) return;
+  S.pending.add(id);
   const start = item.ev.start, end = item.ev.end;
   const existingBlock = allEvents().find(e => e.cardShort === card.shortLink && overlapsDay(e, S.anchor));
-  try{
-    /* Create before destroying. This used to delete the slot first, so a
-       failing create left an empty slot with *both* cards unscheduled — the
-       swap lost work instead of just not happening. Worst case now is a
-       harmless duplicate that the next rebuild clears. */
+
+  /* The slot changes hands on the tap. A stand-in block stands in for the one
+     Google hasn't minted an id for yet; the real ids arrive with the refresh
+     that follows the write. */
+  const stand = localBlock(card, start, end, card.size);
+  const undo = [dropLocalEvent(id), addLocalEvent(stand)];
+  if(existingBlock) undo.push(dropLocalEvent(existingBlock.id));
+  /* the stand-in has no real event id yet, so hold it out of drag, swap and
+     the action buttons until the refresh replaces it with the real block */
+  S.pending.add(stand.id);
+  const st = bumpCategory(card.boardName, "picked");
+  render();
+  toast("Swapped.");
+
+  /* Create before destroying. This used to delete the slot first, so a failing
+     create left an empty slot with *both* cards unscheduled — the swap lost
+     work instead of just not happening. Worst case now is a harmless duplicate
+     that the next rebuild clears. */
+  const write = async () => {
     await createBlock(card, start, end, card.size);
-    await deleteBlock(item.ev.id);
+    await deleteBlock(id);
     if(existingBlock) await deleteBlock(existingBlock.id);
-    await saveStats(bumpCategory(card.boardName, "picked"));
-    await refreshCalendar();
-    toast("Swapped.");
-  }catch(e){ toast(errCopy(e), true); }
-  finally{ S.pending.delete(item.ev.id); render(); }
+  };
+  write().then(
+    ()=>{ S.pending.delete(id); S.pending.delete(stand.id); saveStats(st); refreshCalendar().then(render); },
+    e =>{
+      S.pending.delete(id); S.pending.delete(stand.id);
+      for(const u of undo) u();
+      toast(errCopy(e), true);
+      queueFailed(`Swap: ${card.name}`, async () => {
+        try{ await write(); saveStats(st); refreshCalendar().then(render); }
+        catch(err){ render(); throw err; }
+      });
+      render();
+    }
+  );
 }
 
 /* ---------------------------------------------------------------- settings */
@@ -3128,6 +3287,12 @@ function settingsPanel(){
     i.addEventListener("change", ()=>{ draft = normalizeCfg({...draft, [key]:+i.value}); i.value = draft[key]; });
     return i;
   };
+  const numHours = (key, min, max, step) => {
+    const i = el("input","num-in");
+    i.type="number"; i.min=min; i.max=max; i.step=step||0.5; i.value=draft[key]/60;
+    i.addEventListener("change", ()=>{ draft = normalizeCfg({...draft, [key]:+i.value*60}); i.value = draft[key]/60; });
+    return i;
+  };
 
   function buildBody(){
     body.innerHTML = "";
@@ -3142,34 +3307,44 @@ function settingsPanel(){
     row("My Day Off", off);
 
     body.appendChild(el("div","set-h","Load"));
-    row("Quick Task", num("maxSmall",0,12), el("span","set-dash","in"), num("quickTotal",5,480,5), el("span","set-u","min"));
-    row("Session", num("maxShort",0,6), el("span","set-dash","×"), num("shortMin",15,480,5), el("span","set-u","min"));
-    row("Work Day", num("maxLong",0,2), el("span","set-dash","×"), num("longMin",60,600,15), el("span","set-u","min"));
+    row("Quick Task", num("quickTotal",5,480,5), el("span","set-u","min"));
+    row("Session", numHours("shortMin",0.5,8,0.5), el("span","set-u","h"));
+    row("Work Day", numHours("longMin",1,10,0.5), el("span","set-u","h"));
     row("Break time", num("buffer",0,60,5), el("span","set-u","min"));
-
-    body.appendChild(el("div","set-h","Labels"));
     const lg = el("div","legend");
     lg.appendChild(document.createTextNode("No label = Quick Task. Yellow = Session. Orange = Work Day."));
     body.appendChild(lg);
 
+    /* one row, three boards — used far less often than the Load numbers
+       above, so it doesn't need a row of its own per board */
     body.appendChild(el("div","set-h","Colour"));
+    const swatchRow = el("div","set-row tall");
+    const sw = el("span","set-v swatches");
     for(const b of BOARDS){
+      const card = el("span","swatch-card");
       const c = el("input","col-in");
       c.type="color";
       c.value = (draft.colors && draft.colors[b.key]) ||
         (getComputedStyle(document.documentElement).getPropertyValue("--b-"+b.key).trim() || "#888888");
       c.addEventListener("input", ()=>{ draft.colors[b.key]=c.value; applyColors(draft.colors); });
       const rst = el("button","mini","↺");
-      rst.setAttribute("aria-label","Reset colour");
+      rst.type = "button";
+      rst.setAttribute("aria-label","Reset "+b.name+" colour");
       rst.addEventListener("click", e=>{
         e.preventDefault();
         delete draft.colors[b.key];
         applyColors(draft.colors);
         c.value = getComputedStyle(document.documentElement).getPropertyValue("--b-"+b.key).trim() || "#888888";
       });
-      const r = row(b.name, c, rst);
-      r.querySelector(".set-k").setAttribute("dir","auto");
+      const swrow = el("span","swrow");
+      swrow.appendChild(c); swrow.appendChild(rst);
+      const name = el("span","swname", b.name);
+      name.setAttribute("dir","auto");
+      card.appendChild(swrow); card.appendChild(name);
+      sw.appendChild(card);
     }
+    swatchRow.appendChild(sw);
+    body.appendChild(swatchRow);
 
     body.appendChild(el("div","set-h","Sound"));
     const snd = el("button","toggle" + (draft.sound ? " on" : ""), draft.sound ? "on" : "off");
