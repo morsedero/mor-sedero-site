@@ -874,11 +874,15 @@ const minsOf = d => d.getHours()*60 + d.getMinutes();
 const atMin = (base,m) => { const x=startOfDay(base); x.setMinutes(m); return x; };
 const iso = d => new Date(d).toISOString();
 const daysBetween = (a,b) => Math.floor((startOfDay(b)-startOfDay(a))/86400000);
-/* only today can gain new blocks or have existing ones rescheduled — a
-   passed day is history, and pre-building a future one risked the same
-   Trello card landing on two different days at once. Marking existing
-   work done or removing it is still fine on any day. */
-const isLockedDay = d => !sameDay(d, new Date());
+/* today and tomorrow can gain new blocks or have existing ones rescheduled.
+   past days are history, future days risk Trello cards landing on multiple days.
+   Marking existing work done or removing it is still fine on any day. */
+const isSchedulable = d => {
+  const now = new Date();
+  const daysAhead = daysBetween(now, d);
+  return daysAhead === 0 || daysAhead === 1;
+};
+const isLockedDay = d => !isSchedulable(d);
 const isLockedItem = item => isLockedDay(item.ev.start);
 const fmtRange = (a,b) => `${hhmm(a)}–${hhmm(b)}`;
 /* "70 min" reads worse than "1 hour 10 min" past the hour mark */
@@ -2385,7 +2389,7 @@ function nowCard(item){
   const swapBtn = el("button","mini text swap","Swap");
   swapBtn.title = "Swap for another task"; swapBtn.setAttribute("aria-label","Swap task");
   swapBtn.addEventListener("click", ()=>swapPicker(item));
-  if(isLockedItem(item)){ swapBtn.disabled = true; swapBtn.title = "Only today can be scheduled right now."; }
+  if(isLockedItem(item)){ swapBtn.disabled = true; swapBtn.title = "Only today and tomorrow can be scheduled."; }
   acts.appendChild(swapBtn); btns.push(swapBtn);
   if(c){
     const pendingBtn = el("button","mini text pend","Pending");
@@ -2604,7 +2608,7 @@ function timelineItem(item, winS, ppm, col, cols, opts){
       const sw = el("button","mini text swap","Swap");
       sw.title = "Swap"; sw.setAttribute("aria-label","Swap task");
       sw.addEventListener("click", e=>{ e.stopPropagation(); swapPicker(item); });
-      if(isLockedItem(item)){ sw.disabled = true; sw.title = "Only today can be scheduled right now."; }
+      if(isLockedItem(item)){ sw.disabled = true; sw.title = "Only today and tomorrow can be scheduled."; }
       acts.appendChild(sw); btns.push(sw);
       if(item.card){
         const pd = el("button","mini text pend","Pending");
@@ -2679,7 +2683,7 @@ function timelineItem(item, winS, ppm, col, cols, opts){
    Instead every row's un-pushed rect is snapshotted once at pickup and
    reused for the rest of the drag. */
 function wireStackDrag(wrap, item){
-  if(!item.task || isLockedItem(item)) return;   // meetings hold their slot; only today can be rebuilt right now
+  if(!item.task || isLockedItem(item)) return;   // meetings hold their slot; only today and tomorrow can be rebuilt
   wrap.dataset.evId = item.ev.id;
   let startY=0, startX=0, dragging=false, moved=false, order=[], originIdx=-1, targetIdx=-1, pushed=[];
   const eligible = e => !e.target.closest(".mini, .details, a");
@@ -2878,7 +2882,7 @@ function wireItemResize(handle, wrap, item, winS, ppm, opts){
    own check here. */
 function rescheduleTo(item, start, end){
   if(S.pending.has(item.ev.id)) return;
-  if(isLockedDay(start)){ toast("Only today can be scheduled right now.", true); render(); return; }
+  if(isLockedDay(start)){ toast("Only today and tomorrow can be scheduled.", true); render(); return; }
   const date = startOfDay(start);
   const pad = item.ev.deep ? CFG.buffer : 0;
   const s = minsOf(start) - pad, e = minsOf(end) + pad;
@@ -3026,7 +3030,7 @@ function withinPermeable(ev, date){
     sameDay(m.start,date) && minsOf(m.start) <= minsOf(ev.start) && minsOf(m.end) >= minsOf(ev.end));
 }
 function swapPicker(item){
-  if(isLockedItem(item)){ toast("Only today can be scheduled right now.", true); return; }
+  if(isLockedItem(item)){ toast("Only today and tomorrow can be scheduled.", true); return; }
   const scheduled = new Set(allEvents()
     .filter(e => e.isTask && overlapsDay(e, S.anchor) && e.cardShort).map(e => e.cardShort));
   const insideMeeting = withinPermeable(item.ev, S.anchor);
@@ -3356,7 +3360,7 @@ for(const b of $("#viewSwitch").children){
 }
 
 async function replan(){
-  if(isLockedDay(S.anchor)){ toast("Only today can be built right now.", true); return; }
+  if(isLockedDay(S.anchor)){ toast("Only today and tomorrow can be built.", true); return; }
   if(S.anchor.getDay() === CFG.dayOff){ toast("My Day Off — nothing gets scheduled."); return; }
   const date = startOfDay(S.anchor);
   const clearable = clearableBlocks(date);
