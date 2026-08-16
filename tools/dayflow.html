@@ -99,15 +99,13 @@ html,body{overflow:hidden;}
 .topbar{
   flex:0 0 auto;
   display:flex;align-items:center;justify-content:space-between;
-  gap:8px;margin-bottom:14px;
-  position:relative;
+  gap:8px;margin-bottom:10px;
 }
 .topbar-left{
   display:flex;align-items:center;justify-content:flex-start;gap:8px;flex:0 0 auto;
 }
 .topbar-center{
-  display:flex;align-items:center;justify-content:center;gap:4px;
-  position:absolute;left:50%;transform:translateX(-50%);flex:0 0 auto;
+  display:none;
 }
 .topbar-right{
   display:flex;align-items:center;justify-content:flex-end;gap:8px;flex:0 0 auto;
@@ -118,14 +116,14 @@ html,body{overflow:hidden;}
 }
 /* the date sits centered between the prev/next arrows, which pin
    themselves close together — clicking it jumps back to today */
-.topbar .date{
+.dash .date{
   display:flex;align-items:baseline;justify-content:center;gap:8px;
   background:transparent;border:none;padding:2px;margin:0;cursor:pointer;text-align:center;
   border-radius:8px;flex:0 0 auto;
 }
-.topbar .date:hover{background:var(--surface);}
-.topbar .date h1{margin:0;font-size:16px;font-weight:800;letter-spacing:-.01em;white-space:nowrap;}
-.topbar .date .rel{font-family:var(--mono);font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3);}
+.dash .date:hover{background:var(--surface);}
+.dash .date h1{margin:0;font-size:16px;font-weight:800;letter-spacing:-.01em;white-space:nowrap;}
+.dash .date .rel{font-family:var(--mono);font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3);}
 
 /* Day/Week/Month switcher — Day shows the activity list, Week/Month show
    the calendar grid, both in place of one another on the one page. Lives
@@ -153,13 +151,16 @@ html,body{overflow:hidden;}
 .navbtn:hover{background:var(--surface);border-color:var(--line);color:var(--ink);transform:translateY(-1px);}
 .navbtn:active{transform:scale(.92);}
 
-/* ---------------- dash: view switch + progress + rebuild, one row — the
-   switch anchors left, rebuild/progress anchor right. The clock isn't in
-   here any more; it lives in its own .topbar above the header. */
+/* date navigation on the left, view switch and rebuild/progress arranged
+   with space-between so the switch sits in the middle and rebuild/progress
+   are on the right */
 .dash{
   flex:0 0 auto;
   display:flex;align-items:center;justify-content:space-between;gap:8px;
   margin-bottom:12px;flex-wrap:nowrap;
+}
+.dash-left{
+  display:flex;align-items:center;justify-content:flex-start;gap:4px;flex:0 0 auto;
 }
 /* stacked (date line over time line) rather than side by side, and
    left-aligned now that it's alone in the topbar instead of centered
@@ -718,14 +719,7 @@ html,body{overflow:hidden;}
         </div>
       </div>
     </div>
-    <div class="topbar-center">
-      <button id="prev" class="navbtn" aria-label="Previous">‹</button>
-      <button class="date" id="dateWrap" aria-label="Go to today">
-        <h1 id="dateLabel">—</h1>
-        <span class="rel" id="dateRel"></span>
-      </button>
-      <button id="next" class="navbtn" aria-label="Next">›</button>
-    </div>
+    <div class="topbar-center"></div>
     <div class="topbar-right">
       <button id="setBtn" class="navbtn" aria-label="Settings">⚙</button>
     </div>
@@ -734,6 +728,14 @@ html,body{overflow:hidden;}
   <header class="head"></header>
 
   <div class="dash" id="dash">
+    <div class="dash-left">
+      <button id="prev" class="navbtn" aria-label="Previous">‹</button>
+      <button class="date" id="dateWrap" aria-label="Go to today">
+        <h1 id="dateLabel">—</h1>
+        <span class="rel" id="dateRel"></span>
+      </button>
+      <button id="next" class="navbtn" aria-label="Next">›</button>
+    </div>
     <div class="segmented" id="viewSwitch">
       <button data-view="day">Day</button>
       <button data-view="week">Week</button>
