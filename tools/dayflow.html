@@ -100,9 +100,14 @@ html,body{overflow:hidden;}
   flex:0 0 auto;
   display:flex;align-items:center;justify-content:space-between;
   gap:8px;margin-bottom:14px;
+  position:relative;
 }
 .topbar-left{
-  display:flex;align-items:center;justify-content:flex-start;gap:4px;flex:0 0 auto;
+  display:flex;align-items:center;justify-content:flex-start;gap:8px;flex:0 0 auto;
+}
+.topbar-center{
+  display:flex;align-items:center;justify-content:center;gap:4px;
+  position:absolute;left:50%;transform:translateX(-50%);flex:0 0 auto;
 }
 .topbar-right{
   display:flex;align-items:center;justify-content:flex-end;gap:8px;flex:0 0 auto;
@@ -703,14 +708,6 @@ html,body{overflow:hidden;}
 <div class="wrap">
   <div class="topbar">
     <div class="topbar-left">
-      <button id="prev" class="navbtn" aria-label="Previous">‹</button>
-      <button class="date" id="dateWrap" aria-label="Go to today">
-        <h1 id="dateLabel">—</h1>
-        <span class="rel" id="dateRel"></span>
-      </button>
-      <button id="next" class="navbtn" aria-label="Next">›</button>
-    </div>
-    <div class="topbar-right">
       <div class="clockw" id="clockw">
         <div class="cw-date">
           <span class="cw-dow" id="cwDow">—</span>
@@ -720,6 +717,16 @@ html,body{overflow:hidden;}
           <span id="cwHH">--:--</span><span class="cw-sec" id="cwSec">:--</span>
         </div>
       </div>
+    </div>
+    <div class="topbar-center">
+      <button id="prev" class="navbtn" aria-label="Previous">‹</button>
+      <button class="date" id="dateWrap" aria-label="Go to today">
+        <h1 id="dateLabel">—</h1>
+        <span class="rel" id="dateRel"></span>
+      </button>
+      <button id="next" class="navbtn" aria-label="Next">›</button>
+    </div>
+    <div class="topbar-right">
       <button id="setBtn" class="navbtn" aria-label="Settings">⚙</button>
     </div>
   </div>
