@@ -105,7 +105,15 @@ html,body{overflow:hidden;}
   display:flex;align-items:center;justify-content:flex-start;gap:8px;flex:0 0 auto;
 }
 .topbar-center{
-  display:none;
+  display:flex;align-items:center;justify-content:center;flex:0 0 auto;
+}
+.dayflow-title{
+  margin:0;padding:0;
+  font-family:var(--font-display);font-size:28px;font-weight:900;letter-spacing:-.02em;
+  background:linear-gradient(135deg, var(--accent) 0%, #FFB700 100%);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+  text-shadow:0 2px 4px rgba(0,0,0,.08);
+  filter:drop-shadow(0 1px 2px rgba(148,98,0,.15));
 }
 .topbar-right{
   display:flex;align-items:center;justify-content:flex-end;gap:8px;flex:0 0 auto;
@@ -725,7 +733,9 @@ html,body{overflow:hidden;}
         </div>
       </div>
     </div>
-    <div class="topbar-center"></div>
+    <div class="topbar-center">
+      <h2 class="dayflow-title">DayFlow</h2>
+    </div>
     <div class="topbar-right">
       <button id="setBtn" class="navbtn" aria-label="Settings">⚙</button>
     </div>
