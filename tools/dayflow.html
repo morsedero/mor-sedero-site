@@ -99,26 +99,28 @@ html,body{overflow:hidden;}
 .topbar{
   flex:0 0 auto;
   display:flex;align-items:center;justify-content:space-between;
-  gap:12px;margin-bottom:10px;
+  gap:8px;margin-bottom:14px;
+}
+.topbar-left{
+  display:flex;align-items:center;justify-content:flex-start;gap:4px;flex:0 0 auto;
+}
+.topbar-right{
+  display:flex;align-items:center;justify-content:flex-end;gap:8px;flex:0 0 auto;
 }
 
 .head{
-  flex:0 0 auto;
-  display:flex;align-items:center;justify-content:space-between;
-  gap:8px;margin-bottom:14px;
+  display:none;
 }
 /* the date sits centered between the prev/next arrows, which pin
-   themselves to the row's two edges — clicking it jumps back to today,
-   the dot that used to sit between the arrows is gone */
-.head .date{
-  flex:1 1 auto;min-width:0;
-  display:flex;align-items:baseline;justify-content:center;gap:10px;
+   themselves close together — clicking it jumps back to today */
+.topbar .date{
+  display:flex;align-items:baseline;justify-content:center;gap:8px;
   background:transparent;border:none;padding:2px;margin:0;cursor:pointer;text-align:center;
-  border-radius:8px;
+  border-radius:8px;flex:0 0 auto;
 }
-.head .date:hover{background:var(--surface);}
-.head .date h1{margin:0;font-size:19px;font-weight:800;letter-spacing:-.01em;white-space:nowrap;}
-.head .date .rel{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3);}
+.topbar .date:hover{background:var(--surface);}
+.topbar .date h1{margin:0;font-size:16px;font-weight:800;letter-spacing:-.01em;white-space:nowrap;}
+.topbar .date .rel{font-family:var(--mono);font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3);}
 
 /* Day/Week/Month switcher — Day shows the activity list, Week/Month show
    the calendar grid, both in place of one another on the one page. Lives
@@ -700,26 +702,29 @@ html,body{overflow:hidden;}
 
 <div class="wrap">
   <div class="topbar">
-    <div class="clockw" id="clockw">
-      <div class="cw-date">
-        <span class="cw-dow" id="cwDow">—</span>
-        <span class="cw-day" id="cwDay">—</span>
-      </div>
-      <div class="cw-time">
-        <span id="cwHH">--:--</span><span class="cw-sec" id="cwSec">:--</span>
-      </div>
+    <div class="topbar-left">
+      <button id="prev" class="navbtn" aria-label="Previous">‹</button>
+      <button class="date" id="dateWrap" aria-label="Go to today">
+        <h1 id="dateLabel">—</h1>
+        <span class="rel" id="dateRel"></span>
+      </button>
+      <button id="next" class="navbtn" aria-label="Next">›</button>
     </div>
-    <button id="setBtn" class="navbtn" aria-label="Settings">⚙</button>
+    <div class="topbar-right">
+      <div class="clockw" id="clockw">
+        <div class="cw-date">
+          <span class="cw-dow" id="cwDow">—</span>
+          <span class="cw-day" id="cwDay">—</span>
+        </div>
+        <div class="cw-time">
+          <span id="cwHH">--:--</span><span class="cw-sec" id="cwSec">:--</span>
+        </div>
+      </div>
+      <button id="setBtn" class="navbtn" aria-label="Settings">⚙</button>
+    </div>
   </div>
 
-  <header class="head">
-    <button id="prev" class="navbtn" aria-label="Previous">‹</button>
-    <button class="date" id="dateWrap" aria-label="Go to today">
-      <h1 id="dateLabel">—</h1>
-      <span class="rel" id="dateRel"></span>
-    </button>
-    <button id="next" class="navbtn" aria-label="Next">›</button>
-  </header>
+  <header class="head"></header>
 
   <div class="dash" id="dash">
     <div class="segmented" id="viewSwitch">
@@ -1192,7 +1197,13 @@ function allEvents(){
       };
     })
     .filter(e => e.start && e.end)
-    .filter(e => !(e.cardShort && !sameDay(e.start, new Date())));
+    /* a stale card-linked block (left over from a day that's rolled past)
+       is presumed wrong and hidden — but that window has to match what's
+       actually schedulable (today and tomorrow, see isSchedulable), or a
+       block built for tomorrow vanishes from the app the instant it's
+       created: still real on the calendar, invisible everywhere here,
+       and rebuilt as a duplicate on every subsequent run. */
+    .filter(e => !(e.cardShort && !isSchedulable(e.start)));
 }
 const overlapsDay = (e,d) => { const a=startOfDay(d), b=addDays(a,1); return e.start < b && e.end > a; };
 
