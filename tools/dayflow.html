@@ -241,7 +241,10 @@ html,body{overflow:hidden;}
 
 /* ---------------- the hub — same styling as regular cards, status moved above --- */
 .now{
-  position:relative;width:100%;box-shadow:var(--shadow);transition:transform .15s;
+  position:relative;width:100%;
+  border-radius:18px;border:1.5px solid var(--bc,var(--line-2));
+  background:var(--bc-soft,var(--surface-2));
+  box-shadow:var(--shadow);transition:transform .15s;
   cursor:grab;touch-action:none;overflow:hidden;
 }
 .now::before{
@@ -624,20 +627,25 @@ html,body{overflow:hidden;}
 .lock-choice .lc-badge{
   width:40px;aspect-ratio:1/1;border-radius:50%;
   display:flex;align-items:center;justify-content:center;
-  background:radial-gradient(circle at 32% 28%,color-mix(in srgb,var(--cc) 55%,white) 0%,var(--cc) 72%);
-  box-shadow:inset 0 -3px 5px rgba(0,0,0,.14),inset 0 2px 3px rgba(255,255,255,.5),0 2px 5px rgba(40,26,4,.14);
-  transition:box-shadow .18s ease;
+  background:color-mix(in srgb,var(--cc) 20%,var(--surface) 80%);
+  box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--cc) 35%,var(--line-2) 65%);
+  transition:background .18s ease,box-shadow .18s ease;
 }
 .lock-choice .lc-icon{font-size:20px;line-height:1;display:block;transform:scale(1);}
 .lock-choice .lc-label{font-family:var(--font-body);font-weight:800;font-size:9.5px;}
 .lock-choice:hover{border-color:var(--ink-3);transform:translateY(-2px);}
 .lock-choice:hover .lc-badge{
+  background:radial-gradient(circle at 32% 28%,color-mix(in srgb,var(--cc) 55%,white) 0%,var(--cc) 72%);
+  box-shadow:inset 0 -3px 5px rgba(0,0,0,.14),inset 0 2px 3px rgba(255,255,255,.5),0 2px 5px rgba(40,26,4,.14);
   animation:lc-glow-pulse 1.1s ease-in-out infinite;
 }
 .lock-choice:active{transform:scale(.94);}
 .lock-choice.sel{border-color:var(--cc);color:var(--ink);}
 .lock-choice.sel:hover{transform:translateY(-2px);}
-.lock-choice.sel .lc-badge{box-shadow:inset 0 -3px 5px rgba(0,0,0,.14),inset 0 2px 3px rgba(255,255,255,.5),0 0 0 3px var(--cc-glow);}
+.lock-choice.sel .lc-badge{
+  background:radial-gradient(circle at 32% 28%,color-mix(in srgb,var(--cc) 55%,white) 0%,var(--cc) 72%);
+  box-shadow:inset 0 -3px 5px rgba(0,0,0,.14),inset 0 2px 3px rgba(255,255,255,.5),0 0 0 3px var(--cc-glow);
+}
 @keyframes lc-glow-pulse{
   0%,100%{box-shadow:inset 0 -3px 5px rgba(0,0,0,.14),inset 0 2px 3px rgba(255,255,255,.5),0 0 8px 2px var(--cc-glow),0 0 0 2px var(--cc);}
   50%{box-shadow:inset 0 -3px 5px rgba(0,0,0,.14),inset 0 2px 3px rgba(255,255,255,.5),0 0 18px 7px var(--cc-glow),0 0 0 2px var(--cc);}
@@ -3316,14 +3324,17 @@ function swapTo(item, card){
 
   /* The old slot's own length used to carry straight over to whatever card
      landed in it — swap a quick task's 20-minute slot for a work day and
-     the block stayed 20 minutes; swap a work day out for a quick task and
-     it stayed 8 hours. A swap has to give the incoming card its own real
-     size, not inherit the outgoing one's. Re-search for a slot of the
-     right length only when the size actually differs — the common
-     quick-for-quick swap never has to move. */
+     the block stayed 20 minutes. A session or work day has a real size of
+     its own (CFG.shortMin/longMin) and needs to land at that size, not
+     inherit the outgoing slot's. Quick tasks are the opposite: they have
+     no size of their own — one quick task's slot length depends entirely
+     on how many others are sharing the quickTotal window when the day was
+     built — so a quick card swapped in (or a quick slot getting a
+     same-size quick replacement) always keeps whatever slot it lands in
+     untouched. */
   let start = item.ev.start, end = item.ev.end;
-  const wantDur = card.est || (card.size === "long" ? CFG.longMin : card.size === "short" ? CFG.shortMin : quickSlice(1));
   const haveDur = minsOf(end) - minsOf(start);
+  const wantDur = card.size === "quick" ? haveDur : (card.est || (card.size === "long" ? CFG.longMin : CFG.shortMin));
   if(wantDur !== haveDur){
     const ignore = new Set([id]);
     if(existingBlock) ignore.add(existingBlock.id);
