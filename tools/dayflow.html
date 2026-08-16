@@ -372,8 +372,12 @@ html,body{overflow:hidden;}
 .item.done{opacity:.5;}
 
 /* Tasks page: a plain vertical stack instead of a minute-precise grid —
-   "smaller, less detail" reads better as a list than as a calendar */
-.rows.stack{position:static;height:auto!important;display:flex;flex-direction:column;gap:8px;}
+   "smaller, less detail" reads better as a list than as a calendar.
+   Border-top separates from the hub card above when present */
+.rows.stack{
+  position:static;height:auto!important;display:flex;flex-direction:column;gap:8px;
+  border-top:1.5px solid var(--line-2);margin-top:12px;padding-top:12px;
+}
 .item.stack{position:static;width:100%;box-shadow:var(--shadow);transition:transform .15s;}
 .item.stack .row{flex-wrap:wrap;gap:6px 10px;padding:9px 12px;}
 .item.stack .row .n{font-size:14px;}
@@ -3265,9 +3269,31 @@ function swapPicker(item){
 function swapTo(item, card){
   const id = item.ev.id;
   if(S.pending.has(id)) return;
-  S.pending.add(id);
-  const start = item.ev.start, end = item.ev.end;
   const existingBlock = allEvents().find(e => e.cardShort === card.shortLink && overlapsDay(e, S.anchor));
+
+  /* The old slot's own length used to carry straight over to whatever card
+     landed in it — swap a quick task's 20-minute slot for a work day and
+     the block stayed 20 minutes; swap a work day out for a quick task and
+     it stayed 8 hours. A swap has to give the incoming card its own real
+     size, not inherit the outgoing one's. Re-search for a slot of the
+     right length only when the size actually differs — the common
+     quick-for-quick swap never has to move. */
+  let start = item.ev.start, end = item.ev.end;
+  const wantDur = card.est || (card.size === "long" ? CFG.longMin : card.size === "short" ? CFG.shortMin : quickSlice(1));
+  const haveDur = minsOf(end) - minsOf(start);
+  if(wantDur !== haveDur){
+    const ignore = new Set([id]);
+    if(existingBlock) ignore.add(existingBlock.id);
+    const winS = CFG.dayStart*60, winE = CFG.dayEnd*60;
+    const busy = busyFor(S.anchor, ignore, card.size !== "quick");
+    const fromMin = minsOf(start);
+    const slot = findSlots(busy, winS, winE, wantDur, CFG.buffer, 1, fromMin)[0]
+              || findSlots(busy, winS, winE, wantDur, CFG.buffer, 1, winS)[0];
+    if(!slot){ toast("Doesn't fit here — nowhere left today.", true); return; }
+    start = atMin(S.anchor, slot.s);
+    end = atMin(S.anchor, slot.e);
+  }
+  S.pending.add(id);
 
   /* The slot changes hands on the tap. A stand-in block stands in for the one
      Google hasn't minted an id for yet; the real ids arrive with the refresh
