@@ -99,13 +99,14 @@ html,body{overflow:hidden;}
 .topbar{
   flex:0 0 auto;
   display:flex;align-items:center;justify-content:space-between;
-  gap:8px;margin-bottom:10px;
+  gap:8px;margin-bottom:10px;position:relative;
 }
 .topbar-left{
   display:flex;align-items:center;justify-content:flex-start;gap:8px;flex:0 0 auto;
 }
 .topbar-center{
-  display:flex;align-items:center;justify-content:center;flex:0 0 auto;
+  display:flex;align-items:center;justify-content:center;
+  position:absolute;left:50%;transform:translateX(-50%);flex:0 0 auto;
 }
 .dayflow-title{
   margin:0;padding:0;
@@ -600,6 +601,52 @@ html,body{overflow:hidden;}
 .dialog .dh p{margin:6px 0 0;font-size:13px;font-weight:600;color:var(--ink-2);white-space:pre-line;overflow-wrap:anywhere;}
 .dialog .df{padding:12px 17px;border-top:1.5px dashed var(--line);display:flex;gap:8px;justify-content:flex-end;background:transparent;}
 
+/* lock popup prototype — a big square that sits over the activity until the
+   user commits via the nested confirm, not dismissable by tapping outside */
+.lock-scrim{z-index:62;background:rgba(10,10,20,.72);}
+.lock-box{
+  width:min(360px,86vw);aspect-ratio:1/1;
+  background:var(--glass-2,var(--surface));border:1.5px solid var(--line-2);border-radius:26px;
+  box-shadow:var(--shadow-lg);display:flex;flex-direction:column;align-items:center;justify-content:space-between;
+  padding:32px 22px;
+}
+@media (prefers-reduced-motion:no-preference){.lock-box{animation:pop .2s cubic-bezier(.2,.9,.3,1);}}
+.lock-label{font-family:var(--font-display);font-weight:400;font-size:20px;color:var(--ink);text-align:center;}
+.lock-square{
+  width:100%;aspect-ratio:1/1;max-height:170px;margin-top:20px;
+  border-radius:20px;border:1.5px solid var(--accent-ink);background:var(--accent);color:var(--on-accent);
+  font-family:var(--font-display);font-weight:400;font-size:24px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+}
+.lock-square:hover{filter:brightness(1.06);}
+
+.lock-confirm-scrim{z-index:64;background:rgba(10,10,20,.78);}
+.lock-confirm-box{
+  width:min(340px,84vw);
+  background:var(--glass-2,var(--surface));border:1.5px solid var(--crit);border-radius:26px;
+  box-shadow:var(--shadow-lg);padding:28px 20px 22px;display:flex;flex-direction:column;align-items:center;gap:20px;
+}
+@media (prefers-reduced-motion:no-preference){.lock-confirm-box{animation:pop .2s cubic-bezier(.2,.9,.3,1);}}
+.lock-confirm-text{
+  font-family:var(--font-display);font-weight:400;font-size:23px;text-align:center;line-height:1.25;
+  background:linear-gradient(135deg,var(--crit) 0%,var(--accent-ink) 100%);
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+}
+@media (prefers-reduced-motion:no-preference){
+  .lock-confirm-text{animation:lockwiggle .5s ease-in-out;}
+  @keyframes lockwiggle{0%,100%{transform:rotate(0deg);}25%{transform:rotate(-2deg);}75%{transform:rotate(2deg);}}
+}
+.lock-confirm-btns{display:flex;gap:14px;width:100%;}
+.lock-confirm-square{
+  flex:1 1 0;aspect-ratio:1/1;border-radius:18px;
+  font-family:var(--font-display);font-weight:400;font-size:16px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;border:1.5px solid;
+}
+.lock-confirm-square.yes{background:var(--done);border-color:#178C46;color:#fff;}
+.lock-confirm-square.yes:hover{filter:brightness(1.06);}
+.lock-confirm-square.whoopsy{background:var(--surface-2);border-color:var(--line-2);color:var(--ink-2);}
+.lock-confirm-square.whoopsy:hover{background:var(--surface);color:var(--ink);}
+
 /* settings — sized to fit the viewport in one screen rather than a fixed
    600px, so it only ever scrolls internally as a last resort on a genuinely
    short window; the grid row layout keeps every value lined up in one
@@ -737,6 +784,7 @@ html,body{overflow:hidden;}
       <h2 class="dayflow-title">DayFlow</h2>
     </div>
     <div class="topbar-right">
+      <button id="lockTestBtn" class="navbtn" aria-label="Test lock popup">🔒</button>
       <button id="setBtn" class="navbtn" aria-label="Settings">⚙</button>
     </div>
   </div>
@@ -3440,6 +3488,37 @@ function confirmDialog(title, detail, okLabel){
   });
 }
 
+/* Prototype: locks the screen behind a big square until the user confirms
+   they're really done. No app-state wiring yet — triggered from the 🔒
+   test button in the topbar. */
+function lockDialog(){
+  const scrim = el("div","scrim lock-scrim");
+  const box = el("div","lock-box");
+  box.setAttribute("role","dialog"); box.setAttribute("aria-modal","true");
+  box.appendChild(el("div","lock-label","Activity locked"));
+  const doneBtn = el("button","lock-square","Done!");
+  doneBtn.addEventListener("click", () => lockConfirmDialog(scrim));
+  box.appendChild(doneBtn);
+  scrim.appendChild(box); document.body.appendChild(scrim);
+  doneBtn.focus();
+}
+
+function lockConfirmDialog(lockScrim){
+  const scrim = el("div","scrim lock-confirm-scrim");
+  const box = el("div","lock-confirm-box");
+  box.setAttribute("role","dialog"); box.setAttribute("aria-modal","true");
+  box.appendChild(el("div","lock-confirm-text","Are you ABSOLUTELY sure?!?!"));
+  const row = el("div","lock-confirm-btns");
+  const yes = el("button","lock-confirm-square yes","YES!");
+  const no = el("button","lock-confirm-square whoopsy","Whoopsy...");
+  yes.addEventListener("click", () => { scrim.remove(); lockScrim.remove(); });
+  no.addEventListener("click", () => scrim.remove());
+  row.appendChild(yes); row.appendChild(no);
+  box.appendChild(row);
+  scrim.appendChild(box); document.body.appendChild(scrim);
+  yes.focus();
+}
+
 /* ---------------------------------------------------------------- flourish */
 const fx = $("#fx"), fxc = fx.getContext("2d");
 let parts=[], raf=null;
@@ -3527,6 +3606,7 @@ function stepNav(n){
 $("#prev").addEventListener("click", ()=>stepNav(-1));
 $("#next").addEventListener("click", ()=>stepNav(1));
 $("#setBtn").addEventListener("click", settingsPanel);
+$("#lockTestBtn").addEventListener("click", lockDialog);
 $("#replanBtn").addEventListener("click", ()=>replan());
 $("#dateWrap").addEventListener("click", ()=>goDay(0));
 $("#progressPill").addEventListener("click", doneDialog);
