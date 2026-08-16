@@ -239,19 +239,15 @@ html,body{overflow:hidden;}
 .bk-sedco   {--bc:var(--b-sedco);   --bc-soft:var(--b-sedco-soft);}
 .bk-none    {--bc:var(--b-none);    --bc-soft:var(--b-none-soft);}
 
-/* ---------------- the hub ---------------- */
+/* ---------------- the hub — same styling as regular cards, status moved above --- */
 .now{
-  background:var(--glass,var(--surface));backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
-  border:1.5px solid var(--line);
-  border-radius:28px;padding:0;box-shadow:var(--shadow);
-  position:relative;overflow:hidden;
-  cursor:grab;touch-action:none;transition:box-shadow .15s,transform .15s;
+  position:relative;width:100%;box-shadow:var(--shadow);transition:transform .15s;
+  cursor:grab;touch-action:none;overflow:hidden;
 }
 .now::before{
   content:"";position:absolute;left:0;top:0;bottom:0;width:5px;
   background:var(--bc,var(--b-none));
 }
-.now.live{border-color:var(--bc,var(--accent));}
 
 /* drag-to-reorder in the Day-view list — hub card included, it's just the
    topmost of the same cards now */
@@ -266,11 +262,10 @@ html,body{overflow:hidden;}
    behind — transform is set inline (per-pair distance varies), the
    transform transition on .now/.item.stack above is what animates it. */
 
-/* top strip: status only — the clock lives in its own widget above */
+/* status label above the hub card — small text, no special styling */
 .hub-top{
   display:flex;align-items:center;justify-content:flex-end;gap:10px;
-  padding:12px 18px 10px;border-bottom:1.5px solid var(--line);
-  background:var(--bc-soft,transparent);
+  padding:6px 0 8px;font-size:11px;font-weight:700;color:var(--ink-2);
 }
 .hub-status{display:flex;align-items:center;gap:7px;flex-wrap:wrap;justify-content:flex-end;}
 
@@ -609,20 +604,68 @@ html,body{overflow:hidden;}
    user commits via the nested confirm, not dismissable by tapping outside */
 .lock-scrim{z-index:62;background:rgba(10,10,20,.72);}
 .lock-box{
-  width:min(360px,86vw);aspect-ratio:1/1;
+  width:min(360px,86vw);
   background:var(--glass-2,var(--surface));border:1.5px solid var(--line-2);border-radius:26px;
-  box-shadow:var(--shadow-lg);display:flex;flex-direction:column;align-items:center;justify-content:space-between;
-  padding:32px 22px;
+  box-shadow:var(--shadow-lg);display:flex;flex-direction:column;align-items:center;
+  padding:28px 22px 24px;gap:16px;
 }
 @media (prefers-reduced-motion:no-preference){.lock-box{animation:pop .2s cubic-bezier(.2,.9,.3,1);}}
-.lock-label{font-family:var(--font-display);font-weight:400;font-size:20px;color:var(--ink);text-align:center;}
-.lock-square{
-  width:100%;aspect-ratio:1/1;max-height:170px;margin-top:20px;
-  border-radius:20px;border:1.5px solid var(--accent-ink);background:var(--accent);color:var(--on-accent);
-  font-family:var(--font-display);font-weight:400;font-size:24px;cursor:pointer;
+.lock-label,.lock-title{font-family:var(--font-display);font-weight:400;font-size:20px;color:var(--ink);text-align:center;}
+.lock-sub{
+  font-family:var(--font-display);font-weight:400;font-size:12px;letter-spacing:.06em;text-transform:uppercase;
+  color:var(--ink-3);margin-top:-8px;
+}
+.lock-choices{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;width:100%;}
+.lock-choice{
+  border-radius:14px;border:1.5px solid var(--line-2);background:var(--surface-2);color:var(--ink-2);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;
+  padding:6px 2px 8px;cursor:pointer;transition:transform .12s ease,border-color .12s ease,color .12s ease;
+}
+.lock-choice .lc-badge{
+  width:40px;aspect-ratio:1/1;border-radius:50%;
   display:flex;align-items:center;justify-content:center;
+  background:radial-gradient(circle at 32% 28%,color-mix(in srgb,var(--cc) 55%,white) 0%,var(--cc) 72%);
+  box-shadow:inset 0 -3px 5px rgba(0,0,0,.14),inset 0 2px 3px rgba(255,255,255,.5),0 2px 5px rgba(40,26,4,.14);
+  transition:box-shadow .18s ease;
+}
+.lock-choice .lc-icon{font-size:20px;line-height:1;display:block;transform:scale(1);}
+.lock-choice .lc-label{font-family:var(--font-body);font-weight:800;font-size:9.5px;}
+.lock-choice:hover{border-color:var(--ink-3);transform:translateY(-2px);}
+.lock-choice:hover .lc-badge{
+  animation:lc-glow-pulse 1.1s ease-in-out infinite;
+}
+.lock-choice:active{transform:scale(.94);}
+.lock-choice.sel{border-color:var(--cc);color:var(--ink);}
+.lock-choice.sel:hover{transform:translateY(-2px);}
+.lock-choice.sel .lc-badge{box-shadow:inset 0 -3px 5px rgba(0,0,0,.14),inset 0 2px 3px rgba(255,255,255,.5),0 0 0 3px var(--cc-glow);}
+@keyframes lc-glow-pulse{
+  0%,100%{box-shadow:inset 0 -3px 5px rgba(0,0,0,.14),inset 0 2px 3px rgba(255,255,255,.5),0 0 8px 2px var(--cc-glow),0 0 0 2px var(--cc);}
+  50%{box-shadow:inset 0 -3px 5px rgba(0,0,0,.14),inset 0 2px 3px rgba(255,255,255,.5),0 0 18px 7px var(--cc-glow),0 0 0 2px var(--cc);}
+}
+@keyframes lc-icon-in{
+  0%{transform:scale(1) rotate(0deg);}
+  35%{transform:scale(1.3) rotate(-14deg);}
+  65%{transform:scale(1.12) rotate(10deg);}
+  100%{transform:scale(1.18) rotate(0deg);}
+}
+@keyframes lc-icon-out{
+  0%{transform:scale(1.18) translateY(0);}
+  45%{transform:scale(.88) translateY(2px);}
+  75%{transform:scale(1.06) translateY(-1px);}
+  100%{transform:scale(1) translateY(0);}
+}
+.lock-choice .lc-icon.hover-in{animation:lc-icon-in .32s cubic-bezier(.34,1.56,.64,1) forwards;}
+.lock-choice .lc-icon.hover-out{animation:lc-icon-out .4s ease-out forwards;}
+.lock-square{
+  width:100%;margin-top:4px;padding:18px 0;
+  border-radius:20px;border:1.5px solid var(--accent-ink);background:var(--accent);color:var(--on-accent);
+  font-family:var(--font-display);font-weight:400;font-size:22px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;transition:filter .12s ease,transform .12s ease;
 }
 .lock-square:hover{filter:brightness(1.06);}
+.lock-square:active{transform:scale(.98);}
+.lock-square:disabled{background:var(--surface-2);border-color:var(--line-2);color:var(--ink-3);cursor:not-allowed;}
+.lock-square:disabled:hover{filter:none;}
 
 .lock-confirm-scrim{z-index:64;background:rgba(10,10,20,.78);}
 .lock-confirm-box{
@@ -3514,19 +3557,53 @@ function confirmDialog(title, detail, okLabel){
   });
 }
 
+const CHORES = [
+  { id:"dishwasher", icon:"🍽️", label:"Dishwasher", cc:"#2FA8FF", glow:"rgba(47,168,255,.55)" },
+  { id:"trash",      icon:"🗑️", label:"Trash",      cc:"#22C55E", glow:"rgba(34,197,94,.55)" },
+  { id:"laundry",    icon:"🧺", label:"Laundry",    cc:"#8B5CF6", glow:"rgba(139,92,246,.55)" },
+  { id:"broom",      icon:"🧹", label:"Broom",      cc:"#FF8A3D", glow:"rgba(255,138,61,.55)" },
+];
+
 /* Prototype: locks the screen behind a big square until the user confirms
    they're really done. No app-state wiring yet — triggered from the 🔒
-   test button in the topbar. */
+   test button in the topbar. Done stays disabled until one chore is picked. */
 function lockDialog(){
   const scrim = el("div","scrim lock-scrim");
   const box = el("div","lock-box");
   box.setAttribute("role","dialog"); box.setAttribute("aria-modal","true");
-  box.appendChild(el("div","lock-label","Activity locked"));
+  box.appendChild(el("div","lock-title","Did you do your CHORES?"));
+  box.appendChild(el("div","lock-sub","Choose"));
+
   const doneBtn = el("button","lock-square","Done!");
+  doneBtn.disabled = true;
+
+  const grid = el("div","lock-choices");
+  for(const c of CHORES){
+    const btn = el("button","lock-choice");
+    btn.type = "button";
+    btn.setAttribute("aria-label", c.label);
+    btn.style.setProperty("--cc", c.cc);
+    btn.style.setProperty("--cc-glow", c.glow);
+    const badge = el("div","lc-badge");
+    const icon = el("div","lc-icon", c.icon);
+    badge.appendChild(icon);
+    btn.appendChild(badge);
+    btn.appendChild(el("div","lc-label", c.label));
+    icon.addEventListener("animationend", () => icon.classList.remove("hover-in","hover-out"));
+    btn.addEventListener("mouseenter", () => { icon.classList.remove("hover-out"); icon.classList.add("hover-in"); });
+    btn.addEventListener("mouseleave", () => { icon.classList.remove("hover-in"); icon.classList.add("hover-out"); });
+    btn.addEventListener("click", () => {
+      grid.querySelectorAll(".lock-choice.sel").forEach(b => b.classList.remove("sel"));
+      btn.classList.add("sel");
+      doneBtn.disabled = false;
+    });
+    grid.appendChild(btn);
+  }
+  box.appendChild(grid);
+
   doneBtn.addEventListener("click", () => lockConfirmDialog(scrim));
   box.appendChild(doneBtn);
   scrim.appendChild(box); document.body.appendChild(scrim);
-  doneBtn.focus();
 }
 
 function lockConfirmDialog(lockScrim){
