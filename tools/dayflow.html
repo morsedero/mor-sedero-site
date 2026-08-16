@@ -92,33 +92,26 @@ html,body{overflow:hidden;}
           calc(12px + env(safe-area-inset-bottom)) calc(16px + env(safe-area-inset-left));
 }
 
-/* topbar: the real clock, above everything else and anchored left — the
-   one thing that's true regardless of which day S.anchor is looking at.
-   Settings sits opposite it since it no longer fits in .nav (prev/next
-   are the only two buttons left there, flanking the date). */
+/* topbar: nav, date, time, and settings all in one row now */
 .topbar{
   flex:0 0 auto;
   display:flex;align-items:center;justify-content:space-between;
-  gap:12px;margin-bottom:10px;
+  gap:6px;margin-bottom:12px;
 }
 
 .head{
-  flex:0 0 auto;
-  display:flex;align-items:center;justify-content:space-between;
-  gap:8px;margin-bottom:14px;
+  display:none;
 }
-/* the date sits centered between the prev/next arrows, which pin
-   themselves to the row's two edges — clicking it jumps back to today,
-   the dot that used to sit between the arrows is gone */
+/* the date sits in the middle of topbar, with time and settings on the right */
 .head .date{
   flex:1 1 auto;min-width:0;
-  display:flex;align-items:baseline;justify-content:center;gap:10px;
+  display:flex;align-items:baseline;justify-content:center;gap:6px;
   background:transparent;border:none;padding:2px;margin:0;cursor:pointer;text-align:center;
   border-radius:8px;
 }
 .head .date:hover{background:var(--surface);}
-.head .date h1{margin:0;font-size:19px;font-weight:800;letter-spacing:-.01em;white-space:nowrap;}
-.head .date .rel{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3);}
+.head .date h1{margin:0;font-size:17px;font-weight:800;letter-spacing:-.01em;white-space:nowrap;}
+.head .date .rel{font-family:var(--font-body);font-size:12px;font-weight:600;color:var(--ink-2);}
 
 /* Day/Week/Month switcher — Day shows the activity list, Week/Month show
    the calendar grid, both in place of one another on the one page. Lives
@@ -700,25 +693,25 @@ html,body{overflow:hidden;}
 
 <div class="wrap">
   <div class="topbar">
-    <div class="clockw" id="clockw">
-      <div class="cw-date">
-        <span class="cw-dow" id="cwDow">—</span>
-        <span class="cw-day" id="cwDay">—</span>
-      </div>
-      <div class="cw-time">
-        <span id="cwHH">--:--</span><span class="cw-sec" id="cwSec">:--</span>
-      </div>
+    <div style="display:flex;align-items:center;gap:4px;flex:1 1 auto;min-width:0;">
+      <button id="prev" class="navbtn" aria-label="Previous">‹</button>
+      <button class="date" id="dateWrap" aria-label="Go to today" style="flex:1 1 auto;min-width:0;">
+        <h1 id="dateLabel">—</h1>
+        <span class="rel" id="dateRel"></span>
+      </button>
     </div>
-    <button id="setBtn" class="navbtn" aria-label="Settings">⚙</button>
+    <div style="display:flex;align-items:center;gap:5px;flex:0 0 auto;">
+      <div class="clockw" id="clockw" style="padding:3px 8px;gap:0;">
+        <div class="cw-time" style="font-size:14px;letter-spacing:.05em;">
+          <span id="cwHH">--:--</span>
+        </div>
+      </div>
+      <button id="setBtn" class="navbtn" aria-label="Settings">⚙</button>
+      <button id="next" class="navbtn" aria-label="Next">›</button>
+    </div>
   </div>
 
   <header class="head">
-    <button id="prev" class="navbtn" aria-label="Previous">‹</button>
-    <button class="date" id="dateWrap" aria-label="Go to today">
-      <h1 id="dateLabel">—</h1>
-      <span class="rel" id="dateRel"></span>
-    </button>
-    <button id="next" class="navbtn" aria-label="Next">›</button>
   </header>
 
   <div class="dash" id="dash">
@@ -2128,7 +2121,17 @@ function paintHeader(){
   }else{
     $("#dateLabel").textContent = `${DOW[d.getDay()]} ${d.getDate()} ${MON[d.getMonth()]}`;
     const delta = daysBetween(today, d);
-    $("#dateRel").textContent = delta===0 ? "" : delta>0 ? `+${delta}` : String(delta);
+    if(delta === 0){
+      $("#dateRel").textContent = "today";
+    }else if(delta === 1){
+      $("#dateRel").textContent = "tomorrow";
+    }else if(delta === -1){
+      $("#dateRel").textContent = "yesterday";
+    }else if(delta > 0){
+      $("#dateRel").textContent = `in ${delta} days`;
+    }else{
+      $("#dateRel").textContent = `${Math.abs(delta)} days ago`;
+    }
   }
 }
 
@@ -3517,10 +3520,7 @@ async function replan(){
    repaint untouched — it only needs its own second-by-second tick */
 function tickClockWidget(){
   const n = new Date();
-  $("#cwDow").textContent = DOW[n.getDay()].slice(0,3);
-  $("#cwDay").textContent = `${n.getDate()} ${MON[n.getMonth()]}`;
   $("#cwHH").textContent = hhmm(n);
-  $("#cwSec").textContent = ":" + pad2(n.getSeconds());
 }
 /* Everything that has to happen when a day becomes *the* day: re-read the
    state card, load settings, sweep rollovers, and build the day if it hasn't
