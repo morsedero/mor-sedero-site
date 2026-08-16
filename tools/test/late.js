@@ -8,7 +8,7 @@ const realStub=BASE.replace(/const EVENTS = [^;]+;/,"const EVENTS = "+JSON.strin
 const noBlocks=BASE.replace(/const EVENTS = [^;]+;/,'const EVENTS = [{id:"m1",summary:"חמל",start:{dateTime:"2026-08-14T06:00:00+03:00"},end:{dateTime:"2026-08-14T14:00:00+03:00"},status:"confirmed"}];');
 const clock=t=>`const R=Date;const O=new R("${t}").getTime()-R.now();
 window.Date=class extends R{constructor(...a){if(a.length===0)super(R.now()+O);else super(...a);}static now(){return R.now()+O;}};`;
-(async()=>{const b=await chromium.launch({executablePath:"/opt/pw-browsers/chromium-1194/chrome-linux/chrome"});
+(async()=>{const b=await chromium.launch({});
 async function go(label,stub,when,scheme,fn){
   const ctx=await b.newContext({viewport:{width:760,height:1050},timezoneId:"Asia/Jerusalem",colorScheme:scheme||"dark"});
   const p=await ctx.newPage();const errs=[];
@@ -19,10 +19,8 @@ async function go(label,stub,when,scheme,fn){
   const r=await p.evaluate(()=>({
     hub:!!document.querySelector(".now"),
     eyebrow:(document.querySelector(".now .hub-status .eyebrow")||{}).textContent||null,
-    title:(document.querySelector(".now h2")||{}).textContent||null,
-    clock:(document.querySelector("#hubClock")||{}).textContent||null,
-    left:(document.querySelector("#hubLeft")||{}).textContent||null,
-    over:!!(document.querySelector("#hubMeter")||{classList:{contains:()=>false}}).classList.contains("over"),
+    title:(document.querySelector(".now .row .n")||{}).textContent||null,
+    clock:(document.querySelector("#cwHH")||{}).textContent||null,
     state:(document.querySelector(".state h2")||{}).textContent||null,
 
     sections:[...document.querySelectorAll(".later .lh .eyebrow:first-child")].map(x=>x.textContent)}));

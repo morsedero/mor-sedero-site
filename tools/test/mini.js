@@ -22,43 +22,112 @@ async function run(b,label,stub,when,fn){
   await ctx.close();
 }
 const snap = p => p.evaluate(()=>({
-  now:(document.querySelector(".now h2")||{}).textContent||null,
+  now:(document.querySelector(".now .row .n")||{}).textContent||null,
   clock:(document.querySelector(".now .clock")||{}).textContent||null,
   eyebrow:(document.querySelector(".now .eyebrow")||{}).textContent||null,
   meetingNow:(document.querySelector(".meeting-now .mn-name")||{}).textContent||null,
-  later:[...document.querySelectorAll(".rows .row")].map(r=>r.querySelector(".t").textContent+" "+r.querySelector(".n").textContent.replace("meeting","")),
+  later:[...document.querySelectorAll("#pageMain .rows .row")].map(r=>r.querySelector(".t").textContent+" "+r.querySelector(".n").textContent.replace("meeting","")),
   state:(document.querySelector(".state h2")||{}).textContent||null,
-  foot:[...document.querySelectorAll(".foot .stat")].map(s=>(s.getAttribute("title")||"?")+"="+(s.querySelector(".v")||{}).textContent)
+  progress:(document.querySelector("#progressPill")||{}).textContent||null
 }));
 
-(async()=>{const b=await chromium.launch({executablePath:"/opt/pw-browsers/chromium-1194/chrome-linux/chrome"});
+(async()=>{const b=await chromium.launch({});
 const realStub=BASE.replace(/const EVENTS = [^;]+;/,"const EVENTS = "+JSON.stringify(REAL)+";");
 const lightStub=BASE.replace(/const DAY = [^;]+;/,'const DAY = "2026-08-17";');
 
-// 1. packed real day, mid-afternoon
+// 1. the hub's action row: Done / Swap / Pending / Remove, text labels, no
+//    icon-only "switch with next" button any more
 await run(b,"real-dark",realStub,"2026-08-17T14:20:00+03:00",async p=>{
   const s=await snap(p);
-  await p.locator('.now .btn').nth(1).click();       // "Not now"
-  await p.waitForTimeout(900);
-  s.toast=(await p.locator('.toast').first().textContent().catch(()=>null));
-  s.calls=await p.evaluate(()=>window.__calls.filter(c=>c.tool==="update_event").length);
+  s.actLabels=await p.evaluate(()=>[...document.querySelectorAll(".now .acts-inline .mini")].map(b=>b.textContent));
   return s;
 });
-// 2. lighter day -> postpone should actually move it. A 3h short session now
-//    fills more of the default window than the old 90-min one did, so widen
-//    it first — the point here is the successful-move path, not the cap.
-await run(b,"light-day",lightStub,"2026-08-17T09:40:00+03:00",async p=>{
+// 2. Remove: confirms, archives the card, and clears its block
+await run(b,"remove",lightStub,"2026-08-17T09:40:00+03:00",async p=>{
   const before=await snap(p);
-  await p.evaluate(()=>{ CFG.dayEnd = 22; });
-  await p.locator('.now .btn').nth(1).click();
-  await p.waitForTimeout(1000);
-  const mv=await p.evaluate(()=>window.__calls.filter(c=>c.tool==="update_event").map(c=>c.input.startTime));
-  return {before:before.now,clock:before.clock,moved:mv,toast:await p.locator('.toast').last().textContent().catch(()=>null)};
+  await p.locator('.now .mini',{hasText:"Remove"}).click();
+  await p.waitForTimeout(400);
+  await p.locator('.dialog .btn.primary').click();
+  await p.waitForTimeout(1200);
+  return {before:before.now,
+    calls:await p.evaluate(()=>window.__calls.map(c=>c.tool+(c.input&&c.input.action?":"+c.input.action:""))),
+    toast:await p.locator('.toast').last().textContent().catch(()=>null)};
 });
-// 3. completion
+// 3. completion, and the progress pill it feeds: clicking it opens a list
+//    of what's actually behind the count (the harness doesn't round-trip
+//    mark_done back into dueComplete, so this only checks the dialog wires
+//    up and closes — assert.js/cap.js cover the count itself)
 await run(b,"done",lightStub,"2026-08-17T09:40:00+03:00",async p=>{
-  await p.locator('.now .btn').first().click();
+  await p.locator('.now .mini',{hasText:"Done"}).click();
   await p.waitForTimeout(1100);
-  return {calls:await p.evaluate(()=>window.__calls.map(c=>c.tool+(c.input&&c.input.action?":"+c.input.action:"")))};
+  const calls=await p.evaluate(()=>window.__calls.map(c=>c.tool+(c.input&&c.input.action?":"+c.input.action:"")));
+  await p.locator("#progressPill").click();
+  await p.waitForTimeout(300);
+  const dialog=await p.evaluate(()=>({
+    open: !!document.querySelector(".scrim"),
+    title: document.querySelector(".dialog .dh h3")?.textContent||null
+  }));
+  await p.locator(".dialog .btn.primary",{hasText:"Close"}).click();
+  await p.waitForTimeout(200);
+  const closed=await p.evaluate(()=>!document.querySelector(".scrim"));
+  return {calls, dialog, closed};
+});
+// 4. Pending now opens an edit popup first — clicking the button alone must
+//    not write anything. Cancel discards the draft; "Set pending" writes
+//    the edited description (marker + your text), clears today's block,
+//    never archives or marks done, and the card leaves the candidate pool.
+await run(b,"pending",lightStub,"2026-08-17T09:40:00+03:00",async p=>{
+  const before=await snap(p);
+  const cardId=await p.evaluate(()=>S.hubItem && S.hubItem.card && S.hubItem.card.id);
+  const cardCallCount = id => window.__calls.filter(c =>
+    (c.tool==="trelloWriteCard" && c.input && c.input.cardId===id) ||
+    (c.tool==="delete_event" && c.input && c.input.eventId===S.hubItem.ev.id)).length;
+  const before2=await p.evaluate(cardCallCount, cardId);
+  await p.locator('.now .mini',{hasText:"Pending"}).click();
+  await p.waitForTimeout(300);
+  const dialogOpen=await p.evaluate(()=>!!document.querySelector(".dialog textarea"));
+  const noWriteYet=(await p.evaluate(cardCallCount, cardId))===before2;
+
+  // Cancel first: must leave everything untouched
+  await p.locator(".dialog .btn.quiet",{hasText:"Cancel"}).click();
+  await p.waitForTimeout(200);
+  const afterCancel=await p.evaluate((id)=>({
+    dialogGone: !document.querySelector(".scrim")
+  }), cardId);
+  afterCancel.unchanged = (await p.evaluate(cardCallCount, cardId))===before2;
+
+  // Now the real flow: reopen, edit the description, set a "check back on"
+  // date, confirm
+  await p.locator('.now .mini',{hasText:"Pending"}).click();
+  await p.waitForTimeout(300);
+  await p.fill(".dialog textarea", "waiting on Yossi's reply");
+  await p.fill(".dialog .until-in", "2026-08-25");
+  await p.locator(".dialog .btn.primary",{hasText:"Set pending"}).click();
+  await p.waitForTimeout(500);
+
+  const after=await p.evaluate((id)=>({
+    calls:window.__calls.map(c=>c.tool+(c.input&&c.input.action?":"+c.input.action:"")),
+    descWrite:(window.__calls.find(c=>c.tool==="trelloWriteCard"&&c.input.action==="update"&&c.input.cardId===id)||{}).input||null,
+    inCandidates:typeof candidates==="function" ? candidates().some(c=>c.id===id) : null
+  }), cardId);
+  const toast=await p.locator('.toast').last().textContent().catch(()=>null);
+  return {before:before.now, dialogOpen, noWriteYet, afterCancel, ...after, toast};
+});
+
+// 5. the "check back on" date: normCard() only lifts the block once that
+//    date has passed, and only if the block wasn't ALSO caused by other
+//    text the card happens to contain.
+await run(b,"pending-until",lightStub,"2026-08-20T09:00:00+03:00",async p=>{
+  return p.evaluate(()=>{
+    const board={key:"sidurim",name:"סידורים"};
+    const notYet=normCard({id:"x1",name:"Task A",desc:"⏳ Pending until 2026-08-25 — need approval from foo",labels:[]},board);
+    const expired=normCard({id:"x2",name:"Task B",desc:"⏳ Pending until 2026-08-15 — need approval from foo",labels:[]},board);
+    const stillStuck=normCard({id:"x3",name:"Task C",desc:"⏳ Pending until 2026-08-15 — still stuck on something else",labels:[]},board);
+    return {
+      notYetStillBlocked: notYet.blocked===true,
+      expiredNoLongerBlocked: expired.blocked===false,
+      expiredButOtherTextStillBlocked: stillStuck.blocked===true
+    };
+  });
 });
 await b.close();})();

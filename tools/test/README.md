@@ -4,6 +4,14 @@ Drives the real `tools/dayflow.html` in Chromium against a stubbed connector
 bridge that replays the request/response shapes observed from live Trello and
 Google Calendar calls. No network, no real writes.
 
+The app is one page, `#pageMain`. A Day/Week/Month switch in the header
+decides what it shows: Day is the activity list (hub + everything else
+today, meetings included — a permeable one like חמל groups the tasks
+scheduled inside it under itself); Week/Month swap that list for the
+calendar grid. Scripts below scope selectors to `#pageMain` mostly out of
+habit carried over from the old two-page split — there's only the one page
+now, so it's no longer load-bearing.
+
     cd tools/test && npm i playwright && node assert.js
 
 | script | what it checks |
@@ -13,15 +21,23 @@ Google Calendar calls. No network, no real writes.
 | `late.js`   | the hub late in the day, once every slot is behind you |
 | `fri.js`    | Friday plans itself to the caps with no prompt; Shabbat schedules nothing |
 | `cap.js`    | the caps hold — per tier — whatever hour the widget is opened (07:30 / 12:10 / 16:30 / 21:54) |
-| `cfg.js`    | settings persist and actually change what the scheduler does, across all three tiers |
+| `cfg.js`    | settings Save actually persists and changes what the scheduler does, across all three tiers |
 | `hour.js`   | quick tasks share one window, permeable meetings, swapping a task |
 | `sat.js`    | the day off is never planned from any vantage point; legacy settings migrate |
-| `mini.js`   | the hub, "Not now" postponing, completion writes |
+| `mini.js`   | the hub's action row (Done / Swap / Pending / Remove, no "switch with next" any more), Remove's archive-and-clear flow, Pending's edit-popup (Cancel writes nothing, confirming writes the edited description + marker and clears the block, never archives; an optional "check back on" date lands in the marker too), completion writes, the progress pill opening/closing its done-list dialog, and `normCard`'s dated-marker expiry logic (blocked while the date's ahead, unblocked once it's past, still blocked if other text independently matches `BLOCK_RE`) |
 | `states.js` | midday / empty day / Friday prompt / Shabbat |
 | `dead.js`   | expired auth, unreachable server, no connector |
 | `det.js`    | expandable description + checklist |
-| `hub.js`    | rebuild-on-run, board colours, clock and remaining-time meter |
+| `hub.js`    | rebuild-on-run, board colours, clock |
 | `tick.js`   | details auto-opening, and ticking a checklist item through to Trello |
+| `pages.js`  | the one-page shell (switch always visible, Day view lists meetings alongside tasks), Week/Month views (7 columns, 42-cell grid, tapping a day jumps into Day view), drag-in-Week-view + its Ctrl+Z undo popup, dragging onto another block (task or meeting) being rejected instead of silently committed, drag-to-reorder in the Day-view list (hub card included — dropping it on a row pushes the run between them over by one slot, 2 update_event calls for an adjacent pair, an undo that restores everyone the push moved, and dropping on a meeting is a no-op), the date-jump picker, and Cancel discarding a settings colour preview |
+| `edit.js`   | editing a card's description and a checklist item's text inline — save writes through (trelloWriteCard update / trelloWriteChecklist update_item), Escape cancels without writing, a rename doesn't touch the item's checked state |
+| `chrome.js` | the app chrome: view switch + clock + progress/rebuild share one row without overflowing at phone width, the clock stays centered between them, the peach light palette, card titles anchoring right (hub included — it shares a row/row-meta layout with every other card now) |
+| `day.js`    | the day boundary and a half-dead boot: crossing midnight with the page open advances the anchor, re-registers the calendar watch and builds the new day exactly once (a day the user navigated to is left where it is); booting with Trello never answering still renders the day off the calendar alone instead of a 20s skeleton; returning to a stale tab re-fetches both connectors, a fresh one doesn't |
+| `settings.js` | the settings sheet fits the screen with no internal scroll and without spilling past the top/bottom edge, across four viewport sizes down to a 667px-tall phone; all three board swatches land in one row |
+| `fast.js`   | Done / Swap / Pending / Remove are local-first: with every write held open, the progress pill has already moved, the finished card has already left the open list, the swapped-in card already holds the slot, and the cleared block has already gone — and a Done whose write fails puts the card and the pill back and holds the loss for retry |
+| `retry.js`  | a transient `server_unavailable` is ridden out by `callTool`'s backoff (3 calls, one move, nothing shown to the user), a permanent one reverts the block but holds the move in the "N changes didn't save" bar, and Retry replays every held move |
+| `push.js`   | dragging a card across more than one other in the Day-view list pushes the whole run over by a slot — not just a two-card trade with whatever's under the pointer — verified against four back-to-back quick tasks (A onto C also moves B, D stays put, exactly 3 update_event calls), and Ctrl+Z restores all three together |
 
 `real-events.json` is a snapshot of one real calendar day, used to test against
 a genuinely packed schedule rather than a tidy fixture.

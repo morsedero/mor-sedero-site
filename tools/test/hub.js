@@ -8,7 +8,7 @@ const REAL=JSON.parse(fs.readFileSync("real-events.json","utf8")).events
 const clock=t=>`const R=Date;const O=new R("${t}").getTime()-R.now();
 window.Date=class extends R{constructor(...a){if(a.length===0)super(R.now()+O);else super(...a);}static now(){return R.now()+O;}};`;
 
-(async()=>{const b=await chromium.launch({executablePath:"/opt/pw-browsers/chromium-1194/chrome-linux/chrome"});
+(async()=>{const b=await chromium.launch({});
 async function open_(stub,when,scheme){
   const ctx=await b.newContext({viewport:{width:760,height:1000},timezoneId:"Asia/Jerusalem",colorScheme:scheme||"dark"});
   const p=await ctx.newPage();p.__errs=[];
@@ -39,12 +39,11 @@ const realStub=BASE.replace(/const EVENTS = [^;]+;/,"const EVENTS = "+JSON.strin
 {
   const {p,ctx}=await open_(realStub,"2026-08-17T14:20:00+03:00");
   const hub=await p.evaluate(()=>({
-    clock:(document.querySelector("#hubClock")||{}).textContent,
-    left:(document.querySelector("#hubLeft")||{}).textContent,
-    fill:(document.querySelector("#hubFill")||{}).style.width,
+    clock:(document.querySelector("#cwHH")||{}).textContent,
+    hubTitle:(document.querySelector(".now .row .n")||{}).textContent,
     boardChip:(document.querySelector(".now .chip.board")||{}).textContent,
     hubClass:[...(document.querySelector(".now")||{classList:[]}).classList].join(" "),
-    dotColors:[...document.querySelectorAll(".rows .row")].slice(0,5)
+    dotColors:[...document.querySelectorAll("#pageMain .rows .item:not(.meeting) .row")].slice(0,5)
       .map(r=>getComputedStyle(r.querySelector(".dot")).backgroundColor)
   }));
   await p.waitForTimeout(900);   // details open on their own now — nothing to click

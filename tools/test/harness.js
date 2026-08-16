@@ -104,7 +104,9 @@ window.claude = {
         return { payload: payloadFor(server, tool, input) };
       if(tool === "trelloWriteChecklist" && input.action === "update_item"){
         for(const k in CHECKLISTS) for(const cl of CHECKLISTS[k]) for(const it of cl.checkItems)
-          if(it.id === input.itemId){ it.state = input.checked ? "COMPLETE" : "INCOMPLETE";
+          if(it.id === input.itemId){
+            if(input.checked !== undefined) it.state = input.checked ? "COMPLETE" : "INCOMPLETE";
+            if(input.text !== undefined) it.name = input.text;
             return { payload: { id:it.id, name:it.name, state:it.state, position:it.position } }; }
         throw { code:"tool_error", message:"item not found" };
       }
@@ -138,7 +140,7 @@ const doc = (extra) => `<!doctype html><html><head><meta charset="utf-8">
 <script>${extra}${stub}<\/script></head><body>${page_html}</body></html>`;
 
 (async () => {
-  const browser = await chromium.launch({ executablePath: "/opt/pw-browsers/chromium-1194/chrome-linux/chrome" });
+  const browser = await chromium.launch({});
   const results = [];
 
   async function run(label, extra, scheme, actions) {

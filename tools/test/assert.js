@@ -22,7 +22,7 @@ const SCENARIOS = [
 ];
 
 (async () => {
-  const browser = await chromium.launch({ executablePath: "/opt/pw-browsers/chromium-1194/chrome-linux/chrome" });
+  const browser = await chromium.launch({});
   let failures = 0;
 
   for (const sc of SCENARIOS) {
@@ -45,7 +45,7 @@ const SCENARIOS = [
       const open = openEvs.map(e => e.n);
       const have = existingBlocks(d);
       return { blocks, real, open, openEvs, have, winS: CFG.dayStart * 60, winE: CFG.dayEnd * 60, buf: CFG.buffer,
-               maxSmall: CFG.maxSmall, maxShort: CFG.maxShort, maxLong: CFG.maxLong, quickTotal: CFG.quickTotal };
+               quickTotal: CFG.quickTotal };
     });
 
     const ov = (a, b) => a.s < b.e && a.e > b.s;
@@ -78,10 +78,8 @@ const SCENARIOS = [
     if (q.length && (q[q.length - 1].e - q[0].s) > r.quickTotal)
       fails.push(`quick tasks span ${q[q.length-1].e - q[0].s}min > ${r.quickTotal}`);
 
-    // 4. daily caps hold after a run
-    if (r.have.quick > r.maxSmall) fails.push(`${r.have.quick} quick tasks exceeds cap ${r.maxSmall}`);
-    if (r.have.short > r.maxShort) fails.push(`${r.have.short} short sessions exceeds cap ${r.maxShort}`);
-    if (r.have.long > r.maxLong) fails.push(`${r.have.long} long sessions exceeds cap ${r.maxLong}`);
+    // 4. quick tasks fit in one contiguous window of quickTotal
+    // (sessions fit individually, no aggregate cap)
 
     // 5. everything sits inside the working window
     for (const t of r.blocks)
@@ -95,7 +93,7 @@ const SCENARIOS = [
     const fmt = m => `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
     console.log(`\n=== ${sc.name} (${sc.at.slice(11, 16)}) ===`);
     console.log(`  page errors: ${errs.length ? errs.join(" | ") : "none"}`);
-    console.log(`  ${r.have.quick}/${r.maxSmall} quick · ${r.have.short}/${r.maxShort} short · ${r.have.long}/${r.maxLong} long · ${r.real.length} blocking` +
+    console.log(`  ${r.have.quick} quick · ${r.have.short} short · ${r.have.long} long · ${r.real.length} blocking` +
       (r.open.length ? ` · open: ${r.open.join(", ")}` : ""));
     r.blocks.sort((a, b) => a.s - b.s).forEach(t => console.log(`    ${fmt(t.s)}-${fmt(t.e)} ${t.deep ? "[session] " : ""}${t.n}`));
     console.log(fails.length ? "  FAIL:\n" + fails.map(f => "    ✗ " + f).join("\n") : "  ✓ all rules hold");

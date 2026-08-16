@@ -92,14 +92,28 @@ html,body{overflow:hidden;}
           calc(12px + env(safe-area-inset-bottom)) calc(16px + env(safe-area-inset-left));
 }
 
+/* topbar: the real clock, above everything else and anchored left — the
+   one thing that's true regardless of which day S.anchor is looking at.
+   Settings sits opposite it since it no longer fits in .nav (prev/next
+   are the only two buttons left there, flanking the date). */
+.topbar{
+  flex:0 0 auto;
+  display:flex;align-items:center;justify-content:space-between;
+  gap:12px;margin-bottom:10px;
+}
+
 .head{
   flex:0 0 auto;
   display:flex;align-items:center;justify-content:space-between;
-  gap:12px;margin-bottom:14px;flex-wrap:wrap;
+  gap:8px;margin-bottom:14px;
 }
+/* the date sits centered between the prev/next arrows, which pin
+   themselves to the row's two edges — clicking it jumps back to today,
+   the dot that used to sit between the arrows is gone */
 .head .date{
-  display:flex;align-items:baseline;gap:10px;min-width:0;
-  background:transparent;border:none;padding:2px;margin:0;cursor:pointer;text-align:left;
+  flex:1 1 auto;min-width:0;
+  display:flex;align-items:baseline;justify-content:center;gap:10px;
+  background:transparent;border:none;padding:2px;margin:0;cursor:pointer;text-align:center;
   border-radius:8px;
 }
 .head .date:hover{background:var(--surface);}
@@ -120,31 +134,32 @@ html,body{overflow:hidden;}
 }
 .segmented button.active{background:var(--accent);color:var(--on-accent);}
 
-.nav{display:flex;gap:5px;align-items:center;}
-.nav button{
-  width:32px;height:32px;border-radius:12px;border:1.5px solid transparent;
+/* standalone icon buttons — prev/next flanking the date, settings in the
+   topbar — no longer grouped inside a shared <nav>, so the class name is
+   just its own look rather than "a button that lives in .nav" */
+.navbtn{
+  width:32px;height:32px;border-radius:12px;border:1.5px solid transparent;flex:0 0 auto;
   background:transparent;color:var(--ink-3);cursor:pointer;
   display:grid;place-items:center;font-size:15px;
   transition:background .15s,color .15s,border-color .15s,transform .12s;
 }
-.nav button:hover{background:var(--surface);border-color:var(--line);color:var(--ink);transform:translateY(-1px);}
-.nav button:active{transform:scale(.92);}
-.nav .todaybtn{font-size:18px;line-height:1;color:var(--accent-ink);}
+.navbtn:hover{background:var(--surface);border-color:var(--line);color:var(--ink);transform:translateY(-1px);}
+.navbtn:active{transform:scale(.92);}
 
-/* ---------------- dash: view switch + clock widget + progress + rebuild,
-   one row — the switch anchors left, rebuild/progress anchor right, and
-   the clock takes whatever's left in the middle and centers itself in it */
+/* ---------------- dash: view switch + progress + rebuild, one row — the
+   switch anchors left, rebuild/progress anchor right. The clock isn't in
+   here any more; it lives in its own .topbar above the header. */
 .dash{
   flex:0 0 auto;
   display:flex;align-items:center;justify-content:space-between;gap:8px;
   margin-bottom:12px;flex-wrap:nowrap;
 }
-/* stacked (date line over time line) rather than side by side — bounded by
-   whichever line is widest instead of their sum, so it survives sharing a
-   row with the view switch and the progress/rebuild pair on a phone width */
+/* stacked (date line over time line) rather than side by side, and
+   left-aligned now that it's alone in the topbar instead of centered
+   between two flanking groups */
 .clockw{
-  flex:1 1 auto;min-width:64px;
-  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;
+  flex:0 0 auto;
+  display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:1px;
   background:var(--glass,var(--surface));backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
   border:1.5px solid var(--line);border-radius:16px;
   padding:5px 10px;box-shadow:var(--shadow);
@@ -448,16 +463,11 @@ html,body{overflow:hidden;}
   color:var(--on-accent);background:var(--accent);border-radius:50%;
   width:20px;height:20px;display:grid;place-items:center;font-size:11px;
 }
-.month-cell.sel{border-color:var(--accent);background:var(--accent-soft);}
 .mc-chips{display:flex;flex-direction:column;gap:1px;width:100%;min-width:0;}
 .mc-chip{display:flex;align-items:center;gap:3px;font-size:9.5px;font-weight:700;min-width:0;color:var(--bc,var(--ink-2));}
 .mc-chip .nt, .mc-chip span:last-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;}
 .mc-dot{flex:0 0 auto;width:5px;height:5px;border-radius:50%;background:var(--bc,var(--b-none));}
 .mc-more{font-size:9px;color:var(--ink-3);font-weight:700;}
-.month.pick-mode .month-cell{aspect-ratio:auto;min-height:38px;align-items:center;justify-content:center;}
-.dp-h{display:flex;align-items:center;justify-content:space-between;gap:8px;}
-.dp-h h3{margin:0;font-family:var(--font-display);font-size:16px;font-weight:400;}
-.dp-body{padding:12px 16px 16px;}
 
 /* ---------------- expandable card detail ---------------- */
 .details{
@@ -689,25 +699,7 @@ html,body{overflow:hidden;}
 </style>
 
 <div class="wrap">
-  <header class="head">
-    <button class="date" id="dateWrap" aria-label="Pick a date">
-      <h1 id="dateLabel">—</h1>
-      <span class="rel" id="dateRel"></span>
-    </button>
-    <nav class="nav">
-      <button id="prev" aria-label="Previous">‹</button>
-      <button id="todayBtn" class="todaybtn" aria-label="Today">•</button>
-      <button id="next" aria-label="Next">›</button>
-      <button id="setBtn" aria-label="Settings">⚙</button>
-    </nav>
-  </header>
-
-  <div class="dash" id="dash">
-    <div class="segmented" id="viewSwitch">
-      <button data-view="day">Day</button>
-      <button data-view="week">Week</button>
-      <button data-view="month">Month</button>
-    </div>
+  <div class="topbar">
     <div class="clockw" id="clockw">
       <div class="cw-date">
         <span class="cw-dow" id="cwDow">—</span>
@@ -716,6 +708,24 @@ html,body{overflow:hidden;}
       <div class="cw-time">
         <span id="cwHH">--:--</span><span class="cw-sec" id="cwSec">:--</span>
       </div>
+    </div>
+    <button id="setBtn" class="navbtn" aria-label="Settings">⚙</button>
+  </div>
+
+  <header class="head">
+    <button id="prev" class="navbtn" aria-label="Previous">‹</button>
+    <button class="date" id="dateWrap" aria-label="Go to today">
+      <h1 id="dateLabel">—</h1>
+      <span class="rel" id="dateRel"></span>
+    </button>
+    <button id="next" class="navbtn" aria-label="Next">›</button>
+  </header>
+
+  <div class="dash" id="dash">
+    <div class="segmented" id="viewSwitch">
+      <button data-view="day">Day</button>
+      <button data-view="week">Week</button>
+      <button data-view="month">Month</button>
     </div>
     <div class="dash-right" id="dashRight" hidden>
       <button class="progress-pill" id="progressPill" type="button" title="Tasks finished today">0/0</button>
@@ -805,9 +815,9 @@ const AGING_DAYS = 5, STALL_DAYS = 3;
    editable from the settings panel; it persists in the Trello state card. */
 const DEFAULTS = {
   dayStart:9, dayEnd:20,
-  maxSmall:1, quickTotal:60,   // all quick tasks share one contiguous window
-  maxShort:1, shortMin:180,    // short session: yellow label, 3h
-  maxLong:1,  longMin:480,     // long session / work day: orange label, 8h
+  quickTotal:60,   // minutes for quick-task window
+  shortMin:180,    // short session: yellow label, 3h
+  longMin:480,     // long session / work day: orange label, 8h
   buffer:15,
   dayOff:6,          // 0 Sun … 6 Sat; -1 = none
   sound:true,
@@ -842,11 +852,8 @@ function normalizeCfg(saved){
   delete cfg.deepMin;
   cfg.dayStart   = clamp(+cfg.dayStart||0, 0, 23);
   cfg.dayEnd     = clamp(+cfg.dayEnd||0, cfg.dayStart+1, 24);
-  cfg.maxSmall   = clamp(Math.round(+cfg.maxSmall||0), 0, 12);
   cfg.quickTotal = clamp(Math.round((+cfg.quickTotal||60)/5)*5, 5, 480);
-  cfg.maxShort   = clamp(Math.round(+cfg.maxShort||0), 0, 6);
   cfg.shortMin   = clamp(Math.round((+cfg.shortMin||180)/5)*5, 15, 480);
-  cfg.maxLong    = clamp(Math.round(+cfg.maxLong||0), 0, 2);
   cfg.longMin    = clamp(Math.round((+cfg.longMin||480)/15)*15, 60, 600);
   cfg.buffer     = clamp(Math.round(+cfg.buffer||0), 0, 60);
   return cfg;
@@ -855,8 +862,8 @@ function loadCfg(stats){
   CFG = normalizeCfg((stats && stats.settings) || {});
   applyColors();
 }
-/* how long each quick task gets when they share the hour */
-const quickSlice = () => Math.max(5, Math.round((CFG.quickTotal / Math.max(1, CFG.maxSmall)) / 5) * 5);
+/* how long each quick task gets when n of them share the quickTotal window */
+const quickSlice = (n) => n > 0 ? Math.max(5, Math.round((CFG.quickTotal / n) / 5) * 5) : CFG.quickTotal;
 
 /* Meetings tasks may run inside: anything you've marked open, plus anything
    Google itself marks Free — that is what "Free" means. */
@@ -943,6 +950,7 @@ const S = {
   view:"day",     // "day" | "week" | "month" — which view the one page shows
   mcp:null, ready:false, busy:false,
   cards:{}, events:null, errs:{},
+  cardCache:{},        // shortLink -> last resolved card, bridges a board fetch that transiently drops it
   failed:[],           // writes that ran out of retries — see queueFailed()
   lastRefresh:0,       // when the connectors were last poked, for the on-return refresh
   lists:{},            // cardId -> {loading|checklists|error}
@@ -1234,9 +1242,18 @@ function clearableBlocks(date){
 }
 
 /* card behind a block, if we can resolve one */
+/* A board's 3-min refetch has been observed coming back with a card
+   missing that was there a moment ago (list_by_board paging quirk, see
+   CLAUDE.md) — with no error, so onWatch's own last-good fallback never
+   kicks in. That flashed the block's colour to bk-none and its title back
+   to the raw event summary for one render, then reverted. Once a card is
+   seen, its last known shape is kept here and used if a later lookup comes
+   up empty, so a block never visibly loses its card over a fetch blip. */
 function cardFor(ev){
   if(!ev.cardShort) return null;
-  return allCards().find(c => c.shortLink === ev.cardShort && !c.isStats) || null;
+  const found = allCards().find(c => c.shortLink === ev.cardShort && !c.isStats) || null;
+  if(found){ S.cardCache[ev.cardShort] = found; return found; }
+  return S.cardCache[ev.cardShort] || null;
 }
 
 /* board hue class; falls back to neutral when the card can't be resolved */
@@ -1535,8 +1552,7 @@ function planFor(date, mode, picked, ignore){
      finer read on project scale can refine this later without changing the
      shape of the rule. */
   let workDay = have.long > 0;
-  const longCap = Math.max(0, CFG.maxLong - have.long);
-  for(const c of ranked.filter(x=>x.size==="long").slice(0,longCap)){
+  for(const c of ranked.filter(x=>x.size==="long")){
     const dur = c.est || CFG.longMin;
     const s = findSlots(sessionLive, winS, winE, dur, CFG.buffer, 1, nowMin)[0];
     if(!s) continue;
@@ -1546,8 +1562,7 @@ function planFor(date, mode, picked, ignore){
     workDay = true;
   }
 
-  const shortCap = Math.max(0, CFG.maxShort - have.short);
-  for(const c of ranked.filter(x=>x.size==="short").slice(0,shortCap)){
+  for(const c of ranked.filter(x=>x.size==="short")){
     const dur = c.est || CFG.shortMin;
     const s = findSlots(sessionLive, winS, winE, dur, CFG.buffer, 1, nowMin)[0];
     if(!s) continue;
@@ -1559,12 +1574,11 @@ function planFor(date, mode, picked, ignore){
   /* A day that fits a full work day gets no quick tasks — the whole point
      of an 8-hour session is not splitting attention. */
   if(!workDay){
-    const quickCap = Math.max(0, CFG.maxSmall - have.quick);
-    const quick = ranked.filter(x=>x.size==="quick").slice(0, quickCap);
+    const quick = ranked.filter(x=>x.size==="quick");
     if(quick.length){
       let n = quick.length, slot = null, slice = 0;
       while(n > 0){
-        slice = quickSlice();
+        slice = quickSlice(n);
         slot = findSlots(quickLive, winS, winE, n*slice, 0, 1, nowMin)[0];
         if(slot) break;
         n--;
@@ -2377,89 +2391,41 @@ function weekGrid(anchorDate){
   return wk;
 }
 
-function monthGrid(anchorDate, opts){
-  opts = opts || {};
+function monthGrid(anchorDate){
   const first = new Date(anchorDate.getFullYear(), anchorDate.getMonth(), 1);
   const gridStart = addDays(first, -first.getDay());
   const days = Array.from({length:42}, (_,i) => addDays(gridStart,i));
   const today = new Date();
 
-  const grid = el("div","month" + (opts.pickMode ? " pick-mode" : ""));
+  const grid = el("div","month");
   const dow = el("div","month-dow");
   for(const d of DAYS) dow.appendChild(el("span",null,d));
   grid.appendChild(dow);
 
-  /* the picker pages the grid by month via `anchorDate` independently of
-     which date is actually selected — comparing against `anchorDate` here
-     would wrongly mark the 1st of whatever month is on screen as "selected" */
-  const selected = opts.selected || anchorDate;
   const cells = el("div","month-cells");
   for(const day of days){
     const inMonth = day.getMonth() === anchorDate.getMonth();
     const isToday = sameDay(day, today);
-    const isSel = sameDay(day, selected);
-    const cell = el("button","month-cell" +
-      (inMonth ? "" : " dim") + (isToday ? " today" : "") + (isSel && opts.pickMode ? " sel" : ""));
+    const cell = el("button","month-cell" + (inMonth ? "" : " dim") + (isToday ? " today" : ""));
     cell.appendChild(el("span","mc-num", String(day.getDate())));
 
-    if(!opts.pickMode){
-      const items = dayEvents(day);
-      if(items.length){
-        const chips = el("div","mc-chips");
-        for(const it of items.slice(0,3)){
-          const chip = el("div","mc-chip " + boardClass(it.card));
-          chip.appendChild(el("span","mc-dot"));
-          chip.appendChild(bidiSpan(it.title));
-          chips.appendChild(chip);
-        }
-        if(items.length > 3) chips.appendChild(el("div","mc-more", `+${items.length-3} more`));
-        cell.appendChild(chips);
+    const items = dayEvents(day);
+    if(items.length){
+      const chips = el("div","mc-chips");
+      for(const it of items.slice(0,3)){
+        const chip = el("div","mc-chip " + boardClass(it.card));
+        chip.appendChild(el("span","mc-dot"));
+        chip.appendChild(bidiSpan(it.title));
+        chips.appendChild(chip);
       }
-      cell.addEventListener("click", ()=>{ S.anchor = day; S.view = "day"; syncCalendarWatch(); render(); });
-    }else{
-      cell.addEventListener("click", ()=>{ opts.onPick && opts.onPick(day); });
+      if(items.length > 3) chips.appendChild(el("div","mc-more", `+${items.length-3} more`));
+      cell.appendChild(chips);
     }
+    cell.addEventListener("click", ()=>{ S.anchor = day; S.view = "day"; syncCalendarWatch(); render(); });
     cells.appendChild(cell);
   }
   grid.appendChild(cells);
   return grid;
-}
-
-/* Google-Calendar-style "jump to any date" — a compact month picker in the
-   same scrim/dialog primitive every other overlay in this app already uses. */
-function datePicker(){
-  let cursor = new Date(S.anchor.getFullYear(), S.anchor.getMonth(), 1);
-
-  const scrim = el("div","scrim");
-  const dlg = el("div","dialog sheet");
-  dlg.setAttribute("role","dialog"); dlg.setAttribute("aria-modal","true");
-
-  const h = el("div","dh dp-h");
-  const back = el("button","btn icon quiet","‹");
-  const fwd  = el("button","btn icon quiet","›");
-  const lbl  = el("h3",null, monthLabel(cursor));
-  h.appendChild(back); h.appendChild(lbl); h.appendChild(fwd);
-  dlg.appendChild(h);
-
-  const body = el("div","dp-body");
-  dlg.appendChild(body);
-
-  function paintPicker(){
-    lbl.textContent = monthLabel(cursor);
-    body.innerHTML = "";
-    body.appendChild(monthGrid(cursor, { pickMode:true, selected:S.anchor, onPick: day=>{
-      S.anchor = startOfDay(day); syncCalendarWatch(); close(); render();
-    }}));
-  }
-  back.addEventListener("click", ()=>{ cursor = new Date(cursor.getFullYear(), cursor.getMonth()-1, 1); paintPicker(); });
-  fwd.addEventListener("click",  ()=>{ cursor = new Date(cursor.getFullYear(), cursor.getMonth()+1, 1); paintPicker(); });
-  paintPicker();
-
-  function close(){ scrim.remove(); document.removeEventListener("keydown", onKey); }
-  function onKey(e){ if(e.key==="Escape") close(); }
-  document.addEventListener("keydown", onKey);
-  scrim.addEventListener("click", e => { if(e.target===scrim) close(); });
-  scrim.appendChild(dlg); document.body.appendChild(scrim);
 }
 
 /* The hub: wall clock, what you're on, and how long is left on it. */
@@ -3524,10 +3490,9 @@ function stepNav(n){
 }
 $("#prev").addEventListener("click", ()=>stepNav(-1));
 $("#next").addEventListener("click", ()=>stepNav(1));
-$("#todayBtn").addEventListener("click", ()=>goDay(0));
 $("#setBtn").addEventListener("click", settingsPanel);
 $("#replanBtn").addEventListener("click", ()=>replan());
-$("#dateWrap").addEventListener("click", datePicker);
+$("#dateWrap").addEventListener("click", ()=>goDay(0));
 $("#progressPill").addEventListener("click", doneDialog);
 
 for(const b of $("#viewSwitch").children){
@@ -3542,7 +3507,7 @@ async function replan(){
   if(clearable.length){
     const ok = await confirmDialog(
       "Rebuild today?",
-      `Clears ${clearable.length} block${clearable.length===1?"":"s"} and re-lays the day: ${CFG.maxSmall} Quick Task${CFG.maxSmall===1?"":"s"}, ${CFG.maxShort} Session${CFG.maxShort===1?"":"s"}, ${CFG.maxLong} Work Day${CFG.maxLong===1?"":"s"}.\n\nA Work Day takes the day — no Quick Tasks alongside it. Meetings, finished and past work stay.`,
+      `Clears ${clearable.length} block${clearable.length===1?"":"s"} and re-lays the day.\n\nSchedules tasks by available time: quick tasks fit in a ${CFG.quickTotal}min window, sessions take ${CFG.shortMin}min, work days take ${CFG.longMin}min. A work day takes the whole day — no quick tasks alongside it. Meetings, finished and past work stay.`,
       "Rebuild");
     if(!ok) return;
   }

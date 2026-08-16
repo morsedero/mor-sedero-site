@@ -11,7 +11,7 @@ const legacy = sb.module.exports.stub.replace(
 const clock=t=>`const R=Date;const O=new R("${t}").getTime()-R.now();
 window.Date=class extends R{constructor(...a){if(a.length===0)super(R.now()+O);else super(...a);}static now(){return R.now()+O;}};`;
 const fmt=m=>`${String(Math.floor(m/60)).padStart(2,"0")}:${String(m%60).padStart(2,"0")}`;
-(async()=>{const b=await chromium.launch({executablePath:"/opt/pw-browsers/chromium-1194/chrome-linux/chrome"});
+(async()=>{const b=await chromium.launch({});
 let fails=0;
 async function go(label, when, stub, navNext){
   const ctx=await b.newContext({viewport:{width:760,height:900},timezoneId:"Asia/Jerusalem",colorScheme:"dark"});
@@ -20,7 +20,10 @@ async function go(label, when, stub, navNext){
   await p.setContent(`<!doctype html><html><head><meta charset="utf-8"><script>${clock(when)}${stub}<\/script></head><body>${page_html}</body></html>`,{waitUntil:"load"});
   await p.waitForTimeout(3000);
   if(navNext){ await p.locator("#next").click(); await p.waitForTimeout(800);
-    const rb=p.locator("#replanBtn"); if(await rb.count()) { await rb.click(); await p.waitForTimeout(1200);
+    /* the dash's progress/rebuild side is legitimately hidden on the day
+       off — isVisible(), not count(), is what actually distinguishes that
+       from a day where re-planning is meaningful */
+    const rb=p.locator("#replanBtn"); if(await rb.isVisible()) { await rb.click(); await p.waitForTimeout(1200);
       const dl=p.locator(".dialog .btn.primary"); if(await dl.count()){ await dl.click(); await p.waitForTimeout(2200); } } }
   const r=await p.evaluate(()=>{
     const anchor=S.anchor, d=new Date(anchor);
@@ -32,7 +35,7 @@ async function go(label, when, stub, navNext){
   const span=q.length?q[q.length-1].e-q[0].s:0;
   const bad=[];
   if(r.day===6 && r.blocks.length) bad.push(`${r.blocks.length} blocks on the day off`);
-  if(r.day===6 && r.state!=="Day off") bad.push(`day off shows "${r.state}"`);
+  if(r.day===6 && r.state!=="My Day Off") bad.push(`day off shows "${r.state}"`);
   if(span>r.quickTotal) bad.push(`quick span ${span} > ${r.quickTotal}`);
   console.log(`[${label}] ${errs.length?"ERR "+errs.join("|"):"ok"} day=${r.day} state=${JSON.stringify(r.state)} `+
     `quickTotal=${r.quickTotal} slice=${r.slice} span=${span} blocks=${r.blocks.length}`);

@@ -40,7 +40,7 @@ const permeableStub = BASE
   .replace(/const EVENTS = [^;]+;/, "const EVENTS = " + JSON.stringify(PERMEABLE_DAY) + ";");
 
 (async () => {
-  const browser = await chromium.launch({ executablePath: "/opt/pw-browsers/chromium-1194/chrome-linux/chrome" });
+  const browser = await chromium.launch({});
   let fails = 0;
 
   async function run(label, stub, when, checks) {

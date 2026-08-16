@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Mor Sedero - CV</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@600;700&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  /* 3 colors total: ink, blue, white - sampled directly from the original
+     PDF's header/accent (not invented). 2 fonts. 2 weights, bold reserved
+     for the name + section titles only. */
+  :root{
+    --ink: 33,37,42;        /* #21252a - exact header/ink from the original */
+    --blue: 58,83,103;      /* #3a5367 - exact accent on white, from the original */
+    --blue-light: 78,109,134; /* #4e6d86 - same accent, lightened for use on the dark header */
+    --white: 255,255,255;
+  }
+  @page{ size: Letter; margin: 0; }
+  *{ box-sizing:border-box; margin:0; padding:0; }
+  body{ font-family:'Inter', sans-serif; font-weight:400; font-size:11.5px; line-height:1.4; color:rgb(var(--ink)); width:816px; background:rgb(var(--white)); }
+
+  .header{ background:rgb(var(--ink)); padding:28px 50px; display:flex; align-items:center; justify-content:space-between; }
+  .header-name{ font-family:'Space Grotesk', sans-serif; font-weight:700; font-size:29px; color:rgb(var(--white)); }
+  .header-role{ font-size:11.5px; letter-spacing:.14em; color:rgb(var(--blue-light)); margin-top:7px; }
+  .header-tag{ font-style:italic; font-size:11px; color:rgba(var(--white),.7); margin-top:4px; }
+  .header-photo{ width:92px; height:92px; border-radius:50%; overflow:hidden; flex:0 0 auto; border:2px solid rgba(var(--white),.5); }
+  .header-photo img{ width:100%; height:100%; object-fit:cover; object-position:center; }
+
+  .contact-bar{ background:rgba(var(--ink),.06); padding:5px 50px; display:flex; gap:28px; font-size:10px; }
+  .contact-bar span::before{ content:"\25CF"; font-size:5px; color:rgb(var(--blue)); margin-right:8px; position:relative; top:-2px; }
+  .contact-bar a{ color:inherit; text-decoration:none; }
+
+  .body{ padding:10px 50px 12px; }
+  .section{ margin-bottom:8px; }
+  .section-title{ font-family:'Space Grotesk', sans-serif; font-weight:700; font-size:11.5px; letter-spacing:.1em; color:rgb(var(--ink)); }
+  .section-title::after{ content:""; display:block; width:26px; height:2px; background:rgb(var(--blue)); margin:5px 0 7px; }
+
+  .skills-line{ font-size:11.5px; }
+
+  .job{ border-left:2px solid rgb(var(--blue)); padding-left:14px; margin-bottom:5px; break-inside:avoid; }
+  .job-title{ font-weight:700; }
+  .job-title .free{ font-weight:400; color:rgba(var(--ink),.55); }
+  .job-dates{ font-size:10px; color:rgb(var(--blue)); margin:1px 0 4px; }
+  .job ul{ list-style:none; }
+  .job li{ padding-left:12px; position:relative; }
+  .job li::before{ content:"\2022"; position:absolute; left:0; color:rgba(var(--ink),.4); }
+
+  .footer-cols{ display:flex; gap:40px; }
+  .footer-col{ flex:1; }
+  .edu-item{ margin-bottom:4px; }
+  .edu-dates{ font-size:10px; color:rgba(var(--ink),.55); }
+</style>
+</head>
+<body>
+
+  <div class="header">
+    <div>
+      <div class="header-name">Mor Sedero</div>
+      <div class="header-role">GAME AUDIO DESIGNER</div>
+      <div class="header-tag">Designing sound, music, and interactive audio systems for games.</div>
+    </div>
+    <div class="header-photo"><img src="portrait.jpg" alt=""></div>
+  </div>
+
+  <div class="contact-bar">
+    <span>morsedero@gmail.com</span>
+    <span>+972 52 444 8932</span>
+    <span>Kfar Saba, Israel</span>
+    <span><a href="https://morsedero.com">morsedero.com</a></span>
+  </div>
+
+  <div class="body">
+
+    <div class="section">
+      <div class="section-title">PROFILE</div>
+      <p>Game Audio Designer specializing in interactive sound, adaptive music, and audio implementation for games. Experienced in building gameplay-driven audio systems using Unreal Engine, FMOD, MetaSounds, and Blueprint scripting, including end-to-end audio ownership for Monster Punk's live FMOD-to-Unreal pipeline. With a background in composition, recording, and multi-instrumental performance, I combine a musician's ear with technical problem-solving to create audio that supports gameplay, storytelling, and player experience. Alongside project work, I teach sound design and mentor aspiring audio designers.</p>
+    </div>
+
+    <div class="section">
+      <div class="section-title">CORE SKILLS</div>
+      <p class="skills-line">Event-driven &amp; parameter-driven middleware systems &middot; Blueprint-level UE5 audio scripting &middot; Audio pipeline organization &amp; asset management &middot; Interactive &amp; adaptive audio implementation &middot; Sound layering &amp; dynamic mixing &middot; Combat &amp; weapon sound design &middot; Creature &amp; UI sound design &middot; Spatial / 3D audio design &middot; Foley recording &amp; sound synthesis &middot; Version-controlled collaborative workflows</p>
+    </div>
+
+    <div class="section">
+      <div class="section-title">PROFESSIONAL EXPERIENCE</div>
+
+      <div class="job">
+        <div class="job-title">Sound Design Mentor at Mentor College</div>
+        <div class="job-dates">2026 - PRESENT</div>
+        <ul>
+          <li>Mentors aspiring game audio designers in sound design fundamentals and real-world project workflow.</li>
+        </ul>
+      </div>
+
+      <div class="job">
+        <div class="job-title">Game Audio Designer at Fooya Games</div>
+        <div class="job-dates">2025 - PRESENT</div>
+        <ul>
+          <li>Sole audio designer on Monster Punk: game sound design, music, and a live FMOD-to-Unreal Engine implementation, built and owned end to end, without a larger audio team.</li>
+          <li>Composed the I Come In Peace soundtrack.</li>
+          <li>Nominee, Best Game Soundtrack, Israeli Indies Awards 2025.</li>
+        </ul>
+      </div>
+
+      <div class="job">
+        <div class="job-title">Composer &amp; Sound Designer at Morsedero.com</div>
+        <div class="job-dates">2019 - PRESENT</div>
+        <ul>
+          <li>Designed and implemented sound effects and music for games and film; owned audio pipelines from concept through final implementation, aligned with gameplay and visual direction.</li>
+          <li>Collaborated with designers, programmers, VFX artists, and animators on player feedback, emotional impact, and gameplay clarity.</li>
+          <li>Clients and collaborators include The Jewish Agency for the Land of Israel, Cowboy Productions, and Rugelach Games, plus award-winning short films with Kibbutzim College, Minshar, Mentor College, and Bezalel Academy.</li>
+        </ul>
+      </div>
+
+      <div class="job">
+        <div class="job-title">Sound Design Instructor at Ashkelon Center of Excellence</div>
+        <div class="job-dates">2024 - PRESENT</div>
+        <ul>
+          <li>Teaches a sound design curriculum for kids: Foley recording, asset libraries, narration, SFX creation, and sound manipulation.</li>
+          <li>Directs live-scored ensemble performances.</li>
+        </ul>
+      </div>
+
+      <div class="job">
+        <div class="job-title">Music Producer at Simply <span class="free">(formerly Joytunes)</span></div>
+        <div class="job-dates">2022 - 2024</div>
+        <ul>
+          <li>Produced high-quality renditions of popular songs for the SimplySing app: MIDI composition, live recording, sampling, and mixing in a fast-paced, deadline-driven environment.</li>
+        </ul>
+      </div>
+
+      <div class="job">
+        <div class="job-title">Music Production Instructor at Mikey Conservatory of Music, Tel Aviv</div>
+        <div class="job-dates">2021 - PRESENT</div>
+        <ul>
+          <li>Teaches recording, editing, and mixing; leads rock, pop, funk, and R&amp;B ensembles preparing students for recitals and shows.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="footer-cols">
+      <div class="footer-col">
+        <div class="section-title">EDUCATION</div>
+        <div class="edu-item">
+          <div>B.Ed, Music Education at Levinsky College</div>
+          <div class="edu-dates">2018 - 2021</div>
+        </div>
+        <div class="edu-item">
+          <div>Rimon School of Jazz and Contemporary Music</div>
+          <div class="edu-dates">2017 - 2021</div>
+        </div>
+      </div>
+      <div class="footer-col">
+        <div class="section-title">TOOLS</div>
+        <p class="skills-line">Cubase &middot; Ableton Live &middot; FMOD Studio &middot; MetaSounds &middot; Unity &middot; Unreal Engine &middot; iZotope RX &middot; Sibelius &middot; DaVinci Resolve &middot; GitHub &middot; Diversion</p>
+      </div>
+    </div>
+
+  </div>
+
+</body>
+</html>

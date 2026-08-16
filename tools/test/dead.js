@@ -8,7 +8,7 @@ window.claude={ use: async n => n==="mcp" ? {
   async invalidate(){}, async listTools(){return {servers:[]};}
 } : null };`;
 const noMcp = `window.claude={ use: async () => null };`;
-(async()=>{const b=await chromium.launch({executablePath:"/opt/pw-browsers/chromium-1194/chrome-linux/chrome"});
+(async()=>{const b=await chromium.launch({});
 for(const [label,stub] of [["needs_reauth",mk("needs_reauth")],["server_unavailable",mk("server_unavailable")],["no-mcp",noMcp]]){
   const ctx=await b.newContext({viewport:{width:760,height:600},timezoneId:"Asia/Jerusalem",colorScheme:"dark"});
   const p=await ctx.newPage();const errs=[];

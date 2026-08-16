@@ -13,15 +13,15 @@ async function run(b,label,stub,when,scheme){
   await p.waitForTimeout(2600);
   const r=await p.evaluate(()=>({
     state:(document.querySelector(".state h2")||{}).textContent||null,
-    now:(document.querySelector(".now h2")||{}).textContent||null,
+    now:(document.querySelector(".now .row .n")||{}).textContent||null,
     meetingStrip:(document.querySelector(".meeting-now .mn-name")||{}).textContent||null,
     sections:[...document.querySelectorAll(".later .lh .eyebrow:first-child")].map(x=>x.textContent),
-    rowNames:[...document.querySelectorAll(".rows .row .n .nt")].map(x=>x.textContent.slice(0,22)),
-    footHidden:document.querySelector("#foot").hidden}));
+    rowNames:[...document.querySelectorAll("#pageMain .rows .row .n .nt")].map(x=>x.textContent.slice(0,22)),
+    dashRightHidden:document.querySelector("#dashRight").hidden}));
   console.log(`[${label}]`,errs.length?("ERR "+errs.join("|")):"ok",JSON.stringify(r));
   await p.screenshot({path:`st-${label}.png`,fullPage:true});await ctx.close();
 }
-(async()=>{const b=await chromium.launch({executablePath:"/opt/pw-browsers/chromium-1194/chrome-linux/chrome"});
+(async()=>{const b=await chromium.launch({});
 const mon=BASE.replace(/const DAY = [^;]+;/,'const DAY = "2026-08-17";');
 // empty day: no events at all
 const empty=BASE.replace(/const EVENTS = [^;]+;/,"const EVENTS = [];");

@@ -10,7 +10,7 @@ const stub=sb.module.exports.stub.replace(/const EVENTS = [^;]+;/,"const EVENTS 
 const clock=t=>`const R=Date;const O=new R("${t}").getTime()-R.now();
 window.Date=class extends R{constructor(...a){if(a.length===0)super(R.now()+O);else super(...a);}static now(){return R.now()+O;}};`;
 const fmt=m=>`${String(Math.floor(m/60)).padStart(2,"0")}:${String(m%60).padStart(2,"0")}`;
-(async()=>{const b=await chromium.launch({executablePath:"/opt/pw-browsers/chromium-1194/chrome-linux/chrome"});
+(async()=>{const b=await chromium.launch({});
 const ctx=await b.newContext({viewport:{width:760,height:1100},timezoneId:"Asia/Jerusalem",colorScheme:"dark"});
 const p=await ctx.newPage();const errs=[];
 p.on("pageerror",e=>errs.push(e.message));p.on("console",m=>{if(m.type()==="error")errs.push(m.text());});
@@ -40,12 +40,12 @@ const cfg=await p.evaluate(()=>({total:CFG.quickTotal,openEvents:CFG.openEvents,
   persisted:(S.stats.settings||{}).openEvents}));
 console.log("   cfg:",JSON.stringify(cfg));
 // swap
-await p.locator(".now .btn.icon").nth(1).click(); await p.waitForTimeout(600);
+await p.locator(".now .mini",{hasText:"Swap"}).click(); await p.waitForTimeout(600);
 const pick=await p.evaluate(()=>({rows:document.querySelectorAll(".pick-row").length,
   first:(document.querySelector(".pick-row .n")||{}).textContent||null}));
 await p.screenshot({path:"hour-pick.png"});
 if(pick.rows){ await p.locator(".pick-row").first().click(); await p.waitForTimeout(2200); }
-const after=await p.evaluate(()=>({hub:(document.querySelector(".now h2")||{}).textContent,
+const after=await p.evaluate(()=>({hub:(document.querySelector(".now .row .n")||{}).textContent,
   swaps:window.__calls.filter(c=>c.tool==="create_event").length}));
 console.log("   picker:",JSON.stringify(pick),"-> hub now:",JSON.stringify(after.hub));
 console.log("errors:",errs.length?errs:"none");
