@@ -2,36 +2,112 @@
 
 Personal site, plus `tools/` — small self-contained apps.
 
-## DayFlow
+## Keep replies short
+
+Caveman mode, on every reply in this repo: short, blunt, minimal words. Drop
+articles and filler, skip pleasantries and hedging, no elaboration unless
+asked. State the result, not the journey to it. The reason is token cost, so a
+long reply is a real cost, not a style preference.
+
+Two things brevity may never hide: a **real blocker**, and anything needing
+**approval before a risky or outward-facing action**. Say those plainly and in
+full — a terse reply that buries a broken publish or a data-loss risk has
+failed at the job, not succeeded at being short. Everything else gets cut.
+
+(This lived only in session memory for two days and was steadily ignored —
+hence writing it into the repo.)
+
+## Daisey
 
 A daily focus widget over Google Calendar + Trello. One file:
-`tools/dayflow.html`, published as a Claude artifact.
+`tools/daisey.html`, published as a Claude artifact.
 
 **Canonical artifact URL — always update this one, never publish a new
-artifact for DayFlow:**
+artifact for Daisey:**
 
     https://claude.ai/code/artifact/9b19af95-0f72-418d-9fe8-04627957ff67
 
-Publishing without that URL creates a *second* DayFlow and leaves the
+Publishing without that URL creates a *second* Daisey and leaves the
 user's home-screen shortcut pointing at a stale copy.
+
+### Open work (2026-08-17)
+
+Items 1–3 below are **done** (2026-08-17, with the connector available), and
+the `moveAssetTo` fix from item 3 is **published**. Known open item: the
+`settings.js` suite fails — `BOARDS` gained the tracker board, so the Colour
+section renders four swatches where the test asserts three, and the sheet now
+needs an internal scroll at 667px, breaking the "zero internal scroll down to
+667px" promise the settings bullet below makes. Inherited from the tracker
+session, not yet fixed; decide whether a tracker board deserves a user-set
+colour at all, since it never appears in the day list.
+
+1. ~~**Migrate the assets.**~~ Done: 22 asset cards now live on
+   `Monster Punk — Audio`, 21 in Waiting and "Music: GameLoop Music" in
+   In Progress, placed off the `Progress` column of the Drive sheet
+   "MonsterPunk - Sound & Music" (everything else reads Not Started
+   there). The expectation written here was wrong in a useful way: the
+   sounds were *already cards* on PROJECTS → "MonsterPunk" (note: no
+   space), expanded from the "רשימת SFX דחופה" checklist by an earlier
+   session, so this was a cross-board move, not a checklist expansion.
+   That checklist still exists, all six items unticked, and its card is
+   still orange (8h) — an unfinishable punch-list card, i.e. the exact
+   rollover hazard item 2 warns about. Left alone deliberately; it's the
+   user's call whether it goes green, gets archived, or stays.
+2. ~~**Create the session cards.**~~ Done: 8 on PROJECTS →
+   "MonsterPunk", each scoped so one sitting finishes it and each naming
+   the tracker assets it covers — 6 yellow (unicycle enemy batch, boss
+   smashes + green fire, boss mine-shot chain, player + weapon cues,
+   FMOD boost-bus leak fix, FMOD boss engine) and 2 orange (implement
+   approved combat SFX, FMOD combat mix pass). Music sessions were *not*
+   created: cards 13/14/46/59 already cover menu, GameLoop, home and
+   main-stage music, and a duplicate would have double-scheduled them.
+3. ~~**Verify `moveAssetTo`'s write shape.**~~ Verified, and it was
+   **wrong** — fixed in `tools/daisey.html`, not yet published. The real
+   move is `{action:"move", cardId, listId}` (plus `boardId` when the
+   destination is on another board, and an optional `pos`). The guessed
+   `{action:"update", cardId, listId}` could never have worked: `update`
+   takes only `name`/`desc`/`due` and rejects the call outright, so every
+   move from the Assets view would have snapped back into the
+   unsaved-changes bar. Observed across the 25 real moves in item 1.
 
 ### Working on it
 
-- Edit `tools/dayflow.html`, then republish to the URL above.
+- Edit `tools/daisey.html`, then republish to the URL above.
 - Tests: `cd tools/test && npm i playwright && node assert.js` (see
   `tools/test/README.md`). They drive the real page in Chromium against
   a stubbed connector bridge — no network, no real writes.
+- **Copy the page into the test dir first — every test reads
+  `tools/test/daisey.html`, not `tools/daisey.html`.** That copy is
+  gitignored, so it silently goes stale and the suite then passes against
+  whatever the file said last time you copied it. This is not theoretical:
+  a `moveAssetTo` fix was "confirmed" by a green `tracker.js` that was
+  still driving the old shape, and only the printed write payload gave it
+  away. `Copy-Item tools/daisey.html tools/test/daisey.html -Force` (or
+  `cp`) before any run whose result you intend to believe.
 - Run `assert.js` and `cap.js` after any change to the scheduling
-  engine; they cover the rules the widget promises.
+  engine; they cover the rules the widget promises. Run `tracker.js`
+  after any change to `candidates()`, `BOARDS`, or the Assets view.
+- **Several sessions edit this file at once.** The publish ships the
+  *whole* file, so check `git diff tools/daisey.html` before publishing
+  and expect to find other sessions' half-finished work in it — say so
+  rather than shipping it blind. On a publish conflict, re-read and merge;
+  `force:true` silently discards whatever the other session published.
 
 ### Rules that are deliberate, not accidental
 
 - **Caps, day window, block lengths, buffer, day off, board colours and
   the chime are user settings** (gear icon), stored in the Trello state
   card under `settings` and read into `CFG` at boot. `DEFAULTS` holds
-  the shipped values: 3 quick tasks sharing one 60-min window, 1 short
-  session x 3h, 1 long session x 8h, 15 min buffer, 09:00-20:00,
-  Saturday off. Never hard-code these again.
+  the shipped values: up to 4 quick tasks sharing one 60-min window, 1
+  short session x 3h, 1 long session x 8h, 15 min buffer, 09:00-20:00,
+  Saturday off. Never hard-code these again. `quickMax` (2026-08-17,
+  default 4) is the settings-panel cap on how many quick tasks the
+  quick-task window in `planFor` will ever pack in — before it, the
+  window just kept shrinking each candidate's slice to fit however many
+  quick cards existed that day, no ceiling on count. `choreDays`'
+  default (2026-08-17) also dropped Saturday for all four chores, to
+  match `dayOff:6` — chores used to default to all 7 days regardless of
+  the day-off setting.
 - **A card's size comes from its Trello label, not its board**
   (`sizeFromLabels`): no label = quick task, yellow = short session
   (3h), orange = long session / work day (8h), green = info only, not
@@ -40,12 +116,114 @@ user's home-screen shortcut pointing at a stale copy.
   decision — board is now only colour identity. `BOARDS` lists the three
   real work boards (PROJECTS, סידורים, סדקו); there is no separate "today
   priority" board — this widget's own live schedule replaces that. The
-  hidden DayFlow state card lives on סידורים, in its own "📊 DayFlow
+  hidden Daisey state card lives on סידורים, in its own "📊 Daisey
   (widget state)" list. The green exclusion was dead code for a long
   while: `candidates()` filtered on `c.labels?.some(...)` but `normCard`
   never put `labels` on the object it returned, so the optional chain
   quietly made it a no-op and green cards got scheduled anyway. `labels`
   now comes through whole — don't distil it down to `size` again.
+- **A `tracker` board is read and editable but never scheduled**
+  (`isTrackerCard`, excluded in `candidates()`). `BOARDS` now has a fourth
+  entry — `mpaudio`, "Monster Punk — Audio", board id
+  `6a82c2cd37d859bc17a06fb8` — carrying `tracker:true`.
+  It exists because the tracking unit and the scheduling unit are
+  genuinely different sizes: one FMOD sitting covers a dozen sounds, so
+  100+ assets each with a state can't be cards in the scheduling pool
+  (unlabelled = quick task, and the day has room for 3 of those). The
+  assets live on the tracker board with **lists as pipeline stages**
+  (Waiting → In progress → In review → Fixing → Approved → Implemented);
+  the *session* cards that Daisey actually schedules stay on PROJECTS.
+  Lists mean nothing to the scheduler everywhere else in this app; on a
+  tracker board they are the entire point, which is exactly why it has to
+  sit outside the pool. Only two places needed to know: `candidates()`,
+  and `saveStats`'s "has Trello answered" gate, which uses `SCHED_BOARDS`
+  so a slow 100-card board can't stall every settings write behind it.
+  `BOARD_ORDER` and `catWeight` deliberately needed nothing — tracker
+  cards never reach ranking at all. The green label is *not* how this is
+  done: green only excludes a card that is otherwise in the pool, and a
+  green card is invisible inside Daisey (not scheduled, not in the swap
+  picker, not tracked for rollovers), so it was useless as a backlog
+  shelf. The board boundary is the mechanism.
+- **The Assets tab is pulled from the switcher (2026-08-17), the code
+  behind it is not.** The plan is to run the tracker board in the
+  background instead of as a tapped-into view, so `pipelineView`,
+  `assetMoveDialog`, `moveAssetTo`, and the `pipe-*`/`asset-*`/`stage-opt`
+  CSS all still exist — just unreachable, since the `<button
+  data-view="pipeline">` that was the only thing ever setting `S.view =
+  "pipeline"` is gone. `tracker.js` now drives that view directly
+  (`S.view="pipeline"; render();`) instead of clicking the removed button.
+  Nothing about `candidates()`'s tracker-board exclusion or `BOARDS`'
+  `mpaudio` entry changed — cards still stay out of scheduling the same
+  way. The rest of this bullet describes the still-present, now-dormant
+  view, kept for whatever the background rework reuses:
+- **The Assets view is the tracker board's kanban** (`pipelineView`,
+  `S.view === "pipeline"`). Columns come from `trelloReadList` — watched,
+  not fetched once, so renaming or adding a stage in Trello shows up
+  without a reload — sorted by the connector's `position`, because on a
+  pipeline board left-to-right *is* the meaning. Tap an asset →
+  `assetMoveDialog` → `moveAssetTo`, local-first like every other write
+  here (patch, render, write behind it, undo + `queueFailed` on failure).
+  It has no date: `S.anchor` is ignored, `stepNav` returns early, and the
+  whole `.dash-center` group hides (`.dash.pipe-mode`) because a board
+  name is far too wide to sit centred beside the switcher on a
+  phone — the board names itself inside the view instead. Its four empty
+  states are deliberately distinct (unreachable / no stages / loading /
+  stage with no cards); returning one skeleton for all of them was an
+  infinite blank that couldn't be told apart from a hang.
+  **`moveAssetTo` writes `{action:"move", cardId, listId}`** — verified
+  against the connector, not inferred. The shape it shipped with,
+  `{action:"update", cardId, listId}`, was a guess off `create` taking a
+  `listId`, and it was simply wrong: `update` accepts only
+  `name`/`desc`/`due` and rejects an unknown `listId`, so no move from
+  this view could ever have committed. The local-first guard is what made
+  that survivable — a rejected move snapped back into the unsaved-changes
+  bar instead of vanishing quietly, which is how the bug stayed visible
+  rather than silently losing work. Keep the guard.
+- **The DayFlow→Daisey rename touched three identifiers that are live keys
+  into data that already exists, and all three read both spellings on
+  purpose.** A rename pass over this file is not cosmetic: `DF_MARK`
+  (`[daisey]`, was `[dayflow]`) is written into every Google Calendar block's
+  description and is the *entire* test for `mine` in `allEvents()` — the thing
+  that tells a Daisey block from a real meeting. `STATS_CARD_NAME` and
+  `STATS_LIST_RE` are how the state card is found, and `isStats` is also what
+  keeps that card out of `candidates()`. The user's real data still carries the
+  old names — blocks marked `[dayflow]`, a card called "📊 DayFlow Stats" in a
+  list called "📊 DayFlow (widget state — do not edit)" — so matching only the
+  new spelling would have: stranded every block on the calendar (still
+  occupying the day, no longer clearable/swappable/done-able, so the next
+  Re-plan lays the day *around* its own earlier blocks), reset settings to
+  `DEFAULTS` and the streak and rollovers to zero, and put Daisey's own machine
+  card into the scheduling pool as an unlabelled quick task, swap picker
+  included. Reads therefore go through `isDfMark`, `STATS_NAME_RE` and a
+  two-spelling `STATS_LIST_RE`; writes only ever emit the new names. **The test
+  fixtures were all updated to `[daisey]` in the same pass, so the suite was
+  green either way — nothing here was caught by a test, only by reading the
+  real board.** Don't "tidy" the legacy arms away while real data still holds
+  the old spelling; renaming the Trello list and card is the prerequisite, and
+  the calendar blocks would still need to age out.
+- **A title shrinks to fit next to its time/chip anchor rather than being
+  forced onto its own line** (`fitRowTitle`, run over every `.now .row` and
+  `.item.stack .row` at the end of `paintMain`). A prior fix for the same
+  clash used `flex-basis:100%` to always push the title below the anchor —
+  simpler, but it gave up the shared line even for titles that had room, and
+  the user asked for the opposite priority: stay on one line whenever
+  possible, shrink only enough to make that happen, and only fall back to
+  wrapping (at that same shrunk size, not the full one) when no shrink
+  makes it fit. `fitRowTitle` measures the real leftover width next to the
+  anchor and the title's natural (unwrapped) width at full size, and where
+  the natural width doesn't fit, scales the font down by that exact ratio —
+  one measurement, no iterative loop, since the leftover width doesn't
+  depend on the title's own font size. Floor is `max(68% of base, 10px)`;
+  a title too long to fit even there just wraps at the floor size, which
+  looks fine (checked against a 140-character synthetic title — four clean
+  lines, no overlap) since it's an extreme case, not the common one this
+  was written for.
+- **`[hidden]` loses to an explicit `display`.** `.navbtn` sets
+  `display:grid`, so setting `.hidden` from JS did nothing visible until
+  `.navbtn[hidden]{display:none}` was added — the same trap
+  `.dash-right[hidden]` already worked around. Assert with
+  `offsetParent === null`, not `.hidden`, or the test passes on a control
+  that's still on screen.
 - **Only today can be built or rescheduled, and the app now notices when
   "today" changes underneath it** (`checkDayRollover`, on the 1-second
   clock tick). `S.anchor` used to be set once at load, and since
@@ -92,6 +270,22 @@ user's home-screen shortcut pointing at a stale copy.
   pool is computed the same way regardless of what another day already
   claimed. Marking existing work done, Pending, or Remove still work on
   any day — only *creating or moving* a block is restricted.
+  This bullet predates a later change that widened the window to today
+  *and* tomorrow (`isSchedulable`/`isLockedDay` — `daysBetween(now,d)` is
+  0 or 1); the toasts already say "today and tomorrow", this note hasn't
+  caught up.
+- **A block built for tomorrow used to vanish from the app the instant it
+  was created.** `allEvents()` — the one place every read of "what's on
+  the calendar" goes through — filtered out any card-linked event whose
+  start wasn't literally today's real date, a rule written back when only
+  today was buildable and never widened when `isSchedulable` was. The
+  write to Google Calendar still succeeded, so the block was real and
+  duplicated on every later rebuild (each run saw an empty day, since
+  `existingBlocks`/`clearableBlocks`/`planFor`'s `already` set all read
+  through `allEvents()` too) — while the UI just showed nothing for
+  tomorrow, which read as "can't schedule anything for tomorrow." Fixed
+  by matching the filter to `isSchedulable(e.start)` instead of
+  same-day-as-now.
 - **Writes retry, and what still fails is kept rather than announced
   once.** `callTool` wraps every call in three attempts with 400ms/1.2s
   backoff, but only for genuinely transient failures — `server_unavailable`,
@@ -148,6 +342,19 @@ user's home-screen shortcut pointing at a stale copy.
   fixable from inside the widget); and `applyPlan`, which has to clear
   before it re-lays, puts the cleared blocks back if an auth failure
   means nothing at all got placed.
+- **A swap gives the incoming card its own real size — a session or work
+  day (`CFG.shortMin`/`longMin`) doesn't inherit whatever duration the
+  outgoing card's slot happened to be.** `swapTo` used to keep the old
+  slot's `start`/`end` unchanged no matter what landed in it — swap a
+  20-minute quick task for an 8-hour work day and the block stayed 20
+  minutes. It now compares the incoming card's own size against the slot's
+  current length and, if they differ, runs a fresh `findSlots` search
+  anchored at the old start time (falling back to the day start, and
+  toasting "Doesn't fit here" if genuinely nothing fits). Quick cards are
+  the one exception, on purpose: a quick task has no size of its own — one
+  quick task's slot length depends on how many others are sharing
+  `quickTotal` when the day was built — so a quick card swapped into *any*
+  slot, session/work-day-sized or not, keeps that slot's length untouched.
 - **A watch error no longer retracts the data behind it.** `onWatch` used
   to blank the cached payload on any auth/lifecycle code, so a reauth
   blip emptied the whole page. Last-good data plus the banner beats an
@@ -177,6 +384,36 @@ user's home-screen shortcut pointing at a stale copy.
   `normCard`'s `blocked` (via `PENDING_RE`) stops counting *that* marker
   as blocking — re-tested with the marker stripped, so any other
   blocking text the card independently contains still holds it back.
+- **"Don't assign an activity before its Trello start date" is a known,
+  wanted feature — blocked on the connector, not on Daisey's code. Don't
+  build a workaround without asking again** (2026-08-18). Sequence: the
+  original code guessed `n.start` would mirror `n.due` off Trello's own API
+  shape; it never did — `n.start` was always `undefined` against live data,
+  so the `candidates()` eligibility gate that read it was permanently dead
+  (a card due 24/8 with nothing else set got scheduled the moment it was
+  created). First fix: a parallel Daisey-only feature — a `▶ Starts
+  YYYY-MM-DD —` text marker, a `▶` button, `setStartDate`/`startDateDialog`.
+  Published, then reverted same day on feedback: the user doesn't want to
+  press anything in Daisey — they set the date once, in Trello, and expect
+  Daisey to just know. Second fix attempt: point at Pending's existing
+  dated marker as "already this feature." Also rejected — same reason,
+  it's still a manual Daisey action.
+  What actually blocks this: fetched the AC-repair card that started this
+  (`trelloReadCard` `get`) and then all 13 cards on סדקו (`list_by_board`)
+  to be sure it wasn't just that one card lacking a start date — every card
+  shows a `due` key, even `null` when unset, and **none ever show a `start`
+  key at all**, populated or not. Combined with `trelloWriteCard`'s schema
+  (`additionalProperties:false`, no `start` param, `create` or `update`),
+  this is conclusive: the connector doesn't expose Trello's native Start
+  Date field in either direction. Asked the user directly how to proceed
+  given that (auto-parse a date out of the description text / keep using
+  Pending / wait on the connector) — they chose **wait on the connector**.
+  So: no `card.start`, no marker, no button, no free-text date parsing.
+  `START_RE`/`startMark`/`n.start`/`card.start`/`setStartDate`/
+  `startDateDialog`/both `▶` buttons are gone, and should stay gone until
+  the connector itself can round-trip a start date — check
+  `trelloReadCard`/`trelloWriteCard`'s live schema for a `start` field
+  before reopening this, don't assume it's still missing forever.
 - A run **clears and re-lays** the day's card-linked blocks. It never
   touches a real meeting, finished work, or the block in progress. That
   last exemption means a block that becomes invalid mid-run (e.g. a
@@ -249,7 +486,32 @@ user's home-screen shortcut pointing at a stale copy.
   in `row-meta` now always has a board-coloured chip next to it
   (`.chip.bk` — same `--bc`/`--bc-soft` as everywhere else, just without
   `.chip.board`'s wobble, to sit still next to "20 min").
-- **There is no dark mode, on purpose.** DayFlow commits to one bright
+- **The duration/board chips and Done/Swap/Pending/Remove share one line**
+  (`.row-meta` wraps a `.meta-chips` span plus `.acts-inline`, laid out
+  `justify-content:space-between`) — chips left, actions right — instead
+  of stacking as two separate lines under the title. `.acts-inline` used
+  to force itself onto its own full-width line inside `.row` (a leftover
+  `flex:1 1 100%`), pushing the chips onto a third line below it with
+  nothing lining up. On a narrow phone or when the eyebrow status text
+  ("Starting in…") is long, the two still wrap onto separate lines same as
+  before — there's a real width limit on how much a text-labelled 4-button
+  row plus two chips can share, not a bug, just not enough phone.
+- **The real clock lives in its own `.topbar`, above the header and
+  anchored left** — the one thing on screen that's true regardless of
+  which day `S.anchor` is looking at, so it doesn't share a row with
+  navigation that can point elsewhere. Settings (⚙) sits opposite it on
+  the right, since it no longer fits alongside prev/next. The header
+  below it (`.head`) is just the day nav now: prev/next (`.navbtn`) pin to
+  the row's two edges, the date label centers itself between them. The
+  dot that used to sit between the arrows (`#todayBtn`) is gone — tapping
+  the centered date does that job now (`goDay(0)`), which also retired the
+  header's "jump to any date" popup (`datePicker()`) that used to live on
+  that same tap. Month view (`monthGrid()`), the later replacement for
+  jumping to a distant date via tap-any-cell, has since been removed
+  outright (2026-08-17) — Day/Week/Assets only now, and prev/next plus
+  today-tap are the only ways to move `S.anchor`. Deliberate: there is no
+  replacement for jumping far away, just repeated prev/next.
+- **There is no dark mode, on purpose.** Daisey commits to one bright
   palette on bare `:root` and overrides the reader's theme instead of
   following it — `color-scheme:light !important` beats the inline
   `style.colorScheme` the shell sets, and there is no
@@ -259,6 +521,228 @@ user's home-screen shortcut pointing at a stale copy.
   detour. `chrome.js` asserts brightness under both the media-query and
   the shell's `data-theme="dark"` path — the latter is the one that
   actually ships. Don't add a dark block back without asking.
+- **Cards are one neutral-ish surface plus one coloured spine, not a
+  tinted fill** (2026-08-17 redesign, "make the cards more expensive and
+  elegant"). `.now`/`.item`/`.item.stack` used to set
+  `background:var(--bc-soft,...)` — the whole card tinted its board's
+  colour — *and* a matching saturated border *and* (on `.now` only) the
+  left stripe below, three signals stacked for one fact. That read as a
+  sticker sheet, not a product. All three now share a hairline edge
+  (`--line-soft`, a near-invisible neutral — depth comes from
+  `--shadow`'s two-layer contact+ambient blur, not a coloured outline)
+  and keep only the left spine (`::before`, 4px, `var(--bc,var(--b-none))`)
+  as the board signal. `.item.stack` had to change `position:static` →
+  `relative` for its own `::before` to have something to anchor to —
+  verified against `wireStackDrag`'s drag hit-testing
+  (`getBoundingClientRect()` snapshots), which `relative` with no offset
+  doesn't change, so the reason `static` was chosen in the first place
+  still holds. `backdrop-filter` came off `.item` too — it blurred
+  whatever sat behind a translucent tinted card; on an opaque surface
+  there's nothing left for it to do. The fill itself went through two
+  passes: first plain `var(--surface)` (pure white), then — on direct
+  feedback that white "hurt the eyes" next to the warm `--bg` — a new
+  `--card:#FFFDF2` token, `--surface` warmed and dimmed by a hair so a
+  card still visibly lifts off the page without the cold flash. Scoped to
+  cards only; `--surface` itself (dialogs, buttons, `.mini` rest state)
+  was untouched both times, since neither request was about those.
+- **The board hues went candy-bright → muted jewel tones → bright again**
+  (same 2026-08-17 session, second pass on direct feedback: "brighter and
+  funny", muted read as flat/boring). `--b-projects` (violet), `--b-sidurim`
+  (blue), `--b-sedco` (orange), `--b-mpaudio` (pink) started saturated
+  enough to double as a children's-app palette; the intermediate muted set
+  (plum/teal/rust/wine) fixed the "sticker sheet" problem but overcorrected
+  into dull. The current set is vivid again — violet-purple / cyan-teal /
+  red-orange / magenta-pink — while keeping the one real fix from the
+  muted pass: each hue is a distinct *family*, not just a distinct
+  brightness, so `--deep` (status chip, blue-indigo `#5B67FF`) and
+  `--b-projects` (board, purple `#A855F7`) no longer sit one step apart on
+  the same violet the way the original bright set did, and `--age` (status,
+  yellow-gold `#F5A623`) is pulled clear of `--b-sedco` (board, red-orange
+  `#FF7043`) for the same reason — a card can be both "on the sedco board"
+  and "aging" at once, and those two badges need to read as different
+  facts at a glance. `chrome.js`'s brightness guard passes under all three
+  palettes tried so far (bright, muted, bright-again) — it's a floor, not
+  a target, so it doesn't push back on any of them.
+- **Titan One is gone; `--font-display` now points at Nunito's heaviest
+  weight instead of a second typeface** (same pass). Titan One is a
+  single-weight (400) novelty display face — thick, rounded, comic-ish —
+  embedded as its own ~14.6KB base64 `@font-face` and used for every
+  clock digit, dialog heading, empty-state heading and the lock-flow
+  text. It was the single biggest reason the app read as a kids'-game
+  rather than a considered product, regardless of what the cards
+  themselves looked like. Nunito already ships weights 200–1000 in the
+  one `@font-face` still embedded, so display text now borrows the same
+  family at `font-weight:800–900` with tight negative tracking instead —
+  one confident typeface used with restraint, the classic premium-app
+  move, rather than a decorative one layered on top. Every site that read
+  `font-family:var(--font-display)` also had `font-weight:400` hard-coded
+  (Titan One's only weight) — all of those were bumped alongside the
+  swap, or the same text would have rendered in *regular* Nunito and
+  looked thinner than before instead of more refined. The Titan One
+  `@font-face` itself was deleted outright (line 5) rather than left
+  dead, since nothing references the family name any more.
+- **The idle "wobble" animation is gone.** `.chip.board` (dead CSS — no
+  JS creates that class any more, `.chip.bk` replaced it) and
+  `.chip.crit` (the live "!" overdue badge) both rotated back and forth
+  forever via `@keyframes wob`. A badge that visibly jiggles at rest was
+  the other big "toy" signal alongside Titan One; removed along with the
+  dead `.chip.board` rule and the `--wob` custom properties, since
+  nothing else used the keyframe.
+- **Chores are connected to the schedule but never occupy a calendar slot**
+  (2026-08-17). The lock screen (`lockDialog`, the 🔒 topbar button) used to
+  be a pure prototype — hardcoded 4 chores, single-select despite the
+  plural "CHORES?" title, no state at all, "No app-state wiring yet" in its
+  own comment. It's now real: which weekdays each chore is due
+  (`CFG.choreDays`, a user setting, same Trello-state-card pattern as every
+  other setting) and when the reminder fires (`CFG.choresTime`, default
+  20:00) are both settings-panel controls. Whether a chore's actually been
+  done lives in `localStorage` (`daisey.chores.v1`), not the Trello card —
+  a per-device daily nag doesn't need cross-session sync the way schedule
+  settings do. `choresSweep()` mirrors `rolloverSweep`'s model for cards: a
+  chore due yesterday and still unconfirmed stays flagged **overdue**, and
+  its day count keeps climbing, until it's marked done — regardless of
+  whether today's own schedule has it due again. `tick()` fires the lock
+  screen automatically once a day the moment the clock crosses
+  `CFG.choresTime`, if anything's actually due-or-overdue (nothing to nag
+  about otherwise) and no other dialog is already open; it's also still
+  reachable by hand from the topbar any time. Each chore now confirms
+  independently (`lockDialog`'s picker was accidentally single-select —
+  every click cleared every other selection — even though the screen has
+  always said "CHORES" plural). **`localStorage` access is unverified
+  against the real published artifact** — this test suite's Playwright
+  harness runs on an `about:blank` origin, which throws a `SecurityError`
+  on the mere property read `localStorage.getItem`, so persistence itself
+  couldn't be exercised there; the code catches that (same defensive
+  pattern the stale-cache self-heal IIFE already uses around
+  `sessionStorage`, guarding a real observed constraint, not a
+  hypothetical one) and falls back to an empty state rather than crashing,
+  but if the artifact sandbox blocks storage outright, chore done/overdue
+  state silently never persists across a reload. Confirm against the real
+  artifact before trusting this beyond a single session.
+  The per-chore day-of-week picker (4 chores × 7 toggles) started as an
+  inline block in the main settings sheet and blew the sheet's own "no
+  internal scroll down to 667px" promise by ~350px — split into its own
+  small popup (`choreDaysPanel`, opened via a compact "Edit days →" button
+  next to the reminder-time row) instead. Watch for class collisions when
+  adding buttons inside `.set`: an early version of that button reused
+  `btn quiet`, which is also Settings' own Cancel-button class, and
+  `.dialog .btn.quiet` matched the new button first — Cancel silently
+  stopped closing the sheet at all sizes until it was caught.
+- **Settings has a "Reset all" (`resetAllData`), for forgetting Daisey's own
+  bookkeeping, not the user's real data.** It clears the chores localStorage
+  state (`daisey.chores.v1`) and resets `S.stats` to `DEFAULT_STATS` — streak,
+  history, category weighting (`catWeight`, used in ranking), and every card's
+  rollover/aging count — while keeping `settings` (hours, load, colours,
+  chore schedule) exactly as they were, since those are configuration, not
+  memory. It does **not** touch Trello cards or Google Calendar events; a
+  card that rolled over 5 times shows up fresh (age 0) on the next build, but
+  nothing about the card itself changes. Gated behind `confirmDialog` (Keep
+  vs the destructive action), then reloads the page so every in-memory cache
+  (`S.cardCache`, `S.choresShown`, etc.) starts clean too, rather than trying
+  to hand-unwind each one. The button lives in the settings-sheet **footer**
+  (`.mini.text.del`, reusing the existing red remove-card styling), not the
+  scrollable `.set` body — verified by direct A/B measurement that it costs
+  zero extra height there (a body row was tried first and pushed two more
+  viewports into the internal-scroll problem above; the footer row's height
+  is already set by the taller Save/Cancel buttons, so a small pill button
+  added to it is free). `location.reload()` is not interceptable in a test
+  harness — `Location.prototype.reload` doesn't accept being shadowed by
+  assignment, confirmed by a direct check (`location.reload = fn` silently
+  no-ops, `location.reload === before` stays true) — so its own smoke test
+  proves the reset via the real `load` navigation event plus the
+  `trelloWriteCard` payload, not by faking the reload away.
+- **`quickMax` already was the per-day cap on quick tasks** (see the
+  settings bullet above) — the user asked for it not knowing it existed, so
+  the actual work was cosmetic: it moved onto the same row as "Quick Task"
+  (its minutes-per-window sibling) and its label changed from "Max Quick
+  Tasks"/"/day" to "Max Per Day". The naive version put the label and its
+  number input as two separate flex children in `.set-v`; at 375px
+  (iphone-se) that let `flex-wrap` split them — "Max Per Day" stayed on
+  line 1 next to "min", its input landed alone on line 2 with nothing
+  beside it. Fixed with a `.set-v-group` wrapper (`display:inline-flex`)
+  around the label+input pair so wrapping treats them as one unit — if it
+  wraps at all, the whole "Max Per Day [input]" pair moves down together.
+  Still wraps to two lines at 375px (this row now has 4 controls in a
+  ~240px value column), same class of tradeoff as the chore-day pickers
+  elsewhere in this sheet — not worth shortening user-specified label text
+  to dodge it. Net effect on the settings-sheet height budget: merging two
+  rows into one removed a full `.set-row`, which incidentally fixed
+  pixel-short's (412x732) internal-scroll failure — iphone-se (375x667)
+  and the swatch-count mismatch are the only settings.js failures left,
+  both the pre-existing tracker-board issue, unrelated to this change.
+- **A `.row`'s title is a real grid column, not a flex item that could get
+  pushed onto its own full-width line.** `.row` used to be `display:flex`
+  with time/dot/(list-name chip)/title as flat siblings; `fitRowTitle`
+  shrank the title's font to *try* to keep it sharing the line, but nothing
+  structurally stopped the title from dropping below at full width once
+  shrinking couldn't make it fit. `.row` is now `display:grid;
+  grid-template-columns:auto minmax(0,1fr)` — column 1 is `.row-lead`
+  (`rowLead()`, a small helper: time + dot + optional `sourceChip`, grouped
+  into one grid cell), column 2 is `.n`, the title, always the right
+  column, structurally. `fitRowTitle` got simpler as a result: `.n`'s own
+  `clientWidth` *is* the real available width now, no more summing
+  sibling `getBoundingClientRect()`s by hand. It also grew a second phase:
+  the old single-line shrink is a clean ratio (nowrap width scales
+  linearly with font size), but wrapping to a **max of 2 rows** isn't —
+  real line breaks land word-by-word — so a follow-up loop measures the
+  actual wrapped height and steps the font down further until it fits two
+  lines or bottoms out at a lower floor. `-webkit-line-clamp:2` was tried
+  as a hard backstop below that floor and dropped: `.n`'s only child is
+  `.nt` (`display:inline-block`, load-bearing for the RTL-title-stays-
+  beside-the-timestamp fix, see `bidiSpan`) and Chrome doesn't clamp a
+  `-webkit-box` through an inline-block child — confirmed directly (a bare
+  text child clamps to the expected 2-line height, an inline-block-wrapped
+  one renders a 3rd line anyway). So the cap is JS-only: a title so long
+  even the floor can't fit it in two lines (a synthetic 200+ character
+  title in testing; nothing close to that in real card names) wraps past
+  two rather than truncating silently — same tradeoff the single-mechanism
+  design already made before this change, just now aimed at 2 lines
+  instead of unbounded. `nowCard`, `timelineItem` (both week-view and
+  stack/day-list rows share one row-builder) and `doneDialog` all switched
+  to `rowLead()` so every `.row` in the app has the same 2-child DOM shape
+  the grid template expects — a 3rd stray child (the old flat t/dot/chip
+  siblings) would've broken the column auto-placement.
+  Verified with an isolated smoke test (not folded into the tracked
+  suite): `.row` computes to `display:grid`, the lead cluster and title
+  sit on the same top edge (same line), a short title is left completely
+  unshrunk, a realistic ~50-char long title shrinks and wraps to fit fully
+  within 2 lines, and a pathological 240-char title still shrinks (to the
+  floor) without erroring even though it can't make 2 lines at a readable
+  size. Published — the user confirmed the pre-fix behavior first (a
+  screenshot of a title still dropping to the far left on its own line),
+  which turned out to be real: **this whole change was silently wiped from
+  `tools/daisey.html` on disk by another concurrent session between being
+  written and being published** — `grep -c "row-lead"` went from 4 to 0
+  with no edit of mine in between, while the same session's *other*,
+  unrelated `DEFAULTS`/`findSlots` changes (see the bullet below) stayed
+  intact and kept growing. Re-applied from scratch and published within
+  the same turn to shrink the re-collision window; a second publish
+  conflict landed mid-republish (a second concurrent session), resolved
+  the normal way — WebFetch the live artifact, diff against local — which
+  showed the newly-published copy still lacked `row-lead` too, confirming
+  the local copy was the superset and safe to ship as-is. Take a fresh
+  `grep -c` (or equivalent) on the exact thing you just wrote immediately
+  before publishing, not just a stale mental note that it's "in the file
+  since I wrote it a few tool calls ago" — a same-session Edit's own
+  success message doesn't prove a foreign session hasn't overwritten the
+  file since.
+- **A permeable meeting's `.nest` groups tasks by start time, not full
+  containment** (`groupForStack`). A task counted as "during the meeting"
+  only if it started *and* ended inside the meeting's own window
+  (`t.s >= it.s && t.e2 <= it.e2`) — a session that starts inside a
+  permeable meeting like `חמל` but runs past the meeting's own end (its
+  own duration is longer than the remaining permeable window) fell out of
+  `children` entirely and rendered as a flat top-level card instead, so
+  the dashed `.nest` line stopped short of it even though it visually read
+  as "the next thing after the meeting's other nested task," not a
+  separate top-level item. Now a task nests as soon as its start falls
+  inside the meeting (`t.s >= it.s && t.s < it.e2`) — the line grows with
+  whatever `.nest` actually contains, so it needed no separate change once
+  the grouping was fixed. Scoped to `groupForStack`'s own display grouping
+  only; `withinPermeable` (the swap-eligibility check for "can only a
+  quick task land in this exact slot") still requires full containment,
+  since that's a different question — a slot's own bounds sitting fully
+  inside the meeting — and both readings can coexist without conflict.
 
 ### Stale-cache self-heal (don't delete it)
 
@@ -304,5 +788,130 @@ attempt instead of being waved through.
   falls back to it when a poll's result briefly doesn't include it, so a
   block's colour and title don't flash to the neutral fallback and back
   every few minutes.
+- `trelloReadCard` `list_by_board` is called with **no `limit` and no
+  paging** — one call per board, and whatever comes back is all Daisey
+  has. This has never been tested against a board with 100+ open cards.
+  If the Assets view shows fewer assets than the board holds, that is the
+  cause, and paging is a real piece of work, not a flag.
+- **There is no card start-date field, in either direction.** `trelloReadCard`
+  (`get` and both `list_by_*` actions) returns only `due` — no `start` key,
+  present or null. `trelloWriteCard`'s schema confirms it: `name`/`desc`/`due`
+  are the only card-content params it accepts, no `start`. Daisey's own start
+  date (see the card-start bullet above) is a text marker in the description,
+  not a Trello field, because of this.
+
+### The capability manifest is a full-set declaration
+
+The artifact declares which connector tools it may call. A tool that
+isn't in the manifest rejects with `not_in_manifest` — surfaced as "This
+page isn't allowed to call that Trello tool." **Adding a `callTool` or
+`watchTool` for a tool that isn't already declared silently breaks that
+feature until the manifest is republished**, which is exactly how the
+Assets view shipped dead: `trelloReadList` had never been in it.
+
+The manifest currently declares, and this list must stay in sync with
+every `callTool`/`watchTool` site in the file:
+
+- **Trello** — `trelloReadCard`, `trelloReadList`, `trelloReadChecklist`,
+  `trelloWriteCard`, `trelloWriteChecklist`
+- **Google Calendar** — `list_events`, `create_event`, `update_event`,
+  `delete_event`
+
+Passing a non-empty `capabilities` object is a **full-set** declaration —
+anything stored but not restated is revoked — so always restate all nine.
+Enumerate them before publishing rather than trusting this list:
+
+    grep -oE '(callTool|watchTool)\((TRELLO|GCAL), *"[a-zA-Z_]+"' tools/daisey.html | sort -u
+
+Same bug, older: `statsListId()` also calls `trelloReadList`, so the
+"create the state card if it's missing" path documented above could never
+have worked either. Fixed incidentally by the same republish.
 
 Observe a real request/response pair before writing new connector code.
+
+## Audio project → PROJECTS sync
+
+A user request ("Trello needs to create cards in PROJECTS that pull from a
+project's own board") turned into `netlify/functions/audio-sync.js` — a
+**scheduled Netlify function** (every 30 min, `netlify.toml`), not code
+inside `daisey.html`. Decided 2026-08-18: Daisey's own automation (rollover
+sweep, chores lock screen) only runs while the tab is open; this needed to
+run even when it isn't, same as the pre-existing (untracked, in-progress)
+`trello-webhook.js` start-date sync. Uses the same `TRELLO_API_KEY`/
+`TRELLO_API_TOKEN` env vars (already set in Netlify) via raw REST — it does
+not go through the MCP connector or the artifact's capability manifest at
+all, since it isn't running inside the artifact.
+
+**What it does:** finds every Trello board named `<Project> - Audio` (regex,
+tolerant of `-`/`–`/`—`), reads its `Waiting`/`In Progress` tracker cards,
+groups them by the subject before the colon in the card name (`"Boss: Green
+Fire"` → subject `Boss`), sizes each group, and creates/updates cards on
+PROJECTS → `<Project>` with Daisey's own yellow/orange labels — sizing is
+all `sizeFromLabels` needs, so a synced card enters Daisey's normal schedule
+with no further wiring.
+
+**Sizing, since no Trello field carries any of this:**
+- SFX items are scored by keyword match on the text after the subject
+  prefix: Simple=1, Standard=2 (default), Complex=4
+  (`chain`/`shockwave`/`multi`/`sequence`/`cutscene` → 4;
+  `ui`/`menu`/`blip`/`beep`/`click`/`tick`/`ambient`/`footstep` → 1). A run
+  of items sharing a `"<Name> - <part>"` prefix (2+, e.g. the real 4-part
+  "Mine Shot" chain: fire/loop/ground-contact/explosion) collapses into one
+  Complex(4) item — it reads as one designed event, not four.
+- New items pack into a bin up to `WORKDAY_CAP` (16 points); a bin totalling
+  ≤ `SESSION_CAP` (6) becomes a Session card (yellow), otherwise a Work day
+  card (orange). A subject with an existing open (non-legacy, not
+  archived/done) auto-batch tops that card up before opening a new one;
+  multiple bins get a `(batch N)` suffix.
+- **Music is not point-packed** — one card per track, since a track doesn't
+  parallelize with other tracks the way small SFX cues do. Size comes from
+  the tracker card's own description: a parseable `"<n> min"` means
+  Production stage (≥1 min = Work day, <1 min = Session, straight from the
+  user's own rule); no parseable length means Demo stage (always Session —
+  "send for first approval"). This is why `desc` on a music tracker card now
+  matters: the three real Monster Punk tracks got `"1 min"` / `"1 min"` /
+  `"3 min"` added by hand (2026-08-18) specifically so this rule has
+  something to read — before that there was no signal at all, not even
+  informally, and this function would have had to guess.
+- These are keyword/heuristic-driven, not tagged, on purpose — the user
+  declined adding manual complexity labels to tracker cards. Expect
+  misclassifications; tune the keyword lists in the file, don't add a
+  tagging UI unless asked again.
+
+**Idempotency:** every card this function writes carries a hidden
+`<!-- daisey-audio-sync v1 subject="…" board="…" items="id:pts,…" -->`
+marker naming the tracker item IDs it covers, so a later run never
+re-batches a covered item. A card with no marker is invisible to this
+system — never read for coverage, never edited. This is exactly the same
+shape as `DF_MARK`/`isStats` in `daisey.html`: a hidden marker is how a
+script tells its own output apart from a human's.
+
+**Backfill (2026-08-18, one-time, done directly via Trello writes, not by
+this function):** the 8 hand-made batch cards that already existed on
+PROJECTS → MonsterPunk before this function existed got `legacy="true"`
+markers covering the 18 tracker items they already handle, so the first
+live run wouldn't recreate them. `legacy="true"` cards count toward
+coverage but are never a target for "top up the open batch" — this function
+only ever edits cards it created itself, never a hand-authored one. Two of
+those 8 cards ("Implement approved combat SFX", "FMOD combat mix pass")
+aren't tied to specific tracker items at all — they drain whatever's in
+`Approved` dynamically — and were left with no marker; nothing to cover.
+On first deploy, the only genuinely new work on Monster Punk was the 3
+music tracks (nothing had ever made PROJECTS cards for those) — confirmed
+by hand before going live, not assumed.
+
+**Known gaps, not yet handled:**
+- Same "every project board is one call, no `limit`/paging" ceiling as
+  `daisey.html`'s tracker reads — untested past a small board.
+- The PROJECTS list a project maps to is found by fuzzy match (strip
+  spaces/case) against existing PROJECTS lists, e.g. board `"Monster Punk -
+  Audio"` → list `"MonsterPunk"`. If nothing matches, it **creates** a new
+  list — so a brand-new audio project needs zero manual Trello setup beyond
+  naming the board right. Get the board name wrong (missing the `- Audio`
+  suffix) and it's silently invisible to this whole system.
+- Batch numbering (`(batch N)`) is approximate once a subject has a mix of
+  legacy and auto-generated cards — cosmetic only, doesn't affect coverage
+  or sizing correctness.
+- Runs only ever add/update; nothing here archives a batch card when its
+  tracker items finish. That still happens by hand, same as it does for
+  every other PROJECTS card today.

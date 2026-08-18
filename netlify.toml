@@ -1,0 +1,7 @@
+[functions]
+  directory = "netlify/functions"
+
+# Audio project -> PROJECTS session/work-day card sync. See netlify/functions/audio-sync.js
+# for what it does and why. Every 30 min.
+[functions."audio-sync"]
+  schedule = "*/30 * * * *"
