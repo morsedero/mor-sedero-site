@@ -12,10 +12,6 @@
 </head>
 <body>
 
-<!-- letterbox bars -->
-<div class="letterbox letterbox-top"></div>
-<div class="letterbox letterbox-bottom"></div>
-
 <!-- scanline / grain overlay -->
 <div class="crt-overlay"></div>
 
@@ -33,8 +29,7 @@
   <!-- HOME: logo + about, set apart with its own background -->
   <div class="home-zone">
   <div class="home-glow" aria-hidden="true">
-    <img class="home-glow-img home-glow-img--a" src="assets/covers/monster-punk-new.jpg" alt="">
-    <img class="home-glow-img home-glow-img--b" src="assets/covers/araratfm.jpg" alt="">
+    <img class="home-bg-photo" src="assets/covers/home-bg-studio.jpg" alt="">
   </div>
   <!-- LOGO / NAME MARK -->
   <header class="site-logo-bar" id="top">
@@ -42,6 +37,29 @@
       <a href="#top" class="site-logo" id="siteLogo">
         <span class="site-logo-mark" aria-hidden="true">
           <img src="assets/logos/mor-logo-mark.png" alt="" class="site-logo-mark-img">
+          <svg class="site-logo-crack" viewBox="0 0 500 476" aria-hidden="true">
+            <g>
+              <path d="M250 30 L228 130 L272 182 L204 252 L258 296 L196 372 L238 446"/>
+              <path d="M110 170 L182 208 L146 258 L214 284"/>
+              <path d="M392 150 L318 196 L352 248 L296 292"/>
+              <path d="M228 130 L112 96"/>
+              <path d="M272 182 L404 250"/>
+              <path d="M258 296 L142 402"/>
+              <path d="M258 296 L378 402"/>
+            </g>
+          </svg>
+          <span class="site-logo-shards">
+            <span class="site-logo-shard"></span>
+            <span class="site-logo-shard"></span>
+            <span class="site-logo-shard"></span>
+            <span class="site-logo-shard"></span>
+            <span class="site-logo-shard"></span>
+            <span class="site-logo-shard"></span>
+            <span class="site-logo-shard"></span>
+            <span class="site-logo-shard"></span>
+          </span>
+          <span class="site-logo-pupil" data-cx="0.344" data-cy="0.592"></span>
+          <span class="site-logo-pupil" data-cx="0.654" data-cy="0.592"></span>
         </span>
         <span class="site-logo-mor">MOR</span><span class="site-logo-sedero">SEDERO</span>
       </a>
@@ -71,35 +89,46 @@
   <!-- SHOWREEL : fixed size, click to play, no grow/collapse -->
   <div class="home-showreel">
     <div class="redesign-grid redesign-grid--duo">
-      <span class="showreel-hint showreel-hint--music" aria-hidden="true">Composer Showreel</span>
-      <div class="redesign-card redesign-card--music" data-video="https://www.youtube.com/embed/4PsquJhbejo" data-title="Composer Showreel">
+      <span class="showreel-hint showreel-hint--music" aria-hidden="true">
+        <img class="showreel-hint-reflection yt-thumb" data-yt-id="PI-104Pfz1c" src="https://img.youtube.com/vi/PI-104Pfz1c/maxresdefault.jpg" alt="">
+        <span class="showreel-hint-label">Sound Design Showreel</span>
+      </span>
+      <div class="redesign-card redesign-card--music" data-video="https://www.youtube.com/embed/PI-104Pfz1c" data-title="Sound Design Showreel">
         <div class="redesign-thumb">
-          <img src="assets/covers/showreel-composer.jpg" alt="Composer Showreel" loading="lazy">
+          <img class="yt-thumb" data-yt-id="PI-104Pfz1c" src="https://img.youtube.com/vi/PI-104Pfz1c/maxresdefault.jpg" alt="Sound Design Showreel" loading="lazy">
           <div class="redesign-play"><span>▶</span></div>
         </div>
       </div>
-      <div class="redesign-card redesign-card--sound" data-video="https://www.youtube.com/embed/PI-104Pfz1c" data-title="Sound Design Showreel">
+      <div class="redesign-card redesign-card--sound" data-video="https://www.youtube.com/embed/4PsquJhbejo" data-title="Composer Showreel">
         <div class="redesign-thumb">
-          <img src="assets/covers/showreel-sound.jpg" alt="Sound Design Showreel" loading="lazy">
+          <img class="yt-thumb" data-yt-id="4PsquJhbejo" src="https://img.youtube.com/vi/4PsquJhbejo/maxresdefault.jpg" alt="Composer Showreel" loading="lazy">
           <div class="redesign-play"><span>▶</span></div>
         </div>
       </div>
-      <span class="showreel-hint showreel-hint--sound" aria-hidden="true">Sound Design Showreel</span>
+      <span class="showreel-hint showreel-hint--sound" aria-hidden="true">
+        <img class="showreel-hint-reflection yt-thumb" data-yt-id="4PsquJhbejo" src="https://img.youtube.com/vi/4PsquJhbejo/maxresdefault.jpg" alt="">
+        <span class="showreel-hint-label">Composer Showreel</span>
+      </span>
     </div>
   </div>
 
-  <!-- ABOUT : short bio + photo, "more" opens a third column instead of touching the photo -->
+  <!-- ABOUT : short bio + photo, "more" reveals a second text column -->
   <section class="section chapter" id="about">
     <div class="about-row" id="aboutRow">
-      <div class="about-short">
-        <p>Mor designs interactive game audio that connects gameplay, technology, and emotion — from adaptive music and impactful sound design to fully implemented audio systems inside Unreal and Unity.</p>
-        <button class="about-more-toggle" aria-expanded="false">Read more <span>▾</span></button>
-      </div>
       <div class="about-photo">
         <img src="assets/covers/mor-portrait.jpg" alt="Mor Sedero portrait">
       </div>
-      <div class="about-extra">
-        <p>In FMOD, that means systems that react in real time — not just a fixed track. Outside the studio, he mentors aspiring game audio designers, plays guitar in the band BOBBA, and jams on drums, keys, bass, banjo, bouzouki, and sitar whenever he gets the chance.</p>
+      <div class="about-text" id="aboutText">
+        <div class="about-col">
+          <p>Mor designs interactive game audio that connects gameplay, technology, and emotion - from impactful combat and creature sound design to adaptive music and responsive audio systems built in FMOD, Unreal, and Unity.</p>
+          <button class="about-more-toggle" aria-expanded="false">Read more <span>▾</span></button>
+        </div>
+        <div class="about-col about-col--extra">
+          <div class="about-col--extra-inner">
+            <p>With a background as a multi-instrumentalist, composer, and sound designer, he approaches audio from both creative and technical perspectives - creating experiences that support gameplay, strengthen storytelling, and react naturally to the player's actions.</p>
+            <p>Mor mentors aspiring game audio designers and performs with the band BOBBA. He continues exploring sound through guitar, drums, keys, bass, banjo, bouzouki, and sitar — always looking for new ways to shape musical ideas into unique experiences.</p>
+          </div>
+        </div>
       </div>
     </div>
   </section>
@@ -156,11 +185,11 @@
               </div>
             </div>
           </div>
-          <div class="case-study">
-            <div class="case-study-eyebrow"><span class="case-study-draft-tag">Draft — for review</span>Audio Approach</div>
-            <p class="case-study-body">Placeholder: this is where the real Monster Punk case study goes — the specific problem (e.g. combat needing to escalate readably in a chaotic arena), the live FMOD-to-Unreal Engine system built to solve it, and what changed once it was wired in. Replace this paragraph once written for real.</p>
-            <div class="video-embed video-embed--vertical">
-              <iframe data-src="https://www.youtube.com/embed/SEMCVn_G-_c" title="Monster Punk — behind the scenes" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
+          <div class="level-side-col">
+            <div class="level-media-group">
+              <div class="video-embed video-embed--vertical">
+                <iframe data-src="https://www.youtube.com/embed/SEMCVn_G-_c" title="Monster Punk — behind the scenes" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
+              </div>
             </div>
           </div>
           </div>
@@ -202,7 +231,7 @@
               </div>
             </div>
           </div>
-          <div class="level-music-col">
+          <div class="level-side-col">
             <div class="level-media-group">
               <div class="music-embed music-embed--album">
                 <iframe data-src="https://w.soundcloud.com/player/?url=https%3A%2F%2Fsoundcloud.com%2Fmguioaafei0t%2Fsets%2Ftrials-of-the-mask&color=%23ff5a3c&auto_play=false&show_user=true" title="Trials of the Mask soundtrack album on SoundCloud" loading="lazy" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"></iframe>
@@ -264,7 +293,7 @@
               </div>
             </div>
           </div>
-          <div class="level-music-col">
+          <div class="level-side-col">
             <div class="level-media-group">
               <div class="music-embed music-embed--album">
                 <iframe data-src="https://open.spotify.com/embed/album/5JDM1nEeIJeTlr79f6CNdb?utm_source=generator" title="I Come In Peace soundtrack on Spotify" loading="lazy" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"></iframe>
@@ -304,7 +333,7 @@
               </div>
             </div>
           </div>
-          <div class="level-music-col">
+          <div class="level-side-col">
             <div class="level-media-group">
               <div class="music-embed">
                 <iframe data-src="https://w.soundcloud.com/player/?url=https%3A%2F%2Fsoundcloud.com%2Fmguioaafei0t%2Fbottoms-tops&color=%23ff5a3c&auto_play=false&show_user=true" title="Bottoms & Tops on SoundCloud" loading="lazy" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"></iframe>
@@ -352,7 +381,7 @@
               </div>
             </div>
           </div>
-          <div class="level-music-col">
+          <div class="level-side-col">
             <div class="level-media-group">
               <div class="music-embed music-embed--album">
                 <iframe data-src="https://w.soundcloud.com/player/?url=https%3A%2F%2Fsoundcloud.com%2Fmguioaafei0t%2Fsets%2Fararatfm-mobile-game-soundtrack&color=%23ff5a3c&auto_play=false&show_user=true" title="AraratFM soundtrack album on SoundCloud" loading="lazy" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"></iframe>
@@ -438,7 +467,7 @@
               <iframe data-src="https://www.youtube.com/embed/SJNvq8qXyJk" title="Spackle Official Movie Trailer" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
             </div>
           </div>
-          <div class="level-music-col">
+          <div class="level-side-col">
             <div class="music-embed music-embed--album">
               <iframe data-src="https://w.soundcloud.com/player/?url=https%3A%2F%2Fsoundcloud.com%2Fmguioaafei0t%2Fsets%2Fspackle-a-short-film-soundtrack&color=%23ff5a3c&auto_play=false&show_user=true" title="Spackle soundtrack album on SoundCloud" loading="lazy" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"></iframe>
             </div>
@@ -525,7 +554,7 @@
               <iframe data-src="https://www.youtube.com/embed/9PnMoWeO_c8" title="Mother's Last Show trailer" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
             </div>
           </div>
-          <div class="level-music-col">
+          <div class="level-side-col">
             <div class="music-embed music-embed--album">
               <iframe data-src="https://w.soundcloud.com/player/?url=https%3A%2F%2Fsoundcloud.com%2Fmguioaafei0t%2Fsets%2Fmothers-last-show&color=%23ff5a3c&auto_play=false&show_user=true" title="Mother's Last Show soundtrack album on SoundCloud" loading="lazy" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"></iframe>
             </div>
@@ -565,7 +594,7 @@
               <iframe data-src="https://www.youtube.com/embed/25eQ9R5J_DY" title="Messiah trailer" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
             </div>
           </div>
-          <div class="level-music-col">
+          <div class="level-side-col">
             <div class="music-embed music-embed--album">
               <iframe data-src="https://w.soundcloud.com/player/?url=https%3A%2F%2Fsoundcloud.com%2Fmguioaafei0t%2Fsets%2Fmessiah-a-short-film-soundtrack&color=%23ff5a3c&auto_play=false&show_user=true" title="Messiah soundtrack album on SoundCloud" loading="lazy" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"></iframe>
             </div>
@@ -604,7 +633,7 @@
               <iframe data-src="https://www.youtube.com/embed/lLdir29J0Vs" title="NINA trailer" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
             </div>
           </div>
-          <div class="level-music-col">
+          <div class="level-side-col">
             <div class="music-embed music-embed--album">
               <iframe data-src="https://w.soundcloud.com/player/?url=https%3A%2F%2Fsoundcloud.com%2Fmguioaafei0t%2Fsets%2Fnina-a-short-film-soundtrack&color=%23ff5a3c&auto_play=false&show_user=true" title="NINA soundtrack album on SoundCloud" loading="lazy" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"></iframe>
             </div>
@@ -661,26 +690,76 @@
     </div>
 
     <div class="skill-tree">
-      <div class="skill-node">
-        <h3>Technical<br>Implementation</h3>
-        <p>Building the systems that make sound respond to what's actually happening on screen. In Unreal, that means Blueprints wiring gameplay actions directly to sound cues and MetaSounds for variation that never repeats the same way twice. In FMOD, it's deeper interactive and responsive work — full adaptive music and sound systems that react to the whole game, not just a single trigger, including a live FMOD-to-Unreal Engine combat audio system built for Monster Punk. Unity rounds it out for projects that live there instead.</p>
-        <div class="skill-tags">
-          <span class="skill-tag">Unity</span>
-          <span class="skill-tag">Unreal</span>
-          <span class="skill-tag">FMOD</span>
+      <article class="skill-card">
+        <video class="skill-bg-video" muted loop playsinline preload="none" data-src="assets/clips/interactive-audio.mp4"></video>
+        <button class="skill-toggle" aria-expanded="false">
+          <div class="skill-quick">
+            <h3 class="skill-quick-title">Interactive<br>Audio</h3>
+            <p class="skill-teaser">Designing interactive audio systems that respond to gameplay, not just triggers.</p>
+          </div>
+        </button>
+        <div class="skill-details">
+          <div class="skill-details-inner">
+            <p>Audio is built into the game from the start using Unreal Engine, Unity, and FMOD. From adaptive music and gameplay states to parameter-driven events, spatial audio, and scalable audio pipelines, every system is designed to be responsive, maintainable, and easy to expand as development evolves.</p>
+          </div>
         </div>
-      </div>
-      <div class="skill-node">
-        <h3>Sound<br>Design</h3>
-        <p>From weapons and sci-fi tech to full ambiences, Mor designs sound that feels tactile and specific. Foley is recorded both in-studio and out in the field, then shaped alongside synthesis to build textures that don't exist in nature. He also voices creatures and unique characters — in English or full gibberish — layering and processing performances until they land somewhere between human and imagined. Every sound leaves the desk polished and ready to drop in.</p>
-      </div>
-      <div class="skill-node">
-        <h3>Music<br>Composition</h3>
-        <p>Original scores for games and film, written from the story outward rather than the other way around. Mor draws on a decade-plus as a multi-instrumentalist and recording engineer to move between orchestral, hybrid, and electronic palettes — real instruments and performance woven in wherever it serves the moment. The aim is always music that disappears into the experience, not music that announces itself.</p>
-      </div>
-      <div class="skill-node">
-        <h3>Post<br>Production</h3>
-        <p>Final polish across music and dialogue so the mix holds up everywhere it's heard — from a phone speaker to a cinema system. That includes mixing trailers built to cut through the noise on social media and hold up in publisher presentations, and the same care applied to commercials: a mix that makes the spot land in the first three seconds, wherever it's playing.</p>
+      </article>
+      <article class="skill-card">
+        <video class="skill-bg-video" muted loop playsinline preload="none" data-src="assets/clips/sound-design.mp4"></video>
+        <button class="skill-toggle" aria-expanded="false">
+          <div class="skill-quick">
+            <h3 class="skill-quick-title">Sound<br>Design</h3>
+            <p class="skill-teaser">Designing gameplay-driven sound that strengthens feedback, reinforces mechanics, and gives every interaction a clear identity.</p>
+          </div>
+        </button>
+        <div class="skill-details">
+          <div class="skill-details-inner">
+            <p>From weapons and creatures to UI, environments, and cinematic moments, every sound is designed to support gameplay as much as atmosphere. Studio recordings, field recordings, synthesis, and layered processing are combined to create distinctive assets built for interactive experiences rather than linear playback.</p>
+          </div>
+        </div>
+      </article>
+      <article class="skill-card">
+        <video class="skill-bg-video" muted loop playsinline preload="none" data-src="assets/clips/music.mp4"></video>
+        <button class="skill-toggle" aria-expanded="false">
+          <div class="skill-quick">
+            <h3 class="skill-quick-title">Music</h3>
+            <p class="skill-teaser">Original music that supports gameplay, narrative, and player emotion.</p>
+          </div>
+        </button>
+        <div class="skill-details">
+          <div class="skill-details-inner">
+            <p>Every score is composed, produced, and mixed from the ground up, with music written to reinforce pacing, gameplay, and storytelling. Genres range from orchestral and hybrid scoring to electronic, rock, ambient, and world music, matched to whatever the project calls for. Whether cinematic or adaptive, the focus is always on creating music that feels connected to the player's experience rather than simply playing in the background.</p>
+          </div>
+        </div>
+      </article>
+      <article class="skill-card">
+        <video class="skill-bg-video" muted loop playsinline preload="none" data-src="assets/clips/mixing-polish.mp4"></video>
+        <button class="skill-toggle" aria-expanded="false">
+          <div class="skill-quick">
+            <h3 class="skill-quick-title">Mixing &amp;<br>Polish</h3>
+            <p class="skill-teaser">Delivering polished mixes that translate across platforms, formats, and playback systems.</p>
+          </div>
+        </button>
+        <div class="skill-details">
+          <div class="skill-details-inner">
+            <p>Music, dialogue, and sound effects are balanced for clarity, impact, and consistency across games, trailers, film, and promotional content. Every mix is prepared to communicate effectively whether heard through headphones, mobile speakers, or full-range monitoring systems.</p>
+          </div>
+        </div>
+      </article>
+
+      <!-- Desktop only: shared panel connected to whichever card is
+           selected. A grid child of .skill-tree itself (not a sibling after
+           it) so JS can relocate it right after the selected card's own row
+           — otherwise, once the grid wraps to 2+ rows, it would always open
+           at the very bottom of the whole grid regardless of which card was
+           clicked. The selected card's own .skill-details is relocated in
+           here too (not duplicated) — mobile keeps showing it inline inside
+           the card itself and never touches this panel at all. -->
+      <div class="skill-panel" id="skillPanel">
+        <span class="skill-panel-bridge" aria-hidden="true"></span>
+        <div class="skill-panel-inner">
+          <video class="skill-panel-bg-video" muted loop playsinline preload="none"></video>
+        </div>
       </div>
     </div>
   </section>
@@ -735,7 +814,7 @@
     <div class="contact-layout contact-layout--no-photo">
       <div class="contact-main">
         <span class="contact-eyebrow">Contact</span>
-        <h2 class="contact-cta">Let's score<br>something.</h2>
+        <h2 class="contact-cta">Let's build the<br>sound of your game.</h2>
         <div class="contact-chips">
           <a href="mailto:morsedero@gmail.com" class="chip">morsedero@gmail.com</a>
           <a href="tel:+972524448932" class="chip">+972 52 444 8932</a>
@@ -760,7 +839,7 @@
   </section>
 
   <footer class="site-footer">
-    <p>© 2026 Mor Sedero. Built to be tweaked.</p>
+    <p>© 2026 Mor Sedero. Built for play.</p>
   </footer>
 
 </main>
