@@ -23,6 +23,25 @@ Note that the *documentation* in this repo is deliberately long-form — that is
 a different thing from a reply. Don't read `tools/CLAUDE.md`'s register as
 permission to write like that in chat.
 
+## Context cost is a real cost
+
+The "keep replies short" rule above is about token cost, but replies are the
+small half of it. Tool output dominates: one `cat` of a large file costs more
+than every reply in a session, and nothing leaves the context window until
+compaction. So the same reasoning that shortens replies applies harder to how
+files get read.
+
+- `grep -n` for the symbol, then read a line window around it. Don't `cat`
+  whole files to find one function.
+- Don't re-read a file to verify an edit that already succeeded.
+- Filter long command output (`| tail -30`, or grep for the lines that
+  matter) rather than pasting it whole.
+- `/clear` between unrelated tasks — site work and `tools/` work share
+  nothing, and carrying one into the other doubles the bill.
+
+`tools/CLAUDE.md` has the detailed version of this, including the exact test
+filter, since `tools/` is where the large files live.
+
 ## The site
 
 `index.html` (single page), `css/styles.css`, `js/main.js`, `assets/`.
