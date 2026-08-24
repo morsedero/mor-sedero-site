@@ -29,7 +29,7 @@ exports.handler = async (event) => {
     };
   }
 
-  const key = "ping";
+  const key = (event.queryStringParameters && event.queryStringParameters.key) || "ping";
   const store = openStore("smoketest");
 
   if (event.queryStringParameters && event.queryStringParameters.write) {
