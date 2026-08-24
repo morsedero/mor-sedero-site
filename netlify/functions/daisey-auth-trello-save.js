@@ -1,23 +1,21 @@
 // Receives the Trello token relayed by daisey-auth-trello-callback.js's
 // client-side JS (the token itself never reaches a server via URL/redirect
-// — Trello only ever puts it in a fragment). Real session-linking (storing
-// this against the visitor's actual userId) comes once the session layer
-// exists. For now, same as the Google callback: prove the write really
-// happens, using the same openStore() manual-token pattern the blobs
-// smoketest confirmed works on this project.
-const { getStore } = require("@netlify/blobs");
+// — Trello only ever puts it in a fragment). Requires an existing session:
+// Trello links INTO an account, it never starts one — see mcp-shim.js's
+// "Google first, Trello second" ordering.
+const { getUserId } = require("./_daisey-lib/session");
+const { saveTrelloToken } = require("./_daisey-lib/tokens");
 
-const SITE_ID = process.env.SITE_ID || process.env.NETLIFY_SITE_ID;
-const TOKEN = process.env.NETLIFY_BLOBS_TOKEN;
-
-function openStore(name) {
-  if (process.env.NETLIFY_BLOBS_CONTEXT) return getStore(name);
-  return getStore(name, { siteID: SITE_ID, token: TOKEN });
-}
+const KEY = process.env.TRELLO_STANDALONE_API_KEY;
 
 exports.handler = async (event) => {
   if (event.httpMethod !== "POST") {
     return { statusCode: 405, body: "POST only" };
+  }
+
+  const userId = await getUserId(event);
+  if (!userId) {
+    return { statusCode: 401, body: "Sign in with Google first." };
   }
 
   let body;
@@ -26,22 +24,16 @@ exports.handler = async (event) => {
   } catch (e) {
     return { statusCode: 400, body: "Bad JSON" };
   }
+  if (!body.token) return { statusCode: 400, body: "Missing token" };
 
-  if (!body.token) {
-    return { statusCode: 400, body: "Missing token" };
-  }
-
-  // Smoke test only — verifies the token actually reached the server and
-  // is a real, usable Trello token, by calling Trello with it right away.
-  const KEY = process.env.TRELLO_STANDALONE_API_KEY;
+  // Verify the token is real and usable before storing it — a bad or
+  // revoked token stored silently would surface later as a confusing
+  // tool_error instead of a clear failure right at connect time.
   const check = await fetch(`https://api.trello.com/1/members/me?key=${KEY}&token=${body.token}&fields=username`);
   if (!check.ok) {
     return { statusCode: 400, body: `Trello rejected the token: ${await check.text()}` };
   }
-  const member = await check.json();
 
-  const store = openStore("smoketest");
-  await store.setJSON("trello-token-test", { savedAt: new Date().toISOString(), trelloUsername: member.username });
-
-  return { statusCode: 200, body: `saved, trello user: ${member.username}` };
+  await saveTrelloToken(userId, body.token);
+  return { statusCode: 200, body: "ok" };
 };
