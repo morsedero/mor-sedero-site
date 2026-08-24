@@ -5,6 +5,17 @@
 const { getStore } = require("@netlify/blobs");
 
 exports.handler = async (event) => {
+  if (event.queryStringParameters && event.queryStringParameters.env) {
+    return {
+      statusCode: 200,
+      body: JSON.stringify({
+        NETLIFY_SITE_ID: process.env.NETLIFY_SITE_ID || null,
+        SITE_ID: process.env.SITE_ID || null,
+        NETLIFY_BLOBS_CONTEXT: process.env.NETLIFY_BLOBS_CONTEXT ? "present (not shown)" : null,
+      }),
+    };
+  }
+
   const store = getStore("smoketest");
   const key = "ping";
 
