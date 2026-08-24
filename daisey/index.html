@@ -1,7 +1,7 @@
 <!-- GENERATED FILE — do not hand-edit.
      Produced by tools/build-standalone.js from tools/daisey.html.
      Edit tools/daisey.html, then re-run: node tools/build-standalone.js
-     Built 2026-08-24T12:43:40.538Z -->
+     Built 2026-08-24T13:34:45.923Z -->
 <title>Daisey</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <style>
@@ -7683,28 +7683,43 @@ function standaloneMcp(){
      calendar) is the honest equivalent of watchTool's live updates — those
      numbers already encode "how fresh does this actually need to be,"
      nothing here reinvents that. */
+  /* invalidate(server, tool) has no input of its own — the real MCP
+     capability replays whatever the live watchTool subscription already
+     owns. This map is what makes that true here too: every active watch
+     registers its own (server,tool,input,fire) under a shared key, so
+     invalidate can re-fire the SAME request a bare empty-input call
+     never could (list_events needs calendarId/startTime/endTime; an
+     empty {} 404s at the proxy and gets swallowed, silently leaving
+     stale/empty data on screen — this is what that bug looked like). */
+  const live = new Map(); // key -> { input, fire }
+
   function watchTool(server, tool, input, handler, opts){
-    let live = true;
+    const key = server + "|" + tool;
+    let alive = true;
     const interval = (opts && opts.refetchInterval) || 180000;
     const fire = () => {
-      if(!live) return;
+      if(!alive) return;
       callTool(server, tool, input)
-        .then(result => { if(live) handler({ type:"data", result }); })
-        .catch(error => { if(live) handler({ type:"error", error }); });
+        .then(result => { if(alive) handler({ type:"data", result }); })
+        .catch(error => { if(alive) handler({ type:"error", error }); });
     };
+    live.set(key, { input, fire });
     fire();
     const id = setInterval(fire, interval);
-    return () => { live = false; clearInterval(id); };
+    return () => {
+      alive = false; clearInterval(id);
+      if(live.get(key) && live.get(key).fire === fire) live.delete(key);
+    };
   }
 
-  /* invalidate() in the real MCP capability forces a live watch to refetch
-     immediately. There's no shared cache to bust here — each watchTool call
-     above already owns its own polling loop — so the honest equivalent is
-     "do one extra fetch right now," which every call site that calls
-     invalidate() is really asking for (they want fresh data NOW, not
-     eventually). Fire-and-forget, matching every real call site's own
-     `.catch(()=>{})` on this call. */
+  /* Re-fires the matching watchTool's own last request right now, same as
+     the real capability's cache-bust. If no watch is registered for this
+     (server,tool) — shouldn't happen given every call site pairs the two —
+     falls back to the old empty-input call rather than doing nothing. */
   async function invalidate(server, tool){
+    const key = server + "|" + tool;
+    const entry = live.get(key);
+    if(entry){ entry.fire(); return; }
     await callTool(server, tool, {}).catch(()=>{});
   }
 
