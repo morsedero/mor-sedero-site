@@ -91,7 +91,7 @@ exports.handler = async (event) => {
 
   return {
     statusCode: 302,
-    headers: { Location: needsTrello ? "/?needsTrello=1" : "/" },
+    headers: { Location: needsTrello ? "/daisey/?needsTrello=1" : "/daisey/" },
     // Two Set-Cookie headers (the new session, clearing the old state
     // cookie) — multiValueHeaders is the Netlify/Lambda-compatible way to
     // send more than one value for the same header name.

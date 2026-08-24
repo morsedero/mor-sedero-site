@@ -25,7 +25,7 @@ exports.handler = async () => {
     });
     if(res.ok){
       msg.textContent = "Connected. You can close this tab.";
-      setTimeout(()=>{ location.href = "/"; }, 800);
+      setTimeout(()=>{ location.href = "/daisey/"; }, 800);
     }else{
       msg.textContent = "Couldn't save the connection. " + (await res.text());
     }
