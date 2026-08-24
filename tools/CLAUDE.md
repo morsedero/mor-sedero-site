@@ -3,6 +3,52 @@
 Guidance for `tools/` — Daisey and the audio-sync function. The site itself
 (`index.html`, `css/`, `js/`) is covered by the root `CLAUDE.md`.
 
+## Reading these files without burning the context window
+
+`tools/daisey.html` is ~7.6k lines and this file is ~1.7k. A session that
+`cat`s either one has spent more context on a single command than on every
+reply it will write all session. Context is never freed until compaction, so
+one careless read is paid for until the session ends.
+
+Rules, in the order they save the most:
+
+- **Never `cat tools/daisey.html`.** Locate first, then read a window:
+  `grep -n "renderHighlights" tools/daisey.html` to get the line, then
+  `Read` with `offset`/`limit` (or `sed -n '820,880p'`) for the ~40 lines
+  around it. The same goes for this file — `grep -n "^## "` for the section
+  index, then read only that section's range.
+- **Never re-read a file you just edited to confirm the edit.** `Edit` fails
+  loudly if the match missed; a successful edit needs no verification read.
+  Re-reading a 7.6k-line file to check a three-line change is the single
+  most expensive habit available.
+- **Filter test output.** The suite has no single result convention — this
+  was checked file by file, don't assume:
+
+  - 19 files print `FAIL` (`back`, `cfg`, `day`, `dup`, `hour`, `pages`,
+    `proj`, `push`, `rail`, `retry`, `settings`, `start`, `swap`, `tmr`,
+    `tracker`, `brk`, `fast`, `rules`, `standalone`).
+  - 10 print `[label] ok` / `[label] ERR` instead (`cap`, `chrome`, `dead`,
+    `fri`, `late`, `offhours`, `sat`, `states`, `tick`, `work`).
+  - `harness.js` prints `console errors:` / `window errors:` blocks.
+  - `det`, `edit`, `hub`, `mini` print raw state with no pass/fail marker
+    at all and have to be read in full.
+
+  So `grep FAIL` alone silently passes ten files that report failures as
+  `ERR`. Use the filter that covers every convention:
+
+      node tools/test/<file>.js 2>&1 | grep -aE "ERR|FAIL|Error|error" | tail -20
+
+  Empty output, or only `errors: none`, means clean. Read the full output
+  only for the four unmarked files, or once the filtered view shows a hit.
+- **Prefer `Read` with `offset`/`limit` over shell `cat`.** When a session is
+  in Bash-only/auto mode that tool is unavailable and every read is a raw
+  dump. For work in `tools/`, turn auto mode off — the line-windowing is
+  worth more here than the shell convenience.
+- **`/clear` between unrelated tasks.** Finishing a Daisey change and moving
+  to the site means the whole Daisey read history is dead weight. Clearing
+  is the largest single reduction available and costs nothing but a reload
+  of these instructions.
+
 ## Daisey
 
 A daily focus widget over Google Calendar + Trello. One file:
@@ -73,6 +119,21 @@ colour at all, since it never appears in the day list.
 - Run `assert.js` and `cap.js` after any change to the scheduling
   engine; they cover the rules the widget promises. Run `tracker.js`
   after any change to `candidates()`, `BOARDS`, or the Assets view.
+  Run `setup.js` after any change to `SETUP`/`applySetup`/`setupWizard`, the
+  boot sequence, `injectBoardCss`/`applyColors`, or anything reading
+  `BOARDS`/`CAL_ID` — it is the only suite that exercises a viewer who is
+  **not** this app's author.
+  Run `offhours.js` after any change to `offHoursGap`, `timeline()`'s row
+  assembly, `breakGaps`, or `CFG.dayEnd` handling.
+  Run `rail.js` after any change to the Day-view time rail (`.rail-stop` /
+  `timelineItem`'s rail block), to `.item.stack`'s selection or touch-action
+  CSS, or to `wireStackDrag` — it covers both the start-times-only rail and
+  the press-and-hold-drags-instead-of-selecting behaviour.
+  Run `proj.js` after any change to the Projects view, the mirrored
+  audio scoring, or `S.stats` persistence — **and after any edit to
+  `netlify/functions/audio-sync.js`'s `classify`/`splitSubject`**, since
+  that suite is the only thing holding the two copies of that scoring
+  together (see the Projects manager bullet).
 - **Several sessions edit this file at once.** The publish ships the
   *whole* file, so check `git diff tools/daisey.html` before publishing
   and expect to find other sessions' half-finished work in it — say so
@@ -81,6 +142,74 @@ colour at all, since it never appears in the day list.
 
 ### Rules that are deliberate, not accidental
 
+- **Daisey is multi-user as of 2026-08-24 — nothing identifies its author any
+  more** (`SETUP`, `applySetup`, `setupWizard`, `loadSetup`/`discoverSetup`/
+  `legacySetup`). It used to hardcode one calendar address, one Trello
+  workspace id, four board ARIs, and `"sidurim"` as the state card's home.
+  Handing the artifact to anyone else gave them a permanent skeleton — or,
+  if a connector resolved, **the author's own calendar inside their app**.
+  Auth needed no work at all: the `mcp` capability already runs every
+  connector call with the **viewer's** credentials ("a published page runs
+  for many viewers"). Only *identity* was hardcoded.
+  Now a first-run wizard lists the viewer's real boards (`trelloReadBoard
+  list`), lets them tick which to schedule and flag trackers, pick a calendar
+  (`list_calendars`), choose which board hosts the state card (creating the
+  `📊 Daisey (widget state — do not edit)` list with `trelloWriteList`), and
+  set a day off.
+  **`BOARDS`/`TRACKERS`/`SCHED_BOARDS`/`TRACKER_KEYS`/`CAL_ID` are now `let`,
+  reassigned together by `applySetup`.** That is the whole reason this was a
+  small change: all ~30 consumers read them at call time, so keeping the
+  names meant not rewriting 30 sites.
+  **Board keys are `b0`,`b1`,… minted once and never recomputed.** Not slugs:
+  `סידורים` is not a usable CSS identifier, and a Trello *rename* must not
+  change a key or `CFG.colors`, `CFG.boardPriority` and `S.stats.projects`
+  orphan simultaneously. An edit matches existing boards by ARI to keep their
+  key; indices are never reused.
+  **Persistence is state-card-first, localStorage-cache-second, and that
+  order is load-bearing.** Every `localStorage` call here is already
+  try/catch'd because it throws `SecurityError` on the harness origin and has
+  never been verified in the real artifact — and it does throw in the
+  harness, confirmed. A cache-first design would re-run the wizard on every
+  load if storage is blocked. So a cold start scans the viewer's boards for a
+  state card carrying `setup` (`discoverSetup`), which always works.
+  **The author's own install is preserved by `LEGACY_SETUP`, gated on
+  capability rather than a flag**: boot asks Trello for his סידורים board and
+  adopts the legacy config only if the viewer's credentials can actually see
+  it. Anyone else gets nothing there and goes to the wizard, so his boards
+  can never leak. The legacy keys are kept **verbatim**
+  (`projects`/`sidurim`/`sedco`/`mpaudio`) — renumbering them to `b0..b3`
+  would orphan his saved colours, priority and `projects.mpaudio` at once.
+  **The Projects tab hides when there's no `batchBoardKey`.** That view is
+  entirely downstream of the audio-sync Netlify function, which nobody but
+  the author runs, so for anyone else it could only ever be an empty tab.
+  Configuring it was considered and rejected as worse than hiding it.
+  `DEFAULTS.boardPriority` and `DEFAULTS.openEvents` are now `[]` — both were
+  the author's. **`normalizeCfg` already handled a changed board set** (drops
+  unknown keys, appends new ones), which is why an empty priority degrades to
+  setup order instead of breaking. Note `pages.js` depended on the `openEvents:
+  ["חמל"]` default to make that meeting permeable; the fixture now seeds it in
+  the state card's `settings`, which is where a real user's would live.
+  **A connector the viewer hasn't added is the likeliest first-run state**,
+  and the wizard handles it as a real state, not an error: the step shows
+  `errCopy`'s per-code text ("Add Trello in claude.ai → Settings →
+  Connectors"), and the primary button becomes **"Try again"** rather than
+  "Next" — pressing Next there would have answered "Pick at least one board",
+  blaming the viewer for a missing connector. `blocked` is the flag; `show()`
+  clears it, and the click handler re-runs the step instead of validating.
+  `setup.js` drives the whole recovery: disconnected → correct copy → retry
+  → 4 boards load → button returns to "Next".
+  See `setup.js` for the eight cases that separate "works for anyone" from
+  "works because I'm the author".
+
+  **A sendable copy lives in `share/`** (`daisey.html` + `README.txt`), built
+  by stripping the `LEGACY_*` block — it holds the author's own calendar
+  address and board ids, which are inert for anyone else (the gate needs his
+  board to be *visible*) but shouldn't travel in a file he hands out. With it
+  gone `legacySetup()` is a no-op and boot goes straight to the wizard.
+  The file is NOT double-clickable: it needs `window.claude`, so opening it
+  from disk shows "Live data isn't available here". The README tells the
+  recipient to have Claude publish it as an artifact **with all 12 tools
+  declared** — a short manifest means parts of the app fail silently.
 - **Caps, day window, block lengths, day off, board colours and
   the chime are user settings** (gear icon), stored in the Trello state
   card under `settings` and read into `CFG` at boot. `DEFAULTS` holds
@@ -165,6 +294,84 @@ colour at all, since it never appears in the day list.
   green card is invisible inside Daisey (not scheduled, not in the swap
   picker, not tracked for rollovers), so it was useless as a backlog
   shelf. The board boundary is the mechanism.
+- **The Projects view turns a deadline into a pressure read** (2026-08-23,
+  `projectsView` / `projectSnapshot` / `deadlineDialog`, third button on the
+  view switcher). The gap it closes: `audio-sync.js` sizes batch cards by a
+  fixed heuristic, so 40 sounds due in three weeks and 40 due in three months
+  produced identical cards — nothing anywhere knew the project's deadline. The
+  deadline now lives in `S.stats.projects`, keyed by **tracker board key**
+  (`mpaudio`), not project name: the key is a literal in `BOARDS`, while the
+  PROJECTS list name is a fuzzy-matched derivative, so a Trello list rename
+  would orphan a name-keyed entry. `normProjects` validates it on the way in
+  because `parseStats`' `Object.assign` is shallow and would pass a corrupt
+  value straight through.
+  **Read-only by design.** The only thing it ever writes is the deadline the
+  user typed. Writing computed `due` dates onto batch cards was considered and
+  rejected: it mutates cards the user owns, and a synthetic date slipping turns
+  a batch into tier-0 "overdue" for a date nobody set. Raising `CFG.workdayMax`
+  was rejected for the same class of reason — density is expressed as advice
+  ("at 24 pts/card it's 6 cards instead of 9"), not as a silent config change.
+  **A day is 16 points — one work day — not the additive
+  `workdayMax*16 + sessionMax*6` that `CFG` literally permits.** 8h plus two 3h
+  sessions exceeds an 11h window, so the additive number describes a day nobody
+  has; `planFor`'s own "a long session takes the whole day" agrees. Chosen
+  deliberately on user request, and it is the single most load-bearing constant
+  here — it scales every pressure number by ~1.75x.
+  Runway is counted in **schedulable** days (`countWorkDays`, skips
+  `CFG.dayOff`), starting tomorrow: a calendar count overstates a three-week
+  runway by ~3 days, and a deadline read that flatters itself is worse than
+  none. A passed deadline gives 0 supply and `Infinity` pressure, which lands
+  in the "Over" band without a NaN leaking into the bar width.
+  **Two ARI-vs-raw-id traps, both silent** (`bareId`): everything Daisey holds
+  is ARI-wrapped, everything `audio-sync.js` writes into a marker is a raw
+  Trello id, because it uses REST directly. Both the `board=` check and the
+  covered-items set have to normalise *both ends*. The second one was a real
+  bug caught only because `proj.js`'s fixture was written with the raw ids
+  audio-sync actually emits — with an ARI in the fixture it passed against code
+  that could never have matched live data, and every already-batched asset
+  would have been silently counted twice, inflating pressure worst on exactly
+  the projects furthest along. `covered.add(bareId(...))` without the matching
+  `covered.has(bareId(...))` was the shape of the mistake.
+  **The scoring is duplicated from `netlify/functions/audio-sync.js`, on
+  purpose and unavoidably** (`audioClassify`, `splitSubject`, `audioScoreItems`,
+  `AUDIO_MARK_RE`, the caps). That file is a CommonJS Netlify function, this one
+  is a single-file artifact with no build step — there is no import path between
+  them. **Tune a keyword list in one and you must tune the other in the same
+  commit.** `proj.js` test 1 is the actual guard: it lifts the real
+  `classify`/`splitSubject` source out of the `.js` file with a brace-walker and
+  runs it beside the page's copy over a 17-word table. The chain-merge is not
+  optional — without it a 4-part `"<Name> - <part>"` chain scores 8 instead of
+  4, and Monster Punk has a real one (Mine Shot).
+  **Music point costs (16 for a ≥1min production track, 6 otherwise) are
+  inferred, not read from audio-sync.** That function's own `pts` (3/8) are
+  commented "record-keeping only; label is what schedules it", so they can't be
+  used as capacity. First constant to tune if the read looks wrong against the
+  real tracks.
+  One scheduling hook, and only one: `projectPressureOf` in `tierOf`. A batch
+  card carries no Trello `due` — the deadline is on the *project* — so the due
+  tier never fired for one and a whole audio project ranked below any single
+  dated errand until it was already late. An over-pressure project's marked
+  cards get **tier 2**, not 0 or 1: a card that genuinely blew its own date
+  still outranks one whose project is merely over-committed. `snapshotFor`
+  memoises per painted frame because `tierOf` is called O(n log n) times inside
+  `rankCards`' sort and `projectSnapshot` walks `allCards()`.
+- **Moving an asset along the pipeline is reachable again, via a segment row
+   in the Projects view** (2026-08-24, `segmentAssetsDialog`). Between
+  2026-08-17 and this change the feature was *dark*: `pipelineView`,
+  `assetMoveDialog` and `moveAssetTo` all existed and were covered by
+  `tracker.js`, but the only thing that ever set `S.view="pipeline"` was the
+  test itself — the user had no way in, and the tests kept passing the whole
+  time, which is exactly why nobody noticed. The user asked "how do we move a
+  project's card from Waiting to another list?" and the honest answer was
+  "you can't". Tapping a segment (`.proj-seg`, now a `<button>`) opens that
+  subject's assets with each one's current stage, tapping one opens the
+  existing `assetMoveDialog`, and `moveAssetTo`'s `render()` refreshes the
+  Projects view underneath. `projectSnapshot`'s `subjects[]` carries
+  `cards:[…]` for this; `audioScoreItems` ignores the extra field.
+  Chosen over restoring a fourth switcher tab: the segment you're already
+  looking at is the context you'd be picking an asset from. `proj.js` test 8
+  drives the whole path through to the real `{action:"move", listId}` write,
+  specifically so this can't go dark a second time.
 - **The Assets tab is pulled from the switcher (2026-08-17), the code
   behind it is not.** The plan is to run the tracker board in the
   background instead of as a tapped-into view, so `pipelineView`,
@@ -177,6 +384,15 @@ colour at all, since it never appears in the day list.
   `mpaudio` entry changed — cards still stay out of scheduling the same
   way. The rest of this bullet describes the still-present, now-dormant
   view, kept for whatever the background rework reuses:
+  **`.dash.pipe-mode` and `paintHeader`'s `dateless` flag now cover two
+  views, not one** (2026-08-23) — Pipeline and Projects both hide prev/next
+  and `.dash-center`. The class name was deliberately *not* renamed to
+  something like `dateless-mode`: `rules.js` and `chrome.js` both select on
+  it, and the rename buys nothing behavioural. Read it as "dateless view".
+  The `"pipeline"` *identifier* was equally deliberately not reused for
+  Projects — `tracker.js` drives the dormant view by setting
+  `S.view="pipeline"` directly, so overloading the string would break that
+  suite in a confusing way.
 - **The Assets view is the tracker board's kanban** (`pipelineView`,
   `S.view === "pipeline"`). Columns come from `trelloReadList` — watched,
   not fetched once, so renaming or adding a stage in Trello shows up
@@ -342,13 +558,88 @@ colour at all, since it never appears in the day list.
   action buttons use; a genuinely new slot gets `createBlock`/
   `createBrickBlock`. This can create/edit/delete several events in one
   drag, so undo no longer fits `S.lastMove`'s plain `{id,start,end}` shape
-  — `S.lastRelay` (`{writes, undo}`, a single closure reverting every local
-  patch the drag queued) is a parallel, mutually-exclusive undo mechanism;
-  `undoMove()`/Ctrl+Z check `S.lastRelay` before falling back to the
-  original `S.lastMove` path. **Scoped to the Day-view list drag only** —
-  Week view's separate pixel-based grid drag (`wireItemDrag`) still moves
-  a whole event exactly as before; a brick dragged there moves as one
-  unit, unsplit, on purpose.
+  — `S.lastRelay` (`{writes, undo, settled}`) is a parallel, mutually-
+  exclusive undo mechanism; `undoMove()`/Ctrl+Z check `S.lastRelay` before
+  falling back to the original `S.lastMove` path. **Scoped to the Day-view
+  list drag only** — Week view's separate pixel-based grid drag
+  (`wireItemDrag`) still moves a whole event exactly as before; a brick
+  dragged there moves as one unit, unsplit, on purpose.
+  **Ctrl+Z on a relay push reverses the real Calendar writes, not just the
+  screen** — direct user request when the gap was surfaced mid-build
+  ("build full server-side undo"), since a plain local-only revert would
+  leave a newly-merged event live on the server the moment a later refetch
+  overwrote the illusion. Each write kind captures what undoing it for
+  real needs: `delete` keeps `prevCards`/`prevStart`/`prevEnd` so `undoRelay`
+  can recreate the event; `editDesc` keeps `prevCards` so it can restore
+  the original description; `move` already had `prevRaw`. `undoRelay`
+  fires the mirror writes in the same "destroy second" order commitRelay
+  uses (recreate deleted → restore edits → revert moves → delete newly-
+  created). A create write's own undo is lazy (`()=>dropLocalEvent(w.realId
+  || w.standId)`) because at undo-time the local stand-in may already have
+  been swapped for the real event — `S.lastRelay.settled` (the in-flight
+  `commitRelay` promise) is what `undoMove` awaits first, so a Ctrl+Z
+  pressed while writes are still landing waits for `w.realId` to exist
+  before trying to delete it, rather than silently no-op'ing on a write
+  that hasn't landed yet and orphaning it once it does.
+  **Two real bugs surfaced building this, both worth knowing if the area
+  changes again**: (1) `commitRelay`'s create branches used to never drop
+  the local stand-in once the real event landed — both stayed in
+  `S.events.payload.events` (the same array `list_events` itself reads),
+  so a merged brick briefly rendered twice; fixed by `dropLocalEvent`
+  right after `w.realId` is set, same pattern `applyPlan`'s own
+  `settled.forEach(s => dropLocalEvent(s.id))` already uses. (2)
+  `agenda()`'s brick-explode originally gave every sibling row the whole
+  event's `start`/`end` — fine when the UI showed one merged row, silently
+  wrong once it went back to one row per task (every sibling displayed
+  the identical, overlapping time). Fixed by slicing each card its own
+  `CFG.quickTotal`-wide window back-to-back from the event's own start,
+  in card order — the same per-task sizing `planFor`/`relayRows` already
+  use to build/repack a brick, now also used to *read* one back.
+  **The rail now mirrors Week view's hour gutter** (2026-08-24, third pass,
+  direct user request: "make it look like the week view"). It shows START
+  TIMES ONLY — no ranges, for any row type. The old rail printed
+  `fmtRange(ev.start, ev.end)` ("11:30–12:30", eleven characters) into a 44px
+  track, so every time wrapped to two centred lines; a vertical schedule
+  already encodes "until" as the next row's start, so the end time is
+  redundant on all but the last item. **The full range survives as the stop's
+  `title`.**
+  The styling is deliberately copied from `weekGrid`'s own gutter so the two
+  views read as one clock in two layouts: `.tl-gutter`'s 46px column width,
+  `.tl-hours .hl`'s 10px mono / weight-700 / `--ink-3` right-aligned label,
+  and `.grid-line`'s `2px dashed var(--line)` as a short rule reaching from
+  each label across to its card. The hub is the one row scaled up (13px,
+  weight 800). It cannot literally reuse weekGrid's markup — that gutter is
+  absolutely positioned inside one pixel-mapped container, while the Day list
+  is a flow of cards across several groups (`hub-group`, `nest`, `later`)
+  that `wireStackDrag` reorders by transform — so each row carries its own
+  label and rule, aligned by the shared `.time-row` grid template.
+  Two earlier passes at this were rejected before landing here, both worth
+  knowing: stating a brick's shared window once ("not a big enough
+  difference"), then a bespoke big-hour/small-minutes treatment with a
+  coloured dot on the card edge ("really think elegant designwise") — the
+  lesson being that the answer was to match something the app already had,
+  not to invent a third time language.
+  **That same bug survived one layer up in the rail until 2026-08-24**, and
+  it's worth knowing why it hid for so long: `agenda()` was fixed to carve
+  each sibling its own `item.s`/`item.e2`, but `timelineItem`'s `rail-stop`
+  still printed `fmtRange(item.ev.start, item.ev.end)` — the *event's* span,
+  which every sibling shares. So the model was right and the view was wrong:
+  four tasks in one brick each rendered the identical "11:30–12:30", wrapped
+  onto two lines apiece in the 44px rail, claiming every task ran the full
+  hour. The user asked for this on looks ("a more elegant way to show the
+  hours"), not as a bug report — the redundancy was the visible symptom of a
+  correctness error underneath. Now a brick sibling shows its own start
+  (`hhmm(atMin(item.ev.start, item.s))`) and the shared end is stated once,
+  by sibling 0, as a small `↳12:30` line — so the column reads
+  `11:30 ↳12:30 / 11:45 / 12:00 / 12:15`. `item.brickPos` (set in `agenda()`'s
+  explode branch) is what marks position; `.rail-stop.brick-sub` steps later
+  stops down in weight and a `::before` spine (anchored `top:-10px` to
+  `bottom:calc(100% - 11px)`, so it closes onto the dot rather than floating
+  above it) joins them into one run. Non-brick rows — sessions, meetings,
+  breaks — still show their full range, unchanged. If you touch the rail,
+  check a brick *and* a lone quick task: a brick with one card never reaches
+  the explode branch at all (`allEvents()` only sets `isBrick` for 2+ links),
+  so it takes the plain path and must keep its full range.
 - **A long session takes the whole day**: if one fits (ranked by the
   same urgency order as everything else — refining that ranking by
   due-date distance or project scale is future work, not done), no
@@ -559,6 +850,46 @@ colour at all, since it never appears in the day list.
   when something else now does.
 - Hebrew card text is rendered RTL per field via `dir="auto"`; the app
   chrome never flips.
+- **Touch dragging needs `preventDefault()` on a non-passive `touchmove`, and
+  nothing else works** (2026-08-24, user report: "when touching the screen for
+  a while to grab a brick to move, it just marks the text, doesn't catch
+  anything"). Day-list drag by touch was **completely broken**, on every touch
+  device, for as long as `touch-action:pan-y` had been on `.item.stack`.
+  Cause: pan-y tells the browser it owns vertical panning, so the instant the
+  finger moved down it claimed the gesture and fired **`pointercancel`**,
+  killing the drag one frame after `wireStackDrag` armed it.
+  `setPointerCapture` does **not** protect against this — the scroll claim
+  outranks it. Trace: `pointerdown | pointermove | pointercancel`.
+  **Two fixes were tried first and both failed**, both plausible enough to be
+  worth recording so nobody burns the time again:
+  1. `user-select:none` — blamed the native long-press text-selection callout.
+     A real nuisance and worth keeping (it's still there, with
+     `.item.stack .details` re-enabling `user-select:text` so a card's notes
+     stay copyable), but it was not this bug, and the user correctly reported
+     it still broken.
+  2. Flipping `wrap.style.touchAction = "none"` when the hold arms. The style
+     genuinely applies — computed `touch-action` reads `none` after the hold —
+     but **Chrome latches touch-action at `touchstart`** and ignores changes
+     for the rest of that gesture, so `pointercancel` still fired. Mid-gesture
+     touch-action is a dead end.
+  What works: a `{passive:false}` `touchmove` listener registered once per
+  card that `preventDefault()`s only while `armed` is true. It must be
+  registered up front, not lazily on arm — Chrome defaults touchmove to
+  passive on mobile, where `preventDefault()` is silently ignored, so the
+  decisive first move would already be through. `armed` clears in `cleanup()`
+  and via `disarm()` on the pre-arm cancel paths, or the list stops scrolling
+  by touch anywhere that card sits.
+  **`rail.js` tests this with CDP-dispatched touch events under `hasTouch`,
+  and that is the only reason it's covered** — the Playwright *mouse* path
+  passed happily against the fully-broken build. It asserts both halves:
+  hold-then-move drags with **zero** pointercancels, and a prompt swipe still
+  scrolls `.page` (html/body are `overflow:hidden`, so `window.scrollY` is
+  always 0 and useless to assert on) without dragging. Verified to fail when
+  the fix is removed.
+  Note the Day-list drag class is **`stack-dragging`** (plus
+  `time-row-dragging` on the row); `dragging` belongs to Week view's separate
+  `wireItemDrag`. Asserting the wrong one gives a false failure — it did once
+  while writing that test.
 - **Every card in the Day-view list, hub included, is drag-to-reorder**
   (`wireStackDrag`/`pushReorder`). Dropping one card among others **pushes**
   the whole run of cards between its old and new position over by one
@@ -632,6 +963,69 @@ colour at all, since it never appears in the day list.
   ("Starting in…") is long, the two still wrap onto separate lines same as
   before — there's a real width limit on how much a text-labelled 4-button
   row plus two chips can share, not a bug, just not enough phone.
+- **The "off the clock" card fills the gap between the end of the working day
+  and a real evening event** (2026-08-24, `offHoursGap`/`offHoursCard`, user
+  request). Before it, a day that ended at `CFG.dayEnd` with a calendar event
+  at 20:00 rendered as a silent void — a card, then nothing, then a card three
+  hours later, with no explanation of the space.
+  **It is not a Break and must never become one.** A Break is a real Google
+  Calendar event Daisey *creates*, inside the work window, as a pause between
+  two stretches of work. This is the opposite: it exists precisely because the
+  work window is over, so nothing will ever be scheduled into it.
+  `breakGaps()` cannot express it either — it clamps everything to `winE`, so
+  it is blind by construction to anything past the end of the day.
+  **Nothing is written to Google Calendar for it.** It's derived at render
+  time from what's already on screen. Free time isn't an appointment, and
+  making it an event would clutter the real calendar and let it be dragged,
+  completed and swapped like work. For the same reason the card is *not* an
+  `.item.stack`: no spine, no actions, never seen by `wireStackDrag`. It does
+  sit in a `.time-row` so its start still lines up in the shared rail.
+  It only appears for a genuine gap: work actually happened, the next thing is
+  a **foreign** event (a Daisey block would mean work is still scheduled),
+  all-day banners don't count (not a commitment at a time), and the space is
+  at least `OFFHOURS_MIN` (30m) — below that it's a turnaround, not an
+  evening. The anchor is `max(dayEnd, lastWorkEnd)` so a session overrunning
+  `dayEnd` can't produce a gap starting before its own card ends.
+  **`timeline()` takes `opts.all`** — the gap is computed against the whole
+  day, not the rows being rendered. `paintMain` passes `laterItems`, which
+  excludes the hub; on a day whose only work IS the hub (one 8h session) the
+  leftover list holds nothing but the evening event and the gap would never be
+  found. That was a real bug caught mid-build, not a hypothetical.
+  Design: the one card in the app with a gradient (indigo→violet `--dusk-*`),
+  asked for as "similar to Break but much more juicy". Everything else is a
+  neutral surface plus a coloured spine on purpose — those cards are work and
+  have to stay quiet and comparable. This one means "you're done", so it's
+  allowed to be the reward, and it competes with nothing.
+  `offhours.js` covers the seven cases that separate a real evening gap from
+  the things that merely look like one.
+- **The dash wraps to two rows below 520px, and the date gets its own line**
+  (2026-08-24, user report: "the 2nd line of the app is crowded, rebuild and
+  the arrows are colliding, and I can't see the current day I'm working on").
+  `.dash` holds three groups — `#viewSwitch`, `.dash-center` (arrows + date),
+  `.dash-right` (progress pill + rebuild) — and they simply do not fit in a
+  phone row, especially once the switcher grew a third tab (Projects).
+  `.dash-center` is `position:absolute` centred on the **viewport**, so it has
+  no idea how wide its siblings are: measured at 390px it overlapped the pill
+  by **197px**, and the date was ellipsized to nothing.
+  **Two earlier attempts made this worse in a way the tests approved of.**
+  Both kept all three groups on one row and let the date compress (first
+  `position:static`, then `flex:1 1 auto; min-width:0`). That stopped the row
+  *overflowing*, so `chrome.js`'s `bodyOverflow`/`dashOverflow` checks went
+  quiet — while the date silently clipped and the groups still overlapped.
+  Compressing the one element that says which day you're looking at is the
+  wrong thing to sacrifice; the row needed to be *taller*, not tighter.
+  Now `.dash` is `flex-wrap:wrap` under 520px with `order:1/2/3`, so switcher
+  and pill share line one and `.dash-center` takes a full-width line two
+  (`flex:1 0 100%`) where "Monday 17 Aug" renders whole and centred with the
+  arrows pinned to the edges. Under 340px the tab padding tightens as well.
+  Desktop (>520px) is unchanged: one row, absolutely-centred date.
+  **`chrome.js` gained the assertions that would have caught it**: real 2-D
+  box-overlap between all three pairs of dash groups (the old check only
+  compared switcher-vs-pill and never involved the date group at all), and a
+  `dateLabel.scrollWidth > clientWidth` clip check. It also runs at 320 and
+  430 now, not just 390/760. Both new assertions were verified to fail against
+  the previous layout — the clip check fires on exactly the "no overflow but
+  you can't read the date" state that passed twice before.
 - **The real clock lives in its own `.topbar`, above the header and
   anchored left** — the one thing on screen that's true regardless of
   which day `S.anchor` is looking at, so it doesn't share a row with
@@ -773,7 +1167,9 @@ colour at all, since it never appears in the day list.
   history, category weighting (`catWeight`, used in ranking), and every card's
   rollover/aging count — while keeping `settings` (hours, load, colours,
   chore schedule) exactly as they were, since those are configuration, not
-  memory. It does **not** touch Trello cards or Google Calendar events; a
+  memory. **`projects` (deadlines) is preserved for the same reason**
+  (2026-08-23): the user typed it, so it's their data, not something Daisey
+  inferred about them. It does **not** touch Trello cards or Google Calendar events; a
   card that rolled over 5 times shows up fresh (age 0) on the next build, but
   nothing about the card itself changes. Gated behind `confirmDialog` (Keep
   vs the destructive action), then reloads the page so every in-memory cache
@@ -1037,12 +1433,17 @@ The manifest currently declares, and this list must stay in sync with
 every `callTool`/`watchTool` site in the file:
 
 - **Trello** — `trelloReadCard`, `trelloReadList`, `trelloReadChecklist`,
-  `trelloWriteCard`, `trelloWriteChecklist`
-- **Google Calendar** — `list_events`, `create_event`, `update_event`,
-  `delete_event`
+  `trelloReadBoard`, `trelloWriteCard`, `trelloWriteChecklist`,
+  `trelloWriteList`
+- **Google Calendar** — `list_events`, `list_calendars`, `create_event`,
+  `update_event`, `delete_event`
+
+`trelloReadBoard`, `trelloWriteList` and `list_calendars` joined on
+2026-08-24 with the multi-user setup wizard (board discovery, creating the
+state list, calendar picking).
 
 Passing a non-empty `capabilities` object is a **full-set** declaration —
-anything stored but not restated is revoked — so always restate all nine.
+anything stored but not restated is revoked — so always restate all twelve.
 Enumerate them before publishing rather than trusting this list:
 
     grep -oE '(callTool|watchTool)\((TRELLO|GCAL), *"[a-zA-Z_]+"' tools/daisey.html | sort -u
@@ -1052,6 +1453,179 @@ Same bug, older: `statsListId()` also calls `trelloReadList`, so the
 have worked either. Fixed incidentally by the same republish.
 
 Observe a real request/response pair before writing new connector code.
+
+## Daisey standalone (no Claude, real OAuth)
+
+2026-08-24 — the user asked for Daisey to work "just like any other app," no
+Claude account, no artifact publish step. In progress; this section covers
+what exists so far (build-order steps 1–2 of the plan) and what doesn't yet.
+
+**The whole approach rests on one verified fact:** every one of
+`daisey.html`'s ~27 Trello/Google call sites goes through exactly `callTool()`
+or raw `S.mcp.watchTool()` — 12 distinct tool operations, two choke points.
+`boot()` reads `window.claude` in exactly one place. That means none of the
+27 call sites, and nothing in `setupWizard()`/`discoverSetup()`/
+`legacySetup()`, needs to change — the work is building a same-shaped
+replacement for what `S.mcp` *is* (real HTTP to a backend holding real OAuth
+tokens), not rewriting the app. **This is proven, not assumed** —
+`tools/test/standalone.js` boots the real generated file against a real HTTP
+mock and shows `SETUP` gets adopted from the same Trello-state-card mechanism
+unchanged, a real write reaches the mock as a real `trelloWriteCard` call,
+and `window.claude` is `"undefined"` throughout.
+
+**`tools/daisey-standalone.html` is GENERATED, never hand-edited.** Produced
+by `node tools/build-standalone.js` from `tools/daisey.html`. This is the
+load-bearing decision in the whole effort: a hand-maintained fork would
+silently drift from the real app exactly the way `tools/test/daisey.html`
+already has to be actively re-copied before every test run to avoid (see the
+"Several sessions edit this file at once" section above, and the `row-lead`
+incident it documents) — a build script makes that class of bug structurally
+impossible instead of something to remember. **Run it after every edit to
+`tools/daisey.html`** if the standalone build needs to reflect it; nothing
+runs it automatically yet (no Netlify build hook), so a stale
+`daisey-standalone.html` fails loudly only if someone notices, not by design.
+
+**How the splice works**: two literal marker comments —
+`BUILD-STANDALONE:MCP-RESOLVE` / `END BUILD-STANDALONE:MCP-RESOLVE` — wrap
+the `window.claude.use("mcp")` line inside `boot()`. The build script does a
+literal text replace between them (not parsing), inlines
+`tools/_standalone-src/boot-block.js` in their place, and inlines
+`tools/_standalone-src/mcp-shim.js`'s function definitions just before the
+closing `</script>` tag (in scope for `boot()` via hoisting — no module
+system, matching this file's single-`<script>`-block design). It then
+self-checks: the output must parse as JS, must contain the shim's function
+names, and must **not** contain `window.claude.use` anywhere. If the marker
+text is ever renamed or the `boot()` shape changes enough that the splice
+point moves, the script fails loudly with a specific fix instruction rather
+than producing a silently broken file.
+
+**`STANDALONE`** (`daisey.html`, a `let`, always `false` in the source and
+therefore in the published Claude artifact) is flipped to `true` by the build
+script via one more literal text replace, and read by `errCopy()` — a shared
+function, not forked, because every code's copy other than the two "go
+reconnect" ones already means the same thing in both deployments; only
+`needs_reauth`/`server_not_connected`'s copy ("...in claude.ai → Settings →
+Connectors") is meaningless outside Claude and gets standalone-specific text
++ a real link (`errFixUrl()`) instead. **Deliberately a module-level flag,
+not a second parameter threaded through `errCopy`'s ~30 call sites** — every
+one of those is a bare `errCopy(e)`, and adding an argument everywhere is
+exactly the many-places-to-keep-in-sync problem this whole plan exists to
+avoid elsewhere (see the audio-sync scoring-duplication bullet, same shape of
+risk).
+
+**The login gate lives inside `sharedState()`** (`daisey.html`, guarded by
+`STANDALONE` so it's dead code in the artifact) — the same "nothing truthful
+to show yet" fallback `S.noMcp` already used, not a second render path.
+`S.needsLogin` → `renderLoginGate()` (Sign in with Google); `S.needsTrello` →
+`renderTrelloLinkGate()` (Connect Trello, reached via a `?needsTrello=1`
+redirect from the Google callback, not app-side polling for a "half logged
+in" state the backend would otherwise have to expose). **Google first,
+Trello second is deliberate**: Google mints the session; Trello only ever
+links into an existing one.
+
+**The shim** (`tools/_standalone-src/mcp-shim.js`) implements `callTool`/
+`watchTool`/`invalidate` over `fetch("/.netlify/functions/daisey-proxy", ...)`
+— that backend function doesn't exist yet (next build-order step). `watchTool`
+polls at the *same* `refetchInterval`s the app already passes per call site
+(180000/600000/120000ms) rather than inventing new ones — those numbers
+already encode the real staleness tolerance. A bare 401 from the proxy (no
+session cookie) throws `{code:"no_session"}`, distinct from a stale
+Trello/Google token (`{code:"needs_reauth"}` in a 200 body) — the former means
+"we don't know who this is," the latter "we know, but the tokens are dead."
+
+**Test harness quirk worth knowing if this area gets touched again**:
+`tools/test/mock-proxy.js` (a plain Node `http` server, not Netlify-shaped —
+it only needs to prove the shim/splice, not the real proxy's auth logic yet)
+first shipped without a `charset=utf-8` on its `text/html` response. Chromium
+defaulted to Latin-1, mojibake'd every emoji/Hebrew character in the served
+page — including the `📊 Daisey Stats` marker `STATS_NAME_RE` matches on —
+and state-card discovery silently found nothing, with zero console errors.
+Cost a real debugging pass to trace back to a missing HTTP header rather than
+app logic. Both the HTML and JSON responses declare it now.
+
+**Google OAuth proven live (2026-08-24).** `daisey-auth-google-start.js` /
+`daisey-auth-google-callback.js` are deployed on master. A real
+sign-in-through-consent-through-callback round trip returned a real
+access token, refresh token, and the right scope. Token storage isn't
+wired to them yet — the callback currently just reports the shape it got,
+by design, as a smoke test.
+
+**Netlify Blobs auto-detection is broken on this project — confirmed, not
+guessed.** `getStore(name)` with no options throws
+`MissingBlobsEnvironmentError` on every deployed invocation.
+`NETLIFY_BLOBS_CONTEXT` (the env var Netlify's runtime is supposed to
+inject for auto-config) reads `null` — checked directly via a diagnostic
+endpoint. This matches an open, actively-discussed Netlify bug, not
+anything wrong in this repo's code (`getStore` is already called inside
+the handler, the documented placement).
+**Fix: manual `siteID`+`token`.** `openStore(name)` in
+`daisey-blobs-smoketest.js` falls back to
+`getStore(name, { siteID: SITE_ID, token: TOKEN })` whenever
+`NETLIFY_BLOBS_CONTEXT` is absent, using `SITE_ID` (present at runtime;
+`NETLIFY_SITE_ID` is not, on this project) and a new
+`NETLIFY_BLOBS_TOKEN` — a **Personal Access Token**, full-account scope,
+not a Blobs-scoped credential (Netlify has no narrower token type for
+this). **Verified with a real write, then a real read from a separate
+invocation** — same value came back. `daisey-proxy.js` should copy this
+exact `openStore()` pattern rather than a bare `getStore()` call, or it
+will hit the same error.
+`netlify/functions/daisey-blobs-smoketest.js` is safe to delete once
+`daisey-proxy.js` is built and this pattern is copied into it — it's a
+throwaway, scoped to its own `"smoketest"` store only.
+
+**Still not built**: the real `netlify/functions/daisey-proxy.js` (the one
+generic tool-call endpoint — reads/writes the store, dispatches to
+Trello/Google REST) and the Trello OAuth start/callback/relay functions.
+`mcp-shim.js` has real endpoints to talk to for Google now, nothing for
+Trello or the proxy yet.
+
+**Registrations done, env vars live on the Netlify project (2026-08-24)**:
+`GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` (a real Google Cloud OAuth Web
+client, External/Testing consent screen), `TRELLO_STANDALONE_API_KEY` +
+`TRELLO_STANDALONE_API_SECRET` (a dedicated new Trello Power-Up, "Daisey
+Standalone" — NOT the old "Start Date Integration to Claude" app that
+`trello-webhook.js` already uses), `SESSION_SECRET`/`TOKEN_ENCRYPTION_KEY`
+(generated, 32 random bytes each). All set via `netlify env:set`, all
+`Scope: All`, none committed to any file.
+
+**First attempt at `TRELLO_STANDALONE_API_KEY` mistakenly reused the OLD
+app's key.** Caught and corrected same session: a fresh Power-Up ("Daisey
+Standalone") was registered at trello.com/power-ups/admin, and both
+`TRELLO_STANDALONE_API_KEY` and `TRELLO_STANDALONE_API_SECRET` were
+overwritten with that app's real key+secret. Two separate Trello apps now
+exist — the old one, key+secret under `TRELLO_API_KEY`/`TRELLO_API_SECRET`,
+used only by `trello-webhook.js`/`audio-sync.js`; the new one, under the
+`_STANDALONE_` names, used only by the new OAuth flow. Keep them that way —
+sharing an app across the fixed-automation and per-visitor-OAuth use cases
+is exactly what caused the incident below.
+
+**`TRELLO_API_SECRET` was overwritten by mistake, and it is the author's,
+not standalone's.** `trello-webhook.js` (line 16) reads this exact name for
+its HMAC signature check (`validSignature`, HMACs the raw body + callback URL
+against the secret of whichever Trello app the webhook was registered
+under). The user pasted a Trello key+secret pair for the *new* standalone
+app; the second value was set under the existing `TRELLO_API_SECRET` name
+without checking it was already in use — it was. **The webhook's signature
+check has been silently broken since**: incoming Trello webhook calls will
+fail `validSignature` because the secret no longer matches the app the
+webhook is registered under, and the function has no alerting, so nothing
+will announce this. Blast radius is narrow — only the `<!-- daisey-start:…
+-->` date-marker sync breaks, nothing else in the site or in Daisey depends
+on this secret, and it fails closed (drops silently) rather than open (no
+security exposure). **User's explicit call: leave it as-is, don't chase a
+fix.** If this area is ever revisited: either restore the original secret
+(if recoverable from wherever the webhook was first registered) or
+re-register the webhook against the new key/secret pair. The lesson for any
+future `netlify env:set` in this repo: always `netlify env:list` first and
+check for a name collision — the CLI overwrites silently, with no diff and
+no confirmation prompt.
+
+New standalone-only credential is `TRELLO_STANDALONE_API_KEY`, kept
+deliberately distinct from `TRELLO_API_KEY`/`TRELLO_API_TOKEN` (which
+`audio-sync.js`/`trello-webhook.js` keep using unchanged — one fixed
+credential pair authenticating as the author for automation,
+architecturally the opposite of per-visitor OAuth, must never be confused
+with or reused by the new functions).
 
 ## Audio project → PROJECTS sync
 
@@ -1101,6 +1675,19 @@ with no further wiring.
   declined adding manual complexity labels to tracker cards. Expect
   misclassifications; tune the keyword lists in the file, don't add a
   tagging UI unless asked again.
+- **`classify` and `splitSubject` have a second copy inside `daisey.html`**
+  (`audioClassify`/`splitSubject`, plus `scoreSfxItems`' chain-merge as
+  `audioScoreItems` and the marker regex) — the Projects view predicts what
+  this function will create so the user doesn't wait 30 minutes to see a
+  deadline's cost. There is no shared module and cannot be one without a
+  build step: this is CommonJS on Netlify, that is a single-file artifact.
+  **Editing a keyword list here without editing it there makes the pressure
+  read silently disagree with the cards that actually get made.**
+  `tools/test/proj.js` asserts the two agree across a fixed table, lifting
+  this file's real function source at test time — run it after touching
+  either. Note also that this function writes **raw Trello ids** into the
+  marker while Daisey holds ARIs, which is why the reader normalises both
+  ends through `bareId`; see the Projects manager bullet.
 
 **Idempotency:** every card this function writes carries a hidden
 `<!-- daisey-audio-sync v1 subject="…" board="…" items="id:pts,…" -->`
