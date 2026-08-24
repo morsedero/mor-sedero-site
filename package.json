@@ -1,0 +1,7 @@
+{
+  "name": "mor-sedero-site",
+  "private": true,
+  "dependencies": {
+    "@netlify/blobs": "^11.0.1"
+  }
+}
