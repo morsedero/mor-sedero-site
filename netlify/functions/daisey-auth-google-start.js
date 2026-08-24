@@ -22,7 +22,10 @@ exports.handler = async () => {
     client_id: CLIENT_ID,
     redirect_uri: REDIRECT_URI,
     response_type: "code",
-    scope: "https://www.googleapis.com/auth/calendar",
+    // calendar for the app itself; openid+email for the userinfo call the
+    // callback makes to mint a stable userId — without these it can read
+    // calendars but can't identify WHO logged in.
+    scope: "https://www.googleapis.com/auth/calendar openid email",
     access_type: "offline",
     prompt: "consent",
     state,
