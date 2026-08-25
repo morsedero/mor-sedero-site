@@ -1,7 +1,7 @@
 <!-- GENERATED FILE — do not hand-edit.
      Produced by tools/build-standalone.js from tools/daisey.html.
      Edit tools/daisey.html, then re-run: node tools/build-standalone.js
-     Built 2026-08-25T06:24:24.817Z -->
+     Built 2026-08-25T15:06:55.159Z -->
 <title>Daisey</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <style>
@@ -4967,22 +4967,6 @@ function paintMain(){
   for(const i of missedList) i.missed = true;
   for(const i of [breakNow].concat(missedList).filter(Boolean).sort((a,b) => a.s - b.s))
     lead.appendChild(timelineItem(i, 0, 0, 0, 1, {mode:"stack"}));
-
-  /* TEMP DEBUG 2026-08-25 — remove once the live hour-gutter/hub-ordering
-     bug is root-caused. Prints splitAgenda's own numbers on screen since
-     DevTools isn't available right now. Safe: read-only, no state change. */
-  const dbg = el("pre","dbg-panel");
-  dbg.style.cssText = "background:#000;color:#0f0;font:10px monospace;padding:8px;white-space:pre-wrap;direction:ltr;text-align:left;";
-  const fmt = i => i ? `${i.s}-${i.e2} "${(i.title||"").slice(0,20)}" task=${!!i.task} done=${!!i.done} isBreak=${!!i.isBreak} missed=${!!i.missed}` : "null";
-  dbg.textContent =
-    "current: " + fmt(current) + "\n" +
-    "meetingNow: " + fmt(meetingNow) + "\n" +
-    "breakNow: " + fmt(breakNow) + "\n" +
-    "missedList: " + JSON.stringify(missedList.map(fmt)) + "\n" +
-    "open: " + JSON.stringify(open.map(fmt)) + "\n" +
-    "rest: " + JSON.stringify(rest.map(fmt)) + "\n" +
-    "nowMin: " + minsOf(new Date());
-  host.appendChild(dbg);
 
   if(current){
     /* nowCard returns a single .time-row today, so cardEl is that row and
