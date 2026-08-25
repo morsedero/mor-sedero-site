@@ -1,7 +1,7 @@
 <!-- GENERATED FILE — do not hand-edit.
      Produced by tools/build-standalone.js from tools/daisey.html.
      Edit tools/daisey.html, then re-run: node tools/build-standalone.js
-     Built 2026-08-24T13:34:45.923Z -->
+     Built 2026-08-25T06:07:26.078Z -->
 <title>Daisey</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <style>
@@ -65,6 +65,11 @@
      which have to stay legible as flat identity colours. */
   --dusk-1:#4C3BCF;      --dusk-2:#7B3FE4;      --dusk-3:#B84BC8;
   --dusk-ink:#F3EAFF;
+  /* Break's own ramp — the same treatment .offhours gets, in azure rather
+     than dusk, so a rest inside the working day and the evening off the
+     clock read as the same FAMILY of thing without being the same card. */
+  --brk-1:#1E7BC8;       --brk-2:#2F9FE0;       --brk-3:#41C4D8;
+  --brk-ink:#F2FBFF;
 
   /* two-layer "contact + ambient" shadow — a tight, barely-there shadow
      right under the card plus a wide soft one further out — reads as a
@@ -353,7 +358,53 @@ html,body{overflow:hidden;}
    "which board" read, it's a different kind of thing on the day, and the
    full azure wash is what makes it register as "rest", not "another
    card", at a glance. */
-.item.bk-break{background:var(--b-break-soft);}
+/* A real azure GRADIENT, the same "juicy" treatment .offhours already gets
+   (see its notes): a break is a reward, not a task, so it's one of the two
+   places a richer surface competes with nothing. It was a flat #D6EAFA wash
+   — opaque, correctly, so the hour grid can't show through it, and that
+   property is kept here: a gradient is a fully opaque paint too.
+   Its text CENTRES, vertically and horizontally, because a break card has no
+   time chip, no board chip and no action buttons — the whole card is one
+   word, and left-aligning one word against a tall empty box read as a
+   mistake once sizeCardToDuration started giving it its real height. */
+.item.bk-break{
+  background:linear-gradient(135deg,var(--brk-1) 0%,var(--brk-2) 54%,var(--brk-3) 100%);
+  border-color:transparent;color:var(--brk-ink);
+  box-shadow:0 2px 5px rgba(12,68,112,.20), 0 14px 30px -10px rgba(47,143,224,.42);
+}
+/* the same off-corner highlight .offhours-glow paints, done here as a
+   pseudo-element since a break card has no body wrapper to hang one on */
+.item.bk-break::after{
+  content:"";position:absolute;top:-46px;left:-30px;width:150px;height:150px;
+  border-radius:50%;pointer-events:none;
+  background:radial-gradient(circle,rgba(255,255,255,.30),rgba(255,255,255,0) 70%);
+}
+/* Collapse .row's two-column grid to ONE for a break: the left column is
+   .row-lead (time + dot), which a break has nothing to put in, and leaving
+   the template at `auto minmax(0,1fr)` centres the word inside the RIGHT
+   column rather than on the card. Measured before this: the title sat 130px
+   left of the card's true centre. */
+.item.bk-break .row{
+  position:relative;z-index:1;
+  grid-template-columns:minmax(0,1fr);
+  place-content:center;justify-items:center;align-items:center;text-align:center;
+}
+.item.bk-break .row-lead{display:none;}
+/* .nt as well as .n: bidiSpan wraps every title in an inline-block .nt (the
+   RTL-beside-the-timestamp fix), and it carries its own computed font — so
+   styling only .n leaves the visible glyphs at the inherited 14px. */
+.item.bk-break .row .n,.item.bk-break .row .nt{
+  font-family:var(--font-display);font-size:20px;font-weight:900;
+  letter-spacing:-.01em;color:var(--brk-ink);text-align:center;
+}
+/* The break keeps its start-end time like every other card, but centred
+   under the word rather than pushed to the left edge, and in the same ink as
+   the title so it reads as part of one centred label instead of a chip that
+   happens to sit on a coloured card. .row then centres against what's left,
+   which is what closes the 13px vertical offset this row was causing. */
+.item.bk-break .row-meta{justify-content:center;padding:0 12px 8px;}
+.item.bk-break .meta-chips{flex:0 0 auto;justify-content:center;}
+.item.bk-break .chip.time{color:var(--brk-ink);opacity:.85;}
 
 /* ---------------- the hub ----------------
    Not a bespoke card: it's timelineItem's own stack-mode card (see the
@@ -369,8 +420,12 @@ html,body{overflow:hidden;}
    (see the .bk-pending comment above) — a real value, not absent, so the
    var() fallback below can't catch it; the explicit override underneath
    keeps that brief loading window from rendering a see-through hub. */
-.item.hub{background:var(--bc-soft,var(--accent-soft));}
-.item.hub.bk-pending{background:var(--accent-soft);}
+/* Layered over an opaque base, not used raw: every --*-soft token is an
+   rgba wash, so with an hour grid behind the cards the dashed rules showed
+   straight through the hub — the biggest card on the day with lines running
+   across it. The gradient is a flat fill; --card underneath makes it solid. */
+.item.hub{background:linear-gradient(var(--bc-soft,var(--accent-soft)),var(--bc-soft,var(--accent-soft))),var(--card);}
+.item.hub.bk-pending{background:linear-gradient(var(--accent-soft),var(--accent-soft)),var(--card);}
 .item.hub .row{gap:12px 16px;padding:28px 24px;}
 .item.hub .row .n{font-size:27px;}
 .item.hub .row-meta{padding:0 24px 22px;}
@@ -403,9 +458,23 @@ html,body{overflow:hidden;}
    margin pulls it back onto its card so the gap only reads on the far side
    (the hub sits outside .rows.stack, so it doesn't need that pull-back —
    .hub below cancels it). */
-.item-top{display:flex;align-items:center;justify-content:flex-end;gap:8px;padding:0 2px;margin-bottom:-4px;}
-.item-top.hub{margin-bottom:0;padding:6px 2px 8px;font-size:11px;font-weight:700;color:var(--ink-2);gap:10px;}
-.item-top.hub .eyebrow{font-size:13px;}
+/* The status eyebrow sits BESIDE the card, not above it. As a stacked row it
+   cost every card ~16px of height on a view whose whole job is fitting the
+   day on one screen — and height is the scarce axis here (see anchorRows:
+   rows are anchored to their start minute, so every px of card height pushes
+   later rows off true scale). Beside it, the cost is width instead, which is
+   free by comparison: the label is 4-11 characters and the card keeps
+   minmax(0,1fr) of whatever's left. Written sideways so the column is one
+   line of text tall regardless of the string, and capped so a long status
+   can't eat the card. */
+.item-top{
+  display:flex;align-items:center;justify-content:center;gap:6px;
+  writing-mode:vertical-rl;transform:rotate(180deg);
+  max-height:100%;padding:2px 0;
+}
+.item-top .eyebrow{white-space:nowrap;}
+.item-top.hub{font-size:11px;font-weight:700;color:var(--ink-2);gap:10px;}
+.item-top.hub .eyebrow{font-size:12px;}
 
 .chip{
   font-family:var(--font-body);font-size:10px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;
@@ -422,6 +491,23 @@ html,body{overflow:hidden;}
    when nothing's actually due soon. --deep/--deep-soft are unchanged and
    still used by celebrate()'s confetti palette. */
 .chip.deep{background:var(--surface-2);color:var(--ink-3);border-color:transparent;}
+/* A start–end range is a CLOCK READING, so it gets the same treatment the
+   meeting banner's own .mn-time already uses: mono, tabular, no pill, no
+   uppercase tracking. It reads as the time itself rather than as another
+   badge competing with the due/board chips beside it. Not folded into
+   .chip.deep — the swap picker still uses that for "8h"/"3h", which are
+   sizes, not times. */
+/* line-height is explicit and the box keeps real height: with padding:0 and
+   the inherited line-height, the inline box collapsed to ~2px of its own and
+   the glyphs overflowed the card's bottom edge, where .item's overflow:hidden
+   clipped them — the time was in the DOM, measurably "visible", and simply
+   not on screen. Any zero-padding chip in an overflow:hidden card needs this. */
+.chip.time{
+  font-family:var(--mono);font-variant-numeric:tabular-nums;
+  font-size:11.5px;font-weight:700;letter-spacing:0;text-transform:none;
+  padding:0;background:none;border:none;color:var(--ink-3);
+  line-height:1.4;display:inline-block;
+}
 .chip.due{background:var(--surface-2);color:var(--ink-3);border-color:transparent;}
 .chip.live{background:var(--accent);color:var(--on-accent);border-color:var(--accent);}
 
@@ -468,27 +554,49 @@ html,body{overflow:hidden;}
 .later .lh{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:8px;}
 .tl-gutter{width:46px;flex:0 0 auto;}
 .tl-hours{position:relative;}
+/* Google Calendar's gutter: small, light, quiet — the hours are a reference
+   grid you read past, not content competing with the cards. Was mono/700,
+   which made every hour as heavy as a card title. */
 .tl-hours .hl{
-  position:absolute;left:0;right:6px;text-align:right;
-  font-family:var(--mono);font-size:10px;font-weight:700;color:var(--ink-3);
+  position:absolute;left:0;right:8px;text-align:right;
+  font-size:11px;font-weight:500;color:var(--ink-3);opacity:.8;
+  letter-spacing:.01em;
   transform:translateY(-50%);
 }
 .rows{position:relative;flex:1 1 auto;min-width:0;}
-.rows .grid-line{position:absolute;left:0;right:0;border-top:2px dashed var(--line);}
+/* translateY(-50%) matches .tl-hours .hl, which centres itself on its own
+   `top`. Without it the label sat centred on the hour while the rule hung
+   its top edge there — the two drew ~5px apart at every hour, and the
+   mismatch is exactly as visible as it sounds. */
+.rows .grid-line{
+  position:absolute;left:0;right:0;transform:translateY(-50%);
+  border-top:1px solid var(--line);
+}
+/* Google Calendar's now-line: a thin solid rule with a small filled dot at
+   the left edge. Was 3px + an 11px dot, which read as an alert bar across
+   the page rather than a time marker. */
 .rows .tl-now{
-  position:absolute;left:-8px;right:0;height:0;border-top:3px solid var(--crit);z-index:6;
+  position:absolute;left:0;right:0;height:0;transform:translateY(-50%);
+  border-top:2px solid var(--crit);z-index:6;
 }
 .rows .tl-now::before{
-  content:"";position:absolute;left:0;top:-5px;width:11px;height:11px;border-radius:50%;background:var(--crit);
+  content:"";position:absolute;left:-4px;top:-4px;width:8px;height:8px;
+  border-radius:50%;background:var(--crit);
 }
 
 /* each scheduled thing is its own card, positioned by time — the hub
-   (.item.hub, above) is this same card, just bigger and re-tinted. A
-   neutral surface with one coloured spine (::before) reads calmer than a
-   card tinted its board's full colour with a matching saturated border on
-   top of that. backdrop-filter is dropped — it blurred whatever sat behind
-   the card, which mattered when the card itself was a translucent tint;
-   against an opaque --surface it had nothing left to do. */
+   (.item.hub, above) is this same card, just bigger and re-tinted.
+   backdrop-filter is dropped — it blurred whatever sat behind the card,
+   which mattered when the card itself was a translucent tint; against an
+   opaque --surface it had nothing left to do.
+
+   NO COLOURED LEFT SPINE (removed on request). It used to be the card's one
+   board signal, back when a card carried no other board mark. It does now:
+   .chip.bk in row-meta renders the list name in the board's own colour, so
+   the identity is still on every card, in a place that also says WHICH list
+   rather than only hinting at a hue. With a real hour grid to the left of
+   the cards, a second vertical colour bar at the card's left edge read as
+   part of the gutter rather than as a property of the card. */
 .item{
   position:absolute;left:0;right:0;
   border-radius:14px;border:1.5px solid var(--line-soft);
@@ -496,27 +604,68 @@ html,body{overflow:hidden;}
   overflow:hidden;touch-action:none;cursor:grab;
   transition:box-shadow .15s,transform .1s;
 }
-.item::before{
-  content:"";position:absolute;left:0;top:0;bottom:0;width:4px;
-  background:var(--bc,var(--b-none));
-}
 .item.dragging{cursor:grabbing;box-shadow:var(--shadow-lg);z-index:20;transition:none;}
 .item.expanded{z-index:8;height:auto!important;}
-.item.miss{border:1.75px dashed var(--crit);}
-.item.meeting{cursor:default;background:var(--surface-2);border-color:var(--line-2);opacity:.82;}
+/* A missed task RECEDES — it's still open, but its slot has passed, so it
+   must not compete with what's live now. Was a 1.75px dashed red border at
+   full card size, which made the things you already failed to do the
+   loudest objects on the day. Now: grey surface, muted text, a grey spine
+   instead of its board colour, and a size step down (the .collapsed
+   treatment applies on top of this via the accordion). The grey spine went
+   with every other spine (see .item above); the muted surface, border and
+   text still carry "this one slipped" on their own. */
+.item.miss{
+  background:#F4F2EC;border-color:#E2DED2;
+}
+.item.miss .row .n,.item.miss .n{color:var(--ink-3);}
+.item.miss .chip{opacity:.7;}
+/* smaller again: a passed slot gets the compact read even when it's the one
+   open card, since its detail matters less than anything still ahead */
+.item.miss .row{padding:7px 11px;}
+.item.miss .row .n{font-size:12.5px;font-weight:700;}
+/* Recedes via muted colours, NOT element opacity: opacity makes the whole
+   box translucent, so once there was an hour grid behind the cards the
+   dashed rules showed through every meeting and appeared to cut across it.
+   The colours below reproduce the same washed-out look opaquely. */
+.item.meeting{cursor:default;background:var(--surface-2);border-color:var(--line-2);color:var(--ink-2);}
+.item.meeting .n,.item.meeting .row .n{color:var(--ink-2);}
 .item.done{opacity:.5;}
 
-/* Tasks page: a plain vertical stack instead of a minute-precise grid —
-   "smaller, less detail" reads better as a list than as a calendar.
-   Border-top separates from the hub card above when present */
+/* Day view's rows: still a flow stack (cards keep readable heights, they are
+   never sized by duration — see anchorRows), but now sitting on a real hour
+   grid, so it must be `relative` for .grid-line/.tl-now to anchor to it.
+   `height:auto` stays — the grid lines are absolute and don't hold it open;
+   anchorRows sets a minHeight so trailing hours aren't clipped.
+   The old border-top/padding-top separated this list from a hub card that
+   sat ABOVE it; the hub is now the first row inside it, so there is nothing
+   left to separate from. gap:8px is the minimum breathing room between two
+   cards — anchorRows only ever adds to it. */
 .rows.stack{
-  position:static;height:auto!important;display:flex;flex-direction:column;gap:8px;
-  border-top:1.5px solid var(--line-2);margin-top:12px;padding-top:12px;
+  position:relative;height:auto!important;display:flex;flex-direction:column;gap:8px;
+  margin-top:4px;
 }
-/* relative, not static: .item's ::before spine needs a positioned ancestor
-   to anchor to, and relative-with-no-offset lays out identically to static
-   — the drag hit-testing this was set to `static` for (see wireStackDrag)
-   snapshots getBoundingClientRect(), which relative doesn't change. The
+/* States a compressed run of empty clock (see anchorRows/SKIP_MIN_PX) — the
+   jump has to be announced or it reads as a rendering fault. */
+.hour-skip{
+  position:absolute;left:0;right:0;text-align:center;pointer-events:none;
+  font-family:var(--mono);font-size:9px;font-weight:700;color:var(--ink-3);
+  opacity:.55;letter-spacing:.06em;
+}
+/* Day grid: the hour gutter beside the rows, mirroring .week-body's own
+   layout so both views build the same clock the same way. */
+.day-grid{display:flex;align-items:flex-start;}
+.day-grid > .rows.stack{flex:1 1 auto;min-width:0;}
+/* The gutter's labels are absolute inside it, so it needs its own height —
+   it gets none from content. minHeight is mirrored from the rows by
+   anchorRows via the shared container. */
+.day-grid > .tl-hours{position:relative;align-self:stretch;}
+/* relative, not static: kept as the positioning context for anything
+   absolute inside a card, and relative-with-no-offset lays out identically
+   to static — the drag hit-testing this was set to `static` for (see
+   wireStackDrag) snapshots getBoundingClientRect(), which relative doesn't
+   change. (It originally existed to anchor .item's ::before spine, which is
+   gone; the rule is not, since removing it changes nothing and risks
+   reparenting whatever else resolves against it.) The
    drag/push transform itself now lands on the enclosing .time-row (below),
    not here — a card's rail-stop has to travel with it. */
 /* pan-y overrides the plain .item rule's touch-action:none (needed by
@@ -552,7 +701,6 @@ html,body{overflow:hidden;}
    Tapping it (wired in timelineItem, not here) opens it in place of
    whichever other card was open. */
 .item.stack.collapsed{box-shadow:none;}
-.item.stack.collapsed::before{opacity:.55;width:3px;}
 .item.stack.collapsed .row{padding:6px 10px;}
 .item.stack.collapsed .row .n{font-size:11.5px;font-weight:700;color:var(--ink-3);}
 .item.stack.collapsed .row .n .nt{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block;}
@@ -577,49 +725,69 @@ html,body{overflow:hidden;}
    making that number legible instead of cramped.
    Right-aligned, not centred: the card edge is the shared vertical line the
    eye tracks down, and ragged-centre times fight it. */
-/* Built to read like Week view's hour gutter (2026-08-24, direct user
-   request: "make it look like the week view"). Week's gutter is
-   `.tl-gutter` (46px) + `.tl-hours .hl` (10px mono, weight 700, --ink-3,
-   right-aligned) with each label sitting on a `.grid-line`
-   (2px dashed var(--line)) running across the day. All three are mirrored
-   here, so switching Day↔Week reads as the same clock in two layouts
-   rather than two unrelated designs.
-   It can't literally reuse weekGrid's markup: that gutter is absolutely
-   positioned inside one pixel-mapped container, while the Day list is a
-   flow of cards across several groups (hub-group, nest, later) that
-   wireStackDrag reorders by transform. So each row carries its own label
-   and rule, and they align because every row shares this grid template. */
+/* Day view now has ONE time column — the real hour gutter to the left of
+   every row (see .day-grid), exactly as Week view and Google Calendar do.
+   Each row used to carry its own 46px time label as well, from back when
+   there was no gutter to carry it; keeping both meant two time columns side
+   by side, 102px of a 390px phone gone before a card started. So the row's
+   first column is now a narrow 10px strip holding only the duration bar,
+   and the per-row time label is hidden (it stays in the DOM, and in the
+   rail's `title`, because a nested row IS indented away from the gutter and
+   needs its own start on hover — see .nest).
+   Week view's own rows return early from timelineItem and never reach this
+   rule; its gutter is a separate, unchanged code path. */
 .time-row{
-  display:grid;grid-template-columns:46px minmax(0,1fr);column-gap:10px;
+  display:grid;grid-template-columns:10px minmax(0,1fr);column-gap:8px;
   align-items:start;transition:transform .15s;
+  /* above the hour grid lines behind them — a dashed rule must never appear
+     to run through a card */
+  position:relative;z-index:1;
 }
+/* the gutter states the time; a second copy beside it is noise */
+.time-row .rail-stop .t,.time-row .rail-stop .tm{display:none;}
 .time-row.hub{margin-bottom:2px;}
-.card-col{min-width:0;}
+/* card first, eyebrow second — the eyebrow is order:2 in the DOM too, so
+   reading order matches visual order.
+
+   align-items:flex-start, NOT stretch. Stretch made the card a flex item
+   sized by the ROW rather than by its own content, so a card whose content
+   was taller than the row simply had the overflow clipped by .item's
+   overflow:hidden — which silently ate the entire .row-meta line (time chip,
+   due chip, action buttons) on the hub. The card must size itself; the
+   sideways eyebrow stretches to match it instead, via align-self. */
+.card-col{min-width:0;display:flex;align-items:flex-start;gap:6px;}
+.card-col > .item{flex:1 1 auto;min-width:0;}
+.card-col > .item-top{align-self:stretch;}
 /* selection suppressed for the same reason as .item.stack — the rail travels
    with the card during a drag, so a hold that lands on the time must not
    start selecting it either */
 .rail-stop{
   position:relative;
   display:flex;align-items:baseline;justify-content:flex-end;gap:1px;
-  padding-top:9px;
+  align-self:stretch;
   -webkit-user-select:none;user-select:none;-webkit-touch-callout:none;
 }
+/* The coloured duration bar is REMOVED (on request). It existed because a
+   card could not be drawn to scale, so a 4px bar carried the proportional
+   read instead. sizeCardToDuration now grows a long card to its real clock
+   height, so the block itself says how long it is and a second, thinner copy
+   of the same fact sat in the gap between the gutter and the cards looking
+   like a stray rule. The element is still built (see timelineItem) and still
+   sized, so nothing downstream had to change; it simply doesn't paint. */
+.rail-bar{display:none;}
 /* deliberately identical to .tl-hours .hl — same family, size, weight and
    colour, so the two views' times are visibly the same object */
 .rail-stop .t,.rail-stop .tm{
   font-family:var(--mono);font-size:10px;font-weight:700;
   font-variant-numeric:tabular-nums;color:var(--ink-3);line-height:1;
 }
-/* Week's dashed grid-line, reaching from the label across to the card so a
-   time can be carried to whatever is scheduled at it. */
-.rail-stop::after{
-  content:"";position:absolute;right:-10px;top:12px;width:9px;
-  border-top:2px dashed var(--line);
-}
+/* The 9px dashed stub that used to reach from each label to its card is
+   GONE: real full-width .grid-line rules now carry every hour across the
+   rows behind the cards, so a per-row stub is both redundant and actively
+   misleading — inside a .nest the rail is indented 36px, and the stub made
+   that read as a misalignment against the true hour line. */
 /* the hub is the one row meant to be read from across the room */
-.rail-stop.hub{padding-top:27px;}
-.rail-stop.hub .t,.rail-stop.hub .tm{font-size:13px;font-weight:800;color:var(--ink-2);}
-.rail-stop.hub::after{top:31px;}
+.rail-stop.hub .rail-bar{width:5px;opacity:.75;}
 
 /* A brick's siblings own consecutive slices of ONE calendar event, so their
    stops are joined into a run — otherwise four quick tasks read as four
@@ -627,15 +795,11 @@ html,body{overflow:hidden;}
    cross-rules, turned vertical, in a neutral colour rather than each row's
    own --bc (siblings can come from different boards, and a connector that
    changes hue mid-run stops saying "these are one thing"). */
-.rail-stop.brick::before{
-  content:"";position:absolute;right:-2px;top:-14px;bottom:calc(100% - 12px);
-  border-left:2px dashed var(--line);
-}
-/* nothing above the first stop to join to */
-.rail-stop.brick:not(.brick-sub)::before{display:none;}
-/* the run's opening time is the one that matters; the rest are its
-   subdivisions and recede a little */
-.rail-stop.brick-sub .t,.rail-stop.brick-sub .tm{opacity:.7;}
+/* A brick's siblings are consecutive slices of ONE event, and their duration
+   bars now say so directly — a stack of equal stubs in one unbroken column.
+   The old dashed spine joined the time LABELS, which no longer render here,
+   so it has nothing left to join; the bars themselves are the run. */
+.rail-stop.brick-sub .rail-bar{opacity:.35;}
 
 /* ---- off the clock ----------------------------------------------------
    The stretch between the end of the working day and a calendar event later
@@ -674,13 +838,18 @@ html,body{overflow:hidden;}
 .offhours-until{font-size:12px;font-weight:600;opacity:.85;overflow-wrap:anywhere;}
 /* the rail time for this row recedes — the card says the interesting part */
 .rail-stop.offhours-stop .t,.rail-stop.offhours-stop .tm{opacity:.6;}
-.offhours-row{margin-top:2px;}
+/* no margin nudge — anchorRows owns every row's vertical position now */
 
 /* tasks scheduled inside a permeable meeting nest under it, so "חמל, and
    two tasks inside it" reads as one group instead of scattering in the list */
+/* Indent only, no dashed rule of its own any more: with a real hour gutter
+   down the left, a second vertical dashed line 20px inside it read as a
+   duplicate of the grid rather than as grouping. The indent alone still says
+   "these belong to the meeting above", and it's kept small so a nested card
+   stays close to the hour line that names it. */
 .nest{
   display:flex;flex-direction:column;gap:8px;
-  margin:-2px 0 0 20px;padding-left:14px;border-left:2px dashed var(--line-2);
+  margin:-2px 0 0 12px;
 }
 /* a nest sitting directly under the hub (a currently-active meeting's other
    tasks — see paintMain) isn't inside .rows.stack's own gap. Inside
@@ -752,7 +921,16 @@ html,body{overflow:hidden;}
    line of chips underneath instead of sharing the actions' line — chips
    left, actions right, wrapping together onto a line of their own only
    when the row is too narrow to hold both. */
-.row-meta{display:flex;align-items:center;justify-content:space-between;gap:6px 10px;flex-wrap:wrap;padding:0 12px 10px;margin-top:-2px;}
+/* margin-top:auto PINS this line to the card's bottom. .item.stack is a
+   flex column, so once sizeCardToDuration grows a long card past its own
+   content (a 3h session is 179px of clock but ~85px of content) the leftover
+   space would otherwise sit BELOW this row, leaving the time and the action
+   buttons floating in the middle of the card with dead space under them.
+   auto absorbs that space above the row instead, so the bottom line stays on
+   the bottom at every card height. On a natural-height card auto resolves to
+   0, which is why the old -2px tightening moved onto .row's bottom padding
+   rather than staying here — a negative top margin here would fight the pin. */
+.row-meta{display:flex;align-items:center;justify-content:space-between;gap:6px 10px;flex-wrap:wrap;padding:0 12px 10px;margin-top:auto;}
 .row-meta .eyebrow{font-size:10px;}
 .meta-chips{display:flex;align-items:center;gap:6px;flex-wrap:wrap;flex:1 1 auto;min-width:0;}
 /* shrink-to-fit titles: RTL text stays next to its timestamp */
@@ -1251,9 +1429,9 @@ html,body{overflow:hidden;}
   .dialog.sheet .load-table th{padding-bottom:1px;}
   .dialog.sheet .set{padding-top:6px;padding-bottom:2px;}
 }
-/* Quick Task / Session / Work Day, each a length + a per-day cap — a plain
-   table lines the two numbers up under their own headers instead of a
-   fourth set-row repeating a generic "Max Per Day" label per type. */
+/* Quick Task / Session, each a length + a per-day cap — a plain table
+   lines the two numbers up under their own headers instead of a set-row
+   repeating a generic "Max Per Day" label per type. */
 .load-table{width:100%;border-collapse:collapse;margin:0 0 2px;table-layout:fixed;}
 .load-table th{
   font-size:9.5px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;
@@ -1366,7 +1544,14 @@ html,body{overflow:hidden;}
 .setup-days{display:flex;flex-wrap:wrap;gap:4px;padding:2px 2px 6px;}
 .setup-err{flex:1 1 auto;min-width:0;font-size:12px;font-weight:700;color:var(--crit);text-align:start;overflow-wrap:anywhere;}
 
-.toasts{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:80;display:flex;flex-direction:column;gap:7px;align-items:center;}
+/* pointer-events:none on the CONTAINER, auto on the toasts themselves: it's
+   a full-width fixed strip across the bottom of the screen, so without this
+   it silently swallows every tap and touch-drag that lands under it, even
+   where no toast is actually drawn. Found when a card anchored to its real
+   hour ended up beneath the strip and stopped responding to touch at all —
+   the container is invisible, so the card simply read as broken. */
+.toasts{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:80;display:flex;flex-direction:column;gap:7px;align-items:center;pointer-events:none;}
+.toasts > *{pointer-events:auto;}
 .toast{
   background:var(--glass-2,var(--surface));backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
   border:1.5px solid var(--line-2);box-shadow:var(--shadow-lg);border-radius:99px;padding:9px 18px;font-size:13px;font-weight:700;
@@ -1511,8 +1696,25 @@ html,body{overflow:hidden;}
         if(sessionStorage.getItem("dfStale") === mine) return;   // already tried reloading past this exact stale stamp
         sessionStorage.setItem("dfStale", mine);
       }
-      location.reload();
+      /* location.reload() re-requests through the HTTP cache, so against a
+         cache entry Chrome refuses to revalidate it can hand back the SAME
+         stale HTML — and the one-shot guard above then records that stamp as
+         "tried" and never attempts again. That's how a stale tab got stuck
+         permanently: the guard fired, achieved nothing, and disabled itself.
+         Navigating to a URL the cache has no entry for cannot be served from
+         cache at all. The query is stripped on the way in (below) so the
+         address bar doesn't keep it and a bookmark never inherits it. */
+      const url = new URL(location.href);
+      url.searchParams.set("_fresh", m[1].replace(/[^\w.-]/g, ""));
+      location.replace(url.toString());
     }).catch(()=>{});
+    /* Having landed on the ?_fresh= URL, put the clean one back in the
+       address bar — same document, no reload, so the repaired page stays. */
+    if(location.search.indexOf("_fresh=") !== -1 && window.history && history.replaceState){
+      const clean = new URL(location.href);
+      clean.searchParams.delete("_fresh");
+      history.replaceState(null, "", clean.pathname + clean.search + clean.hash);
+    }
   }catch(_){}
 })();
 /* ==========================================================================
@@ -1630,10 +1832,8 @@ const DEFAULTS = {
   dayStart:9, dayEnd:17,
   quickTotal:15,   // minutes each quick task gets, on its own — not divided among however many share the day
   quickMax:4,      // max quick tasks scheduled in one day
-  shortMin:180,    // short session: yellow label, 3h
-  longMin:480,     // long session / work day: orange label, 8h
-  sessionMax:2,    // max sessions scheduled in one day
-  workdayMax:1,    // max work days scheduled in one day
+  shortMin:180,    // short session: yellow or orange label, 3h
+  sessionMax:3,    // max sessions scheduled in one day
   /* The hour a break is *held open* at, 0-23, or null to let Daisey decide.
      null keeps the original behaviour exactly: breaks are purely whatever
      the day has left over once tasks are placed. Set to an hour and that
@@ -1715,9 +1915,7 @@ function normalizeCfg(saved){
   cfg.quickTotal = clamp(Math.round((+cfg.quickTotal||60)/5)*5, 5, 480);
   cfg.quickMax   = clamp(Math.round(+cfg.quickMax||4), 1, 20);
   cfg.shortMin   = clamp(Math.round((+cfg.shortMin||180)/5)*5, 15, 480);
-  cfg.longMin    = clamp(Math.round((+cfg.longMin||480)/15)*15, 60, 600);
-  cfg.sessionMax = clamp(Math.round(+cfg.sessionMax||2), 1, 10);
-  cfg.workdayMax = clamp(Math.round(+cfg.workdayMax||1), 1, 5);
+  cfg.sessionMax = clamp(Math.round(+cfg.sessionMax||3), 1, 10);
   /* null / "" / anything non-numeric all mean "Daisey decides" — only a real
      hour survives, so a corrupt saved value degrades to the old behaviour
      rather than reserving hour 0 and quietly eating the morning. */
@@ -1832,6 +2030,9 @@ const isSchedulable = d => {
 const isLockedDay = d => !isSchedulable(d);
 const isLockedItem = item => isLockedDay(item.ev.start);
 const fmtRange = (a,b) => `${hhmm(a)}–${hhmm(b)}`;
+/* Minute-of-day variants: agenda items carry s/e2 as minutes, not Dates. */
+const hhmmMin = m => `${pad2(Math.floor(((m%1440)+1440)%1440/60))}:${pad2(Math.round(m)%60)}`;
+const fmtRangeMin = (a,b) => `${hhmmMin(a)}–${hhmmMin(b)}`;
 /* "70 min" reads worse than "1 hour 10 min" past the hour mark */
 function fmtDur(mins){
   mins = Math.round(mins);
@@ -2160,12 +2361,14 @@ const START_RE = /<!--\s*daisey-start:(\d{4}-\d{2}-\d{2})\s*-->/;
 const extractStartMarker = desc => { const m = START_RE.exec(desc||""); return m ? m[0] : ""; };
 const withoutStartMarker = desc => (desc||"").replace(START_RE,"").replace(/\n{3,}/g,"\n\n").trim();
 
-/* Size comes from the Trello label, not the board: yellow = short session
-   (3h), orange = long session / work day (8h), no label = quick task. */
+/* Size comes from the Trello label, not the board: yellow or orange = short
+   session (3h), no label = quick task. Work-day size removed (2026-08-24,
+   user request) — the user's own day-window setting is the day's real
+   ceiling, a card shouldn't re-claim the whole thing. Orange degrades to
+   short rather than quick so an old 8h card doesn't collapse to 20min. */
 function sizeFromLabels(labels){
   const colors = (Array.isArray(labels) ? labels : []).map(l => l && l.color);
-  if(colors.includes("orange")) return "long";
-  if(colors.includes("yellow")) return "short";
+  if(colors.includes("orange") || colors.includes("yellow")) return "short";
   return "quick";
 }
 
@@ -2332,14 +2535,18 @@ function allEvents(){
          real task block always carries "Original: <url>" (createBlock
          always appends it), so mine-with-no-link is otherwise unused. */
       const isBreak = mine && !link;
-      /* mirrors createBlock's colour choice: 9 quick, 5 short, 11 long.
+      /* mirrors createBlock's colour choice: 9 quick, 5 short, 11 was long.
          A break is its own size, not a quick task: its colorId (7) isn't in
          that map, so it used to fall through to "quick" and be counted as
          one everywhere size is read — inflating existingBlocks' quick tally
          and making a rest block look like scheduled work. Nothing schedules
-         by this value for a break, so it just has to be honest. */
+         by this value for a break, so it just has to be honest. colorId 11
+         still reads as "short" (not "quick") even though nothing writes it
+         any more (work-day size removed 2026-08-24) — a real block already
+         on the user's calendar can still carry it, and misreading that as a
+         quick task would let planFor schedule over it. */
       const size = isBreak ? "break"
-                 : e.colorId === "11" ? "long"
+                 : e.colorId === "11" ? "short"
                  : e.colorId === "5"  ? "short" : "quick";
       return {
         raw:e, id:e.id, summary:e.summary || "(untitled)",
@@ -2347,7 +2554,7 @@ function allEvents(){
         allDay: !!(e.start && e.start.date && !e.start.dateTime),
         isTask: mine || !!link, mine, cardShort:link, cardShorts:links, isBreak,
         isBrick: links.length > 1,
-        size, deep: size === "short" || size === "long"
+        size, deep: size === "short"
       };
     })
     .filter(e => e.start && e.end)
@@ -2385,9 +2592,8 @@ function busyFor(date, ignore, forSession){
    was the moment breaks became real blocks. */
 function existingBlocks(date, ignore){
   const evs = allEvents().filter(e => e.isTask && !e.isBreak && !e.allDay && overlapsDay(e,date) && !ignored(e.id, ignore));
-  const long = evs.filter(e => e.size === "long").length;
   const short = evs.filter(e => e.size === "short").length;
-  return { long, short, quick: evs.length-long-short, total: evs.length, foreign: evs.filter(e=>!e.mine).length };
+  return { short, quick: evs.length-short, total: evs.length, foreign: evs.filter(e=>!e.mine).length };
 }
 
 /* Blocks a run may clear. Every card-linked block counts, including ones the
@@ -3039,26 +3245,6 @@ function planFor(date, mode, picked, ignore){
   const brk = reservedBreak();
   if(brk){ sessionLive.push({ s:brk.s, e:brk.e }); quickLive.push({ s:brk.s, e:brk.e }); }
 
-  /* A long session claims the day. Whether one is worth attempting today —
-     rather than a shorter alternative — is decided by the same urgency
-     ranking as everything else for now (overdue, blocked, due date); a
-     finer read on project scale can refine this later without changing the
-     shape of the rule. */
-  let workDay = have.long > 0;
-  let longRoom = Math.max(0, CFG.workdayMax - have.long);
-  for(const c of ranked.filter(x=>x.size==="long")){
-    if(longRoom <= 0) break;
-    const dur = c.est || CFG.longMin;
-    const s = findSlotWithAutoBreak(sessionLive, quickLive, activityLive, winS, winE, dur, nowMin);
-    if(!s) continue;
-    placed.push({ card:c, s:s.s, e:s.e, kind:"long" });
-    sessionLive.push({ s:s.s, e:s.e });
-    quickLive.push({ s:s.s, e:s.e });
-    activityLive.push({ s:s.s, e:s.e });
-    workDay = true;
-    longRoom--;
-  }
-
   let shortRoom = Math.max(0, CFG.sessionMax - have.short);
   for(const c of ranked.filter(x=>x.size==="short")){
     if(shortRoom <= 0) break;
@@ -3072,12 +3258,12 @@ function planFor(date, mode, picked, ignore){
     shortRoom--;
   }
 
-  /* A day that fits a full work day gets no quick tasks — the whole point
-     of an 8-hour session is not splitting attention. Quick tasks land as one
-     "quick-brick" entry, not one placed per card — see CLAUDE.md: Google
-     Calendar shows a single event for the whole window, Daisey's own view
-     still tracks each task inside it independently. */
-  if(!workDay){
+  /* Quick tasks land as one "quick-brick" entry, not one placed per card —
+     see CLAUDE.md: Google Calendar shows a single event for the whole
+     window, Daisey's own view still tracks each task inside it
+     independently. Work-day size removed (2026-08-24) — quick tasks are no
+     longer suppressed by an 8h card claiming the whole day. */
+  {
     const quick = ranked.filter(x=>x.size==="quick");
     if(quick.length){
       const slice = CFG.quickTotal;
@@ -3374,8 +3560,8 @@ async function rolloverSweep(){
 
 /* ---------------------------------------------------------------- writes */
 async function createBlock(card, start, end, size){
-  const emoji = size === "long" ? "🗓️ " : size === "short" ? "🎵 " : "• ";
-  const colorId = size === "long" ? "11" : size === "short" ? "5" : "9";
+  const emoji = size === "short" ? "🎵 " : "• ";
+  const colorId = size === "short" ? "5" : "9";
   /* colorId stays the pure quick/short/long signal every scheduling
      decision reads back — see CLAUDE.md. The real sync gap was the
      description: it used to be a bare marker+link, so opening the block
@@ -3509,8 +3695,8 @@ function addLocalEvent(raw){
 function localBlock(card, start, end, size){
   return {
     id: "local-" + Math.random().toString(36).slice(2),
-    colorId: size === "long" ? "11" : size === "short" ? "5" : "9",
-    summary: (size === "long" ? "🗓️ " : size === "short" ? "🎵 " : "• ") + card.name,
+    colorId: size === "short" ? "5" : "9",
+    summary: (size === "short" ? "🎵 " : "• ") + card.name,
     description: `${DF_MARK} ${card.name}\n\nOriginal: ${card.url}`,
     start:{ dateTime: iso(start) }, end:{ dateTime: iso(end) },
     status:"confirmed"
@@ -4078,10 +4264,32 @@ function splitAgenda(){
   const missed = isToday
     ? items.filter(i => i !== current && i.task && !i.done && !i.isBreak && i.e2 <= nowMin)
     : [];
+  /* Same outranking rule as meetingNow/breakNow, applied to missed tasks:
+     "next up" can legitimately be a LATER card than something still-open
+     from earlier today (e.g. current picks a 14:45 task because the day's
+     only other candidate already missed its 10:00 slot). Left alone, the
+     hub rendered the 14:45 card while the 10:00 one sat in the plain list
+     underneath it — a card earlier on the clock drawn below one later on
+     it. anchorRows' hour gutter is built by measuring real row positions
+     top-to-bottom (see its own comment), so that inversion didn't just
+     look odd — the gutter's interpolation went non-monotonic and hours
+     rendered out of order (2026-08-25 user report).
+
+     EVERY missed task earlier than the hub has to move, not just the
+     earliest one — a first pass pulled out only the single earliest
+     (missedNow) on the theory that it was the one thing racing the hub
+     for position, but any other missed task before the hub's time hits
+     the exact same inversion and was still left in the plain list below
+     it (same user report, second screenshot: two missed tasks both
+     earlier than a 14:45 hub, only one of them moved). missedList holds
+     all of them, sorted by their own start time so they read in order
+     among themselves too. */
+  const missedList = current ? missed.filter(i => i.s < current.s).sort((a,b) => a.s - b.s) : [];
+  const missedSet = new Set(missedList);
   const rest = items.filter(i =>
-    i !== current && i !== meetingNow && i !== breakNow && missed.indexOf(i) < 0 && (!isToday || i.e2 > nowMin));
+    i !== current && i !== meetingNow && i !== breakNow && !missedSet.has(i) && missed.indexOf(i) < 0 && (!isToday || i.e2 > nowMin));
   const doneCount = items.filter(i => i.task && i.done).length;
-  return { items, current, meetingNow, breakNow, rest, missed, doneCount, open };
+  return { items, current, meetingNow, breakNow, missedList, rest, missed, doneCount, open };
 }
 
 /* ---------------------------------------------------------------- render */
@@ -4221,7 +4429,7 @@ function projectSnapshot(board){
     for(const pair of m[3].split(",").filter(Boolean)) covered.add(bareId(pair.split(":")[0]));
     if(!bc.dueComplete){
       openBatches++;
-      openBatchPoints += (bc.size === "long" ? AUDIO_WORKDAY_CAP : AUDIO_SESSION_CAP);
+      openBatchPoints += AUDIO_SESSION_CAP;
     }
   }
 
@@ -4249,11 +4457,10 @@ function projectSnapshot(board){
   subjects.sort((a,b) => b.points - a.points || a.subject.localeCompare(b.subject));
   const musicPoints = music.reduce((a,c) => a + audioMusicPoints(c.desc), 0);
 
-  /* Runway. A day's capacity is one work day — 16 points — not the additive
-     workdayMax*16 + sessionMax*6 that CFG literally permits: longMin (8h) plus
-     two shortMin (6h) already exceeds an 11h window, so the additive number
-     describes a day nobody has. planFor agrees in practice ("a long session
-     takes the whole day"). Conservative on purpose — a pressure read that
+  /* Runway. A day's capacity is treated as 16 points (AUDIO_WORKDAY_CAP) —
+     a fixed cap on audio work per day, independent of the calendar-side
+     scheduling sizes (work-day size removed 2026-08-24; only quick/session
+     remain there now). Kept conservative on purpose — a pressure read that
      flatters itself is worse than no read. */
   const deadline = st.deadline ? new Date(st.deadline + "T00:00:00") : null;
   const today = startOfDay(new Date());
@@ -4694,7 +4901,8 @@ function paintMain(){
     return;
   }
 
-  const { items, current, meetingNow, breakNow, rest, missed, doneCount, open } = splitAgenda();
+  const { items, current, meetingNow, breakNow, missedList, rest, missed, doneCount, open } = splitAgenda();
+  const missedListSet = new Set(missedList);
 
   /* the day is capped at a few tasks, so fetch their checklists up front and
      let the panels appear without being asked for */
@@ -4706,7 +4914,7 @@ function paintMain(){
 
   /* every remaining thing today, tasks and meetings alike */
   const upcoming = rest.filter(i => !i.done);
-  const missedTasks = missed.filter(i => i.task);
+  const missedTasks = missed.filter(i => i.task && !missedListSet.has(i));
   for(const i of missedTasks) i.missed = true;
   let laterItems = upcoming.concat(missedTasks);
 
@@ -4731,30 +4939,44 @@ function paintMain(){
      the line only ever started at the nest, well below the meeting it
      belongs to. Every other case (no meeting, or a meeting nothing nests
      under) keeps appending straight to host, unchanged. */
+  /* The hub and everything around it now render INSIDE the timeline, on the
+     same clock as the rest of the day, rather than floating above it — the
+     user's ask was to "experience the entire day," seeing what's behind and
+     ahead of the current task. So this all collects into `lead` and gets
+     handed to timeline(); its prominence comes from .item.hub styling, not
+     from sitting outside the grid. The .hub-group wrapper is still only
+     created when a banner and nest both need connecting. */
   const wantsLine = meetingNow && meetingKids;
-  const hubHost = wantsLine ? el("div","hub-group") : host;
+  const lead = el("div","hub-lead");
+  const hubHost = wantsLine ? el("div","hub-group") : lead;
   const connector = () => el("div","hub-connector");
 
   if(meetingNow) hubHost.appendChild(meetingNowRow(meetingNow));
 
-  /* An unstarted break earlier than the hub (see splitAgenda's breakNow)
-     renders here, above the hub — same normal stack card it always was in
-     `rest`, just moved so its position on screen matches its position on
-     the clock instead of contradicting it. Not folded into meetingNow's
-     banner/connector machinery: a break isn't a meeting and has no
-     children to nest, so it's the plain timelineItem card, nothing more. */
-  if(breakNow) host.appendChild(timelineItem(breakNow, 0, 0, 0, 1, {mode:"stack"}));
+  /* An unstarted break earlier than the hub (see splitAgenda's breakNow),
+     and/or any still-open tasks whose own slots already passed
+     (missedList — every one of them, not just the earliest, see its own
+     comment), render here, above the hub — same normal stack card each
+     always was in `rest`/`missed`, just moved so its position on screen
+     matches its position on the clock instead of contradicting it. Marked
+     .missed same as a plain missed-list row would be, so the card itself
+     still reads as overdue rather than a normal upcoming task. Sorted by
+     start time together, same as the hub itself would be. None of this is
+     folded into meetingNow's banner/connector machinery: plain
+     timelineItem cards, nothing more. */
+  for(const i of missedList) i.missed = true;
+  for(const i of [breakNow].concat(missedList).filter(Boolean).sort((a,b) => a.s - b.s))
+    lead.appendChild(timelineItem(i, 0, 0, 0, 1, {mode:"stack"}));
 
   if(current){
-    /* nowCard returns a fragment [eyebrow, card] — the status label
-       ("On it"/"Up next"/…) floats above the card with no border of its
-       own, a separate flow sibling, not part of the card box. A connector
-       placed before the whole fragment stopped short at that label instead
-       of the real card, so the dash visually ended at plain text instead
-       of the card it's meant to point to. Grabbing the card node before
-       the fragment's children move into hubHost lets the connector be
-       inserted right before it specifically — skipping past the label,
-       landing exactly where the bordered card begins. */
+    /* nowCard returns a single .time-row today, so cardEl is that row and
+       the connector lands right before it. The fragment branch is kept for
+       the historical shape [eyebrow, card], where the status label was a
+       separate flow sibling ABOVE the card: a connector placed before the
+       whole fragment stopped short at that label instead of the real card,
+       so the dash ended at plain text rather than the card it points to.
+       The label now sits to the card's RIGHT inside .card-col, so it is no
+       longer in the connector's vertical path at all. */
     const built = nowCard(current);
     const cardEl = built.nodeType === 11 ? built.lastElementChild : built;
     hubHost.appendChild(built);
@@ -4770,11 +4992,15 @@ function paintMain(){
     hubHost.appendChild(nest);
   }
 
-  if(wantsLine) host.appendChild(hubHost);
+  if(wantsLine) lead.appendChild(hubHost);
 
-  /* `all` lets timeline() find the off-hours gap against the whole day, not
+  /* One timeline holds the whole day now — hub first, then everything after
+     it. It renders even with no laterItems, because the hub itself is a row
+     that needs the clock behind it.
+     `all` lets timeline() find the off-hours gap against the whole day, not
      just the rows it happens to be rendering — see the note in timeline(). */
-  if(laterItems.length) host.appendChild(timeline(laterItems, { all:items }));
+  const sec = timeline(laterItems, { all:items, lead });
+  host.appendChild(sec);
 
   /* run after every row is in the live tree — fitRowTitle measures real
      layout, so it needs real boxes, not ones still being built */
@@ -4782,6 +5008,10 @@ function paintMain(){
      not fitRowTitle's shrink-then-wrap — it's a one-line, small-and-muted
      read by design, so it's excluded here rather than measured. */
   host.querySelectorAll(".item.stack:not(.collapsed) .row").forEach(fitRowTitle);
+  /* Anchoring measures real boxes too, and must run AFTER fitRowTitle —
+     shrinking a title can change a card's height, which changes where every
+     row below it lands. */
+  anchorRows(sec);
 
   /* transient trouble: keep data, say it once, quietly */
   const soft = Object.values(S.errs).find(e => !AUTHZ.has(e.code) && !LIFECYCLE.has(e.code));
@@ -4839,9 +5069,23 @@ function paint(){
    the tasks scheduled during it underneath itself instead of listing them
    as flat siblings, so "I have חמל, and two tasks inside it" reads at a
    glance. Position/height math for the minute-precise grid lives on in
-   weekGrid (layoutOverlaps + timelineItem in "grid" mode); Day view no
-   longer has one now that the Schedule page is gone. */
+   weekGrid (layoutOverlaps + timelineItem in "grid" mode). Day view uses
+   the same scale, but only to ANCHOR a row's top edge — never to size it;
+   see anchorRows() for why sizing by duration is arithmetically impossible
+   here (15min vs 8h is 32x, while a legible card spans only ~2.3x). */
 const TL_PPM = 1.6; // pixels per minute
+/* The one scale both time views share. Day and Week must never drift apart
+   on this — they're meant to read as one clock in two layouts, so the
+   factor lives here rather than inline in weekGrid. */
+const TL_PPM_DAY = TL_PPM * 0.62;   // ~0.99 px/min, ~59.5px per hour
+/* An empty stretch longer than SKIP_MIN_PX (~1.7h of clock) collapses to
+   SKIP_KEEP_PX. Without this, a single early meeting widening the window to
+   06:00 opens the day on five hours of blank grid with the real work pushed
+   off the bottom of the phone. The threshold is deliberately well above one
+   hour: a genuinely empty hour inside the working day is information, and
+   should be seen at full size. */
+const SKIP_MIN_PX  = 100;
+const SKIP_KEEP_PX = 26;
 
 /* tasks that read as "during" a permeable meeting: started inside its
    window, regardless of whether they run past its end (e.g. a session that
@@ -4875,10 +5119,21 @@ function groupForStack(items){
   return groups;
 }
 
+/* Day view's timeline. Renders the hour gutter (the same one weekGrid uses)
+   down the left, then the day's rows beside it — each row ANCHORED to its
+   real start minute by anchorRows(), never sized by its duration.
+
+   opts.lead is a prebuilt node (paintMain's hub group: meeting banner, hub
+   card, its nest) that goes in first, so the hub sits ON the clock with the
+   rest of the day rather than floating above the timeline. It's passed in
+   rather than built here because paintMain owns all the hub/nest/connector
+   logic already, and none of that needed to change to move it. */
 function timeline(items, opts){
   opts = opts || {};
   const sec = el("section","later stack");
+  const wrap = el("div","day-grid");
   const rowsEl = el("div","rows stack");
+  if(opts.lead) rowsEl.appendChild(opts.lead);
   /* The off-hours card is placed by time, not appended: it belongs between
      the last work of the day and whatever the calendar holds afterwards, so
      it goes in just before the first group that starts at or after the gap
@@ -4911,8 +5166,221 @@ function timeline(items, opts){
     }
   }
   placeGap(null);   // gap after everything else in this list
-  sec.appendChild(rowsEl);
+
+  /* The window: the configured day, widened to whole hours around anything
+     that actually falls outside it — same clamp weekGrid uses (an early
+     start or a session running past dayEnd must not be cut off the clock).
+
+     Measured over the rows that ACTUALLY GOT ANCHORED, not over the whole
+     day: a currently-running permeable meeting renders as the compact
+     banner above the hub (meetingNowRow), which carries no data-min and
+     never sits on the clock. Letting it widen the window anyway opened the
+     day at its 06:00 start with nothing anchored anywhere near there —
+     five hours of blank grid above the first real card, and not even a gap
+     the compression could collapse, since the run wasn't empty by the
+     numbers, only by what rendered. */
+  const anchored = [...rowsEl.querySelectorAll("[data-min]")]
+    .map(r => ({ s:+r.dataset.min, e2:+r.dataset.min + (+r.dataset.dur || 0) }));
+  let winS = CFG.dayStart*60, winE = CFG.dayEnd*60;
+  for(const it of anchored){
+    winS = Math.min(winS, Math.floor(it.s/60)*60);
+    winE = Math.max(winE, Math.ceil(it.e2/60)*60);
+  }
+  if(gap) winE = Math.max(winE, Math.ceil(gap.e2/60)*60);
+
+  const ppm = TL_PPM_DAY;
+  hourLines(rowsEl, winS, winE, ppm);
+  if(sameDay(S.anchor, new Date())){
+    const line = nowLine(winS, winE, ppm);
+    if(line) rowsEl.appendChild(line);
+  }
+  wrap.appendChild(hourGutter(winS, winE, ppm));
+  wrap.appendChild(rowsEl);
+  sec.appendChild(wrap);
+  /* anchorRows measures real laid-out boxes, so it can't run here — the
+     rows aren't in the document yet. paintMain calls it once everything
+     is in the live tree; these ride along so it doesn't recompute them. */
+  sec.dataset.winS = winS;
+  sec.dataset.winE = winE;
+  sec.dataset.ppm = ppm;
   return sec;
+}
+
+/* Anchors each row to its true start minute — the whole point of the Day
+   grid. Sets a per-row margin-top so the row's top edge lands at
+   (min - winS) * ppm, measured against the rows container's own top so
+   nests, connectors and the eyebrow labels are all accounted for by real
+   layout rather than by summing heights by hand.
+
+   THE INVARIANT: a row may be pushed LATER than true scale, never earlier.
+   Where the cards in an hour are naturally taller than that hour's slice of
+   clock (four 15-min quick tasks need ~244px of card in ~59px of clock),
+   the run simply continues and the clock catches up at the next row with
+   slack. So the gutter is always honest about where an hour line is, and no
+   card ever appears above its own start time — the two properties that let
+   this work at all, given a card can't be shorter than ~61px.
+
+   Deliberately margin-top on in-flow rows rather than absolute positioning:
+   wireStackDrag snapshots row rects and pushes by neighbour deltas, which
+   is variable-height AND variable-gap safe, but breaks outright if rows
+   overlap or leave the flow. See the drag notes in tools/CLAUDE.md. */
+/* A LONG block physically covers its own hours: a 3h session is ~178px of
+   clock at TL_PPM_DAY, so it can be drawn at true scale and read as "this
+   occupies the whole afternoon" rather than as a 61px card with a chip that
+   says 3h.
+
+   This is deliberately a FLOOR, applied per row, not a switch to sizing every
+   card by duration — that remains impossible for the reason recorded in
+   tools/CLAUDE.md: durations span 32x (15min quick task to an 8h work day)
+   while legible card heights span ~2.3x, so a 15-min task at true scale needs
+   a ~1954px day. Here the card keeps its natural height whenever that is
+   already taller than its slice of clock (every quick task, every short
+   meeting), and only grows when the clock genuinely asks for more room. So
+   nothing shrinks, nothing becomes illegible, and the day gets longer only by
+   exactly the amount the long blocks actually occupy.
+
+   It cooperates with anchorRows' invariant rather than fighting it: a taller
+   card enlarges `natural` for the rows below, which the existing "a row may
+   be pushed LATER, never earlier" rule already handles, and the gutter is
+   interpolated against measured positions afterwards, so the hour lines
+   follow the taller card automatically. */
+function sizeCardToDuration(row, ppm){
+  const card = row.querySelector(".item.stack");
+  if(!card) return;
+  /* Cleared every paint for the same reason marginTop is: a stale height
+     would be measured as real content on the next pass. */
+  card.style.minHeight = "";
+  const dur = +row.dataset.dur;
+  if(!isFinite(dur) || dur <= 0) return;
+  /* An expanded card is already sized by its own open detail panel, and a
+     collapsed one is deliberately small — neither wants a duration floor. */
+  if(card.classList.contains("expanded") || card.classList.contains("collapsed")) return;
+  const want = dur * ppm;
+  if(want > card.getBoundingClientRect().height) card.style.minHeight = want + "px";
+}
+
+function anchorRows(sec){
+  const rowsEl = sec.querySelector(".rows.stack");
+  if(!rowsEl) return;
+  const winS = +sec.dataset.winS, ppm = +sec.dataset.ppm;
+  if(!isFinite(winS) || !isFinite(ppm)) return;
+  const rows = [...rowsEl.querySelectorAll("[data-min]")];
+  if(!rows.length) return;
+  /* Clear first: this runs on every paint, and a stale margin would be
+     measured as if it were real content. */
+  for(const r of rows) r.style.marginTop = "";
+  sec.querySelectorAll(".hour-skip").forEach(n => n.remove());
+  /* Each iteration re-measures against the live tree, so a row's "natural"
+     position already includes every push applied above it — which is
+     exactly the running cursor this needs, obtained from real layout
+     instead of tracked by hand. Costs a reflow per row; the Day list is
+     tens of rows, not thousands, and this runs once per paint. */
+  /* Empty clock is compressed past a threshold, so a day whose first card is
+     at 11:30 doesn't open on hours of blank grid with the real work pushed
+     off the bottom of the phone. `shift` accumulates what's been squeezed
+     out; the gutter is placed against measured row positions afterwards, so
+     it follows this automatically rather than needing its own copy of the
+     arithmetic. */
+  /* prevEnd starts at the window's own opening, not null, so a day whose
+     first card is hours after dayStart compresses that leading run too —
+     that's the most common case of all (nothing scheduled before 11:30 on
+     a 09:00 day) and leaving it uncompressed opened the view on two screens
+     of empty grid. */
+  let bottom = 0, shift = 0, prevEnd = winS;
+  for(const r of rows){
+    const min = +r.dataset.min;
+    {
+      const emptyPx = (min - prevEnd) * ppm;
+      if(emptyPx > SKIP_MIN_PX){
+        r.dataset.skipFrom = prevEnd;
+        r.dataset.skipTo = min;
+        shift += emptyPx - SKIP_KEEP_PX;
+      }
+    }
+    sizeCardToDuration(r, ppm);
+    const baseTop = rowsEl.getBoundingClientRect().top;
+    const rect = r.getBoundingClientRect();
+    const natural = rect.top - baseTop;   // where flow alone would put it
+    const want = (min - winS) * ppm - shift;
+    if(want > natural) r.style.marginTop = (want - natural) + "px";
+    bottom = Math.max(want, natural) + rect.height;
+    prevEnd = Math.max(prevEnd, min + (+r.dataset.dur || 0));
+  }
+  /* The container has to cover the full window even when the last card
+     ends early, or the trailing hour lines get clipped. */
+  /* Now place the clock against where the rows ACTUALLY ended up.
+
+     This is the half that makes the whole thing honest. Anchoring alone
+     guarantees a row is never above its own start time, but it cannot
+     guarantee the reverse: a 144px hub card occupies ~15 minutes of clock,
+     four 15-min quick tasks need ~244px of card in ~59px of clock, so a
+     crowded stretch inevitably pushes everything after it *below* true
+     scale. If the gutter kept its ideal positions, a card would drift
+     hours away from the hour line naming it — the exact misreading this
+     view exists to prevent.
+
+     So the hour lines follow the cards instead: each hour is placed by
+     interpolating between the real, measured positions of the rows on
+     either side of it. Where the day is uncrowded the spacing is the true
+     ~59.5px/hour; where cards had to be pushed, that hour's slice of the
+     gutter stretches to match. The clock stays monotonic and every card
+     sits against its correct hour, which is what a reader actually checks. */
+  const marks = rows.map(r => ({
+    min: +r.dataset.min,
+    px:  r.getBoundingClientRect().top - rowsEl.getBoundingClientRect().top
+  })).sort((a,b) => a.min - b.min || a.px - b.px);
+  /* Endpoints so hours before the first card and after the last still land
+     somewhere sensible — extrapolated at true scale from the nearest known
+     point, which is exactly right when nothing is competing for the space. */
+  const at = min => {
+    if(!marks.length) return (min - winS) * ppm;
+    if(min <= marks[0].min) return marks[0].px - (marks[0].min - min) * ppm;
+    const last = marks[marks.length-1];
+    if(min >= last.min) return last.px + (min - last.min) * ppm;
+    for(let i=1; i<marks.length; i++){
+      const a = marks[i-1], b = marks[i];
+      if(min <= b.min){
+        if(b.min === a.min) return a.px;
+        return a.px + (b.px - a.px) * ((min - a.min) / (b.min - a.min));
+      }
+    }
+    return last.px;
+  };
+  /* An hour extrapolated to a negative offset was squeezed out by a leading
+     compression — it has no honest place on this clock, and letting it
+     render would put a label above the top of the grid, overlapping the
+     view's own chrome. Dropped rather than clamped: several hours clamped
+     to 0 would stack on one another and each claim the same position. */
+  const place = node => {
+    const min = winS + (parseFloat(node.style.top) / ppm);
+    const y = at(min);
+    if(y < 0){ node.remove(); return; }
+    node.style.top = y + "px";
+  };
+  sec.querySelectorAll(".day-grid > .tl-hours > .hl").forEach(place);
+  sec.querySelectorAll(".rows.stack > .grid-line").forEach(place);
+  const nl = sec.querySelector(".rows.stack > .tl-now");
+  if(nl) place(nl);
+  /* Mark each squeeze so the jump in the clock is stated, not just done —
+     an unexplained gap in an hour column reads as a rendering fault. */
+  for(const r of rows){
+    if(!r.dataset.skipFrom) continue;
+    const mins = +r.dataset.skipTo - +r.dataset.skipFrom;
+    const h = Math.round(mins/60);
+    const tag = el("div","hour-skip", h >= 1 ? `⋯ ${h}h` : "⋯");
+    tag.style.top = (r.offsetTop - SKIP_KEEP_PX + 4) + "px";
+    rowsEl.appendChild(tag);
+  }
+
+  /* Tall enough for the last hour line, wherever interpolation put it. */
+  const need = at(+sec.dataset.winE);
+  const full = isFinite(need) ? Math.max(need, bottom) : bottom;
+  rowsEl.style.minHeight = full + "px";
+  /* The gutter's labels are absolutely positioned, so it has no height of
+     its own to stretch — give it the same one the rows ended up with, or
+     the last hours have nothing to sit in. */
+  const gut = sec.querySelector(".day-grid > .tl-hours");
+  if(gut) gut.style.height = full + "px";
 }
 
 /* The off-hours card. Deliberately NOT a `.item.stack`: it isn't a task, has
@@ -4922,6 +5390,9 @@ function timeline(items, opts){
    time lines up in the same rail as everything else. */
 function offHoursCard(gap){
   const row = el("div","time-row offhours-row");
+  /* anchors on the clock like every other row — see anchorRows */
+  row.dataset.min = gap.s;
+  row.dataset.dur = gap.e2 - gap.s;
 
   const rail = el("div","rail-stop offhours-stop");
   const at = atMin(S.anchor, gap.s);
@@ -5000,10 +5471,46 @@ function dayEvents(day){
   }));
 }
 
+/* The hour gutter — the column of "09:00 / 10:00 / …" labels — and the
+   dashed rules that carry those hours across the rows beside it. Extracted
+   from weekGrid so Day view renders the identical clock from the identical
+   code: two views, one time language, no chance of drift. Both take an
+   explicit ppm so the caller owns the scale.
+
+   hourGutter returns the labels column; hourLines APPENDS rules into a
+   caller-supplied element, because Week puts them in each of its 7 day
+   columns while Day puts them in its single rows container. */
+function hourGutter(winS, winE, ppm, height){
+  const hoursCol = el("div","tl-hours tl-gutter");
+  if(height != null) hoursCol.style.height = height + "px";
+  for(let h = Math.ceil(winS/60); h <= Math.floor(winE/60); h++){
+    const lab = el("div","hl", pad2(h%24) + ":00");
+    lab.style.top = ((h*60-winS)*ppm) + "px";
+    hoursCol.appendChild(lab);
+  }
+  return hoursCol;
+}
+function hourLines(host, winS, winE, ppm){
+  for(let h = Math.ceil(winS/60); h <= Math.floor(winE/60); h++){
+    const gl = el("div","grid-line");
+    gl.style.top = ((h*60-winS)*ppm) + "px";
+    host.appendChild(gl);
+  }
+}
+/* The red "you are here" line, likewise shared. Returns null when now falls
+   outside the rendered window, so callers can append unconditionally. */
+function nowLine(winS, winE, ppm){
+  const nowMin = minsOf(new Date());
+  if(nowMin < winS || nowMin > winE) return null;
+  const line = el("div","tl-now");
+  line.style.top = ((nowMin-winS)*ppm) + "px";
+  return line;
+}
+
 function weekGrid(anchorDate){
   const { start } = weekBounds(anchorDate);
   const days = Array.from({length:7}, (_,i) => addDays(start,i));
-  const ppm = TL_PPM * 0.62;
+  const ppm = TL_PPM_DAY;
   let winS = CFG.dayStart*60, winE = CFG.dayEnd*60;
   const perDay = days.map(day => {
     const items = dayEvents(day);
@@ -5029,22 +5536,13 @@ function weekGrid(anchorDate){
   }
 
   const body = el("div","week-body");
-  const hoursCol = el("div","tl-hours tl-gutter");
-  hoursCol.style.height = height + "px";
-  for(let h = Math.ceil(winS/60); h <= Math.floor(winE/60); h++){
-    const lab = el("div","hl", pad2(h%24) + ":00");
-    lab.style.top = ((h*60-winS)*ppm) + "px";
-    hoursCol.appendChild(lab);
-  }
-  body.appendChild(hoursCol);
+  body.appendChild(hourGutter(winS, winE, ppm, height));
 
   const colsWrap = el("div","week-cols");
   const colEls = perDay.map(({ day }) => {
     const c = el("div","rows week-col" + (isTodayIn(day) ? " today" : ""));
     c.style.height = height + "px";
-    for(let h = Math.ceil(winS/60); h <= Math.floor(winE/60); h++){
-      const gl = el("div","grid-line"); gl.style.top = ((h*60-winS)*ppm) + "px"; c.appendChild(gl);
-    }
+    hourLines(c, winS, winE, ppm);
     colsWrap.appendChild(c);
     return { day, el:c };
   });
@@ -5054,11 +5552,8 @@ function weekGrid(anchorDate){
     for(const { item, col, cols } of layoutOverlaps(items))
       colEl.appendChild(timelineItem(item, winS, ppm, col, cols, { mode:"grid", compact:true, date:day, columns }));
     if(isTodayIn(day)){
-      const nowMin = minsOf(new Date());
-      if(nowMin >= winS && nowMin <= winE){
-        const line = el("div","tl-now"); line.style.top = ((nowMin-winS)*ppm) + "px";
-        colEl.appendChild(line);
-      }
+      const line = nowLine(winS, winE, ppm);
+      if(line) colEl.appendChild(line);
     }
   });
   body.appendChild(colsWrap);
@@ -5348,7 +5843,7 @@ function timelineItem(item, winS, ppm, col, cols, opts){
       status = isOpen ? ("status" in opts ? opts.status : itemStatusText(item)) : null;
       const meta = el("div","row-meta");
       const chipRow = el("div","meta-chips");
-      chipRow.appendChild(el("span","chip deep", fmtDur(item.e2 - item.s)));
+      chipRow.appendChild(el("span","chip time", fmtRangeMin(item.s, item.e2)));
       if(isOpen && item.card && item.card.due) chipRow.appendChild(el("span","chip "+dueChipClass(item.card), fmtShortDate(item.card.due)));
       meta.appendChild(chipRow);
       if(acts) meta.appendChild(acts);
@@ -5432,17 +5927,33 @@ function timelineItem(item, winS, ppm, col, cols, opts){
   railStop.appendChild(el("span","tm", ":" + pad2(startAt.getMinutes())));
   railStop.title = fmtRange(inBrick ? startAt : item.ev.start,
                             inBrick ? atMin(item.ev.start, item.e2) : item.ev.end);
+  /* Duration, expressed where height is actually free. The card itself
+     can't be sized by duration (see anchorRows), but a 3px bar in the rail
+     can be exactly as tall as the time it represents — so a 15-min task
+     gets a stub, a 3h session a long bar, an 8h day a full-height one, and
+     the proportional read the grid can't give the cards survives here.
+     Floored at 6px so the shortest slot is still visibly a mark. */
+  const durBar = el("span","rail-bar");
+  durBar.style.height = Math.max(6, (item.e2 - item.s) * TL_PPM_DAY) + "px";
+  railStop.appendChild(durBar);
 
   const cardCol = el("div","card-col");
+  /* Card first, status column second — the eyebrow now sits to the card's
+     right rather than stacked above it, so the DOM order matches. */
+  cardCol.appendChild(wrap);
   if(status){
     const top = el("div","item-top" + (isHub ? " hub" : ""));
     top.appendChild(el("span","eyebrow",status));
     if(!item.card && !item.ev.mine) top.appendChild(el("span","chip","external"));
     cardCol.appendChild(top);
   }
-  cardCol.appendChild(wrap);
 
   const timeRow = el("div","time-row" + (isHub ? " hub" : ""));
+  /* What anchorRows reads to put this row on the clock. Every row that has
+     a real start carries it, uniformly — including the hub and, separately,
+     the off-hours card, which builds its own .time-row by hand. */
+  timeRow.dataset.min = item.s;
+  timeRow.dataset.dur = item.e2 - item.s;
   timeRow.appendChild(railStop);
   timeRow.appendChild(cardCol);
   return timeRow;
@@ -6240,8 +6751,7 @@ function swapPicker(item, outCard){
     const t = tierOf(c);
     if(isAging(c))    b.appendChild(el("span","chip age", ageDays(c)+"d"));
     else if(c.overdue)b.appendChild(el("span","chip crit","!"));
-    if(c.size==="long")       b.appendChild(el("span","chip deep","8h"));
-    else if(c.size==="short") b.appendChild(el("span","chip deep","3h"));
+    if(c.size==="short") b.appendChild(el("span","chip deep","3h"));
     b.addEventListener("click", ()=>{ close(); swapTo(item, c, outCard); });
     body.appendChild(b);
   }
@@ -6298,10 +6808,10 @@ function swapTo(item, card, outCard){
   const existingBlock = allEvents().find(e => e.cardShort === card.shortLink && overlapsDay(e, S.anchor));
 
   /* The old slot's own length used to carry straight over to whatever card
-     landed in it — swap a quick task's 20-minute slot for a work day and
-     the block stayed 20 minutes. A session or work day has a real size of
-     its own (CFG.shortMin/longMin) and needs to land at that size, not
-     inherit the outgoing slot's. A quick task has a nominal size too
+     landed in it — swap a quick task's 20-minute slot for a session and
+     the block stayed 20 minutes. A session has a real size of its own
+     (CFG.shortMin) and needs to land at that size, not inherit the
+     outgoing slot's. A quick task has a nominal size too
      (CFG.quickTotal, since planFor's build), but swap deliberately doesn't
      enforce it: a quick card swapped in (or a quick slot getting a
      same-size quick replacement) keeps whatever slot it lands in untouched
@@ -6309,7 +6819,7 @@ function swapTo(item, card, outCard){
      rebuild-time neighbor to re-pack around. */
   let start = item.ev.start, end = item.ev.end;
   const haveDur = minsOf(end) - minsOf(start);
-  const wantDur = card.size === "quick" ? haveDur : (card.est || (card.size === "long" ? CFG.longMin : CFG.shortMin));
+  const wantDur = card.size === "quick" ? haveDur : (card.est || CFG.shortMin);
   if(wantDur !== haveDur){
     const ignore = new Set([id]);
     if(existingBlock) ignore.add(existingBlock.id);
@@ -6454,7 +6964,6 @@ function settingsPanel(){
     };
     loadRow("Quick Task", num("quickTotal",5,480,5), "min", num("quickMax",1,20,1));
     loadRow("Session", numHours("shortMin",0.5,8,0.5), "h", num("sessionMax",1,10,1));
-    loadRow("Work Day", numHours("longMin",1,10,0.5), "h", num("workdayMax",1,5,1));
     body.appendChild(loadTable);
     const bhr = el("select","num-in wide");
     [["","Daisey decides"]].concat(
@@ -6470,7 +6979,7 @@ function settingsPanel(){
     });
     row("Break At", bhr, num("breakLen",15,180,15), el("span","set-u","min"));
     const lg = el("div","legend");
-    lg.appendChild(document.createTextNode("No label = Quick Task. Yellow = Session. Orange = Work Day."));
+    lg.appendChild(document.createTextNode("No label = Quick Task. Yellow or Orange = Session."));
     body.appendChild(lg);
 
     /* One row, three boards — used far less often than the Load numbers
@@ -7457,7 +7966,7 @@ async function replan(){
   if(clearable.length){
     const ok = await confirmDialog(
       "Rebuild today?",
-      `Clears ${clearable.length} block${clearable.length===1?"":"s"} and re-lays the day.\n\nSchedules tasks by available time: quick tasks take ${CFG.quickTotal}min each, sessions take ${CFG.shortMin}min, work days take ${CFG.longMin}min. A work day takes the whole day — no quick tasks alongside it. Meetings, finished and past work stay.`,
+      `Clears ${clearable.length} block${clearable.length===1?"":"s"} and re-lays the day.\n\nSchedules tasks by available time: quick tasks take ${CFG.quickTotal}min each, sessions take ${CFG.shortMin}min. Meetings, finished and past work stay.`,
       "Rebuild");
     if(!ok) return;
   }
