@@ -13,7 +13,7 @@ let fails=0;
 for(const when of ["2026-08-14T07:30:00+03:00","2026-08-14T12:10:00+03:00","2026-08-14T16:30:00+03:00","2026-08-14T21:54:00+03:00"]){
   const ctx=await b.newContext({viewport:{width:760,height:1000},timezoneId:"Asia/Jerusalem",colorScheme:"dark"});
   const p=await ctx.newPage();const errs=[];
-  p.on("pageerror",e=>errs.push(e.message));p.on("console",m=>{if(m.type()==="error")errs.push(m.text());});
+  p.on("pageerror",e=>errs.push(e.message));p.on("console",m=>{if(m.type()==="error" && !/^\[daisey\]/.test(m.text()))errs.push(m.text());});
   await p.setContent(`<!doctype html><html><head><meta charset="utf-8"><script>${clock(when)}${stub}<\/script></head><body>${page_html}</body></html>`,{waitUntil:"load"});
   await p.waitForTimeout(3400);
   const r=await p.evaluate(()=>{const h=existingBlocks(new Date());

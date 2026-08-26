@@ -21,25 +21,31 @@ Rules, in the order they save the most:
   loudly if the match missed; a successful edit needs no verification read.
   Re-reading a 7.6k-line file to check a three-line change is the single
   most expensive habit available.
-- **Filter test output.** The suite has no single result convention — this
-  was checked file by file, don't assume:
+- **Run the suite with one command: `cd tools/test && npm test`.**
+  `run-all.js` copies `tools/daisey.html` over the gitignored test copy
+  first, runs every suite, and exits non-zero if any failed — so a single
+  filtered line is all you need:
 
-  - 19 files print `FAIL` (`back`, `cfg`, `day`, `dup`, `hour`, `pages`,
-    `proj`, `push`, `rail`, `retry`, `settings`, `start`, `swap`, `tmr`,
-    `tracker`, `brk`, `fast`, `rules`, `standalone`).
-  - 10 print `[label] ok` / `[label] ERR` instead (`cap`, `chrome`, `dead`,
-    `fri`, `late`, `offhours`, `sat`, `states`, `tick`, `work`).
-  - `harness.js` prints `console errors:` / `window errors:` blocks.
-  - `det`, `edit`, `hub`, `mini` print raw state with no pass/fail marker
-    at all and have to be read in full.
+      cd tools/test && npm test 2>&1 | tail -20
 
-  So `grep FAIL` alone silently passes ten files that report failures as
-  `ERR`. Use the filter that covers every convention:
-
-      node tools/test/<file>.js 2>&1 | grep -aE "ERR|FAIL|Error|error" | tail -20
-
-  Empty output, or only `errors: none`, means clean. Read the full output
-  only for the four unmarked files, or once the filtered view shows a hit.
+  It prints one `ok`/`FAIL`/`FLAKY`/`DUMP` line per suite plus a summary,
+  and dumps only the last 25 lines of any suite that failed. Pass a name to
+  run one (`npm test -- states.js`), `--jobs=N` to parallelise.
+  **Serial by default, deliberately** — every suite waits on fixed
+  `waitForTimeout` durations rather than conditions, so under CPU contention
+  `retry.js` fails spuriously (observed at both 4-way and 2-way; 3/3 clean on
+  its own). The whole suite is ~4 min serial.
+  History, worth knowing before "simplifying" any of this: `npm test` used to
+  be the npm stub (`exit 1`), there was no runner, and the 37 files reported
+  failure in three incompatible ways — 19 printed `FAIL`, 10 printed
+  `[label] ERR` while exiting 0, and four printed raw JSON with no marker at
+  all. `grep FAIL` silently passed ten failing files. The runner normalises
+  all of it: a suite fails on a non-zero exit **or** on failure text in its
+  output.
+  **`det`/`edit`/`hub`/`mini` have no assertions and cannot fail** — they log
+  state and screenshot. They're reported as `DUMP`, counted separately, and
+  never gate the run. That's a real coverage gap to close, not something to
+  read as green.
 - **Prefer `Read` with `offset`/`limit` over shell `cat`.** When a session is
   in Bash-only/auto mode that tool is unavailable and every read is a raw
   dump. For work in `tools/`, turn auto mode off — the line-windowing is
@@ -99,13 +105,10 @@ user's home-screen shortcut pointing at a stale copy.
 ### Open work (2026-08-17)
 
 Items 1–3 below are **done** (2026-08-17, with the connector available), and
-the `moveAssetTo` fix from item 3 is **published**. Known open item: the
-`settings.js` suite fails — `BOARDS` gained the tracker board, so the Colour
-section renders four swatches where the test asserts three, and the sheet now
-needs an internal scroll at 667px, breaking the "zero internal scroll down to
-667px" promise the settings bullet below makes. Inherited from the tracker
-session, not yet fixed; decide whether a tracker board deserves a user-set
-colour at all, since it never appears in the day list.
+the `moveAssetTo` fix from item 3 is **published**. The `settings.js`
+failure recorded here (four swatches vs three, internal scroll at 667px) is
+**fixed** — it passes as of 2026-08-26. The whole suite is green: 32 passed,
+0 failed, plus the four dump-only files that carry no assertions.
 
 1. ~~**Migrate the assets.**~~ Done: 22 asset cards now live on
    `Monster Punk — Audio`, 21 in Waiting and "Music: GameLoop Music" in
@@ -139,17 +142,18 @@ colour at all, since it never appears in the day list.
 ### Working on it
 
 - Edit `tools/daisey.html`, then republish to the URL above.
-- Tests: `cd tools/test && npm i playwright && node assert.js` (see
+- Tests: `cd tools/test && npm i playwright && npm test` (see
   `tools/test/README.md`). They drive the real page in Chromium against
   a stubbed connector bridge — no network, no real writes.
-- **Copy the page into the test dir first — every test reads
-  `tools/test/daisey.html`, not `tools/daisey.html`.** That copy is
-  gitignored, so it silently goes stale and the suite then passes against
-  whatever the file said last time you copied it. This is not theoretical:
-  a `moveAssetTo` fix was "confirmed" by a green `tracker.js` that was
-  still driving the old shape, and only the printed write payload gave it
-  away. `Copy-Item tools/daisey.html tools/test/daisey.html -Force` (or
-  `cp`) before any run whose result you intend to believe.
+- **You no longer need to copy the page into the test dir by hand.**
+  `run-all.js` does it on every run, before anything else. Every test reads
+  `tools/test/daisey.html`, a gitignored copy, and that copy used to go
+  stale silently — the suite would then pass against whatever the file said
+  last time somebody copied it. Not theoretical: a `moveAssetTo` fix was
+  "confirmed" by a green `tracker.js` still driving the old shape, and only
+  the printed write payload gave it away. Running a single suite directly
+  (`node states.js`) still bypasses the refresh, so `npm test -- states.js`
+  is the safer way to run one.
 - Run `assert.js` and `cap.js` after any change to the scheduling
   engine; they cover the rules the widget promises. Run `tracker.js`
   after any change to `candidates()`, `BOARDS`, or the Assets view.
@@ -248,11 +252,18 @@ colour at all, since it never appears in the day list.
   the chime are user settings** (gear icon), stored in the Trello state
   card under `settings` and read into `CFG` at boot. `DEFAULTS` holds
   the shipped values: up to 4 quick tasks sharing one 60-min window, 1
-  short session x 3h, 1 long session x 8h, 09:00-20:00,
-  Saturday off. Never hard-code these again. `sessionMax`/`workdayMax`
-  (2026-08-18, default 2/1) cap how many sessions/work days `planFor`
-  will place in one day, counting blocks already on the calendar the
-  same way `quickMax` always has. **`buffer` ("Breathing Room") is gone
+  short session x 3h, 09:00-20:00,
+  Saturday off. Never hard-code these again.
+  **The 8h "long session / work day" tier is GONE as of the 2026-08-25/26
+  redesign** — `workdayMax` no longer exists anywhere in `daisey.html`, and
+  `existingBlocks` returns only `short`/`quick`/`total`/`foreign`, bucketing
+  everything non-short as quick. Every `long`/`workdayMax` mention below is
+  history, not current behaviour. This was invisible for a while because
+  `work.js`, `start.js` and `tmr.js` all asserted against `have.long` — which
+  reads `undefined` against the current app — and nothing was running them.
+  `sessionMax` (2026-08-18, default 2) caps how many sessions `planFor` will
+  place in one day, counting blocks already on the calendar the same way
+  `quickMax` always has. **`buffer` ("Breathing Room") is gone
   (2026-08-18, user request)** — it padded both sides of every session
   and, since 2026-08-18, one side of a meeting's exit (the "no session
   starts the instant `חמל` ends" fix); the user found it confusable with
@@ -857,6 +868,56 @@ colour at all, since it never appears in the day list.
   quick task's slot length depends on how many others are sharing
   `quickTotal` when the day was built — so a quick card swapped into *any*
   slot, session/work-day-sized or not, keeps that slot's length untouched.
+- **`saveStats` is SINGLE-FLIGHT, and this is the most consequential
+  correctness fix in the file** (2026-08-26). The entire stats document —
+  streak, history, categories, rollovers, plans, project deadlines, settings
+  — is one JSON blob in one Trello card description, and `saveStats` is
+  called from **20 sites**, nearly all fire-and-forget (`saveStats(st)` with
+  no `await`) off a Done / Swap / Pending / Remove / settings save.
+  It used to serialize the whole document at CALL time and send it
+  immediately. Two actions close together therefore started two overlapping
+  writes of the entire document, each carrying a body captured before the
+  other landed, and **whichever response came back last won outright** — the
+  loser's change gone, with nothing on screen to say so. That is the
+  mechanism behind "my streak reset" / "my setting reverted" / "that
+  completion didn't stick": bugs that read as random because they are
+  timing-dependent and silent.
+  Two changes, no call sites touched: the body is now serialized **inside**
+  the write from `S.stats` at the moment the request goes out (so a queued
+  retry replays current state, never a stale snapshot), and at most one write
+  is in flight — a call arriving during one marks the state dirty and the
+  in-flight chain re-writes once when it finishes, coalescing any number of
+  overlapping updates into one final consistent write. `S.stats` is still
+  assigned synchronously, so local reads and the UI stay instant.
+  `tools/test/stats.js` is the guard, and it **discriminates**: verified to
+  fail against the pre-fix code (three overlapping saves → 3 concurrent
+  in-flight writes) and pass against the fix (→ 2 writes, the last carrying
+  the newest value). Don't "simplify" the queue away.
+- **Watch results are applied newest-first** (`onWatch`, `WATCH_AT`,
+  2026-08-26). A watch can deliver responses out of order — a slow poll
+  landing after a faster later one — and `assign` used to take whatever
+  arrived last unconditionally, quietly reverting a board or the calendar to
+  an older snapshot that nothing in the app could distinguish from real data.
+  Now each key remembers the newest `cache.storedAt` it has applied and drops
+  anything older. Only ordered when the connector actually stamped the
+  payload; without a stamp there's nothing to compare and last-write-wins is
+  still the best available answer. A dropped poll still calls `render()` —
+  `S.errs[key]` was cleared just above, and skipping the paint would leave a
+  dead error banner on screen.
+- **`logErr(where, e)` exists because this file had exactly ONE
+  `console.error` in ~5700 lines of code** (2026-08-26). A scheduling run
+  that half-failed left nothing behind to debug with — 11 `catch(_){}` sites
+  swallowed errors silently, three of them (`applyPlan`'s break creation and
+  both recovery branches) inside the highest-consequence write sequence in
+  the app. `logErr` keeps the control flow — it returns undefined, callers
+  continue exactly as before — and costs one line at the catch. The
+  genuinely-unactionable swallows are deliberately left silent:
+  `localStorage` throwing `SecurityError` on a sandboxed origin,
+  `setPointerCapture`, `calUnsub`, the audio chime.
+  **Test suites must not treat a `[daisey] …` line as a page error.** All 30
+  console-error collectors in the suite filter on `/^\[daisey\]/` — without
+  that, `setup.js` failed on a handled, queued-for-retry "Trello hasn't
+  loaded yet" that the wizard recovers from correctly.
 - **A watch error no longer retracts the data behind it.** `onWatch` used
   to blank the cached payload on any auth/lifecycle code, so a reauth
   blip emptied the whole page. Last-good data plus the banner beats an

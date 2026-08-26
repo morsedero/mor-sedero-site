@@ -12,7 +12,18 @@ calendar grid. Scripts below scope selectors to `#pageMain` mostly out of
 habit carried over from the old two-page split — there's only the one page
 now, so it's no longer load-bearing.
 
-    cd tools/test && npm i playwright && node assert.js
+    cd tools/test && npm i playwright && npm test
+
+`npm test` runs `run-all.js`, which refreshes `daisey.html` from
+`../daisey.html` first (that copy is gitignored and used to go stale
+silently), runs every suite, prints one `ok`/`FAIL`/`FLAKY`/`DUMP` line
+each, and exits non-zero if anything failed. `npm test -- states.js` runs
+one; `--jobs=N` parallelises. Serial by default — these suites wait on fixed
+timeouts, and `retry.js` fails spuriously under CPU contention.
+
+`det.js`, `edit.js`, `hub.js` and `mini.js` have **no assertions** — they
+log state and screenshot, so they cannot fail. They report as `DUMP` and
+never gate the run.
 
 | script | what it checks |
 |---|---|
@@ -40,6 +51,7 @@ now, so it's no longer load-bearing.
 | `push.js`   | dragging a card across more than one other in the Day-view list pushes the whole run over by a slot — not just a two-card trade with whatever's under the pointer — verified against four back-to-back quick tasks (A onto C also moves B, D stays put, exactly 3 update_event calls), and Ctrl+Z restores all three together |
 | `tmr.js`    | a block built for tomorrow actually stays visible in the app (not just on the real calendar) and a second rebuild replaces it instead of duplicating it |
 | `swap.js`   | swapping in a session or work-day card grows the slot to that card's own size instead of keeping the outgoing card's duration, in both directions; a quick card has no size of its own so it always keeps whatever slot it lands in |
+| `stats.js`  | `saveStats` is single-flight: three overlapping saves coalesce into two writes instead of three racing ones, the final write carries the newest state (no lost update), the body is serialized at write time not call time, and a save after the queue drains still goes out. Verified to fail against the pre-fix implementation |
 | `start.js`  | a card whose Trello start date is still ahead is excluded from `candidates()` (and the swap picker) until the built day reaches it, then schedules normally by its usual size rules; a card with no start date is unaffected |
 
 `real-events.json` is a snapshot of one real calendar day, used to test against

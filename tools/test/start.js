@@ -28,7 +28,7 @@ const check=(cond,msg)=>{ if(!cond) bad.push(msg); };
   const ctx=await b.newContext({viewport:{width:420,height:900},timezoneId:"Asia/Jerusalem",colorScheme:"dark"});
   const p=await ctx.newPage();
   p.on("pageerror",e=>bad.push("pageerror: "+e.message));
-  p.on("console",m=>{if(m.type()==="error")bad.push("console: "+m.text());});
+  p.on("console",m=>{if(m.type()==="error" && !/^\[daisey\]/.test(m.text()))bad.push("console: "+m.text());});
   await p.setContent(`<!doctype html><html><head><meta charset="utf-8"><script>${clock("2026-08-17T07:00:00+03:00")}${BASE}<\/script></head><body>${page_html}</body></html>`,{waitUntil:"load"});
   await p.waitForTimeout(2600);
 
@@ -70,7 +70,12 @@ const check=(cond,msg)=>{ if(!cond) bad.push(msg); };
   if(await p.evaluate(()=>!!document.querySelector(".dialog .btn.primary")))
     await p.click(".dialog .btn.primary");
   await p.waitForTimeout(1200);
-  let scheduled = await p.evaluate(()=>document.querySelector("#pageMain .row .n")?.textContent||"");
+  /* The 2026-08-26 redesign moved the CURRENT task out of #pageMain and into
+     #heroSlot, so a probe scoped to "#pageMain .row .n" silently matches
+     nothing and every "is it scheduled?" check passes vacuously. Read both. */
+  const dayNames = ()=>[...document.querySelectorAll("#heroSlot .n, #pageMain .rows .row .n")]
+    .map(n=>n.textContent).join(" | ");
+  let scheduled = await p.evaluate(dayNames);
   console.log("[after rebuild, future-start]", scheduled);
   check(!scheduled.includes("Synthetic Future Task"), "a future-start card should not get scheduled today");
 
@@ -86,7 +91,7 @@ const check=(cond,msg)=>{ if(!cond) bad.push(msg); };
   if(await p.evaluate(()=>!!document.querySelector(".dialog .btn.primary")))
     await p.click(".dialog .btn.primary");
   await p.waitForTimeout(1200);
-  const rows = await p.evaluate(()=>[...document.querySelectorAll("#pageMain .row .n")].map(n=>n.textContent).join(" | "));
+  const rows = await p.evaluate(dayNames);
   console.log("[after rebuild, start today]", rows);
   check(rows.includes("Synthetic Future Task"), "a card whose start date has arrived should be scheduled like any other");
 

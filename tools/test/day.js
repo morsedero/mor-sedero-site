@@ -35,7 +35,7 @@ async function newPage(b,extra,stub){
   const ctx=await b.newContext({viewport:{width:420,height:900},timezoneId:"Asia/Jerusalem",colorScheme:"dark"});
   const p=await ctx.newPage();
   p.on("pageerror",e=>bad.push("pageerror: "+e.message));
-  p.on("console",m=>{if(m.type()==="error")bad.push("console: "+m.text());});
+  p.on("console",m=>{if(m.type()==="error" && !/^\[daisey\]/.test(m.text()))bad.push("console: "+m.text());});
   await p.setContent(`<!doctype html><html><head><meta charset="utf-8"><script>${extra}${stub}<\/script></head><body>${page_html}</body></html>`,{waitUntil:"load"});
   return p;
 }

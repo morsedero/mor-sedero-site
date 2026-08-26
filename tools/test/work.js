@@ -59,26 +59,37 @@ const permeableStub = BASE
                toast: (document.querySelector(".toast") || {}).textContent || null };
     });
     const bad = checks(r);
-    console.log(`[${label}] ${errs.length ? "ERR " + errs.join("|") : "ok"} quick=${r.have.quick} short=${r.have.short} long=${r.have.long}`);
+    console.log(`[${label}] ${errs.length ? "ERR " + errs.join("|") : "ok"} quick=${r.have.quick} short=${r.have.short}`);
     r.blocks.forEach(b => console.log(`    ${String(Math.floor(b.s/60)).padStart(2,"0")}:${String(b.s%60).padStart(2,"0")}-${String(Math.floor(b.e/60)).padStart(2,"0")}:${String(b.e%60).padStart(2,"0")} [${b.size}] ${b.n}`));
     if (bad && bad.length) console.log("  ✗ " + bad.join("\n  ✗ ")); else console.log("  ✓");
     fails += (bad ? bad.length : 0) + errs.length;
     await ctx.close();
   }
 
+  /* The 8h "long session / work day" tier was REMOVED in the 2026-08-25/26
+     redesign: `workdayMax` is gone and `existingBlocks` buckets everything
+     non-short as quick, so only `quick` and `short` exist now. These two
+     scenarios used to assert `have.long`, which is permanently `undefined`
+     against the current app — they were failing silently because nothing ran
+     the suite. Rewritten for the two-tier model. */
+
   await run("open-day-fits", openStub, "2026-08-17T08:00:00+03:00", r => {
     const bad = [];
-    if (r.have.long !== 1) bad.push(`expected 1 long session, got ${r.have.long}`);
-    if (r.have.quick !== 0) bad.push(`expected 0 quick tasks on a work day, got ${r.have.quick}`);
-    const longBlock = r.blocks.find(b => b.size === "long");
-    if (longBlock && (longBlock.e - longBlock.s) !== 480) bad.push(`long block is ${longBlock.e-longBlock.s}min, not 480`);
+    /* an open day should still fill with real work, sessions included */
+    if (r.have.short < 1) bad.push(`expected at least 1 short session on an open day, got ${r.have.short}`);
+    if (r.have.total === 0) bad.push("expected the open day to be scheduled at all");
+    const short = r.blocks.find(b => b.size === "short");
+    if (short && (short.e - short.s) > 480) bad.push(`short block is ${short.e-short.s}min, longer than a whole work day`);
     return bad;
   });
 
   await run("split-day-declines", splitStub, "2026-08-14T08:00:00+03:00", r => {
     const bad = [];
-    if (r.have.long !== 0) bad.push(`expected the long session to decline (no 8.5h window fits), got ${r.have.long}`);
-    if (r.have.quick === 0) bad.push("expected quick tasks to still be scheduled when no long session fit");
+    /* a day chopped up by meetings can't fit a full session, but the quick
+       tasks must still land — the fall-through is the point of the scenario */
+    if (r.have.quick === 0) bad.push("expected quick tasks to still be scheduled on a split day");
+    for (const b of r.blocks.filter(x => x.size === "short"))
+      if ((b.e - b.s) > 300) bad.push(`a ${b.e-b.s}min session was forced into a split day`);
     return bad;
   });
 

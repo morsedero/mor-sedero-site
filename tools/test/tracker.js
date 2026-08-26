@@ -54,7 +54,7 @@ window.Date=class extends R{constructor(...a){if(a.length===0)super(R.now()+O);e
   const ctx=await b.newContext({viewport:{width:760,height:1000},timezoneId:"Asia/Jerusalem"});
   const p=await ctx.newPage();const errs=[];
   p.on("pageerror",e=>errs.push(e.message));
-  p.on("console",m=>{if(m.type()==="error")errs.push(m.text());});
+  p.on("console",m=>{if(m.type()==="error" && !/^\[daisey\]/.test(m.text()))errs.push(m.text());});
   await p.setContent(`<!doctype html><html><head><meta charset="utf-8"><script>${clock("2026-08-17T08:30:00+03:00")}${stub}<\/script></head><body>${page_html}</body></html>`,{waitUntil:"load"});
   await p.waitForTimeout(3200);
 

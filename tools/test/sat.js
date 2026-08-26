@@ -16,7 +16,7 @@ let fails=0;
 async function go(label, when, stub, navNext){
   const ctx=await b.newContext({viewport:{width:760,height:900},timezoneId:"Asia/Jerusalem",colorScheme:"dark"});
   const p=await ctx.newPage();const errs=[];
-  p.on("pageerror",e=>errs.push(e.message));p.on("console",m=>{if(m.type()==="error")errs.push(m.text());});
+  p.on("pageerror",e=>errs.push(e.message));p.on("console",m=>{if(m.type()==="error" && !/^\[daisey\]/.test(m.text()))errs.push(m.text());});
   await p.setContent(`<!doctype html><html><head><meta charset="utf-8"><script>${clock(when)}${stub}<\/script></head><body>${page_html}<script>try{checkChoresTrigger=function(){};}catch(_){}<\/script></body></html>`,{waitUntil:"load"});
   await p.waitForTimeout(3000);
   if(navNext){ await p.locator("#next").click(); await p.waitForTimeout(800);

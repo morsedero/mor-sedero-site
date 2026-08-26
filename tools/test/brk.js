@@ -51,7 +51,7 @@ const check=(cond,msg)=>{ if(!cond) bad.push(msg); };
   const ctx=await b.newContext({viewport:{width:420,height:900},timezoneId:"Asia/Jerusalem",colorScheme:"dark"});
   const p=await ctx.newPage();
   p.on("pageerror",e=>bad.push("pageerror: "+e.message));
-  p.on("console",m=>{if(m.type()==="error")bad.push("console: "+m.text());});
+  p.on("console",m=>{if(m.type()==="error" && !/^\[daisey\]/.test(m.text()))bad.push("console: "+m.text());});
   await p.setContent(`<!doctype html><html><head><meta charset="utf-8"><script>${clock("2026-08-14T07:00:00+03:00")}${stub}<\/script></head><body>${page_html}</body></html>`,{waitUntil:"load"});
   await p.waitForTimeout(2600);
 

@@ -2220,6 +2220,17 @@ function errFixUrl(e){
    the network dropping mid-call, which is exactly the case worth retrying. */
 const RETRY_DELAYS = [400, 1200];
 const sleep = ms => new Promise(r => setTimeout(r, ms));
+/* Swallowing an error is sometimes right — a cosmetic break block that
+   couldn't be written should not abort a rebuild, and localStorage throwing
+   on a sandboxed origin is not actionable. Swallowing it SILENTLY never is.
+   This whole file had exactly one console.error in ~5700 lines of code, so a
+   scheduling run that half-failed left nothing behind to debug it with.
+   `logErr` keeps the control flow (it returns undefined, callers continue)
+   and costs one line at the point of the catch. */
+function logErr(where, e){
+  try{ console.error(`[daisey] ${where}:`, (e && (e.message || e.code)) || e, e); }
+  catch(_){}
+}
 const retryable = e => {
   const c = e && e.code;
   if(!c) return true;
@@ -2259,9 +2270,28 @@ async function retryFailed(){
   toast(S.failed.length ? `${S.failed.length} still unsaved.` : "Saved.", !!S.failed.length);
 }
 
+/* Newest `storedAt` applied per watch key. A watch can deliver responses out
+   of order — a slow poll landing after a faster later one — and `assign` used
+   to take whatever arrived last unconditionally, quietly reverting the board
+   or the calendar to an older snapshot. Nothing in the app could distinguish
+   that from real data, which is exactly the shape of a bug that reads as
+   "it randomly forgot my change". */
+const WATCH_AT = Object.create(null);
 function onWatch(key, ev, assign){
   if(ev.type === "data"){
     delete S.errs[key];
+    const at = ev.result && ev.result.cache && ev.result.cache.storedAt;
+    /* Only order when the connector actually stamped the payload; without a
+       stamp there is nothing to compare and last-write-wins is still the
+       best available answer. */
+    if(typeof at === "number"){
+      /* Stale poll: don't let it overwrite newer data. Still fall through to
+         render() — the error banner was just cleared above, and skipping the
+         paint would leave a dead banner on screen until something else
+         happened to repaint. */
+      if(WATCH_AT[key] > at){ render(); return; }
+      WATCH_AT[key] = at;
+    }
     assign(ev.result);
   }else{
     /* Errors used to retract the cached payload on any auth/lifecycle code,
@@ -2965,10 +2995,48 @@ function persistSetup(s){
   saveStats(st);
 }
 
+/* SINGLE-FLIGHT. The whole stats blob — streak, history, categories,
+   rollovers, plans, project deadlines, settings — is stored as one JSON
+   document in one Trello card description, and saveStats is called from ~20
+   places, almost all of them fire-and-forget (`saveStats(st)` with no await)
+   off the back of a Done / Swap / Pending / Remove / settings save.
+
+   That used to mean: two actions close together started two overlapping
+   writes of the ENTIRE document, each carrying a body serialized before the
+   other had landed, and whichever response came back last won outright. The
+   loser's change was gone with nothing on screen to say so — the shape of
+   "my streak reset", "my setting reverted", "that completion didn't stick".
+
+   Two changes fix it without touching the call sites:
+
+   1. The body is serialized INSIDE the write, from S.stats at the moment the
+      request actually goes out — not captured at call time. A queued retry
+      then replays current state rather than re-sending a stale snapshot.
+   2. At most one write is in flight. A call arriving while one is running
+      does not start a second: it marks the state dirty and the in-flight
+      chain re-writes once when it finishes, coalescing any number of
+      overlapping updates into one final consistent write.
+
+   S.stats is still assigned synchronously, so every local read stays
+   correct and the UI stays instant. */
+let statsFlight = null, statsDirty = false;
 async function saveStats(next){
   S.stats = next;
+  if(statsFlight){ statsDirty = true; return statsFlight; }
+  statsFlight = (async () => {
+    try{
+      do{
+        statsDirty = false;
+        await writeStats();
+      } while(statsDirty);
+    } finally { statsFlight = null; }
+  })();
+  return statsFlight;
+}
+async function writeStats(){
+  /* serialized here, not by the caller — see saveStats */
   const body = "Daisey widget state store. Machine-managed — edit via the widget, not by hand.\n\n"
-             + ST_OPEN + "\n" + JSON.stringify(next) + "\n" + ST_CLOSE + "\n";
+             + ST_OPEN + "\n" + JSON.stringify(S.stats) + "\n" + ST_CLOSE + "\n";
   /* the id is resolved per attempt, not captured: a retry that runs after
      Trello finally loads should find the real card instead of creating a
      second one from the state the first attempt saw */
@@ -2984,12 +3052,24 @@ async function saveStats(next){
        waiting for it would stall every settings write behind it. */
     else if(SCHED_BOARDS.every(boardSettled)) await createStatsCard(body);
     else throw { code:"server_unavailable", message:"Trello hasn't loaded yet.", server:"Trello" };
-    await S.mcp.invalidate(TRELLO, "trelloReadCard").catch(()=>{});
+    await S.mcp.invalidate(TRELLO, "trelloReadCard").catch(e => logErr("saveStats/invalidate", e));
   };
   try{ await write(); }
   catch(e){
+    logErr("saveStats", e);
     toast(errCopy(e), true);
-    queueFailed("Daisey settings", write);
+    /* The retry re-serializes from whatever S.stats holds when it runs, so a
+       replay can't resurrect an old document over a newer one. */
+    queueFailed("Daisey settings", async () => {
+      const card = statsCard();
+      if(card) S.statsCardId = card.id;
+      const id = card ? card.id : S.statsCardId;
+      const fresh = "Daisey widget state store. Machine-managed — edit via the widget, not by hand.\n\n"
+                  + ST_OPEN + "\n" + JSON.stringify(S.stats) + "\n" + ST_CLOSE + "\n";
+      if(id) await callTool(TRELLO, "trelloWriteCard", { action:"update", cardId:id, desc:fresh });
+      else await createStatsCard(fresh);
+      await S.mcp.invalidate(TRELLO, "trelloReadCard").catch(e2 => logErr("saveStats/retry invalidate", e2));
+    });
   }
 }
 function bumpCategory(cat, field){
@@ -3487,7 +3567,7 @@ function applyPlan(date, mode, picked, rebuild){
     if(!broke && cleared === clearable.length){
       for(const g of gaps){
         try{ await createBreakBlock(atMin(date,g.s), atMin(date,g.e)); }
-        catch(_){}
+        catch(e){ logErr("applyPlan/createBreakBlock", e); }
       }
     }
     gapStands.forEach(s => { S.pending.delete(s.id); dropLocalEvent(s.id); });
@@ -3507,7 +3587,7 @@ function applyPlan(date, mode, picked, rebuild){
             back++;
             const stand = localBrickBlock(cs, e.start, e.end);
             addLocalEvent(stand); S.pending.add(stand.id); recovered.push(stand);
-          }catch(_){}
+          }catch(e){ logErr("applyPlan/recover brick", e); }
           continue;
         }
         const c = cardFor(e);
@@ -3517,7 +3597,7 @@ function applyPlan(date, mode, picked, rebuild){
           back++;
           const stand = localBlock(c, e.start, e.end, e.size);
           addLocalEvent(stand); S.pending.add(stand.id); recovered.push(stand);
-        }catch(_){}
+        }catch(e){ logErr("applyPlan/recover block", e); }
       }
       S.busy = false;
       recovered.forEach(s => { S.pending.delete(s.id); dropLocalEvent(s.id); });
@@ -3626,7 +3706,9 @@ const moveBlock = (id,start,end) => callTool(GCAL, "update_event",
   { calendarId:CAL_ID, eventId:id, startTime:iso(start), endTime:iso(end), notificationLevel:"NONE" });
 const deleteBlock = id => callTool(GCAL, "delete_event",
   { calendarId:CAL_ID, eventId:id, notificationLevel:"NONE" });
-async function refreshCalendar(){ try{ await S.mcp.invalidate(GCAL, "list_events"); }catch(_){} }
+/* A failed invalidate leaves the user looking at stale events with no sign
+   anything went wrong, so it is worth a log even though it must not throw. */
+async function refreshCalendar(){ try{ await S.mcp.invalidate(GCAL, "list_events"); }catch(e){ logErr("refreshCalendar/invalidate", e); } }
 
 /* Drag/resize/reorder all go through these two: patch the block's time
    locally so render() shows the result immediately, then let the actual

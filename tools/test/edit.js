@@ -15,7 +15,7 @@ window.Date=class extends R{constructor(...a){if(a.length===0)super(R.now()+O);e
 (async()=>{const b=await chromium.launch({});
 const ctx=await b.newContext({viewport:{width:760,height:1200},timezoneId:"Asia/Jerusalem",colorScheme:"dark"});
 const p=await ctx.newPage();const errs=[];
-p.on("pageerror",e=>errs.push(e.message));p.on("console",m=>{if(m.type()==="error")errs.push(m.text());});
+p.on("pageerror",e=>errs.push(e.message));p.on("console",m=>{if(m.type()==="error" && !/^\[daisey\]/.test(m.text()))errs.push(m.text());});
 await p.setContent(`<!doctype html><html><head><meta charset="utf-8"><script>${clock("2026-08-17T09:00:00+03:00")}${stub}<\/script></head><body>${page_html}<script>try{checkChoresTrigger=function(){};}catch(_){}<\/script></body></html>`,{waitUntil:"load"});
 await p.waitForTimeout(2800);
 let fails=0;

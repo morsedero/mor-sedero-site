@@ -12,7 +12,7 @@ const noMcp = `window.claude={ use: async () => null };`;
 for(const [label,stub] of [["needs_reauth",mk("needs_reauth")],["server_unavailable",mk("server_unavailable")],["no-mcp",noMcp]]){
   const ctx=await b.newContext({viewport:{width:760,height:600},timezoneId:"Asia/Jerusalem",colorScheme:"dark"});
   const p=await ctx.newPage();const errs=[];
-  p.on("pageerror",e=>errs.push(e.message));p.on("console",m=>{if(m.type()==="error")errs.push(m.text());});
+  p.on("pageerror",e=>errs.push(e.message));p.on("console",m=>{if(m.type()==="error" && !/^\[daisey\]/.test(m.text()))errs.push(m.text());});
   await p.setContent(`<!doctype html><html><head><meta charset="utf-8"><script>${stub}<\/script></head><body>${page_html}</body></html>`,{waitUntil:"load"});
   await p.waitForTimeout(label==="server_unavailable"?21000:2500);
   const r=await p.evaluate(()=>({state:(document.querySelector(".state h2")||{}).textContent||null,

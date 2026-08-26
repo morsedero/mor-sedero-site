@@ -20,7 +20,7 @@ for(const [w,label] of [[320,"tiny"],[390,"narrow"],[430,"phone-max"],[760,"wide
   for(const scheme of ["light","dark"]){
     const ctx=await b.newContext({viewport:{width:w,height:860},timezoneId:"Asia/Jerusalem",colorScheme:scheme});
     const p=await ctx.newPage();const errs=[];
-    p.on("pageerror",e=>errs.push(e.message));p.on("console",m=>{if(m.type()==="error")errs.push(m.text());});
+    p.on("pageerror",e=>errs.push(e.message));p.on("console",m=>{if(m.type()==="error" && !/^\[daisey\]/.test(m.text()))errs.push(m.text());});
     await p.setContent(`<!doctype html><html><head><meta charset="utf-8"><script>${clock("2026-08-17T09:00:00+03:00")}${stub}<\/script></head><body>${page_html}<script>try{checkChoresTrigger=function(){};}catch(_){}<\/script></body></html>`,{waitUntil:"load"});
     await p.waitForTimeout(2600);
     const r=await p.evaluate(()=>({

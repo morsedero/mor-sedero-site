@@ -12,7 +12,7 @@ window.Date=class extends R{constructor(...a){if(a.length===0)super(R.now()+O);e
 async function open_(stub,when,scheme){
   const ctx=await b.newContext({viewport:{width:760,height:1000},timezoneId:"Asia/Jerusalem",colorScheme:scheme||"dark"});
   const p=await ctx.newPage();p.__errs=[];
-  p.on("pageerror",e=>p.__errs.push(e.message));p.on("console",m=>{if(m.type()==="error")p.__errs.push(m.text());});
+  p.on("pageerror",e=>p.__errs.push(e.message));p.on("console",m=>{if(m.type()==="error" && !/^\[daisey\]/.test(m.text()))p.__errs.push(m.text());});
   await p.setContent(`<!doctype html><html><head><meta charset="utf-8"><script>${clock(when)}${stub}<\/script></head><body>${page_html}<script>try{checkChoresTrigger=function(){};}catch(_){}<\/script></body></html>`,{waitUntil:"load"});
   await p.waitForTimeout(2600);return {p,ctx};
 }

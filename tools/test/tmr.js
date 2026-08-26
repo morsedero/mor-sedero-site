@@ -25,7 +25,7 @@ const check=(cond,msg)=>{ if(!cond) bad.push(msg); };
   const ctx=await b.newContext({viewport:{width:420,height:900},timezoneId:"Asia/Jerusalem",colorScheme:"dark"});
   const p=await ctx.newPage();
   p.on("pageerror",e=>bad.push("pageerror: "+e.message));
-  p.on("console",m=>{if(m.type()==="error")bad.push("console: "+m.text());});
+  p.on("console",m=>{if(m.type()==="error" && !/^\[daisey\]/.test(m.text()))bad.push("console: "+m.text());});
   await p.setContent(`<!doctype html><html><head><meta charset="utf-8"><script>${clock("2026-08-17T09:00:00+03:00")}${stub}<\/script></head><body>${page_html}<script>try{checkChoresTrigger=function(){};}catch(_){}<\/script></body></html>`,{waitUntil:"load"});
   await p.waitForTimeout(2600);
 
@@ -42,14 +42,42 @@ const check=(cond,msg)=>{ if(!cond) bad.push(msg); };
   const first = await p.evaluate(()=>({
     created: window.__calls.filter(c=>c.tool==="create_event").length,
     visible: allEvents().filter(e=>e.isTask && overlapsDay(e, S.anchor)).length,
-    rows: document.querySelectorAll("#pageMain .row .n").length,
-    existing: existingBlocks(S.anchor).total
+    /* The current task lives in #heroSlot since the 2026-08-26 redesign, so a
+       count scoped to #pageMain alone undercounts the day. Count the task
+       rows themselves (.nt is the title node) across both. */
+    rows: document.querySelectorAll("#heroSlot .n .nt, #pageMain .rows .row .n .nt").length,
+    /* every block the rebuild created, by name, so we can prove each one is
+       actually on screen — the raw row count also includes the fixture's
+       pre-existing meetings, so counts will never match `created` exactly */
+    missing: (()=>{
+      /* DOM titles are truncated and may carry a trailing ↗, so compare on a
+         short prefix rather than equality */
+      const shown=[...document.querySelectorAll("#heroSlot .n .nt, #pageMain .rows .row .n .nt")]
+        .map(n=>n.textContent.replace(/↗\s*$/,"").trim());
+      return allEvents().filter(e=>e.isTask && overlapsDay(e, S.anchor))
+        .map(e=>e.summary)
+        /* A quick-task BRICK is one event ("• 4 tasks") that renders as the
+           individual task rows inside it, so its summary never appears in the
+           DOM verbatim. It's visible; it just can't be matched by title. */
+        .filter(sum=>!/^•\s*\d+\s+tasks?$/.test(sum))
+        .filter(sum=>!shown.some(n=>n.length>3 && sum.includes(n.slice(0,12))));
+    })(),
+    /* existingBlocks() deliberately excludes breaks (!e.isBreak), so it can
+       never equal `created`, which includes the ☕ Break event. Compare it
+       against the non-break creates instead. */
+    existing: existingBlocks(S.anchor).total,
+    createdReal: allEvents().filter(e=>e.isTask && !e.isBreak && overlapsDay(e, S.anchor)).length
   }));
   console.log("[built tomorrow]", JSON.stringify(first));
   check(first.created > 0, "rebuild should have created at least one block for tomorrow");
   check(first.visible === first.created, `blocks built for tomorrow should stay visible in allEvents(), got ${first.visible} of ${first.created}`);
-  check(first.rows === first.created, `the Day-view list should show tomorrow's new blocks, got ${first.rows} rows for ${first.created} created`);
-  check(first.existing === first.created, `existingBlocks(tomorrow) should count what was just built, got ${first.existing}`);
+  /* The real regression this suite exists for: a block built for tomorrow
+     vanished from the app the instant it was created. So assert every built
+     block is ON SCREEN — not that the row count equals `created`, which it
+     never can, since the day also lists the fixture's existing meetings. */
+  check(first.missing.length === 0, `every block built for tomorrow should be visible; missing: ${JSON.stringify(first.missing)}`);
+  check(first.rows > 0, "the Day view should show tomorrow's blocks, got no rows at all");
+  check(first.existing === first.createdReal, `existingBlocks(tomorrow) should count every non-break block just built, got ${first.existing} of ${first.createdReal}`);
 
   // rebuilding again must clear-and-relay, not pile on duplicates
   await p.click("#replanBtn");
@@ -59,8 +87,31 @@ const check=(cond,msg)=>{ if(!cond) bad.push(msg); };
   await p.waitForTimeout(1200);
 
   const second = await p.evaluate(()=>({
-    rows: document.querySelectorAll("#pageMain .row .n").length,
-    existing: existingBlocks(S.anchor).total
+    /* The current task lives in #heroSlot since the 2026-08-26 redesign, so a
+       count scoped to #pageMain alone undercounts the day. Count the task
+       rows themselves (.nt is the title node) across both. */
+    rows: document.querySelectorAll("#heroSlot .n .nt, #pageMain .rows .row .n .nt").length,
+    /* every block the rebuild created, by name, so we can prove each one is
+       actually on screen — the raw row count also includes the fixture's
+       pre-existing meetings, so counts will never match `created` exactly */
+    missing: (()=>{
+      /* DOM titles are truncated and may carry a trailing ↗, so compare on a
+         short prefix rather than equality */
+      const shown=[...document.querySelectorAll("#heroSlot .n .nt, #pageMain .rows .row .n .nt")]
+        .map(n=>n.textContent.replace(/↗\s*$/,"").trim());
+      return allEvents().filter(e=>e.isTask && overlapsDay(e, S.anchor))
+        .map(e=>e.summary)
+        /* A quick-task BRICK is one event ("• 4 tasks") that renders as the
+           individual task rows inside it, so its summary never appears in the
+           DOM verbatim. It's visible; it just can't be matched by title. */
+        .filter(sum=>!/^•\s*\d+\s+tasks?$/.test(sum))
+        .filter(sum=>!shown.some(n=>n.length>3 && sum.includes(n.slice(0,12))));
+    })(),
+    /* existingBlocks() deliberately excludes breaks (!e.isBreak), so it can
+       never equal `created`, which includes the ☕ Break event. Compare it
+       against the non-break creates instead. */
+    existing: existingBlocks(S.anchor).total,
+    createdReal: allEvents().filter(e=>e.isTask && !e.isBreak && overlapsDay(e, S.anchor)).length
   }));
   console.log("[rebuilt tomorrow again]", JSON.stringify(second));
   check(second.rows === first.rows, `a second rebuild should replace, not duplicate — had ${first.rows} rows, now ${second.rows}`);
