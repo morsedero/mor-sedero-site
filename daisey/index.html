@@ -1,7 +1,7 @@
 <!-- GENERATED FILE — do not hand-edit.
      Produced by tools/build-standalone.js from tools/daisey.html.
      Edit tools/daisey.html, then re-run: node tools/build-standalone.js
-     Built 2026-08-26T12:12:31.098Z -->
+     Built 2026-08-26T18:09:54.984Z -->
 <title>Daisey</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <style>
@@ -385,21 +385,21 @@ html,body{overflow:hidden;}
    (CLAUDE.md's documented overlay hazard is about an element trying to sit
    BEHIND a card via negative z-index; this is a plain in-flow sibling that
    overlaps nothing, a different shape of problem entirely).
-   heroCard() renders the exact same .item.hub timelineItem always has — the
-   .hero-slot wrapper is what turns its absolute time-row positioning back
-   into normal flow, since there's no shared clock/gutter here to position
-   against. */
+   heroCard() renders the exact same .item.hub timelineItem always has. */
 .hero-slot{flex:0 0 auto;margin-bottom:10px;}
 .hero-slot:empty{display:none;}
 /* display:block, not the base .time-row grid — .time-row's grid-template-
-   columns is a FIXED 2-track definition (10px rail + card), and simply
-   hiding .rail-stop with display:none removes it from grid placement
-   entirely, which shoved .card-col into the now-empty first (10px) track
-   instead of the second — confirmed live, .card-col measured 10px wide.
-   The hero has no rail/gutter to line up against at all, so it doesn't
-   need the grid — block layout with .card-col at its natural full width
-   sidesteps the whole placement question. */
-.hero-slot .time-row{position:relative !important;top:0 !important;height:auto !important;left:0 !important;display:block;}
+   columns is a FIXED 2-track definition (rail + card), and simply hiding
+   .rail-stop with display:none removes it from grid placement entirely,
+   which shoved .card-col into the now-empty first track instead of the
+   second — confirmed live, .card-col measured 10px wide. The hero has no
+   rail to line up against at all, so it doesn't need the grid — block
+   layout with .card-col at its natural full width sidesteps the whole
+   placement question. The top/height/left !important resets that used to
+   sit here are gone with the absolute positioning they were undoing
+   (2026-08-26 uniform rows); .time-row is position:relative with no
+   offsets now, which is already what the hero wants. */
+.hero-slot .time-row{display:block;}
 .hero-slot .rail-stop{display:none;}   /* the hero states its own time range in-card, see .row-lead */
 .hero-slot .card-col{width:100%;display:block;}
 .hero-slot .item-top{display:none;}    /* eyebrow moves into the card itself below */
@@ -585,29 +585,15 @@ html,body{overflow:hidden;}
 /* ---------------- later: day timeline ---------------- */
 .later{margin-top:16px;}
 .later .lh{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:8px;}
-.tl-gutter{width:46px;flex:0 0 auto;}
-.tl-hours{position:relative;}
-/* Google Calendar's gutter: small, light, quiet — the hours are a reference
-   grid you read past, not content competing with the cards. Was mono/700,
-   which made every hour as heavy as a card title. */
-.tl-hours .hl{
-  position:absolute;left:0;right:8px;text-align:right;
-  font-size:11px;font-weight:500;color:var(--ink-3);opacity:.6;
-  letter-spacing:.01em;
-  transform:translateY(-50%);
-}
-.rows{position:relative;flex:1 1 auto;min-width:0;}
-/* translateY(-50%) matches .tl-hours .hl, which centres itself on its own
-   `top`. Without it the label sat centred on the hour while the rule hung
-   its top edge there — the two drew ~5px apart at every hour, and the
-   mismatch is exactly as visible as it sounds.
-   Lower contrast than before (2026-08-26 redesign) — the timeline now reads
-   as context behind the hero, not the main event, so its own reference
-   grid recedes further. */
-.rows .grid-line{
-  position:absolute;left:0;right:0;transform:translateY(-50%);
-  border-top:1px solid var(--line);opacity:.55;
-}
+/* The separate hour gutter is GONE (2026-08-26). It only ever made sense
+   beside rows positioned on a pixel-per-minute scale, and it was the half
+   of that design that broke first: the labels were drawn from unpushed
+   positions while the cards they name were pushed down to resolve
+   short-card overlaps, so a card and its own hour label drifted apart by
+   the accumulated push. Every row states its own start time in the rail
+   instead — one time column, always beside the thing it describes, no
+   second scale to disagree with. */
+.rows{flex:1 1 auto;min-width:0;}
 /* each scheduled thing is its own card, positioned by time — the hub
    (.item.hub, above) is this same card, just bigger and re-tinted.
    backdrop-filter is dropped — it blurred whatever sat behind the card,
@@ -654,38 +640,15 @@ html,body{overflow:hidden;}
 .item.meeting .n,.item.meeting .row .n{color:var(--ink-2);}
 .item.done{opacity:.5;}
 
-/* Day view's rows: still a flow stack (cards keep readable heights, they are
-   never sized by duration — see anchorRows), but now sitting on a real hour
-   grid, so it must be `relative` for .grid-line/.tl-now to anchor to it.
-   `height:auto` stays — the grid lines are absolute and don't hold it open;
-   anchorRows sets a minHeight so trailing hours aren't clipped.
-   The old border-top/padding-top separated this list from a hub card that
-   sat ABOVE it; the hub is now the first row inside it, so there is nothing
-   left to separate from. gap:8px is the minimum breathing room between two
-   cards — anchorRows only ever adds to it. */
+/* Day view's rows: a plain flow stack (2026-08-26). `relative` stays as the
+   positioning context nestConnectors measures against; the 6px gap is the
+   whole vertical rhythm now that nothing computes a per-row offset. */
 .rows.stack{
-  /* True-to-scale positioning (2026-08-25 redesign): rows are now absolutely
-     positioned by real time (see .time-row), so this container needs a real
-     computed height for them to sit inside — set from JS (timeline()) as
-     (winE-winS)*ppm. No more flex flow / anchorRows-driven auto height. */
   position:relative;
+  display:flex;flex-direction:column;gap:6px;
   margin-top:4px;
 }
-/* States a compressed run of empty clock (see anchorRows/SKIP_MIN_PX) — the
-   jump has to be announced or it reads as a rendering fault. */
-.hour-skip{
-  position:absolute;left:0;right:0;text-align:center;pointer-events:none;
-  font-family:var(--mono);font-size:9px;font-weight:700;color:var(--ink-3);
-  opacity:.55;letter-spacing:.06em;
-}
-/* Day grid: the hour gutter beside the rows, mirroring .week-body's own
-   layout so both views build the same clock the same way. */
-.day-grid{display:flex;align-items:flex-start;}
-.day-grid > .rows.stack{flex:1 1 auto;min-width:0;}
-/* The gutter's labels are absolute inside it, so it needs its own height —
-   it gets none from content. minHeight is mirrored from the rows by
-   anchorRows via the shared container. */
-.day-grid > .tl-hours{position:relative;align-self:stretch;}
+.day-grid{display:block;}
 /* relative, not static: kept as the positioning context for anything
    absolute inside a card, and relative-with-no-offset lays out identically
    to static — the drag hit-testing this was set to `static` for (see
@@ -797,18 +760,37 @@ html,body{overflow:hidden;}
    label is hidden (it stays in the DOM, and in the rail's `title`, because
    a nested row IS indented away from the gutter and needs its own start on
    hover — see .nest). */
+/* One row = one thing on the day. Column 1 is the time rail (start time
+   over duration), column 2 is the card. 52px is measured, not picked: it
+   fits "09:15" at 12px/600 plus "15m" at 10px beneath it without either
+   wrapping, at every width down to 320. */
 .time-row{
-  display:grid;grid-template-columns:10px minmax(0,1fr);column-gap:8px;
+  display:grid;grid-template-columns:52px minmax(0,1fr);column-gap:10px;
   align-items:start;transition:transform .15s;
-  /* Positioned by real time now (2026-08-25 redesign) — top/height are set
-     in timelineItem from the row's own start/duration. left/right:0 so it still spans
-     the rows column's full width the way flow layout used to give it for
-     free. z-index above the hour grid lines behind it — a dashed rule must
-     never appear to run through a card. */
-  position:absolute;left:0;right:0;z-index:1;
+  position:relative;
 }
-/* the gutter states the time; a second copy beside it is noise */
-.time-row .rail-stop .t,.time-row .rail-stop .tm{display:none;}
+/* Nested under a permeable meeting — see timelineItem's opts.indent. A real
+   margin now that rows are in flow again; it used to be an inline `left`
+   because an absolutely-positioned row resolved against .rows.stack rather
+   than its own .nest parent. */
+.time-row.indent{margin-left:14px;}
+/* The rail states the time — there is no separate gutter any more, so these
+   are the only clock labels on screen and they carry real weight. */
+.time-row .rail-stop .t,.time-row .rail-stop .tm{
+  display:inline;font-family:var(--mono);font-size:12px;font-weight:600;
+  color:var(--ink-2);letter-spacing:-.02em;line-height:1;
+}
+/* Duration, the fact card height used to encode and no longer does. Quiet
+   by design: it is reference, not the headline. */
+.time-row .rail-stop .dur{
+  font-family:var(--mono);font-size:10px;font-weight:600;
+  color:var(--ink-3);opacity:.75;line-height:1;letter-spacing:-.01em;
+}
+/* A brick sibling's own start still reads as part of one run, one step
+   down in weight from the run's first stop. */
+.time-row .rail-stop.brick-sub .t,.time-row .rail-stop.brick-sub .tm{
+  font-weight:500;color:var(--ink-3);
+}
 /* .time-row.hub's own margin-bottom is gone (2026-08-25 redesign) — rows
    are absolutely positioned by real time now, so an extra margin on one
    row type would just be a stray offset, not meaningful spacing. */
@@ -827,18 +809,24 @@ html,body{overflow:hidden;}
 /* selection suppressed for the same reason as .item.stack — the rail travels
    with the card during a drag, so a hold that lands on the time must not
    start selecting it either */
+/* The rail: start time above duration, right-aligned against the card it
+   labels. Column direction, NOT the row/baseline flex this used to be —
+   that was written when the rail held only a hidden time and the real hours
+   lived in a separate gutter. It's the only clock on screen now, so it
+   stacks its two facts instead of trying to fit them side by side in a
+   narrow column (which is what made "09:00" wrap to three lines). */
+/* A plain BLOCK, not a flex column. ".t" and ".tm" are two spans purely so
+   CSS can weight the hour and minutes apart — in a flex container each
+   became its own flex line and the time read vertically ("09 / :15 / 15m",
+   confirmed live). Block layout keeps the two inline spans on one line and
+   lets .dur, a block, take the line beneath, which is exactly the shape
+   wanted with none of the fighting. */
 .rail-stop{
   position:relative;
-  display:flex;align-items:baseline;justify-content:flex-end;gap:1px;
-  align-self:stretch;
+  padding-top:9px;text-align:right;
   -webkit-user-select:none;user-select:none;-webkit-touch-callout:none;
 }
-/* The coloured duration bar (.rail-bar) is DELETED outright (2026-08-25
-   redesign), not just hidden — it existed because a card could not be drawn
-   to scale, so a thin bar carried the proportional read instead. Now that
-   every card's own height is true to real duration (see timelineItem's
-   positioning), a second, thinner copy of the same fact next to it is
-   redundant. The element is no longer built in timelineItem either. */
+.rail-stop > .dur{display:block;margin-top:2px;}
 /* deliberately identical to .tl-hours .hl — same family, size, weight and
    colour, so the two views' times are visibly the same object */
 .rail-stop .t,.rail-stop .tm{
@@ -862,6 +850,26 @@ html,body{overflow:hidden;}
    comparable. This one means "you're done" — it's allowed to be the reward,
    and it's the only place a richer treatment doesn't compete with anything.
    Requested as "similar to Break but much more juicy". */
+/* Free time inside the working day (quietGap). Deliberately the quietest
+   thing on screen: a dashed outline and one line of text, no fill, no
+   spine, no actions. It replaces the old ".hour-skip" tag — a "⋯ 2h" mark
+   floated over compressed empty space, which announced that the VIEW had
+   skipped something rather than that the DAY had room in it. Distinct from
+   .offhours below, which means the work day is over and is allowed to be a
+   reward; this one just means there is a hole in the middle of it. */
+.quiet{
+  display:flex;align-items:baseline;gap:8px;min-width:0;
+  border:1px dashed var(--line-2);border-radius:12px;
+  padding:9px 13px;background:transparent;
+}
+.quiet-k{
+  font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--ink-3);opacity:.8;
+}
+.quiet-span{font-size:13px;font-weight:700;color:var(--ink-2);}
+.quiet-until{font-size:12px;font-weight:500;color:var(--ink-3);opacity:.75;margin-left:auto;}
+.quiet-row .rail-stop .t,.quiet-row .rail-stop .tm{color:var(--ink-3);opacity:.7;font-weight:500;}
+
 .offhours{
   position:relative;overflow:hidden;min-width:0;
   border-radius:14px;padding:14px 16px;
@@ -2224,6 +2232,17 @@ function errFixUrl(e){
    the network dropping mid-call, which is exactly the case worth retrying. */
 const RETRY_DELAYS = [400, 1200];
 const sleep = ms => new Promise(r => setTimeout(r, ms));
+/* Swallowing an error is sometimes right — a cosmetic break block that
+   couldn't be written should not abort a rebuild, and localStorage throwing
+   on a sandboxed origin is not actionable. Swallowing it SILENTLY never is.
+   This whole file had exactly one console.error in ~5700 lines of code, so a
+   scheduling run that half-failed left nothing behind to debug it with.
+   `logErr` keeps the control flow (it returns undefined, callers continue)
+   and costs one line at the point of the catch. */
+function logErr(where, e){
+  try{ console.error(`[daisey] ${where}:`, (e && (e.message || e.code)) || e, e); }
+  catch(_){}
+}
 const retryable = e => {
   const c = e && e.code;
   if(!c) return true;
@@ -2263,9 +2282,28 @@ async function retryFailed(){
   toast(S.failed.length ? `${S.failed.length} still unsaved.` : "Saved.", !!S.failed.length);
 }
 
+/* Newest `storedAt` applied per watch key. A watch can deliver responses out
+   of order — a slow poll landing after a faster later one — and `assign` used
+   to take whatever arrived last unconditionally, quietly reverting the board
+   or the calendar to an older snapshot. Nothing in the app could distinguish
+   that from real data, which is exactly the shape of a bug that reads as
+   "it randomly forgot my change". */
+const WATCH_AT = Object.create(null);
 function onWatch(key, ev, assign){
   if(ev.type === "data"){
     delete S.errs[key];
+    const at = ev.result && ev.result.cache && ev.result.cache.storedAt;
+    /* Only order when the connector actually stamped the payload; without a
+       stamp there is nothing to compare and last-write-wins is still the
+       best available answer. */
+    if(typeof at === "number"){
+      /* Stale poll: don't let it overwrite newer data. Still fall through to
+         render() — the error banner was just cleared above, and skipping the
+         paint would leave a dead banner on screen until something else
+         happened to repaint. */
+      if(WATCH_AT[key] > at){ render(); return; }
+      WATCH_AT[key] = at;
+    }
     assign(ev.result);
   }else{
     /* Errors used to retract the cached payload on any auth/lifecycle code,
@@ -2969,10 +3007,48 @@ function persistSetup(s){
   saveStats(st);
 }
 
+/* SINGLE-FLIGHT. The whole stats blob — streak, history, categories,
+   rollovers, plans, project deadlines, settings — is stored as one JSON
+   document in one Trello card description, and saveStats is called from ~20
+   places, almost all of them fire-and-forget (`saveStats(st)` with no await)
+   off the back of a Done / Swap / Pending / Remove / settings save.
+
+   That used to mean: two actions close together started two overlapping
+   writes of the ENTIRE document, each carrying a body serialized before the
+   other had landed, and whichever response came back last won outright. The
+   loser's change was gone with nothing on screen to say so — the shape of
+   "my streak reset", "my setting reverted", "that completion didn't stick".
+
+   Two changes fix it without touching the call sites:
+
+   1. The body is serialized INSIDE the write, from S.stats at the moment the
+      request actually goes out — not captured at call time. A queued retry
+      then replays current state rather than re-sending a stale snapshot.
+   2. At most one write is in flight. A call arriving while one is running
+      does not start a second: it marks the state dirty and the in-flight
+      chain re-writes once when it finishes, coalescing any number of
+      overlapping updates into one final consistent write.
+
+   S.stats is still assigned synchronously, so every local read stays
+   correct and the UI stays instant. */
+let statsFlight = null, statsDirty = false;
 async function saveStats(next){
   S.stats = next;
+  if(statsFlight){ statsDirty = true; return statsFlight; }
+  statsFlight = (async () => {
+    try{
+      do{
+        statsDirty = false;
+        await writeStats();
+      } while(statsDirty);
+    } finally { statsFlight = null; }
+  })();
+  return statsFlight;
+}
+async function writeStats(){
+  /* serialized here, not by the caller — see saveStats */
   const body = "Daisey widget state store. Machine-managed — edit via the widget, not by hand.\n\n"
-             + ST_OPEN + "\n" + JSON.stringify(next) + "\n" + ST_CLOSE + "\n";
+             + ST_OPEN + "\n" + JSON.stringify(S.stats) + "\n" + ST_CLOSE + "\n";
   /* the id is resolved per attempt, not captured: a retry that runs after
      Trello finally loads should find the real card instead of creating a
      second one from the state the first attempt saw */
@@ -2988,12 +3064,24 @@ async function saveStats(next){
        waiting for it would stall every settings write behind it. */
     else if(SCHED_BOARDS.every(boardSettled)) await createStatsCard(body);
     else throw { code:"server_unavailable", message:"Trello hasn't loaded yet.", server:"Trello" };
-    await S.mcp.invalidate(TRELLO, "trelloReadCard").catch(()=>{});
+    await S.mcp.invalidate(TRELLO, "trelloReadCard").catch(e => logErr("saveStats/invalidate", e));
   };
   try{ await write(); }
   catch(e){
+    logErr("saveStats", e);
     toast(errCopy(e), true);
-    queueFailed("Daisey settings", write);
+    /* The retry re-serializes from whatever S.stats holds when it runs, so a
+       replay can't resurrect an old document over a newer one. */
+    queueFailed("Daisey settings", async () => {
+      const card = statsCard();
+      if(card) S.statsCardId = card.id;
+      const id = card ? card.id : S.statsCardId;
+      const fresh = "Daisey widget state store. Machine-managed — edit via the widget, not by hand.\n\n"
+                  + ST_OPEN + "\n" + JSON.stringify(S.stats) + "\n" + ST_CLOSE + "\n";
+      if(id) await callTool(TRELLO, "trelloWriteCard", { action:"update", cardId:id, desc:fresh });
+      else await createStatsCard(fresh);
+      await S.mcp.invalidate(TRELLO, "trelloReadCard").catch(e2 => logErr("saveStats/retry invalidate", e2));
+    });
   }
 }
 function bumpCategory(cat, field){
@@ -3491,7 +3579,7 @@ function applyPlan(date, mode, picked, rebuild){
     if(!broke && cleared === clearable.length){
       for(const g of gaps){
         try{ await createBreakBlock(atMin(date,g.s), atMin(date,g.e)); }
-        catch(_){}
+        catch(e){ logErr("applyPlan/createBreakBlock", e); }
       }
     }
     gapStands.forEach(s => { S.pending.delete(s.id); dropLocalEvent(s.id); });
@@ -3511,7 +3599,7 @@ function applyPlan(date, mode, picked, rebuild){
             back++;
             const stand = localBrickBlock(cs, e.start, e.end);
             addLocalEvent(stand); S.pending.add(stand.id); recovered.push(stand);
-          }catch(_){}
+          }catch(e){ logErr("applyPlan/recover brick", e); }
           continue;
         }
         const c = cardFor(e);
@@ -3521,7 +3609,7 @@ function applyPlan(date, mode, picked, rebuild){
           back++;
           const stand = localBlock(c, e.start, e.end, e.size);
           addLocalEvent(stand); S.pending.add(stand.id); recovered.push(stand);
-        }catch(_){}
+        }catch(e){ logErr("applyPlan/recover block", e); }
       }
       S.busy = false;
       recovered.forEach(s => { S.pending.delete(s.id); dropLocalEvent(s.id); });
@@ -3630,7 +3718,9 @@ const moveBlock = (id,start,end) => callTool(GCAL, "update_event",
   { calendarId:CAL_ID, eventId:id, startTime:iso(start), endTime:iso(end), notificationLevel:"NONE" });
 const deleteBlock = id => callTool(GCAL, "delete_event",
   { calendarId:CAL_ID, eventId:id, notificationLevel:"NONE" });
-async function refreshCalendar(){ try{ await S.mcp.invalidate(GCAL, "list_events"); }catch(_){} }
+/* A failed invalidate leaves the user looking at stale events with no sign
+   anything went wrong, so it is worth a log even though it must not throw. */
+async function refreshCalendar(){ try{ await S.mcp.invalidate(GCAL, "list_events"); }catch(e){ logErr("refreshCalendar/invalidate", e); } }
 
 /* Drag/resize/reorder all go through these two: patch the block's time
    locally so render() shows the result immediately, then let the actual
@@ -4987,17 +5077,6 @@ function paintMain(){
   const dayGap = offHoursGap(items);
   if(dayGap) dayWinE = Math.max(dayWinE, Math.ceil(dayGap.e2/60)*60);
   const dayPpm = TL_PPM_DAY;
-  /* Same compressed-scale mapper timeline() builds for its own rows (see
-     buildDayScale) — computed identically here so the lead rows below
-     (missed/break/hub/nest, built directly by paintMain rather than inside
-     timeline()) land on the exact same compressed scale as everything
-     else, not a plain linear one that would disagree with the gutter. */
-  const dayToY = buildDayScale(dayWinS, dayWinE, dayPpm, items, dayGap).toY;
-  /* Same floor-overlap push map timeline() builds for its own rows (see
-     pushForFloor) — computed over the same whole-day item list so the lead
-     rows below (missed/break/hub/nest) never overlap a neighbour just
-     because one of them got floored to CARD_MIN_HEIGHT. */
-  const dayPush = pushForFloor(items, dayToY);
 
   /* the day is capped at a few tasks, so fetch their checklists up front and
      let the panels appear without being asked for */
@@ -5049,14 +5128,14 @@ function paintMain(){
      overdue rather than a normal upcoming task. */
   for(const i of missedList) i.missed = true;
   for(const i of [breakNow].concat(missedList).filter(Boolean).sort((a,b) => a.s - b.s))
-    lead.appendChild(timelineItem(i, dayWinS, dayPpm, 0, 1, {mode:"stack", toY:dayToY, push:dayPush.get(i)}));
+    lead.appendChild(timelineItem(i, dayWinS, dayPpm, 0, 1, {mode:"stack"}));
 
   paintHero(current, doneCount);
-  if(current) lead.appendChild(currentMarker(current, dayWinS, dayPpm, dayToY, dayPush.get(current)));
+  if(current) lead.appendChild(currentMarker(current, dayWinS, dayPpm));
 
   if(meetingKids){
     const nest = el("div","nest standalone");
-    for(const c of meetingKids) nest.appendChild(timelineItem(c, dayWinS, dayPpm, 0, 1, {mode:"stack", toY:dayToY, push:dayPush.get(c), indent:true}));
+    for(const c of meetingKids) nest.appendChild(timelineItem(c, dayWinS, dayPpm, 0, 1, {mode:"stack", indent:true}));
     lead.appendChild(nest);
   }
 
@@ -5074,23 +5153,12 @@ function paintMain(){
      not fitRowTitle's shrink-then-wrap — it's a one-line, small-and-muted
      read by design, so it's excluded here rather than measured. */
   host.querySelectorAll(".item.stack:not(.collapsed) .row").forEach(fitRowTitle);
-  /* anchorRows() is gone (2026-08-25 redesign) — every row now carries its
-     own true pixel top/height set at build time (see timelineItem), so
-     there is nothing left to measure-and-anchor after the fact — EXCEPT
-     one real case pushForFloor's build-time math can't see: an OPEN
-     accordion card (see timelineItem's isOpen/collapsible). Its real
-     content — title, chips, the full Done/Swap/Pending/Remove row, an
-     expanded detail panel — isn't known until it's actually in the live
-     tree, and a short slot (a 15-min quick task is ~28px at true scale)
-     can't hold it. Confirmed live: an opened card's real height ran ~47px
-     past its fixed slot with nothing to push the next row down, so the
-     open card's own action buttons rendered UNDER the next card and ate
-     its clicks — not a cosmetic overlap, a real dead-button bug.
-     pushForOverflow runs the same "push later, never earlier" invariant
-     pushForFloor already established, after fitRowTitle (opening a title's
-     wrap state is part of what changed its height) and before
-     nestConnectors (which measures the positions this pass just moved). */
-  pushForOverflow(sec);
+    /* Uniform rows (2026-08-26): pushForOverflow is gone with the fixed
+     slot heights it existed to rescue. A card in normal flow is as tall as
+     its own content, so an opened accordion simply makes its row taller
+     and everything after it moves down — the browser does what the pass
+     used to do by hand. The dead-button bug it fixed (an open card's
+     actions rendering UNDER the next card) cannot recur in flow layout. */
   /* nestConnectors still needs a real post-layout measurement pass (same
      reason as above — a nest's own connector line has to know where its
      rows actually ended up, pushForOverflow included) — see its own
@@ -5147,28 +5215,25 @@ function paint(){
 }
 
 /* ---------------------------------------------------------------- timeline
-   The day's activity list, positioned and sized by real duration (see
-   buildDayScale/CARD_MIN_HEIGHT). A permeable meeting (one tasks may run
-   inside — see permeable()) groups the tasks scheduled during it underneath
-   itself instead of listing them as flat siblings, so "I have חמל, and two
-   tasks inside it" reads at a glance. */
+   The day's activity list: uniform rows in document order (2026-08-26).
+   A permeable meeting (one tasks may run inside — see permeable()) groups
+   the tasks scheduled during it underneath itself instead of listing them
+   as flat siblings, so "I have חמל, and two tasks inside it" reads at a
+   glance.
+
+   Rows are NOT sized by duration. That was tried (the 2026-08-25 redesign)
+   and removed a day later: see timelineItem's positioning comment for the
+   arithmetic, but the short version is that legible card heights span ~2.3x
+   while real durations span 32x, so any honest pixel mapping either crushes
+   the short tasks or buries the day under a five-hour block of empty
+   colour. Duration is stated as text in the rail instead, where it costs
+   nothing and reads exactly. */
+/* The flex gap between two .time-rows in .rows.stack. Mirrored here because
+   wireStackDrag has to know how wide the seam between two rows is to hit-test
+   across it — keep in sync with .rows.stack's own `gap`. */
+const ROW_GAP_PX = 6;
 const TL_PPM = 1.6; // pixels per minute
-const TL_PPM_DAY = TL_PPM * 0.62;   // ~0.99 px/min, ~59.5px per hour
-/* An empty stretch longer than SKIP_MIN_PX (~1.7h of clock) collapses to
-   SKIP_KEEP_PX. Without this, a single early meeting widening the window to
-   06:00 opens the day on five hours of blank grid with the real work pushed
-   off the bottom of the phone. The threshold is deliberately well above one
-   hour: a genuinely empty hour inside the working day is information, and
-   should be seen at full size. */
-const SKIP_MIN_PX  = 100;
-const SKIP_KEEP_PX = 26;
-/* True-to-scale card sizing (2026-08-25 redesign) means a 15-min task is
-   only ~15px tall at TL_PPM_DAY — not enough room for a readable title plus
-   the shared card padding. CARD_MIN_HEIGHT is a deliberate, narrow floor at
-   the very short end only (user-confirmed tradeoff), not a return to the
-   old sizeCardToDuration system (which floored by CONTENT height and only
-   ever grew a card, never shrank one). */
-const CARD_MIN_HEIGHT = 28;
+const TL_PPM_DAY = TL_PPM * 0.62;   // ~0.99 px/min, kept for the drain wash
 
 /* tasks that read as "during" a permeable meeting: started inside its
    window, regardless of whether they run past its end (e.g. a session that
@@ -5218,32 +5283,6 @@ function groupForStack(items){
    bridges each subsequent pair. Height/top are measured in `.rows.stack`'s
    own coordinate space — the one positioned ancestor every `.time-row`
    itself already resolves its own top/left against — not viewport pixels. */
-/* Pushes every .time-row below an overflowing OPEN card down by however
-   much that card's real content exceeds its fixed slot height — see the
-   call site's comment for why this exists. Cumulative like pushForFloor:
-   several open cards stacked (not the common case — only one row is ever
-   "open" at a time per the accordion, see isOpen/collapsible — but the
-   hub/currentMarker are exempt from the accordion and can be open
-   alongside one real accordion row) each add their own overflow to every
-   row after them. Only walks .rows.stack's own top-level children plus
-   .nest contents — .hero-slot is a different coordinate space entirely
-   (see .hero-slot .time-row{position:relative}) and was never part of
-   this container's stacking to begin with. */
-function pushForOverflow(sec){
-  const container = sec.querySelector(".rows.stack");
-  if(!container) return;
-  const rows = [...container.querySelectorAll(":scope > .time-row, .nest > .time-row")]
-    .sort((a,b) => parseFloat(a.style.top) - parseFloat(b.style.top));
-  let carry = 0;
-  for(const row of rows){
-    if(carry) row.style.top = (parseFloat(row.style.top) + carry) + "px";
-    const setH = parseFloat(row.style.height) || 0;
-    const realH = row.scrollHeight;
-    if(realH > setH) carry += realH - setH;
-  }
-  if(carry) container.style.height = (parseFloat(container.style.height) + carry) + "px";
-}
-
 function nestConnectors(sec){
   /* Always the same positioned ancestor every .time-row itself resolves
      against (see timelineItem's top/left) — appending here rather than to
@@ -5263,12 +5302,11 @@ function nestConnectors(sec){
       const bRect = chain[i].getBoundingClientRect();
       const top = aRect.bottom - base.top;
       const height = bRect.top - aRect.bottom;
-      /* Sub-pixel noise, not a real gap: pushForFloor packs cards back-to-
-         back with zero real gap whenever a legibility floor applies, and
-         getBoundingClientRect() can differ from that by a fraction of a
-         pixel — confirmed live (a 0.03px "gap" rendered as a visible-ish
-         zero-height connector). 1px is comfortably above that noise floor
-         and comfortably below "a real gap worth bridging." */
+      /* Sub-pixel noise, not a real gap: getBoundingClientRect() can
+         report a fraction of a pixel between two rows the flex gap packs
+         together — confirmed live (a 0.03px "gap" rendered as a
+         visible-ish zero-height connector). 1px is comfortably above that
+         noise floor and comfortably below "a real gap worth bridging." */
       if(height <= 1) continue;
       const line = el("div","nest-connector");
       line.style.top = top + "px";
@@ -5316,59 +5354,47 @@ function timeline(items, winS, winE, ppm, opts){
      whose only work is the hub (a single 8h session, say) the leftover list
      holds nothing but the evening event, so the gap would never be found. */
   const gap = opts.gap === false ? null : offHoursGap(opts.all || items);
-  /* Compressed scale (2026-08-25 redesign, replaces anchorRows' after-the-
-     fact interpolation) — computed once, up front, from the day's real
-     items, then handed to every positioned element below as opts.toY /
-     the toY param, so a genuinely empty multi-hour stretch still visually
-     shrinks even though every card now sits at its own true pixel spot. */
-  const scale = buildDayScale(winS, winE, ppm, opts.all || items, gap);
-  const toY = scale.toY;
-  /* Computed over the WHOLE day (opts.all), not just the rows this call
-     renders — laterItems excludes the hub, but a floored hub can still
-     push the very next laterItem down, so the push map has to see both. */
-  const push = pushForFloor(opts.all || items, toY);
+  /* Uniform rows (2026-08-26): no scale, no push map, no gutter. Rows are
+     in flow order, so "where a card sits" is just its place in the list.
+     buildDayScale/pushForFloor/pushForOverflow/hourGutter/hourLines are
+     gone with the proportional heights they existed to correct — see
+     timelineItem's positioning comment for why. Empty stretches are no
+     longer compressed-and-labelled either; a real gap now renders as a
+     visible quietGap card (below), which says the same thing in a way that
+     reads as intentional rather than as a rendering fault. */
   let gapPlaced = false;
   const placeGap = before => {
     if(!gap || gapPlaced) return;
     if(before != null && before < gap.e2) return;
     gapPlaced = true;
-    rowsEl.appendChild(offHoursCard(gap, winS, ppm, toY));
+    rowsEl.appendChild(offHoursCard(gap, winS, ppm));
+  };
+  /* A genuinely empty stretch between two consecutive rows, stated as a
+     card. QUIET_GAP_MIN keeps it to gaps worth naming — a 15-min turnaround
+     between two tasks is not free time and shouldn't claim to be. */
+  let prevEnd = null;
+  const placeQuiet = it => {
+    if(prevEnd != null && it && it.s - prevEnd >= QUIET_GAP_MIN){
+      rowsEl.appendChild(quietGap(prevEnd, it.s));
+    }
+    if(it) prevEnd = prevEnd == null ? it.e2 : Math.max(prevEnd, it.e2);
   };
   for(const g of groupForStack(items)){
     const it = g.meeting || g.item;
     placeGap(it ? it.s : null);
+    placeQuiet(it);
     if(g.meeting){
-      rowsEl.appendChild(timelineItem(g.meeting, winS, ppm, 0, 1, {mode:"stack", toY, push:push.get(g.meeting)}));
+      rowsEl.appendChild(timelineItem(g.meeting, winS, ppm, 0, 1, {mode:"stack"}));
       if(g.children.length){
         const nest = el("div","nest");
-        for(const c of g.children) nest.appendChild(timelineItem(c, winS, ppm, 0, 1, {mode:"stack", toY, push:push.get(c), indent:true}));
+        for(const c of g.children) nest.appendChild(timelineItem(c, winS, ppm, 0, 1, {mode:"stack", indent:true}));
         rowsEl.appendChild(nest);
       }
     }else{
-      rowsEl.appendChild(timelineItem(g.item, winS, ppm, 0, 1, {mode:"stack", toY, push:push.get(g.item)}));
+      rowsEl.appendChild(timelineItem(g.item, winS, ppm, 0, 1, {mode:"stack"}));
     }
   }
   placeGap(null);   // gap after everything else in this list
-  /* Real computed height now that rows are absolutely positioned inside it
-     (2026-08-25 redesign) — scale.totalHeight already accounts for
-     compression; the max floor-push (see pushForFloor) can move the day's
-     last card below that, so it has to widen the container too, or a
-     pushed-down last card would visually spill past its own gutter/scroll
-     bounds. */
-  let maxPush = 0;
-  for(const v of push.values()) if(v > maxPush) maxPush = v;
-  const totalHeight = scale.totalHeight + maxPush;
-  rowsEl.style.height = totalHeight + "px";
-  hourLines(rowsEl, winS, winE, ppm, toY);
-  wrap.appendChild(hourGutter(winS, winE, ppm, totalHeight, toY));
-  for(const sk of scale.skips){
-    const tag = el("div","hour-skip", (()=>{
-      const h = Math.round((sk.e2-sk.s)/60);
-      return h >= 1 ? `⋯ ${h}h` : "⋯";
-    })());
-    tag.style.top = (toY(sk.s) + 4) + "px";
-    rowsEl.appendChild(tag);
-  }
   wrap.appendChild(rowsEl);
   sec.appendChild(wrap);
   sec.dataset.winS = winS;
@@ -5377,96 +5403,57 @@ function timeline(items, winS, winE, ppm, opts){
   return sec;
 }
 
-/* anchorRows() / sizeCardToDuration() are gone (2026-08-25 redesign). They
-   existed to compensate for cards NOT being sized by real duration: a card
-   kept whatever height its content needed, and the whole mechanism measured
-   where rows actually landed after the fact, then stretched the hour gutter
-   to match. Now every .time-row carries a true top/height computed directly
-   from its own start/duration at build time (see timelineItem), so there is
-   nothing left to measure or anchor — a card simply sits where its own time
-   says it should.
-
-   Empty-gap compression (the old SKIP_MIN_PX/SKIP_KEEP_PX/.hour-skip
-   behaviour) is rebuilt as a single up-front pass over pure time data,
-   rather than the old per-row DOM-measuring interpolation: buildDayScale()
-   finds genuinely empty multi-hour stretches from the day's real items and
-   returns a `toY(min)` mapper that every positioned element (cards, hour
-   lines, the gutter, the now-line) uses instead of the raw `(min-winS)*ppm`
-   formula, so the compression only has to be computed once per paint. */
-const SKIP_MIN_MIN = SKIP_MIN_PX / TL_PPM_DAY;   // ~101min, same threshold anchorRows used
-function buildDayScale(winS, winE, ppm, items, gap){
-  const spans = items.map(it => ({ s:it.s, e2:it.e2 }));
-  if(gap) spans.push({ s:gap.s, e2:gap.e2 });
-  spans.sort((a,b)=>a.s-b.s);
-  const skips = [];
-  let prevEnd = winS;
-  for(const sp of spans){
-    if(sp.s - prevEnd > SKIP_MIN_MIN) skips.push({ s:prevEnd, e2:sp.s });
-    prevEnd = Math.max(prevEnd, sp.e2);
-  }
-  if(winE - prevEnd > SKIP_MIN_MIN) skips.push({ s:prevEnd, e2:winE });
-  /* toY(min): true pixel scale, minus whatever's been squeezed out of any
-     skip range strictly before `min`. A minute strictly inside a skip range
-     lands at the compressed range's own start — nothing renders there
-     anyway (skips are, by construction, genuinely empty of real items). */
-  const toY = min => {
-    let shift = 0;
-    for(const sk of skips){
-      if(min <= sk.s) break;
-      const skipEnd = Math.min(min, sk.e2);
-      shift += (skipEnd - sk.s) * ppm - SKIP_KEEP_PX;
-    }
-    return (min - winS) * ppm - shift;
-  };
-  const totalHeight = toY(winE);
-  return { toY, skips, totalHeight };
-}
-
-/* CARD_MIN_HEIGHT (the short-card legibility floor) can make a card's real
-   pixel bottom fall below the next card's true top when several short slots
-   sit back-to-back (e.g. three consecutive 15-min tasks at ~15px each,
-   floored to 28px — three floors add up to more room than three real slots
-   give them, confirmed as a real visual overlap on the live site,
-   2026-08-25). pushForFloor walks the day's real items in start order and
-   returns a Map(item -> extra px) so a floored card only ever pushes what
-   comes strictly after it LATER, never earlier — the same one-directional
-   invariant anchorRows used to enforce by measuring the DOM every frame,
-   computed here once from pure time data instead. Only items sharing the
-   same toY (i.e. not separated by a skip-compressed gap) can push each
-   other — a card on the far side of a compressed empty stretch has nothing
-   to do with a floor on the near side. */
-function pushForFloor(items, toY){
-  const sorted = items.slice().sort((a,b)=>a.s-b.s || a.e2-b.e2);
-  const push = new Map();
-  let prevBottom = -Infinity;
-  for(const it of sorted){
-    const naturalTop = toY(it.s) + (push.get(it) || 0);
-    const top = Math.max(naturalTop, prevBottom);
-    const extra = top - toY(it.s);
-    if(extra > 0) push.set(it, extra);
-    const height = Math.max(CARD_MIN_HEIGHT, toY(it.e2) - toY(it.s));
-    prevBottom = top + height;
-  }
-  return push;
-}
+/* Three generations of vertical-position machinery have now been removed
+   from this file, and the third removal is the one worth remembering.
+   anchorRows()/sizeCardToDuration() (gone 2026-08-25) measured where rows
+   landed and stretched an hour gutter to match. buildDayScale()/
+   pushForFloor()/pushForOverflow() (gone 2026-08-26) replaced that with
+   true pixel-per-minute positions computed up front. Both existed to make
+   card height mean duration, and both failed the same way: the floor
+   needed to keep a 15-min card legible is larger than the space 15 minutes
+   buys, so short cards always overflow into each other and something has
+   to push the rest of the day down — at which point the card positions and
+   the hour labels beside them no longer agree, which is the exact
+   misreading an hour gutter exists to prevent.
+   Rows are in normal document flow now. Nothing measures, nothing pushes,
+   nothing can drift. */
 
 /* The off-hours card. Deliberately NOT a `.item.stack`: it isn't a task, has
    no card, no actions, and must never be dragged, swapped or completed — so
    it doesn't get that class, doesn't go through timelineItem, and
    wireStackDrag never sees it. It still sits in a `.time-row` so its start
    time lines up in the same rail as everything else. */
-function offHoursCard(gap, winS, ppm, toY){
+/* A stretch of genuinely free clock between two things, stated plainly.
+   Replaces the old .hour-skip marker (a "⋯ 2h" tag floated over compressed
+   empty space), which read as a rendering fault rather than as information
+   — it announced that the VIEW had skipped something, not that the DAY had
+   room in it. Free time is one of the more useful things a focus widget can
+   tell you, so it gets a real card that names how long it is and what it
+   ends at. */
+const QUIET_GAP_MIN = 45;
+function quietGap(fromMin, toMin){
+  const row = el("div","time-row quiet-row");
+  row.dataset.min = fromMin;
+  row.dataset.dur = toMin - fromMin;
+  const rail = el("div","rail-stop quiet-stop");
+  const at = atMin(S.anchor, fromMin);
+  rail.appendChild(el("span","t", pad2(at.getHours())));
+  rail.appendChild(el("span","tm", ":" + pad2(at.getMinutes())));
+  row.appendChild(rail);
+  const mins = toMin - fromMin;
+  const h = Math.floor(mins/60), m = mins%60;
+  const span = h ? (m ? `${h}h ${m}m` : `${h}h`) : `${m}m`;
+  const card = el("div","quiet");
+  card.appendChild(el("span","quiet-k","Free"));
+  card.appendChild(el("span","quiet-span", span));
+  card.appendChild(el("span","quiet-until","until " + hhmm(atMin(S.anchor, toMin))));
+  row.appendChild(card);
+  return row;
+}
+function offHoursCard(gap, winS, ppm){
   const row = el("div","time-row offhours-row");
   row.dataset.min = gap.s;
   row.dataset.dur = gap.e2 - gap.s;
-  /* True-to-scale positioning (2026-08-25 redesign), same toY mapper every
-     other .time-row uses now (see buildDayScale) — off-hours keeps its own
-     distinct gradient/no-actions look (it isn't a real schedulable thing)
-     but sits at a real pixel position/height like everything else on the
-     clock. Falls back to the plain linear formula if toY isn't given. */
-  const y = toY || (min => (min - winS) * ppm);
-  row.style.top = y(gap.s) + "px";
-  row.style.height = Math.max(CARD_MIN_HEIGHT, y(gap.e2) - y(gap.s)) + "px";
 
   const rail = el("div","rail-stop offhours-stop");
   const at = atMin(S.anchor, gap.s);
@@ -5496,32 +5483,6 @@ function offHoursCard(gap, winS, ppm, toY){
   return row;
 }
 
-/* The hour gutter — the column of "09:00 / 10:00 / …" labels — and the
-   dashed rules that carry those hours across the rows beside it.
-   hourGutter returns the labels column; hourLines APPENDS rules into a
-   caller-supplied rows container. Both take an explicit ppm so the caller
-   owns the scale. */
-/* toY is an optional override for the position formula — Day view passes
-   its own compressed mapper (see buildDayScale, 2026-08-25 redesign) so an
-   empty multi-hour stretch can shrink; falls back to the plain linear
-   (min-winS)*ppm scale otherwise. */
-function hourGutter(winS, winE, ppm, height, toY){
-  const hoursCol = el("div","tl-hours tl-gutter");
-  if(height != null) hoursCol.style.height = height + "px";
-  for(let h = Math.ceil(winS/60); h <= Math.floor(winE/60); h++){
-    const lab = el("div","hl", pad2(h%24) + ":00");
-    lab.style.top = (toY ? toY(h*60) : (h*60-winS)*ppm) + "px";
-    hoursCol.appendChild(lab);
-  }
-  return hoursCol;
-}
-function hourLines(host, winS, winE, ppm, toY){
-  for(let h = Math.ceil(winS/60); h <= Math.floor(winE/60); h++){
-    const gl = el("div","grid-line");
-    gl.style.top = (toY ? toY(h*60) : (h*60-winS)*ppm) + "px";
-    host.appendChild(gl);
-  }
-}
 /* The hub: wall clock, what you're on, and how long is left on it.
    It is not a bespoke card — it's the exact same card component every
    list row uses (timelineItem, stack mode), with opts.hub set. The only
@@ -5545,13 +5506,12 @@ function heroStatus(item){
    reads as continuous. Reuses timelineItem verbatim (same actions, same
    collapsible-exempt "always open" behaviour via opts.hub) rather than a
    parallel hand-rolled card — see the historical note above on why that
-   drifted before. winS/ppm/toY/push are irrelevant here since .hero-slot
-   .time-row overrides the absolute top/height timelineItem always sets
-   (see the CSS by .hero-slot); passing 0s keeps the call shape identical
-   to every other timelineItem call site. */
+   drifted before. winS/ppm are irrelevant here — rows carry no computed
+   position at all since the 2026-08-26 uniform-rows change; passing 0s
+   keeps the call shape identical to every other timelineItem call site. */
 function heroCard(item){
   S.hubItem = item;
-  const timeRow = timelineItem(item, 0, 0, 0, 1, { mode:"stack", hub:true, status:heroStatus(item), toY:m=>m, push:0 });
+  const timeRow = timelineItem(item, 0, 0, 0, 1, { mode:"stack", hub:true, status:heroStatus(item) });
   /* timelineItem's own eyebrow lands in .item-top, a sibling column beside
      the card — hidden here (see .hero-slot .item-top CSS) since the hero
      has no "beside the card" space to spend. Re-homed as the hero's own
@@ -5576,11 +5536,21 @@ function heroCard(item){
    place in the reorderable list. Not built via timelineItem: that always
    renders a full open card with actions and a rail-stop, which duplicates
    the hero. */
-function currentMarker(item, winS, ppm, toY, push){
+function currentMarker(item, winS, ppm){
   const timeRow = el("div","time-row current-marker");
-  const pushPx = push || 0;
-  timeRow.style.top = (toY(item.s) + pushPx) + "px";
-  timeRow.style.height = Math.max(CARD_MIN_HEIGHT, toY(item.e2) - toY(item.s)) + "px";
+  /* A rail of its own, like every other row. .time-row is a fixed two-track
+     grid (rail | card), so a row that appends only a card puts that card in
+     the RAIL track — confirmed live: the marker rendered as a ~52px-wide
+     column of vertically-wrapped text. It also has a real start time worth
+     stating, since the hero above states its own range separately. */
+  const rail = el("div","rail-stop " + boardClass(item.card, item.task, item.isBreak));
+  const at = atMin(S.anchor, item.s);
+  rail.appendChild(el("span","t", pad2(at.getHours())));
+  rail.appendChild(el("span","tm", ":" + pad2(at.getMinutes())));
+  const mins = item.e2 - item.s;
+  const mh = Math.floor(mins/60), mm = mins%60;
+  rail.appendChild(el("span","dur", mh ? (mm ? `${mh}h${mm}` : `${mh}h`) : `${mm}m`));
+  timeRow.appendChild(rail);
   /* hub/now: stable selector names carried over from before the hero split
      (see the CSS comment by .item.hub) — no styling of their own, kept so
      "which card is currently the day's focus" stays queryable by the same
@@ -5776,17 +5746,18 @@ function timelineItem(item, winS, ppm, col, cols, opts){
   const wrap = el("div", cls);
   if(!stack && cols > 1){ wrap.style.left = (col*100/cols) + "%"; wrap.style.width = `calc(${100/cols}% - 6px)`; }
 
-  /* One row now carries time + list-name chip + title together (2026-08-25
-     redesign, direct request) — stack mode used to split these across two
-     lines (row-lead here, a separate row-meta line below for the time
-     chip), which the rail already half-duplicated. Time still also shows in
-     the rail-stop to its left (a fixed once-per-hour-ish glance column,
-     same as Google Calendar's own left edge), so this isn't a second
-     source of truth, just the per-card copy living on the card's one row
-     instead of split across two. Grid/week mode is unchanged. */
+  /* The in-card time range is dropped in stack mode (2026-08-26). It was
+     added on 2026-08-25 when the rail carried only a sparse once-per-hour
+     label and a card genuinely had no time on it; the rail now states this
+     row's own exact start and duration, immediately to the left, so the
+     in-card copy is the same fact twice on one line — it read as
+     "09:00 09:00–09:15". The hero keeps its range (it hides its rail
+     entirely, see .hero-slot .rail-stop) and grid/week mode is unchanged;
+     the list row keeps only its source chip. */
   const r = el("div","row" + (item.done ? " done" : ""));
   r.appendChild(stack
-    ? rowLead(fmtRangeMin(item.s, item.e2), item.card ? sourceChip(item.card) : null, { noDot:true })
+    ? rowLead(opts.hub ? fmtRangeMin(item.s, item.e2) : null,
+              item.card ? sourceChip(item.card) : null, { noDot:true })
     : rowLead(fmtRange(item.ev.start, item.ev.end), null));
   const n = el("span","n");
   n.appendChild(bidiSpan(item.title));
@@ -5943,9 +5914,18 @@ function timelineItem(item, winS, ppm, col, cols, opts){
   railStop.appendChild(el("span","tm", ":" + pad2(startAt.getMinutes())));
   railStop.title = fmtRange(inBrick ? startAt : item.ev.start,
                             inBrick ? atMin(item.ev.start, item.e2) : item.ev.end);
-  /* No separate duration bar any more (2026-08-25 redesign) — the card
-     itself is now sized to its real duration (see timelineItem's own
-     positioning), so a second proportional read in the rail was redundant. */
+  /* Duration is back in the rail as TEXT (2026-08-26 uniform-rows
+     redesign). It was dropped on 2026-08-25 as redundant, because the card
+     was sized to its real duration and a second read of the same fact was
+     noise. Rows are uniform now, so height no longer says anything about
+     duration and nothing else on the row does either — "5h" has to be
+     written down or it is simply not available. Text also states it far
+     more precisely than 300px of colour ever did. */
+  if(!isHub){
+    const mins = item.e2 - item.s;
+    const h = Math.floor(mins/60), m = mins%60;
+    railStop.appendChild(el("span","dur", h ? (m ? `${h}h${m}` : `${h}h`) : `${m}m`));
+  }
 
   const cardCol = el("div","card-col");
   /* Card first, status column second — the eyebrow now sits to the card's
@@ -5959,37 +5939,25 @@ function timelineItem(item, winS, ppm, col, cols, opts){
   }
 
   const timeRow = el("div","time-row" + (isHub ? " hub" : ""));
-  /* True-to-scale positioning (2026-08-25 redesign) — every row that has a
-     real start carries it, uniformly, including the hub and (separately)
-     the off-hours card, which builds its own .time-row by hand. opts.toY,
-     when given (Day view always gives one — see timeline()/buildDayScale),
-     is the compressed-scale mapper; falling back to the plain linear
-     formula covers any caller that hasn't been threaded through yet.
-     CARD_MIN_HEIGHT is the one deliberate exception to strict
-     proportionality: a very short slot (a 15-min quick task is ~15px at
-     TL_PPM_DAY) needs a small floor purely so its title stays readable —
-     documented here, not a silent revival of the old sizeCardToDuration
-     duration-floor system, which sized by CONTENT height, not a fixed
-     legibility minimum. opts.push is that floor's own overlap fix: several
-     short slots back-to-back can each get floored taller than their real
-     gap allows, which — confirmed live, 2026-08-25 — overlapped one card on
-     top of the next; pushForFloor computes how far this exact item needs to
-     move down (0 for most items) so a floored card only ever pushes what
-     follows LATER, never earlier, same invariant anchorRows used to
-     enforce, now computed once from data instead of measured every frame. */
-  const toY = opts.toY || (min => (min - winS) * ppm);
-  const pushPx = opts.push || 0;
-  timeRow.style.top = (toY(item.s) + pushPx) + "px";
-  timeRow.style.height = Math.max(CARD_MIN_HEIGHT, toY(item.e2) - toY(item.s)) + "px";
-  /* opts.indent (2026-08-25 redesign, nesting fix): a task nested under a
-     permeable meeting used to get its indent from a `.nest` PARENT's own
-     margin — which stopped working the moment .time-row became
-     position:absolute (an absolutely-positioned child resolves left/right
-     against .rows.stack, its nearest positioned ancestor, not against
-     .nest's own box; confirmed live — .nest's own left/height collapsed to
-     0 and nested rows rendered flush with the meeting, no indent at all).
-     The indent now has to live on the row itself. */
-  if(opts.indent) timeRow.style.left = "12px";
+  /* Uniform rows (2026-08-26 redesign) — replaces the true-to-scale
+     top/height set here since 2026-08-25. Rows are back in normal flow:
+     no top, no height, no toY, no push. A card is as tall as its own
+     content and no taller, and duration is stated as TEXT in the rail
+     rather than encoded as pixels.
+
+     Why the proportional version had to go: at TL_PPM_DAY (~0.99px/min) a
+     15-min task was ~15px, floored to CARD_MIN_HEIGHT — so four
+     back-to-back quarter-hour tasks claimed 112px of a 60px span, and
+     pushForFloor resolved the overlap by shoving every later row down.
+     The hour gutter was drawn from the UNPUSHED toY, so cards and their
+     own hour labels drifted apart by exactly the accumulated push
+     (confirmed live: a 10:00 meeting rendering level with the 10:20 mark).
+     Meanwhile a 5h meeting got ~300px of empty colour while the four
+     things you'd actually act on were crushed into a strip.
+     Proportional height is what a CALENDAR does; Daisey is a focus widget
+     whose whole premise is that the current task dominates. The hero keeps
+     that role; the list below is now a list. */
+  if(opts.indent) timeRow.classList.add("indent");
   timeRow.dataset.min = item.s;
   timeRow.dataset.dur = item.e2 - item.s;
   timeRow.appendChild(railStop);
@@ -6105,9 +6073,28 @@ function wireStackDrag(wrap, item, rowId){
     const pool = myNest
       ? [...myNest.querySelectorAll(".item.stack:not(.meeting)")]
       : [...document.querySelectorAll(".item.stack:not(.meeting)")].filter(el => !el.closest(".nest"));
-    order = pool
-      .filter(el => el.dataset.rowId)
-      .map(el => { const row = el.closest(".time-row") || el; const r = row.getBoundingClientRect(); return { el:row, id:el.dataset.rowId, top:r.top, bottom:r.bottom }; });
+    /* The current task is in the DOM TWICE — once as the hero in #heroSlot,
+       once as currentMarker inside the timeline — and both carry the same
+       dataset.rowId, so an unfiltered pool holds two entries for one task.
+       That made `order` disagree with reality in two ways: findIndex(o.el
+       === dragEl) could resolve to whichever copy wasn't being dragged, and
+       orderIds carried a duplicate id into pushReorder's sequence. Keep the
+       copy actually being dragged, else the first — one entry per real
+       task, which is what every consumer here assumes. */
+    const seen = new Map();
+    for(const el of pool){
+      if(!el.dataset.rowId) continue;
+      const row = el.closest(".time-row") || el;
+      /* Whichever copy is actually under the pointer wins, so originIdx can
+         always find itself; otherwise first-seen. Dragging the hero and
+         dragging the marker are both real (the marker keeps its drag
+         wiring on purpose — see currentMarker), and the pool must contain
+         the one being dragged either way. */
+      if(seen.has(el.dataset.rowId) && row !== dragEl) continue;
+      const r = row.getBoundingClientRect();
+      seen.set(el.dataset.rowId, { el:row, id:el.dataset.rowId, top:r.top, bottom:r.bottom });
+    }
+    order = [...seen.values()].sort((a,b) => a.top - b.top);
     originIdx = order.findIndex(o => o.el === dragEl);
     targetIdx = originIdx;
     /* the hold proved intent — from here every touchmove is ours, and
@@ -6162,7 +6149,17 @@ function wireStackDrag(wrap, item, rowId){
       dragEl.classList.add("time-row-dragging");
     }
     dragEl.style.transform = `translateY(${dy}px)`;
-    const hitIdx = order.findIndex(o => e.clientY >= o.top && e.clientY < o.bottom);
+    /* Rows no longer tile the column edge-to-edge — .rows.stack is a flex
+       column with a real gap between cards (2026-08-26 uniform rows), so a
+       strict top<=y<bottom test drops the pointer into the dead space
+       between every pair of rows and reports "no target". Widen each row's
+       catchment by half the gap on each side, which closes the seam without
+       claiming anything beyond it: a pointer over a MEETING (never in
+       `order` — meetings are not a drop target) or past the end of the list
+       must still resolve to no target, so a plain nearest-row fallback is
+       wrong here, not merely loose. */
+    const SEAM = ROW_GAP_PX / 2 + 1;
+    const hitIdx = order.findIndex(o => e.clientY >= o.top - SEAM && e.clientY < o.bottom + SEAM);
     const next = hitIdx < 0 ? originIdx : hitIdx;
     if(next !== targetIdx){ targetIdx = next; applyPush(targetIdx); }
   }
