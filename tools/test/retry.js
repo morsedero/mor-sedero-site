@@ -80,8 +80,14 @@ const check=(cond,msg)=>{ if(!cond) bad.push(msg); };
   /* drag the hub onto the row directly below it: an adjacent pair, so the
      push is two moves — the same shape pages.js already relies on */
   async function dragHubDown(){
-    const hub=await p.locator("#pageMain .now").boundingBox();
-    const row=await p.locator("#pageMain .rows.stack .item.stack:not(.meeting)").first().boundingBox();
+    /* #heroSlot, not #pageMain: the current task renders as the hero above
+       #pageMain's scroller (2026-08-26), and #pageMain's own first
+       ".item.stack:not(.meeting)" is currentMarker — the SAME task. Reading
+       both from #pageMain made hub and row resolve to one element, so this
+       dragged a card onto itself and silently asserted against a move that
+       never happened. */
+    const hub=await p.locator("#heroSlot .now").boundingBox();
+    const row=await p.locator("#pageMain .rows.stack .item.stack:not(.current-marker-card):not(.meeting)").first().boundingBox();
     if(!hub||!row){ check(false,"drag setup: hub or first row wasn't found"); return; }
     await p.mouse.move(hub.x+hub.width/2, hub.y+20);
     await p.mouse.down();
@@ -113,7 +119,11 @@ const check=(cond,msg)=>{ if(!cond) bad.push(msg); };
   await p.evaluate(()=>{ window.__fail={tool:"update_event",n:999}; });
   before=await updates();
   await dragHubDown();
-  await p.waitForTimeout(4500);   // both moves burn all three attempts
+  /* Two moves x three attempts, each attempt paying 400ms + 1200ms of
+     backoff, is ~4.8s of waiting before the last one can even fail — 4500ms
+     was under the floor and passed only when the machine was quick, which
+     is what made this suite intermittently report 0 calls. */
+  await p.waitForTimeout(7000);   // both moves burn all three attempts
 
   const t2=await times();
   const calls2=(await updates())-before;

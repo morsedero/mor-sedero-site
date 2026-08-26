@@ -100,11 +100,11 @@ window.Date=class extends R{constructor(...a){if(a.length===0)super(R.now()+O);e
        off-screen on a tall fixture, so that half of the old scroll-fixup
        stays. */
     await p.evaluate(()=>{
-      const row=document.querySelector("#pageMain .rows.stack .item.stack:not(.meeting)"), host=document.querySelector("#pageMain");
+      const row=document.querySelector("#pageMain .rows.stack .item.stack:not(.current-marker-card):not(.meeting)"), host=document.querySelector("#pageMain");
       if(row && host) host.scrollTop += row.getBoundingClientRect().top - host.getBoundingClientRect().top - 8;
     });
     const hubBox=await p.locator("#heroSlot .now").boundingBox();
-    const rowBox=await p.locator("#pageMain .rows.stack .item.stack:not(.meeting)").first().boundingBox();
+    const rowBox=await p.locator("#pageMain .rows.stack .item.stack:not(.current-marker-card):not(.meeting)").first().boundingBox();
     if(hubBox && rowBox){
       const before=await p.evaluate(()=>window.__calls.filter(c=>c.tool==="update_event").length);
       await p.mouse.move(hubBox.x+hubBox.width/2, hubBox.y+20);
@@ -130,7 +130,7 @@ window.Date=class extends R{constructor(...a){if(a.length===0)super(R.now()+O);e
 
     // dropping a task onto a meeting: no push should occur
     const meetingBox=await p.locator("#pageMain .rows.stack .item.stack.meeting").first().boundingBox();
-    const rowBox2=await p.locator("#pageMain .rows.stack .item.stack:not(.meeting)").first().boundingBox();
+    const rowBox2=await p.locator("#pageMain .rows.stack .item.stack:not(.current-marker-card):not(.meeting)").first().boundingBox();
     if(meetingBox && rowBox2){
       const before2=await p.evaluate(()=>window.__calls.filter(c=>c.tool==="update_event").length);
       await p.mouse.move(rowBox2.x+rowBox2.width/2, rowBox2.y+rowBox2.height/2);

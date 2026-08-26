@@ -45,7 +45,8 @@ Rules, in the order they save the most:
   **`det`/`edit`/`hub`/`mini` have no assertions and cannot fail** — they log
   state and screenshot. They're reported as `DUMP`, counted separately, and
   never gate the run. That's a real coverage gap to close, not something to
-  read as green.
+  read as green. (`layout.js`, added 2026-08-26, closes the part of that gap
+  that covers Day-view geometry — it asserts, and it discriminates.)
 - **Prefer `Read` with `offset`/`limit` over shell `cat`.** When a session is
   in Bash-only/auto mode that tool is unavailable and every read is a raw
   dump. For work in `tools/`, turn auto mode off — the line-windowing is
@@ -81,14 +82,45 @@ code — read those bullets as history, not current behavior. What's true now:
   var, `.drain-fill`) that fills the hero/marker card left-to-right as the
   current task's minutes burn, ticking every second off the existing 1s
   clock interval — not the 60s `render()` cadence.
-- **`pushForOverflow(sec)`** is a new post-layout pass (same "push later,
-  never earlier" invariant as `pushForFloor`) fixing a real bug found while
-  building this: an opened accordion card's real content can exceed its
-  fixed true-to-scale slot height, and nothing was pushing later rows down
-  to make room — the open card's own action buttons rendered UNDER the next
-  card and ate its clicks. Pre-existing in the uncommitted "2026-08-25
-  redesign" this session inherited, not something the hero work introduced,
-  but real and worth fixing regardless.
+- **True-to-scale card heights are GONE (2026-08-26, later the same day).**
+  `buildDayScale`, `pushForFloor`, `pushForOverflow`, `hourGutter`,
+  `hourLines`, `CARD_MIN_HEIGHT`, `SKIP_MIN_PX`/`SKIP_KEEP_PX` and the
+  separate hour gutter are all deleted; `.time-row` is back in normal flow
+  inside a `.rows.stack` flex column with a 6px gap, and duration is stated
+  as TEXT in the rail instead of encoded as pixels. Read every
+  "positioned/sized by real duration" bullet below as history.
+  The arithmetic that killed it: legible card heights span ~2.3x while real
+  durations span 32x, so no honest pixel mapping fits both. A 15-min task is
+  ~15px at `TL_PPM_DAY` and needs a ~28px floor to stay readable — so four
+  back-to-back quarter-hour tasks claimed 112px of a 60px span, `pushForFloor`
+  shoved every later row down to resolve the overlap, and the hour gutter
+  (drawn from the UNPUSHED positions) then disagreed with the cards it was
+  labelling. Confirmed live from a user screenshot: a 10:00 meeting rendering
+  level with the 10:20 mark, four real tasks crushed into a strip while a 5h
+  meeting ate 300px of empty colour. That is the exact misreading an hour
+  gutter exists to prevent, produced by the gutter itself.
+  `pushForOverflow` went with it and needs no replacement — a card in flow is
+  as tall as its content, so an opened accordion simply makes its own row
+  taller and the browser moves the rest down. The dead-button bug it was
+  written for (an open card's actions rendering UNDER the next card) cannot
+  recur in flow layout.
+  **`tools/test/layout.js` is the guard**, and it discriminates — each
+  assertion was verified to fail against a deliberately reintroduced version
+  of the specific bug it covers, not merely against the old file: rows must
+  not overlap (reproduces the 13px overlap), document order must match clock
+  order, height must follow content not duration (catches 297px-vs-28px), the
+  rail must state a readable time on one line (catches the vertical
+  "09 / :00 / 15m" wrap), and a card must not land in the rail grid track
+  (catches the 52px-wide card, a bug that really did ship mid-change).
+  Two traps it also encodes, both of which bit during this work:
+  `#pageMain .time-row` at ANY depth, not `.rows.stack > .time-row` — the
+  lead rows live inside an unstyled `.hub-lead`, so the child selector
+  silently saw 3 of 7 rows; and the current task is in the DOM TWICE (hero in
+  `#heroSlot`, `currentMarker` in the timeline) sharing one `rowId`, so a
+  drag-pool built without de-duplicating it resolves `originIdx` to the wrong
+  copy. `retry.js` was reading `#pageMain .now` for the hub and getting
+  `currentMarker` — the same task — so it dragged a card onto itself and
+  asserted against a move that never happened.
 - Any test selector reading `#pageMain .now`/`#pageMain .mini.info`/
   `#pageMain .details` etc. against a fixture with only ONE task that day
   is stale — that task is `current`, and current no longer renders inside
@@ -163,6 +195,11 @@ failure recorded here (four swatches vs three, internal scroll at 667px) is
   **not** this app's author.
   Run `offhours.js` after any change to `offHoursGap`, `timeline()`'s row
   assembly, `breakGaps`, or `CFG.dayEnd` handling.
+  Run `layout.js` after ANY change to Day-view geometry — `timeline()`,
+  `timelineItem`'s row assembly, `currentMarker`, `quietGap`, `.time-row` /
+  `.rows.stack` / `.rail-stop` CSS, or anything that reintroduces a computed
+  top/height. It is the only suite that would catch cards overlapping, a card
+  landing in the rail track, or duration creeping back into card height.
   Run `rail.js` after any change to the Day-view time rail (`.rail-stop` /
   `timelineItem`'s rail block), to `.item.stack`'s selection or touch-action
   CSS, or to `wireStackDrag` — it covers both the start-times-only rail and
@@ -640,6 +677,17 @@ failure recorded here (four swatches vs three, internal scroll at 667px) is
   `CFG.quickTotal`-wide window back-to-back from the event's own start,
   in card order — the same per-task sizing `planFor`/`relayRows` already
   use to build/repack a brick, now also used to *read* one back.
+  **HISTORY — everything from here to the end of this bullet describes the
+  2026-08-25 hour-gutter/true-to-scale design, which was REMOVED on
+  2026-08-26.** There is no hour gutter, no `.grid-line`, no
+  `SKIP_MIN_PX`/`SKIP_KEEP_PX` compression and no duration-driven card
+  height in the file any more; the per-row rail came back and now carries
+  each row's own start time plus its duration as text. See the
+  "True-to-scale card heights are GONE" bullet near the top of this section
+  for what replaced it and why. Kept because the measurements below are the
+  reason the current design is what it is — the 32x-vs-2.3x span argument in
+  particular was rediscovered the hard way.
+
   **The per-row rail was replaced by a REAL hour gutter** (2026-08-25, direct
   user request: "time should be shown just like in google calendar style —
   numbers on the left for each hour, bricks from its right"). Day view now
