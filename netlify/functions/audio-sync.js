@@ -155,13 +155,15 @@ async function findOrCreateProjectList(projectName) {
   return created.id;
 }
 
+// Work-day size removed from Daisey (2026-08-24, user request) — a card
+// shouldn't re-claim the user's whole configured day. Every batch/track
+// card gets yellow now; orange is no longer written by this function.
 let labelIdsCache = null;
 async function projectLabelIds() {
   if (labelIdsCache) return labelIdsCache;
   const labels = await trelloGet(`/boards/${PROJECTS_BOARD_ID}/labels`, { fields: "id,color", limit: 100 });
   labelIdsCache = {
     yellow: (labels.find(l => l.color === "yellow") || {}).id,
-    orange: (labels.find(l => l.color === "orange") || {}).id,
   };
   return labelIdsCache;
 }
@@ -218,7 +220,7 @@ async function processBoard(board, results) {
     bySubject.get(split.subject).push({ id: c.id, name: split.detail, detail: split.detail });
   }
 
-  const { yellow, orange } = await projectLabelIds();
+  const { yellow } = await projectLabelIds();
 
   for (const [subject, items] of bySubject) {
     const scored = scoreSfxItems(items);
@@ -232,7 +234,7 @@ async function processBoard(board, results) {
     let newBatchIndex = priorBatches - (seed ? 1 : 0) + 1;
 
     for (const bin of bins) {
-      const label = bin.size === "session" ? yellow : orange;
+      const label = yellow;
       // id:points pairs for the marker — new items carry their own score from `scored`;
       // a continued bin's carried-over ids re-derive their score from their live card
       // text (the original per-id split wasn't kept, only the bin's total).
@@ -275,7 +277,7 @@ async function processBoard(board, results) {
     const lengthMin = lenMatch ? Number(lenMatch[1]) : null;
     const size = stage === "demo" ? "session" : (lengthMin < 1 ? "session" : "workday");
     const pts = size === "session" ? 3 : 8; // record-keeping only; label is what schedules it
-    const label = size === "session" ? yellow : orange;
+    const label = yellow;
     const desc = musicDesc(board.name, boardUrl, split.detail, boardId, c.id, pts, stage, lengthMin);
     const created = await trelloWrite("POST", "/cards", { name: c.name, desc, idList: listId, idLabels: [label] });
     results.push({ action: "created", board: board.name, card: created.id, name: c.name, subject: "Music", size, count: 1 });

@@ -1,5 +1,5 @@
 const fs=require("fs"),vm=require("vm");const {chromium}=require("playwright");
-const H=fs.readFileSync("harness.js","utf8");const page_html=fs.readFileSync("dayflow.html","utf8");
+const H=fs.readFileSync("harness.js","utf8");const page_html=fs.readFileSync("daisey.html","utf8");
 const sb={require,__dirname,module:{exports:{}},exports:{},console,process};
 vm.runInNewContext(H.split("(async () => {")[0]+"\nmodule.exports={stub};",sb);
 const BASE=sb.module.exports.stub;

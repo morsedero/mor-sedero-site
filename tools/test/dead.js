@@ -1,5 +1,5 @@
 const fs=require("fs");const {chromium}=require("playwright");
-const page_html=fs.readFileSync("dayflow.html","utf8");
+const page_html=fs.readFileSync("daisey.html","utf8");
 const mk = code => `
 window.__calls=[];
 window.claude={ use: async n => n==="mcp" ? {

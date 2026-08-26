@@ -54,6 +54,40 @@ Rules, in the order they save the most:
 A daily focus widget over Google Calendar + Trello. One file:
 `tools/daisey.html`, published as a Claude artifact.
 
+**2026-08-26 — Week view is gone, and Daisey is day-only now.** Direct user
+request: one page, current task made big/bold/dominant, the red now-line
+replaced. Every `weekGrid`/`weekBounds`/`goWeek`/`layoutOverlaps` reference
+below (and the whole "Week view" mode of `timelineItem`) describes REMOVED
+code — read those bullets as history, not current behavior. What's true now:
+- **The current task lives in `#heroSlot`**, a flex sibling of `#pageMain`
+  above its scroller (`heroCard()`/`paintHero()`), not inside the timeline.
+  It's still built via `timelineItem(...,{hub:true})` — same actions, same
+  "always open" exemption every "hub card" bullet below describes — just
+  rendered somewhere else in the DOM and given hero-scale type
+  (`--t-hero` etc.) via `.hero-slot`-scoped CSS.
+- **`currentMarker()`** is the timeline's own slim stand-in for current —
+  real position/height, no Done/Swap/Pending/Remove (the hero already has
+  those), but still drag-to-reorder wired (`wireStackDrag`), since dragging
+  the current task to re-sequence the day predates the hero and wasn't
+  meant to go away with it.
+- **The red now-line is deleted, not restyled.** `nowLine()`/`.tl-now` are
+  gone outright. Replaced by a drain wash (`tickDrain()`, the `--drain` CSS
+  var, `.drain-fill`) that fills the hero/marker card left-to-right as the
+  current task's minutes burn, ticking every second off the existing 1s
+  clock interval — not the 60s `render()` cadence.
+- **`pushForOverflow(sec)`** is a new post-layout pass (same "push later,
+  never earlier" invariant as `pushForFloor`) fixing a real bug found while
+  building this: an opened accordion card's real content can exceed its
+  fixed true-to-scale slot height, and nothing was pushing later rows down
+  to make room — the open card's own action buttons rendered UNDER the next
+  card and ate its clicks. Pre-existing in the uncommitted "2026-08-25
+  redesign" this session inherited, not something the hero work introduced,
+  but real and worth fixing regardless.
+- Any test selector reading `#pageMain .now`/`#pageMain .mini.info`/
+  `#pageMain .details` etc. against a fixture with only ONE task that day
+  is stale — that task is `current`, and current no longer renders inside
+  `#pageMain` at all. Scope such selectors to `#heroSlot` (or both) instead.
+
 **Canonical artifact URL — always update this one, never publish a new
 artifact for Daisey:**
 
@@ -595,30 +629,98 @@ colour at all, since it never appears in the day list.
   `CFG.quickTotal`-wide window back-to-back from the event's own start,
   in card order — the same per-task sizing `planFor`/`relayRows` already
   use to build/repack a brick, now also used to *read* one back.
-  **The rail now mirrors Week view's hour gutter** (2026-08-24, third pass,
-  direct user request: "make it look like the week view"). It shows START
-  TIMES ONLY — no ranges, for any row type. The old rail printed
-  `fmtRange(ev.start, ev.end)` ("11:30–12:30", eleven characters) into a 44px
-  track, so every time wrapped to two centred lines; a vertical schedule
-  already encodes "until" as the next row's start, so the end time is
-  redundant on all but the last item. **The full range survives as the stop's
-  `title`.**
-  The styling is deliberately copied from `weekGrid`'s own gutter so the two
-  views read as one clock in two layouts: `.tl-gutter`'s 46px column width,
-  `.tl-hours .hl`'s 10px mono / weight-700 / `--ink-3` right-aligned label,
-  and `.grid-line`'s `2px dashed var(--line)` as a short rule reaching from
-  each label across to its card. The hub is the one row scaled up (13px,
-  weight 800). It cannot literally reuse weekGrid's markup — that gutter is
-  absolutely positioned inside one pixel-mapped container, while the Day list
-  is a flow of cards across several groups (`hub-group`, `nest`, `later`)
-  that `wireStackDrag` reorders by transform — so each row carries its own
-  label and rule, aligned by the shared `.time-row` grid template.
-  Two earlier passes at this were rejected before landing here, both worth
-  knowing: stating a brick's shared window once ("not a big enough
-  difference"), then a bespoke big-hour/small-minutes treatment with a
-  coloured dot on the card edge ("really think elegant designwise") — the
-  lesson being that the answer was to match something the app already had,
-  not to invent a third time language.
+  **The per-row rail was replaced by a REAL hour gutter** (2026-08-25, direct
+  user request: "time should be shown just like in google calendar style —
+  numbers on the left for each hour, bricks from its right"). Day view now
+  renders `hourGutter`/`hourLines`/`nowLine` — the same functions `weekGrid`
+  uses, extracted and shared, at the same `TL_PPM_DAY` (`TL_PPM * 0.62`)
+  scale — so the two views are literally one clock.
+  History: the rail used to be a 46px column on every `.time-row` carrying
+  that row's own start time. With a real gutter beside it that became a
+  *second* time column — two stacked time gutters ate 102px of a 390px phone
+  before a card began — so `.time-row`'s first column is now a 10px strip
+  holding only the duration bar, and `.rail-stop .t/.tm` are
+  `display:none` (kept in the DOM, and in the stop's `title`, because a
+  nested row is indented away from the gutter). `.rail-stop::after`, the 9px
+  dashed stub reaching from label to card, is **gone** — real full-width
+  `.grid-line`s do that job, and inside a `.nest` the stub made the indent
+  read as a misalignment. `.nest` also lost its own dashed left border for
+  the same reason: a second vertical dashed line 20px inside the gutter read
+  as a duplicate of the grid, not as grouping. Indent alone (12px) groups it.
+
+  **Cards are ANCHORED to their start minute, never SIZED by duration —
+  this is the load-bearing decision and it is arithmetic, not taste.**
+  The user raised exactly the right objection unprompted ("my fear is the
+  bricks will not have the same size"). Measured: a collapsed `.item.stack`
+  is **61px**, an open one 77px at 430+ but **106px at 390** and 113px at
+  320; the hub is 144px. Durations span **32×** (`quickTotal:15` →
+  `longMin:480`) while legible card heights span only ~2.3×. For a 15-min
+  task to clear even 61px at true scale needs `ppm ≥ 4.07` → a **1954px**
+  day (2686px on a 9→20 window, ~3600px for the open form on a phone), on a
+  view that is 827px with zero scroll today. A min-height clamp doesn't
+  rescue it either: the floor lands at 61px = 61 minutes, so everything from
+  15min to 1h renders identically anyway — you'd buy multiple screens of
+  scroll to distinguish only the two session sizes, which the duration chip
+  already does for free. Don't revisit this without redoing the measurement.
+  Duration survives where height is actually free: `.rail-bar`, a 4px bar in
+  the strip, `(e2-s)*TL_PPM_DAY` tall, floored at 6px.
+
+  **`anchorRows(sec)` is the whole mechanism**, run from `paintMain` after
+  `fitRowTitle` (shrinking a title changes card height, which moves every row
+  below it). It sets a per-row `margin-top` so each row's top lands at its
+  true minute, measured against the rows container by real
+  `getBoundingClientRect()` deltas — so `.nest`, `.hub-connector` and the
+  eyebrow labels are accounted for by layout rather than by summing heights.
+  Each iteration re-measures, so a row's "natural" position already includes
+  every push above it; that's the running cursor, taken from real layout.
+  **The invariant: a row may be pushed LATER than true scale, never earlier.**
+
+  **The gutter is then placed against where the rows ACTUALLY landed, by
+  interpolation — this is the half that makes it honest.** Anchoring alone
+  cannot keep a card near its hour line: a 144px hub occupies ~15min of
+  clock, four 15-min bricks need ~244px of card in ~59px of clock, so a
+  crowded stretch inevitably pushes everything after it below true scale.
+  Measured before this was added: the 14:00 card sat at 535px while the
+  14:00 label sat at 298px — **eight rows apart**, the exact misreading this
+  view exists to prevent. Now each hour is interpolated between the measured
+  positions of the rows on either side of it (`at(min)`), so uncrowded
+  stretches keep true ~59.5px/hour spacing and crowded ones stretch to
+  match. An hour interpolating to a negative offset (squeezed out by a
+  leading compression) is **removed**, not clamped — several clamped to 0
+  would stack and each claim the same position.
+
+  **Empty clock compresses past `SKIP_MIN_PX` (100px) down to
+  `SKIP_KEEP_PX` (26px)**, marked with a `.hour-skip` "⋯ 3h" tag so the jump
+  is stated rather than reading as a rendering fault. `prevEnd` starts at
+  `winS`, not null, so the *leading* run compresses too — nothing scheduled
+  before 11:30 on a 09:00 day is the common case, and leaving it uncompressed
+  opened the view on two screens of empty grid.
+
+  **The window is measured over rows that actually got anchored**, not over
+  the whole day: an active permeable meeting renders as `meetingNowRow`, a
+  banner with no `data-min` that never sits on the clock. Letting it widen
+  the window anyway opened the day at its 06:00 start with nothing anchored
+  near there — five hours of blank grid that the compression couldn't even
+  collapse, since the run wasn't empty by the numbers, only by what rendered.
+
+  **The hub renders INSIDE the timeline now** (user: "I want the user to
+  experience the entire day... it needs to sit in schedule and be bigger and
+  pop out, all while letting the user see what's behind and in front of him
+  in schedule"). `paintMain` collects the banner/hub/nest into a `lead` node
+  and hands it to `timeline(items, {all, lead})`; its prominence comes from
+  `.item.hub` styling, not from sitting outside the grid. `.rows.stack` lost
+  its `border-top`/`padding-top` — those separated the list from a hub that
+  used to sit above it — and became `position:relative` to anchor the lines.
+
+  **Two translucency bugs surfaced, both invisible until there was a grid
+  behind the cards**: `.item.bk-break` used `rgba(47,143,224,.16)` and
+  `.item.meeting` used `opacity:.82`, so the dashed rules showed straight
+  through and appeared to cut across those cards. Both are opaque now
+  (`#D6EAFA`; muted colours instead of element opacity). Note `brk.js`'s
+  colour assertion had been reading the **un-composited** rgba string —
+  `b-r` of 177 — while what actually reached the screen was
+  `rgb(222,235,239)`, a `b-r` of **17**. The old check never measured the
+  rendered card at all; it now asserts opacity plus a real azure lead.
   **That same bug survived one layer up in the rail until 2026-08-24**, and
   it's worth knowing why it hid for so long: `agenda()` was fixed to carve
   each sibling its own `item.s`/`item.e2`, but `timelineItem`'s `rail-stop`
@@ -879,6 +981,31 @@ colour at all, since it never appears in the day list.
   decisive first move would already be through. `armed` clears in `cleanup()`
   and via `disarm()` on the pre-arm cancel paths, or the list stops scrolling
   by touch anywhere that card sits.
+
+  **`.toasts` was silently swallowing touches, and the symptom looks nothing
+  like the cause** (2026-08-25). It's a `position:fixed` full-width strip at
+  `z-index:80` across the bottom of the screen and it had no
+  `pointer-events:none` — so any card under that strip stopped responding to
+  touch entirely, whether or not a toast was drawn. It went unnoticed because
+  nothing used to sit there; the hour-grid work anchored a card under the
+  strip and exposed it. Fixed as `pointer-events:none` on the container plus
+  `auto` on `.toasts > *`, so a real toast stays dismissable. **If a card
+  ever stops taking taps in one region of the screen, look for a fixed
+  overlay before touching drag code** — the drag machinery was entirely
+  innocent, and a full debugging pass went into it first.
+  Two testing lessons from that same trace, both of which produced confident
+  wrong answers: (1) a `git stash push` inside an `&&` chain silently never
+  created a stash, so a "baseline" run actually re-ran the *modified* file
+  and appeared to prove the bug was pre-existing — it wasn't. Verify a
+  baseline with `git show HEAD:path` and confirm the comparison file really
+  is the old one. (2) `rail.js` and `push.js` both broke on **stale
+  selectors**, not real regressions, when the hub moved inside
+  `.rows.stack`: `push.js` indexed `.item.stack` by `nth(1)` (which silently
+  became Task B instead of Task C) and `rules.js` treated "inside
+  `.rows.stack`" as meaning "a flat sibling". Both now select by identity.
+  A layout change that moves a node between containers will do this to any
+  index- or ancestor-based selector in the suite.
+
   **`rail.js` tests this with CDP-dispatched touch events under `hasTouch`,
   and that is the only reason it's covered** — the Playwright *mouse* path
   passed happily against the fully-broken build. It asserts both halves:

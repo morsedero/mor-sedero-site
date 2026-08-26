@@ -19,7 +19,7 @@
    background refreshCalendar() can't stomp them back. */
 const fs=require("fs"),vm=require("vm");const {chromium}=require("playwright");
 const H=fs.readFileSync(__dirname+"/harness.js","utf8");
-const page_html=fs.readFileSync(__dirname+"/dayflow.html","utf8");
+const page_html=fs.readFileSync(__dirname+"/daisey.html","utf8");
 const sb={require,__dirname,module:{exports:{}},exports:{},console,process};
 vm.runInNewContext(H.split("(async () => {")[0]+"\nmodule.exports={stub};",sb);
 const BASE=sb.module.exports.stub;
@@ -29,9 +29,15 @@ const FAIL=HOOK+' if(window.__fail && window.__fail.tool===tool && window.__fail
 const stub=BASE.split(HOOK).join(FAIL);
 if(stub===BASE){ console.log("FAIL:\n  ✗ test setup: the callTool logging hook wasn't found in the harness"); process.exit(1); }
 
+/* colorId 5 (short session), not 9 (quick) — dragging two adjacent quick
+   tasks now auto-merges them into one shared brick event (see CLAUDE.md's
+   brick model), which replaces the update_event this test is built around
+   with create_event/delete_event instead. Two short sessions never merge
+   (only quick rows do), so they keep the plain move-in-place path this
+   retry/backoff test actually needs to exercise. */
 const ev = (id, letter, s, e) => ({
-  id, colorId:"9", summary:`• Task ${letter}`,
-  description:`[dayflow] Task ${letter}\n\nOriginal: https://trello.com/c/${id}00000/1-x`,
+  id, colorId:"5", summary:`🎵 Task ${letter}`,
+  description:`[daisey] Task ${letter}\n\nOriginal: https://trello.com/c/${id}00000/1-x`,
   start:{dateTime:`2026-08-14T${s}:00+03:00`,timeZone:"Asia/Jerusalem"},
   end:{dateTime:`2026-08-14T${e}:00+03:00`,timeZone:"Asia/Jerusalem"},
   status:"confirmed"
@@ -64,7 +70,7 @@ const check=(cond,msg)=>{ if(!cond) bad.push(msg); };
   const times=async()=>p.evaluate(()=>{
     const out={};
     for(const e of allEvents()){
-      const m=/^Task ([A-D])$/.exec((e.summary||"").replace(/^•\s*/,""));
+      const m=/^Task ([A-D])$/.exec((e.summary||"").replace(/^[•🎵]\s*/u,""));
       if(m) out[m[1]]={s:minsOf(e.start),e:minsOf(e.end)};
     }
     return out;
@@ -79,6 +85,7 @@ const check=(cond,msg)=>{ if(!cond) bad.push(msg); };
     if(!hub||!row){ check(false,"drag setup: hub or first row wasn't found"); return; }
     await p.mouse.move(hub.x+hub.width/2, hub.y+20);
     await p.mouse.down();
+    await p.waitForTimeout(200);   // wireStackDrag's ARM_MS hold before it arms the drag
     await p.mouse.move(hub.x+hub.width/2, row.y+row.height/2, {steps:10});
     await p.mouse.move(hub.x+hub.width/2, row.y+row.height/2, {steps:2});
     await p.mouse.up();

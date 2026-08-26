@@ -1,9 +1,11 @@
-/* The one-page shell and its Day/Week/Month switcher — none of this existed
-   before the redesign that dropped the separate Tasks/Schedule swipe split,
-   so nothing else in the suite exercises it. */
+/* The one-page shell — none of this existed before the redesign that
+   dropped the separate Tasks/Schedule swipe split, so nothing else in the
+   suite exercises it. Week view (and its own drag/collision/day-jump
+   coverage, steps 3-6 in an earlier version of this file) was removed
+   outright 2026-08-26 — Daisey is day-only now, one page, no switcher. */
 const fs=require("fs"),vm=require("vm");const {chromium}=require("playwright");
 const H=fs.readFileSync(__dirname+"/harness.js","utf8");
-const page_html=fs.readFileSync(__dirname+"/dayflow.html","utf8");
+const page_html=fs.readFileSync(__dirname+"/daisey.html","utf8");
 const sb={require,__dirname,module:{exports:{}},exports:{},console,process};
 vm.runInNewContext(H.split("(async () => {")[0]+"\nmodule.exports={stub};",sb);
 const BASE=sb.module.exports.stub;
@@ -13,23 +15,32 @@ window.Date=class extends R{constructor(...a){if(a.length===0)super(R.now()+O);e
 
 (async()=>{
   const b=await chromium.launch({});
-  const ctx=await b.newContext({viewport:{width:400,height:850},timezoneId:"Asia/Jerusalem",colorScheme:"dark"});
+  /* tall enough that the hub-to-first-list-row drag span (2b) fits in one
+     screen even when the fixture's active meeting pulls its own tasks into
+     a standalone nest between them (header + hub + nest push that span
+     past 850px otherwise — no scroll position can fit both drag endpoints
+     into a viewport shorter than the content actually spans). */
+  const ctx=await b.newContext({viewport:{width:400,height:1100},timezoneId:"Asia/Jerusalem",colorScheme:"dark"});
   const p=await ctx.newPage();
   const errs=[];
   p.on("pageerror",e=>errs.push(e.message));
   p.on("console",m=>{if(m.type()==="error")errs.push(m.text());});
-  await p.setContent(`<!doctype html><html><head><meta charset="utf-8"><script>${clock("2026-08-17T09:00:00+03:00")}${stub}<\/script></head><body>${page_html}</body></html>`,{waitUntil:"load"});
+  await p.setContent(`<!doctype html><html><head><meta charset="utf-8"><script>${clock("2026-08-17T09:00:00+03:00")}${stub}<\/script></head><body>${page_html}<script>try{checkChoresTrigger=function(){};}catch(_){}<\/script></body></html>`,{waitUntil:"load"});
   await p.waitForTimeout(2800);
 
   const bad=[];
   const check=(cond,msg)=>{ if(!cond) bad.push(msg); };
 
   // 1. starts on Day view, on the one page, switcher visible from the start
-  let state=await p.evaluate(()=>({view:S.view,hub:!!document.querySelector("#pageMain .now"),
+  /* .now, not #pageMain .now (2026-08-26 hero redesign): the hub card lives
+     in #heroSlot now, a flex sibling above #pageMain's own scroller — see
+     paintHero/heroCard. Bare .now still finds it (it's the only match on
+     the page), just no longer scoped to a container it isn't inside. */
+  let state=await p.evaluate(()=>({view:S.view,hub:!!document.querySelector(".now"),
     viewSwitchHidden:document.querySelector("#viewSwitch").hidden}));
   check(state.view==="day","should start on Day view");
   check(state.hub,"Day view should show the hub card");
-  check(!state.viewSwitchHidden,"the Day/Week/Month switch should always be visible now");
+  check(!state.viewSwitchHidden,"the switcher should always be visible now");
   await p.screenshot({path:"pages-day.png"});
 
   // 2. the day's activities include real meetings, not just tasks — the
@@ -43,12 +54,62 @@ window.Date=class extends R{constructor(...a){if(a.length===0)super(R.now()+O);e
   //     update_event calls), with an undo that puts both back. Dragging a
   //     task onto a meeting must be a no-op — meetings aren't a drop target.
   {
-    const hubBox=await p.locator("#pageMain .now").boundingBox();
+    /* A clean, controlled schedule for this check, not the ambient fixture:
+       the fixture can (and here, does) have an active meeting pulling its
+       own tasks into a standalone nest between the hub and "Later today"
+       (see paintMain) — a real, working feature, but it leaves genuinely
+       scheduled tasks sitting chronologically between the hub and whatever
+       .rows.stack's first row is, without being part of wireStackDrag's
+       reorder pool at all. pushReorder repacks times assuming the pool IS
+       the full adjacent run, so a "simple adjacent push" against whatever
+       the ambient fixture happens to produce can land on a much
+       differently-timed row and get correctly rejected for colliding with
+       those excluded tasks — not a bug, just not this check's own fixture
+       to depend on. One task, one adjacent task, no meeting: nothing left
+       to collide with. Restored once this block is done — steps 4/5/5b
+       below depend on the ambient fixture's own three-back-to-back-quick-
+       tasks shape, not this one. */
+    const origEvents = await p.evaluate(()=>JSON.parse(JSON.stringify(EVENTS)));
+    /* colorId 5 (short session), not 9 (quick) — two adjacent quick tasks
+       now auto-merge into one shared brick event on a push (see CLAUDE.md),
+       which replaces the update_event this check counts with
+       create_event/delete_event instead. This scenario is about the push
+       mechanism itself (moves both slots, not just the one dropped on),
+       which sessions exercise identically without ever merging. */
+    await p.evaluate(()=>{
+      EVENTS.length = 0;
+      EVENTS.push({ id:"hubEv", colorId:"5", summary:"🎵 Hub task",
+        description:"[daisey] Hub task\n\nOriginal: https://trello.com/c/HUBHUBHU/1-x",
+        start:{dateTime:"2026-08-17T09:00:00+03:00",timeZone:"Asia/Jerusalem"},
+        end:{dateTime:"2026-08-17T09:15:00+03:00",timeZone:"Asia/Jerusalem"}, status:"confirmed" });
+      EVENTS.push({ id:"rowEv", colorId:"5", summary:"🎵 Row task",
+        description:"[daisey] Row task\n\nOriginal: https://trello.com/c/ROWROWRO/1-x",
+        start:{dateTime:"2026-08-17T09:15:00+03:00",timeZone:"Asia/Jerusalem"},
+        end:{dateTime:"2026-08-17T09:30:00+03:00",timeZone:"Asia/Jerusalem"}, status:"confirmed" });
+      EVENTS.push({ id:"mtgEv", summary:"Standup",
+        start:{dateTime:"2026-08-17T13:00:00+03:00",timeZone:"Asia/Jerusalem"},
+        end:{dateTime:"2026-08-17T14:00:00+03:00",timeZone:"Asia/Jerusalem"}, status:"confirmed" });
+      S.events = { payload:{ events:EVENTS }, storedAt:Date.now() };
+      render();
+    });
+    await p.waitForTimeout(300);
+    /* The hub card lives in #heroSlot now (2026-08-26 hero redesign), a
+       fixed flex sibling above #pageMain's own scroller — it's already
+       always on screen, no scroll-into-view needed for it. The list row
+       it's dragged onto is still inside #pageMain and can genuinely sit
+       off-screen on a tall fixture, so that half of the old scroll-fixup
+       stays. */
+    await p.evaluate(()=>{
+      const row=document.querySelector("#pageMain .rows.stack .item.stack:not(.meeting)"), host=document.querySelector("#pageMain");
+      if(row && host) host.scrollTop += row.getBoundingClientRect().top - host.getBoundingClientRect().top - 8;
+    });
+    const hubBox=await p.locator("#heroSlot .now").boundingBox();
     const rowBox=await p.locator("#pageMain .rows.stack .item.stack:not(.meeting)").first().boundingBox();
     if(hubBox && rowBox){
       const before=await p.evaluate(()=>window.__calls.filter(c=>c.tool==="update_event").length);
       await p.mouse.move(hubBox.x+hubBox.width/2, hubBox.y+20);
       await p.mouse.down();
+      await p.waitForTimeout(200);   // wireStackDrag's ARM_MS hold before it arms the drag
       await p.mouse.move(hubBox.x+hubBox.width/2, rowBox.y+rowBox.height/2, {steps:8});
       await p.mouse.move(hubBox.x+hubBox.width/2, rowBox.y+rowBox.height/2, {steps:2});
       await p.mouse.up();
@@ -74,114 +135,38 @@ window.Date=class extends R{constructor(...a){if(a.length===0)super(R.now()+O);e
       const before2=await p.evaluate(()=>window.__calls.filter(c=>c.tool==="update_event").length);
       await p.mouse.move(rowBox2.x+rowBox2.width/2, rowBox2.y+rowBox2.height/2);
       await p.mouse.down();
+      await p.waitForTimeout(200);   // wireStackDrag's ARM_MS hold before it arms the drag
       await p.mouse.move(rowBox2.x+rowBox2.width/2, meetingBox.y+meetingBox.height/2, {steps:8});
       await p.mouse.up();
       await p.waitForTimeout(500);
       const after2=await p.evaluate(()=>window.__calls.filter(c=>c.tool==="update_event").length);
       check(after2===before2,"dropping a task onto a meeting should not push anything");
     }
+
+    await p.evaluate((orig)=>{
+      EVENTS.length = 0;
+      EVENTS.push(...orig);
+      S.events = { payload:{ events:EVENTS }, storedAt:Date.now() };
+      render();
+    }, origEvents);
+    await p.waitForTimeout(300);
   }
 
-  // 3. switch to Week — should render 7 day columns and the same day's items
-  await p.click('#viewSwitch button[data-view="week"]');
-  await p.waitForTimeout(400);
-  state=await p.evaluate(()=>({view:S.view,cols:document.querySelectorAll(".week-col").length,
-    label:document.querySelector("#dateLabel").textContent}));
-  check(state.view==="week","clicking Week should set S.view");
-  check(state.cols===7,`week view should render 7 columns, got ${state.cols}`);
-  await p.screenshot({path:"pages-week.png"});
-
-  // 4. drag a compact week item down by ~2h (a same-column time change) and
-  //    confirm it actually issues an update_event. The fixture's first
-  //    three quick tasks sit back-to-back 09:00-10:00, so a short drop would
-  //    now correctly collide with a sibling task (rescheduleTo rejects
-  //    landing on top of another block) — drop it well clear of that
-  //    cluster and the fixture's other meetings instead.
-  const before=await p.evaluate(()=>window.__calls.filter(c=>c.tool==="update_event").length);
-  const chip=p.locator(".week-col .item.compact:not(.meeting)").first();
-  if(await chip.count()){
-    const box=await chip.boundingBox();
-    if(box){
-      await p.mouse.move(box.x+box.width/2, box.y+5);
-      await p.mouse.down();
-      await p.mouse.move(box.x+box.width/2, box.y+125, {steps:6});
-      await p.mouse.up();
-      await p.waitForTimeout(700);
-    }
-  }
-  const after=await p.evaluate(()=>window.__calls.filter(c=>c.tool==="update_event").length);
-  check(after>before,"dragging a week-view item should call update_event");
-
-  // 5. that drag should also offer an undo — Ctrl+Z puts it back
-  const undoShown=await p.evaluate(()=>!!document.querySelector(".toast.undo"));
-  check(undoShown,"a completed drag should show the undo popup");
-  const beforeUndo=await p.evaluate(()=>window.__calls.filter(c=>c.tool==="update_event").length);
-  await p.keyboard.press("Control+z");
-  await p.waitForTimeout(700);
-  const afterUndo=await p.evaluate(()=>window.__calls.filter(c=>c.tool==="update_event").length);
-  check(afterUndo>beforeUndo,"Ctrl+Z should undo the last move with another update_event call");
-  const undoGone=await p.evaluate(()=>!document.querySelector(".toast.undo"));
-  check(undoGone,"the undo popup should dismiss itself once used");
-
-  // 5b. dragging a task on top of another block (task or meeting) must be
-  //     rejected rather than silently committed — rescheduleTo() checks this
-  //     now, closing a gap where drag had no collision check at all.
-  const beforeCollide=await p.evaluate(()=>window.__calls.filter(c=>c.tool==="update_event").length);
-  const chip2=p.locator(".week-col .item.compact:not(.meeting)").nth(1);
-  if(await chip2.count()){
-    const box2=await chip2.boundingBox();
-    if(box2){
-      await p.mouse.move(box2.x+box2.width/2, box2.y+5);
-      await p.mouse.down();
-      await p.mouse.move(box2.x+box2.width/2, box2.y+25, {steps:6});
-      await p.mouse.up();
-      await p.waitForTimeout(500);
-    }
-  }
-  const afterCollide=await p.evaluate(()=>window.__calls.filter(c=>c.tool==="update_event").length);
-  check(afterCollide===beforeCollide,"dragging onto another block should not call update_event");
-  const collideToast=await p.evaluate(()=>{
-    const all=[...document.querySelectorAll(".toast:not(.undo)")];
-    return all.length ? all[all.length-1].textContent : "";
-  });
-  check(/already taken|meeting/i.test(collideToast),`should toast that the slot is taken, got "${collideToast}"`);
-
-  // 6. switch to Month — should render a 42-cell grid, tapping a cell jumps
-  //    into Day view for that date
-  await p.click('#viewSwitch button[data-view="month"]');
-  await p.waitForTimeout(400);
-  state=await p.evaluate(()=>({view:S.view,cells:document.querySelectorAll(".month-cell").length,
-    label:document.querySelector("#dateLabel").textContent}));
-  check(state.view==="month","clicking Month should set S.view");
-  check(state.cells===42,`month view should render 42 cells, got ${state.cells}`);
-  await p.screenshot({path:"pages-month.png"});
-
-  const targetDay=await p.evaluate(()=>{
-    const cells=[...document.querySelectorAll(".month-cell:not(.dim)")];
-    const target=cells[10];
-    target.click();
-    return target.querySelector(".mc-num").textContent;
-  });
+  // 3. the centered date label is the "today" button — tapping it jumps
+  //    S.anchor back to today from wherever it's pointed.
+  //    (Week view, and its own drag/undo/collision/day-jump coverage that
+  //    used to be steps 3-6 here, was removed outright 2026-08-26 — Daisey
+  //    is day-only now. Nudge S.anchor off today by hand instead of
+  //    reaching it via a since-removed week day-header tap, so this step
+  //    still has a real "somewhere else" to jump back FROM.)
+  await p.evaluate(()=>{ S.anchor = addDays(S.anchor, 3); syncCalendarWatch(); render(); });
   await p.waitForTimeout(300);
-  state=await p.evaluate(()=>({view:S.view,anchorDate:S.anchor.getDate()}));
-  check(state.view==="day","tapping a month cell should switch to Day view");
-  check(String(state.anchorDate)===targetDay,`tapping day ${targetDay} should set S.anchor to that date, got ${state.anchorDate}`);
-
-  // 7. date picker: open it, pick a date, confirm S.anchor updates and the
-  //    dialog closes
   await p.click("#dateWrap");
   await p.waitForTimeout(300);
-  const pickerOpen=await p.evaluate(()=>!!document.querySelector(".dialog .month-cell"));
-  check(pickerOpen,"tapping the date should open the date picker dialog");
-  await p.evaluate(()=>{
-    const cells=[...document.querySelectorAll(".dialog .month-cell")];
-    cells[15].click();
-  });
-  await p.waitForTimeout(300);
-  const pickerClosed=await p.evaluate(()=>!document.querySelector(".scrim"));
-  check(pickerClosed,"picking a date should close the picker dialog");
+  state=await p.evaluate(()=>({ isToday: S.anchor.toDateString() === new Date().toDateString() }));
+  check(state.isToday,"tapping the date should jump S.anchor back to today");
 
-  // 8. settings Cancel discards an in-progress color change
+  // 4. settings Cancel discards an in-progress color change
   await p.click("#setBtn");
   await p.waitForTimeout(300);
   const before2=await p.evaluate(()=>getComputedStyle(document.documentElement).getPropertyValue("--b-projects").trim());

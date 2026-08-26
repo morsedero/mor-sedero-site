@@ -17,14 +17,14 @@
    background refresh can't stomp them. */
 const fs=require("fs"),vm=require("vm");const {chromium}=require("playwright");
 const H=fs.readFileSync(__dirname+"/harness.js","utf8");
-const page_html=fs.readFileSync(__dirname+"/dayflow.html","utf8");
+const page_html=fs.readFileSync(__dirname+"/daisey.html","utf8");
 const sb={require,__dirname,module:{exports:{}},exports:{},console,process};
 vm.runInNewContext(H.split("(async () => {")[0]+"\nmodule.exports={stub};",sb);
 const BASE=sb.module.exports.stub;
 
 const ev = (id, letter, s, e, short) => ({
   id, colorId:"9", summary:`• Task ${letter}`,
-  description:`[dayflow] Task ${letter}\n\nOriginal: https://trello.com/c/${short}/1-x`,
+  description:`[daisey] Task ${letter}\n\nOriginal: https://trello.com/c/${short}/1-x`,
   start:{dateTime:`2026-08-14T${s}:00+03:00`,timeZone:"Asia/Jerusalem"},
   end:{dateTime:`2026-08-14T${e}:00+03:00`,timeZone:"Asia/Jerusalem"},
   status:"confirmed"
@@ -70,6 +70,11 @@ const WRITE=/event|trelloWrite/;
       EVENTS.length=0; EVENTS.push(...JSON.parse(JSON.stringify(events)));
       S.events={ payload:{ events:EVENTS }, storedAt:Date.now() };
       S.failed=[]; S.pending.clear(); S.stats.rollovers={};
+      /* Reseeded events reuse the same fixed ids (qa/qb/qc) every scenario,
+         so a stale S.openRow from a previous scenario's row-open click would
+         otherwise toggle that same row straight closed here instead of
+         opening it — see CLAUDE.md's collapsible-card accordion note. */
+      S.openRow=null;
       for(const c of allCards()){ const n=rawCardNode(c); if(n) n.dueComplete=false; }
       render();
     }, EVENTS);
@@ -85,10 +90,14 @@ const WRITE=/event|trelloWrite/;
   const openRows=async()=>p.evaluate(()=>document.querySelectorAll("#pageMain .item.stack:not(.meeting)").length);
 
   /* ------------------------------------------------------------- Done */
+  /* #heroSlot, not #pageMain (2026-08-26 hero redesign): the hub's own
+     open-card actions (Done/Swap/Pending/Remove) moved into the hero —
+     the timeline's own in-place stand-in (currentMarker) deliberately
+     carries no action buttons, to avoid showing the same controls twice. */
   await seed();
   const first=await hub();
   check(first.includes("לסגור מקום לחתונה"), `hub should be Task A's card, got "${first}"`);
-  await p.click("#pageMain .now .mini.ok");
+  await p.click("#heroSlot .now .mini.ok");
   await p.waitForTimeout(250);
 
   let st={ pill:await p.evaluate(()=>($("#progressPill")||{}).textContent), hub:await hub(), done:await finished() };
@@ -100,8 +109,14 @@ const WRITE=/event|trelloWrite/;
   check((await finished()).some(t=>t==="trelloWriteCard:mark_done"),"the mark_done write should land once released");
 
   /* ----------------------------------------------------------- Remove */
+  /* A non-hub row is collapsed by default (see CLAUDE.md's collapsible-card
+     accordion note) — its action row only renders once it's the one open
+     card, so the row has to be tapped open before its Remove button exists
+     to click. Unrelated to the brick-merge change; this pre-dates it. */
   await seed();
   let rows=await openRows();
+  await p.click("#pageMain .rows.stack .item.stack:not(.meeting) .row");
+  await p.waitForTimeout(250);
   await p.click("#pageMain .rows.stack .item.stack:not(.meeting) .mini.del");
   await p.waitForTimeout(250);
   await p.click(".dialog .btn:not(.quiet)");
@@ -116,7 +131,7 @@ const WRITE=/event|trelloWrite/;
 
   /* ------------------------------------------------------------- Swap */
   await seed();
-  await p.click("#pageMain .now .mini.swap");
+  await p.click("#heroSlot .now .mini.swap");
   await p.waitForTimeout(350);
   const picked=await p.evaluate(()=>{
     const row=document.querySelector(".pick .pick-row");
@@ -129,7 +144,12 @@ const WRITE=/event|trelloWrite/;
   st={ hub:await hub(), done:await finished() };
   check(!!picked,"the swap picker should have offered at least one card");
   check(picked && st.hub.includes(picked),`the slot should already show "${picked}", got "${st.hub}"`);
-  check(st.done.length===0,`no write should have finished yet, got ${JSON.stringify(st.done)}`);
+  /* The swapped-in card's own checklist prefetch (loadChecklists, run
+     unconditionally for every rendered card) is a read, not a held write —
+     it's expected to complete immediately regardless of __hold, which only
+     gates event/trelloWrite calls (see WRITE above). Only writes matter for
+     "nothing committed yet". */
+  check(st.done.filter(t=>WRITE.test(t)).length===0,`no write should have finished yet, got ${JSON.stringify(st.done)}`);
   console.log("[swap]", JSON.stringify({picked,...st}));
   await release();
   check((await finished()).includes("create_event"),"the replacement block should be created once released");
@@ -137,6 +157,8 @@ const WRITE=/event|trelloWrite/;
   /* ---------------------------------------------------------- Pending */
   await seed();
   rows=await openRows();
+  await p.click("#pageMain .rows.stack .item.stack:not(.meeting) .row");
+  await p.waitForTimeout(250);
   await p.click("#pageMain .rows.stack .item.stack:not(.meeting) .mini.pend");
   await p.waitForTimeout(350);
   await p.click(".dialog .btn:not(.quiet)");
@@ -159,7 +181,7 @@ const WRITE=/event|trelloWrite/;
     };
   });
   const before=await hub();
-  await p.click("#pageMain .now .mini.ok");
+  await p.click("#heroSlot .now .mini.ok");
   await p.waitForTimeout(900);
 
   st=await p.evaluate(()=>({

@@ -3,7 +3,7 @@
    shortMin, longMin, buffer. */
 const fs=require("fs"),vm=require("vm");const {chromium}=require("playwright");
 const H=fs.readFileSync(__dirname+"/harness.js","utf8");
-const page_html=fs.readFileSync(__dirname+"/dayflow.html","utf8");
+const page_html=fs.readFileSync(__dirname+"/daisey.html","utf8");
 const sb={require,__dirname,module:{exports:{}},exports:{},console,process};
 vm.runInNewContext(H.split("(async () => {")[0]+"\nmodule.exports={stub};",sb);
 const stub=sb.module.exports.stub.replace(/const DAY = [^;]+;/,'const DAY = "2026-08-17";');

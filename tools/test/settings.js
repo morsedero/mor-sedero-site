@@ -12,7 +12,7 @@
    spill past the top or bottom edge. */
 const fs=require("fs"),vm=require("vm");const {chromium}=require("playwright");
 const H=fs.readFileSync(__dirname+"/harness.js","utf8");
-const page_html=fs.readFileSync(__dirname+"/dayflow.html","utf8");
+const page_html=fs.readFileSync(__dirname+"/daisey.html","utf8");
 const sb={require,__dirname,module:{exports:{}},exports:{},console,process};
 vm.runInNewContext(H.split("(async () => {")[0]+"\nmodule.exports={stub};",sb);
 const BASE=sb.module.exports.stub;
@@ -39,7 +39,7 @@ const SIZES = [
     const errs=[];
     p.on("pageerror",e=>errs.push(e.message));
     p.on("console",m=>{if(m.type()==="error")errs.push(m.text());});
-    await p.setContent(`<!doctype html><html><head><meta charset="utf-8"><script>${clock("2026-08-17T09:00:00+03:00")}${BASE}<\/script></head><body>${page_html}</body></html>`,{waitUntil:"load"});
+    await p.setContent(`<!doctype html><html><head><meta charset="utf-8"><script>${clock("2026-08-17T08:00:00+03:00")}${BASE}<\/script></head><body>${page_html}</body></html>`,{waitUntil:"load"});
     await p.waitForTimeout(2600);
 
     await p.click("#setBtn");

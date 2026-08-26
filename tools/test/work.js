@@ -5,7 +5,7 @@
 const fs = require("fs"), vm = require("vm");
 const { chromium } = require("playwright");
 const H = fs.readFileSync(__dirname + "/harness.js", "utf8");
-const page_html = fs.readFileSync(__dirname + "/dayflow.html", "utf8");
+const page_html = fs.readFileSync(__dirname + "/daisey.html", "utf8");
 const sb = { require, __dirname, module: { exports: {} }, exports: {}, console, process };
 vm.runInNewContext(H.split("(async () => {")[0] + "\nmodule.exports={stub};", sb);
 const BASE = sb.module.exports.stub;
@@ -25,8 +25,8 @@ const openStub = BASE
   .replace(/const DAY = [^;]+;/, 'const DAY = "2026-08-17";')
   .replace(/const EVENTS = [^;]+;/, "const EVENTS = " + JSON.stringify(OPEN_DAY) + ";");
 
-/* a Friday whose real meeting (16:00-17:00) splits the window so 8.5h with
-   buffer never fits anywhere — the long tier should just decline */
+/* a Friday whose real meeting (16:00-17:00) splits the 9-17 window into a
+   7h open stretch — too short for an 8h long session, which should decline */
 const splitStub = BASE; // ships with ישיבה עם אסתר 16:00-17:00 on 2026-08-14
 
 /* חמל is permeable and spans most of the morning (06:00-14:00) — plenty of

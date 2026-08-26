@@ -1,5 +1,5 @@
 const fs=require("fs"),vm=require("vm");const {chromium}=require("playwright");
-const H=fs.readFileSync("harness.js","utf8");const page_html=fs.readFileSync("dayflow.html","utf8");
+const H=fs.readFileSync("harness.js","utf8");const page_html=fs.readFileSync("daisey.html","utf8");
 const sb={require,__dirname,module:{exports:{}},exports:{},console,process};
 vm.runInNewContext(H.split("(async () => {")[0]+"\nmodule.exports={stub};",sb);
 const BASE=sb.module.exports.stub;
@@ -13,7 +13,7 @@ async function open_(stub,when,scheme){
   const ctx=await b.newContext({viewport:{width:760,height:1000},timezoneId:"Asia/Jerusalem",colorScheme:scheme||"dark"});
   const p=await ctx.newPage();p.__errs=[];
   p.on("pageerror",e=>p.__errs.push(e.message));p.on("console",m=>{if(m.type()==="error")p.__errs.push(m.text());});
-  await p.setContent(`<!doctype html><html><head><meta charset="utf-8"><script>${clock(when)}${stub}<\/script></head><body>${page_html}</body></html>`,{waitUntil:"load"});
+  await p.setContent(`<!doctype html><html><head><meta charset="utf-8"><script>${clock(when)}${stub}<\/script></head><body>${page_html}<script>try{checkChoresTrigger=function(){};}catch(_){}<\/script></body></html>`,{waitUntil:"load"});
   await p.waitForTimeout(2600);return {p,ctx};
 }
 const realStub=BASE.replace(/const EVENTS = [^;]+;/,"const EVENTS = "+JSON.stringify(REAL)+";");
@@ -41,12 +41,20 @@ const realStub=BASE.replace(/const EVENTS = [^;]+;/,"const EVENTS = "+JSON.strin
   const hub=await p.evaluate(()=>({
     clock:(document.querySelector("#cwHH")||{}).textContent,
     hubTitle:(document.querySelector(".now .row .n")||{}).textContent,
-    boardChip:(document.querySelector(".now .chip.board")||{}).textContent,
+    /* .chip.bk, not the long-gone .chip.board — this selector was matching
+       nothing and reporting undefined. It carries the card's *list* name now;
+       the board is still what colours it. */
+    sourceChip:(document.querySelector(".now .chip.bk")||{}).textContent,
     hubClass:[...(document.querySelector(".now")||{classList:[]}).classList].join(" "),
-    dotColors:[...document.querySelectorAll("#pageMain .rows .item:not(.meeting) .row")].slice(0,5)
-      .map(r=>getComputedStyle(r.querySelector(".dot")).backgroundColor)
+    /* Stack mode's dot lives in the sibling .rail-stop, not inside .row
+       itself (see CLAUDE.md's "Stack mode's own time column" note) — .meeting
+       is on .rail-stop itself (mirroring .item), not on .time-row. */
+    dotColors:[...document.querySelectorAll("#pageMain .rows .rail-stop:not(.meeting) .dot")].slice(0,5)
+      .map(d=>getComputedStyle(d).backgroundColor)
   }));
-  await p.waitForTimeout(900);   // details open on their own now — nothing to click
+  // details are closed by default now — open the hub's own toggle first
+  await p.locator(".now .mini.info").click().catch(()=>{});
+  await p.waitForTimeout(900);
   const det=await p.evaluate(()=>({
     desc:(document.querySelector(".now .details .desc")||{}).textContent||null,
     clName:(document.querySelector(".now .details .clname")||{}).textContent||null,

@@ -1,7 +1,7 @@
 /* Friday is an ordinary planning day: no prompt, tasks scheduled by available time. */
 const fs=require("fs"),vm=require("vm");const {chromium}=require("playwright");
 const H=fs.readFileSync(__dirname+"/harness.js","utf8");
-const page_html=fs.readFileSync(__dirname+"/dayflow.html","utf8");
+const page_html=fs.readFileSync(__dirname+"/daisey.html","utf8");
 const sb={require,__dirname,module:{exports:{}},exports:{},console,process};
 vm.runInNewContext(H.split("(async () => {")[0]+"\nmodule.exports={stub};",sb);
 const REAL=JSON.parse(fs.readFileSync(__dirname+"/real-events.json","utf8")).events;  // real Friday 14 Aug

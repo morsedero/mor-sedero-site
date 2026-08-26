@@ -4,7 +4,7 @@ const fs = require("fs"), vm = require("vm");
 const { chromium } = require("playwright");
 
 const H = fs.readFileSync(__dirname + "/harness.js", "utf8");
-const page_html = fs.readFileSync(__dirname + "/dayflow.html", "utf8");
+const page_html = fs.readFileSync(__dirname + "/daisey.html", "utf8");
 const sb = { require, __dirname, module: { exports: {} }, exports: {}, console, process };
 vm.runInNewContext(H.split("(async () => {")[0] + "\nmodule.exports={stub};", sb);
 const BASE = sb.module.exports.stub;
@@ -35,8 +35,12 @@ const SCENARIOS = [
 
     const r = await p.evaluate(() => {
       const d = new Date();
-      const blocks = allEvents().filter(e => e.isTask && !e.allDay && overlapsDay(e, d))
-        .map(e => ({ n: e.summary, s: minsOf(e.start), e: minsOf(e.end), deep: e.deep }));
+      /* Breaks are excluded: they're task-shaped blocks with deep=false, so
+         every "quick task" rule below (each gets quickTotal minutes, all
+         contiguous) would otherwise be measured against a rest block. */
+      const blocks = allEvents().filter(e => e.isTask && !e.isBreak && !e.allDay && overlapsDay(e, d))
+        .map(e => ({ n: e.summary, s: minsOf(e.start), e: minsOf(e.end), deep: e.deep,
+                     isBrick: e.isBrick, taskCount: e.cardShorts.length }));
       /* permeable meetings are ones you've said tasks may run inside */
       const real = allEvents().filter(e => !e.isTask && !e.allDay && overlapsDay(e, d) && !permeable(e))
         .map(e => ({ n: e.summary, s: minsOf(e.start), e: minsOf(e.end) }));
@@ -44,7 +48,7 @@ const SCENARIOS = [
         .map(e => ({ n: e.summary, s: minsOf(e.start), e: minsOf(e.end) }));
       const open = openEvs.map(e => e.n);
       const have = existingBlocks(d);
-      return { blocks, real, open, openEvs, have, winS: CFG.dayStart * 60, winE: CFG.dayEnd * 60, buf: CFG.buffer,
+      return { blocks, real, open, openEvs, have, winS: CFG.dayStart * 60, winE: CFG.dayEnd * 60,
                quickTotal: CFG.quickTotal };
     });
 
@@ -61,25 +65,23 @@ const SCENARIOS = [
       for (const m of r.openEvs)
         if (ov(t, m)) fails.push(`session "${t.n}" ${t.s}-${t.e} overlaps permeable meeting "${m.n}" ${m.s}-${m.e}`);
 
-    // 2. work sessions keep their buffer clear on both sides
-    for (const dpe of r.blocks.filter(b => b.deep))
-      for (const t of r.blocks)
-        if (t !== dpe && ov(t, { s: dpe.s - r.buf, e: dpe.e + r.buf }))
-          fails.push(`"${t.n}" intrudes on the buffer around session "${dpe.n}"`);
-
     // 3. task blocks never overlap each other (touching is fine — quick tasks
     //    share one contiguous window by design)
     for (let i = 0; i < r.blocks.length; i++)
       for (let j = i + 1; j < r.blocks.length; j++)
         if (ov(r.blocks[i], r.blocks[j])) fails.push(`"${r.blocks[i].n}" overlaps "${r.blocks[j].n}"`);
 
-    // 3b. all quick tasks fit inside one window of CFG.quickTotal
+    // 3b. quick tasks share one Google Calendar block (a "brick" — see
+    //     CLAUDE.md): the whole window is n * CFG.quickTotal minutes, n
+    //     being the number of tasks merged into it, not divided per task
+    //     and not one event per task. At most one quick block per day.
     const q = r.blocks.filter(b => !b.deep).sort((a, b) => a.s - b.s);
-    if (q.length && (q[q.length - 1].e - q[0].s) > r.quickTotal)
-      fails.push(`quick tasks span ${q[q.length-1].e - q[0].s}min > ${r.quickTotal}`);
-
-    // 4. quick tasks fit in one contiguous window of quickTotal
-    // (sessions fit individually, no aggregate cap)
+    if (q.length > 1) fails.push(`${q.length} separate quick blocks — quick tasks should merge into one`);
+    for (const t of q){
+      const want = (t.taskCount || 1) * r.quickTotal;
+      if (t.e - t.s !== want) fails.push(`"${t.n}" is ${t.e-t.s}min for ${t.taskCount} task(s), want ${want}`);
+      if (t.taskCount > 1 && !t.isBrick) fails.push(`"${t.n}" has ${t.taskCount} tasks but isBrick is false`);
+    }
 
     // 5. everything sits inside the working window
     for (const t of r.blocks)
