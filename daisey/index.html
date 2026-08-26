@@ -1,7 +1,7 @@
 <!-- GENERATED FILE — do not hand-edit.
      Produced by tools/build-standalone.js from tools/daisey.html.
      Edit tools/daisey.html, then re-run: node tools/build-standalone.js
-     Built 2026-08-25T17:29:43.954Z -->
+     Built 2026-08-26T06:59:58.351Z -->
 <title>Daisey</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <style>
@@ -414,8 +414,9 @@ html,body{overflow:hidden;}
   max-height:100%;padding:2px 0;
 }
 .item-top .eyebrow{white-space:nowrap;}
-.item-top.hub{font-size:11px;font-weight:700;color:var(--ink-2);gap:10px;}
-.item-top.hub .eyebrow{font-size:12px;}
+/* .item-top.hub's own bigger font/gap is gone (2026-08-25 redesign) — the
+   current task's status eyebrow is the same size as any other card's now,
+   consistent with there being no more differently-sized "hub" card. */
 
 .chip{
   font-family:var(--font-body);font-size:10px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;
@@ -640,6 +641,19 @@ html,body{overflow:hidden;}
 .item.stack .details{-webkit-user-select:text;user-select:text;-webkit-touch-callout:default;}
 .item.stack .row{gap:6px 10px;padding:9px 12px;}
 .item.stack .row .n{font-size:14px;}
+/* The current-task glow (2026-08-25 redesign) — replaces the old special
+   hub card entirely. "Current" is shown by the now-line crossing the card
+   (already existed) plus this outline, not by a bigger/differently-shaped
+   card. A pure CSS @keyframes loop, no JS ticking: the .current class is
+   assigned once per repaint (same 60s cadence current/nowLine already
+   update at — see paintMain/splitAgenda), and the animation itself runs
+   forever in CSS with nothing to drive per-second. box-shadow rather than
+   border/outline so it doesn't shift layout or fight the board spine. */
+.item.current{animation:current-glow 2.4s ease-in-out infinite;}
+@keyframes current-glow{
+  0%,100%{box-shadow:var(--shadow), 0 0 0 1.5px var(--bc,var(--accent));}
+  50%{box-shadow:var(--shadow), 0 0 0 3px var(--bc,var(--accent));}
+}
 /* A collapsible card (see timelineItem's `collapsible`) that isn't the one
    open card renders small and muted — the whole point being that the rest
    of the day stays visible without competing with whichever card is open.
@@ -694,7 +708,9 @@ html,body{overflow:hidden;}
 }
 /* the gutter states the time; a second copy beside it is noise */
 .time-row .rail-stop .t,.time-row .rail-stop .tm{display:none;}
-.time-row.hub{margin-bottom:2px;}
+/* .time-row.hub's own margin-bottom is gone (2026-08-25 redesign) — rows
+   are absolutely positioned by real time now, so an extra margin on one
+   row type would just be a stray offset, not meaningful spacing. */
 /* card first, eyebrow second — the eyebrow is order:2 in the DOM too, so
    reading order matches visual order.
 
@@ -780,39 +796,36 @@ html,body{overflow:hidden;}
    duplicate of the grid rather than as grouping. The indent alone still says
    "these belong to the meeting above", and it's kept small so a nested card
    stays close to the hour line that names it. */
-.nest{
-  display:flex;flex-direction:column;gap:8px;
-  margin:-2px 0 0 12px;
-}
-/* a nest sitting directly under the hub (a currently-active meeting's other
-   tasks — see paintMain) isn't inside .rows.stack's own gap. Inside
-   .hub-group its own top gap comes from .hub-connector instead (see
-   below); the margin below is what a standalone nest uses on its own. */
-.nest.standalone{margin-top:14px;}
-.hub-group .nest.standalone{margin-top:0;}
-/* Connects the banner to its nest through the hub card sitting between
-   them. Two earlier passes tried to draw ONE line behind the whole group
-   via an absolutely-positioned overlay + negative z-index — correct per
-   CSS2.1's paint-order rules, confirmed behind the card in a local
-   Playwright render both times, and BOTH times still showed crossing over
-   the card on the real device, including in incognito (rules out cache).
-   That divergence between a clean render and the real artifact was never
-   explained, so the overlay approach is abandoned outright rather than
-   tried a third time: .hub-connector is a plain in-flow spacer, tall
-   enough to show several dashes, sitting in the actual empty gap between
-   cards — there is nothing else there for it to be in front of or behind,
-   so there is no stacking order for any browser to get wrong. Nest keeps
-   its own original border-left below (unchanged, always worked) — this
-   only bridges the two gaps a lone nest border never reached. The first
-   connector sits between the hub's status label and its card, not between
-   the banner and the label — the label floats with no border of its own,
-   so a connector ending at it (rather than the real card just below) read
-   as pointing at plain text instead of the card it belongs to (see
-   paintMain's `cardEl` handling). Meeting-now keeps its own natural
-   margin-bottom before the label as a result. */
-.hub-connector{
-  margin-left:20px;width:0;height:26px;
+/* .nest is no longer a real layout container (2026-08-25 redesign) — its
+   children are position:absolute .time-rows that resolve against
+   .rows.stack, their nearest positioned ancestor, so .nest's own
+   flex/margin/gap here do nothing to them (confirmed live: .nest's own box
+   collapsed to zero height and its indent had no effect once .time-row
+   became absolutely positioned in the true-to-scale redesign). Kept only
+   as a grouping marker in the DOM (queried by groupForStack's callers,
+   tests); the real indent is opts.indent on each nested timelineItem call
+   (see timelineItem, `if(opts.indent) timeRow.style.left="12px"`). */
+.nest{display:contents;}
+/* Connects a permeable meeting to each of its nested tasks — a short
+   dashed line bridging the real gap between two specific cards, not a
+   fixed-height flow spacer (that stopped making sense once every row is
+   absolutely positioned by real time; see nestConnectors' own comment for
+   why this measures real gaps instead of using a tuned constant). Kept as
+   an in-flow-shaped element sized and placed by JS from measured
+   getBoundingClientRect() deltas, not a z-index overlay: two earlier
+   passes at ONE continuous line behind a whole group (absolutely
+   positioned overlay + negative z-index — correct per CSS2.1's paint-order
+   rules, confirmed behind the card in local Playwright renders both times)
+   still showed the line crossing OVER the card on the real device, both
+   times, including in incognito (rules out cache) — that divergence was
+   never explained, so the overlay approach stays abandoned. This reuses
+   the proven shape instead: a plain dashed-border strip with nothing else
+   sharing its space, so there's no stacking order for any browser to get
+   wrong. */
+.nest-connector{
+  position:absolute;width:0;
   border-left:2px dashed var(--line-2);
+  pointer-events:none;
 }
 
 /* .row is a real two-column grid, not a flex line: column 1 (.row-lead,
@@ -4894,70 +4907,47 @@ function paintMain(){
     }
   }
 
-  /* When the banner and its nest both render, they're wrapped in one
-     .hub-group so a .hub-connector spacer can sit in the real gap on each
-     side of the hub card, connecting the meeting to its nest — otherwise
-     the line only ever started at the nest, well below the meeting it
-     belongs to. Every other case (no meeting, or a meeting nothing nests
-     under) keeps appending straight to host, unchanged. */
-  /* The hub and everything around it now render INSIDE the timeline, on the
-     same clock as the rest of the day, rather than floating above it — the
-     user's ask was to "experience the entire day," seeing what's behind and
-     ahead of the current task. So this all collects into `lead` and gets
-     handed to timeline(); its prominence comes from .item.hub styling, not
-     from sitting outside the grid. The .hub-group wrapper is still only
-     created when a banner and nest both need connecting. */
-  const wantsLine = meetingNow && meetingKids;
+  /* The special "hub" card is gone (2026-08-25 redesign) — there is no more
+     bigger/gradient/differently-shaped card for "the one thing now."
+     Every row, current included, renders as the exact same card via
+     timelineItem; "current" is shown by the now-line crossing it plus a
+     glow outline (see .item.current CSS and its class assignment below),
+     not by a special DOM shape. That collapses this whole lead/hubHost/
+     connector assembly down to flat, plainly-ordered rendering: once every
+     row carries a true pixel position (see dayToY/dayPush above), "renders
+     above/below X" is no longer a manual DOM-order concern the way it was
+     when the hub floated above the timeline — a missed 8am task simply
+     lands at 8am's real pixel position, full stop. */
   const lead = el("div","hub-lead");
-  const hubHost = wantsLine ? el("div","hub-group") : lead;
-  const connector = () => el("div","hub-connector");
 
-  if(meetingNow) hubHost.appendChild(meetingNowRow(meetingNow));
+  if(meetingNow) lead.appendChild(meetingNowRow(meetingNow));
 
-  /* An unstarted break earlier than the hub (see splitAgenda's breakNow),
+  /* An unstarted break earlier than current (see splitAgenda's breakNow),
      and/or any still-open tasks whose own slots already passed
      (missedList — every one of them, not just the earliest, see its own
-     comment), render here, above the hub — same normal stack card each
-     always was in `rest`/`missed`, just moved so its position on screen
-     matches its position on the clock instead of contradicting it. Marked
-     .missed same as a plain missed-list row would be, so the card itself
-     still reads as overdue rather than a normal upcoming task. Sorted by
-     start time together, same as the hub itself would be. None of this is
-     folded into meetingNow's banner/connector machinery: plain
-     timelineItem cards, nothing more. */
+     comment), render as plain rows same as everything else — same normal
+     stack card each always was in `rest`/`missed`. Marked .missed same as a
+     plain missed-list row would be, so the card itself still reads as
+     overdue rather than a normal upcoming task. */
   for(const i of missedList) i.missed = true;
   for(const i of [breakNow].concat(missedList).filter(Boolean).sort((a,b) => a.s - b.s))
     lead.appendChild(timelineItem(i, dayWinS, dayPpm, 0, 1, {mode:"stack", toY:dayToY, push:dayPush.get(i)}));
 
   if(current){
-    /* nowCard returns a single .time-row today, so cardEl is that row and
-       the connector lands right before it. The fragment branch is kept for
-       the historical shape [eyebrow, card], where the status label was a
-       separate flow sibling ABOVE the card: a connector placed before the
-       whole fragment stopped short at that label instead of the real card,
-       so the dash ended at plain text rather than the card it points to.
-       The label now sits to the card's RIGHT inside .card-col, so it is no
-       longer in the connector's vertical path at all. */
-    const built = nowCard(current, dayWinS, dayPpm, dayToY, dayPush.get(current));
-    const cardEl = built.nodeType === 11 ? built.lastElementChild : built;
-    hubHost.appendChild(built);
-    if(wantsLine && cardEl) hubHost.insertBefore(connector(), cardEl);
+    lead.appendChild(nowCard(current, dayWinS, dayPpm, dayToY, dayPush.get(current)));
   }else{
-    if(wantsLine) hubHost.appendChild(connector());
-    hubHost.appendChild(emptyNow(doneCount));
+    lead.appendChild(emptyNow(doneCount));
   }
 
   if(meetingKids){
     const nest = el("div","nest standalone");
-    for(const c of meetingKids) nest.appendChild(timelineItem(c, dayWinS, dayPpm, 0, 1, {mode:"stack", toY:dayToY, push:dayPush.get(c)}));
-    hubHost.appendChild(nest);
+    for(const c of meetingKids) nest.appendChild(timelineItem(c, dayWinS, dayPpm, 0, 1, {mode:"stack", toY:dayToY, push:dayPush.get(c), indent:true}));
+    lead.appendChild(nest);
   }
 
-  if(wantsLine) lead.appendChild(hubHost);
-
-  /* One timeline holds the whole day now — hub first, then everything after
-     it. It renders even with no laterItems, because the hub itself is a row
-     that needs the clock behind it.
+  /* One timeline holds the whole day now — current first, then everything
+     after it. It renders even with no laterItems, because current itself
+     is a row that needs the clock behind it.
      `all` lets timeline() find the off-hours gap against the whole day, not
      just the rows it happens to be rendering — see the note in timeline(). */
   const sec = timeline(laterItems, dayWinS, dayWinE, dayPpm, { all:items, lead });
@@ -4971,7 +4961,11 @@ function paintMain(){
   host.querySelectorAll(".item.stack:not(.collapsed) .row").forEach(fitRowTitle);
   /* anchorRows() is gone (2026-08-25 redesign) — every row now carries its
      own true pixel top/height set at build time (see timelineItem), so
-     there is nothing left to measure-and-anchor after the fact. */
+     there is nothing left to measure-and-anchor after the fact.
+     nestConnectors still needs a real post-layout measurement pass (run
+     after fitRowTitle, same as anchorRows used to, since shrinking a title
+     can change a card's height) — see its own comment. */
+  nestConnectors(sec);
 
   /* transient trouble: keep data, say it once, quietly */
   const soft = Object.values(S.errs).find(e => !AUTHZ.has(e.code) && !LIFECYCLE.has(e.code));
@@ -5086,6 +5080,61 @@ function groupForStack(items){
   return groups;
 }
 
+/* Draws the dashed line from a permeable meeting to each of its nested
+   tasks (2026-08-25 redesign — see the .nest-connector CSS comment for why
+   this measures real gaps via JS instead of a fixed-height flow spacer).
+   Runs once per paint, after every row has its real top/height (must run
+   after fitRowTitle, same ordering anchorRows used to need, since a
+   shrunk title changes a card's height).
+
+   For each `.nest` found: its immediately preceding sibling is either the
+   meeting's own `.time-row` (groupForStack's case, inside `.rows.stack`)
+   or `meetingNowRow`'s `.meeting-now` banner (paintMain's meetingKids
+   case, inside the unstyled `.hub-lead` — itself inside `.rows.stack`) —
+   both are real elements with a real bottom edge to measure from. One
+   connector bridges that edge to the first nested card's top; one more
+   bridges each subsequent pair. Height/top are measured in `.rows.stack`'s
+   own coordinate space — the one positioned ancestor every `.time-row`
+   itself already resolves its own top/left against — not viewport pixels. */
+function nestConnectors(sec){
+  /* Always the same positioned ancestor every .time-row itself resolves
+     against (see timelineItem's top/left) — appending here rather than to
+     .nest's own (unstyled, non-positioned) parent keeps the connector's
+     coordinate space identical to the cards it's measuring, regardless of
+     whether the nest sits under .rows.stack (groupForStack's case) or the
+     unstyled .hub-lead (meetingKids' case, itself inside .rows.stack). */
+  const container = sec.querySelector(".rows.stack");
+  if(!container) return;
+  const base = container.getBoundingClientRect();
+  for(const nest of sec.querySelectorAll(".nest")){
+    const anchor = nest.previousElementSibling;
+    if(!anchor) continue;
+    const chain = [anchor, ...nest.querySelectorAll(":scope > .time-row")];
+    for(let i = 1; i < chain.length; i++){
+      const aRect = chain[i-1].getBoundingClientRect();
+      const bRect = chain[i].getBoundingClientRect();
+      const top = aRect.bottom - base.top;
+      const height = bRect.top - aRect.bottom;
+      /* Sub-pixel noise, not a real gap: pushForFloor packs cards back-to-
+         back with zero real gap whenever a legibility floor applies, and
+         getBoundingClientRect() can differ from that by a fraction of a
+         pixel — confirmed live (a 0.03px "gap" rendered as a visible-ish
+         zero-height connector). 1px is comfortably above that noise floor
+         and comfortably below "a real gap worth bridging." */
+      if(height <= 1) continue;
+      const line = el("div","nest-connector");
+      line.style.top = top + "px";
+      line.style.height = height + "px";
+      /* Centred in the 12px indent gutter (see opts.indent in timelineItem)
+         between the un-indented anchor's left edge and the nested card's
+         own left edge, same visual role the old .hub-connector's dashed
+         line played. */
+      line.style.left = (bRect.left - base.left - 6) + "px";
+      container.appendChild(line);
+    }
+  }
+}
+
 /* Day view's timeline. Renders the hour gutter (the same one weekGrid uses)
    down the left, then the day's rows beside it — each row positioned at its
    real true-to-scale pixel top/height (2026-08-25 redesign; previously
@@ -5145,7 +5194,7 @@ function timeline(items, winS, winE, ppm, opts){
       rowsEl.appendChild(timelineItem(g.meeting, winS, ppm, 0, 1, {mode:"stack", toY, push:push.get(g.meeting)}));
       if(g.children.length){
         const nest = el("div","nest");
-        for(const c of g.children) nest.appendChild(timelineItem(c, winS, ppm, 0, 1, {mode:"stack", toY, push:push.get(c)}));
+        for(const c of g.children) nest.appendChild(timelineItem(c, winS, ppm, 0, 1, {mode:"stack", toY, push:push.get(c), indent:true}));
         rowsEl.appendChild(nest);
       }
     }else{
@@ -5617,12 +5666,15 @@ function meetingNowRow(item){
 function timelineItem(item, winS, ppm, col, cols, opts){
   opts = opts || {};
   const stack = opts.mode === "stack";
-  /* Every non-hub, non-break task in the Day list is collapsible: compact
-     and muted by default (see .item.stack.collapsed below), full detail
-     and controls only while it's the one open card — an accordion, not a
-     per-card toggle, so the list never shows two full cards competing for
-     attention at once. The hub is exempt: opts.hub always reads as open,
-     it's never in S.openRow and can't be collapsed. */
+  /* Every non-current, non-break task in the Day list is collapsible:
+     compact and muted by default (see .item.stack.collapsed below), full
+     detail and controls only while it's the one open card — an accordion,
+     not a per-card toggle, so the list never shows two full cards
+     competing for attention at once. The current task is exempt: opts.hub
+     always reads as open, it's never in S.openRow and can't be collapsed
+     (2026-08-25 user decision: keeping this auto-open, even though the
+     card itself is no longer visually special otherwise — it's the one
+     thing you're most likely to act on right now, so it saves a tap). */
   /* Two exploded sibling rows (see agenda()) share one item.ev.id — every
      place that used to mean "this specific row" by event id has to use a
      per-card identity instead, or opening/expanding one sibling would
@@ -5637,11 +5689,15 @@ function timelineItem(item, winS, ppm, col, cols, opts){
                item.missed ? "miss" : "", item.done ? "done" : "",
                stack ? "stack" : "", opts.compact ? "compact" : "",
                collapsedRow ? "collapsed" : "",
-               /* "now" carries no CSS of its own (styling is all .item.hub,
-                  below) — kept only as a stable selector for the hub card,
-                  same name it's had since before this was unified with the
-                  regular card component. */
-               opts.hub ? "hub now" : ""].filter(Boolean).join(" ");
+               /* "hub"/"now" carry no size/background of their own any more
+                  (2026-08-25 redesign — see the CSS comment by .item.hub) —
+                  kept as stable selectors, same names since before this was
+                  unified with the regular card component. "current" is the
+                  new one: the only thing this class actually drives is the
+                  glow-outline animation (see .item.current), keyed off
+                  whichever card the now-line is inside/nearest, same
+                  identity nowCard already used for the old hub styling. */
+               opts.hub ? "hub now current" : ""].filter(Boolean).join(" ");
   const wrap = el("div", cls);
   if(!stack && cols > 1){ wrap.style.left = (col*100/cols) + "%"; wrap.style.width = `calc(${100/cols}% - 6px)`; }
 
@@ -5859,6 +5915,15 @@ function timelineItem(item, winS, ppm, col, cols, opts){
   const pushPx = opts.push || 0;
   timeRow.style.top = (toY(item.s) + pushPx) + "px";
   timeRow.style.height = Math.max(CARD_MIN_HEIGHT, toY(item.e2) - toY(item.s)) + "px";
+  /* opts.indent (2026-08-25 redesign, nesting fix): a task nested under a
+     permeable meeting used to get its indent from a `.nest` PARENT's own
+     margin — which stopped working the moment .time-row became
+     position:absolute (an absolutely-positioned child resolves left/right
+     against .rows.stack, its nearest positioned ancestor, not against
+     .nest's own box; confirmed live — .nest's own left/height collapsed to
+     0 and nested rows rendered flush with the meeting, no indent at all).
+     The indent now has to live on the row itself. */
+  if(opts.indent) timeRow.style.left = "12px";
   timeRow.dataset.min = item.s;
   timeRow.dataset.dur = item.e2 - item.s;
   timeRow.appendChild(railStop);
