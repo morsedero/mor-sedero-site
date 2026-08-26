@@ -1,7 +1,7 @@
 <!-- GENERATED FILE — do not hand-edit.
      Produced by tools/build-standalone.js from tools/daisey.html.
      Edit tools/daisey.html, then re-run: node tools/build-standalone.js
-     Built 2026-08-26T06:59:58.351Z -->
+     Built 2026-08-26T12:12:31.098Z -->
 <title>Daisey</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <style>
@@ -22,9 +22,20 @@
   --card:#FFFDF2;
   --ink:#241D10;
   --ink-2:#6E6350;
-  --ink-3:#A0937A;
+  --ink-3:#8A7C60;
   --line:#EDDFBE;
   --line-2:#DCC894;
+  --line-strong:#C9AF6E;
+
+  /* type scale (2026-08-26 redesign) — sizes used to be hand-tuned per
+     element within 4px of each other (13.5/14/11.5/11/10.5/10px), which is
+     the root cause of the app reading flat: nothing was ever visually
+     bigger than anything else. --t-hero is a deliberate ~2x jump over any
+     timeline card, so the current task is unmistakably the biggest thing
+     on screen. */
+  --t-hero:30px; --t-hero-sub:15px;
+  --t-xl:19px; --t-lg:15px; --t-md:13.5px;
+  --t-sm:11.5px; --t-xs:10px;
 
   --accent:#FFC738;
   --accent-ink:#946200;
@@ -160,6 +171,34 @@ html,body{overflow:hidden;}
 .daisey-logo-icon{
   position:absolute;right:100%;top:50%;transform:translateY(-50%);
   margin-right:6px;height:38px;width:auto;display:block;
+  transform-origin:center;
+}
+/* Mascot states (see setMascot/updateMascot) — every keyframe re-states the
+   base translateY(-50%) the icon needs for its own vertical centering
+   (see the rule above), since an animation's transform replaces the
+   static one rather than composing with it. */
+@media (prefers-reduced-motion:no-preference){
+  .daisey-logo.idle .daisey-logo-icon{animation:mascot-idle 3.6s ease-in-out infinite;}
+  .daisey-logo.cheer .daisey-logo-icon{animation:mascot-cheer .55s cubic-bezier(.34,1.56,.64,1) 2;}
+  .daisey-logo.worried .daisey-logo-icon{animation:mascot-worried .5s ease-in-out 2;}
+  .daisey-logo.sleep .daisey-logo-icon{opacity:.55;transform:translateY(-50%) rotate(-8deg);}
+}
+@media (prefers-reduced-motion:reduce){
+  .daisey-logo.sleep .daisey-logo-icon{opacity:.55;}
+}
+@keyframes mascot-idle{
+  0%,100%{transform:translateY(-50%) scale(1);}
+  50%{transform:translateY(-52%) scale(1.03);}
+}
+@keyframes mascot-cheer{
+  0%,100%{transform:translateY(-50%) scale(1) rotate(0);}
+  35%{transform:translateY(-62%) scale(1.08) rotate(-6deg);}
+  65%{transform:translateY(-50%) scale(1.04) rotate(4deg);}
+}
+@keyframes mascot-worried{
+  0%,100%{transform:translateY(-50%) translateX(0);}
+  25%{transform:translateY(-50%) translateX(-2px);}
+  75%{transform:translateY(-50%) translateX(2px);}
 }
 .topbar-right{
   display:flex;align-items:center;justify-content:flex-end;gap:8px;flex:0 0 auto;
@@ -337,6 +376,58 @@ html,body{overflow:hidden;}
 /* the one thing allowed to scroll — everything above it is fixed chrome */
 .page{flex:1 1 auto;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;}
 
+/* ---------------------------------------------------------------- hero
+   The current task, broken out of the timeline into its own always-visible
+   card (2026-08-26 redesign, direct request: "needs to know what is the
+   current task, make it big, bold, and outstand the other cards"). A flex
+   sibling of #pageMain, OUTSIDE its scroller — see the body shell — so it's
+   structurally sticky with no position:sticky/z-index needed at all
+   (CLAUDE.md's documented overlay hazard is about an element trying to sit
+   BEHIND a card via negative z-index; this is a plain in-flow sibling that
+   overlaps nothing, a different shape of problem entirely).
+   heroCard() renders the exact same .item.hub timelineItem always has — the
+   .hero-slot wrapper is what turns its absolute time-row positioning back
+   into normal flow, since there's no shared clock/gutter here to position
+   against. */
+.hero-slot{flex:0 0 auto;margin-bottom:10px;}
+.hero-slot:empty{display:none;}
+/* display:block, not the base .time-row grid — .time-row's grid-template-
+   columns is a FIXED 2-track definition (10px rail + card), and simply
+   hiding .rail-stop with display:none removes it from grid placement
+   entirely, which shoved .card-col into the now-empty first (10px) track
+   instead of the second — confirmed live, .card-col measured 10px wide.
+   The hero has no rail/gutter to line up against at all, so it doesn't
+   need the grid — block layout with .card-col at its natural full width
+   sidesteps the whole placement question. */
+.hero-slot .time-row{position:relative !important;top:0 !important;height:auto !important;left:0 !important;display:block;}
+.hero-slot .rail-stop{display:none;}   /* the hero states its own time range in-card, see .row-lead */
+.hero-slot .card-col{width:100%;display:block;}
+.hero-slot .item-top{display:none;}    /* eyebrow moves into the card itself below */
+.hero-slot .item.hub{
+  border-radius:20px;box-shadow:var(--shadow-lg);
+  border-color:var(--line-strong);
+  padding-bottom:2px;
+  animation:none;   /* current-glow is for the timeline marker now, not the hero */
+}
+.hero-slot .item.hub .row{padding:16px 18px 6px;}
+.hero-slot .item.hub .row .n{font-size:var(--t-hero);font-weight:900;letter-spacing:-.01em;line-height:1.15;}
+.hero-slot .item.hub .row-lead{font-size:var(--t-hero-sub);font-weight:800;color:var(--ink-2);}
+.hero-slot .item.hub .row-meta{padding:6px 18px 16px;}
+.hero-slot .item.hub .acts-inline{gap:8px;}
+.hero-slot .item.hub .mini{width:38px;height:38px;font-size:15px;}
+.hero-slot .item.hub .mini.ok{flex:1 1 auto;width:auto;border-radius:12px;font-weight:800;font-size:var(--t-md);}
+.hero-slot .item.hub .mini.ok::after{content:" Done";}
+/* the eyebrow (On it / Up next / …) — see heroCard(), which inserts this
+   as the card's own first child now that .item-top (the old beside-the-
+   card column) is hidden. */
+.hero-eyebrow{
+  font-family:var(--font-display);font-weight:800;font-size:10.5px;letter-spacing:.08em;
+  text-transform:uppercase;color:var(--bc,var(--accent-ink));padding:14px 18px 0;
+}
+@media (max-width:420px){
+  .hero-slot .item.hub .row .n{font-size:calc(var(--t-hero) - 4px);}
+}
+
 /* board identity: every element that represents a task carries its board hue.
    The per-board `.bk-<key>` rules are GENERATED at runtime (injectBoardCss)
    because the board set is per-viewer — a hand-written rule per key only
@@ -501,7 +592,7 @@ html,body{overflow:hidden;}
    which made every hour as heavy as a card title. */
 .tl-hours .hl{
   position:absolute;left:0;right:8px;text-align:right;
-  font-size:11px;font-weight:500;color:var(--ink-3);opacity:.8;
+  font-size:11px;font-weight:500;color:var(--ink-3);opacity:.6;
   letter-spacing:.01em;
   transform:translateY(-50%);
 }
@@ -509,23 +600,14 @@ html,body{overflow:hidden;}
 /* translateY(-50%) matches .tl-hours .hl, which centres itself on its own
    `top`. Without it the label sat centred on the hour while the rule hung
    its top edge there — the two drew ~5px apart at every hour, and the
-   mismatch is exactly as visible as it sounds. */
+   mismatch is exactly as visible as it sounds.
+   Lower contrast than before (2026-08-26 redesign) — the timeline now reads
+   as context behind the hero, not the main event, so its own reference
+   grid recedes further. */
 .rows .grid-line{
   position:absolute;left:0;right:0;transform:translateY(-50%);
-  border-top:1px solid var(--line);
+  border-top:1px solid var(--line);opacity:.55;
 }
-/* Google Calendar's now-line: a thin solid rule with a small filled dot at
-   the left edge. Was 3px + an 11px dot, which read as an alert bar across
-   the page rather than a time marker. */
-.rows .tl-now{
-  position:absolute;left:0;right:0;height:0;transform:translateY(-50%);
-  border-top:2px solid var(--crit);z-index:6;
-}
-.rows .tl-now::before{
-  content:"";position:absolute;left:-4px;top:-4px;width:8px;height:8px;
-  border-radius:50%;background:var(--crit);
-}
-
 /* each scheduled thing is its own card, positioned by time — the hub
    (.item.hub, above) is this same card, just bigger and re-tinted.
    backdrop-filter is dropped — it blurred whatever sat behind the card,
@@ -585,8 +667,7 @@ html,body{overflow:hidden;}
   /* True-to-scale positioning (2026-08-25 redesign): rows are now absolutely
      positioned by real time (see .time-row), so this container needs a real
      computed height for them to sit inside — set from JS (timeline()) as
-     (winE-winS)*ppm, same formula weekGrid already uses for its own
-     container. No more flex flow / anchorRows-driven auto height. */
+     (winE-winS)*ppm. No more flex flow / anchorRows-driven auto height. */
   position:relative;
   margin-top:4px;
 }
@@ -614,9 +695,8 @@ html,body{overflow:hidden;}
    reparenting whatever else resolves against it.) The
    drag/push transform itself now lands on the enclosing .time-row (below),
    not here — a card's rail-stop has to travel with it. */
-/* pan-y overrides the plain .item rule's touch-action:none (needed by
-   Week-grid's own vertical pixel-drag, wireItemDrag) — Day-list reorder
-   only starts once wireStackDrag's own intent check confirms a real drag
+/* pan-y overrides the plain .item rule's touch-action:none — Day-list
+   reorder only starts once wireStackDrag's own intent check confirms a real drag
    (see its pointerdown/pointermove), so the browser is free to handle a
    vertical touch here as its native page-scroll gesture until that
    moment, instead of every touch on a card eating the scroll outright. */
@@ -639,21 +719,45 @@ html,body{overflow:hidden;}
 }
 /* the one place inside a card where selecting text is the point */
 .item.stack .details{-webkit-user-select:text;user-select:text;-webkit-touch-callout:default;}
-.item.stack .row{gap:6px 10px;padding:9px 12px;}
-.item.stack .row .n{font-size:14px;}
-/* The current-task glow (2026-08-25 redesign) — replaces the old special
-   hub card entirely. "Current" is shown by the now-line crossing the card
-   (already existed) plus this outline, not by a bigger/differently-shaped
-   card. A pure CSS @keyframes loop, no JS ticking: the .current class is
-   assigned once per repaint (same 60s cadence current/nowLine already
-   update at — see paintMain/splitAgenda), and the animation itself runs
-   forever in CSS with nothing to drive per-second. box-shadow rather than
-   border/outline so it doesn't shift layout or fight the board spine. */
+.item.stack .row{gap:6px 10px;padding:7px 12px;}
+.item.stack .row .n{font-size:var(--t-sm);}
+/* The current-task glow. Scoped OFF .hero-slot's own hero card (see
+   .hero-slot .item.hub{animation:none} above) — the hero already carries
+   its own weight via size/shadow, so this now marks only currentMarker's
+   slim in-timeline sliver, the thing standing in for "you are here" while
+   scrolling past it. A pure CSS @keyframes loop, no JS ticking: the
+   .current class is assigned once per repaint, and the animation itself
+   runs forever in CSS with nothing to drive per-second. box-shadow rather
+   than border/outline so it doesn't shift layout or fight the board spine. */
 .item.current{animation:current-glow 2.4s ease-in-out infinite;}
 @keyframes current-glow{
   0%,100%{box-shadow:var(--shadow), 0 0 0 1.5px var(--bc,var(--accent));}
   50%{box-shadow:var(--shadow), 0 0 0 3px var(--bc,var(--accent));}
 }
+/* The now-line's replacement (see tickDrain()): a wash that fills
+   left-to-right as the current task's minutes burn, on both the hero card
+   and its slim timeline marker. A plain absolutely-positioned span sized
+   by the shared --drain custom property, painted UNDER the card's real
+   content (z-index left at auto, inserted first in paint order, no
+   content of its own) rather than an animated background-size — a custom
+   property write is one style recalc, no layout, cheaper than fighting
+   border-radius clipping on a changing background-size. */
+.item.hub{position:relative;}
+.current-marker-card{position:relative;}
+.drain-fill{
+  position:absolute;left:0;top:0;bottom:0;width:var(--drain,0%);z-index:0;
+  background:var(--accent-soft);border-radius:inherit;
+  pointer-events:none;transition:width 1s linear;
+}
+.hero-slot .drain-fill{opacity:.55;}
+.current-marker-card .drain-fill{opacity:.3;}
+/* .drain-fill is position:absolute with z-index:auto/0 — CSS stacking
+   order paints positioned descendants AFTER non-positioned in-flow ones
+   regardless of DOM order, so without this the fill would sit on top of
+   the card's own text no matter where it's inserted. Lifting the real
+   content into its own stacking context above it is the fix. */
+.item.hub > .row, .item.hub > .row-meta, .item.hub > .hero-eyebrow,
+.current-marker-card > .n{position:relative;z-index:1;}
 /* A collapsible card (see timelineItem's `collapsible`) that isn't the one
    open card renders small and muted — the whole point being that the rest
    of the day stays visible without competing with whichever card is open.
@@ -684,23 +788,20 @@ html,body{overflow:hidden;}
    making that number legible instead of cramped.
    Right-aligned, not centred: the card edge is the shared vertical line the
    eye tracks down, and ragged-centre times fight it. */
-/* Day view now has ONE time column — the real hour gutter to the left of
-   every row (see .day-grid), exactly as Week view and Google Calendar do.
-   Each row used to carry its own 46px time label as well, from back when
-   there was no gutter to carry it; keeping both meant two time columns side
-   by side, 102px of a 390px phone gone before a card started. So the row's
-   first column is now a narrow 10px strip holding only the duration bar,
-   and the per-row time label is hidden (it stays in the DOM, and in the
-   rail's `title`, because a nested row IS indented away from the gutter and
-   needs its own start on hover — see .nest).
-   Week view's own rows return early from timelineItem and never reach this
-   rule; its gutter is a separate, unchanged code path. */
+/* Day view has ONE time column — the real hour gutter to the left of every
+   row (see .day-grid), same style as Google Calendar. Each row used to carry
+   its own 46px time label as well, from back when there was no gutter to
+   carry it; keeping both meant two time columns side by side, 102px of a
+   390px phone gone before a card started. So the row's first column is now
+   a narrow 10px strip holding only the duration bar, and the per-row time
+   label is hidden (it stays in the DOM, and in the rail's `title`, because
+   a nested row IS indented away from the gutter and needs its own start on
+   hover — see .nest). */
 .time-row{
   display:grid;grid-template-columns:10px minmax(0,1fr);column-gap:8px;
   align-items:start;transition:transform .15s;
   /* Positioned by real time now (2026-08-25 redesign) — top/height are set
-     in timelineItem from the row's own start/duration, same formula
-     weekGrid's grid-mode cards already use. left/right:0 so it still spans
+     in timelineItem from the row's own start/duration. left/right:0 so it still spans
      the rows column's full width the way flow layout used to give it for
      free. z-index above the hour grid lines behind it — a dashed rule must
      never appear to run through a card. */
@@ -919,46 +1020,6 @@ html,body{overflow:hidden;}
 }
 .item.dragging.cross-day{outline:2.5px dashed var(--accent);outline-offset:2px;}
 
-/* ---------------- week view ---------------- */
-.week-head{display:flex;margin-bottom:6px;}
-.week-head .tl-gutter{width:46px;flex:0 0 auto;}
-.week-day-h{
-  flex:1 1 0;min-width:0;display:flex;flex-direction:column;align-items:center;gap:2px;
-  background:transparent;border:none;cursor:pointer;padding:6px 2px;border-radius:14px;
-  font-family:var(--font-body);color:var(--ink);
-}
-.week-day-h:hover{background:var(--surface);}
-.week-day-h .wdow{font-family:var(--mono);font-size:9.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3);}
-.week-day-h .wdate{font-size:15px;font-weight:800;}
-.week-day-h.today .wdate{
-  color:var(--on-accent);background:var(--accent);border-radius:50%;
-  width:24px;height:24px;display:grid;place-items:center;
-}
-.week-body{display:flex;}
-.week-cols{display:flex;flex:1 1 auto;min-width:0;gap:2px;}
-.week-col{position:relative;flex:1 1 0;min-width:0;border-left:2px dashed var(--line);}
-.week-col.today{background:var(--accent-soft);}
-/* Seven flex:1 columns on a 390px phone give each day under 50px — every
-   card in it collapses to unreadable vertical mush (see mobile audit).
-   Real fix, not a squeeze: below 700px each day column gets a fixed,
-   legible min-width and the week scrolls horizontally instead. Head and
-   body scroll as one unit (wrapped together below) so day headers stay
-   aligned with their column; the hour gutter stays sticky on both so
-   times don't scroll out of view with the days. */
-@media (max-width:700px){
-  .week-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;}
-  .week-head,.week-body{width:max-content;min-width:100%;}
-  .week-head .tl-gutter{position:sticky;left:0;z-index:2;background:var(--bg);}
-  .week-body .tl-gutter{position:sticky;left:0;z-index:2;background:var(--bg);}
-  .week-day-h{width:92px;flex:0 0 92px;}
-  .week-col{width:92px;flex:0 0 92px;}
-}
-/* the title gets the column's full width instead of squeezing next to the
-   time label — stack them instead of sitting them side by side */
-.item.compact .row{flex-direction:column;align-items:stretch;gap:1px;padding:3px 5px;}
-.item.compact .row .t{font-size:9px;}
-.item.compact .row .n{font-size:10.5px;line-height:1.2;white-space:normal;overflow-wrap:anywhere;}
-.item.compact .row .dot{display:none;}
 
 /* ---------------- asset pipeline (tracker board kanban) ----------------
    Columns scroll sideways as a group; each column scrolls its own cards.
@@ -1584,7 +1645,6 @@ html,body{overflow:hidden;}
   <div class="dash" id="dash">
     <div class="segmented" id="viewSwitch">
       <button data-view="day">Day</button>
-      <button data-view="week">Week</button>
       <button data-view="projects">Projects</button>
     </div>
     <div class="dash-center">
@@ -1601,6 +1661,7 @@ html,body{overflow:hidden;}
     </div>
   </div>
 
+  <div class="hero-slot" id="heroSlot"></div>
   <main class="page" id="pageMain"><div class="skel"></div></main>
 </div>
 
@@ -2073,7 +2134,7 @@ function fitRowTitle(row){
 const S = {
   anchor: startOfDay(new Date()),
   today: dayKey(new Date()),   // the calendar day the app currently believes it is
-  view:"day",     // "day" | "week" | "pipeline" — which view the one page shows
+  view:"day",     // "day" | "pipeline" | "projects" — which view the one page shows
   mcp:null, ready:false, busy:false,
   cards:{}, events:null, errs:{},
   boardLists:{},       // tracker boardKey -> {payload,storedAt}: the pipeline stages, in board order
@@ -2084,6 +2145,7 @@ const S = {
   lists:{},            // cardId -> {loading|checklists|error}
   expanded:new Set(), // details are closed by default; these were opened by hand
   openRow:null,        // event id of the one non-hub list card currently expanded — accordion; hub is always open
+  dayCelebrated:null,   // dayKey already given the day-complete celebrate() burst — see paintHero
   ticking:new Set(),   // check items with a write in flight
   editing:new Set(),   // "desc:"+cardId or "item:"+itemId currently open for edit
   stats:null, statsCardId:null,
@@ -2243,10 +2305,6 @@ function startWatches(){
    visible range so the grid doesn't have to fetch per-cell — widen only
    when that range is actually on screen. */
 function calFetchRange(){
-  if(S.view === "week"){
-    const { start } = weekBounds(S.anchor);
-    return { a:start, b:addDays(start,7) };
-  }
   const a = startOfDay(S.anchor);
   return { a, b:addDays(a,1) };
 }
@@ -3724,6 +3782,7 @@ function completeItem(item){
   const undo = card ? patchLocalCard(card, { dueComplete:true }) : (()=>{});
   celebrate();
   dopamineBurst();
+  setMascot("cheer", 1200);
 
   const st = bumpCategory(card ? card.boardName : "—", "done");
   const today = dayKey(new Date());
@@ -3836,6 +3895,7 @@ function completeItemInBrick(item, card){
   const undoDesc = rest.length ? applyLocalBrickDesc(item.ev.id, rest) : dropLocalEvent(item.ev.id);
   celebrate();
   dopamineBurst();
+  setMascot("cheer", 1200);
 
   const st = bumpCategory(card.boardName, "done");
   const today = dayKey(new Date());
@@ -4267,6 +4327,36 @@ function sharedState(){
   return null;
 }
 
+/* The topbar mascot (2026-08-26 redesign, "juicy" request) — pure CSS
+   transforms on the existing logo PNG, no new art. One class at a time on
+   .daisey-logo: .idle (slow breathe, the default), .cheer (bounce, briefly,
+   on a completion — see completeItem/completeItemInBrick), .worried (small
+   shake, something's overdue), .sleep (dim+tilt, off the clock/day off).
+   setMascot swaps the class and, for the one-shot .cheer, clears itself
+   after the animation's own duration rather than waiting for the next
+   render to remove it. */
+function setMascot(state, oneShot){
+  const el = $(".daisey-logo");
+  if(!el) return;
+  el.classList.remove("idle","cheer","worried","sleep");
+  el.classList.add(state);
+  if(oneShot){
+    clearTimeout(setMascot._t);
+    setMascot._t = setTimeout(()=>{ el.classList.remove(state); el.classList.add("idle"); }, oneShot);
+  }
+}
+/* Recomputed every paintMain from the same splitAgenda() result already in
+   hand — no separate mascot state to keep in sync by hand. Priority:
+   nothing left today (post-work idle) > overdue work > ordinary idle. A
+   currently-open task while something else is also overdue still reads as
+   worried — overdue is the more actionable fact. */
+function updateMascot({ current, missed, open, doneCount }){
+  const dayOver = !current && sameDay(S.anchor, new Date()) && minsOf(new Date()) >= CFG.dayEnd*60;
+  if(dayOver){ setMascot("sleep"); return; }
+  if(missed && missed.length){ setMascot("worried"); return; }
+  setMascot("idle");
+}
+
 function paintHeader(){
   const d = S.anchor, today = new Date();
   /* The Projects view reads batch cards created by the audio-sync Netlify
@@ -4295,9 +4385,6 @@ function paintHeader(){
   $("#dash").classList.toggle("pipe-mode", dateless);
 
   if(dateless){
-    $("#dateRel").textContent = "";
-  }else if(S.view === "week"){
-    $("#dateLabel").textContent = weekLabel(d);
     $("#dateRel").textContent = "";
   }else{
     $("#dateLabel").textContent = `${DOW[d.getDay()]} ${d.getDate()} ${MON[d.getMonth()]}`;
@@ -4822,33 +4909,68 @@ function projectsView(){
   return wrap;
 }
 
-/* The one page. Day shows the activity list — the hub plus everything else
-   left today, meetings included so a permeable one (see groupForStack)
-   shows what's scheduled inside it. Week swaps that list for the
-   calendar grid, toggled from the same switcher used to be Schedule-only. */
+/* #heroSlot is a flex sibling of #pageMain, outside its scroller — see the
+   body shell — so it's structurally sticky with no position:sticky/z-index
+   needed (CLAUDE.md's documented overlay hazard doesn't apply: nothing
+   here overlaps anything). Rebuilt fresh every render() alongside
+   paintMain, same cadence, since both read the same splitAgenda() result. */
+function paintHero(current, doneCount){
+  const slot = $("#heroSlot");
+  slot.innerHTML = "";
+  slot.appendChild(current ? heroCard(current) : emptyNow(doneCount));
+  slot.classList.toggle("hero-empty", !current);
+  slot.hidden = false;
+  /* Day-complete moment: celebrate() (confetti, already exists — see
+     completeItem) fires once per day the moment the day empties out with
+     something actually finished, not on every render of the clear state —
+     S.dayCelebrated (per dayKey, so a new day can celebrate again) is the
+     guard. Reuses the same confetti/chime the per-task completion already
+     uses, just a bigger burst for the bigger moment. */
+  if(!current && doneCount){
+    const today = dayKey(S.anchor);
+    if(S.dayCelebrated !== today){
+      S.dayCelebrated = today;
+      celebrate(2);
+    }
+  }
+}
+/* Views with no day/current-task concept at all (pipeline/projects/day-off/
+   shared-state) hide the hero outright rather than showing stale content. */
+function clearHero(){
+  const slot = $("#heroSlot");
+  slot.innerHTML = "";
+  slot.hidden = true;
+}
+
+/* The one page. Day shows the activity list — the current task's own
+   slim in-timeline marker (see currentMarker) plus everything else left
+   today, meetings included so a permeable one (see groupForStack) shows
+   what's scheduled inside it. */
 function paintMain(){
   const host = $("#pageMain");
   host.innerHTML = "";
 
   const shared = sharedState();
-  if(shared){ host.appendChild(shared); $("#dashRight").hidden = true; return; }
+  if(shared){ host.appendChild(shared); $("#dashRight").hidden = true; clearHero(); return; }
 
-  if(S.view === "week"){ host.appendChild(weekGrid(S.anchor)); $("#dashRight").hidden = true; return; }
   /* The asset pipeline is the one view with no date at all — it's a board
      state, not a day — so it ignores S.anchor entirely. */
-  if(S.view === "pipeline"){ host.appendChild(pipelineView()); $("#dashRight").hidden = true; return; }
+  if(S.view === "pipeline"){ host.appendChild(pipelineView()); $("#dashRight").hidden = true; clearHero(); return; }
   /* Projects is dateless too — it's the state of a deadline, not a day. */
-  if(S.view === "projects"){ host.appendChild(projectsView()); $("#dashRight").hidden = true; return; }
+  if(S.view === "projects"){ host.appendChild(projectsView()); $("#dashRight").hidden = true; clearHero(); return; }
 
   const d = S.anchor;
   if(d.getDay() === CFG.dayOff){
     host.appendChild(stateCard("🏄‍♂️","My Day Off",""));
     $("#dashRight").hidden = true;
+    clearHero();
+    setMascot("sleep");
     return;
   }
 
   const { items, current, meetingNow, breakNow, missedList, rest, missed, doneCount, open } = splitAgenda();
   const missedListSet = new Set(missedList);
+  updateMascot({ current, missed, open, doneCount });
 
   /* True-to-scale positioning (2026-08-25 redesign): winS/winE/ppm are
      computed once, up front, from the day's real items — not measured after
@@ -4856,8 +4978,7 @@ function paintMain(){
      timelineItem(...,{mode:"stack"}) call below needs these to place its
      row at a real pixel position; passing 0,0 (as before the redesign) is
      no longer valid once positioning is real. Same widen-to-whole-hours
-     clamp timeline() used to apply after rendering, and the same formula
-     weekGrid already uses for its own window. */
+     clamp timeline() used to apply after rendering. */
   let dayWinS = CFG.dayStart*60, dayWinE = CFG.dayEnd*60;
   for(const it of items){
     dayWinS = Math.min(dayWinS, Math.floor(it.s/60)*60);
@@ -4907,17 +5028,14 @@ function paintMain(){
     }
   }
 
-  /* The special "hub" card is gone (2026-08-25 redesign) — there is no more
-     bigger/gradient/differently-shaped card for "the one thing now."
-     Every row, current included, renders as the exact same card via
-     timelineItem; "current" is shown by the now-line crossing it plus a
-     glow outline (see .item.current CSS and its class assignment below),
-     not by a special DOM shape. That collapses this whole lead/hubHost/
-     connector assembly down to flat, plainly-ordered rendering: once every
-     row carries a true pixel position (see dayToY/dayPush above), "renders
-     above/below X" is no longer a manual DOM-order concern the way it was
-     when the hub floated above the timeline — a missed 8am task simply
-     lands at 8am's real pixel position, full stop. */
+  /* Current no longer renders inside the timeline at all (2026-08-26
+     redesign) — it lives in the sticky #heroSlot, built by heroCard()
+     below, outside #pageMain's scroller entirely. Everything else that
+     used to share the "lead" group (a live meeting banner, an unstarted
+     break, missed tasks earlier than current) stays in-timeline, as plain
+     cards at their own real time position — only the one "current" card
+     leaves the flow, since it's the one thing the hero exists to make
+     permanently visible. */
   const lead = el("div","hub-lead");
 
   if(meetingNow) lead.appendChild(meetingNowRow(meetingNow));
@@ -4933,11 +5051,8 @@ function paintMain(){
   for(const i of [breakNow].concat(missedList).filter(Boolean).sort((a,b) => a.s - b.s))
     lead.appendChild(timelineItem(i, dayWinS, dayPpm, 0, 1, {mode:"stack", toY:dayToY, push:dayPush.get(i)}));
 
-  if(current){
-    lead.appendChild(nowCard(current, dayWinS, dayPpm, dayToY, dayPush.get(current)));
-  }else{
-    lead.appendChild(emptyNow(doneCount));
-  }
+  paintHero(current, doneCount);
+  if(current) lead.appendChild(currentMarker(current, dayWinS, dayPpm, dayToY, dayPush.get(current)));
 
   if(meetingKids){
     const nest = el("div","nest standalone");
@@ -4961,10 +5076,25 @@ function paintMain(){
   host.querySelectorAll(".item.stack:not(.collapsed) .row").forEach(fitRowTitle);
   /* anchorRows() is gone (2026-08-25 redesign) — every row now carries its
      own true pixel top/height set at build time (see timelineItem), so
-     there is nothing left to measure-and-anchor after the fact.
-     nestConnectors still needs a real post-layout measurement pass (run
-     after fitRowTitle, same as anchorRows used to, since shrinking a title
-     can change a card's height) — see its own comment. */
+     there is nothing left to measure-and-anchor after the fact — EXCEPT
+     one real case pushForFloor's build-time math can't see: an OPEN
+     accordion card (see timelineItem's isOpen/collapsible). Its real
+     content — title, chips, the full Done/Swap/Pending/Remove row, an
+     expanded detail panel — isn't known until it's actually in the live
+     tree, and a short slot (a 15-min quick task is ~28px at true scale)
+     can't hold it. Confirmed live: an opened card's real height ran ~47px
+     past its fixed slot with nothing to push the next row down, so the
+     open card's own action buttons rendered UNDER the next card and ate
+     its clicks — not a cosmetic overlap, a real dead-button bug.
+     pushForOverflow runs the same "push later, never earlier" invariant
+     pushForFloor already established, after fitRowTitle (opening a title's
+     wrap state is part of what changed its height) and before
+     nestConnectors (which measures the positions this pass just moved). */
+  pushForOverflow(sec);
+  /* nestConnectors still needs a real post-layout measurement pass (same
+     reason as above — a nest's own connector line has to know where its
+     rows actually ended up, pushForOverflow included) — see its own
+     comment. */
   nestConnectors(sec);
 
   /* transient trouble: keep data, say it once, quietly */
@@ -5017,20 +5147,12 @@ function paint(){
 }
 
 /* ---------------------------------------------------------------- timeline
-   The day's activity list: a plain chronological stack, not a minute-precise
-   grid — "smaller, less detail" reads better as a list than as a calendar.
-   A permeable meeting (one tasks may run inside — see permeable()) groups
-   the tasks scheduled during it underneath itself instead of listing them
-   as flat siblings, so "I have חמל, and two tasks inside it" reads at a
-   glance. Position/height math for the minute-precise grid lives on in
-   weekGrid (layoutOverlaps + timelineItem in "grid" mode). Day view uses
-   the same scale, but only to ANCHOR a row's top edge — never to size it;
-   see anchorRows() for why sizing by duration is arithmetically impossible
-   here (15min vs 8h is 32x, while a legible card spans only ~2.3x). */
+   The day's activity list, positioned and sized by real duration (see
+   buildDayScale/CARD_MIN_HEIGHT). A permeable meeting (one tasks may run
+   inside — see permeable()) groups the tasks scheduled during it underneath
+   itself instead of listing them as flat siblings, so "I have חמל, and two
+   tasks inside it" reads at a glance. */
 const TL_PPM = 1.6; // pixels per minute
-/* The one scale both time views share. Day and Week must never drift apart
-   on this — they're meant to read as one clock in two layouts, so the
-   factor lives here rather than inline in weekGrid. */
 const TL_PPM_DAY = TL_PPM * 0.62;   // ~0.99 px/min, ~59.5px per hour
 /* An empty stretch longer than SKIP_MIN_PX (~1.7h of clock) collapses to
    SKIP_KEEP_PX. Without this, a single early meeting widening the window to
@@ -5096,6 +5218,32 @@ function groupForStack(items){
    bridges each subsequent pair. Height/top are measured in `.rows.stack`'s
    own coordinate space — the one positioned ancestor every `.time-row`
    itself already resolves its own top/left against — not viewport pixels. */
+/* Pushes every .time-row below an overflowing OPEN card down by however
+   much that card's real content exceeds its fixed slot height — see the
+   call site's comment for why this exists. Cumulative like pushForFloor:
+   several open cards stacked (not the common case — only one row is ever
+   "open" at a time per the accordion, see isOpen/collapsible — but the
+   hub/currentMarker are exempt from the accordion and can be open
+   alongside one real accordion row) each add their own overflow to every
+   row after them. Only walks .rows.stack's own top-level children plus
+   .nest contents — .hero-slot is a different coordinate space entirely
+   (see .hero-slot .time-row{position:relative}) and was never part of
+   this container's stacking to begin with. */
+function pushForOverflow(sec){
+  const container = sec.querySelector(".rows.stack");
+  if(!container) return;
+  const rows = [...container.querySelectorAll(":scope > .time-row, .nest > .time-row")]
+    .sort((a,b) => parseFloat(a.style.top) - parseFloat(b.style.top));
+  let carry = 0;
+  for(const row of rows){
+    if(carry) row.style.top = (parseFloat(row.style.top) + carry) + "px";
+    const setH = parseFloat(row.style.height) || 0;
+    const realH = row.scrollHeight;
+    if(realH > setH) carry += realH - setH;
+  }
+  if(carry) container.style.height = (parseFloat(container.style.height) + carry) + "px";
+}
+
 function nestConnectors(sec){
   /* Always the same positioned ancestor every .time-row itself resolves
      against (see timelineItem's top/left) — appending here rather than to
@@ -5135,8 +5283,7 @@ function nestConnectors(sec){
   }
 }
 
-/* Day view's timeline. Renders the hour gutter (the same one weekGrid uses)
-   down the left, then the day's rows beside it — each row positioned at its
+/* Day view's timeline. Renders the hour gutter down the left, then the day's rows beside it — each row positioned at its
    real true-to-scale pixel top/height (2026-08-25 redesign; previously
    ANCHORED to its start minute by anchorRows(), never sized by duration —
    that whole mechanism is gone, see anchorRows' own removal note).
@@ -5213,10 +5360,6 @@ function timeline(items, winS, winE, ppm, opts){
   const totalHeight = scale.totalHeight + maxPush;
   rowsEl.style.height = totalHeight + "px";
   hourLines(rowsEl, winS, winE, ppm, toY);
-  if(sameDay(S.anchor, new Date())){
-    const line = nowLine(winS, winE, ppm, toY);
-    if(line) rowsEl.appendChild(line);
-  }
   wrap.appendChild(hourGutter(winS, winE, ppm, totalHeight, toY));
   for(const sk of scale.skips){
     const tag = el("div","hour-skip", (()=>{
@@ -5353,70 +5496,15 @@ function offHoursCard(gap, winS, ppm, toY){
   return row;
 }
 
-/* simple greedy interval-graph column layout — only matters when a foreign
-   calendar event happens to overlap a task block; Daisey's own scheduling
-   never places two of its own blocks on top of each other */
-function layoutOverlaps(items){
-  const sorted = items.slice().sort((a,b) => a.s-b.s || a.e2-b.e2);
-  const clusters = []; let cluster=[], clusterEnd=-Infinity;
-  for(const it of sorted){
-    if(cluster.length && it.s >= clusterEnd){ clusters.push(cluster); cluster=[]; clusterEnd=-Infinity; }
-    cluster.push(it); clusterEnd = Math.max(clusterEnd, it.e2);
-  }
-  if(cluster.length) clusters.push(cluster);
-
-  const out = [];
-  for(const cl of clusters){
-    const colEnd = [], placed = [];
-    for(const it of cl){
-      let c = colEnd.findIndex(end => end <= it.s);
-      if(c < 0){ c = colEnd.length; colEnd.push(0); }
-      colEnd[c] = it.e2; placed.push({ item:it, col:c });
-    }
-    for(const p of placed) out.push({ item:p.item, col:p.col, cols:colEnd.length });
-  }
-  return out;
-}
-
-
-/* ---------------------------------------------------------------- week
-   A Google-Calendar-style multi-day view, swapped in for the Day activity
-   list via the same switcher. Reuses the grid math timelineItem's
-   "grid" mode was built for (layoutOverlaps), just narrower and seven-wide. */
-function weekBounds(d){
-  const start = addDays(startOfDay(d), -d.getDay());
-  return { start, end: addDays(start, 6) };
-}
-function weekLabel(d){
-  const { start, end } = weekBounds(d);
-  return start.getMonth() === end.getMonth()
-    ? `${start.getDate()}–${end.getDate()} ${MON[start.getMonth()]}`
-    : `${start.getDate()} ${MON[start.getMonth()]} – ${end.getDate()} ${MON[end.getMonth()]}`;
-}
-
-function dayEvents(day){
-  return allEvents().filter(e => !e.allDay && overlapsDay(e, day)).map(e => ({
-    ev:e, card: e.isTask ? cardFor(e) : null, task:e.isTask, isBreak:e.isBreak,
-    title: (e.isTask && cardFor(e)) ? cardFor(e).name : (e.isBreak ? "Break" : e.summary),
-    s:minsOf(e.start), e2:minsOf(e.end), done:false
-  }));
-}
-
 /* The hour gutter — the column of "09:00 / 10:00 / …" labels — and the
-   dashed rules that carry those hours across the rows beside it. Extracted
-   from weekGrid so Day view renders the identical clock from the identical
-   code: two views, one time language, no chance of drift. Both take an
-   explicit ppm so the caller owns the scale.
-
+   dashed rules that carry those hours across the rows beside it.
    hourGutter returns the labels column; hourLines APPENDS rules into a
-   caller-supplied element, because Week puts them in each of its 7 day
-   columns while Day puts them in its single rows container. */
+   caller-supplied rows container. Both take an explicit ppm so the caller
+   owns the scale. */
 /* toY is an optional override for the position formula — Day view passes
    its own compressed mapper (see buildDayScale, 2026-08-25 redesign) so an
-   empty multi-hour stretch can shrink; Week view never passes one, so it
-   keeps the plain linear (min-winS)*ppm scale it always has. One shared
-   hour-grid structure either way — Day and Week must never drift apart on
-   what an hour grid IS, only (optionally) on how far apart two hours sit. */
+   empty multi-hour stretch can shrink; falls back to the plain linear
+   (min-winS)*ppm scale otherwise. */
 function hourGutter(winS, winE, ppm, height, toY){
   const hoursCol = el("div","tl-hours tl-gutter");
   if(height != null) hoursCol.style.height = height + "px";
@@ -5434,72 +5522,6 @@ function hourLines(host, winS, winE, ppm, toY){
     host.appendChild(gl);
   }
 }
-/* The red "you are here" line, likewise shared. Returns null when now falls
-   outside the rendered window, so callers can append unconditionally. */
-function nowLine(winS, winE, ppm, toY){
-  const nowMin = minsOf(new Date());
-  if(nowMin < winS || nowMin > winE) return null;
-  const line = el("div","tl-now");
-  line.style.top = (toY ? toY(nowMin) : (nowMin-winS)*ppm) + "px";
-  return line;
-}
-
-function weekGrid(anchorDate){
-  const { start } = weekBounds(anchorDate);
-  const days = Array.from({length:7}, (_,i) => addDays(start,i));
-  const ppm = TL_PPM_DAY;
-  let winS = CFG.dayStart*60, winE = CFG.dayEnd*60;
-  const perDay = days.map(day => {
-    const items = dayEvents(day);
-    for(const it of items){
-      winS = Math.min(winS, Math.floor(it.s/60)*60);
-      winE = Math.max(winE, Math.ceil(it.e2/60)*60);
-    }
-    return { day, items };
-  });
-  const height = Math.round((winE-winS) * ppm);
-  const isTodayIn = day => sameDay(day, new Date());
-
-  const wk = el("section","week");
-  const scroll = el("div","week-scroll");
-  const head = el("div","week-head");
-  head.appendChild(el("div","tl-gutter"));
-  for(const day of days){
-    const h = el("button","week-day-h" + (isTodayIn(day) ? " today" : ""));
-    h.appendChild(el("span","wdow", DOW[day.getDay()].slice(0,3)));
-    h.appendChild(el("span","wdate", String(day.getDate())));
-    h.addEventListener("click", ()=>{ S.anchor = day; S.view = "day"; syncCalendarWatch(); render(); });
-    head.appendChild(h);
-  }
-
-  const body = el("div","week-body");
-  body.appendChild(hourGutter(winS, winE, ppm, height));
-
-  const colsWrap = el("div","week-cols");
-  const colEls = perDay.map(({ day }) => {
-    const c = el("div","rows week-col" + (isTodayIn(day) ? " today" : ""));
-    c.style.height = height + "px";
-    hourLines(c, winS, winE, ppm);
-    colsWrap.appendChild(c);
-    return { day, el:c };
-  });
-  const columns = colEls.map(c => ({ date:c.day, el:c.el }));
-  perDay.forEach(({ day, items }, i) => {
-    const colEl = colEls[i].el;
-    for(const { item, col, cols } of layoutOverlaps(items))
-      colEl.appendChild(timelineItem(item, winS, ppm, col, cols, { mode:"grid", compact:true, date:day, columns }));
-    if(isTodayIn(day)){
-      const line = nowLine(winS, winE, ppm);
-      if(line) colEl.appendChild(line);
-    }
-  });
-  body.appendChild(colsWrap);
-  scroll.appendChild(head);
-  scroll.appendChild(body);
-  wk.appendChild(scroll);
-  return wk;
-}
-
 /* The hub: wall clock, what you're on, and how long is left on it.
    It is not a bespoke card — it's the exact same card component every
    list row uses (timelineItem, stack mode), with opts.hub set. The only
@@ -5509,15 +5531,68 @@ function weekGrid(anchorDate){
    about its structure, actions, chips, or drag wiring diverges from a
    regular card; a hand-rolled parallel implementation is exactly what let
    the two drift apart before (see the CLAUDE.md history on this file). */
-function nowCard(item, winS, ppm, toY, push){
-  S.hubItem = item;
+function heroStatus(item){
   const now = new Date();
   const isToday = sameDay(S.anchor, now);
   const nowMin = minsOf(now);
   const live = isToday && item.s <= nowMin && item.e2 > nowMin;
   const overdueSlot = isToday && item.e2 <= nowMin;
-  const status = live ? "On it" : overdueSlot ? "Still open" : isToday ? "Up next" : "First up";
-  return timelineItem(item, winS, ppm, 0, 1, { mode:"stack", hub:true, status, toY, push });
+  return live ? "On it" : overdueSlot ? "Still open" : isToday ? "Up next" : "First up";
+}
+/* The hero: current's real card, rendered a second time — once here,
+   unpositioned, inside #heroSlot; once as currentMarker below, a slim
+   sliver at its true timeline position so the day above/below it still
+   reads as continuous. Reuses timelineItem verbatim (same actions, same
+   collapsible-exempt "always open" behaviour via opts.hub) rather than a
+   parallel hand-rolled card — see the historical note above on why that
+   drifted before. winS/ppm/toY/push are irrelevant here since .hero-slot
+   .time-row overrides the absolute top/height timelineItem always sets
+   (see the CSS by .hero-slot); passing 0s keeps the call shape identical
+   to every other timelineItem call site. */
+function heroCard(item){
+  S.hubItem = item;
+  const timeRow = timelineItem(item, 0, 0, 0, 1, { mode:"stack", hub:true, status:heroStatus(item), toY:m=>m, push:0 });
+  /* timelineItem's own eyebrow lands in .item-top, a sibling column beside
+     the card — hidden here (see .hero-slot .item-top CSS) since the hero
+     has no "beside the card" space to spend. Re-homed as the hero's own
+     first line instead, same status/source (heroStatus), just inside the
+     card. */
+  const card = timeRow.querySelector(".item.hub");
+  if(card){
+    card.appendChild(el("span","drain-fill"));
+    card.insertBefore(el("div","hero-eyebrow", heroStatus(item)), card.firstChild);
+  }
+  return timeRow;
+}
+/* The slim in-timeline stand-in for current — real position, real height,
+   no OPEN-CARD actions (Done/Swap/Pending/Remove — the hero already has
+   them, showing both would be the exact duplication the hero exists to
+   avoid) — just enough to keep the day's geometry honest and to carry the
+   drain wash at true scale. Still wired for drag-to-reorder
+   (wireStackDrag): dragging the current task to re-sequence it against
+   the rest of the day is a real, pre-existing capability (pushReorder),
+   not something the hero redesign meant to take away — only the hub's
+   special "always open, full actions" card treatment moved out, not its
+   place in the reorderable list. Not built via timelineItem: that always
+   renders a full open card with actions and a rail-stop, which duplicates
+   the hero. */
+function currentMarker(item, winS, ppm, toY, push){
+  const timeRow = el("div","time-row current-marker");
+  const pushPx = push || 0;
+  timeRow.style.top = (toY(item.s) + pushPx) + "px";
+  timeRow.style.height = Math.max(CARD_MIN_HEIGHT, toY(item.e2) - toY(item.s)) + "px";
+  /* hub/now: stable selector names carried over from before the hero split
+     (see the CSS comment by .item.hub) — no styling of their own, kept so
+     "which card is currently the day's focus" stays queryable by the same
+     identity everywhere, hero included. */
+  const card = el("div","item stack current hub now current-marker-card " + boardClass(item.card, item.task, item.isBreak));
+  card.appendChild(el("span","drain-fill"));
+  const n = el("span","n"); n.appendChild(bidiSpan(item.title));
+  card.appendChild(n);
+  timeRow.appendChild(card);
+  const rowId = item.card ? item.ev.id+":"+item.card.id : item.ev.id;
+  wireStackDrag(card, item, rowId);
+  return timeRow;
 }
 
 /* the hub says this itself (eyebrow + meter); list-row cards get the same
@@ -5722,11 +5797,7 @@ function timelineItem(item, winS, ppm, col, cols, opts){
 
   if(item.task){
     const key = "row:"+rowId;
-    /* Week-view chips are too narrow for a full action row — dragging and
-       resizing still work, everything else happens from Day view (tap the
-       column header to jump there), same as opening an event in real
-       Google Calendar's week view for anything beyond moving it. A
-       collapsed Day-view row is narrow on purpose too — no acts until it's
+    /* A collapsed Day-view row is narrow on purpose — no acts until it's
        the open card. */
     let acts = null;
     if(!opts.compact && !item.isBreak && isOpen){
@@ -5799,12 +5870,7 @@ function timelineItem(item, winS, ppm, col, cols, opts){
       const panel = detailPanel(item.card);
       if(panel){ wrap.appendChild(panel); wrap.classList.add("expanded"); }
     }
-    if(!stack){
-      wireItemDrag(wrap, item, winS, ppm, opts);
-      const handle = el("div","resize-handle");
-      wrap.appendChild(handle);
-      wireItemResize(handle, wrap, item, winS, ppm, opts);
-    }else{
+    {
       wireStackDrag(wrap, item, rowId);
       /* Tapping a collapsible row opens it (closing whichever other row was
          open — S.openRow holds at most one id); tapping the open one again
@@ -5870,9 +5936,9 @@ function timelineItem(item, winS, ppm, col, cols, opts){
                     inBrick ? "brick" : "",
                     inBrick && item.brickPos > 0 ? "brick-sub" : ""].filter(Boolean).join(" ");
   const railStop = el("div", railCls);
-  /* One "hh:mm" label, same shape as weekGrid's own hour labels. Split into
-     two spans only so the CSS can weight them independently if that's ever
-     wanted again; both currently render identically. */
+  /* One "hh:mm" label, split into two spans only so the CSS can weight them
+     independently if that's ever wanted again; both currently render
+     identically. */
   railStop.appendChild(el("span","t", pad2(startAt.getHours())));
   railStop.appendChild(el("span","tm", ":" + pad2(startAt.getMinutes())));
   railStop.title = fmtRange(inBrick ? startAt : item.ev.start,
@@ -5933,7 +5999,7 @@ function timelineItem(item, winS, ppm, col, cols, opts){
 
 /* Drag-to-reorder for the Day-view list — the hub card included, since
    it's just the topmost of these now. Position:static, so this isn't
-   pixel/time math like wireItemDrag: pick the card up, follow the pointer
+   pixel/time math: pick the card up, follow the pointer
    with a transform, and land it on whatever row the pointer is over. Hub
    and list rows aren't literal DOM siblings, so the order is collected by
    query instead of a sibling walk. Dropping on one calls pushReorder(),
@@ -6121,114 +6187,6 @@ function wireStackDrag(wrap, item, rowId){
   wrap.addEventListener("click", e => { if(moved){ e.stopPropagation(); e.preventDefault(); } }, true);
 }
 
-/* Drag the block to change its time, keeping duration. A small movement
-   threshold tells a drag apart from a tap, so the "▾ details" button (and
-   every other click inside the block) keeps working untouched. */
-function wireItemDrag(wrap, item, winS, ppm, opts){
-  opts = opts || {};
-  const baseDate = opts.date || startOfDay(S.anchor);
-  const columns = opts.columns || null;
-  let startY=0, startTop=0, dur=0, dragging=false, moved=false, dropDate=baseDate;
-  function eligible(e){ return !e.target.closest(".mini, .resize-handle, .details"); }
-  function onDown(e){
-    if(!eligible(e) || S.pending.has(item.ev.id) || isLockedDay(baseDate)) return;
-    startY = e.clientY; startTop = parseFloat(wrap.style.top); dur = item.e2-item.s; dragging = false;
-    dropDate = baseDate;
-    wrap.setPointerCapture(e.pointerId);
-    wrap.addEventListener("pointermove", onMove);
-    wrap.addEventListener("pointerup", onUp, { once:true });
-    wrap.addEventListener("pointercancel", onCancel, { once:true });
-  }
-  function onMove(e){
-    const dy = e.clientY - startY;
-    if(!dragging){
-      if(Math.abs(dy) < 6) return;
-      dragging = true; moved = true; S.dragBusy = true; wrap.classList.add("dragging");
-    }
-    /* clamp to the configured day window, not the (possibly wider) render
-       grid — a stray early meeting can widen the grid without widening
-       where a task is actually allowed to land */
-    const minTop = Math.max(0, (CFG.dayStart*60-winS)*ppm);
-    const maxTop = Math.max(minTop, (CFG.dayEnd*60-winS)*ppm - dur*ppm);
-    const top = Math.max(minTop, Math.min(startTop+dy, maxTop));
-    wrap.style.top = (Math.round(top/ppm/SNAP_MIN)*SNAP_MIN*ppm) + "px";
-    /* week view only: which day column the pointer is over right now decides
-       which day this lands on if released here — the item itself doesn't
-       hop columns mid-drag, only the eventual drop target changes */
-    if(columns){
-      const col = columns.find(c => {
-        const r = c.el.getBoundingClientRect();
-        return e.clientX >= r.left && e.clientX < r.right;
-      });
-      dropDate = col ? col.date : dropDate;
-      wrap.classList.toggle("cross-day", dayKey(dropDate) !== dayKey(baseDate));
-    }
-  }
-  function onUp(){
-    wrap.removeEventListener("pointermove", onMove);
-    wrap.classList.remove("dragging","cross-day"); S.dragBusy = false;
-    if(dragging){
-      const newS = winS + Math.round(parseFloat(wrap.style.top)/ppm);
-      rescheduleTo(item, atMin(dropDate,newS), atMin(dropDate,newS+dur));
-    }
-    setTimeout(()=>{ moved = false; }, 0);
-  }
-  function onCancel(){
-    wrap.removeEventListener("pointermove", onMove);
-    wrap.classList.remove("dragging","cross-day"); S.dragBusy = false;
-    if(dragging) render();
-    moved = false;
-  }
-  wrap.addEventListener("pointerdown", onDown);
-  /* swallow the click a drag-release generates, so it doesn't also fire
-     whatever's under the pointer */
-  wrap.addEventListener("click", e => { if(moved){ e.stopPropagation(); e.preventDefault(); } }, true);
-}
-
-/* Drag the bottom-edge handle to change duration, start fixed. */
-function wireItemResize(handle, wrap, item, winS, ppm, opts){
-  opts = opts || {};
-  const date = opts.date || startOfDay(S.anchor);
-  let startY=0, startH=0, dragging=false;
-  function onDown(e){
-    e.stopPropagation();
-    if(S.pending.has(item.ev.id) || isLockedDay(date)) return;
-    startY = e.clientY; startH = parseFloat(wrap.style.height); dragging = false;
-    handle.setPointerCapture(e.pointerId);
-    handle.addEventListener("pointermove", onMove);
-    handle.addEventListener("pointerup", onUp, { once:true });
-    handle.addEventListener("pointercancel", onCancel, { once:true });
-  }
-  function onMove(e){
-    const dy = e.clientY - startY;
-    if(!dragging){
-      if(Math.abs(dy) < 6) return;
-      dragging = true; S.dragBusy = true; wrap.classList.add("dragging");
-    }
-    const top = parseFloat(wrap.style.top);
-    const maxH = (CFG.dayEnd*60-winS)*ppm - top;
-    const minH = SNAP_MIN*ppm;
-    const h = Math.max(minH, Math.min(startH+dy, maxH));
-    wrap.style.height = Math.max(minH, Math.round(h/ppm/SNAP_MIN)*SNAP_MIN*ppm) + "px";
-  }
-  function onUp(){
-    handle.removeEventListener("pointermove", onMove);
-    wrap.classList.remove("dragging"); S.dragBusy = false;
-    if(dragging){
-      const top = parseFloat(wrap.style.top);
-      const newS = winS + Math.round(top/ppm);
-      const newDur = Math.max(SNAP_MIN, Math.round(parseFloat(wrap.style.height)/ppm));
-      rescheduleTo(item, atMin(date,newS), atMin(date,newS+newDur));
-    }
-  }
-  function onCancel(){
-    handle.removeEventListener("pointermove", onMove);
-    wrap.classList.remove("dragging"); S.dragBusy = false;
-    if(dragging) render();
-  }
-  handle.addEventListener("pointerdown", onDown);
-}
-
 /* Commits a drag/resize: validate, patch the block's time locally so
    render() shows the new slot immediately, and let the Google Calendar
    write land in the background (applyLocalMove/commitMove) — waiting on
@@ -6241,11 +6199,8 @@ function wireItemResize(handle, wrap, item, winS, ppm, opts){
    dragged onto a permeable meeting (חמל and friends) would happily commit —
    this closes that gap rather than only preventing the scheduler from
    doing it itself.
-   Also rejects landing on a locked day — the item's own day is already
-   guaranteed unlocked by wireItemDrag/wireItemResize refusing to start a
-   drag there, but a Week-view drag can still cross columns mid-gesture
-   into a day this widget won't build for, so the destination gets its
-   own check here. */
+   Also rejects landing on a locked day, so the destination gets its own
+   check here regardless of what started the move. */
 function rescheduleTo(item, start, end){
   if(S.pending.has(item.ev.id)) return;
   if(isLockedDay(start)){ toast("Only today and tomorrow can be scheduled.", true); render(); return; }
@@ -7785,7 +7740,10 @@ const fx = $("#fx"), fxc = fx.getContext("2d");
 let parts=[], raf=null;
 function fitFx(){ fx.width=innerWidth*devicePixelRatio; fx.height=innerHeight*devicePixelRatio; fxc.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0); }
 addEventListener("resize", fitFx); fitFx();
-function celebrate(){
+/* mult: particle-count multiplier for a bigger moment (day-complete, see
+   paintHero) — 1 for every ordinary per-task completion, unchanged. */
+function celebrate(mult){
+  mult = mult || 1;
   chime();
   if(matchMedia("(prefers-reduced-motion: reduce)").matches) return;
   const cs = getComputedStyle(document.documentElement);
@@ -7797,7 +7755,7 @@ function celebrate(){
   const host = document.querySelector(".item.hub") || document.querySelector(".state");
   const r = host ? host.getBoundingClientRect() : { left:innerWidth/2, top:innerHeight/3, width:0, height:0 };
   const ox = r.left + r.width/2, oy = r.top + r.height/2;
-  for(let i=0;i<64;i++){
+  for(let i=0;i<64*mult;i++){
     const a = Math.random()*Math.PI*2, sp = 2+Math.random()*5;
     parts.push({ x:ox, y:oy, vx:Math.cos(a)*sp, vy:Math.sin(a)*sp-2.6, r:2.4+Math.random()*3,
                  c:cols[i%cols.length], life:1, rot:Math.random()*6, shape:i%3 });
@@ -7906,16 +7864,8 @@ function goDay(n){
   syncCalendarWatch();
   render();
 }
-function goWeek(n){
-  S.anchor = addDays(S.anchor, n*7);
-  syncCalendarWatch();
-  render();
-}
-/* prev/next mean "one unit of whatever's on screen" — a day in Day view,
-   a week while Week is showing, same as Google Calendar's own prev/next */
 function stepNav(n){
   if(S.view === "pipeline" || S.view === "projects") return;   // neither has a next day to step to
-  if(S.view === "week")  return goWeek(n);
   goDay(n);
 }
 $("#prev").addEventListener("click", ()=>stepNav(-1));
@@ -8033,11 +7983,27 @@ function checkChoresTrigger(){
   const outstanding = CHORES.some(c => cs.doneOn[c.id] !== today && (choreDue(c, now) || cs.overdue[c.id]));
   if(outstanding && !document.querySelector(".scrim")) lockDialog();
 }
+/* The now-line's replacement (2026-08-26 redesign, direct request: "think
+   of something else" for showing where we are in the day). Instead of a
+   red rule crossing the page, the current task's own card fills left-to-
+   right as its minutes burn — time-remaining lives inside the thing
+   you're looking at, not as a mark across everything else. A style-only
+   write on a plain CSS var, run every second from tick() (cheap: no DOM
+   rebuild, unlike render()'s 60s full repaint) — S.hubItem is set by
+   heroCard() each render, so this always tracks whichever card is
+   current without needing its own state. */
+function tickDrain(){
+  const item = S.hubItem;
+  const pct = item ? Math.max(0, Math.min(1, (minsOf(new Date()) + new Date().getSeconds()/60 - item.s) / (item.e2 - item.s))) : 0;
+  document.documentElement.style.setProperty("--drain", (pct*100).toFixed(2) + "%");
+}
 function tick(){
   tickClockWidget();
+  tickDrain();
   checkDayRollover();
   checkChoresTrigger();
 }
+setMascot("idle");   // default before the first real paintMain sets a real state
 tick();   // paint the clock widget immediately, don't wait a full second
 setInterval(tick, 1000);
 setInterval(render, 60000);   // keep "now" honest
