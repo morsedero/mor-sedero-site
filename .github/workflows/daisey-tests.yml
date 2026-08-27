@@ -1,0 +1,69 @@
+# Runs the Daisey suite on every push/PR that touches it.
+#
+# Why this exists: the suite was thorough (31 assertion-bearing Playwright
+# scripts) but nothing ever ran it. `npm test` was the npm stub, the 37 files
+# had to be invoked one at a time against three incompatible result
+# conventions, and they read a gitignored manual copy of daisey.html that went
+# stale silently. Whole features shipped dead with the suite "green" because
+# nobody ran it. run-all.js fixes the running; this fixes the remembering.
+#
+# Note it does NOT deploy anything, but since 2026-08-27 it guards something
+# that does: Netlify runs `node tools/build-standalone.js` as its build
+# command, so a push touching tools/ now rebuilds the deployed
+# daisey/index.html. A broken build fails the whole site's deploy. This
+# workflow is the cheaper place to find that out.
+
+name: Daisey tests
+
+on:
+  push:
+    paths:
+      - "tools/daisey.html"
+      - "tools/test/**"
+      - "tools/_standalone-src/**"
+      - "tools/build-standalone.js"
+      - ".github/workflows/daisey-tests.yml"
+  pull_request:
+    paths:
+      - "tools/daisey.html"
+      - "tools/test/**"
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install dependencies
+        working-directory: tools/test
+        # No package-lock is committed for a devDependency-only package, so
+        # `npm i` rather than `npm ci`.
+        run: npm i
+
+      - name: Install Chromium
+        working-directory: tools/test
+        run: npx playwright install --with-deps chromium
+
+      - name: Run the suite
+        working-directory: tools/test
+        # run-all.js copies ../daisey.html over the gitignored test copy first,
+        # so CI always tests the committed file, never a stale snapshot.
+        # Serial on CI: these are full browser sessions with fixed timeouts
+        # rather than condition waits, and a contended runner makes them flaky.
+        run: node run-all.js --jobs=1
+
+      - name: Upload screenshots on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: daisey-screenshots
+          path: tools/test/*.png
+          retention-days: 7
+          if-no-files-found: ignore
