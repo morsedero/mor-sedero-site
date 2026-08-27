@@ -1,0 +1,109 @@
+/* Scheduling-rule assertions, checked against the engine rather than the DOM.
+   Verifies the guarantees the widget promises about a planned day. */
+const fs = require("fs"), vm = require("vm");
+const { chromium } = require("playwright");
+
+const H = fs.readFileSync(__dirname + "/harness.js", "utf8");
+const page_html = fs.readFileSync(__dirname + "/daisey.html", "utf8");
+const sb = { require, __dirname, module: { exports: {} }, exports: {}, console, process };
+vm.runInNewContext(H.split("(async () => {")[0] + "\nmodule.exports={stub};", sb);
+const BASE = sb.module.exports.stub;
+
+const REAL = JSON.parse(fs.readFileSync(__dirname + "/real-events.json", "utf8")).events
+  .map(e => JSON.parse(JSON.stringify(e).split("2026-08-14").join("2026-08-17")));
+
+const clock = t => `const R=Date;const O=new R("${t}").getTime()-R.now();
+window.Date=class extends R{constructor(...a){if(a.length===0)super(R.now()+O);else super(...a);}static now(){return R.now()+O;}};`;
+
+const SCENARIOS = [
+  { name: "light day",  stub: BASE.replace(/const DAY = [^;]+;/, 'const DAY = "2026-08-17";'), at: "2026-08-17T08:30:00+03:00" },
+  { name: "packed day", stub: BASE.replace(/const EVENTS = [^;]+;/, "const EVENTS = " + JSON.stringify(REAL) + ";"), at: "2026-08-17T08:30:00+03:00" },
+  { name: "late start", stub: BASE.replace(/const DAY = [^;]+;/, 'const DAY = "2026-08-17";'), at: "2026-08-17T17:40:00+03:00" }
+];
+
+(async () => {
+  const browser = await chromium.launch({});
+  let failures = 0;
+
+  for (const sc of SCENARIOS) {
+    const ctx = await browser.newContext({ viewport: { width: 760, height: 900 }, timezoneId: "Asia/Jerusalem" });
+    const p = await ctx.newPage();
+    const errs = [];
+    p.on("pageerror", e => errs.push(e.message));
+    await p.setContent(`<!doctype html><html><head><meta charset="utf-8"><script>${clock(sc.at)}${sc.stub}<\/script></head><body>${page_html}</body></html>`, { waitUntil: "load" });
+    await p.waitForTimeout(2800);
+
+    const r = await p.evaluate(() => {
+      const d = new Date();
+      /* Breaks are excluded: they're task-shaped blocks with deep=false, so
+         every "quick task" rule below (each gets quickTotal minutes, all
+         contiguous) would otherwise be measured against a rest block. */
+      const blocks = allEvents().filter(e => e.isTask && !e.isBreak && !e.allDay && overlapsDay(e, d))
+        .map(e => ({ n: e.summary, s: minsOf(e.start), e: minsOf(e.end), deep: e.deep,
+                     isBrick: e.isBrick, taskCount: e.cardShorts.length }));
+      /* permeable meetings are ones you've said tasks may run inside */
+      const real = allEvents().filter(e => !e.isTask && !e.allDay && overlapsDay(e, d) && !permeable(e))
+        .map(e => ({ n: e.summary, s: minsOf(e.start), e: minsOf(e.end) }));
+      const openEvs = allEvents().filter(e => !e.isTask && !e.allDay && overlapsDay(e, d) && permeable(e))
+        .map(e => ({ n: e.summary, s: minsOf(e.start), e: minsOf(e.end) }));
+      const open = openEvs.map(e => e.n);
+      const have = existingBlocks(d);
+      return { blocks, real, open, openEvs, have, winS: CFG.dayStart * 60, winE: CFG.dayEnd * 60,
+               quickTotal: CFG.quickTotal };
+    });
+
+    const ov = (a, b) => a.s < b.e && a.e > b.s;
+    const fails = [];
+
+    // 1. never on top of a meeting that blocks (permeable ones are allowed for quick tasks)
+    for (const t of r.blocks)
+      for (const m of r.real)
+        if (ov(t, m)) fails.push(`"${t.n}" ${t.s}-${t.e} overlaps meeting "${m.n}" ${m.s}-${m.e}`);
+
+    // 1b. sessions may never land inside a permeable meeting either — only quick tasks can
+    for (const t of r.blocks.filter(b => b.deep))
+      for (const m of r.openEvs)
+        if (ov(t, m)) fails.push(`session "${t.n}" ${t.s}-${t.e} overlaps permeable meeting "${m.n}" ${m.s}-${m.e}`);
+
+    // 3. task blocks never overlap each other (touching is fine — quick tasks
+    //    share one contiguous window by design)
+    for (let i = 0; i < r.blocks.length; i++)
+      for (let j = i + 1; j < r.blocks.length; j++)
+        if (ov(r.blocks[i], r.blocks[j])) fails.push(`"${r.blocks[i].n}" overlaps "${r.blocks[j].n}"`);
+
+    // 3b. quick tasks share one Google Calendar block (a "brick" — see
+    //     CLAUDE.md): the whole window is n * CFG.quickTotal minutes, n
+    //     being the number of tasks merged into it, not divided per task
+    //     and not one event per task. At most one quick block per day.
+    const q = r.blocks.filter(b => !b.deep).sort((a, b) => a.s - b.s);
+    if (q.length > 1) fails.push(`${q.length} separate quick blocks — quick tasks should merge into one`);
+    for (const t of q){
+      const want = (t.taskCount || 1) * r.quickTotal;
+      if (t.e - t.s !== want) fails.push(`"${t.n}" is ${t.e-t.s}min for ${t.taskCount} task(s), want ${want}`);
+      if (t.taskCount > 1 && !t.isBrick) fails.push(`"${t.n}" has ${t.taskCount} tasks but isBrick is false`);
+    }
+
+    // 5. everything sits inside the working window
+    for (const t of r.blocks)
+      if (t.s < r.winS || t.e > r.winE)
+        fails.push(`"${t.n}" ${t.s}-${t.e} falls outside ${r.winS}-${r.winE}`);
+
+    // 6. a long (work-day) session excludes quick tasks that day
+    if (r.have.long > 0 && r.have.quick > 0)
+      fails.push(`${r.have.quick} quick task(s) scheduled alongside a long session`);
+
+    const fmt = m => `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
+    console.log(`\n=== ${sc.name} (${sc.at.slice(11, 16)}) ===`);
+    console.log(`  page errors: ${errs.length ? errs.join(" | ") : "none"}`);
+    console.log(`  ${r.have.quick} quick · ${r.have.short} short · ${r.have.long} long · ${r.real.length} blocking` +
+      (r.open.length ? ` · open: ${r.open.join(", ")}` : ""));
+    r.blocks.sort((a, b) => a.s - b.s).forEach(t => console.log(`    ${fmt(t.s)}-${fmt(t.e)} ${t.deep ? "[session] " : ""}${t.n}`));
+    console.log(fails.length ? "  FAIL:\n" + fails.map(f => "    ✗ " + f).join("\n") : "  ✓ all rules hold");
+    failures += fails.length + errs.length;
+    await ctx.close();
+  }
+
+  await browser.close();
+  console.log(failures ? `\n${failures} failure(s)` : "\nall scenarios pass");
+  process.exit(failures ? 1 : 0);
+})();

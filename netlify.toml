@@ -1,3 +1,15 @@
+# Daisey's deployed page is GENERATED from tools/daisey.html at deploy time.
+# Before this existed, tools/ lived on a separate branch and daisey/index.html
+# was copied across by hand — the live site served a build several revisions
+# old on two separate occasions, and nobody noticed because every individual
+# step looked right. Building it here means what ships is always built from
+# the source in the same commit; there is nothing to remember and nothing to
+# forget. build-standalone.js self-checks its own output and exits non-zero on
+# a bad splice, so a broken build fails the deploy instead of shipping.
+[build]
+  command = "node tools/build-standalone.js"
+  publish = "."
+
 [functions]
   directory = "netlify/functions"
 
