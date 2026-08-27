@@ -73,20 +73,23 @@ const FIXTURE=[
          .hub-lead wrapper, so a `.rows.stack > .time-row` child selector
          silently saw 3 of 7 rows here — and missed currentMarker, which is
          exactly the row that carried a real bug during this change. The
-         hero is deliberately NOT included: it lives in #heroSlot, outside
-         #pageMain, and has its own block layout with no rail. */
+         hero is deliberately NOT included: it lives in #heroSlot, a
+         separate sibling of #pageMain (both inside #scroller since
+         2026-08-27). Each row's time now lives INSIDE its card, top-left
+         (.row-lead .t — 2026-08-27, replaces the old outside .rail-stop
+         column), so leadBox is measured off that instead of a rail. */
       const rows=[...document.querySelectorAll("#pageMain .time-row")];
       return rows.map(r=>{
         const b=r.getBoundingClientRect();
-        const rail=r.querySelector(".rail-stop");
-        const railBox=rail?rail.getBoundingClientRect():null;
+        const lead=r.querySelector(".row-lead");
+        const leadBox=lead?lead.getBoundingClientRect():null;
         const card=r.querySelector(".item, .offhours, .quiet");
         const cardBox=card?card.getBoundingClientRect():null;
         return {
           cls:r.className, min:+r.dataset.min, dur:+r.dataset.dur,
           top:b.top, bottom:b.bottom, height:b.height,
-          railText:rail?rail.textContent.trim():null,
-          railW:railBox?railBox.width:null, railH:railBox?railBox.height:null,
+          leadText:lead?lead.textContent.trim():null,
+          leadH:leadBox?leadBox.height:null,
           cardLeft:cardBox?cardBox.left:null, cardW:cardBox?cardBox.width:null,
         };
       });
@@ -127,37 +130,52 @@ const FIXTURE=[
       check(hi <= lo*3+1,
         `${tag} row heights span ${Math.round(lo)}..${Math.round(hi)}px — height must follow content, not duration (a 5h meeting must not dwarf a 15m task)`);
       /* And specifically: the 5h meeting must not be the tallest thing by
-         virtue of being long. Compare it against a 15m task directly. */
+         virtue of being long. Compare it against a 15m task directly.
+         2.2x, not 2x (2026-08-27): removing the outside rail column (see
+         .time-row's CSS) also removed a grid track that used to force EVERY
+         row in that grid to match the rail's own content height — a plain
+         15m task used to measure 44.5px purely because the rail beside it
+         needed that much room, not because the task's own content did. Now
+         .time-row is a single block column, a task's height is honestly
+         just its own content (measured: 31.5px), which is MORE correct, not
+         a regression — the meeting itself barely moved (62.9px → 65.5px,
+         just its own new in-card time badge line). The ratio grew because
+         the denominator got more honest, not because the numerator grew. */
       const long=geo.find(g=>g.dur===300), short=geo.find(g=>g.dur===15);
       if(long && short){
-        check(long.height <= short.height*2,
+        check(long.height <= short.height*2.2,
           `${tag} the 5h meeting is ${Math.round(long.height)}px against a 15m task's ${Math.round(short.height)}px — duration must not drive height`);
       }
     }
 
-    /* 4. THE RAIL STATES THE TIME, ON ONE LINE. The rail is the only clock
-          on screen now (the separate hour gutter is gone), so every timed row
-          must actually carry a readable "hh:mm". The height bound is the real
-          assertion: as a flex COLUMN the two time spans each became their own
-          flex line and the rail read "09 / :00 / 15m" vertically — confirmed
-          live, and this catches exactly that. */
+    /* 4. THE CARD STATES ITS OWN TIME, ON ONE LINE. The in-card time badge
+          (.row-lead .t, top-left corner — 2026-08-27, replaces the outside
+          rail column) is the only clock on screen now for a real task/
+          meeting row, so every one of those must actually carry a readable
+          "hh:mm". Excludes offhours/quiet — same as check 3, those state
+          their time as plain text (.offhours-start/.quiet-start), not via
+          rowLead, since they were never cards with a title to anchor a
+          badge next to. The height bound catches a badge that wraps to two
+          lines instead of staying inline beside the title, the same class
+          of bug the old rail check caught when it was a flex column. */
     for(const g of timed){
-      if(/offhours/.test(g.cls)) continue;
-      check(/\d{1,2}:\d{2}/.test(g.railText||""),
-        `${tag} row at ${g.min}min has no readable time in its rail (got ${JSON.stringify(g.railText)})`);
-      check(g.railH != null && g.railH <= 46,
-        `${tag} the rail at ${g.min}min is ${Math.round(g.railH)}px tall — the time must sit on one line above the duration, not wrap to three`);
+      if(/offhours|quiet/.test(g.cls)) continue;
+      check(/\d{1,2}:\d{2}/.test(g.leadText||""),
+        `${tag} row at ${g.min}min has no readable time in its card (got ${JSON.stringify(g.leadText)})`);
+      check(g.leadH != null && g.leadH <= 24,
+        `${tag} the time badge at ${g.min}min is ${Math.round(g.leadH)}px tall — it must sit on one line, not wrap`);
     }
 
-    /* 5. NO HORIZONTAL SPILL, AND THE CARD IS IN THE CARD COLUMN. .time-row
-          is a fixed two-track grid; a row that appends only a card puts that
-          card in the RAIL track. That is a real bug that shipped in this
-          change (currentMarker rendered as a ~52px column of vertically
-          wrapped text) — this is the assertion that catches it. */
+    /* 5. NO HORIZONTAL SPILL, AND THE CARD IS ACTUALLY WIDE. .time-row is a
+          single block column now (2026-08-27 — the old two-track rail|card
+          grid is gone), so a card can no longer land in a phantom rail
+          track the way currentMarker once did. Kept as a sanity floor: a
+          card collapsed to near-zero width would still be a real bug, just
+          a different one now. */
     for(const g of geo){
       if(g.cardW==null) continue;
       check(g.cardW > 80,
-        `${tag} a card in row ${g.cls} is only ${Math.round(g.cardW)}px wide — it has landed in the rail track instead of the card track`);
+        `${tag} a card in row ${g.cls} is only ${Math.round(g.cardW)}px wide`);
     }
     const spill=await p.evaluate(()=>{
       const d=document.documentElement;

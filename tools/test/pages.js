@@ -93,14 +93,16 @@ window.Date=class extends R{constructor(...a){if(a.length===0)super(R.now()+O);e
       render();
     });
     await p.waitForTimeout(300);
-    /* The hub card lives in #heroSlot now (2026-08-26 hero redesign), a
-       fixed flex sibling above #pageMain's own scroller — it's already
-       always on screen, no scroll-into-view needed for it. The list row
-       it's dragged onto is still inside #pageMain and can genuinely sit
-       off-screen on a tall fixture, so that half of the old scroll-fixup
-       stays. */
+    /* The hub card lives in #heroSlot (2026-08-26 hero redesign), and since
+       2026-08-27 it's inside #scroller alongside #pageMain rather than a
+       fixed sibling above it (user request: scrolling the list now carries
+       the hero too) — so it can scroll off-screen same as any list row. The
+       fixture's hero sits at the top of a short page here, so no
+       scroll-into-view is needed for it in practice; the list row being
+       dragged onto can genuinely sit off-screen on a tall fixture, so that
+       half of the old scroll-fixup stays, now against #scroller. */
     await p.evaluate(()=>{
-      const row=document.querySelector("#pageMain .rows.stack .item.stack:not(.current-marker-card):not(.meeting)"), host=document.querySelector("#pageMain");
+      const row=document.querySelector("#pageMain .rows.stack .item.stack:not(.current-marker-card):not(.meeting)"), host=document.querySelector("#scroller");
       if(row && host) host.scrollTop += row.getBoundingClientRect().top - host.getBoundingClientRect().top - 8;
     });
     const hubBox=await p.locator("#heroSlot .now").boundingBox();

@@ -112,10 +112,17 @@ const WRITE=/event|trelloWrite/;
   /* A non-hub row is collapsed by default (see CLAUDE.md's collapsible-card
      accordion note) — its action row only renders once it's the one open
      card, so the row has to be tapped open before its Remove button exists
-     to click. Unrelated to the brick-merge change; this pre-dates it. */
+     to click. Unrelated to the brick-merge change; this pre-dates it.
+     :not(.current-marker-card) (2026-08-27): currentMarker grew its own
+     .row wrapper the same day the in-card time badge replaced the outside
+     rail (see timelineItem/currentMarker), so its card now matches this
+     selector too — but it was never collapsible (no accordion, the hero
+     already shows its full detail) and has no click-to-open handler, so
+     without the exclusion this could click the always-open hub instead of
+     the actual collapsible row and never reveal a Remove button. */
   await seed();
   let rows=await openRows();
-  await p.click("#pageMain .rows.stack .item.stack:not(.meeting) .row");
+  await p.click("#pageMain .rows.stack .item.stack:not(.meeting):not(.current-marker-card) .row");
   await p.waitForTimeout(250);
   await p.click("#pageMain .rows.stack .item.stack:not(.meeting) .mini.del");
   await p.waitForTimeout(250);
@@ -155,9 +162,10 @@ const WRITE=/event|trelloWrite/;
   check((await finished()).includes("create_event"),"the replacement block should be created once released");
 
   /* ---------------------------------------------------------- Pending */
+  /* :not(.current-marker-card) — see the Remove block's comment above. */
   await seed();
   rows=await openRows();
-  await p.click("#pageMain .rows.stack .item.stack:not(.meeting) .row");
+  await p.click("#pageMain .rows.stack .item.stack:not(.meeting):not(.current-marker-card) .row");
   await p.waitForTimeout(250);
   await p.click("#pageMain .rows.stack .item.stack:not(.meeting) .mini.pend");
   await p.waitForTimeout(350);

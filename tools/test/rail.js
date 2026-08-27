@@ -1,18 +1,22 @@
-/* The Day-view time rail.
+/* The Day-view time badge and drag behaviour.
  *
  * Two things this guards, both of which failed silently before:
  *
- *  1. The rail shows a START, not a range. It used to print
- *     "11:30–12:30" per row into a 44px column — which wrapped onto two
- *     lines, and for a quick-task brick printed the *event's* whole span on
- *     every sibling, so four tasks each claimed the full hour. The times a
- *     brick's siblings show must be their own consecutive slices.
+ *  1. The card states its OWN real span, in its own top-left corner
+ *     (2026-08-27: moved from a separate outside .rail-stop column into the
+ *     card itself, Google-Calendar-chip style — see .row-lead/timelineItem).
+ *     For a quick-task brick specifically, each sibling must print its own
+ *     consecutive slice, not the *event's* whole span repeated on every row
+ *     — the historical bug this half of the file guards: four tasks each
+ *     claiming the full hour identically.
  *  2. A press-and-hold on a card is a drag, never a text selection.
  *     wireStackDrag waits ARM_MS before capturing the pointer (so a swipe can
  *     still scroll), and during that gap the browser is free to start its own
  *     long-press text selection — which wins the gesture and leaves the card
  *     unmovable with a blue highlight over its title. user-select:none on the
- *     card surface is the whole fix, so it's worth asserting it's still there.
+ *     card's time badge is the whole fix, so it's worth asserting it's still
+ *     there (previously asserted on the outside rail; the rail is gone, the
+ *     badge is now the thing that must not select).
  */
 const fs=require("fs"),vm=require("vm");const {chromium}=require("playwright");
 const H=fs.readFileSync(__dirname+"/harness.js","utf8");
@@ -35,48 +39,42 @@ window.Date=class extends R{constructor(...a){if(a.length===0)super(R.now()+O);e
   await p.waitForTimeout(200);
 
   const bad=[];
-  const r=await p.evaluate(()=>[...document.querySelectorAll(".rail-stop")].map(s=>({
-    h:(s.querySelector(".t")||{}).textContent,
-    m:(s.querySelector(".tm")||{}).textContent,
-    oclock:!!s.querySelector(".tm.oclock"),
-    brick:s.classList.contains("brick"),
-    sub:s.classList.contains("brick-sub"),
-    title:s.title,
-    text:s.textContent
-  })));
-  console.log("rail:", r.map(x=>x.h+":"+x.m).join(" · "));
+  /* Every timed stack row's card carries its own .row-lead .t badge now
+     (2026-08-27). Pull it alongside the row's dur/brickPos-derived identity
+     via the enclosing .time-row so brick siblings can still be told apart —
+     the badge itself carries no brick/brick-sub class of its own (that lived
+     on the old outside rail; the in-card badge is plain). */
+  const r=await p.evaluate(()=>[...document.querySelectorAll("#pageMain .time-row")].map(row=>{
+    const t=row.querySelector(".row-lead .t");
+    return { text:t?t.textContent:null, dur:+row.dataset.dur, min:+row.dataset.min };
+  }).filter(x=>x.text!=null));
+  console.log("time badges:", r.map(x=>x.text).join(" · "));
 
-  if(r.length<4) bad.push(`expected several rail stops, got ${r.length}`);
-  /* No row may print a range any more — that's the whole redesign. */
-  for(const s of r) if(/[–]/.test(s.text)) bad.push(`a rail stop still prints a range: "${s.text}"`);
-  /* every stop reads as a zero-padded hh:mm, same shape as weekGrid's labels */
-  for(const s of r){
-    if(!/^\d{2}$/.test(s.h||"")) bad.push(`hour not zero-padded 2 digits: "${s.h}"`);
-    if(!/^:\d{2}$/.test(s.m||"")) bad.push(`minutes should read ":mm": "${s.m}"`);
-  }
+  if(r.length<4) bad.push(`expected several time badges, got ${r.length}`);
+  /* Every stack-row badge reads as a real "hh:mm–hh:mm" span. */
+  for(const s of r) if(!/^\d{2}:\d{2}–\d{2}:\d{2}$/.test(s.text||""))
+    bad.push(`a card's time badge isn't a readable "hh:mm–hh:mm" span: "${s.text}"`);
 
-  const bricks=r.filter(x=>x.brick);
-  if(bricks.length<2) bad.push(`expected a multi-task brick in the fixture, got ${bricks.length}`);
-  const starts=bricks.map(x=>x.h+x.m);
+  /* A quick-task brick's siblings must each show their OWN consecutive
+     slice, not the shared event's whole span repeated on every row — the
+     historical bug this guards: four tasks each claiming the full hour
+     identically. Consecutive same-duration rows sharing a start minute one
+     dur-width apart is how a brick shows up in this geometry. */
+  const starts=r.map(x=>x.text.slice(0,5));
   if(new Set(starts).size!==starts.length)
-    bad.push("brick siblings repeat the same time — they must each show their own slice: "+starts.join(","));
-  if(bricks[0]&&bricks[0].sub) bad.push("the first brick stop must not be subordinate");
-  if(bricks.slice(1).some(x=>!x.sub)) bad.push("later brick stops must all be subordinate");
-  /* the full range survives as a tooltip, so nothing is actually lost */
-  if(bricks[0]&&!/–/.test(bricks[0].title||"")) bad.push("a rail stop lost its full-range title");
-  console.log(`brick run              : ${starts.join(" → ")} (titles carry full ranges)`);
+    bad.push("two rows show the identical start time — a brick sibling is repeating the shared event's span instead of its own slice: "+starts.join(","));
 
   /* --- the selection fix --- */
   const sel=await p.evaluate(()=>{
     const card=document.querySelector(".item.stack");
-    const rail=document.querySelector(".rail-stop");
+    const badge=document.querySelector(".item.stack .row-lead .t");
     const det=document.querySelector(".item.stack .details");
     const us=el=>el?getComputedStyle(el).userSelect||getComputedStyle(el).webkitUserSelect:null;
-    return { card:us(card), rail:us(rail), details:det?us(det):"(none rendered)" };
+    return { card:us(card), badge:us(badge), details:det?us(det):"(none rendered)" };
   });
-  console.log(`user-select            : card=${sel.card} rail=${sel.rail} details=${sel.details}`);
+  console.log(`user-select            : card=${sel.card} badge=${sel.badge} details=${sel.details}`);
   if(sel.card!=="none") bad.push(`a card must not be selectable (long-press would text-select instead of dragging), got "${sel.card}"`);
-  if(sel.rail!=="none") bad.push(`the rail must not be selectable, got "${sel.rail}"`);
+  if(sel.badge!=="none") bad.push(`the in-card time badge must not be selectable, got "${sel.badge}"`);
   if(sel.details!=="(none rendered)" && sel.details!=="text")
     bad.push(`an expanded card's details should stay selectable, got "${sel.details}"`);
 
@@ -197,17 +195,19 @@ window.Date=class extends R{constructor(...a){if(a.length===0)super(R.now()+O);e
     if(tdrag.cancels) bad.push(`TOUCH: the browser stole the gesture (${tdrag.cancels} pointercancel) — touchmove isn't being prevented once armed`);
 
     /* (b) a prompt swipe must still scroll the list and must NOT drag.
-       .page is the scroller — html/body are overflow:hidden, so window
-       scroll stays 0 no matter what and is useless to assert on. */
+       #scroller is the scroller (2026-08-27: it used to be .page alone, but
+       the hero moved inside it too — see .scroller's own CSS comment) —
+       html/body are overflow:hidden, so window scroll stays 0 no matter what
+       and is useless to assert on. */
     /* scrollTop=0 no longer guarantees anything is on-screen: true-to-scale
        positioning + empty-gap compression (2026-08-25 redesign) mean the
        whole fixture's schedule can sit well down the page even at the very
        top of the scroller (this fixture's own first card starts well past
        650px at scrollTop 0 — confirmed directly).
        Scroll to the MIDDLE of the available scroll range, not to a specific
-       row's centred position (2026-08-26 hero redesign): the hero now
-       occupies real vertical space above the scroller, shrinking this
-       fixture's own timeline enough that its rows sit close together near
+       row's centred position (2026-08-26 hero redesign): the hero occupies
+       real vertical space above this fixture's own timeline, shrinking how
+       much of it fits on screen enough that its rows sit close together near
        the bottom of a short scroll range — centering on tidx's row (which
        happens to sit near the list's end in this fixture) landed scrollTop
        already pinned at its true max, confirmed live, leaving zero room for
@@ -217,27 +217,27 @@ window.Date=class extends R{constructor(...a){if(a.length===0)super(R.now()+O);e
        scroller with room both ways," not that specific card, so the touch
        point is the viewport's own centre instead of a card's box. */
     await tp.evaluate(()=>{
-      const page=document.querySelector(".page");
-      page.scrollTop = Math.round((page.scrollHeight - page.clientHeight)/2);
+      const scroller=document.querySelector("#scroller");
+      scroller.scrollTop = Math.round((scroller.scrollHeight - scroller.clientHeight)/2);
     });
     await tp.waitForTimeout(150);
-    const pbox=await tp.locator(".page").boundingBox();
+    const pbox=await tp.locator("#scroller").boundingBox();
     const sx=Math.round(pbox.x+pbox.width*0.55), sy=Math.round(pbox.y+pbox.height/2);
-    const before=await tp.evaluate(()=>document.querySelector(".page").scrollTop);
+    const before=await tp.evaluate(()=>document.querySelector("#scroller").scrollTop);
     const room=Math.min(before, 144);   // only need enough real scroll room for the swipe's own 144px pull
     await cdp.send("Input.dispatchTouchEvent",{type:"touchStart",touchPoints:[{x:sx,y:sy}]});
     for(let i=1;i<=8;i++){await cdp.send("Input.dispatchTouchEvent",{type:"touchMove",touchPoints:[{x:sx,y:sy-i*18}]});await tp.waitForTimeout(12);}
     const swipeDragged=await tp.evaluate(()=>!!document.querySelector(".item.stack.stack-dragging"));
     await cdp.send("Input.dispatchTouchEvent",{type:"touchEnd",touchPoints:[]});
     await tp.waitForTimeout(500);
-    const after=await tp.evaluate(()=>document.querySelector(".page").scrollTop);
+    const after=await tp.evaluate(()=>document.querySelector("#scroller").scrollTop);
     console.log(`touch swipe            : scrollTop ${before}->${after} (room ${room}px) dragged=${swipeDragged}`);
     if(room > 20 && after <= before) bad.push("TOUCH: a prompt swipe no longer scrolls the list");
     if(swipeDragged) bad.push("TOUCH: a prompt swipe dragged a card instead of scrolling");
   }
 
   console.log("page errors:",errs.length?errs.join(" | "):"none");
-  console.log(bad.length?"FAIL:\n  x "+bad.join("\n  x "):"OK rail: week-style gutter, brick slices distinct, touch drags and swipes both work");
+  console.log(bad.length?"FAIL:\n  x "+bad.join("\n  x "):"OK rail: in-card time badges, brick slices distinct, touch drags and swipes both work");
   await b.close();
   process.exit(bad.length+errs.length?1:0);
 })();

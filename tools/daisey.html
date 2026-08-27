@@ -290,29 +290,30 @@ html,body{overflow:hidden;}
    tickClockWidget, which no longer slices DOW. */
 .clockw{
   flex:0 0 auto;
-  display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:2px;
+  display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:1px;
   background:var(--glass,var(--surface));backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
-  border:1.5px solid var(--line);border-radius:18px;
-  padding:8px 14px;box-shadow:var(--shadow);
+  border:1.5px solid var(--line);border-radius:16px;
+  padding:6px 12px;box-shadow:var(--shadow);
 }
-.clockw .cw-date{display:flex;align-items:baseline;gap:6px;line-height:1.1;white-space:nowrap;}
+.clockw .cw-date{display:flex;align-items:baseline;gap:5px;line-height:1.1;white-space:nowrap;}
 .clockw .cw-dow{
-  font-family:var(--font-body);font-size:12px;font-weight:900;letter-spacing:.02em;
+  font-family:var(--font-body);font-size:10.5px;font-weight:900;letter-spacing:.02em;
   color:var(--ink-2);
 }
-.clockw .cw-day{font-family:var(--font-body);font-size:12px;font-weight:800;color:var(--ink-3);white-space:nowrap;}
+.clockw .cw-day{font-family:var(--font-body);font-size:10.5px;font-weight:800;color:var(--ink-3);white-space:nowrap;}
 .clockw .cw-time{
-  font-family:var(--font-display);font-size:30px;font-variant-numeric:tabular-nums;
+  font-family:var(--font-display);font-size:22px;font-variant-numeric:tabular-nums;
   font-weight:900;letter-spacing:-.03em;line-height:1;color:var(--ink);white-space:nowrap;
 }
-.clockw .cw-sec{font-family:var(--mono);font-size:13px;font-weight:700;color:var(--ink-3);margin-left:2px;}
-/* A full weekday name plus a 30px clock is a lot of width on a small phone;
-   step both down rather than let the top bar wrap. */
+.clockw .cw-sec{font-family:var(--mono);font-size:11px;font-weight:700;color:var(--ink-3);margin-left:2px;}
+/* A full weekday name plus the clock is still a lot of width on a small
+   phone even after the base shrink above; step down again so line 1
+   (clock + logo) never wraps. */
 @media (max-width:400px){
-  .clockw{padding:6px 11px;border-radius:16px;}
-  .clockw .cw-dow,.clockw .cw-day{font-size:11px;}
-  .clockw .cw-time{font-size:25px;}
-  .clockw .cw-sec{font-size:11px;}
+  .clockw{padding:5px 10px;border-radius:14px;}
+  .clockw .cw-dow,.clockw .cw-day{font-size:9.5px;}
+  .clockw .cw-time{font-size:19px;}
+  .clockw .cw-sec{font-size:10px;}
 }
 
 .dash-right{display:flex;align-items:center;gap:7px;flex:0 0 auto;}
@@ -321,44 +322,62 @@ html,body{overflow:hidden;}
    to a four-tab switcher on a phone — the whole centre group drops out and
    the board names itself inside the view instead. */
 .dash.pipe-mode .dash-center{display:none;}
-/* THE DASH WRAPS TO TWO ROWS ON A PHONE (2026-08-24, user report: "the 2nd
-   line of the app is crowded, rebuild and the arrows are colliding, and I
-   can't see the current day I'm working on").
-   Three groups — switcher, date+arrows, pill+rebuild — do not fit in ~390px,
-   and the switcher grew a third tab (Projects) which pushed it over for good.
-   `.dash-center` is absolutely positioned against the *viewport* centre, so
-   it has no idea how wide its siblings are: measured at 390px it overlapped
-   the pill by 197px, and the date itself was ellipsized down to nothing —
-   which is exactly the "can't see the current day" half of the report.
-   Earlier passes tried to make three groups share one row (static
-   positioning, then flex:1 + min-width:0 so the date compresses). Both just
-   moved the failure: the row stopped overflowing, so `chrome.js`'s
-   bodyOverflow check went quiet, while the date silently clipped and the
-   groups still overlapped. Compressing the one element that carries the
-   day's identity is the wrong thing to give up.
-   So on phones the date nav gets its own full-width row underneath, where
-   it has room to render "Monday 17 Aug" whole and centred with both arrows
-   pinned to the edges. `.dash` is the wrap container; order:1/2/3 keeps
-   switcher and pill on the first line with the date below. */
+/* THE DASH IS ONE ROW ON A PHONE (2026-08-27, user request: "move current
+   day with arrows to 2nd line, no 3rd line" — the topbar clock+logo is line
+   1, so .dash must fit switcher + date/arrows + pill/rebuild into a single
+   line 2, not two).
+   This used to wrap to two internal rows (2026-08-24 fix, history below),
+   because three groups didn't fit ~390px when the switcher still held a
+   Day/Week/Projects trio. That's no longer the shape: the "Day" tab is gone
+   and Projects only ever shows for the author (see CLAUDE.md, "Projects tab
+   hides when there's no batchBoardKey") — for every other viewer #viewSwitch
+   is empty and collapses to 0 width, so it's really just two groups (date
+   nav, pill/rebuild) fighting for the row, which is the case static
+   positioning always handled fine. Author-viewing-Projects is the one case
+   that still has three groups; the date is allowed to compress there rather
+   than force a second line, since a same-width switcher makes the row
+   objectively tighter only for the one viewer who chose to add that tab.
+   `.dash-center` drops out of absolute positioning (which measures nothing
+   about its siblings — the original 2026-08-24 bug) and becomes a normal
+   flex item with min-width:0, so it shrinks instead of overlapping. */
 @media (max-width:520px){
-  .dash{flex-wrap:wrap;row-gap:10px;}
-  #viewSwitch{order:1;}
-  .dash-right{order:2;margin-inline-start:auto;}
-  /* full width, its own line, back in normal flow */
+  .dash{flex-wrap:nowrap;}
   .dash-center{
-    order:3;position:static;left:auto;transform:none;
-    flex:1 0 100%;min-width:0;
-    display:flex;align-items:center;justify-content:space-between;gap:6px;
+    position:static;left:auto;transform:none;
+    flex:1 1 auto;min-width:0;
+    display:flex;align-items:center;justify-content:center;gap:4px;
   }
-  /* arrows pin to the row's edges, date takes the middle */
   .dash-center .date{flex:1 1 auto;min-width:0;justify-content:center;}
-  .dash-center .date h1{font-size:15px;}
+  /* min-width:0 + max-width:100% is load-bearing: without it a nowrap h1
+     never shrinks below its own text width no matter what its flex
+     container does, so overflow:hidden;text-overflow:ellipsis had nothing
+     to actually clip against (confirmed live: scrollWidth stayed > clientWidth
+     with the ellipsis never rendering). */
+  .dash-center .date h1{font-size:15px;overflow:hidden;text-overflow:ellipsis;min-width:0;max-width:100%;}
 }
-/* Very narrow (small Android, older SE): the switcher's three tabs plus the
-   pill still just fit, but only with the tab padding trimmed. */
+/* Very narrow (small Android, older SE): trim padding so date nav still
+   has room next to the pill. */
 @media (max-width:340px){
   .segmented button{padding:5px 6px;font-size:10.5px;}
-  .dash-center .date h1{font-size:14px;}
+  .dash-center .date h1{font-size:12px;}
+  .dash-right .progress-pill{padding-left:8px;padding-right:8px;}
+  /* The one combination that genuinely can't fit one line: the Projects tab
+     (author only) plus a 320px phone. Measured: even the date abbreviated
+     to "Mon 17 Aug" at the smallest still-legible font needs ~53-70px, but
+     only ~33-45px is left once the switcher, both arrows and the pill claim
+     their share — no font step closes that gap without the date becoming
+     unreadably small (confirmed: even 9px, arguably already too small,
+     didn't fit). Falls back to the pre-2026-08-27 two-row dash, but ONLY
+     when the switcher actually has a tab in it (.has-switcher, set by
+     paintHeader) — every other viewer, and the same viewer above 340px,
+     keeps the one-line dash. */
+  .dash.has-switcher{flex-wrap:wrap;row-gap:8px;}
+  .dash.has-switcher #viewSwitch{order:1;}
+  .dash.has-switcher .dash-right{order:2;margin-inline-start:auto;}
+  .dash.has-switcher .dash-center{
+    order:3;flex:1 0 100%;
+    display:flex;align-items:center;justify-content:space-between;gap:6px;
+  }
 }
 /* the gamified bit: a solid, badge-like fraction instead of two quiet stats */
 .progress-pill{
@@ -389,46 +408,36 @@ html,body{overflow:hidden;}
   .rebuild:active{transform:rotate(50deg) scale(.93);}
 }
 
-/* the one thing allowed to scroll — everything above it is fixed chrome */
-.page{flex:1 1 auto;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;}
+/* .scroller is the one thing allowed to scroll — everything above it (topbar,
+   dash) is fixed chrome. It wraps the hero AND #pageMain together
+   (2026-08-27, user request: "sliding down the app should also affect main
+   card" — the hero used to be a fixed sibling ABOVE the scroller, so it
+   never moved at all while the list scrolled under it). #heroSlot stays a
+   separate sibling of #pageMain, not nested inside it, on purpose:
+   paintMain() does `host.innerHTML=""` on #pageMain every render, which
+   would destroy #heroSlot's own DOM node (and paintHero's $("#heroSlot")
+   lookup with it) if it lived inside that subtree — the two are rebuilt by
+   separate functions and must stay separate elements. .page itself goes
+   back to normal flow; only the wrapper scrolls now. */
+.scroller{flex:1 1 auto;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;}
+.page{display:block;}
 
 /* ---------------------------------------------------------------- hero
-   The current task, broken out of the timeline into its own always-visible
-   card (2026-08-26 redesign, direct request: "needs to know what is the
-   current task, make it big, bold, and outstand the other cards"). A flex
-   sibling of #pageMain, OUTSIDE its scroller — see the body shell — so it's
-   structurally sticky with no position:sticky/z-index needed at all
-   (CLAUDE.md's documented overlay hazard is about an element trying to sit
-   BEHIND a card via negative z-index; this is a plain in-flow sibling that
-   overlaps nothing, a different shape of problem entirely).
-   heroCard() renders the exact same .item.hub timelineItem always has. */
-.hero-slot{flex:0 0 auto;margin-bottom:10px;}
+   The current task, broken out of the timeline into its own card (2026-08-26
+   redesign, direct request: "needs to know what is the current task, make
+   it big, bold, and outstand the other cards"). A plain block sibling of
+   #pageMain INSIDE .scroller (2026-08-27: it used to sit above the scroller
+   as a permanently-pinned flex sibling — see .scroller's own comment for why
+   that changed, direct user request: "sliding down the app should also
+   affect main card"). heroCard() renders the exact same .item.hub
+   timelineItem always has. */
+.hero-slot{margin-bottom:10px;}
 .hero-slot:empty{display:none;}
-/* The hero KEEPS .time-row's grid and shows its rail (2026-08-26, user
-   request: "main card should be the same size horizontally as the other
-   cards, keeping space for the time (start-end) to show on its left, like
-   the rest"). It used to be display:block with the rail hidden, so its card
-   started at x=0 while every list card started 62px in — the one card meant
-   to dominate was also the only one out of alignment.
-   Note why the old comment here warned against the grid: hiding .rail-stop
-   with display:none removes it from grid placement, which shoves .card-col
-   into the empty FIRST track (confirmed live at 10px wide). That trap is
-   avoided by keeping the rail rather than by abandoning the grid. */
-.hero-slot .time-row{display:grid;}
-/* width:100% is load-bearing here in a way it wasn't before the hero kept
-   its rail (2026-08-27 fix): .card-col is a flex container with no width of
-   its own, so as the second track of a CSS grid it sized to its CONTENT
-   instead of filling the track — the hero card measured 226px inside a
-   288px slot on a 320px phone, ~62px narrower than it should be, with
-   nothing visibly wrong (no overflow, just a card too narrow for its
-   title). min-width:0 alone only allows shrinking; it doesn't request
-   filling. */
-.hero-slot .card-col{min-width:0;width:100%;}
-/* Hero-scale rail to match hero-scale type, still in the same 52px track so
-   the times line up down the page with every list row below. */
-.hero-slot .rail-stop{padding-top:16px;}
-.hero-slot .rail-stop .t,.hero-slot .rail-stop .tm{font-size:14px;font-weight:800;color:var(--ink);}
-.hero-slot .rail-stop .rail-end{font-size:12px;font-weight:700;margin-top:3px;}
+/* The hero's card fills its slot full-width, same as every list card
+   (2026-08-27: the rail column is gone, so there's no second grid track to
+   fill against any more — .time-row is a single block column now, see its
+   base CSS). Time (start-end) is stated inside the card's own top-left
+   corner via .row-lead, styled hero-scale just below. */
 .hero-slot .item-top{display:none;}    /* eyebrow moves into the card itself below */
 .hero-slot .item.hub{
   border-radius:20px;box-shadow:var(--shadow-lg);
@@ -452,24 +461,12 @@ html,body{overflow:hidden;}
   text-transform:uppercase;color:var(--bc,var(--accent-ink));padding:14px 18px 0;
 }
 /* The hero on a real phone (2026-08-27, user report: "main card is too big
-   for phone, also text inside it"). Two real, separate costs stacked:
-   at 320px the rail+gap (52px+10px) already claims ~19% of the whole
-   viewport before the card itself starts, and the -4px title shrink below
-   this was never enough for a genuinely long title at 30px bold — a normal
-   task name still wrapped to 3-4 lines. Neither is a bug (nothing overflows
-   the screen), just too much of a small screen spent on one card.
-   Two changes: the rail track narrows (44px, still legible, still lines up
-   with the list below it) reclaiming real width for the card; the title
-   drops further (-8px, not -4px) and gets a lower line-height so 3-4 lines
-   costs noticeably less height. Both scoped to the hero only — list-row
-   type and the shared 52px rail track are unchanged, so nothing below the
-   hero moves. */
+   for phone, also text inside it"). The -4px title shrink below this was
+   never enough for a genuinely long title at 30px bold — a normal task name
+   still wrapped to 3-4 lines. Not a bug (nothing overflows the screen), just
+   too much of a small screen spent on one card. Scoped to the hero only. */
 @media (max-width:420px){
   .hero-slot .item.hub .row .n{font-size:calc(var(--t-hero) - 8px);line-height:1.08;}
-  .hero-slot .time-row{grid-template-columns:44px minmax(0,1fr);}
-  .hero-slot .rail-stop{padding-top:14px;}
-  .hero-slot .rail-stop .t,.hero-slot .rail-stop .tm{font-size:12.5px;}
-  .hero-slot .rail-stop .rail-end{font-size:11px;}
   /* The action row (Done/Swap/Remove) was costing nearly as much height as
      the whole timeline row underneath it — smaller circles, tighter gaps
      and padding recover real space without touching the title at all. */
@@ -526,8 +523,8 @@ html,body{overflow:hidden;}
 /* drag-to-reorder in the Day-view list — the hub included, it's just the
    topmost of the same cards now, so one rule covers both. The card itself
    (.item.stack) gets the visual lift; the actual dragged/pushed transforms
-   land on .time-row (wireStackDrag's dragEl) so a card's rail-stop travels
-   with it instead of being left behind. */
+   land on .time-row (wireStackDrag's dragEl), the whole row including its
+   in-card time badge. */
 .item.stack.stack-dragging{
   cursor:grabbing;box-shadow:var(--shadow-lg);z-index:30;transition:none;
   pointer-events:none;
@@ -718,7 +715,7 @@ html,body{overflow:hidden;}
    gone; the rule is not, since removing it changes nothing and risks
    reparenting whatever else resolves against it.) The
    drag/push transform itself now lands on the enclosing .time-row (below),
-   not here — a card's rail-stop has to travel with it. */
+   not here — the row's in-card time badge has to travel with it. */
 /* pan-y overrides the plain .item rule's touch-action:none — Day-list
    reorder only starts once wireStackDrag's own intent check confirms a real drag
    (see its pointerdown/pointermove), so the browser is free to handle a
@@ -822,39 +819,15 @@ html,body{overflow:hidden;}
 .item.stack.collapsed .chip{font-size:10px;padding:2px 7px;}
 .item.stack.collapsed .card-link{display:none;}
 
-/* Stack mode's own time column: a rail-stop (dot + time) sits to the left
-   of every card, outside it, in a fixed-width track — the hub included, so
-   the whole day lines up in one glanceable column regardless of how small
-   a card recedes. transition lives here now, not on .item.stack, since
-   this is what wireStackDrag actually transforms during a drag/push. */
-/* The time rail — start times only.
-   It used to print a full "11:30–12:30" range per row into a 44px track:
-   eleven characters in a column too narrow for them, so every time wrapped
-   onto two lines, centred, at 10.5px grey. Four of those in a row (a quick-
-   task brick, where every sibling shares one window) was a block of mush.
-   The fix isn't a smaller font, it's less information: a vertical schedule
-   already encodes "until" as the next row's start, so an end time is
-   redundant on all but the last item — which the day's own end covers. So
-   the rail states one number per row, and spends the width it saves on
-   making that number legible instead of cramped.
-   Right-aligned, not centred: the card edge is the shared vertical line the
-   eye tracks down, and ragged-centre times fight it. */
-/* Day view has ONE time column — the real hour gutter to the left of every
-   row (see .day-grid), same style as Google Calendar. Each row used to carry
-   its own 46px time label as well, from back when there was no gutter to
-   carry it; keeping both meant two time columns side by side, 102px of a
-   390px phone gone before a card started. So the row's first column is now
-   a narrow 10px strip holding only the duration bar, and the per-row time
-   label is hidden (it stays in the DOM, and in the rail's `title`, because
-   a nested row IS indented away from the gutter and needs its own start on
-   hover — see .nest). */
-/* One row = one thing on the day. Column 1 is the time rail (start time
-   over duration), column 2 is the card. 52px is measured, not picked: it
-   fits "09:15" at 12px/600 plus "15m" at 10px beneath it without either
-   wrapping, at every width down to 320. */
+/* One row = one thing on the day, one column wide (2026-08-27, user
+   request: put the start-end time INSIDE the card's top-left corner,
+   Google-Calendar-chip style, instead of in a separate rail column outside
+   it). The rail used to be a fixed 52px first grid track; cards now start
+   flush at the row's own left edge and carry their own time via
+   `rowLead`'s `.t` (see timelineItem/quietGap/offHoursCard/heroCard). */
 .time-row{
-  display:grid;grid-template-columns:52px minmax(0,1fr);column-gap:10px;
-  align-items:start;transition:transform .15s;
+  display:block;
+  transition:transform .15s;
   position:relative;
 }
 /* Nested under a permeable meeting — see timelineItem's opts.indent. A real
@@ -862,24 +835,6 @@ html,body{overflow:hidden;}
    because an absolutely-positioned row resolved against .rows.stack rather
    than its own .nest parent. */
 .time-row.indent{margin-left:14px;}
-/* The rail states the time — there is no separate gutter any more, so these
-   are the only clock labels on screen and they carry real weight. */
-.time-row .rail-stop .t,.time-row .rail-stop .tm{
-  display:inline;font-family:var(--mono);font-size:12px;font-weight:600;
-  color:var(--ink-2);letter-spacing:-.02em;line-height:1;
-}
-/* The end of the span, under its start. A real time, so it gets real
-   weight — just a step quieter than the start, which is the one you scan
-   for. Replaced a duration chip ("15m"); see timelineItem's rail block. */
-.time-row .rail-stop .rail-end{
-  font-family:var(--mono);font-size:11px;font-weight:600;
-  color:var(--ink-3);line-height:1;letter-spacing:-.02em;
-}
-/* A brick sibling's own start still reads as part of one run, one step
-   down in weight from the run's first stop. */
-.time-row .rail-stop.brick-sub .t,.time-row .rail-stop.brick-sub .tm{
-  font-weight:500;color:var(--ink-3);
-}
 /* .time-row.hub's own margin-bottom is gone (2026-08-25 redesign) — rows
    are absolutely positioned by real time now, so an extra margin on one
    row type would just be a stray offset, not meaningful spacing. */
@@ -895,38 +850,10 @@ html,body{overflow:hidden;}
 .card-col{min-width:0;display:flex;align-items:flex-start;gap:6px;}
 .card-col > .item{flex:1 1 auto;min-width:0;}
 .card-col > .item-top{align-self:stretch;}
-/* selection suppressed for the same reason as .item.stack — the rail travels
-   with the card during a drag, so a hold that lands on the time must not
-   start selecting it either */
-/* The rail: start time above duration, right-aligned against the card it
-   labels. Column direction, NOT the row/baseline flex this used to be —
-   that was written when the rail held only a hidden time and the real hours
-   lived in a separate gutter. It's the only clock on screen now, so it
-   stacks its two facts instead of trying to fit them side by side in a
-   narrow column (which is what made "09:00" wrap to three lines). */
-/* A plain BLOCK, not a flex column. ".t" and ".tm" are two spans purely so
-   CSS can weight the hour and minutes apart — in a flex container each
-   became its own flex line and the time read vertically ("09 / :15 / 15m",
-   confirmed live). Block layout keeps the two inline spans on one line and
-   lets .dur, a block, take the line beneath, which is exactly the shape
-   wanted with none of the fighting. */
-.rail-stop{
-  position:relative;
-  padding-top:9px;text-align:right;
-  -webkit-user-select:none;user-select:none;-webkit-touch-callout:none;
-}
-.rail-stop > .rail-end{display:block;margin-top:2px;}
-/* deliberately identical to .tl-hours .hl — same family, size, weight and
-   colour, so the two views' times are visibly the same object */
-.rail-stop .t,.rail-stop .tm{
-  font-family:var(--mono);font-size:10px;font-weight:700;
-  font-variant-numeric:tabular-nums;color:var(--ink-3);line-height:1;
-}
-/* The 9px dashed stub that used to reach from each label to its card is
-   GONE: real full-width .grid-line rules now carry every hour across the
-   rows behind the cards, so a per-row stub is both redundant and actively
-   misleading — inside a .nest the rail is indented 36px, and the stub made
-   that read as a misalignment against the true hour line. */
+/* The card's own time badge (.row-lead .t, see .row CSS below) is
+   unselectable for the same reason .item.stack is — a hold that lands on
+   the time must arm a drag, never a text selection. */
+.row-lead .t{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;}
 
 /* ---- off the clock ----------------------------------------------------
    The stretch between the end of the working day and a calendar event later
@@ -951,13 +878,18 @@ html,body{overflow:hidden;}
   border:1px dashed var(--line-2);border-radius:12px;
   padding:9px 13px;background:transparent;
 }
+/* the card's own start time, left anchor — 2026-08-27, replaces the outside
+   rail column every card used to get its start from */
+.quiet-start{
+  font-family:var(--mono);font-size:11px;font-weight:600;color:var(--ink-3);
+  opacity:.7;letter-spacing:-.02em;flex:0 0 auto;
+}
 .quiet-k{
   font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;
   color:var(--ink-3);opacity:.8;
 }
 .quiet-span{font-size:13px;font-weight:700;color:var(--ink-2);}
 .quiet-until{font-size:12px;font-weight:500;color:var(--ink-3);opacity:.75;margin-left:auto;}
-.quiet-row .rail-stop .t,.quiet-row .rail-stop .tm{color:var(--ink-3);opacity:.7;font-weight:500;}
 
 .offhours{
   position:relative;overflow:hidden;min-width:0;
@@ -974,6 +906,13 @@ html,body{overflow:hidden;}
   pointer-events:none;
 }
 .offhours-body{position:relative;display:flex;flex-direction:column;gap:2px;min-width:0;}
+/* the card's own start time, left anchor — 2026-08-27, replaces the outside
+   rail column; recedes, since the card's own "off the clock" message is the
+   interesting part, not the exact minute */
+.offhours-start{
+  font-family:var(--mono);font-size:11px;font-weight:600;opacity:.6;
+  letter-spacing:-.02em;
+}
 .offhours-k{
   font-size:10px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;
   opacity:.75;
@@ -983,8 +922,6 @@ html,body{overflow:hidden;}
   line-height:1.1;
 }
 .offhours-until{font-size:12px;font-weight:600;opacity:.85;overflow-wrap:anywhere;}
-/* the rail time for this row recedes — the card says the interesting part */
-.rail-stop.offhours-stop .t,.rail-stop.offhours-stop .tm{opacity:.6;}
 /* no margin nudge — anchorRows owns every row's vertical position now */
 
 /* tasks scheduled inside a permeable meeting nest under it, so "חמל, and
@@ -1777,8 +1714,10 @@ html,body{overflow:hidden;}
     </div>
   </div>
 
-  <div class="hero-slot" id="heroSlot"></div>
-  <main class="page" id="pageMain"><div class="skel"></div></main>
+  <div class="scroller" id="scroller">
+    <div class="hero-slot" id="heroSlot"></div>
+    <main class="page" id="pageMain"><div class="skel"></div></main>
+  </div>
 </div>
 
 <div class="toasts" id="toasts"></div>
@@ -4494,11 +4433,11 @@ function agenda(){
         const evS = minsOf(e.start);
         return cards.map((card,i) => ({
           ev:e, card, cards, isBrick:true,
-          /* Position within the brick. The rail reads this to state the
+          /* Position within the brick. timelineItem reads this to state the
              shared window once (on sibling 0) and give every sibling its
-             own start — see timelineItem's rail-stop. Kept distinct from
-             plain array order because the rows can be reordered/split by a
-             drag before they reach the rail. */
+             own start, in its in-card time badge. Kept distinct from plain
+             array order because the rows can be reordered/split by a drag
+             before they reach render. */
           brickPos: i,
           task:e.isTask, isBreak:false,
           title: card.name,
@@ -4701,6 +4640,10 @@ function paintHeader(){
   }
   /* if the tab vanished under a viewer sitting on it, don't strand them */
   if(!wantProjects && S.view === "projects"){ S.view = "day"; }
+  /* Lets .dash's own CSS tell "switcher actually has a tab" from "switcher
+     is empty" (see the ≤340px fallback below .dash-center's CSS) — a plain
+     width media query can't see a sibling's content. */
+  $("#dash").classList.toggle("has-switcher", wantProjects);
 
   /* Two views have no date to show and nothing for prev/next to step
      through — Pipeline is the state of a board, Projects is the state of a
@@ -4716,7 +4659,18 @@ function paintHeader(){
   if(dateless){
     $("#dateRel").textContent = "";
   }else{
-    $("#dateLabel").textContent = `${DOW[d.getDay()]} ${d.getDate()} ${MON[d.getMonth()]}`;
+    /* Below the same 520px breakpoint the dash's own CSS already treats as
+       "phone" (see .dash-center's media query), the full weekday name is
+       one of the things standing between the date and fitting on the dash's
+       one line — measured at 320px with the Projects tab visible (author
+       only): "Monday 17 Aug" needs 95px, but only ~117px is left for the
+       whole date+arrows group once the switcher and pill claim their share,
+       and the arrows alone need 64px of that. Three letters is still enough
+       to name the day; the full name is kept everywhere wider, where there's
+       room to spare (2026-08-27, user request). */
+    const narrow = matchMedia("(max-width:520px)").matches;
+    const dow = narrow ? DOW[d.getDay()].slice(0,3) : DOW[d.getDay()];
+    $("#dateLabel").textContent = `${dow} ${d.getDate()} ${MON[d.getMonth()]}`;
     const delta = daysBetween(today, d);
     $("#dateRel").textContent = delta===0 ? "" : delta>0 ? `+${delta}` : String(delta);
   }
@@ -5677,15 +5631,12 @@ function quietGap(fromMin, toMin){
   const row = el("div","time-row quiet-row");
   row.dataset.min = fromMin;
   row.dataset.dur = toMin - fromMin;
-  const rail = el("div","rail-stop quiet-stop");
   const at = atMin(S.anchor, fromMin);
-  rail.appendChild(el("span","t", pad2(at.getHours())));
-  rail.appendChild(el("span","tm", ":" + pad2(at.getMinutes())));
-  row.appendChild(rail);
   const mins = toMin - fromMin;
   const h = Math.floor(mins/60), m = mins%60;
   const span = h ? (m ? `${h}h ${m}m` : `${h}h`) : `${m}m`;
   const card = el("div","quiet");
+  card.appendChild(el("span","quiet-start", hhmm(at)));
   card.appendChild(el("span","quiet-k","Free"));
   card.appendChild(el("span","quiet-span", span));
   card.appendChild(el("span","quiet-until","until " + hhmm(atMin(S.anchor, toMin))));
@@ -5697,20 +5648,16 @@ function offHoursCard(gap, winS, ppm){
   row.dataset.min = gap.s;
   row.dataset.dur = gap.e2 - gap.s;
 
-  const rail = el("div","rail-stop offhours-stop");
   const at = atMin(S.anchor, gap.s);
-  rail.appendChild(el("span","t", pad2(at.getHours())));
-  rail.appendChild(el("span","tm", ":" + pad2(at.getMinutes())));
-  rail.title = fmtRange(at, atMin(S.anchor, gap.e2));
-  row.appendChild(rail);
-
   const mins = gap.e2 - gap.s;
   const h = Math.floor(mins/60), m = mins%60;
   const span = h ? (m ? `${h}h ${m}m` : `${h}h`) : `${m}m`;
 
   const card = el("div","offhours");
+  card.title = fmtRange(at, atMin(S.anchor, gap.e2));
   card.appendChild(el("span","offhours-glow"));
   const body = el("div","offhours-body");
+  body.appendChild(el("div","offhours-start", hhmm(at)));
   body.appendChild(el("div","offhours-k","Off the clock"));
   body.appendChild(el("div","offhours-span", span + " free"));
   /* Name what's on the other side — the gap is only interesting because
@@ -5776,29 +5723,24 @@ function heroCard(item){
    not something the hero redesign meant to take away — only the hub's
    special "always open, full actions" card treatment moved out, not its
    place in the reorderable list. Not built via timelineItem: that always
-   renders a full open card with actions and a rail-stop, which duplicates
-   the hero. */
+   renders a full open card with actions, which duplicates the hero. */
 function currentMarker(item, winS, ppm){
   const timeRow = el("div","time-row current-marker");
-  /* A rail of its own, like every other row. .time-row is a fixed two-track
-     grid (rail | card), so a row that appends only a card puts that card in
-     the RAIL track — confirmed live: the marker rendered as a ~52px-wide
-     column of vertically-wrapped text. It also has a real start time worth
-     stating, since the hero above states its own range separately. */
-  const rail = el("div","rail-stop " + boardClass(item.card, item.task, item.isBreak) + listClass(item.card));
-  const at = atMin(S.anchor, item.s);
-  rail.appendChild(el("span","t", pad2(at.getHours())));
-  rail.appendChild(el("span","tm", ":" + pad2(at.getMinutes())));
-  rail.appendChild(el("span","rail-end", hhmm(atMin(S.anchor, item.e2))));
-  timeRow.appendChild(rail);
   /* hub/now: stable selector names carried over from before the hero split
      (see the CSS comment by .item.hub) — no styling of their own, kept so
      "which card is currently the day's focus" stays queryable by the same
      identity everywhere, hero included. */
   const card = el("div","item stack current hub now current-marker-card " + boardClass(item.card, item.task, item.isBreak) + listClass(item.card));
   card.appendChild(el("span","drain-fill"));
+  /* Real start time worth stating on its own, since the hero above states
+     its own range separately — now in-card, top-left, like every other
+     stack row (2026-08-27, see timelineItem's rowLead call). */
+  const at = atMin(S.anchor, item.s);
+  const r = el("div","row");
+  r.appendChild(rowLead(hhmm(at) + "–" + hhmm(atMin(S.anchor, item.e2)), null));
   const n = el("span","n"); n.appendChild(bidiSpan(item.title));
-  card.appendChild(n);
+  r.appendChild(n);
+  card.appendChild(r);
   timeRow.appendChild(card);
   const rowId = item.card ? item.ev.id+":"+item.card.id : item.ev.id;
   wireStackDrag(card, item, rowId);
@@ -5986,17 +5928,21 @@ function timelineItem(item, winS, ppm, col, cols, opts){
   const wrap = el("div", cls);
   if(!stack && cols > 1){ wrap.style.left = (col*100/cols) + "%"; wrap.style.width = `calc(${100/cols}% - 6px)`; }
 
-  /* The in-card time range is dropped in stack mode (2026-08-26). It was
-     added on 2026-08-25 when the rail carried only a sparse once-per-hour
-     label and a card genuinely had no time on it; the rail now states this
-     row's own exact start and duration, immediately to the left, so the
-     in-card copy is the same fact twice on one line — it read as
-     "09:00 09:00–09:15". The hero keeps its range (it hides its rail
-     entirely, see .hero-slot .rail-stop) and grid/week mode is unchanged;
-     the list row keeps only its source chip. */
+  /* The in-card time range is back in stack mode (2026-08-27, user request:
+     put start-end inside the card's own top-left corner, Google-Calendar-
+     chip style, rather than in a separate rail column outside it — see the
+     .time-row CSS for the matching grid removal). It was dropped 2026-08-26
+     when the outside rail took over stating the row's start/end; now that
+     the rail is gone, the card is the only place left to say it. A brick
+     sibling still reads its own slice (item.s/item.e2 — see agenda()), not
+     the shared event's whole span, so four siblings each show their own
+     consecutive time rather than the same hour four times over. */
   const r = el("div","row" + (item.done ? " done" : ""));
+  const inBrick = item.brickPos != null;
+  const startAt = inBrick ? atMin(item.ev.start, item.s) : item.ev.start;
+  const endAt = inBrick ? atMin(item.ev.start, item.e2) : item.ev.end;
   r.appendChild(stack
-    ? rowLead(null, item.card ? sourceChip(item.card) : null, { noDot:true })
+    ? rowLead(hhmm(startAt) + "–" + hhmm(endAt), item.card ? sourceChip(item.card) : null)
     : rowLead(fmtRange(item.ev.start, item.ev.end), null));
   const n = el("span","n");
   n.appendChild(bidiSpan(item.title));
@@ -6124,43 +6070,9 @@ function timelineItem(item, winS, ppm, col, cols, opts){
      open). ".hub" on .item-top is the one CSS hook that scales the
      eyebrow to match — no separate hub markup to keep in sync by hand.
 
-     Stack mode also always wraps in .time-row: a rail-stop sibling (dot +
-     time) sits to the card's left in a fixed-width column, outside the
-     card entirely, so the card can narrow and recede while the day's
-     times still line up in one glanceable column — hub included, same
-     component, same rail. */
-  /* The rail shows a START, never a range — see the .rail-stop CSS for why.
-     Every row uses its own real start: for a brick sibling that's its slice
-     of the shared window (agenda() carves each task a CFG.quickTotal-wide
-     slot into item.s), for everything else it's the event's own start. The
-     old code printed `item.ev.start–item.ev.end` for every row, which for a
-     brick is the *event's* span — so four siblings each claimed the whole
-     hour, identically, four times over.
-     Hour and minutes are separate spans so the CSS can weight them
-     differently; `oclock` lets a :00 recede, since a time on the hour reads
-     fine without emphasis and the off-hour starts are the informative ones. */
-  const inBrick = item.brickPos != null;
-  const startAt = inBrick ? atMin(item.ev.start, item.s) : item.ev.start;
-  const railCls = ["rail-stop", boardClass(item.card, item.task, item.isBreak) + listClass(item.card),
-                    item.task ? "" : "meeting", isHub ? "hub" : "",
-                    inBrick ? "brick" : "",
-                    inBrick && item.brickPos > 0 ? "brick-sub" : ""].filter(Boolean).join(" ");
-  const railStop = el("div", railCls);
-  /* One "hh:mm" label, split into two spans only so the CSS can weight them
-     independently if that's ever wanted again; both currently render
-     identically. */
-  railStop.appendChild(el("span","t", pad2(startAt.getHours())));
-  railStop.appendChild(el("span","tm", ":" + pad2(startAt.getMinutes())));
-  railStop.title = fmtRange(inBrick ? startAt : item.ev.start,
-                            inBrick ? atMin(item.ev.start, item.e2) : item.ev.end);
-  /* The rail states the full span — start on top, END underneath (user
-     request, 2026-08-26). It briefly showed a duration ("15m") there
-     instead; "09:00 / 09:15" answers "when am I free again" directly rather
-     than making you add. A brick sibling's end is its own slice's end (item.e2),
-     not the shared event's, so each row in a merged quick window still reads
-     its own real span. */
-  railStop.appendChild(el("span","rail-end", hhmm(atMin(item.ev.start, item.e2))));
-
+     Stack mode's time now lives INSIDE the card (2026-08-27 — see the
+     `rowLead` call above and the .time-row CSS), not in a separate rail
+     column to its left — hub included, same component, same in-card badge. */
   const cardCol = el("div","card-col");
   /* Card first, status column second — the eyebrow now sits to the card's
      right rather than stacked above it, so the DOM order matches. */
@@ -6194,7 +6106,6 @@ function timelineItem(item, winS, ppm, col, cols, opts){
   if(opts.indent) timeRow.classList.add("indent");
   timeRow.dataset.min = item.s;
   timeRow.dataset.dur = item.e2 - item.s;
-  timeRow.appendChild(railStop);
   timeRow.appendChild(cardCol);
   return timeRow;
 }
@@ -6227,11 +6138,12 @@ function wireStackDrag(wrap, item, rowId){
   wrap.dataset.rowId = rowId;
   /* wrap (.item.stack) is what the pointer actually touches and what shows
      the drag styling, but the thing that has to MOVE is its whole
-     .time-row — wrap's own rail-stop sibling carries its time, and a
-     transform on wrap alone would leave the time behind while the card
-     slid away from it. dragEl is resolved fresh on each pointerdown
-     (never cached at wire-time) since paintMain only finishes assembling
-     .time-row around wrap before any real interaction can start. */
+     .time-row — wrap's own .item-top eyebrow sibling (inside .card-col)
+     carries status text that must travel with it, and a transform on wrap
+     alone would leave it behind while the card slid away. dragEl is
+     resolved fresh on each pointerdown (never cached at wire-time) since
+     paintMain only finishes assembling .time-row around wrap before any
+     real interaction can start. */
   let startY=0, startX=0, dragging=false, moved=false, order=[], originIdx=-1, targetIdx=-1, pushed=[], dragEl=wrap;
   let armTimer=null, pendingId=null, armed=false;
   /* Registered once, non-passive, for the life of the card: Chrome defaults
