@@ -442,23 +442,45 @@ html,body{overflow:hidden;}
 .hero-slot .item.hub{
   border-radius:20px;box-shadow:var(--shadow-lg);
   border-color:var(--line-strong);
-  padding-bottom:2px;
+  padding-bottom:2px;padding-left:10px;margin-bottom:10px;
   animation:none;   /* current-glow is for the timeline marker now, not the hero */
 }
-.hero-slot .item.hub .row{padding:16px 18px 6px;}
+/* Thick board-colour spine (2026-08-28, "juicier and more colorful" hero
+   redesign, approved design canvas). ON TOP of the existing --bc-soft wash
+   every .lk-<key> card already gets (see .item[class*="lk-"] above), not a
+   replacement for it — the wash tints the whole surface, the spine is a
+   loud identity mark specifically for the one card meant to dominate. Own
+   element rather than a plain border: a border can't carry the top-to-
+   bottom two-stop gradient (a flat border-color reads flat), and .item's
+   overflow:hidden clips it to the card's own radius for free. */
+.hero-slot .item.hub::before{
+  content:"";position:absolute;top:0;left:0;bottom:0;width:10px;
+  background:linear-gradient(180deg,var(--bc,var(--accent)),var(--bc-soft,var(--accent-soft)));
+}
+.hero-slot .item.hub .row{padding:16px 18px 6px 12px;}
 .hero-slot .item.hub .row .n{font-size:var(--t-hero);font-weight:900;letter-spacing:-.01em;line-height:1.15;}
 .hero-slot .item.hub .row-lead{font-size:var(--t-hero-sub);font-weight:800;color:var(--ink-2);}
-.hero-slot .item.hub .row-meta{padding:6px 18px 16px;}
-.hero-slot .item.hub .acts-inline{gap:8px;}
-.hero-slot .item.hub .mini{width:38px;height:38px;font-size:15px;}
-.hero-slot .item.hub .mini.ok{flex:1 1 auto;width:auto;border-radius:12px;font-weight:800;font-size:var(--t-md);}
+.hero-slot .item.hub .row-meta{padding:6px 18px 16px 12px;}
+/* Chunkier actions with a "pressed" bottom edge (2026-08-28, same redesign)
+   — a solid 3px shadow in each button's own hue, not a blur, so it reads as
+   a physical button rather than a floating chip. Colours come from .mini's
+   own per-action rule (background) — only the shadow and the extra 4px of
+   size are new here, both hero-scale only. */
+.hero-slot .item.hub .acts-inline{gap:9px;}
+.hero-slot .item.hub .mini{width:42px;height:42px;font-size:16px;box-shadow:0 3px 0 rgba(0,0,0,.16);}
+.hero-slot .item.hub .mini.ok{flex:1 1 auto;width:auto;border-radius:13px;font-weight:900;font-size:var(--t-md);box-shadow:0 3px 0 #22A85E;}
 .hero-slot .item.hub .mini.ok::after{content:" Done";}
+.hero-slot .item.hub .mini.swap{box-shadow:0 3px 0 #2178B8;}
+.hero-slot .item.hub .mini.pend{box-shadow:0 3px 0 #E0A800;}
+.hero-slot .item.hub .mini.del{box-shadow:0 3px 0 #E0303F;}
+.hero-slot .item.hub .mini.info{box-shadow:none;}
+.hero-slot .item.hub .mini:active{transform:translateY(2px) scale(1);box-shadow:none;}
 /* the eyebrow (On it / Up next / …) — see heroCard(), which inserts this
    as the card's own first child now that .item-top (the old beside-the-
    card column) is hidden. */
 .hero-eyebrow{
   font-family:var(--font-display);font-weight:800;font-size:10.5px;letter-spacing:.08em;
-  text-transform:uppercase;color:var(--bc,var(--accent-ink));padding:14px 18px 0;
+  text-transform:uppercase;color:var(--bc,var(--accent-ink));padding:14px 18px 0 12px;
 }
 /* The hero on a real phone (2026-08-27, user report: "main card is too big
    for phone, also text inside it"). The -4px title shrink below this was
@@ -470,9 +492,9 @@ html,body{overflow:hidden;}
   /* The action row (Done/Swap/Remove) was costing nearly as much height as
      the whole timeline row underneath it — smaller circles, tighter gaps
      and padding recover real space without touching the title at all. */
-  .hero-slot .item.hub .row-meta{padding:4px 14px 12px;}
+  .hero-slot .item.hub .row-meta{padding:4px 14px 12px 12px;}
   .hero-slot .item.hub .acts-inline{gap:6px;}
-  .hero-slot .item.hub .mini{width:32px;height:32px;font-size:13px;}
+  .hero-slot .item.hub .mini{width:36px;height:36px;font-size:14px;}
   .hero-slot .item.hub .mini.ok{font-size:calc(var(--t-md) - 1px);}
 }
 /* Below 360px the day genuinely doesn't have room for a hero-scale title
@@ -481,6 +503,52 @@ html,body{overflow:hidden;}
 @media (max-width:359px){
   .hero-slot .item.hub .row .n{font-size:calc(var(--t-hero) - 11px);}
 }
+
+/* "Next up" — the small card under the hero (2026-08-28, approved design
+   canvas). Same board-colour spine language as the hero (see
+   .hero-slot .item.hub::before) at 6px instead of 10px: a quieter echo,
+   not a second hero. Sits inside #heroSlot (see nextUpCard/paintHero), not
+   the timeline — it previews the next task, it doesn't replace that task's
+   own row further down, which still opens via the normal accordion. */
+.next-up{
+  position:relative;display:flex;align-items:center;gap:12px;
+  background:var(--card);border:1.5px solid var(--line);border-radius:14px;
+  padding:10px 14px 10px 16px;box-shadow:var(--shadow);overflow:hidden;
+  cursor:pointer;transition:box-shadow .15s,transform .1s;
+  margin-bottom:10px;
+}
+.next-up:hover{box-shadow:var(--shadow-lg);transform:translateY(-1px);}
+.next-up:active{transform:translateY(0);}
+.next-up::before{
+  content:"";position:absolute;top:0;left:0;bottom:0;width:6px;
+  background:var(--bc,var(--b-none));
+}
+.next-up-lead{display:flex;flex-direction:column;align-items:flex-start;gap:1px;min-width:56px;flex:0 0 auto;}
+.next-up-k{
+  font-family:var(--mono);font-weight:800;font-size:10.5px;color:var(--ink-3);
+  text-transform:uppercase;letter-spacing:.06em;
+}
+.next-up-time{font-family:var(--mono);font-weight:800;font-size:12.5px;color:var(--ink-2);}
+.next-up-n{
+  flex:1 1 auto;min-width:0;font-weight:700;font-size:13.5px;color:var(--ink);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.next-up-dot{width:9px;height:9px;border-radius:50%;background:var(--bc,var(--b-none));flex:0 0 auto;}
+
+/* "See today's schedule" — a scroll affordance into #pageMain's own list
+   (2026-08-28, approved design canvas), not a second view: the schedule
+   already renders right below in the same #scroller (see scheduleButton).
+   Bold solid pill in the app's own accent, board-agnostic on purpose —
+   it isn't about any one task's colour. */
+.schedule-btn{
+  display:flex;align-items:center;justify-content:center;gap:8px;width:100%;
+  background:var(--accent);border:2px solid var(--accent-ink);border-radius:14px;
+  padding:12px;color:var(--on-accent);font-family:var(--font-body);
+  font-weight:900;font-size:14px;box-shadow:0 3px 0 var(--accent-ink);
+  cursor:pointer;transition:transform .1s,box-shadow .1s;margin-bottom:2px;
+}
+.schedule-btn:hover{filter:brightness(1.04);}
+.schedule-btn:active{transform:translateY(3px);box-shadow:none;}
 
 /* board identity: every element that represents a task carries its board hue.
    The per-board `.bk-<key>` rules are GENERATED at runtime (injectBoardCss)
@@ -2244,64 +2312,18 @@ function fitRowTitle(row){
   }
 }
 
-/* The hero title is HARD-CAPPED at 2 lines with an ellipsis, never shrunk
-   further (2026-08-27, user report: hero still reads too big after a
-   font-size pass alone). fitRowTitle's shrink-then-wrap is wrong for the
-   hero specifically: that mechanism exists so an ordinary list row's small
-   type stays readable, but the hero is deliberately the biggest text on
-   screen — shrinking a long title down to fit two lines defeats the whole
-   point of it being the hero, and a real task name (measured: a real
-   32-character Hebrew title) still ran to 3-4 lines at full size on a
-   phone, which is the actual complaint. Truncating instead keeps the type
-   size fixed and the card's footprint bounded; the full text is always one
-   tap away via the card's own ↗ link to Trello.
-   Character-truncate rather than CSS line-clamp: `.nt` is `display:inline-block`
-   (load-bearing for bidiSpan's RTL-stays-beside-the-timestamp fix) and
-   Chrome does not clamp a `-webkit-box` through an inline-block child —
-   confirmed directly while building fitRowTitle, see its own comment. */
-function clampHeroTitle(slot){
-  const n = slot.querySelector(".item.hub .row .n");
-  const nt = n && n.querySelector(".nt");
-  if(!n || !nt) return;
-  /* paintHero rebuilds the DOM from scratch every call (slot.innerHTML=""),
-     so nt.textContent is always the fresh, untruncated title here — no
-     stale .title to fall back on from a previous pass. */
-  const full = nt.textContent;
-  const lh = parseFloat(getComputedStyle(n).lineHeight) || parseFloat(getComputedStyle(n).fontSize) * 1.15;
-  /* +3px, not +1: a real 2-line box measured 50px against lh*2=47.52 here
-     (line-height:normal rounds up a little more than the raw computed
-     value once text actually wraps) — +1 was tight enough to reject a
-     genuinely-2-line render as "3 lines" and step down to 1 line instead,
-     which is exactly how this shipped over-truncated. */
-  const cap = lh * 2 + 3;
-  if(n.scrollHeight <= cap) return; // fits in two lines already
-
-  /* NOT a binary search on scrollHeight — that assumes "shorter text always
-     wraps to no more lines than longer text," which is false for RTL/bidi
-     content. Confirmed live: cutting this exact Hebrew title at 26
-     characters measured 2 lines (50px), but cutting at 25 (one character
-     shorter) measured 3 lines (also ~50px, since bidi reordering moved a
-     word across a wrap boundary), while 24 measured 1 line — no monotonic
-     relationship between character count and line count to search over.
-     A binary search on a non-monotonic function converges to an arbitrary
-     point, which is exactly how this shipped truncating to one line
-     instead of two.
-     Word-stepping is monotonic in the property that matters: each step
-     removes one whole word, so the text only ever gets shorter, and we
-     keep the LAST length that measured within cap — not the first, and not
-     an interpolated guess. */
-  const words = full.split(/(\s+)/); // keeps the separators so re-joining is exact
-  let text = full;
-  while(words.length > 1){
-    words.pop(); // drop the trailing separator or word
-    text = words.join("").trimEnd();
-    if(!text) break;
-    nt.textContent = text + "…";
-    if(n.scrollHeight <= cap) break;
-  }
-  nt.textContent = text + "…";
-  nt.title = full; // the full text is still available on hover/long-press
-}
+/* The hero title is NEVER truncated (2026-08-28, direct user request:
+   "the user can see the entire Headline — always", approved design
+   canvas). This reverses the 2026-08-27 hard-cap-at-2-lines behaviour
+   (clampHeroTitle, removed) — that shipped specifically because a full
+   title at hero scale ran to 3-4 lines on a phone and read as too much
+   card. The new hero simply accepts however many lines a real title
+   needs: fewer buttons/eyebrow padding and the thick spine (see the CSS)
+   free enough vertical room that an uncapped title is the deliberate
+   trade, not an oversight. If the hero ever needs a size ceiling again,
+   it belongs on the CARD (a max-height with internal scroll), never back
+   on the title — cutting the one thing the user is currently doing is
+   exactly what this request asked to stop. */
 
 /* ---------------------------------------------------------------- state */
 const S = {
@@ -4562,7 +4584,15 @@ function splitAgenda(){
   const rest = items.filter(i =>
     i !== current && i !== meetingNow && i !== breakNow && !missedSet.has(i) && missed.indexOf(i) < 0 && (!isToday || i.e2 > nowMin));
   const doneCount = items.filter(i => i.task && i.done).length;
-  return { items, current, meetingNow, breakNow, missedList, rest, missed, doneCount, open };
+  /* nextUp (2026-08-28, "a next up small card under it" — approved design
+     canvas): the next real open task strictly after current, by start time.
+     `open` is already time-sorted, so it's the first entry later than
+     current's own start — not `open[1]`, since a meeting or missed task can
+     sit between them in `items` without being in `open` at all, and current
+     itself is always in `open` so a plain "next index" would misalign the
+     moment anything gets filtered out ahead of it. No current, no next. */
+  const nextUp = current ? (open.find(i => i !== current && i.s > current.s) || null) : null;
+  return { items, current, nextUp, meetingNow, breakNow, missedList, rest, missed, doneCount, open };
 }
 
 /* ---------------------------------------------------------------- render */
@@ -5217,15 +5247,23 @@ function projectsView(){
    needed (CLAUDE.md's documented overlay hazard doesn't apply: nothing
    here overlaps anything). Rebuilt fresh every render() alongside
    paintMain, same cadence, since both read the same splitAgenda() result. */
-function paintHero(current, doneCount, missedCount){
+function paintHero(current, doneCount, missedCount, nextUp){
   const slot = $("#heroSlot");
   slot.innerHTML = "";
   slot.appendChild(current ? heroCard(current) : emptyNow(doneCount, missedCount));
   slot.classList.toggle("hero-empty", !current);
   slot.hidden = false;
-  /* run after the card is in the live tree — clampHeroTitle measures real
-     layout, so it needs a real box, not one still being built */
-  if(current) clampHeroTitle(slot);
+  /* "A next up small card under it" + "an option to see the day's
+     schedule" (2026-08-28, approved design canvas). Both only make sense
+     while there's an actual hero to sit under — the empty states already
+     say their own thing (nothing scheduled / day clear / you missed some
+     tasks) and don't need a next-up card competing with that message, and
+     "see the schedule" is exactly what's already on screen once the hero
+     itself is the empty state. */
+  if(current){
+    if(nextUp) slot.appendChild(nextUpCard(nextUp));
+    slot.appendChild(scheduleButton());
+  }
   /* Day-complete moment: celebrate() (confetti, already exists — see
      completeItem) fires once per day the moment the day empties out with
      something actually finished, not on every render of the clear state —
@@ -5242,6 +5280,61 @@ function paintHero(current, doneCount, missedCount){
       celebrate(2);
     }
   }
+}
+/* The small card directly under the hero (2026-08-28, approved design
+   canvas: "a next up small card under it"). Deliberately NOT built via
+   timelineItem/rowLead — it isn't a row in the list (it doesn't need drag,
+   an accordion, or action buttons), just a glanceable preview of what's
+   next, so it gets its own minimal markup. Same board-colour identity every
+   other card carries (boardClass/listClass), as a thin 6px spine rather
+   than the hero's 10px — smaller card, quieter mark, same visual language.
+   Clicking it opens that task's own row in the list below (S.openRow),
+   same accordion every other row already uses, then scrolls it into view —
+   "next up" is a preview, not a duplicate action surface. */
+function nextUpCard(item){
+  const rowId = item.card ? item.ev.id+":"+item.card.id : item.ev.id;
+  const card = el("div","next-up "+boardClass(item.card, item.task, item.isBreak)+listClass(item.card));
+  /* item.s, not item.ev.start (2026-08-28 fix): a brick sibling (a merged
+     quick-task window — see CLAUDE.md) shares one Google Calendar event
+     across several tasks, so item.ev.start is the WHOLE WINDOW's start,
+     identical for every sibling. item.s is this task's own real slice —
+     the same distinction timelineItem/currentMarker already make for their
+     own time badges. Using ev.start here showed "next up" at the same
+     clock time as the hero above it, for a different task. */
+  const time = el("span","next-up-time", hhmm(atMin(S.anchor, item.s)));
+  const lead = el("div","next-up-lead");
+  lead.appendChild(el("span","next-up-k","Next up"));
+  lead.appendChild(time);
+  card.appendChild(lead);
+  const n = el("div","next-up-n");
+  n.appendChild(bidiSpan(item.title));
+  card.appendChild(n);
+  card.appendChild(el("span","next-up-dot"));
+  card.addEventListener("click", ()=>{
+    S.openRow = rowId;
+    render();
+    requestAnimationFrame(()=>{
+      const row = document.querySelector(`[data-row-id="${CSS.escape(rowId)}"]`);
+      if(row) row.scrollIntoView({block:"center", behavior:"smooth"});
+    });
+  });
+  return card;
+}
+/* "An option to see the day's schedule" (2026-08-28, approved design
+   canvas) — the schedule already IS #pageMain's own list, right below the
+   hero in the same #scroller (see .scroller's own comment); this is a
+   scroll affordance, not a second view to build and keep in sync. A plain
+   anchor-style scrollIntoView rather than a manual scrollTop calculation,
+   so it keeps working if the hero's own height ever changes. */
+function scheduleButton(){
+  const b = el("button","schedule-btn");
+  b.type = "button";
+  b.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="3"></rect><path d="M3 10h18"></path><path d="M8 3v4"></path><path d="M16 3v4"></path></svg>'
+    + '<span>See today’s schedule</span><span aria-hidden="true">→</span>';
+  b.addEventListener("click", ()=>{
+    $("#pageMain").scrollIntoView({block:"start", behavior:"smooth"});
+  });
+  return b;
 }
 /* Views with no day/current-task concept at all (pipeline/projects/day-off/
    shared-state) hide the hero outright rather than showing stale content. */
@@ -5277,7 +5370,7 @@ function paintMain(){
     return;
   }
 
-  const { items, current, meetingNow, breakNow, missedList, rest, missed, doneCount, open } = splitAgenda();
+  const { items, current, nextUp, meetingNow, breakNow, missedList, rest, missed, doneCount, open } = splitAgenda();
   const missedListSet = new Set(missedList);
   updateMascot({ current, missed, open, doneCount });
 
@@ -5349,7 +5442,7 @@ function paintMain(){
   for(const i of [breakNow].concat(missedList).filter(Boolean).sort((a,b) => a.s - b.s))
     lead.appendChild(timelineItem(i, dayWinS, dayPpm, 0, 1, {mode:"stack"}));
 
-  paintHero(current, doneCount, missed.length);
+  paintHero(current, doneCount, missed.length, nextUp);
   if(current) lead.appendChild(currentMarker(current, dayWinS, dayPpm));
 
   if(meetingKids){

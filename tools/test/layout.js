@@ -205,35 +205,13 @@ const FIXTURE=[
     check(totalH>0 && totalH<560,
       `${tag} six rows occupy ${Math.round(totalH)}px — a handful of items should not span multiple screens`);
 
-    /* 8. THE HERO TITLE IS CAPPED AT 2 LINES, EVER — and the cap is measured
-          correctly. This uses a real Hebrew task name (the one that surfaced
-          the bug), not the fixture's English titles above: a long RTL title
-          at hero scale is what actually broke.
-          Two distinct bugs shipped here, both worth guarding separately.
-          (a) A binary search over character count assumed "shorter text
-          wraps to no more lines than longer text" — false for bidi content,
-          where cutting one character shorter can move a word across a wrap
-          boundary and CHANGE the line count non-monotonically. Confirmed
-          live: cutting this exact title at 26 chars measured 2 lines, at 25
-          chars measured (nominally) 3, at 24 measured 1 — no monotonic
-          relationship to search over, and the search converged on 1 line.
-          (b) The 2-line height cap itself was `lineHeight*2+1`, too tight
-          by ~1.5px against how a real 2-line box actually measures (a
-          genuine 2-line render at lineHeight 23.76 measured 50px, not the
-          predicted 47.52) — so even a correct search would have rejected a
-          real 2-line fit and stepped down to 1 line anyway. Both bugs
-          shipped together and combined to truncate to 1 line against this
-          exact title; verified (b) alone — a correct word-step search
-          against the too-tight cap — still fails independently, which is
-          the one most likely to recur (a slightly different cap tolerance
-          on a future edit). (a) in isolation, with the cap already fixed,
-          did not reproduce for this particular string — bidi non-monotonicity
-          is real (confirmed by direct trace: 26 chars measured 2 lines, 25
-          measured 3, 24 measured 1) but happened not to bite the binary
-          search's own convergence point once the cap was correct. Kept as
-          the word-stepping approach regardless: it is monotonic by
-          construction and doesn't depend on a specific string failing to
-          expose the risk. */
+    /* 8. THE HERO TITLE IS NEVER TRUNCATED — the full text always survives,
+          however many lines it takes (2026-08-28, direct user request: "the
+          user can see the entire Headline — always", reversing the
+          2026-08-27 hard-cap-at-2-lines/ellipsis behaviour this test used to
+          guard). Same real long Hebrew title as before — a long RTL title
+          at hero scale is what surfaced the original truncation bug, so it
+          stays the fixture even though the assertion direction flipped. */
     await p.evaluate(()=>{
       const longHebrew = "🎵 לתקן מזגן מקצר בחדר השינה של הילדים בקומה השנייה";
       EVENTS.length=0;
@@ -249,38 +227,18 @@ const FIXTURE=[
       const n=document.querySelector("#heroSlot .item.hub .row .n");
       if(!n) return null;
       const nt=n.querySelector(".nt");
-      const lh=parseFloat(getComputedStyle(n).lineHeight)||parseFloat(getComputedStyle(n).fontSize)*1.15;
       return {
-        scrollH:n.scrollHeight, lh,
         text:nt?nt.textContent:null,
         hasEllipsis: nt?/…$/.test(nt.textContent):null,
-        title: nt?nt.title:null,
       };
     });
     check(!!hero,`${tag} the hero should render for a real task`);
     if(hero){
-      /* A height ceiling alone can't catch over-truncation — 1 line is
-         LESS than a 2-line budget, so "must not exceed 2 lines" passes
-         trivially against the exact bug this guards (confirmed: it did,
-         while shipping a title truncated to 1 line). The real assertion is
-         a FLOOR on how much text survived, calibrated to this exact title:
-         a correct 2-line fit keeps 44+ characters before the ellipsis
-         (measured: the fixed clamp keeps 46); the broken binary search (or
-         the too-tight +1 cap alone) keeps 23. */
-      check(hero.scrollH <= hero.lh*2+3,
-        `${tag} the hero title is ${Math.round(hero.scrollH)}px tall against a 2-line budget of ~${Math.round(hero.lh*2+3)}px — it must never exceed 2 lines`);
-      /* A wide enough hero fits this whole title in 2 lines untruncated —
-         that's correct, not a bug, so the ellipsis/length checks below only
-         apply once clamping actually happened. The 2-line height check
-         above still runs unconditionally either way. */
-      if(hero.hasEllipsis || hero.text !== "🎵 לתקן מזגן מקצר בחדר השינה של הילדים בקומה השנייה"){
-        check(hero.hasEllipsis,
-          `${tag} a title long enough to need clamping should end in an ellipsis, got ${JSON.stringify(hero.text)}`);
-        check(hero.text && hero.text.length >= 40,
-          `${tag} the clamp kept only ${JSON.stringify(hero.text)} (${hero.text?hero.text.length:0} chars) — a real 2-line fit keeps 44+ characters of this title; anything much shorter means it under-filled the 2 lines it had room for`);
-        check(hero.title && hero.title.includes("השנייה"),
-          `${tag} the full untruncated title should still be reachable (via .title), got ${JSON.stringify(hero.title)}`);
-      }
+      const full = "🎵 לתקן מזגן מקצר בחדר השינה של הילדים בקומה השנייה";
+      check(hero.text === full,
+        `${tag} the hero title should render in full, got ${JSON.stringify(hero.text)}`);
+      check(!hero.hasEllipsis,
+        `${tag} the hero title must never be truncated with an ellipsis, got ${JSON.stringify(hero.text)}`);
     }
 
     check(errs.length===0,`${tag} page errors: ${errs.join(" | ")}`);

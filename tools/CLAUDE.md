@@ -292,6 +292,66 @@ code — read those bullets as history, not current behavior. What's true now:
   `--line-2` border, `--ink-2` text) — user asked for "something more
   subtle," since it's a disclosure toggle, not a committing action like
   the other four, and was reading as a fifth equally-weighted button.
+- **Hero redesign — thick spine, chunky buttons, next-up card, schedule
+  link (2026-08-28), direct user request via an approved Claude Design
+  canvas ("juicier and more colorful", "see the entire Headline — always",
+  "a next up small card under it", "an option to see the day's
+  schedule").** Two directions were sketched on the canvas — a full
+  gradient-wash hero vs. a flat card with bold chrome — and the user
+  picked the flat one; the gradient direction was NOT built into the app.
+  Four pieces, all in `paintHero`/the hero CSS:
+  1. **The hero title is never truncated any more** — `clampHeroTitle`
+     (2026-08-27's hard-2-line-cap-with-ellipsis) is DELETED outright, not
+     adjusted. That function existed specifically because a full title at
+     hero scale used to run to 3-4 lines and read as "too much card"; this
+     request reverses that judgment call on purpose ("the user can see the
+     entire Headline — always"), so the title now simply wraps to however
+     many lines it needs. `layout.js`'s guard (which used to assert the
+     opposite — never exceed 2 lines, keep 44+ characters before an
+     ellipsis) now asserts the full fixture title survives verbatim with
+     no ellipsis; same long real Hebrew title fixture, flipped assertion.
+  2. **A 10px board-colour spine** (`.hero-slot .item.hub::before`, a
+     top-to-bottom `--bc`→`--bc-soft` gradient) sits ON TOP of the existing
+     `--bc-soft` wash every `.lk-<key>` card already gets — not a
+     replacement. The wash tints the whole surface; the spine is a louder,
+     separate identity mark for the one card meant to dominate. `.item`'s
+     existing `overflow:hidden` clips it to the card's own radius for
+     free, so this needed no new clipping logic.
+  3. **Hero action buttons are chunkier with a solid "pressed" bottom
+     edge** — 42px (was 38px), `box-shadow:0 3px 0 <a darker shade of the
+     button's own colour>` instead of a soft blur, and `:active` drops the
+     button 2px and removes the shadow so it visibly presses in. Scoped to
+     `.hero-slot .item.hub .mini` only; the list's own `.mini` buttons
+     (`tools/CLAUDE.md`'s 2026-08-27 colour bullet above) are untouched.
+  4. **`nextUpCard()` and `scheduleButton()`** are new, built in
+     `paintHero` alongside `heroCard()` — NOT via `timelineItem`/`rowLead`,
+     since neither is a row in the list (no drag, no accordion, no action
+     buttons of its own). `splitAgenda()` grew a `nextUp` field: the
+     earliest `open` entry strictly after `current`'s own start
+     (`open.find(i => i !== current && i.s > current.s)`) — not
+     `open[current_index+1]`, since a meeting/missed task can sit between
+     them in `items` without being in `open` at all. **`nextUpCard` reads
+     `item.s`, never `item.ev.start`, for its displayed time** — a real
+     bug caught before shipping: a brick sibling (a merged quick-task
+     window, see the brick bullet elsewhere in this file) shares one
+     Google Calendar event across several tasks, so `ev.start` is the
+     WHOLE WINDOW's start, identical for every sibling; `item.s` is this
+     task's own real slice. Using `ev.start` showed "next up" at the same
+     clock time as the hero above it, for a different task — confirmed
+     live against the real-events fixture (a genuine brick there) before
+     the fix. Clicking the next-up card opens that task's real row below
+     via the normal `S.openRow` accordion and scrolls it into view; it is
+     a preview, not a second place to act on the task.
+     `scheduleButton()` does not open a new view — Daisey has been
+     day-only with no separate schedule screen since 2026-08-26, and the
+     "day's schedule" already IS `#pageMain`'s own list, rendered right
+     below the hero inside the same `#scroller` (see `.scroller`'s own
+     CSS comment). The button is a plain `scrollIntoView` affordance onto
+     that existing list, not a feature to keep in sync with anything.
+     Both are skipped when there's no `current` — the empty states
+     (`emptyNow`: nothing scheduled / day clear / you missed some tasks)
+     already say the relevant thing for that case, and "see the schedule"
+     would be pointing at what's already on screen.
 
 **Canonical artifact URL — always update this one, never publish a new
 artifact for Daisey:**
