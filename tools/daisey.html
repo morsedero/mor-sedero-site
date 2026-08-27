@@ -415,7 +415,15 @@ html,body{overflow:hidden;}
    into the empty FIRST track (confirmed live at 10px wide). That trap is
    avoided by keeping the rail rather than by abandoning the grid. */
 .hero-slot .time-row{display:grid;}
-.hero-slot .card-col{min-width:0;}
+/* width:100% is load-bearing here in a way it wasn't before the hero kept
+   its rail (2026-08-27 fix): .card-col is a flex container with no width of
+   its own, so as the second track of a CSS grid it sized to its CONTENT
+   instead of filling the track — the hero card measured 226px inside a
+   288px slot on a 320px phone, ~62px narrower than it should be, with
+   nothing visibly wrong (no overflow, just a card too narrow for its
+   title). min-width:0 alone only allows shrinking; it doesn't request
+   filling. */
+.hero-slot .card-col{min-width:0;width:100%;}
 /* Hero-scale rail to match hero-scale type, still in the same 52px track so
    the times line up down the page with every list row below. */
 .hero-slot .rail-stop{padding-top:16px;}
@@ -443,8 +451,31 @@ html,body{overflow:hidden;}
   font-family:var(--font-display);font-weight:800;font-size:10.5px;letter-spacing:.08em;
   text-transform:uppercase;color:var(--bc,var(--accent-ink));padding:14px 18px 0;
 }
+/* The hero on a real phone (2026-08-27, user report: "main card is too big
+   for phone, also text inside it"). Two real, separate costs stacked:
+   at 320px the rail+gap (52px+10px) already claims ~19% of the whole
+   viewport before the card itself starts, and the -4px title shrink below
+   this was never enough for a genuinely long title at 30px bold — a normal
+   task name still wrapped to 3-4 lines. Neither is a bug (nothing overflows
+   the screen), just too much of a small screen spent on one card.
+   Two changes: the rail track narrows (44px, still legible, still lines up
+   with the list below it) reclaiming real width for the card; the title
+   drops further (-8px, not -4px) and gets a lower line-height so 3-4 lines
+   costs noticeably less height. Both scoped to the hero only — list-row
+   type and the shared 52px rail track are unchanged, so nothing below the
+   hero moves. */
 @media (max-width:420px){
-  .hero-slot .item.hub .row .n{font-size:calc(var(--t-hero) - 4px);}
+  .hero-slot .item.hub .row .n{font-size:calc(var(--t-hero) - 8px);line-height:1.08;}
+  .hero-slot .time-row{grid-template-columns:44px minmax(0,1fr);}
+  .hero-slot .rail-stop{padding-top:14px;}
+  .hero-slot .rail-stop .t,.hero-slot .rail-stop .tm{font-size:12.5px;}
+  .hero-slot .rail-stop .rail-end{font-size:11px;}
+}
+/* Below 360px the day genuinely doesn't have room for a hero-scale title
+   at all without wrapping hard — one more step down keeps it off a 5th
+   line for a long real task name. */
+@media (max-width:359px){
+  .hero-slot .item.hub .row .n{font-size:calc(var(--t-hero) - 11px);}
 }
 
 /* board identity: every element that represents a task carries its board hue.
