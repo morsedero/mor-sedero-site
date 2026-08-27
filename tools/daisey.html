@@ -470,6 +470,13 @@ html,body{overflow:hidden;}
   .hero-slot .rail-stop{padding-top:14px;}
   .hero-slot .rail-stop .t,.hero-slot .rail-stop .tm{font-size:12.5px;}
   .hero-slot .rail-stop .rail-end{font-size:11px;}
+  /* The action row (Done/Swap/Remove) was costing nearly as much height as
+     the whole timeline row underneath it — smaller circles, tighter gaps
+     and padding recover real space without touching the title at all. */
+  .hero-slot .item.hub .row-meta{padding:4px 14px 12px;}
+  .hero-slot .item.hub .acts-inline{gap:6px;}
+  .hero-slot .item.hub .mini{width:32px;height:32px;font-size:13px;}
+  .hero-slot .item.hub .mini.ok{font-size:calc(var(--t-md) - 1px);}
 }
 /* Below 360px the day genuinely doesn't have room for a hero-scale title
    at all without wrapping hard — one more step down keeps it off a 5th
@@ -2288,6 +2295,65 @@ function fitRowTitle(row){
     size -= 1;
     n.style.fontSize = size + "px";
   }
+}
+
+/* The hero title is HARD-CAPPED at 2 lines with an ellipsis, never shrunk
+   further (2026-08-27, user report: hero still reads too big after a
+   font-size pass alone). fitRowTitle's shrink-then-wrap is wrong for the
+   hero specifically: that mechanism exists so an ordinary list row's small
+   type stays readable, but the hero is deliberately the biggest text on
+   screen — shrinking a long title down to fit two lines defeats the whole
+   point of it being the hero, and a real task name (measured: a real
+   32-character Hebrew title) still ran to 3-4 lines at full size on a
+   phone, which is the actual complaint. Truncating instead keeps the type
+   size fixed and the card's footprint bounded; the full text is always one
+   tap away via the card's own ↗ link to Trello.
+   Character-truncate rather than CSS line-clamp: `.nt` is `display:inline-block`
+   (load-bearing for bidiSpan's RTL-stays-beside-the-timestamp fix) and
+   Chrome does not clamp a `-webkit-box` through an inline-block child —
+   confirmed directly while building fitRowTitle, see its own comment. */
+function clampHeroTitle(slot){
+  const n = slot.querySelector(".item.hub .row .n");
+  const nt = n && n.querySelector(".nt");
+  if(!n || !nt) return;
+  /* paintHero rebuilds the DOM from scratch every call (slot.innerHTML=""),
+     so nt.textContent is always the fresh, untruncated title here — no
+     stale .title to fall back on from a previous pass. */
+  const full = nt.textContent;
+  const lh = parseFloat(getComputedStyle(n).lineHeight) || parseFloat(getComputedStyle(n).fontSize) * 1.15;
+  /* +3px, not +1: a real 2-line box measured 50px against lh*2=47.52 here
+     (line-height:normal rounds up a little more than the raw computed
+     value once text actually wraps) — +1 was tight enough to reject a
+     genuinely-2-line render as "3 lines" and step down to 1 line instead,
+     which is exactly how this shipped over-truncated. */
+  const cap = lh * 2 + 3;
+  if(n.scrollHeight <= cap) return; // fits in two lines already
+
+  /* NOT a binary search on scrollHeight — that assumes "shorter text always
+     wraps to no more lines than longer text," which is false for RTL/bidi
+     content. Confirmed live: cutting this exact Hebrew title at 26
+     characters measured 2 lines (50px), but cutting at 25 (one character
+     shorter) measured 3 lines (also ~50px, since bidi reordering moved a
+     word across a wrap boundary), while 24 measured 1 line — no monotonic
+     relationship between character count and line count to search over.
+     A binary search on a non-monotonic function converges to an arbitrary
+     point, which is exactly how this shipped truncating to one line
+     instead of two.
+     Word-stepping is monotonic in the property that matters: each step
+     removes one whole word, so the text only ever gets shorter, and we
+     keep the LAST length that measured within cap — not the first, and not
+     an interpolated guess. */
+  const words = full.split(/(\s+)/); // keeps the separators so re-joining is exact
+  let text = full;
+  while(words.length > 1){
+    words.pop(); // drop the trailing separator or word
+    text = words.join("").trimEnd();
+    if(!text) break;
+    nt.textContent = text + "…";
+    if(n.scrollHeight <= cap) break;
+  }
+  nt.textContent = text + "…";
+  nt.title = full; // the full text is still available on hover/long-press
 }
 
 /* ---------------------------------------------------------------- state */
@@ -5183,6 +5249,9 @@ function paintHero(current, doneCount){
   slot.appendChild(current ? heroCard(current) : emptyNow(doneCount));
   slot.classList.toggle("hero-empty", !current);
   slot.hidden = false;
+  /* run after the card is in the live tree — clampHeroTitle measures real
+     layout, so it needs a real box, not one still being built */
+  if(current) clampHeroTitle(slot);
   /* Day-complete moment: celebrate() (confetti, already exists — see
      completeItem) fires once per day the moment the day empties out with
      something actually finished, not on every render of the clear state —

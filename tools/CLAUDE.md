@@ -186,6 +186,43 @@ code — read those bullets as history, not current behavior. What's true now:
   re-established a containing block), and `currentMarker` had no padding — it
   rendered as a bare glowing outline with its title against the edge, which
   read as an error state once it also picked up a list tint.
+- **The hero title is HARD-CAPPED at 2 lines, never shrunk further**
+  (2026-08-27, `clampHeroTitle`, user report the hero was "still big" after a
+  first font-size-only pass). `fitRowTitle`'s shrink-then-wrap is wrong for
+  the hero specifically — it exists to keep an ordinary row's small type
+  readable, but the hero is deliberately the biggest text on screen, so
+  shrinking a long title to fit defeats the point of it being the hero. A
+  real 32-character Hebrew title still ran to 3-4 lines at full size on a
+  phone even after the font shrink; truncating with an ellipsis keeps the
+  type size fixed and the card's footprint bounded, with the full text one
+  tap away via the card's own ↗ link.
+  **Two real, separate bugs shipped while building this, both worth knowing
+  if the function is touched again.** (a) A first version binary-searched
+  over character count for the longest cut that fit — which assumes
+  "shorter text wraps to no more lines than longer text," false for
+  bidi/RTL content: cutting one exact real title at 26 characters measured
+  2 lines, at 25 (one shorter!) measured 3, at 24 measured 1 — cutting a
+  word across a bidi reorder boundary can move it to a different visual
+  line, so line count isn't monotonic in character count. A binary search
+  over a non-monotonic function converges to an arbitrary point, which is
+  how this shipped truncating a 2-line-worthy title down to 1 line. Fixed
+  by stepping down one whole WORD at a time and stopping at the first
+  length that fits — monotonic by construction, since each step only
+  removes text. (b) Separately, the 2-line height budget itself
+  (`lineHeight*2+1`) was too tight by ~1.5px against how a real 2-line box
+  actually measures — a genuine 2-line render at `lineHeight:23.76`
+  measured 50px, not the predicted 47.52 — so even a correct search
+  rejected a real 2-line fit and stepped down anyway. Needed `+3`, not
+  `+1`. Both bugs combined in what shipped; verified (b) alone (correct
+  word-step search, wrong cap) still reproduces independently, so both are
+  guarded, not just their combination.
+  `layout.js` is the guard, using a real long Hebrew title rather than the
+  fixture's short English ones — the bug only shows up with RTL content.
+  Its assertion is a FLOOR on surviving character count (44+ for that exact
+  title), not a ceiling: a height cap alone can't distinguish "correctly 2
+  lines" from "wrongly truncated to 1 line," since 1 line is *less than* a
+  2-line budget and passes a ceiling check trivially — confirmed by writing
+  that assertion first and watching it pass against the broken code.
 - Any test selector reading `#pageMain .now`/`#pageMain .mini.info`/
   `#pageMain .details` etc. against a fixture with only ONE task that day
   is stale — that task is `current`, and current no longer renders inside
@@ -264,7 +301,11 @@ failure recorded here (four swatches vs three, internal scroll at 667px) is
   `timelineItem`'s row assembly, `currentMarker`, `quietGap`, `.time-row` /
   `.rows.stack` / `.rail-stop` CSS, or anything that reintroduces a computed
   top/height. It is the only suite that would catch cards overlapping, a card
-  landing in the rail track, or duration creeping back into card height.
+  landing in the rail track, or duration creeping back into card height. It
+  also covers `clampHeroTitle` (see below) against a real long Hebrew
+  title — run it after touching that function or the hero's title/line-height
+  CSS, since the bug it guards only shows up with RTL content, never with
+  the fixture's own short English titles.
   Run `rail.js` after any change to the Day-view time rail (`.rail-stop` /
   `timelineItem`'s rail block), to `.item.stack`'s selection or touch-action
   CSS, or to `wireStackDrag` — it covers both the start-times-only rail and
