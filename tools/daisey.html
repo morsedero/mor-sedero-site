@@ -47,6 +47,12 @@
   --done-soft:rgba(46,204,113,.18);
   --deep:#5B67FF;
   --deep-soft:rgba(91,103,255,.16);
+  /* Pending's light blue (2026-08-26). Deliberately a different FAMILY from
+     --deep (indigo), not just a lighter step of it: Swap and Pending sit
+     next to each other in every action row, so two shades of one hue would
+     read as the same button twice. Dark enough to carry white glyphs. */
+  --sky:#2F8FE0;
+  --sky-soft:rgba(47,143,224,.16);
 
   /* one hue per board — bright and a little playful, not muted: a jewel-
      toned pass through this set read as tasteful but flat, and the user
@@ -276,24 +282,38 @@ html,body{overflow:hidden;}
 /* stacked (date line over time line) rather than side by side, and
    left-aligned now that it's alone in the topbar instead of centered
    between two flanking groups */
+/* The clock is the biggest thing in the top bar (2026-08-26, user request:
+   "make the live clock with date bigger, taking up two rows"). It took over
+   the space the removed "Day" tab used to occupy. Two real rows: the full
+   weekday + date on top, the running time beneath at display scale.
+   The weekday is written out in full ("Wednesday", not "WED") — see
+   tickClockWidget, which no longer slices DOW. */
 .clockw{
   flex:0 0 auto;
-  display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:1px;
+  display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:2px;
   background:var(--glass,var(--surface));backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
-  border:1.5px solid var(--line);border-radius:16px;
-  padding:5px 10px;box-shadow:var(--shadow);
+  border:1.5px solid var(--line);border-radius:18px;
+  padding:8px 14px;box-shadow:var(--shadow);
 }
-.clockw .cw-date{display:flex;align-items:baseline;gap:4px;line-height:1.1;white-space:nowrap;}
+.clockw .cw-date{display:flex;align-items:baseline;gap:6px;line-height:1.1;white-space:nowrap;}
 .clockw .cw-dow{
-  font-family:var(--font-body);font-size:9px;font-weight:800;letter-spacing:.08em;
-  text-transform:uppercase;color:var(--ink-3);
+  font-family:var(--font-body);font-size:12px;font-weight:900;letter-spacing:.02em;
+  color:var(--ink-2);
 }
-.clockw .cw-day{font-family:var(--font-body);font-size:10.5px;font-weight:800;color:var(--ink-2);white-space:nowrap;}
+.clockw .cw-day{font-family:var(--font-body);font-size:12px;font-weight:800;color:var(--ink-3);white-space:nowrap;}
 .clockw .cw-time{
-  font-family:var(--font-display);font-size:18px;font-variant-numeric:tabular-nums;
-  font-weight:800;letter-spacing:-.02em;line-height:1;color:var(--ink);white-space:nowrap;
+  font-family:var(--font-display);font-size:30px;font-variant-numeric:tabular-nums;
+  font-weight:900;letter-spacing:-.03em;line-height:1;color:var(--ink);white-space:nowrap;
 }
-.clockw .cw-sec{font-family:var(--mono);font-size:10px;font-weight:700;color:var(--ink-3);margin-left:1px;}
+.clockw .cw-sec{font-family:var(--mono);font-size:13px;font-weight:700;color:var(--ink-3);margin-left:2px;}
+/* A full weekday name plus a 30px clock is a lot of width on a small phone;
+   step both down rather than let the top bar wrap. */
+@media (max-width:400px){
+  .clockw{padding:6px 11px;border-radius:16px;}
+  .clockw .cw-dow,.clockw .cw-day{font-size:11px;}
+  .clockw .cw-time{font-size:25px;}
+  .clockw .cw-sec{font-size:11px;}
+}
 
 .dash-right{display:flex;align-items:center;gap:7px;flex:0 0 auto;}
 .dash-right[hidden]{display:none;}
@@ -384,20 +404,23 @@ html,body{overflow:hidden;}
    heroCard() renders the exact same .item.hub timelineItem always has. */
 .hero-slot{flex:0 0 auto;margin-bottom:10px;}
 .hero-slot:empty{display:none;}
-/* display:block, not the base .time-row grid — .time-row's grid-template-
-   columns is a FIXED 2-track definition (rail + card), and simply hiding
-   .rail-stop with display:none removes it from grid placement entirely,
-   which shoved .card-col into the now-empty first track instead of the
-   second — confirmed live, .card-col measured 10px wide. The hero has no
-   rail to line up against at all, so it doesn't need the grid — block
-   layout with .card-col at its natural full width sidesteps the whole
-   placement question. The top/height/left !important resets that used to
-   sit here are gone with the absolute positioning they were undoing
-   (2026-08-26 uniform rows); .time-row is position:relative with no
-   offsets now, which is already what the hero wants. */
-.hero-slot .time-row{display:block;}
-.hero-slot .rail-stop{display:none;}   /* the hero states its own time range in-card, see .row-lead */
-.hero-slot .card-col{width:100%;display:block;}
+/* The hero KEEPS .time-row's grid and shows its rail (2026-08-26, user
+   request: "main card should be the same size horizontally as the other
+   cards, keeping space for the time (start-end) to show on its left, like
+   the rest"). It used to be display:block with the rail hidden, so its card
+   started at x=0 while every list card started 62px in — the one card meant
+   to dominate was also the only one out of alignment.
+   Note why the old comment here warned against the grid: hiding .rail-stop
+   with display:none removes it from grid placement, which shoves .card-col
+   into the empty FIRST track (confirmed live at 10px wide). That trap is
+   avoided by keeping the rail rather than by abandoning the grid. */
+.hero-slot .time-row{display:grid;}
+.hero-slot .card-col{min-width:0;}
+/* Hero-scale rail to match hero-scale type, still in the same 52px track so
+   the times line up down the page with every list row below. */
+.hero-slot .rail-stop{padding-top:16px;}
+.hero-slot .rail-stop .t,.hero-slot .rail-stop .tm{font-size:14px;font-weight:800;color:var(--ink);}
+.hero-slot .rail-stop .rail-end{font-size:12px;font-weight:700;margin-top:3px;}
 .hero-slot .item-top{display:none;}    /* eyebrow moves into the card itself below */
 .hero-slot .item.hub{
   border-radius:20px;box-shadow:var(--shadow-lg);
@@ -604,7 +627,11 @@ html,body{overflow:hidden;}
    the cards, a second vertical colour bar at the card's left edge read as
    part of the gutter rather than as a property of the card. */
 .item{
-  position:absolute;left:0;right:0;
+  /* position:relative, not absolute — a leftover from the true-to-scale
+     layout, where every card was placed by computed top/height. Rows are in
+     normal flow now (2026-08-26) and the absolute rule only survived because
+     .time-row's grid re-established a containing block for it. */
+  position:relative;
   border-radius:14px;border:1.5px solid var(--line-soft);
   background:var(--card);
   overflow:hidden;touch-action:none;cursor:grab;
@@ -676,6 +703,23 @@ html,body{overflow:hidden;}
   touch-action:pan-y;
   -webkit-user-select:none;user-select:none;-webkit-touch-callout:none;
 }
+/* LIST TINT (2026-08-26, user request: cards should carry their list's
+   colour). Keyed on .lk-<key>, which listClass() only ever emits for a real
+   Trello card that has a list — so this deliberately does NOT reach a break
+   or a meeting. Both of those set --bc-soft too (.bk-break, .bk-none), and
+   an earlier version of this rule lived on plain .item and therefore tinted
+   them as well: that re-broke the exact translucency bug fixed on
+   2026-08-25, where a break card's azure wash let the grid show through, and
+   `brk.js` caught it immediately ("a break card should have no gradient
+   any more"). Breaks and meetings are not cards on a list; they have no
+   list colour to carry.
+   A gradient layer over --card rather than a flat colour, because --bc-soft
+   is a ~16% alpha wash: painted as `background-color` it would composite
+   against the page instead of the card, and a saturated fill behind body
+   text is unreadable regardless. */
+.item[class*="lk-"]{
+  background:linear-gradient(var(--bc-soft,transparent),var(--bc-soft,transparent)),var(--card);
+}
 /* the one place inside a card where selecting text is the point */
 .item.stack .details{-webkit-user-select:text;user-select:text;-webkit-touch-callout:default;}
 .item.stack .row{gap:6px 10px;padding:7px 12px;}
@@ -702,7 +746,17 @@ html,body{overflow:hidden;}
    property write is one style recalc, no layout, cheaper than fighting
    border-radius clipping on a changing background-size. */
 .item.hub{position:relative;}
-.current-marker-card{position:relative;}
+/* The slim in-timeline stand-in for the current task. It carries only a
+   title (the hero above owns the actions), so without its own padding it
+   rendered as a bare glowing outline with text jammed against the edge —
+   which read as an error state once the card also picked up its list tint
+   (2026-08-26). Padding is what makes it a card rather than a box. */
+.current-marker-card{position:relative;padding:9px 13px;font-weight:800;}
+/* One ring, not two. .item.current's pulsing glow plus the list tint plus
+   the neutral card border stacked three signals for one fact; the marker
+   keeps the glow (it IS the "you are here" marker) and drops the border it
+   would otherwise inherit from .item. */
+.current-marker-card{border-color:transparent;}
 .drain-fill{
   position:absolute;left:0;top:0;bottom:0;width:var(--drain,0%);z-index:0;
   background:var(--accent-soft);border-radius:inherit;
@@ -776,11 +830,12 @@ html,body{overflow:hidden;}
   display:inline;font-family:var(--mono);font-size:12px;font-weight:600;
   color:var(--ink-2);letter-spacing:-.02em;line-height:1;
 }
-/* Duration, the fact card height used to encode and no longer does. Quiet
-   by design: it is reference, not the headline. */
-.time-row .rail-stop .dur{
-  font-family:var(--mono);font-size:10px;font-weight:600;
-  color:var(--ink-3);opacity:.75;line-height:1;letter-spacing:-.01em;
+/* The end of the span, under its start. A real time, so it gets real
+   weight — just a step quieter than the start, which is the one you scan
+   for. Replaced a duration chip ("15m"); see timelineItem's rail block. */
+.time-row .rail-stop .rail-end{
+  font-family:var(--mono);font-size:11px;font-weight:600;
+  color:var(--ink-3);line-height:1;letter-spacing:-.02em;
 }
 /* A brick sibling's own start still reads as part of one run, one step
    down in weight from the run's first stop. */
@@ -822,7 +877,7 @@ html,body{overflow:hidden;}
   padding-top:9px;text-align:right;
   -webkit-user-select:none;user-select:none;-webkit-touch-callout:none;
 }
-.rail-stop > .dur{display:block;margin-top:2px;}
+.rail-stop > .rail-end{display:block;margin-top:2px;}
 /* deliberately identical to .tl-hours .hl — same family, size, weight and
    colour, so the two views' times are visibly the same object */
 .rail-stop .t,.rail-stop .tm{
@@ -1001,16 +1056,31 @@ html,body{overflow:hidden;}
 .mini:active{transform:scale(.9);}
 .mini:disabled{opacity:.4;cursor:not-allowed;}
 .mini.on{border-color:var(--accent);color:var(--accent-ink);background:var(--accent-soft);}
-/* Done/Swap/Pending/Remove are icon-only .mini buttons now (✓/⇄/⏱/✕), not
-   the .text variant — same neutral ring-and-glyph rest state as every other
-   .mini button (info's ▾/▴ included), same fixed square size, so the row
-   lines up identically everywhere it appears (hub and list cards share this
-   exact markup — see timelineItem). Colour only shows up on hover, still one
-   colour per action so the row still scans apart at a glance mid-gesture. */
-.mini.ok:hover{color:#fff;background:var(--done);border-color:var(--done);}
-.mini.swap:hover{color:var(--on-accent);background:var(--accent);border-color:var(--accent-ink);}
-.mini.pend:hover{color:#fff;background:var(--age);border-color:var(--age);}
-.mini.del:hover{color:#fff;background:var(--crit);border-color:var(--crit);}
+/* FILLED AT REST, one colour per action (2026-08-26, user request: "action
+   buttons need colors and look juicy with white text"). They used to be
+   neutral rings that only coloured on hover, which meant the whole action
+   row read as one grey blur until you moved the pointer over it — on a
+   phone, where there is no hover at all, it never coloured.
+   Each keeps its own hue so the row scans apart without reading glyphs:
+   Done yellow, Swap dark blue, Pending light blue, Remove red, Details grey.
+   White glyphs on every fill EXCEPT Done: --accent is a bright yellow and
+   white-on-yellow fails contrast badly (~1.6:1), so Done uses the same dark
+   ink the yellow rebuild/progress-pill buttons already use on that fill —
+   it reads as the same family and is legible. The others clear 4.5:1. */
+.mini.ok{background:var(--accent);border-color:var(--accent);color:var(--on-accent);font-weight:800;}
+.mini.ok:hover{background:#FFD469;border-color:#FFD469;color:var(--on-accent);}
+.mini.swap{background:var(--deep);border-color:var(--deep);color:#fff;}
+.mini.swap:hover{background:#4550E8;border-color:#4550E8;color:#fff;}
+.mini.pend{background:var(--sky);border-color:var(--sky);color:#fff;}
+.mini.pend:hover{background:#3FA0DC;border-color:#3FA0DC;color:#fff;}
+.mini.del{background:var(--crit);border-color:var(--crit);color:#fff;}
+.mini.del:hover{background:#E63B4C;border-color:#E63B4C;color:#fff;}
+.mini.info{background:var(--ink-3);border-color:var(--ink-3);color:#fff;}
+.mini.info:hover{background:var(--ink-2);border-color:var(--ink-2);color:#fff;}
+/* A filled button must not wash out to near-white when disabled — keep the
+   fill and dim the whole control, so a locked action still reads as itself. */
+.mini.ok:disabled,.mini.swap:disabled,.mini.pend:disabled,
+.mini.del:disabled,.mini.info:disabled{opacity:.38;}
 .mini.text{width:auto;padding:0 10px;font-size:11px;font-weight:800;}
 /* Settings' "Clear Activity Data" is the one remaining .mini.text button —
    reuses the red remove-card colour at rest, unlike the icon actions above. */
@@ -1647,8 +1717,12 @@ html,body{overflow:hidden;}
   <header class="head"></header>
 
   <div class="dash" id="dash">
+    <!-- The "Day" tab is gone (2026-08-26, user request): it was a
+         permanently-active button that switched to the view you were
+         already on. Projects is the only real alternative, and it hides
+         itself when there's no batch board (see paintHeader), so the whole
+         switcher can be empty — that's fine, it just collapses. -->
     <div class="segmented" id="viewSwitch">
-      <button data-view="day">Day</button>
       <button data-view="projects">Projects</button>
     </div>
     <div class="dash-center">
@@ -1902,8 +1976,59 @@ function injectBoardCss(colors){
     const hex = boardHue(meta, i, src);
     return `:root{--b-${b.key}:${hex};--b-${b.key}-soft:${softOf(hex)};}` +
            `.bk-${b.key}{--bc:var(--b-${b.key});--bc-soft:var(--b-${b.key}-soft);}`;
+  }).join("\n") + "\n" + listCss(src);
+}
+/* PER-LIST COLOUR (2026-08-26, user request: cards should carry their list's
+   colour, "same as boards").
+   **Trello lists have no colour of their own.** Colour in Trello belongs to
+   labels and to board backgrounds; `trelloReadList` returns id/name/position
+   and nothing else (see CLAUDE.md's connector notes), so there is no list
+   colour to read back. Daisey assigns one instead, on exactly the mechanism
+   boards already use: a generated `--l-<key>` / `--l-<key>-soft` pair plus a
+   `.lk-<key>` rule setting the same `--bc`/`--bc-soft` custom properties every
+   card already paints from. That is what makes this "same as boards" rather
+   than a second parallel system — no card CSS changes at all.
+   The key hashes the list NAME, not its id: a list is identified to the user
+   by what it is called, two boards that both have a "Doing" should look alike,
+   and a colour must not shift because Trello handed back a different id. An
+   explicit CFG.colors["list:<lowercased name>"] always wins, so a per-list
+   picker can pin one later without touching this code. */
+function listKey(name){
+  const n = String(name||"").trim().toLowerCase();
+  let h = 0;
+  for(let i=0;i<n.length;i++) h = (h*31 + n.charCodeAt(i)) >>> 0;
+  return "l" + h.toString(36);
+}
+function listHue(name, src){
+  const key = "list:" + String(name||"").trim().toLowerCase();
+  const pin = src && src[key];
+  if(pin) return pin;
+  const n = String(name||"").trim().toLowerCase();
+  let h = 0;
+  for(let i=0;i<n.length;i++) h = (h*131 + n.charCodeAt(i)) >>> 0;
+  return PALETTE[h % PALETTE.length];
+}
+/* One rule per distinct list name currently on a SCHEDULING board (tracker
+   boards are excluded — their lists are pipeline stages, not card homes, and
+   they never reach the day view). Rebuilt on every injectBoardCss call, same
+   as the board block above, so a renamed or new list picks up its colour on
+   the next paint without a reload. */
+function listCss(src){
+  const names = new Set();
+  for(const c of allCards()){
+    if(c && c.listName && !isTrackerCard(c)) names.add(c.listName);
+  }
+  return [...names].map(name => {
+    const k = listKey(name), hex = listHue(name, src);
+    return `:root{--l-${k}:${hex};--l-${k}-soft:${softOf(hex)};}` +
+           `.lk-${k}{--bc:var(--l-${k});--bc-soft:var(--l-${k}-soft);}`;
   }).join("\n");
 }
+/* The class a card's own list contributes. Emitted AFTER boardClass in every
+   class list, so a card that has a list paints its list colour while a card
+   without one — and every meeting and break — keeps the board colour it
+   always had. */
+const listClass = card => (card && card.listName) ? " lk-" + listKey(card.listName) : "";
 /* Kept as the name every caller already uses (loadCfg, saveCfg, and the
    settings panel's live preview / cancel-revert paths). */
 function applyColors(colors){ injectBoardCss(colors); }
@@ -4390,8 +4515,29 @@ function render(){
   render._q = true;
   requestAnimationFrame(()=>{
     render._q = false;
+    /* The per-list colour rules are generated from the list names on the
+       cards themselves (see listCss), so unlike the board rules they cannot
+       all be known at boot — injectBoardCss runs before Trello has answered,
+       and a board poll can add or rename a list at any time afterwards.
+       Refresh them here, but only when the set of names actually changed:
+       this runs on every paint, and rewriting a <style> element's textContent
+       forces the whole document to re-style. */
+    try{ refreshListCss(); }catch(e){ logErr("listCss", e); }
     try{ paint(); }catch(e){ console.error(e); }
   });
+}
+/* Rewrites the generated list rules only when the set of list names (or the
+   pinned colours) has really changed — see render() for why this is guarded. */
+function refreshListCss(){
+  const names = [];
+  for(const c of allCards()){
+    if(c && c.listName && !isTrackerCard(c)) names.push(c.listName);
+  }
+  const sig = names.sort().join("\u0000") + "|" +
+              JSON.stringify((CFG && CFG.colors) || {});
+  if(sig === refreshListCss._sig) return;
+  refreshListCss._sig = sig;
+  injectBoardCss();
 }
 
 /* Every view falls back to the same "nothing truthful to show yet" states —
@@ -5539,19 +5685,17 @@ function currentMarker(item, winS, ppm){
      the RAIL track — confirmed live: the marker rendered as a ~52px-wide
      column of vertically-wrapped text. It also has a real start time worth
      stating, since the hero above states its own range separately. */
-  const rail = el("div","rail-stop " + boardClass(item.card, item.task, item.isBreak));
+  const rail = el("div","rail-stop " + boardClass(item.card, item.task, item.isBreak) + listClass(item.card));
   const at = atMin(S.anchor, item.s);
   rail.appendChild(el("span","t", pad2(at.getHours())));
   rail.appendChild(el("span","tm", ":" + pad2(at.getMinutes())));
-  const mins = item.e2 - item.s;
-  const mh = Math.floor(mins/60), mm = mins%60;
-  rail.appendChild(el("span","dur", mh ? (mm ? `${mh}h${mm}` : `${mh}h`) : `${mm}m`));
+  rail.appendChild(el("span","rail-end", hhmm(atMin(S.anchor, item.e2))));
   timeRow.appendChild(rail);
   /* hub/now: stable selector names carried over from before the hero split
      (see the CSS comment by .item.hub) — no styling of their own, kept so
      "which card is currently the day's focus" stays queryable by the same
      identity everywhere, hero included. */
-  const card = el("div","item stack current hub now current-marker-card " + boardClass(item.card, item.task, item.isBreak));
+  const card = el("div","item stack current hub now current-marker-card " + boardClass(item.card, item.task, item.isBreak) + listClass(item.card));
   card.appendChild(el("span","drain-fill"));
   const n = el("span","n"); n.appendChild(bidiSpan(item.title));
   card.appendChild(n);
@@ -5726,7 +5870,7 @@ function timelineItem(item, winS, ppm, col, cols, opts){
   const collapsible = stack && item.task && !item.isBreak && !opts.compact && !isHub;
   const collapsedRow = collapsible && !isOpen;
 
-  const cls = ["item", boardClass(item.card, item.task, item.isBreak), item.task ? "" : "meeting",
+  const cls = ["item", boardClass(item.card, item.task, item.isBreak) + listClass(item.card), item.task ? "" : "meeting",
                item.missed ? "miss" : "", item.done ? "done" : "",
                stack ? "stack" : "", opts.compact ? "compact" : "",
                collapsedRow ? "collapsed" : "",
@@ -5752,8 +5896,7 @@ function timelineItem(item, winS, ppm, col, cols, opts){
      the list row keeps only its source chip. */
   const r = el("div","row" + (item.done ? " done" : ""));
   r.appendChild(stack
-    ? rowLead(opts.hub ? fmtRangeMin(item.s, item.e2) : null,
-              item.card ? sourceChip(item.card) : null, { noDot:true })
+    ? rowLead(null, item.card ? sourceChip(item.card) : null, { noDot:true })
     : rowLead(fmtRange(item.ev.start, item.ev.end), null));
   const n = el("span","n");
   n.appendChild(bidiSpan(item.title));
@@ -5898,7 +6041,7 @@ function timelineItem(item, winS, ppm, col, cols, opts){
      fine without emphasis and the off-hour starts are the informative ones. */
   const inBrick = item.brickPos != null;
   const startAt = inBrick ? atMin(item.ev.start, item.s) : item.ev.start;
-  const railCls = ["rail-stop", boardClass(item.card, item.task, item.isBreak),
+  const railCls = ["rail-stop", boardClass(item.card, item.task, item.isBreak) + listClass(item.card),
                     item.task ? "" : "meeting", isHub ? "hub" : "",
                     inBrick ? "brick" : "",
                     inBrick && item.brickPos > 0 ? "brick-sub" : ""].filter(Boolean).join(" ");
@@ -5910,18 +6053,13 @@ function timelineItem(item, winS, ppm, col, cols, opts){
   railStop.appendChild(el("span","tm", ":" + pad2(startAt.getMinutes())));
   railStop.title = fmtRange(inBrick ? startAt : item.ev.start,
                             inBrick ? atMin(item.ev.start, item.e2) : item.ev.end);
-  /* Duration is back in the rail as TEXT (2026-08-26 uniform-rows
-     redesign). It was dropped on 2026-08-25 as redundant, because the card
-     was sized to its real duration and a second read of the same fact was
-     noise. Rows are uniform now, so height no longer says anything about
-     duration and nothing else on the row does either — "5h" has to be
-     written down or it is simply not available. Text also states it far
-     more precisely than 300px of colour ever did. */
-  if(!isHub){
-    const mins = item.e2 - item.s;
-    const h = Math.floor(mins/60), m = mins%60;
-    railStop.appendChild(el("span","dur", h ? (m ? `${h}h${m}` : `${h}h`) : `${m}m`));
-  }
+  /* The rail states the full span — start on top, END underneath (user
+     request, 2026-08-26). It briefly showed a duration ("15m") there
+     instead; "09:00 / 09:15" answers "when am I free again" directly rather
+     than making you add. A brick sibling's end is its own slice's end (item.e2),
+     not the shared event's, so each row in a merged quick window still reads
+     its own real span. */
+  railStop.appendChild(el("span","rail-end", hhmm(atMin(item.ev.start, item.e2))));
 
   const cardCol = el("div","card-col");
   /* Card first, status column second — the eyebrow now sits to the card's
@@ -6771,15 +6909,39 @@ function swapTo(item, card, outCard){
      create left an empty slot with *both* cards unscheduled — the swap lost
      work instead of just not happening. Worst case now is a harmless duplicate
      that the next rebuild clears. */
+  /* The stand-in has to be REMOVED once the real block exists, or both sit
+     in S.events.payload.events — the same array allEvents() reads — and the
+     swapped-in card renders twice at the same minute. Confirmed live: a swap
+     produced two identical rows, and only one of them was real.
+     `applyPlan` (settled.forEach(s => dropLocalEvent(s.id))) and
+     `commitRelay` (via w.realId) have always done this; swapTo simply never
+     did. Dropped here rather than after refreshCalendar() so the duplicate
+     never survives a paint — the refresh is what brings the real event in,
+     and it can be seconds away on a slow connector. */
+  /* Drop the stand-in the moment the real block exists. Without this BOTH
+     sit in S.events.payload.events — the array allEvents() reads — and the
+     swapped-in card renders twice at the same minute until a refresh
+     happens to replace the whole payload. Confirmed live: a swap produced
+     two identical rows, one of them not real.
+     Only the drop: createBlock's own result is already in that array (the
+     connector's create response is merged in for us), so re-adding a copy
+     keyed to the real id just reproduces the duplicate under a new id —
+     which is exactly what a first attempt at this fix did.
+     `applyPlan` (settled.forEach(s => dropLocalEvent(s.id))) and
+     `commitRelay` (via w.realId) have always dropped their stand-ins;
+     swapTo simply never did. */
   const write = async () => {
-    await createBlock(card, start, end, card.size);
+    const made = await createBlock(card, start, end, card.size);
+    dropLocalEvent(stand.id);
     await deleteBlock(id);
     if(existingBlock) await deleteBlock(existingBlock.id);
+    return made;
   };
   write().then(
     ()=>{ S.pending.delete(id); S.pending.delete(stand.id); saveStats(st); refreshCalendar().then(render); },
     e =>{
       S.pending.delete(id); S.pending.delete(stand.id);
+      dropLocalEvent(stand.id);
       for(const u of undo) u();
       toast(errCopy(e), true);
       queueFailed(`Swap: ${card.name}`, async () => {
@@ -7870,7 +8032,14 @@ $("#dateWrap").addEventListener("click", ()=>goDay(0));
 $("#progressPill").addEventListener("click", doneDialog);
 
 for(const b of $("#viewSwitch").children){
-  b.addEventListener("click", ()=>{ S.view = b.dataset.view; syncCalendarWatch(); render(); });
+  /* TOGGLES, it doesn't just set. With the "Day" tab removed (2026-08-26)
+     the switcher holds one button, so a plain `S.view = b.dataset.view`
+     would make entering Projects a one-way trip with nothing on screen to
+     get back to the day. Tapping the active tab returns to Day. */
+  b.addEventListener("click", ()=>{
+    S.view = (S.view === b.dataset.view) ? "day" : b.dataset.view;
+    syncCalendarWatch(); render();
+  });
 }
 
 async function replan(){
@@ -7891,7 +8060,7 @@ async function replan(){
    repaint untouched — it only needs its own second-by-second tick */
 function tickClockWidget(){
   const n = new Date();
-  $("#cwDow").textContent = DOW[n.getDay()].slice(0,3);
+  $("#cwDow").textContent = DOW[n.getDay()];   /* full name, not the old 3-letter cut */
   $("#cwDay").textContent = `${n.getDate()} ${MON[n.getMonth()]}`;
   $("#cwHH").textContent = hhmm(n);
   $("#cwSec").textContent = ":" + pad2(n.getSeconds());

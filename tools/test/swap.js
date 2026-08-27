@@ -76,6 +76,24 @@ const check=(cond,msg)=>{ if(!cond) bad.push(msg); };
     return e ? { s:minsOf(e.start), e:minsOf(e.end), dur:minsOf(e.end)-minsOf(e.start), size:e.size, cardShort:e.cardShort } : null;
   });
 
+  /* How many TIMES the swapped-in card appears — in the model and on screen.
+     Every assertion above reads allEvents().find(), the FIRST match, so a
+     swap that left a duplicate behind passed all of them while rendering the
+     card twice. That is exactly what shipped: swapTo added a local stand-in
+     for the new block and never dropped it once the real event arrived, so
+     both sat in S.events.payload.events (the array allEvents() reads) and
+     the day showed two identical rows, one of them not real.
+     applyPlan and commitRelay had always dropped their stand-ins; swapTo
+     never did. Counting, not finding, is what catches it. */
+  const occurrences = async (shortLink) => p.evaluate((sl)=>({
+    events: allEvents().filter(e=>e.isTask && e.cardShort===sl).length,
+    /* Rendered rows carrying this card's own start minute. agenda() can't be
+       keyed on card.shortLink here — these are synthetic fixture cards that
+       don't resolve through cardFor — so the DOM is the honest second read. */
+    rows: [...document.querySelectorAll("#pageMain .time-row, #heroSlot .time-row")]
+            .filter(r=>r.dataset && r.dataset.min !== undefined).length,
+  }), shortLink);
+
   // quick (20min) -> short: should grow to CFG.shortMin, not stay at 20min
   await seed(EVENTS);
   await swap("synthShort1", "Synthetic Session", "short");
@@ -85,6 +103,9 @@ const check=(cond,msg)=>{ if(!cond) bad.push(msg); };
   console.log("[quick->short]", JSON.stringify(st), "want dur", shortMin);
   check(!!st && st.cardShort==="synthShort1", "the short card should now hold the slot");
   check(st && st.dur===shortMin, `swapping in a session should grow the block to ${shortMin}min, got ${st&&st.dur}`);
+  let occ = await occurrences("synthShort1");
+  console.log("[quick->short occurrences]", JSON.stringify(occ));
+  check(occ.events===1, `the swapped-in card should hold exactly ONE block, got ${occ.events} — a leftover local stand-in renders as a duplicate row`);
 
   // legacy long block (already on the calendar, not just-swapped-in) ->
   // quick: a quick card has no size of its own, so it keeps whatever slot
@@ -97,6 +118,9 @@ const check=(cond,msg)=>{ if(!cond) bad.push(msg); };
   console.log("[legacy-long->quick]", JSON.stringify({beforeQuick, after:st}));
   check(!!st && st.cardShort==="synthQuick1", "the quick card should now hold the slot");
   check(st && beforeQuick && st.dur===beforeQuick.dur, `a quick card has no size of its own — it should keep the slot's ${beforeQuick&&beforeQuick.dur}min length, got ${st&&st.dur}`);
+  occ = await occurrences("synthQuick1");
+  console.log("[legacy-long->quick occurrences]", JSON.stringify(occ));
+  check(occ.events===1, `the swapped-in card should hold exactly ONE block, got ${occ.events}`);
 
   // quick -> quick: same "no size of its own" case, the slot must not move
   await seed(EVENTS);
@@ -107,9 +131,12 @@ const check=(cond,msg)=>{ if(!cond) bad.push(msg); };
   console.log("[quick->quick]", JSON.stringify({before,after:st}));
   check(!!st && st.cardShort==="synthQuick2", "the second quick card should now hold the slot");
   check(st && before && st.s===before.s && st.dur===before.dur, "a same-size swap shouldn't move or resize the slot at all");
+  occ = await occurrences("synthQuick2");
+  console.log("[quick->quick occurrences]", JSON.stringify(occ));
+  check(occ.events===1, `the swapped-in card should hold exactly ONE block, got ${occ.events}`);
 
   console.log(bad.length ? "FAIL:\n  ✗ "+bad.join("\n  ✗ ")
-                         : "✓ a swap resizes the slot to the incoming card's own size, in both directions");
+                         : "✓ a swap resizes the slot to the incoming card's own size, and leaves exactly one block behind");
   await b.close();
   process.exit(bad.length?1:0);
 })();

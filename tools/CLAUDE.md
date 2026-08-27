@@ -121,6 +121,71 @@ code — read those bullets as history, not current behavior. What's true now:
   copy. `retry.js` was reading `#pageMain .now` for the hub and getting
   `currentMarker` — the same task — so it dragged a card onto itself and
   asserted against a move that never happened.
+- **Six changes on 2026-08-27, all direct user requests.** In order:
+  1. **The rail states start AND end** (`09:00` over `09:15`), not start over
+     a duration chip. "When am I free again" is the question a schedule gets
+     asked; a duration makes you do the arithmetic.
+  2. **The hero keeps `.time-row`'s grid and shows its own rail**, so its card
+     starts at the same x as every list card. It used to be `display:block`
+     with the rail hidden — the one card meant to dominate was also the only
+     one out of alignment. Note the trap the old comment there warned about
+     and got backwards: hiding `.rail-stop` with `display:none` removes it
+     from grid placement, which shoves `.card-col` into the empty FIRST track
+     (measured 10px wide). The fix is to KEEP the rail, not to abandon the
+     grid.
+  3. **`swapTo` never dropped its local stand-in.** `localBlock` put a
+     stand-in in the slot, `createBlock` added the real event, and both stayed
+     in `S.events.payload.events` — so a swapped-in card rendered TWICE at the
+     same minute, one of them not real. `applyPlan`
+     (`settled.forEach(s => dropLocalEvent(s.id))`) and `commitRelay` (via
+     `w.realId`) had always dropped theirs; this one path never did. That is
+     the whole of "swap switches to wrong tasks" — the card was right, the
+     duplicate was not. **A first attempt made it worse**: dropping the
+     stand-in and re-adding a copy keyed to the real id just reproduced the
+     duplicate under a new id, because the connector's create response is
+     already merged into that array for you. Drop only.
+     `swap.js` now COUNTS occurrences rather than using `allEvents().find()` —
+     every previous assertion took the first match and so passed against a
+     duplicate. Verified to fail (2 events, 2 rows) against the pre-fix code.
+  4. **Cards carry their list's colour** (`listCss`/`listKey`/`listHue`/
+     `listClass`). **Trello lists have no colour** — confirmed against the
+     real connector this session, not inferred: `trelloReadList` returns
+     `id`, `name`, `position`, `objectId` and nothing else. Colour in Trello
+     belongs to labels and board backgrounds. So Daisey assigns one, on
+     exactly the board mechanism: a generated `--l-<key>`/`--l-<key>-soft`
+     pair plus `.lk-<key>` setting the same `--bc`/`--bc-soft` every card
+     already paints from. The key hashes the list NAME, not its id — a list
+     is known by what it's called, and an id change must not repaint the day.
+     `CFG.colors["list:<lowercased name>"]` overrides, so a picker can pin one
+     later with no code change.
+     **The tint is scoped to `.item[class*="lk-"]`, and that matters.** A
+     first version put it on plain `.item`; breaks and meetings set
+     `--bc-soft` too (`.bk-break`, `.bk-none`), so they got tinted as well —
+     re-breaking the 2026-08-25 translucency fix, where a break's azure wash
+     let the grid show through. `brk.js` caught it on the same run. Neither is
+     a card on a list.
+     Because list names come from the CARDS, these rules cannot all exist at
+     boot the way board rules can — `refreshListCss()` runs from `render()`
+     and rewrites them only when the set of names actually changed (rewriting
+     a `<style>`'s textContent restyles the whole document).
+  5. **Action buttons are filled at rest**, one hue each: Done yellow, Swap
+     dark blue (`--deep`), Pending light blue (`--sky`, a new token —
+     deliberately a different FAMILY from `--deep`, since the two sit adjacent
+     in every row), Remove red, Details grey. They used to be neutral rings
+     that only coloured on hover, which on a phone meant never.
+     **Done is the one exception to white glyphs**: white on `--accent`
+     yellow is ~1.6:1 and fails outright, so it uses the same dark ink the
+     yellow rebuild/progress-pill buttons already use. The others clear 4.5:1.
+  6. **The "Day" tab is gone and the clock took its space** — two rows, full
+     weekday name (`tickClockWidget` no longer slices `DOW`), 30px time.
+     The switcher now holds one button, so it **toggles**: tapping Projects
+     while on Projects returns to Day. Without that, entering Projects was a
+     one-way trip with nothing on screen to get back with.
+  Also fixed while in here: `.item` was still `position:absolute` (a
+  true-to-scale leftover that only worked because `.time-row`'s grid
+  re-established a containing block), and `currentMarker` had no padding — it
+  rendered as a bare glowing outline with its title against the edge, which
+  read as an error state once it also picked up a list tint.
 - Any test selector reading `#pageMain .now`/`#pageMain .mini.info`/
   `#pageMain .details` etc. against a fixture with only ONE task that day
   is stale — that task is `current`, and current no longer renders inside
@@ -1621,7 +1686,11 @@ attempt instead of being waved through.
   description claims.
 - `trelloReadList` `list_by_board` returns a flat `lists` array plus
   `pageInfo` — not the `nodes` wrapper the card reads use. `limit` caps
-  at 50, not 100.
+  at 50, not 100. **Each list is `{id, name, position, objectId}` and
+  nothing else — there is no colour field** (re-confirmed against the real
+  board 2026-08-27, when per-list card colours were asked for). Colour in
+  Trello belongs to labels and to board backgrounds, not to lists, so any
+  "list colour" in Daisey is one Daisey assigns — see `listCss`.
 - `trelloReadChecklist` returns `checkItems`, not `items`.
 - `trelloWriteChecklist` returns the updated item directly, unwrapped;
   other Trello writes return `{cards:{nodes:[…]}}`.
