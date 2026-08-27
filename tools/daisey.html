@@ -1036,22 +1036,30 @@ html,body{overflow:hidden;}
    neutral rings that only coloured on hover, which meant the whole action
    row read as one grey blur until you moved the pointer over it — on a
    phone, where there is no hover at all, it never coloured.
-   Each keeps its own hue so the row scans apart without reading glyphs:
-   Done yellow, Swap dark blue, Pending light blue, Remove red, Details grey.
-   White glyphs on every fill EXCEPT Done: --accent is a bright yellow and
-   white-on-yellow fails contrast badly (~1.6:1), so Done uses the same dark
-   ink the yellow rebuild/progress-pill buttons already use on that fill —
-   it reads as the same family and is legible. The others clear 4.5:1. */
-.mini.ok{background:var(--accent);border-color:var(--accent);color:var(--on-accent);font-weight:800;}
-.mini.ok:hover{background:#FFD469;border-color:#FFD469;color:var(--on-accent);}
-.mini.swap{background:var(--deep);border-color:var(--deep);color:#fff;}
-.mini.swap:hover{background:#4550E8;border-color:#4550E8;color:#fff;}
-.mini.pend{background:var(--sky);border-color:var(--sky);color:#fff;}
-.mini.pend:hover{background:#3FA0DC;border-color:#3FA0DC;color:#fff;}
+   Re-mapped 2026-08-27 (direct user request): Done green, Swap light blue,
+   Pending yellow — matching the rebuild button and progress-pill's own
+   accent, since Pending is the "revisit later" action and that's the same
+   family those two already read as. Remove stays red.
+   White glyphs on every fill EXCEPT Pending: --accent is a bright yellow and
+   white-on-yellow fails contrast badly (~1.6:1), so Pending uses the same
+   dark ink the yellow rebuild/progress-pill buttons already use on that
+   fill — it reads as the same family and is legible. The others clear
+   4.5:1, --done included (a mid-bright green, not a pale one). */
+.mini.ok{background:var(--done);border-color:var(--done);color:#fff;font-weight:800;}
+.mini.ok:hover{background:#4CDE8C;border-color:#4CDE8C;color:#fff;}
+.mini.swap{background:var(--sky);border-color:var(--sky);color:#fff;}
+.mini.swap:hover{background:#3FA0DC;border-color:#3FA0DC;color:#fff;}
+.mini.pend{background:var(--accent);border-color:var(--accent);color:var(--on-accent);}
+.mini.pend:hover{background:#FFD469;border-color:#FFD469;color:var(--on-accent);}
 .mini.del{background:var(--crit);border-color:var(--crit);color:#fff;}
 .mini.del:hover{background:#E63B4C;border-color:#E63B4C;color:#fff;}
-.mini.info{background:var(--ink-3);border-color:var(--ink-3);color:#fff;}
-.mini.info:hover{background:var(--ink-2);border-color:var(--ink-2);color:#fff;}
+/* Details is a disclosure toggle, not a committing action like the four
+   above — user asked for "something more subtle" than the solid grey fill
+   it had. A ghost/outline treatment (soft tinted fill, no saturated hue,
+   ink-2 text) reads as "look, don't act" rather than joining the row of
+   filled buttons as a fifth equally-weighted action. */
+.mini.info{background:var(--surface-2);border-color:var(--line-2);color:var(--ink-2);}
+.mini.info:hover{background:var(--line);border-color:var(--ink-3);color:var(--ink);}
 /* A filled button must not wash out to near-white when disabled — keep the
    fill and dim the whole control, so a locked action still reads as itself. */
 .mini.ok:disabled,.mini.swap:disabled,.mini.pend:disabled,
@@ -4465,15 +4473,27 @@ function splitAgenda(){
      doesn't count toward the done/open progress pill */
   const open = items.filter(i => i.task && !i.done && !i.isBreak);
 
-  /* The hub must always answer "what now" while work remains. Prefer what is
-     running, then what is next — and if the whole day is behind you, the
-     earliest thing still unfinished rather than an empty screen. */
+  /* The hub answers "what am I doing right now" — running, or if nothing
+     is, whatever's genuinely still ahead. It must NEVER fall back to the
+     earliest open task once that task's own slot has already passed
+     (2026-08-27, user request: "if the time has passed from the card's
+     time it shouldn't be the main card... if he passed a task without
+     touching it it should turn to another color to say you missed me").
+     The old third fallback (`open[0]`) picked the earliest open task
+     unconditionally once nothing was "now" or "next" — which is exactly
+     the moment every remaining open task's own end has already passed
+     (open.find(i.e2>nowMin) came back empty), so it always grabbed a
+     STALE task and re-presented it as the current focus. A task that slips
+     past its own slot untouched isn't what the user is doing now; it falls
+     through to `missed` below instead, where the existing .miss styling
+     already marks it (grey surface, muted text) — that IS the "you missed
+     me" colour the request asks for, just not previously reachable from
+     here because a missed task always got re-adopted as current first. */
   let current = null;
   if(isToday){
     current = open.find(i => i.s <= nowMin && i.e2 > nowMin)     // happening now
-           || open.find(i => i.e2 > nowMin)                       // next up
-           || open[0]                                             // day's over, still open
-           || null;
+           || open.find(i => i.e2 > nowMin)                       // next up, not yet missed
+           || null;                                               // everything open has slipped — none of it is "now"
   }else{
     current = open[0] || null;
   }
@@ -5197,10 +5217,10 @@ function projectsView(){
    needed (CLAUDE.md's documented overlay hazard doesn't apply: nothing
    here overlaps anything). Rebuilt fresh every render() alongside
    paintMain, same cadence, since both read the same splitAgenda() result. */
-function paintHero(current, doneCount){
+function paintHero(current, doneCount, missedCount){
   const slot = $("#heroSlot");
   slot.innerHTML = "";
-  slot.appendChild(current ? heroCard(current) : emptyNow(doneCount));
+  slot.appendChild(current ? heroCard(current) : emptyNow(doneCount, missedCount));
   slot.classList.toggle("hero-empty", !current);
   slot.hidden = false;
   /* run after the card is in the live tree — clampHeroTitle measures real
@@ -5211,8 +5231,11 @@ function paintHero(current, doneCount){
      something actually finished, not on every render of the clear state —
      S.dayCelebrated (per dayKey, so a new day can celebrate again) is the
      guard. Reuses the same confetti/chime the per-task completion already
-     uses, just a bigger burst for the bigger moment. */
-  if(!current && doneCount){
+     uses, just a bigger burst for the bigger moment.
+     !missedCount (2026-08-27): a day isn't "clear" while missed tasks are
+     still sitting open further down — that's the same state emptyNow above
+     now gives its own honest copy to, not a moment to celebrate. */
+  if(!current && doneCount && !missedCount){
     const today = dayKey(S.anchor);
     if(S.dayCelebrated !== today){
       S.dayCelebrated = today;
@@ -5326,7 +5349,7 @@ function paintMain(){
   for(const i of [breakNow].concat(missedList).filter(Boolean).sort((a,b) => a.s - b.s))
     lead.appendChild(timelineItem(i, dayWinS, dayPpm, 0, 1, {mode:"stack"}));
 
-  paintHero(current, doneCount);
+  paintHero(current, doneCount, missed.length);
   if(current) lead.appendChild(currentMarker(current, dayWinS, dayPpm));
 
   if(meetingKids){
@@ -5861,7 +5884,15 @@ function detailPanel(card){
   return d;
 }
 
-function emptyNow(doneCount){
+/* missedCount (2026-08-27): the hub no longer re-adopts a task whose own
+   slot already passed (see splitAgenda's `current` selection) — so "no
+   current task" can now mean either a genuinely clear day OR a day where
+   everything left is sitting missed further down the list. Those are
+   different states and deserve different copy: "Nothing scheduled"/"Day
+   clear" would both misreport a day that still has real unfinished work,
+   just none of it happening or upcoming any more. */
+function emptyNow(doneCount, missedCount){
+  if(missedCount) return stateCard("!","You missed some tasks", `${missedCount} still open, further down.`, true);
   if(doneCount) return stateCard("✓","Day clear", `${doneCount} done.`, true);
   const past = sameDay(S.anchor, new Date()) && minsOf(new Date()) >= CFG.dayEnd*60;
   if(past) return stateCard("—","Day's over","", false);

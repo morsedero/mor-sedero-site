@@ -227,6 +227,71 @@ code — read those bullets as history, not current behavior. What's true now:
   `#pageMain .details` etc. against a fixture with only ONE task that day
   is stale — that task is `current`, and current no longer renders inside
   `#pageMain` at all. Scope such selectors to `#heroSlot` (or both) instead.
+- **The rail column is GONE (2026-08-27), replaced by an in-card time badge.**
+  Direct user request, "insert start-end time to the left anchor inside
+  cards, just like Google Calendar cards have": `.time-row` used to be a
+  fixed two-track CSS grid (a `.rail-stop` column outside the card, holding
+  start/end, plus the card itself); it's now `display:block`, one column,
+  and every card states its own start–end range inside itself via
+  `rowLead`'s `.t` span (top-left, beside the list-colour dot) — same
+  mechanism `rowLead` already used for Week-grid rows, just re-enabled for
+  stack mode. `timelineItem`, `heroCard` (via `timelineItem`), and
+  `currentMarker` all build this the same way; `quietGap`/`offHoursCard`
+  print their own start as plain text instead (`.quiet-start`/
+  `.offhours-start`) since they were never cards with a title to anchor a
+  badge next to. `.rail-stop`/`.rail-end` no longer exist anywhere in the
+  file — don't reintroduce a selector that reads them.
+  `layout.js` (checks 4/5, now reading `.row-lead` instead of `.rail-stop`)
+  and `rail.js` (its whole premise) are the guards; both were rewritten in
+  the same change, not just the app. One measured, accepted side effect:
+  removing the rail's own grid track also removed a quirk where EVERY row
+  in that grid was forced to match the tallest thing beside it — a plain
+  15-min task used to measure 44.5px purely because the rail needed that
+  much room, not because the task's own content did. It's now honestly
+  31.5px; `layout.js`'s height-ratio check widened from 2x to 2.2x to
+  match, which is the ratio becoming more truthful, not the app regressing.
+- **The hero card now scrolls with the rest of the list (2026-08-27),
+  direct user request: "sliding down the app should also affect main
+  card."** `#heroSlot` used to be a fixed flex sibling ABOVE `#pageMain`'s
+  own scroller (see the 2026-08-26 hero bullet below) — permanently
+  visible, never moving. A new `#scroller` wrapper now holds BOTH
+  `#heroSlot` and `#pageMain`, and `overflow-y:auto` moved onto it; `.page`
+  itself is back to normal block flow. `#heroSlot` stays a separate
+  sibling of `#pageMain`, NOT nested inside it — `paintMain` does
+  `host.innerHTML=""` on `#pageMain` every render, which would destroy
+  `#heroSlot`'s own DOM node (and `paintHero`'s `$("#heroSlot")` lookup
+  with it) if it lived inside that subtree. Any test scrolling the list
+  now needs `#scroller`, not `.page` — `rail.js`'s touch-swipe check and
+  `pages.js`'s drag-scroll-into-view fixup were both updated.
+- **A missed task can no longer become the hub (2026-08-27), direct user
+  request: "if the time has passed from the card's time it shouldn't be
+  the main card... if he passed a task without touching it it should turn
+  to another color to say you missed me."** `splitAgenda`'s `current`
+  picker had a third fallback, `open[0]` ("day's over, still open") —
+  unconditional once nothing was "happening now" or "still has time left,"
+  so it always re-adopted the EARLIEST open task even when that task's own
+  slot had already passed. That's the exact bug: a task skipped without
+  being touched got re-presented as the current focus instead of reading
+  as missed. Fix was a deletion, not new logic — `open.find(i=>i.e2>nowMin)
+  || null`, no third fallback. The "another colour" half of the request
+  needed no new CSS: `.item.miss` (grey surface, muted text, red time
+  badge) already existed and already fires once a task falls out of
+  `current` into `missed` — it just could never be reached from a fully
+  passed day before, because `open[0]` always claimed that task as hub
+  first. `missedCount` is threaded through `paintHero`/`emptyNow` so "no
+  current task" gets honest copy: "You missed some tasks" when the day
+  still has real open-but-slipped work, vs. "Day clear"/"Nothing
+  scheduled" only when that's actually true. The day-complete `celebrate()`
+  burst is gated on `!missedCount` too, for the same reason.
+- **Action buttons re-mapped colours (2026-08-27), direct user request.**
+  Done green (`--done`), Swap light blue (`--sky`), Pending yellow
+  (`--accent`, swapped from Done — carries the same dark-ink-on-yellow
+  contrast exception Done used to need, since white-on-`--accent` still
+  fails ~1.6:1), Remove unchanged red. Details (`.mini.info`) dropped its
+  solid grey fill for a ghost/outline treatment (`--surface-2` fill,
+  `--line-2` border, `--ink-2` text) — user asked for "something more
+  subtle," since it's a disclosure toggle, not a committing action like
+  the other four, and was reading as a fifth equally-weighted button.
 
 **Canonical artifact URL — always update this one, never publish a new
 artifact for Daisey:**
