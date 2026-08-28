@@ -711,6 +711,39 @@ html,body{overflow:hidden;}
   display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;
   width:100%;margin:0 2px 10px;
 }
+/* Slick open/close (2026-08-28, direct user request) — every render is a
+   full DOM rebuild here (see paintHero), so there's no persistent element
+   to CSS-transition between states; a staggered entrance keyframe on the
+   freshly-built cards is what "animates" instead. `will-change` off after
+   the animation ends (via `animation-fill-mode:both` + JS below) so these
+   6 cards don't sit composited forever between renders. */
+@keyframes queueIn{
+  from{opacity:0;transform:scale(.85) translateY(4px);}
+  to{opacity:1;transform:scale(1) translateY(0);}
+}
+.next-up-wrap.expanded .queue-card,
+.next-up-wrap.expanded .next-up{
+  animation:queueIn .22s cubic-bezier(.2,.8,.3,1) both;
+}
+.next-up-wrap.expanded .next-up{animation-delay:0ms;}
+.next-up-wrap.expanded .queue-card:nth-of-type(1){animation-delay:30ms;}
+.next-up-wrap.expanded .queue-card:nth-of-type(2){animation-delay:60ms;}
+.next-up-wrap.expanded .queue-card:nth-of-type(3){animation-delay:90ms;}
+.next-up-wrap.expanded .queue-card:nth-of-type(4){animation-delay:120ms;}
+.next-up-wrap.expanded .queue-card:nth-of-type(5){animation-delay:150ms;}
+/* Collapsing back has nothing to animate OUT (the cards are simply gone
+   from the next render's DOM), so instead the surviving next-up card gets
+   a quick "settle" pulse — the one visible cue that something changed. */
+@keyframes queueSettle{
+  0%{transform:scale(1.04);}
+  100%{transform:scale(1);}
+}
+.next-up-wrap.collapsed .next-up{animation:queueSettle .18s ease-out both;}
+@media (prefers-reduced-motion: reduce){
+  .next-up-wrap.expanded .queue-card,
+  .next-up-wrap.expanded .next-up,
+  .next-up-wrap.collapsed .next-up{animation:none;}
+}
 /* Grid mode: the next-up card is restyled down to the same queue-card
    shell as its 5 siblings — .next-up's own bigger padding/gap/shadow would
    make cell 1 visibly larger than cells 2-6 otherwise. The toggle no
@@ -741,7 +774,12 @@ html,body{overflow:hidden;}
    fully INSIDE the anchor's own box (no overhang) so its overflow:hidden
    (there to clip the card's own spine) doesn't clip the badge — collapsed
    keeps the old half-overhanging right:-8px look since it's a child of
-   .next-up-wrap, not .next-up, and the wrap carries no overflow clip. */
+   .next-up-wrap, not .next-up, and the wrap carries no overflow clip.
+   Same size and same arrow rotation in both states (2026-08-28 follow-up,
+   direct user request: "the arrow of opened next cards should look
+   exactly like the closed next cards arrow") — no `.open`/`.queue-card`
+   variant left to rotate or resize it; only the click handler's meaning
+   changes, not the glyph. */
 .queue-toggle{
   position:absolute;right:-8px;top:50%;transform:translateY(-50%);
   width:26px;height:26px;border-radius:50%;
@@ -750,12 +788,8 @@ html,body{overflow:hidden;}
   cursor:pointer;box-shadow:0 2px 0 var(--line-2);
   z-index:1;
 }
-.queue-toggle svg{width:13px;height:13px;transition:transform .15s;transform:rotate(-90deg);}
-.queue-toggle.open svg{transform:rotate(90deg);}
-.queue-card .queue-toggle{
-  right:4px;top:4px;transform:none;width:20px;height:20px;
-}
-.queue-card .queue-toggle svg{width:11px;height:11px;}
+.queue-toggle svg{width:13px;height:13px;transform:rotate(-90deg);}
+.queue-card .queue-toggle{right:4px;top:4px;transform:translateY(0);}
 .queue-card{
   position:relative;background:var(--surface);border:2px solid var(--line-2);
   border-radius:10px;padding:8px 8px 9px;min-height:74px;
@@ -2022,7 +2056,6 @@ html,body{overflow:hidden;}
       <button id="next" class="navbtn" aria-label="Next">›</button>
     </div>
     <div class="dash-right" id="dashRight" hidden>
-      <button class="progress-pill" id="progressPill" type="button" title="Tasks finished today" aria-label="Tasks finished today"></button>
       <button class="rebuild" id="replanBtn" aria-label="Re-plan day">↻</button>
     </div>
   </div>
@@ -5913,8 +5946,6 @@ function paintMain(){
      the ✓ glyph is a plain CSS ::before, nothing left to set as text. The
      real count survives as the accessible name/tooltip, same as any other
      icon-only button in this app. */
-  $("#progressPill").title = `${doneCount}/${doneCount + open.length} tasks finished today`;
-  $("#progressPill").setAttribute("aria-label", `${doneCount}/${doneCount + open.length} tasks finished today`);
   /* only today is buildable — the rebuild button only ever creates new
      blocks, so it has nothing honest to do on any other day */
   $("#replanBtn").hidden = isLockedDay(d);
@@ -8609,7 +8640,6 @@ $("#next").addEventListener("click", ()=>stepNav(1));
 $("#setBtn").addEventListener("click", settingsPanel);
 $("#replanBtn").addEventListener("click", ()=>replan());
 $("#dateWrap").addEventListener("click", ()=>goDay(0));
-$("#progressPill").addEventListener("click", doneDialog);
 
 for(const b of $("#viewSwitch").children){
   /* TOGGLES, it doesn't just set. With the "Day" tab removed (2026-08-26)

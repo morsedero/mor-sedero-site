@@ -400,6 +400,25 @@ code — read those bullets as history, not current behavior. What's true now:
   overhang would be cut off. Collapsed keeps the old half-overhanging
   `right:-8px` badge, since there `.next-up-wrap` (not `.next-up`) carries
   the position:relative and no clip.
+- **Three more same-day follow-ups (2026-08-28), all direct user requests.**
+  (1) The progress-pill (✓ done/total) FAB next to Rebuild is REMOVED from
+  the dash outright — `#progressPill` deleted from the HTML, its render-time
+  title/aria update and its `doneDialog` click listener both deleted.
+  `doneDialog` itself is left dormant, unreachable, same pattern as
+  `pipelineView`'s Assets tab — nothing else called it. (2) The toggle arrow
+  no longer rotates or resizes between collapsed/expanded — same 26px badge,
+  same `-90deg` glyph, both states; "the arrow of opened next cards should
+  look exactly like the closed next cards arrow." The `.open`/`.queue-card`
+  size and rotation overrides are gone from the CSS; the `open` class stays
+  on the element (for `aria-expanded` bookkeeping) but no rule reads it any
+  more. (3) A slick-open animation: since every render here is a full DOM
+  rebuild (`paintHero`, no persistent node to transition), the queue-cards
+  and next-up card get a staggered `queueIn` entrance keyframe (fade + scale
+  + slight rise, 30ms stagger per tile) on expand, and a quick `queueSettle`
+  scale-pulse on the surviving next-up card on collapse — there's nothing to
+  animate OUT since the collapsed render simply omits the 5 queue-cards, so
+  the pulse is the one visible "something changed" cue for that direction.
+  Both keyframes are gated behind `prefers-reduced-motion`.
 
 **Canonical artifact URL — always update this one, never publish a new
 artifact for Daisey:**
