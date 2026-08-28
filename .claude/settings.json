@@ -16,6 +16,16 @@
             "if": "Bash(node tools/build-standalone* || npm install* || npm ci* || netlify build* || netlify deploy*)"
           }
         ]
+      },
+      {
+        "matcher": "Read",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if [ -f \"$file_path\" ]; then lines=$(wc -l < \"$file_path\"); if [ \"$lines\" -gt 500 ] && [ -z \"$offset\" ]; then echo \"⚠️  Large file ($lines lines) read without offset/limit — consider: grep -n 'symbol' $file_path, then Read with offset\"; fi; fi",
+            "shell": "bash"
+          }
+        ]
       }
     ]
   }
