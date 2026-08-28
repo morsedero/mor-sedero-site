@@ -382,13 +382,24 @@ code — read those bullets as history, not current behavior. What's true now:
   3-column grid (no more separate `.queue-grid` nested inside it) and
   `.next-up` is restyled down to the same shell as a `.queue-card` so all 6
   tiles — next-up plus the 5 real upcoming tasks — read as one even row,
-  not one big card with 5 small ones underneath. The round toggle moves
-  with it: an absolute overhang on the card's own edge while collapsed
-  (nothing else to anchor to), a plain trailing grid cell
-  (`.queue-toggle.static`) once expanded, since "the edge of the card"
-  stops meaning anything once the card is just one cell among six.
+  not one big card with 5 small ones underneath.
   `.queue-grid`/the separate close-button-in-its-own-row are gone outright,
   not left dormant — the wrap's own `display:grid` replaced both.
+  **Two same-day follow-ups, both direct user reports.** (1) The next-up
+  card's click-to-open-the-schedule handler is DELETED outright, not
+  guarded — "when clicking on the next card it opens the schedule, stop
+  it." It's a preview only now; the row it used to jump to is still
+  reachable by opening the schedule and scrolling by hand. (2) The
+  toggle's expanded-state look was a plain trailing GRID CELL
+  (`.queue-toggle.static`, 74px tall like a real card) just to hold a 13px
+  arrow — "the arrow becomes too big." It's now a small corner badge on
+  whichever card is actually LAST in the grid (the last of the up-to-5
+  upcoming cards, or the next-up card itself if there are none) — a real
+  child of that card, not an overhanging sibling, since every grid card
+  clips its own overflow (to round off its board-colour spine) and an
+  overhang would be cut off. Collapsed keeps the old half-overhanging
+  `right:-8px` badge, since there `.next-up-wrap` (not `.next-up`) carries
+  the position:relative and no clip.
 
 **Canonical artifact URL — always update this one, never publish a new
 artifact for Daisey:**

@@ -713,11 +713,9 @@ html,body{overflow:hidden;}
 }
 /* Grid mode: the next-up card is restyled down to the same queue-card
    shell as its 5 siblings — .next-up's own bigger padding/gap/shadow would
-   make cell 1 visibly larger than cells 2-6 otherwise. Toggle placement
-   moves too: with the wrap now IS the grid (no single "edge" to hang off
-   of), it becomes its own trailing static tile instead of an absolute
-   overhang — same .queue-toggle.static treatment the close button below
-   already used. */
+   make cell 1 visibly larger than cells 2-6 otherwise. The toggle no
+   longer lives here at all once expanded — see .queue-card .queue-toggle
+   and nextUpQueue's own comment for where it moves to. */
 .next-up-wrap.expanded .next-up{
   display:flex;flex-direction:column;align-items:flex-start;gap:3px;
   background:var(--surface);border:2px solid var(--line-2);border-radius:10px;
@@ -734,24 +732,30 @@ html,body{overflow:hidden;}
   display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;
 }
 .next-up-wrap.expanded .next-up-dot{display:none;}
+/* Pinned to whichever card is last in the grid (queue-anchor, see
+   nextUpQueue) — collapsed, that's the next-up card's own right edge;
+   expanded, the last of the up-to-5 queue-cards (2026-08-28 follow-up,
+   direct user report: expanded, this used to render as its own full 74px
+   grid tile just to hold a 13px icon — "the arrow becomes too big" —
+   because it was a 7th grid CELL, not an overlay on real content). Sits
+   fully INSIDE the anchor's own box (no overhang) so its overflow:hidden
+   (there to clip the card's own spine) doesn't clip the badge — collapsed
+   keeps the old half-overhanging right:-8px look since it's a child of
+   .next-up-wrap, not .next-up, and the wrap carries no overflow clip. */
 .queue-toggle{
   position:absolute;right:-8px;top:50%;transform:translateY(-50%);
   width:26px;height:26px;border-radius:50%;
   background:var(--surface);border:2px solid var(--line-2);
   display:flex;align-items:center;justify-content:center;color:var(--ink-3);
   cursor:pointer;box-shadow:0 2px 0 var(--line-2);
+  z-index:1;
 }
 .queue-toggle svg{width:13px;height:13px;transition:transform .15s;transform:rotate(-90deg);}
 .queue-toggle.open svg{transform:rotate(90deg);}
-/* .static is the toggle's own expanded-state look: a plain grid cell
-   (no absolute overhang) sized to match its 6 queue-card siblings, since
-   it now sits as the grid's own trailing tile rather than a full-width
-   row under a separate .queue-grid (removed 2026-08-28 — the wrap IS the
-   grid now, see .next-up-wrap.expanded, so a second nested grid container
-   would have been redundant). */
-.queue-toggle.static{
-  position:static;transform:none;width:100%;min-height:74px;border-radius:10px;
+.queue-card .queue-toggle{
+  right:4px;top:4px;transform:none;width:20px;height:20px;
 }
+.queue-card .queue-toggle svg{width:11px;height:11px;}
 .queue-card{
   position:relative;background:var(--surface);border:2px solid var(--line-2);
   border-radius:10px;padding:8px 8px 9px;min-height:74px;
@@ -5606,7 +5610,6 @@ function wellRow(wellItems, cur){
    same accordion every other row already uses, then scrolls it into view —
    "next up" is a preview, not a duplicate action surface. */
 function nextUpCard(item){
-  const rowId = item.card ? item.ev.id+":"+item.card.id : item.ev.id;
   const card = el("div","next-up "+boardClass(item.card, item.task, item.isBreak)+listClass(item.card));
   /* item.s, not item.ev.start (2026-08-28 fix): a brick sibling (a merged
      quick-task window — see CLAUDE.md) shares one Google Calendar event
@@ -5624,19 +5627,12 @@ function nextUpCard(item){
   n.appendChild(bidiSpan(item.title));
   card.appendChild(n);
   card.appendChild(el("span","next-up-dot"));
-  card.addEventListener("click", ()=>{
-    S.openRow = rowId;
-    /* the row this opens lives in #pageMain — expand it first (2026-08-28,
-       same day the schedule became collapsible) or the accordion opens
-       behind a `host.hidden` list and scrollIntoView below has nothing
-       visible to scroll to. */
-    S.scheduleOpen = true;
-    render();
-    requestAnimationFrame(()=>{
-      const row = document.querySelector(`[data-row-id="${CSS.escape(rowId)}"]`);
-      if(row) row.scrollIntoView({block:"center", behavior:"smooth"});
-    });
-  });
+  /* No click-to-open any more (2026-08-28 follow-up, direct user report:
+     "when clicking on the next card it opens the schedule, stop it") — it's
+     a preview, and the queue-toggle sitting right next to/on top of it made
+     an open-the-schedule click too easy to trigger by accident. The row it
+     used to jump to is still reachable the normal way, by opening the
+     schedule and scrolling to it by hand. */
   return card;
 }
 /* Expandable queue (2026-08-28, ported from the "Daisey Tetris Cards"
@@ -5656,16 +5652,17 @@ function nextUpQueue(nextUp, current, open){
   const wrap = el("div","next-up-wrap"+(S.queueOpen?" expanded":" collapsed"));
   const card = nextUpCard(nextUp);
   wrap.appendChild(card);
-  /* Collapsed: appended to wrap, not to the card itself (2026-08-28 fix
-     caught while building this) — .next-up has overflow:hidden, on
-     purpose, to clip its own board-colour spine (::before) to the card's
-     rounded corners, which would silently clip the toggle's own
-     right:-8px overhang if it were the card's own child. Expanded: the
-     wrap IS the grid (see .next-up-wrap.expanded), so the toggle has no
-     single edge to hang off of any more and instead renders as its own
-     trailing static tile, same treatment the close button used before
-     this card joined the grid. */
-  const toggle = el("button","queue-toggle"+(S.queueOpen?" open static":""));
+  /* The toggle pins to a CORNER of whichever card is last in the grid — the
+     next-up card itself while collapsed (only tile there is), the last
+     upcoming queue-card once expanded (2026-08-28 follow-up, direct user
+     report: expanded, the toggle rendered as its own full-size 74px grid
+     tile — "the arrow becomes too big" — because .queue-toggle.static used
+     to BE a 7th cell sized like a real card just to hold a 13px icon).
+     Small round overlay on real content beats a whole tile spent on one
+     icon; "stick to the last card" is exactly what an absolutely-positioned
+     corner badge on that card does, no matter how many upcoming tasks
+     there are (1 to 5). */
+  const toggle = el("button","queue-toggle"+(S.queueOpen?" open":""));
   toggle.type = "button";
   toggle.setAttribute("aria-label", S.queueOpen ? "Show just next" : "See full queue");
   toggle.setAttribute("aria-expanded", String(S.queueOpen));
@@ -5678,6 +5675,7 @@ function nextUpQueue(nextUp, current, open){
   if(S.queueOpen){
     const upcoming = (open || []).filter(i => i !== current && i !== nextUp).slice(0, 5);
     const labels = ["+3","+4","+5","+6"];
+    let lastCard = card;
     upcoming.forEach((i, idx) => {
       const qc = el("div","queue-card "+boardClass(i.card, i.task, i.isBreak)+listClass(i.card));
       qc.appendChild(el("div","qc-n", labels[idx] || `+${idx+3}`));
@@ -5686,9 +5684,22 @@ function nextUpQueue(nextUp, current, open){
       t.appendChild(bidiSpan(i.title));
       qc.appendChild(t);
       wrap.appendChild(qc);
+      lastCard = qc;
     });
+    /* A real child of the last card, not an overhanging sibling like the
+       collapsed case below — every grid card clips its own overflow (to
+       round off its board-colour spine), so the toggle has to sit fully
+       inside that box here (see .queue-card .queue-toggle's smaller,
+       overhang-free CSS) rather than half outside it. */
+    lastCard.appendChild(toggle);
+  } else {
+    /* Collapsed: a sibling of .next-up inside .next-up-wrap, which is what
+       actually carries position:relative and no overflow clip — .next-up
+       itself clips (same spine reason), so the toggle's old half-outside
+       right:-8px overhang would be silently cut off as this element's own
+       child. */
+    wrap.appendChild(toggle);
   }
-  wrap.appendChild(toggle);
   return wrap;
 }
 /* "An option to see the day's schedule" (2026-08-28, approved design
