@@ -371,6 +371,24 @@ code — read those bullets as history, not current behavior. What's true now:
      without that, clicking Next Up while the schedule is collapsed opens
      the accordion behind a hidden list and the scroll has nothing visible
      to land on.
+- **Next-up card shrinks to roughly half width, and folds itself INTO the
+  6-tile queue grid on expand (2026-08-28 follow-up, direct user request:
+  "make the next card be smaller... when user clicks on the arrow to
+  expand up to 6 it shrinks to fit the 3 in each row, so 6 including it").**
+  Two changes to `nextUpQueue`/its CSS, both scoped by one class on
+  `.next-up-wrap` (`.collapsed`/`.expanded`, replacing the old always-full-
+  width `.next-up`): collapsed, the card caps at `min(100%,220px)` instead
+  of filling the hero column; expanded, `.next-up-wrap` itself BECOMES the
+  3-column grid (no more separate `.queue-grid` nested inside it) and
+  `.next-up` is restyled down to the same shell as a `.queue-card` so all 6
+  tiles — next-up plus the 5 real upcoming tasks — read as one even row,
+  not one big card with 5 small ones underneath. The round toggle moves
+  with it: an absolute overhang on the card's own edge while collapsed
+  (nothing else to anchor to), a plain trailing grid cell
+  (`.queue-toggle.static`) once expanded, since "the edge of the card"
+  stops meaning anything once the card is just one cell among six.
+  `.queue-grid`/the separate close-button-in-its-own-row are gone outright,
+  not left dormant — the wrap's own `display:grid` replaced both.
 
 **Canonical artifact URL — always update this one, never publish a new
 artifact for Daisey:**

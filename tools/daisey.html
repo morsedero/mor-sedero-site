@@ -644,6 +644,14 @@ html,body{overflow:hidden;}
   cursor:pointer;transition:box-shadow .15s,transform .1s;
   margin-bottom:10px;
 }
+/* Collapsed width: roughly half the hero column, not the full slot width —
+   "next up" is a preview, not a peer of the hero card above it, and full
+   width read as too much weight for a glance-only element (2026-08-28,
+   direct user request). .next-up-wrap carries the width, not .next-up
+   itself, so the toggle (anchored to the wrap, see its own comment) tracks
+   the shrunk edge instead of sitting out at the old full-width edge. */
+.next-up-wrap.collapsed{width:min(100%,220px);}
+.next-up-wrap.collapsed .next-up{width:100%;}
 .next-up:hover{box-shadow:var(--shadow-lg);transform:translateY(-1px);}
 .next-up:active{transform:translateY(0);}
 .next-up::before{
@@ -684,16 +692,48 @@ html,body{overflow:hidden;}
 
 /* Expandable queue (2026-08-28, ported from the "Daisey Tetris Cards"
    design canvas) — a small round toggle on the next-up card's own edge
-   that expands to a 3-per-row grid of up to 6 upcoming real tasks.
-   S.queueOpen is the one flag (tab-lifetime only, same "not written to
-   settings" treatment as S.scheduleOpen — which is "normal" here varies
+   that expands to a 3-per-row grid of up to 6 upcoming real tasks,
+   including the next-up card itself as the grid's first cell (2026-08-28
+   follow-up, direct user request: collapsed it's a half-width preview,
+   expanded it shrinks down to match the other 5 so all 6 sit evenly 3-per-
+   row). S.queueOpen is the one flag (tab-lifetime only, same "not written
+   to settings" treatment as S.scheduleOpen — which is "normal" here varies
    call to call, not day to day), read by both nextUpQueue (its own icon
-   rotation) and paintHero (which of .queue-grid / the plain next-up card
-   to show). .next-up-wrap, not .next-up itself, carries position:relative
-   for this to anchor against — .next-up has overflow:hidden (it clips its
-   own board-colour spine to the card's rounded corners), which would clip
-   the toggle's own right:-8px overhang if it were that element's child. */
+   rotation and .expanded/.collapsed class) and paintHero (only ever calls
+   nextUpQueue the one way; the two states live inside it, not as two call
+   sites). .next-up-wrap, not .next-up itself, carries position:relative
+   for the collapsed toggle to anchor against — .next-up has
+   overflow:hidden (it clips its own board-colour spine to the card's
+   rounded corners), which would clip the toggle's own right:-8px overhang
+   if it were that element's child. */
 .next-up-wrap{position:relative;}
+.next-up-wrap.expanded{
+  display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;
+  width:100%;margin:0 2px 10px;
+}
+/* Grid mode: the next-up card is restyled down to the same queue-card
+   shell as its 5 siblings — .next-up's own bigger padding/gap/shadow would
+   make cell 1 visibly larger than cells 2-6 otherwise. Toggle placement
+   moves too: with the wrap now IS the grid (no single "edge" to hang off
+   of), it becomes its own trailing static tile instead of an absolute
+   overhang — same .queue-toggle.static treatment the close button below
+   already used. */
+.next-up-wrap.expanded .next-up{
+  display:flex;flex-direction:column;align-items:flex-start;gap:3px;
+  background:var(--surface);border:2px solid var(--line-2);border-radius:10px;
+  padding:8px 8px 9px;min-height:74px;box-shadow:none;margin-bottom:0;
+  cursor:pointer;
+}
+.next-up-wrap.expanded .next-up::before{width:5px;}
+.next-up-wrap.expanded .next-up-lead{flex-direction:row;align-items:center;gap:4px;min-width:0;}
+.next-up-wrap.expanded .next-up-k{font-size:8px;padding-left:5px;}
+.next-up-wrap.expanded .next-up-time{font-size:9.5px;color:var(--bc,var(--ink-2));}
+.next-up-wrap.expanded .next-up-n{
+  font-family:var(--font-display);font-weight:800;font-size:11px;line-height:1.25;
+  color:var(--ink-2);white-space:normal;
+  display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;
+}
+.next-up-wrap.expanded .next-up-dot{display:none;}
 .queue-toggle{
   position:absolute;right:-8px;top:50%;transform:translateY(-50%);
   width:26px;height:26px;border-radius:50%;
@@ -703,13 +743,14 @@ html,body{overflow:hidden;}
 }
 .queue-toggle svg{width:13px;height:13px;transition:transform .15s;transform:rotate(-90deg);}
 .queue-toggle.open svg{transform:rotate(90deg);}
+/* .static is the toggle's own expanded-state look: a plain grid cell
+   (no absolute overhang) sized to match its 6 queue-card siblings, since
+   it now sits as the grid's own trailing tile rather than a full-width
+   row under a separate .queue-grid (removed 2026-08-28 — the wrap IS the
+   grid now, see .next-up-wrap.expanded, so a second nested grid container
+   would have been redundant). */
 .queue-toggle.static{
-  position:static;transform:none;margin:2px auto 0;grid-column:1/-1;
-}
-
-.queue-grid{
-  display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;
-  margin:0 2px 10px;
+  position:static;transform:none;width:100%;min-height:74px;border-radius:10px;
 }
 .queue-card{
   position:relative;background:var(--surface);border:2px solid var(--line-2);
@@ -5600,24 +5641,31 @@ function nextUpCard(item){
 }
 /* Expandable queue (2026-08-28, ported from the "Daisey Tetris Cards"
    design canvas) — wraps nextUpCard with a small round toggle on its own
-   edge; collapsed (the default) shows just that one card, unchanged.
-   Expanded shows up to 6 upcoming real open tasks after current, 3 per
-   row, each with its own time/title — real data from `open` (splitAgenda's
-   already-time-sorted list of open, non-break items), not the mockup's
-   fake QUEUE array. `open` always contains current itself plus nextUp
-   (both already in it — see splitAgenda), so the grid filters both out
-   rather than re-deriving "everything after nextUp" some other way. */
+   edge; collapsed (the default) shows just that one card, at roughly half
+   width (see .next-up-wrap.collapsed). Expanded shows up to 6 upcoming
+   real open tasks after current, 3 per row, INCLUDING the next-up card
+   itself as the grid's first cell (2026-08-28 follow-up, direct user
+   request: "when user clicks on the arrow to expand up to 6 it shrinks to
+   fit the 3 in each row, so 6 including it") — real data from `open`
+   (splitAgenda's already-time-sorted list of open, non-break items), not
+   the mockup's fake QUEUE array. `open` always contains current itself
+   plus nextUp (both already in it — see splitAgenda), so the grid filters
+   both out rather than re-deriving "everything after nextUp" some other
+   way. */
 function nextUpQueue(nextUp, current, open){
-  const wrap = el("div","next-up-wrap");
+  const wrap = el("div","next-up-wrap"+(S.queueOpen?" expanded":" collapsed"));
   const card = nextUpCard(nextUp);
   wrap.appendChild(card);
-  /* Appended to wrap, not to the card itself (2026-08-28 fix caught while
-     building this): .next-up has overflow:hidden, on purpose, to clip its
-     own board-colour spine (::before) to the card's rounded corners — an
-     absolutely-positioned toggle sitting half outside the card's own box
-     (right:-8px, see .queue-toggle's CSS) would be silently clipped by
-     that same overflow:hidden if it were the card's own child. */
-  const toggle = el("button","queue-toggle"+(S.queueOpen?" open":""));
+  /* Collapsed: appended to wrap, not to the card itself (2026-08-28 fix
+     caught while building this) — .next-up has overflow:hidden, on
+     purpose, to clip its own board-colour spine (::before) to the card's
+     rounded corners, which would silently clip the toggle's own
+     right:-8px overhang if it were the card's own child. Expanded: the
+     wrap IS the grid (see .next-up-wrap.expanded), so the toggle has no
+     single edge to hang off of any more and instead renders as its own
+     trailing static tile, same treatment the close button used before
+     this card joined the grid. */
+  const toggle = el("button","queue-toggle"+(S.queueOpen?" open static":""));
   toggle.type = "button";
   toggle.setAttribute("aria-label", S.queueOpen ? "Show just next" : "See full queue");
   toggle.setAttribute("aria-expanded", String(S.queueOpen));
@@ -5627,28 +5675,20 @@ function nextUpQueue(nextUp, current, open){
     S.queueOpen = !S.queueOpen;
     render();
   });
-  wrap.appendChild(toggle);
   if(S.queueOpen){
     const upcoming = (open || []).filter(i => i !== current && i !== nextUp).slice(0, 5);
-    const grid = el("div","queue-grid");
-    const labels = ["Then","+3","+4","+5","+6"];
+    const labels = ["+3","+4","+5","+6"];
     upcoming.forEach((i, idx) => {
       const qc = el("div","queue-card "+boardClass(i.card, i.task, i.isBreak)+listClass(i.card));
-      qc.appendChild(el("div","qc-n", labels[idx] || `+${idx+2}`));
+      qc.appendChild(el("div","qc-n", labels[idx] || `+${idx+3}`));
       qc.appendChild(el("div","qc-time", hhmm(atMin(S.anchor, i.s))));
       const t = el("div","qc-title");
       t.appendChild(bidiSpan(i.title));
       qc.appendChild(t);
-      grid.appendChild(qc);
+      wrap.appendChild(qc);
     });
-    const closeBtn = el("button","queue-toggle open static");
-    closeBtn.type = "button";
-    closeBtn.setAttribute("aria-label", "Show just next");
-    closeBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"></path></svg>';
-    closeBtn.addEventListener("click", ()=>{ S.queueOpen = false; render(); });
-    grid.appendChild(closeBtn);
-    wrap.appendChild(grid);
   }
+  wrap.appendChild(toggle);
   return wrap;
 }
 /* "An option to see the day's schedule" (2026-08-28, approved design
