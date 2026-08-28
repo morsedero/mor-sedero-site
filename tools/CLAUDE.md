@@ -346,12 +346,31 @@ code — read those bullets as history, not current behavior. What's true now:
      day-only with no separate schedule screen since 2026-08-26, and the
      "day's schedule" already IS `#pageMain`'s own list, rendered right
      below the hero inside the same `#scroller` (see `.scroller`'s own
-     CSS comment). The button is a plain `scrollIntoView` affordance onto
-     that existing list, not a feature to keep in sync with anything.
-     Both are skipped when there's no `current` — the empty states
-     (`emptyNow`: nothing scheduled / day clear / you missed some tasks)
-     already say the relevant thing for that case, and "see the schedule"
+     CSS comment). Both are skipped when there's no `current` — the empty
+     states (`emptyNow`: nothing scheduled / day clear / you missed some
+     tasks) already say the relevant thing for that case, and the button
      would be pointing at what's already on screen.
+     **The button COLLAPSES the list, not just scrolls to it (2026-08-28
+     follow-up, "make the schedule collapsable")** — it started as a plain
+     `scrollIntoView`, changed the same day on direct follow-up. One flag,
+     `S.scheduleOpen` (default `true`, tab-lifetime only, not written to
+     settings), read in two places that have to agree: `scheduleButton()`
+     for its own label/chevron/click, and `paintMain()`'s very last line,
+     `host.hidden = !S.scheduleOpen` — set LAST, after `nestConnectors`'
+     real-layout measurement pass, since a hidden element has no layout to
+     measure. `#pageMain` still gets built in full either way (the
+     progress pill and replan button need the real counts regardless of
+     whether the list is shown), so re-expanding never needs a rebuild,
+     just the flag flip + `render()`.
+     Hit the same `[hidden]` trap `.navbtn[hidden]`/`.dash-right[hidden]`
+     already document: `.page{display:block}` is a later, equal-specificity
+     rule that beats the UA's `[hidden]{display:none}` outright, so
+     `.page[hidden]{display:none}` has to say it explicitly or the "hidden"
+     list stays fully visible. `nextUpCard`'s click handler also sets
+     `S.scheduleOpen = true` before opening its row and scrolling to it —
+     without that, clicking Next Up while the schedule is collapsed opens
+     the accordion behind a hidden list and the scroll has nothing visible
+     to land on.
 
 **Canonical artifact URL — always update this one, never publish a new
 artifact for Daisey:**

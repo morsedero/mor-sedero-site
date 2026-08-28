@@ -421,6 +421,12 @@ html,body{overflow:hidden;}
    back to normal flow; only the wrapper scrolls now. */
 .scroller{flex:1 1 auto;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;}
 .page{display:block;}
+/* [hidden] loses to any later explicit `display` rule — the same trap
+   .navbtn[hidden]/.dash-right[hidden] already work around, now hit here too
+   by the collapsible-schedule toggle (2026-08-28, see paintMain's
+   `host.hidden = !S.scheduleOpen`). Without this, .page's own
+   `display:block` above wins and the "hidden" list stays fully visible. */
+.page[hidden]{display:none;}
 
 /* ---------------------------------------------------------------- hero
    The current task, broken out of the timeline into its own card (2026-08-26
@@ -535,11 +541,16 @@ html,body{overflow:hidden;}
 }
 .next-up-dot{width:9px;height:9px;border-radius:50%;background:var(--bc,var(--b-none));flex:0 0 auto;}
 
-/* "See today's schedule" — a scroll affordance into #pageMain's own list
-   (2026-08-28, approved design canvas), not a second view: the schedule
-   already renders right below in the same #scroller (see scheduleButton).
-   Bold solid pill in the app's own accent, board-agnostic on purpose —
-   it isn't about any one task's colour. */
+/* "See today's schedule" — toggles #pageMain's own list open/closed
+   (2026-08-28, approved design canvas + "make the schedule collapsable"
+   follow-up), not a second view: the schedule already renders right below
+   in the same #scroller (see scheduleButton/paintMain's `host.hidden`).
+   Bold solid pill in the app's own accent, board-agnostic on purpose — it
+   isn't about any one task's colour. The trailing chevron rotates 180°
+   between states (inline style on the svg, set per-render in
+   scheduleButton — simplest way to key it off S.scheduleOpen without a
+   second CSS class) rather than swapping glyphs, so the direction change
+   itself reads as motion instead of a jump-cut. */
 .schedule-btn{
   display:flex;align-items:center;justify-content:center;gap:8px;width:100%;
   background:var(--accent);border:2px solid var(--accent-ink);border-radius:14px;
@@ -2340,6 +2351,7 @@ const S = {
   lists:{},            // cardId -> {loading|checklists|error}
   expanded:new Set(), // details are closed by default; these were opened by hand
   openRow:null,        // event id of the one non-hub list card currently expanded — accordion; hub is always open
+  scheduleOpen:true,   // whether #pageMain's list is showing — see scheduleButton(); starts open, matches pre-toggle behaviour
   dayCelebrated:null,   // dayKey already given the day-complete celebrate() burst — see paintHero
   ticking:new Set(),   // check items with a write in flight
   editing:new Set(),   // "desc:"+cardId or "item:"+itemId currently open for edit
@@ -5312,6 +5324,11 @@ function nextUpCard(item){
   card.appendChild(el("span","next-up-dot"));
   card.addEventListener("click", ()=>{
     S.openRow = rowId;
+    /* the row this opens lives in #pageMain — expand it first (2026-08-28,
+       same day the schedule became collapsible) or the accordion opens
+       behind a `host.hidden` list and scrollIntoView below has nothing
+       visible to scroll to. */
+    S.scheduleOpen = true;
     render();
     requestAnimationFrame(()=>{
       const row = document.querySelector(`[data-row-id="${CSS.escape(rowId)}"]`);
@@ -5322,17 +5339,25 @@ function nextUpCard(item){
 }
 /* "An option to see the day's schedule" (2026-08-28, approved design
    canvas) — the schedule already IS #pageMain's own list, right below the
-   hero in the same #scroller (see .scroller's own comment); this is a
-   scroll affordance, not a second view to build and keep in sync. A plain
-   anchor-style scrollIntoView rather than a manual scrollTop calculation,
-   so it keeps working if the hero's own height ever changes. */
+   hero in the same #scroller (see .scroller's own comment), so this button
+   doesn't open a second view; it toggles that list's own visibility.
+   Collapsible (2026-08-28 follow-up, direct user request: "make the
+   schedule collapsable") — S.scheduleOpen is the one flag, read here and
+   in paintMain (which actually hides/shows #pageMain), so both stay in
+   sync across a render without either side owning the DOM state alone.
+   Starts open (matches the button's original scroll-only behaviour before
+   this request) and persists only for the tab's lifetime — not written to
+   settings, since which is "normal" varies call to call, not day to day. */
 function scheduleButton(){
   const b = el("button","schedule-btn");
   b.type = "button";
+  b.setAttribute("aria-expanded", String(S.scheduleOpen));
+  const chevron = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="transition:transform .18s;transform:rotate('+(S.scheduleOpen?180:0)+'deg)"><path d="M6 9l6 6 6-6"></path></svg>';
   b.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="3"></rect><path d="M3 10h18"></path><path d="M8 3v4"></path><path d="M16 3v4"></path></svg>'
-    + '<span>See today’s schedule</span><span aria-hidden="true">→</span>';
+    + '<span>' + (S.scheduleOpen ? "Hide today’s schedule" : "See today’s schedule") + '</span>' + chevron;
   b.addEventListener("click", ()=>{
-    $("#pageMain").scrollIntoView({block:"start", behavior:"smooth"});
+    S.scheduleOpen = !S.scheduleOpen;
+    render();
   });
   return b;
 }
@@ -5493,6 +5518,13 @@ function paintMain(){
   $("#replanBtn").hidden = isLockedDay(d);
   $("#replanBtn").disabled = !!S.busy;
   $("#replanBtn").textContent = S.busy ? "…" : "↻";
+  /* Collapsible schedule (2026-08-28, direct user request) — set LAST, after
+     nestConnectors' real-layout measurement pass above, since a hidden
+     element has no layout to measure. host still gets built in full either
+     way (fitRowTitle/nestConnectors/the progress pill all need the real
+     content and counts regardless of whether the list is shown), so
+     expanding again never needs a rebuild — see scheduleButton(). */
+  host.hidden = !S.scheduleOpen;
 }
 
 /* Sits with the toasts rather than in the dash: it has to be visible in Week
