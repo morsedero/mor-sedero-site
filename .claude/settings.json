@@ -4,5 +4,19 @@
       "Bash(netlify status *)",
       "PowerShell(netlify status 2>&1)"
     ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cat /dev/stdin",
+            "if": "Bash(node tools/build-standalone* || npm install* || npm ci* || netlify build* || netlify deploy*)"
+          }
+        ]
+      }
+    ]
   }
 }
