@@ -6,13 +6,13 @@
     ]
   },
   "hooks": {
-    "PreToolUse": [
+    "PostToolUse": [
       {
         "matcher": "Bash",
         "hooks": [
           {
             "type": "command",
-            "command": "cat /dev/stdin",
+            "command": "grep -iE '(error|failed|fatal|warning|built|wrote|✓|^npm)' | head -30 || echo '✓ Completed successfully'",
             "if": "Bash(node tools/build-standalone* || npm install* || npm ci* || netlify build* || netlify deploy*)"
           }
         ]
