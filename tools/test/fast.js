@@ -101,7 +101,10 @@ const WRITE=/event|trelloWrite/;
   await p.click("#heroSlot .now .mini.ok");
   await p.waitForTimeout(250);
 
-  let st={ pill:await p.evaluate(()=>($("#progressPill")||{}).textContent), hub:await hub(), done:await finished() };
+  /* progress-pill is icon-only now (2026-08-28, direct user request — the
+     Today well already shows progress block-by-block) — the real count
+     survives as the title/aria-label, not textContent. */
+  let st={ pill:await p.evaluate(()=>($("#progressPill")||{}).title), hub:await hub(), done:await finished() };
   check(/^1\//.test(st.pill||""),`the progress pill should already read 1 done, got ${st.pill}`);
   check(!st.hub.includes("לסגור מקום לחתונה"),"the finished card should already be out of the open list");
   check(st.done.length===0,`no write should have finished yet, got ${JSON.stringify(st.done)}`);
@@ -194,7 +197,7 @@ const WRITE=/event|trelloWrite/;
   await p.waitForTimeout(900);
 
   st=await p.evaluate(()=>({
-    pill:($("#progressPill")||{}).textContent,
+    pill:($("#progressPill")||{}).title,
     hub:(document.querySelector(".now .row .n")||{}).textContent||"",
     bar:(document.querySelector(".toast.unsaved .undo-msg")||{}).textContent||null
   }));
