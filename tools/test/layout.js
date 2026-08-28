@@ -60,6 +60,7 @@ const FIXTURE=[
     p.on("console",m=>{if(m.type()==="error" && !/^\[daisey\]/.test(m.text()))errs.push(m.text());});
     await p.setContent(`<!doctype html><html><head><meta charset="utf-8"><script>${clock("2026-08-17T09:48:00+03:00")}${stub}<\/script></head><body>${page_html}<script>try{checkChoresTrigger=function(){};}catch(_){}<\/script></body></html>`,{waitUntil:"load"});
     await p.waitForTimeout(2800);
+    await p.evaluate(()=>{S.scheduleOpen=true;render();});
     await p.evaluate((evs)=>{
       EVENTS.length=0; EVENTS.push(...JSON.parse(JSON.stringify(evs)));
       S.events={payload:{events:EVENTS},storedAt:Date.now()};

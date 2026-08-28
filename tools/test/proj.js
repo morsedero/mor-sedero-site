@@ -147,6 +147,7 @@ const EXP_REMAINING = EXP_UNBATCHED+EXP_MUSIC+EXP_OPENBATCH;            // 50
   p.on("console",m=>{if(m.type()==="error" && !/^\[daisey\]/.test(m.text()))errs.push(m.text());});
   await p.setContent(`<!doctype html><html><head><meta charset="utf-8"><script>${clock("2026-08-17T08:30:00+03:00")}${stub}<\/script></head><body>${page_html}</body></html>`,{waitUntil:"load"});
   await p.waitForTimeout(3200);
+  await p.evaluate(()=>{S.scheduleOpen=true;render();});
 
   const bad=[];
 

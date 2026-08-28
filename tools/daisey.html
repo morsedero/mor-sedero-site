@@ -2351,7 +2351,7 @@ const S = {
   lists:{},            // cardId -> {loading|checklists|error}
   expanded:new Set(), // details are closed by default; these were opened by hand
   openRow:null,        // event id of the one non-hub list card currently expanded — accordion; hub is always open
-  scheduleOpen:true,   // whether #pageMain's list is showing — see scheduleButton(); starts open, matches pre-toggle behaviour
+  scheduleOpen:false,  // whether #pageMain's list is showing — see scheduleButton(); starts collapsed (2026-08-28, direct user request)
   dayCelebrated:null,   // dayKey already given the day-complete celebrate() burst — see paintHero
   ticking:new Set(),   // check items with a write in flight
   editing:new Set(),   // "desc:"+cardId or "item:"+itemId currently open for edit
@@ -5378,17 +5378,24 @@ function paintMain(){
   host.innerHTML = "";
 
   const shared = sharedState();
-  if(shared){ host.appendChild(shared); $("#dashRight").hidden = true; clearHero(); return; }
+  /* The collapsible-schedule flag (S.scheduleOpen) only means anything for
+     the Day view's own list — every branch below that returns early has
+     nothing to do with that list, so each has to unhide #pageMain itself
+     or it stays hidden forever once a Day-view render has collapsed it
+     (host.hidden is only ever set back to false at the bottom of this
+     function, which none of these branches reach). */
+  if(shared){ host.appendChild(shared); host.hidden = false; $("#dashRight").hidden = true; clearHero(); return; }
 
   /* The asset pipeline is the one view with no date at all — it's a board
      state, not a day — so it ignores S.anchor entirely. */
-  if(S.view === "pipeline"){ host.appendChild(pipelineView()); $("#dashRight").hidden = true; clearHero(); return; }
+  if(S.view === "pipeline"){ host.appendChild(pipelineView()); host.hidden = false; $("#dashRight").hidden = true; clearHero(); return; }
   /* Projects is dateless too — it's the state of a deadline, not a day. */
-  if(S.view === "projects"){ host.appendChild(projectsView()); $("#dashRight").hidden = true; clearHero(); return; }
+  if(S.view === "projects"){ host.appendChild(projectsView()); host.hidden = false; $("#dashRight").hidden = true; clearHero(); return; }
 
   const d = S.anchor;
   if(d.getDay() === CFG.dayOff){
     host.appendChild(stateCard("🏄‍♂️","My Day Off",""));
+    host.hidden = false;
     $("#dashRight").hidden = true;
     clearHero();
     setMascot("sleep");

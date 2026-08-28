@@ -49,6 +49,7 @@ const WRITE=/event|trelloWrite/;
   await p.setContent(`<!doctype html><html><head><meta charset="utf-8"><script>${clock("2026-08-14T07:00:00+03:00")}${stubOf()}<\/script></head><body>${page_html}</body></html>`,{waitUntil:"load"});
   function stubOf(){ return BASE; }
   await p.waitForTimeout(2600);
+  await p.evaluate(()=>{S.scheduleOpen=true;render();});
 
   /* wrap the live bridge: hold writes, and count what actually finished */
   await p.evaluate(()=>{

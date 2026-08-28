@@ -59,6 +59,7 @@ const check=(cond,msg)=>{ if(!cond) bad.push(msg); };
   p.on("console",m=>{if(m.type()==="error" && !/^\[daisey\]/.test(m.text()))bad.push("console: "+m.text());});
   await p.setContent(`<!doctype html><html><head><meta charset="utf-8"><script>${clock("2026-08-14T07:00:00+03:00")}${stub}<\/script></head><body>${page_html}</body></html>`,{waitUntil:"load"});
   await p.waitForTimeout(2600);
+  await p.evaluate(()=>{S.scheduleOpen=true;render();});
 
   const seed=async()=>p.evaluate((events)=>{
     EVENTS.length=0; EVENTS.push(...JSON.parse(JSON.stringify(events)));

@@ -35,7 +35,7 @@ window.Date=class extends R{constructor(...a){if(a.length===0)super(R.now()+O);e
   p.on("console",m=>{if(m.type()==="error" && !/^\[daisey\]/.test(m.text()))errs.push(m.text());});
   await p.setContent(`<!doctype html><html><head><meta charset="utf-8"><script>${clock("2026-08-17T11:30:00+03:00")}${stub}<\/script></head><body>${page_html}</body></html>`,{waitUntil:"load"});
   await p.waitForTimeout(3400);
-  await p.evaluate(()=>{document.querySelectorAll(".scrim").forEach(s=>s.remove());});
+  await p.evaluate(()=>{S.scheduleOpen=true;render();document.querySelectorAll(".scrim").forEach(s=>s.remove());});
   await p.waitForTimeout(200);
 
   const bad=[];
@@ -158,6 +158,7 @@ window.Date=class extends R{constructor(...a){if(a.length===0)super(R.now()+O);e
   tp.on("pageerror",e=>errs.push(e.message));
   await tp.setContent(`<!doctype html><html><head><meta charset="utf-8"><script>${clock("2026-08-17T11:30:00+03:00")}${stub}<\/script></head><body>${page_html}</body></html>`,{waitUntil:"load"});
   await tp.waitForTimeout(3400);
+  await tp.evaluate(()=>{S.scheduleOpen=true;render();});
   /* Toasts too, not just scrims: .toasts is a fixed strip across the bottom
      of the screen, and a real toast inside it is legitimately clickable
      (pointer-events:auto, so it can be dismissed). On a 560px phone that
