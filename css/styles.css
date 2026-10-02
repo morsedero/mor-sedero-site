@@ -755,7 +755,7 @@ a, button{ -webkit-tap-highlight-color:transparent; }
 }
 .redesign-card:hover .redesign-play span{ border-color:var(--accent); color:var(--accent-text); }
 .redesign-video{ position:relative; width:100%; aspect-ratio:16/9; background:#000; transition:aspect-ratio .35s ease, width .35s ease; }
-.redesign-video iframe{ position:absolute; inset:0; width:100%; height:100%; border:0; }
+.redesign-video iframe, .redesign-video video{ position:absolute; inset:0; width:100%; height:100%; border:0; }
 .redesign-close{
   position:absolute; top:10px; right:10px; z-index:2;
   width:32px; height:32px; padding:0; border-radius:50%;

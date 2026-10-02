@@ -720,11 +720,22 @@ function moveFilmCardBack(card){
 
       const wrapper = document.createElement('div');
       wrapper.className = 'redesign-video';
-      const iframe = document.createElement('iframe');
-      iframe.src = videoSrc + (videoSrc.includes('?') ? '&' : '?') + 'autoplay=1';
-      iframe.title = card.dataset.title || '';
-      iframe.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share';
-      iframe.allowFullscreen = true;
+      let iframe;
+      // self-hosted .mp4 for videos YouTube age-restricts (those refuse to embed)
+      if(/\.mp4$/i.test(videoSrc)){
+        iframe = document.createElement('video');
+        iframe.src = videoSrc;
+        iframe.controls = true;
+        iframe.autoplay = true;
+        iframe.playsInline = true;
+        iframe.setAttribute('aria-label', card.dataset.title || '');
+      } else {
+        iframe = document.createElement('iframe');
+        iframe.src = videoSrc + (videoSrc.includes('?') ? '&' : '?') + 'autoplay=1';
+        iframe.title = card.dataset.title || '';
+        iframe.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share';
+        iframe.allowFullscreen = true;
+      }
 
       const closeBtn = document.createElement('button');
       closeBtn.type = 'button';
