@@ -778,6 +778,9 @@ a, button{ -webkit-tap-highlight-color:transparent; }
 }
 .redesign-grid--list .redesign-title{ font-family:var(--font-body); font-weight:700; font-size:1.05rem; color:var(--ink); margin:0; }
 .redesign-grid--list .redesign-desc{ color:var(--ink-dim); font-size:.92rem; line-height:1.6; margin:0; }
+.redesign-alt{ align-self:flex-start; margin-top:.7rem; padding:.35rem .8rem; font:inherit; font-size:.82rem; letter-spacing:.02em; color:var(--ink-dim); background:transparent; border:1px solid currentColor; border-radius:999px; cursor:pointer; transition:color .2s, border-color .2s; }
+.redesign-alt:hover, .redesign-alt:focus-visible{ color:var(--accent-text); border-color:var(--accent); }
+.redesign-card.is-playing-alt .redesign-alt{ color:var(--accent-text); border-color:var(--accent); }
 @media (max-width:700px){
   .redesign-grid--list .redesign-card{ flex-direction:column; }
   .redesign-grid--list .redesign-thumb,

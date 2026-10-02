@@ -684,15 +684,39 @@ function moveFilmCardBack(card){
     const { card, thumb, wrapper } = openEntry;
     wrapper.replaceWith(thumb); // detaches iframe from the DOM, which stops playback
     card.classList.remove('is-playing');
+    setAltState(card, false);
     openEntry = null;
+  }
+
+  // optional alternate cut (e.g. SFX-only) toggled from a button in the card's description
+  function setAltState(card, playingAlt){
+    const btn = card.querySelector('.redesign-alt');
+    if(!btn) return;
+    card.classList.toggle('is-playing-alt', playingAlt);
+    btn.textContent = playingAlt ? btn.dataset.labelBack : btn.dataset.label;
   }
 
   document.querySelectorAll('.redesign-card').forEach(card => {
     const thumb = card.querySelector('.redesign-thumb');
     const videoSrc = card.dataset.video;
     if(!thumb || !videoSrc) return;
-    thumb.addEventListener('click', () => {
+
+    const altBtn = card.querySelector('.redesign-alt');
+    if(altBtn){
+      altBtn.dataset.label = altBtn.textContent;
+      altBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const toAlt = !card.classList.contains('is-playing-alt');
+        play(toAlt ? altBtn.dataset.video : videoSrc);
+        setAltState(card, toAlt);
+      });
+    }
+
+    thumb.addEventListener('click', () => play(videoSrc));
+
+    function play(src){
       closeOpenEntry();
+      const videoSrc = src;
 
       const wrapper = document.createElement('div');
       wrapper.className = 'redesign-video';
@@ -718,7 +742,7 @@ function moveFilmCardBack(card){
       card.classList.add('is-playing');
 
       openEntry = { card, thumb, wrapper };
-    });
+    }
   });
 })();
 
