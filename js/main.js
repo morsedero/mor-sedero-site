@@ -707,14 +707,14 @@ function moveFilmCardBack(card){
       altBtn.addEventListener('click', (e) => {
         e.stopPropagation();
         const toAlt = !card.classList.contains('is-playing-alt');
-        play(toAlt ? altBtn.dataset.video : videoSrc);
+        play(toAlt ? altBtn.dataset.video : videoSrc, toAlt ? altBtn.dataset.poster : card.dataset.poster);
         setAltState(card, toAlt);
       });
     }
 
-    thumb.addEventListener('click', () => play(videoSrc));
+    thumb.addEventListener('click', () => play(videoSrc, card.dataset.poster));
 
-    function play(src){
+    function play(src, poster){
       closeOpenEntry();
       const videoSrc = src;
 
@@ -728,6 +728,7 @@ function moveFilmCardBack(card){
         iframe.controls = true;
         iframe.autoplay = true;
         iframe.playsInline = true;
+        if(poster) iframe.poster = poster;
         iframe.setAttribute('aria-label', card.dataset.title || '');
       } else {
         iframe = document.createElement('iframe');
