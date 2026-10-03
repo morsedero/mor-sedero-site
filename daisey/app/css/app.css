@@ -127,7 +127,17 @@ textarea {
 .now-meta { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--ink-2); }
 .now-title { font-size: 22px; font-weight: 700; line-height: 1.25; }
 .now-why { margin: 4px 0 0; color: var(--ink-2); }
-.now-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+/* Three quiet icon actions under Start: Later, Switch, Pending. */
+.now-actions { display: flex; justify-content: center; gap: 8px; }
+.iconbtn {
+  display: grid; justify-items: center; gap: 2px; cursor: pointer;
+  font: inherit; font-size: 12px; font-weight: 600; color: var(--ink-2);
+  background: none; border: 1px solid transparent; border-radius: 14px;
+  min-inline-size: 76px; min-block-size: 56px; padding: 6px 10px;
+}
+.iconbtn svg { inline-size: 22px; block-size: 22px; }
+.iconbtn:hover:not(:disabled) { color: var(--ink); background: var(--bg); border-color: var(--line); }
+.iconbtn:disabled { opacity: .4; cursor: default; }
 .now-alts { display: grid; gap: 8px; }
 .now-alt { font: inherit; color: inherit; padding: 0; border: 0; background: none; cursor: pointer; text-align: start; }
 .now-alt .now-title { font-size: 17px; }
@@ -158,14 +168,12 @@ textarea {
 .toast {
   position: fixed; z-index: 7; inset-block-end: max(20px, env(safe-area-inset-bottom));
   inset-inline: 16px; margin-inline: auto; max-inline-size: 420px;
-  display: grid; gap: 8px; padding: 12px 14px; border-radius: 14px;
+  padding: 12px 14px; border-radius: 14px;
   background: var(--ink); color: #fff; box-shadow: 0 10px 30px rgba(0,0,0,.25);
 }
-.toast-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.toast { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .toast-text { font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .toast-undo { font: inherit; font-weight: 700; color: var(--accent); background: none; border: 0; cursor: pointer; padding: 6px 2px; }
-.toast-chips { display: flex; flex-wrap: wrap; gap: 6px; }
-.toast .chip { min-block-size: 32px; font-size: 13px; padding-inline: 10px; background: transparent; border-color: rgba(255,255,255,.35); color: #fff; }
 body:has(.toast) .fab { display: none; }
 @media (prefers-reduced-motion: reduce) { .now-card.main.in, .now-card.main.out { animation: none; } }
 

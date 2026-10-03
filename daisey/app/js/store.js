@@ -35,14 +35,14 @@ export function removeTask(uid, id){
   return fb.deleteDoc(taskDoc(uid, id));
 }
 
-// Not now, its optional reason, and Undo putting both back (model.skipSnapshot).
+// Later, Pending, and Undo putting either back (model.skipSnapshot).
 export function skipNow(uid, task){
   return fb.updateDoc(taskDoc(uid, task.id), skipTask(task));
 }
 
-export function reasonForSkip(uid, task, reason){
-  const patch = skipReason(task, reason);
-  return Object.keys(patch).length ? fb.updateDoc(taskDoc(uid, task.id), patch) : Promise.resolve();
+// Pending: the card's third action. Counts as a skip and sets it Waiting.
+export function blockTask(uid, task){
+  return fb.updateDoc(taskDoc(uid, task.id), { ...skipTask(task), ...skipReason(task, "blocked") });
 }
 
 export function restoreTask(uid, id, fields){

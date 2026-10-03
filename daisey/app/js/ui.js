@@ -23,3 +23,22 @@ export const dur = (m) => {
   const r = m % 60;
   return `${Math.floor(m / 60)} h` + (r ? ` ${r} min` : "");
 };
+
+// Inline icons for the card's three quiet actions. One path each, drawn on a
+// 24-grid and stroked in currentColor so they follow the button's text colour.
+const PATHS = {
+  later: "M12 7v5l3 2M4 12a8 8 0 1 0 2.5-5.8M4 4v3.5h3.5",
+  switch: "M4 8h13l-3-3M20 16H7l3 3",
+  pending: "M7 3h10M7 21h10M8 3v3l4 4 4-4V3M8 21v-3l4-4 4 4v3",
+};
+
+export const icon = (name) => {
+  const NS = "http://www.w3.org/2000/svg";
+  const svg = document.createElementNS(NS, "svg");
+  for (const [k, v] of Object.entries({ viewBox: "0 0 24 24", "aria-hidden": "true", fill: "none",
+    stroke: "currentColor", "stroke-width": "1.8", "stroke-linecap": "round", "stroke-linejoin": "round" })) svg.setAttribute(k, v);
+  const path = document.createElementNS(NS, "path");
+  path.setAttribute("d", PATHS[name]);
+  svg.append(path);
+  return svg;
+};

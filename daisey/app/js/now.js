@@ -10,16 +10,14 @@
 // alternatives, tap one to make it the card. Start → focus mode (focus.js):
 // the run lives in Firestore, so this tab, a reload and the phone all show
 // the same timer.
-import { watchTasks, watchRun, startRun, extendRun, endRun, skipNow, reasonForSkip, restoreTask } from "./store.js";
+import { watchTasks, watchRun, startRun, extendRun, endRun, skipNow, blockTask, restoreTask } from "./store.js";
 import { focusView, handoffView, elapsedMinutes } from "./focus.js";
 import { watchCalendar } from "./calendar.js";
 import { rank, timeBucket, freeWindow, whySaid } from "./engine.js";
 import { skipSnapshot } from "./model.js";
-import { h, sizeText, dur } from "./ui.js";
+import { h, icon, sizeText, dur } from "./ui.js";
 
 const GREETING = { morning: "Morning.", afternoon: "Afternoon.", evening: "Evening." };
-// Why it was skipped. Optional, and the card has already moved on either way.
-const REASONS = [["tired", "tired"], ["notime", "no time"], ["mood", "not now"], ["blocked", "blocked"]];
 const UNDO_MS = 5000;
 const SLIDE_MS = 140; // matches the card-out animation in app.css
 const motionOK = () => !window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
@@ -37,7 +35,8 @@ export function mountNow(root, uid, { onCard } = {}){
   let lastWindow, lastClock;
   let run = null; // the state/now doc while a task is running
   let handoff = null; // { title, next } after Done, until the next choice
-  let toast = null; // { task, before } for 5 s after Not now: reasons + Undo
+  let toast = null; // { text, task, before } for 5 s after Later or Pending
+  let slideIn = false; // one slide per step-aside, not one per snapshot
   let toastTimer = null;
   const state = { chosen: null, showAlts: false, asking: false };
   const skips = new Set();
@@ -82,20 +81,24 @@ export function mountNow(root, uid, { onCard } = {}){
 
   const begin = (task) => { handoff = null; reset(); run = { taskId: task.id, startedAt: Date.now(), extra: 0 }; render(); startRun(uid, task).catch(fail); };
 
-  // Not now: the card slides out, the next slides in, and for 5 seconds a
-  // toast offers Undo and the four reasons. Nothing waits on the write.
-  function notNow(task){
+  // Later and Pending both move the card on: it slides out, the next slides
+  // in, and for 5 seconds a toast offers Undo. Nothing waits on the write.
+  function stepAside(task, { text, write }){
     const before = skipSnapshot(task);
     const go = () => {
       skips.add(task.id);
       reset();
-      setToast({ task, before });
-      skipNow(uid, task).catch(fail);
+      slideIn = true;
+      setToast({ task, before, text });
+      write().catch(fail);
       render();
     };
     const el = root.querySelector(".now-card.main");
     if (el && motionOK()) { el.classList.add("out"); setTimeout(go, SLIDE_MS); } else go();
   }
+
+  const later = (task) => stepAside(task, { text: `Later: ${task.title}`, write: () => skipNow(uid, task) });
+  const pending = (task) => stepAside(task, { text: `Pending: ${task.title}`, write: () => blockTask(uid, task) });
 
   function setToast(t){
     clearTimeout(toastTimer);
@@ -113,19 +116,18 @@ export function mountNow(root, uid, { onCard } = {}){
   }
 
   function toastView(){
-    const { task } = toast;
+    const { task, text } = toast;
     return h("div", { className: "toast", role: "status" },
-      h("div", { className: "toast-row" },
-        h("span", { className: "toast-text", dir: "auto", textContent: `Skipped ${task.title}` }),
-        h("button", { className: "toast-undo", type: "button", textContent: "Undo",
-          ariaLabel: `Undo: put ${task.title} back on the card`, onclick: undo })),
-      h("div", { className: "toast-chips", role: "group", ariaLabel: "Why not now?" },
-        ...REASONS.map(([value, label]) => h("button", {
-          className: "chip", type: "button", textContent: label,
-          ariaLabel: value === "blocked" ? `Blocked: mark ${task.title} as waiting` : `Reason: ${label}`,
-          onclick: () => { reasonForSkip(uid, task, value).catch(fail); setToast(null); render(); },
-        }))));
+      h("span", { className: "toast-text", dir: "auto", textContent: text }),
+      h("button", { className: "toast-undo", type: "button", textContent: "Undo",
+        ariaLabel: `Undo: put ${task.title} back on the card`, onclick: undo }));
   }
+
+  // The three quiet actions under Start. Icon plus a small word, with the
+  // whole phrase as the tooltip and the screen-reader name.
+  const action = (name, label, hint, props) => h("button", {
+    className: "iconbtn", type: "button", title: `${label} — ${hint}`, ariaLabel: `${label}: ${hint}`, ...props,
+  }, icon(name), h("span", { className: "iconbtn-text", textContent: label }));
 
   // What the engine knows about this moment, from the calendar if it answered.
   const momentInput = (fw = cal.status === "ok" ? freeWindow(cal.events) : null) => (fw
@@ -175,18 +177,19 @@ export function mountNow(root, uid, { onCard } = {}){
       h("button", { className: "btn primary start", type: "button", textContent: "Start",
         ariaLabel: `Start: ${card.task.title}`, onclick: () => begin(card.task) }),
       h("div", { className: "now-actions" },
-        h("button", { className: "btn quiet", type: "button", textContent: "Not now",
-          ariaLabel: `Not now: skip ${card.task.title} and show the next one`,
-          onclick: () => notNow(card.task) }),
-        h("button", { className: "btn quiet", type: "button", textContent: "Something else", disabled: !alts.length,
-          ariaLabel: state.showAlts ? "Hide the other tasks" : `Something else: ${alts.length} other tasks`,
-          ariaExpanded: String(state.showAlts), onclick: () => { state.showAlts = !state.showAlts; render(); } }))),
+        action("later", "Later", `not now — show the next task instead of ${card.task.title}`,
+          { onclick: () => later(card.task) }),
+        action("switch", "Switch", state.showAlts ? "hide the other tasks" : `something else — ${alts.length} other tasks`,
+          { disabled: !alts.length, ariaExpanded: String(state.showAlts),
+            onclick: () => { state.showAlts = !state.showAlts; render(); } }),
+        action("pending", "Pending", `${card.task.title} is blocked — set it to Waiting`,
+          { onclick: () => pending(card.task) }))),
       state.showAlts && h("div", { className: "now-alts", role: "group", ariaLabel: "Other tasks" }, ...alts.map((s) => h("button", {
         type: "button", className: "now-alt", ariaLabel: `Put ${s.task.title} on the card instead${s.why ? ". " + s.why : ""}`,
         onclick: () => { state.chosen = s.task.id; state.showAlts = false; render(); },
       }, taskCard(s, false)))), tip);
-    // The new card slides in where the skipped one left.
-    if (toast && motionOK()) root.querySelector(".now-card.main")?.classList.add("in");
+    // One slide-in per step-aside: later snapshots must not replay it.
+    if (slideIn) { slideIn = false; if (motionOK()) root.querySelector(".now-card.main")?.classList.add("in"); }
   }
 
   const fill = (...kids) => root.replaceChildren(...kids.filter(Boolean));

@@ -17,7 +17,7 @@ const ok = (k) => { emit(k); return Promise.resolve(); };
 
 export const watchTasks = watch("tasks");
 export const skipNow = (uid, task) => patchTask(uid, task.id, skipTask(task));
-export const reasonForSkip = (uid, task, reason) => patchTask(uid, task.id, skipReason(task, reason));
+export const blockTask = (uid, task) => patchTask(uid, task.id, { ...skipTask(task), ...skipReason(task, "blocked") });
 export const restoreTask = (uid, id, fields) => patchTask(uid, id, fields);
 export const watchRun = watch("now");
 export const startRun = (uid, task) => { docs.now = { taskId: task.id, startedAt: Date.now(), extra: 0 }; patchTask(uid, task.id, startedTask(task)); return ok("now"); };
