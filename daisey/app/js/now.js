@@ -21,11 +21,12 @@ export function mountNow(root, uid, { onCard } = {}){
   let shown;
   const showing = (id) => { if (id !== shown) { shown = id; onCard?.(id); } };
 
-  function taskCard(s, main){
+  function taskCard(s, main, ...extra){
     return h("div", { className: "now-card" + (main ? " main" : "") },
       h("div", { className: "now-meta", dir: "auto", textContent: `${s.task.project} · ${sizeText(s.task.size)}` }),
       h("div", { className: "now-title", dir: "auto", textContent: s.task.title }),
-      s.why && h("p", { className: "now-why", textContent: s.why }));
+      s.why && h("p", { className: "now-why", textContent: s.why }),
+      ...extra);
   }
 
   function render(){
@@ -50,11 +51,14 @@ export function mountNow(root, uid, { onCard } = {}){
     }
 
     const alts = r.ranked.length > 1 ? [r.pick, ...r.alternatives].filter((s) => s !== card).slice(0, 3) : [];
-    fill(...head, taskCard(card, true),
+    // Start is the one loud thing on the tab; the other two stay quiet under it.
+    // Start opens focus mode (step 4 of the Now-screen pass); inert until then.
+    fill(...head, taskCard(card, true,
+      h("button", { className: "btn primary start", type: "button", textContent: "Start" }),
       h("div", { className: "now-actions" },
-        h("button", { className: "btn", type: "button", textContent: "Not now", onclick: () => { skips.add(card.task.id); reset(); render(); } }),
-        h("button", { className: "btn", type: "button", textContent: "Something else", disabled: !alts.length,
-          ariaExpanded: String(state.showAlts), onclick: () => { state.showAlts = !state.showAlts; render(); } })),
+        h("button", { className: "btn quiet", type: "button", textContent: "Not now", onclick: () => { skips.add(card.task.id); reset(); render(); } }),
+        h("button", { className: "btn quiet", type: "button", textContent: "Something else", disabled: !alts.length,
+          ariaExpanded: String(state.showAlts), onclick: () => { state.showAlts = !state.showAlts; render(); } }))),
       state.showAlts && h("div", { className: "now-alts" }, ...alts.map((s) => h("button", {
         type: "button", className: "now-alt", onclick: () => { state.chosen = s.task.id; state.showAlts = false; render(); },
       }, taskCard(s, false)))));

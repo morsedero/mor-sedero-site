@@ -1,0 +1,73 @@
+#!/usr/bin/env node
+/* Screenshots the v1 app (daisey/app/) with no Firebase: config.js,
+   firebase.js and store.js are swapped for fakes, tasks come from a scenario
+   below. Everything else is the real app code.
+
+     node daisey/test/v1/preview/preview.js [scenario] [--wide] [--tasks] [--out dir] [--click "sel" ...]
+
+   Writes <out>/<scenario>[-tasks][-wide].png and prints the path. Needs
+   playwright from daisey/test/ (npm install there once). */
+const fs = require("fs");
+const path = require("path");
+const { chromium } = require(path.join(__dirname, "..", "..", "node_modules", "playwright"));
+
+const APP = path.join(__dirname, "..", "..", "..", "app");
+const ORIGIN = "http://daisey.preview";
+const day = (n) => { const d = new Date(Date.now() + n * 864e5); return d.toLocaleDateString("en-CA"); };
+const ago = (days) => ({ touchedAt: Date.now() - days * 864e5 });
+
+const SCENARIOS = {
+  en: { tasks: [
+    { title: "Mix review for Reprise", project: "Reprise", size: 90, due: day(2) },
+    { title: "Send invoice to Uri", project: "Admin", size: 5, due: day(0) },
+    { title: "Fix the boss loop", project: "Monster Punk", size: 60, over: ago(6) },
+    { title: "Lesson prep", project: "Teaching", size: 30, due: day(4) },
+  ] },
+  bidi: { tasks: [
+    { title: "להזמין צלם", project: "Wedding", size: 5, due: day(0) },
+    { title: "Book the DJ", project: "חתונה", size: 15, due: day(1) },
+    { title: "Mix review", project: "חתונה", size: 90, over: ago(3) },
+  ] },
+  empty: { tasks: [] },
+};
+
+const args = process.argv.slice(2);
+const flag = (f) => { const i = args.indexOf(f); return i < 0 ? null : args.splice(i, 2)[1] ?? true; };
+const outDir = flag("--out") || path.join(require("os").tmpdir(), "daisey-preview");
+const clicks = [];
+for (let c; (c = flag("--click"));) clicks.push(c);
+const wide = args.includes("--wide"), tasksTab = args.includes("--tasks");
+const name = args.find((a) => !a.startsWith("--")) || "en";
+const scenario = SCENARIOS[name] || (() => { throw new Error("no scenario " + name); })();
+
+const FAKES = {
+  "js/config.js": "export const configured = true;",
+  "js/firebase.js": `const user = { uid: "u1", email: "mor@example.com", displayName: "Mor" };
+    export const onUser = (cb) => setTimeout(() => cb(user)); export const currentUid = () => "u1";
+    export const signIn = async () => {}; export const signOut = () => {};`,
+  "js/store.js": fs.readFileSync(path.join(__dirname, "fake-store.js"), "utf8"),
+};
+
+(async () => {
+  const browser = await chromium.launch();
+  const page = await browser.newPage({ viewport: wide ? { width: 1200, height: 900 } : { width: 390, height: 844 }, deviceScaleFactor: 2 });
+  page.on("pageerror", (e) => console.error("pageerror:", e.message));
+  page.on("console", (m) => { if (m.type() === "error") console.error("console:", m.text()); });
+  await page.addInitScript((s) => { window.__FAKE = s; }, scenario);
+  await page.route(ORIGIN + "/**", (route) => {
+    const rel = new URL(route.request().url()).pathname.replace(/^\//, "") || "index.html";
+    if (FAKES[rel]) return route.fulfill({ contentType: "text/javascript", body: FAKES[rel] });
+    const file = path.join(APP, rel);
+    if (!fs.existsSync(file)) return route.fulfill({ status: 404, body: "" });
+    route.fulfill({ path: file });
+  });
+  await page.goto(ORIGIN + "/" + (tasksTab ? "#tasks" : ""));
+  await page.waitForSelector("#tabs:not([hidden])");
+  await page.waitForTimeout(150);
+  for (const sel of clicks) { await page.click(sel); await page.waitForTimeout(150); }
+  fs.mkdirSync(outDir, { recursive: true });
+  const file = path.join(outDir, `${name}${tasksTab ? "-tasks" : ""}${wide ? "-wide" : ""}.png`);
+  await page.screenshot({ path: file, fullPage: true });
+  console.log(file);
+  await browser.close();
+})().catch((e) => { console.error(e); process.exit(1); });

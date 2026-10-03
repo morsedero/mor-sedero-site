@@ -33,7 +33,7 @@ body {
 .acct { position: relative; }
 .avatar {
   inline-size: 36px; block-size: 36px; padding: 0; border-radius: 50%; overflow: hidden; cursor: pointer;
-  border: 2px solid var(--line); background: var(--accent); color: var(--ink); font: inherit; font-weight: 700;
+  border: 2px solid var(--line); background: var(--card); color: var(--ink); font: inherit; font-weight: 700;
 }
 .avatar img { inline-size: 100%; block-size: 100%; object-fit: cover; display: block; }
 .acct-menu {
@@ -115,7 +115,15 @@ textarea {
 }
 .chip[aria-checked="true"] { background: var(--ink); border-color: var(--ink); color: #fff; }
 .now-card { display: grid; gap: 4px; padding: 16px; border-radius: 14px; border: 1px solid var(--line); background: #fff; text-align: start; }
-.now-card.main { border: 2px solid var(--accent); }
+.now-card.main {
+  gap: 8px; padding: 24px 22px 20px; border: 2px solid var(--accent); border-radius: 22px;
+  box-shadow: 0 2px 4px rgb(0 0 0 / .04), 0 14px 36px rgb(245 179 1 / .16);
+}
+.now-card.main .now-title { font-size: 28px; line-height: 1.2; }
+.now-card.main .now-why { font-size: 16px; }
+.btn.start { margin-block-start: 14px; min-block-size: 56px; font-size: 19px; font-weight: 700; }
+.btn.quiet { background: none; border-color: transparent; color: var(--ink-2); font-weight: 500; }
+.btn.quiet:hover:not(:disabled) { color: var(--ink); background: var(--bg); }
 .now-meta { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--ink-2); }
 .now-title { font-size: 22px; font-weight: 700; line-height: 1.25; }
 .now-why { margin: 4px 0 0; color: var(--ink-2); }
@@ -125,7 +133,9 @@ textarea {
 .now-alt .now-title { font-size: 17px; }
 .now-empty { font-weight: 600; margin: 0; }
 .btn:disabled { opacity: .45; cursor: default; }
-.nowcard { display: grid; gap: 14px; margin-block-end: 16px; }
+/* The Now card is the hero: no outer card chrome, the task card itself is the box. */
+.nowcard { display: grid; gap: 14px; margin-block-end: 16px; padding: 0; background: none; border: 0; box-shadow: none; }
+.nowcard > .now-empty, .nowcard > .muted { padding: 20px; }
 .nowcard[hidden] { display: none; }
 
 /* Daisey's day, in the check-in. */
@@ -145,8 +155,8 @@ body.wide .shell { max-inline-size: 1240px; }
 /* Add task: floating button, bottom end corner. */
 .fab {
   position: fixed; inset-inline-end: max(20px, env(safe-area-inset-right)); inset-block-end: max(20px, env(safe-area-inset-bottom));
-  inline-size: 56px; block-size: 56px; border-radius: 18px; border: 0; cursor: pointer; z-index: 5;
-  background: var(--accent); color: var(--ink); font-size: 30px; line-height: 1; box-shadow: 0 6px 18px rgba(0,0,0,.2);
+  inline-size: 56px; block-size: 56px; border-radius: 18px; cursor: pointer; z-index: 5;
+  background: var(--card); border: 1px solid var(--line); color: var(--ink); font-size: 30px; line-height: 1; box-shadow: 0 6px 18px rgba(0,0,0,.12);
 }
 .shell { padding-block-end: 96px; } /* room so the FAB never covers the last row */
 
