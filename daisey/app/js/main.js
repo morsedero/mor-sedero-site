@@ -39,7 +39,7 @@ async function boot(){
   document.addEventListener("keydown", (e) => { if (e.key === "Escape") setMenu(false); });
   $("#signout").onclick = () => { setMenu(false); fb.signOut(); };
 
-  const SIGNED_IN = ["#board", "#add", "#capture"];
+  const SIGNED_IN = ["#board", "#add"];
 
   fb.onUser((user) => {
     setMenu(false);
@@ -59,16 +59,16 @@ async function boot(){
     } else initial();
     show("signedin"); // no element of its own: just clears loading/sign-in views
 
-    Promise.all([import("./now.js"), import("./tasks.js"), import("./capture.js")])
-      .then(([{ mountNow }, { mountTasks }, { mountCapture }]) => {
+    Promise.all([import("./now.js"), import("./tasks.js"), import("./addtask.js")])
+      .then(([{ mountNow }, { mountTasks }, { mountAddTask }]) => {
         if (fb.currentUid() !== user.uid || mounted) return;
         const m = mounted = {};
-        m.capture = mountCapture($("#capture"), user.uid);
+        m.adder = mountAddTask($("#addtask"), user.uid);
         // The Now card rides in the same scroller as the columns, first in line.
-        m.tasks = mountTasks($("#board"), user.uid, { lead: $("#nowcard"), onAdd: (project) => m.capture.open(project) });
+         m.tasks = mountTasks($("#board"), user.uid, { lead: $("#nowcard"), onAdd: (project) => m.adder.open(project) });
         m.now = mountNow($("#nowcard"), user.uid, { onCard: (id) => { onCard = id; m.tasks?.setCurrent(id); } });
         m.tasks.setCurrent(onCard);
-        $("#add").onclick = () => m.capture.open();
+        $("#add").onclick = () => m.adder.open();
         for (const s of SIGNED_IN) $(s).hidden = false;
       }).catch((e) => console.error("[daisey] boot views", e));
   });
