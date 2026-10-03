@@ -3,16 +3,15 @@
 // dates are local time, so the node tests in daisey/test/v1/ drive it with
 // fixed moments. Every number lives in weights.js.
 //
-// Session 3 takes window and energy as plain inputs (the ?debug panel sets
-// them). Later sessions fill the rest of the moment: calendar (8), energy
-// guess (9), learned fit (10). Until then those parts score 0.
+// Session 3 takes the window as a plain input (today's check-in hours).
+// Later sessions fill the rest of the moment: calendar (8), learned fit
+// (10). Until then those parts score 0. No energy (Mor, 2026-10-03).
 import * as W from "./weights.js";
-import { toEnergy, localDate } from "./model.js";
+import { localDate } from "./model.js";
 
 const MIN = 60000;
 const DAY = 86400000;
-const LEVEL = { low: 0, medium: 1, high: 2 };
-const FACTORS = ["urgency", "today", "energy", "window", "momentum", "neglect", "learned"]; // why-line tie order
+const FACTORS = ["urgency", "today", "window", "momentum", "neglect", "learned"]; // why-line tie order
 const DAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
@@ -31,7 +30,6 @@ export function timeBucket(now = Date.now()){
 
 // Everything the engine knows about right now. All optional:
 //   window          free minutes (no calendar yet → 60), capped at 180
-//   energy          "low" | "medium" | "high" (→ medium)
 //   lastProject     project last started or finished today
 //   recentProjects  projects worked on in the last 2 days
 //   sessionSkips    ids hidden by Not now this session
@@ -46,7 +44,6 @@ export function readMoment(input = {}){
     now,
     today: localDate(now),
     window: clamp(Number.isFinite(w) && input.window !== "" && input.window != null ? Math.round(w) : W.NO_CALENDAR_WINDOW, 0, W.WINDOW_CAP),
-    energy: toEnergy(input.energy) || "medium",
     bucket: timeBucket(now),
     lastProject: input.lastProject || null,
     recentProjects: (input.recentProjects || []).map(projectKey),
@@ -66,7 +63,6 @@ export function filterOut(task, m){
   if (task.status === "waiting") return "waiting";
   if ((task.skipsSinceStart || 0) >= W.STALE_SKIPS) return "stale";
   if (m.sessionSkips.has(task.id)) return "skipped";
-  if (task.energy === "high" && m.energy === "low") return "energy";
   if (task.size > m.window && !(task.canSplit && m.window >= W.SPLIT_MIN_WINDOW)) return "size";
   return null;
 }
@@ -124,12 +120,6 @@ function urgency(task, m){
 
 // ---------- step 3: score ----------
 
-function energyFit(task, m){
-  const gap = LEVEL[task.energy ?? "medium"] - LEVEL[m.energy];
-  const fit = gap === 0 ? "same" : gap === -1 ? "easier" : gap < -1 ? "muchEasier" : "harder";
-  return { points: W.ENERGY_FIT[fit], detail: { fit, task: task.energy, you: m.energy } };
-}
-
 function windowFit(task, m){
   const r = m.window > 0 ? task.size / m.window : Infinity;
   const fit = r > 1 ? "piece" : r >= 0.5 ? "full" : r >= 0.25 ? "half" : "small";
@@ -155,7 +145,7 @@ function learned(task, m){
 
 // Score parts, total and the details the why line needs.
 export function scoreTask(task, m){
-  const f = { urgency: urgency(task, m), today: { points: m.todayPicks.has(task.id) ? W.TODAY_PICK : 0, detail: null }, energy: energyFit(task, m), window: windowFit(task, m),
+  const f = { urgency: urgency(task, m), today: { points: m.todayPicks.has(task.id) ? W.TODAY_PICK : 0, detail: null }, window: windowFit(task, m),
     momentum: momentum(task, m), neglect: neglect(task, m), learned: learned(task, m) };
   const parts = Object.fromEntries(FACTORS.map((k) => [k, f[k].points]));
   const details = Object.fromEntries(FACTORS.map((k) => [k, f[k].detail]));
@@ -187,9 +177,6 @@ const sizeWords = (n) => n === 60 ? "hour" : n > 60 ? `${+(n / 60).toFixed(1)} h
 const PHRASES = {
   urgency: (s, d) => d.overdue ? "overdue" : dueWords(s.task, d.days) + (d.hard ? ", getting tight" : ""),
   today: () => "on today's list",
-  energy: (s, d) => d.fit === "same"
-    ? { low: "light one, you're low", medium: "matches your energy", high: "good for high energy" }[d.you]
-    : d.fit === "harder" ? null : "easy on your energy",
   window: (s, d) => d.fit === "small" ? "quick one"
     : d.fit === "piece" ? `a piece fits your ${sizeWords(d.window)}`
     : d.nextEvent ? `fits before ${d.nextEvent}`

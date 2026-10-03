@@ -1,13 +1,12 @@
 // The daily check-in: a popup on the first visit each day, reopened from
-// "Replan" on the Now card. Hours free today, energy slider, and tick what
+// "Replan" on the Now card. Hours free today, and tick what
 // you'd like done today. Ticked tasks get a boost on the Now card. No clock
 // times and no order — the Now card still decides the next step, so nothing
 // breaks when the day changes. Saved in users/{uid}/state/today.
 import { watchTasks, watchToday, saveToday } from "./store.js";
 import { readMoment, scoreTask, compare } from "./engine.js";
 import { localDate } from "./model.js";
-import { getEnergy, setEnergy } from "./prefs.js";
-import { h, chips, energySlider, sizeText } from "./ui.js";
+import { h, chips, sizeText } from "./ui.js";
 
 const HOURS = [[1, "1 h"], [2, "2 h"], [4, "4 h"], [6, "6 h"], [8, "8 h+"]];
 const hm = (min) => (min >= 60 ? `${Math.floor(min / 60)} h${min % 60 ? ` ${min % 60}` : ""}` : `${min} min`);
@@ -28,15 +27,13 @@ export function mountCheckin(dialog, uid, { onSaved } = {}){
 
   function render(){
     if (!draft) return;
-    const energy = getEnergy();
     const head = [
       chips("Hours free today", HOURS, draft.hours, (v) => { draft.hours = v; render(); }),
-      energySlider(energy, (v) => { setEnergy(v); render(); }),
     ];
     if (tasks == null) { fill(...head, h("p", { className: "muted", textContent: "Loading tasks…" })); return; }
 
-    // Every ready task, best fit for a long stretch at this energy first.
-    const m = readMoment({ window: 180, energy: energy.level });
+    // Every ready task, best fit for a long stretch first.
+    const m = readMoment({ window: 180 });
     const list = tasks.filter((t) => t.status === "ready").map((t) => scoreTask(t, m)).sort(compare);
     const minutes = list.filter((s) => draft.picks.has(s.task.id)).reduce((a, s) => a + s.task.size, 0);
     const budget = draft.hours ? draft.hours * 60 : null;

@@ -37,13 +37,6 @@ export const TIGHT = {
   minLeft: 5, // minutes a task still needs, at least (spent ≥ size doesn't mean done)
 };
 
-export const ENERGY_FIT = {
-  same: 25,
-  easier: 18, // task needs one step less than you have
-  muchEasier: 12, // OURS: low task, high energy (spec has no row)
-  harder: 5, // task needs one step more (high-vs-low is filtered out)
-};
-
 export const WINDOW_FIT = {
   full: 15, // task fills 50–100% of the window
   half: 10, // 25–50%
@@ -63,8 +56,8 @@ export const LEARNED_MIN = -10; // learned fit arrives in session 10
 export const LEARNED_MAX = 10;
 export const SKIP_PENALTY = 8; // per skip of this task today
 // OURS (Mor, 2026-10-03): tasks ticked in the morning check-in. Big enough
-// that a picked task usually wins, small enough that an overdue one or a
-// bad energy fit can still beat it.
+// that a picked task usually wins, small enough that an overdue one can
+// still beat it.
 export const TODAY_PICK = 20;
 
 // Something else

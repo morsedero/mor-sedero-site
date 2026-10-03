@@ -1,13 +1,12 @@
 // The Now card, always on top of the page. One task that fits this moment,
 // and why — nothing else (Mor: the card holds only the current task). Free
-// time and energy come from today's check-in. Not now → next pick (hidden
+// time comes from today's check-in. Not now → next pick (hidden
 // for this page load). Something else → 2–3 alternatives, tap one to make it the card.
 // Tasks ticked in today's check-in get a boost (engine "today" factor).
 // Start / the timer arrive in session 5; Hebrew + RTL in session 4.
 import { watchTasks, watchToday } from "./store.js";
 import { rank } from "./engine.js";
 import { localDate } from "./model.js";
-import { getEnergy } from "./prefs.js";
 import { h, sizeText } from "./ui.js";
 
 const minText = (m) => (m >= 60 ? `${+(m / 60).toFixed(1)} h` : `${m} min`);
@@ -37,7 +36,7 @@ export function mountNow(root, uid){
     const plan = today?.date === localDate() ? today : null;
     const picks = plan?.picks || [];
     const window = plan?.hours ? plan.hours * 60 : undefined;
-    const r = rank(tasks, { window, energy: getEnergy().level, sessionSkips: [...skips], todayPicks: picks });
+    const r = rank(tasks, { window, sessionSkips: [...skips], todayPicks: picks });
     const card = (state.chosen && r.ranked.find((s) => s.task.id === state.chosen)) || r.pick;
     if (!card) {
       fill(...head, h("p", { className: "now-empty", textContent: r.empty === "none"
@@ -64,8 +63,7 @@ export function mountNow(root, uid){
     watchTasks(uid, (ts) => { tasks = ts; render(); }, fail),
     watchToday(uid, (t) => { today = t; render(); }, fail),
   ];
-  // The energy correction and free time expire after 3 h; catch that when
-  // the tab comes back, and roll "today" over at midnight.
+  // Roll "today" over at midnight when the tab comes back.
   const onVisible = () => { if (!document.hidden) render(); };
   document.addEventListener("visibilitychange", onVisible);
   root.hidden = false;

@@ -229,14 +229,17 @@ satisfaction" later. `model.js`'s header has the same list.
 
 **Changed during session 3 (Mor, 2026-10-03):** the page always leads with
 the Now card, and it holds only the current task (title, why, Not now,
-Something else). Energy and free time are not on the card. A daily check-in
-popup opens on the day's first visit: hours free today, an energy slider
-(3 stops, "(guess)" until moved, holds 3 h), and tick what you'd like done
+Something else). Free time is not on the card. A daily check-in popup opens on
+the day's first visit: hours free today, and tick what you'd like done
 today (ticked → +20, "on today's list"). "Replan today" reopens it; "+ Add
 task" opens the task form as a popup. Account is an avatar in the top corner.
 No timed schedule, no ordered list. Until session 8, the free window is
 today's hours from the check-in (60 if skipped). Session 4 builds on this
 layout rather than the spec's card-as-whole-screen.
+
+**Energy is gone entirely (Mor, 2026-10-03: "feels pointless").** No energy
+field, guess, filter, score factor or UI. Session 9 (energy guess) is
+dropped; the spec's energy sections no longer apply.
 
 **After 11:** the one-week test from the spec. Then cutover: move v1 to
 `/daisey/`, retire the old pieces listed in section 1, with your approval.

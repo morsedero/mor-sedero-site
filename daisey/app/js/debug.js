@@ -27,7 +27,7 @@ export function mountDebug(root, uid){
   function row(t){
     const g = (field, v) => (t.guessed || []).includes(field) ? `${v} (guess)` : v;
     const meta = [
-      g("size", `${t.size} min`), `energy ${g("energy", t.energy)}`,
+      g("size", `${t.size} min`),
       t.due && `due ${t.due}${t.dueTime ? " " + t.dueTime : ""}`,
       t.status === "waiting" && `waiting${t.waitingOn ? " on " + t.waitingOn : ""}`,
       t.canSplit && "can split",

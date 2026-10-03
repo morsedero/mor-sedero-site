@@ -6,16 +6,16 @@ import * as M from "../../app/js/model.js";
 const NOW = Date.UTC(2026, 9, 5, 9);
 const opts = { now: NOW };
 
-test("title only: Inbox, guessed size and energy, ready, counters zeroed", () => {
+test("title only: Inbox, guessed size, ready, counters zeroed", () => {
   const t = M.createTask({ title: "  Something   vague " }, opts);
   assert.equal(t.title, "Something vague");
   assert.equal(t.project, "Inbox");
   assert.equal(t.size, 30);
-  assert.equal(t.energy, "medium");
+  assert.equal("energy" in t, false);
   assert.equal(t.status, "ready");
   assert.equal(t.waitingOn, null);
   assert.equal(t.canSplit, false);
-  assert.deepEqual(t.guessed, ["size", "energy", "canSplit"]);
+  assert.deepEqual(t.guessed, ["size", "canSplit"]);
   assert.equal(t.due, null);
   assert.equal(t.createdAt, NOW);
   assert.equal(t.touchedAt, NOW);
@@ -43,13 +43,13 @@ test("given fields are kept, not marked as guesses", () => {
   assert.equal(t.size, 120);
   assert.equal(t.due, "2026-10-08");
   assert.equal(t.canSplit, true); // 60+ default
-  assert.deepEqual(t.guessed, ["energy", "canSplit"]);
+  assert.deepEqual(t.guessed, ["canSplit"]);
 });
 
 test("adding never takes energy, status, waiting on, hard due or repeat", () => {
   const t = M.createTask({ title: "email Dana", energy: "high", status: "waiting", waitingOn: "Yuval",
     hardDue: true, due: "2026-10-08", repeat: { every: 7 } }, opts);
-  assert.equal(t.energy, "low"); // guessed from the title, input ignored
+  assert.equal("energy" in t, false); // no energy at all
   assert.equal(t.status, "ready");
   assert.equal(t.waitingOn, null);
   assert.equal("hardDue" in t, false);
@@ -81,15 +81,6 @@ test("size guess prefers similar past tasks over words", () => {
   assert.equal(M.guessSize("Lesson prep", [{ title: "Lesson prep", size: 15, guessed: [] }]), 15);
 });
 
-test("energy guesses from words, then size", () => {
-  assert.equal(M.guessEnergy("Mix review", 60), "high");
-  assert.equal(M.guessEnergy("email Dana", 15), "low");
-  assert.equal(M.guessEnergy("לשלם ארנונה", 15), "low");
-  assert.equal(M.guessEnergy("thing", 5), "low");
-  assert.equal(M.guessEnergy("thing", 90), "high");
-  assert.equal(M.guessEnergy("thing", 30), "medium");
-});
-
 test("snapSize: nearest bucket, ties go up, 90+ stays 90", () => {
   assert.equal(M.snapSize(1), 5);
   assert.equal(M.snapSize(10), 15);
@@ -103,7 +94,6 @@ test("cleaning rejects junk without throwing", () => {
   assert.equal(t.due, null);
   assert.equal(t.dueTime, null);
   assert.equal(M.toMinutes("90+"), 90);
-  assert.equal(M.toEnergy("med"), "medium");
 });
 
 test("due time kept only with a due date", () => {
@@ -125,19 +115,9 @@ test("edit: only changed fields, user values stop being guesses", () => {
   assert.deepEqual(M.editTask(t, { title: "thing" }, opts), {});
   const p = M.editTask(t, { size: 90 }, { now: NOW + 1 });
   assert.equal(p.size, 90);
-  assert.equal(p.energy, "high"); // still a guess, re-guessed from new size
   assert.equal(p.canSplit, true); // still a default, follows size
-  assert.deepEqual(p.guessed, ["canSplit", "energy"]);
+  assert.deepEqual(p.guessed, ["canSplit"]);
   assert.equal(p.touchedAt, NOW + 1);
-});
-
-test("edit: energy set later (when choosing) sticks through a retitle", () => {
-  const t = { id: "a", ...M.createTask({ title: "thing" }, opts) };
-  const e = M.editTask(t, { energy: "low" }, opts);
-  assert.deepEqual(e.guessed, ["canSplit", "size"]);
-  const p = M.editTask({ ...t, ...e }, { title: "Call Uri" }, opts);
-  assert.equal(p.size, 15);
-  assert.equal(p.energy, undefined);
 });
 
 test("edit: clearing size hands it back to the guess", () => {

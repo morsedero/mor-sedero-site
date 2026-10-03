@@ -1,4 +1,4 @@
-// Task fields, defaults, first-pass size/energy guesses.
+// Task fields, defaults, first-pass size guess.
 // PURE: no Firebase, no DOM, and the clock is only read as a default argument,
 // so the node tests in daisey/test/v1/ import this file directly.
 //
@@ -6,8 +6,8 @@
 // timestamps are epoch ms.
 //
 // Decided with Mor after session 2 (2026-10-03), departing from the spec:
-// - Energy is never asked when adding a task; Daisey guesses it. The user
-//   weighs in when choosing a task (how: to be decided).
+// - No energy at all (Mor, later the same day: "feels pointless"). Old task
+//   docs may still carry an `energy` field; nothing reads it.
 // - No "hard due" field. A due turns hard on its own when the time left
 //   before it gets tight for the task's size — the engine works that out
 //   each moment (session 3), so nothing is stored.
@@ -15,12 +15,10 @@
 // - Waiting is set by acting on an existing task, never when adding one.
 
 export const SIZES = [5, 15, 30, 60, 90]; // guess buckets; 90 reads as "90+"
-export const ENERGY = ["low", "medium", "high"];
 export const STATUS = ["ready", "waiting", "done"];
 export const SKIP_REASONS = ["tired", "notime", "mood", "blocked"];
 export const INBOX = "Inbox";
 export const DEFAULT_SIZE = 30;
-export const DEFAULT_ENERGY = "medium";
 export const SPLIT_FROM = 60; // "can split" defaults on from this size
 const SIMILAR = 0.5; // title word overlap that counts as "a similar past task"
 
@@ -34,12 +32,6 @@ const SIZE_HINTS = [
         "להתקשר", "טלפון", "מייל", "שיחה", "לשלוח", "להזמין", "חשבונית", "לתאם"]],
   [5, ["text", "reply", "pay", "confirm", "remind", "whatsapp", "sms",
        "הודעה", "לענות", "לשלם", "לאשר", "תזכורת", "וואטסאפ"]],
-];
-const ENERGY_HINTS = [
-  ["high", ["write", "compose", "mix", "design", "practice", "record", "study", "learn", "plan", "debug", "research",
-            "לכתוב", "להלחין", "מיקס", "לעצב", "לתרגל", "להקליט", "ללמוד", "לתכנן", "מחקר"]],
-  ["low", ["email", "mail", "reply", "text", "pay", "invoice", "order", "tidy", "clean", "file", "admin", "whatsapp",
-           "מייל", "לענות", "לשלם", "חשבונית", "להזמין", "לסדר", "לנקות", "וואטסאפ"]],
 ];
 
 // ---------- dates ----------
@@ -60,12 +52,6 @@ export function toMinutes(v){
   if (v == null || v === "") return null;
   const n = parseFloat(String(v)); // "90+" → 90
   return Number.isFinite(n) && n > 0 ? Math.max(1, Math.round(n)) : null;
-}
-
-export function toEnergy(v){
-  const s = String(v ?? "").trim().toLowerCase();
-  if (s === "med") return "medium";
-  return ENERGY.includes(s) ? s : null;
 }
 
 export function toDate(v){
@@ -124,14 +110,6 @@ export function guessSize(title, history = []){
   return DEFAULT_SIZE;
 }
 
-export function guessEnergy(title, size){
-  const toks = tokens(title);
-  for (const [energy, words] of ENERGY_HINTS) if (words.some((w) => hasWord(toks, w))) return energy;
-  if (size <= 5) return "low";
-  if (size >= 90) return "high";
-  return DEFAULT_ENERGY;
-}
-
 // ---------- tasks ----------
 
 const freshCounters = () => ({
@@ -152,7 +130,7 @@ const freshCounters = () => ({
 export function createTask(input, { now = Date.now(), history = [] } = {}){
   const title = text(input.title);
   if (!title) throw new Error("A task needs a title.");
-  const guessed = ["energy"];
+  const guessed = [];
 
   let size = toMinutes(input.size);
   if (size == null) { size = guessSize(title, history); guessed.unshift("size"); }
@@ -164,7 +142,6 @@ export function createTask(input, { now = Date.now(), history = [] } = {}){
     project: text(input.project) || INBOX,
     title,
     size,
-    energy: guessEnergy(title, size),
     due,
     dueTime: due ? toTime(input.dueTime) : null,
     status: "ready",
@@ -181,9 +158,9 @@ export function createTask(input, { now = Date.now(), history = [] } = {}){
 const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 
 // Returns only the fields that change, ready for a Firestore update. A field
-// named in `changes` becomes the user's own; passing null/"" for size or
-// energy hands it back to Daisey to guess. Guessed fields are re-guessed when
-// what they were guessed from (title, size) changes.
+// named in `changes` becomes the user's own; passing null/"" for size hands
+// it back to Daisey to guess. Guessed fields are re-guessed when what they
+// were guessed from (title, size) changes.
 export function editTask(task, changes, { now = Date.now(), history = [] } = {}){
   const patch = {};
   const set = (k, v) => { if (!same(task[k], v)) patch[k] = v; };
@@ -204,10 +181,6 @@ export function editTask(task, changes, { now = Date.now(), history = [] } = {})
   else if (has("size") || (titleChanged && guessed.has("size"))) { set("size", guessSize(get("title"), others)); guessed.add("size"); }
 
   const sizeChanged = "size" in patch;
-  if (has("energy") && toEnergy(changes.energy) != null) { set("energy", toEnergy(changes.energy)); guessed.delete("energy"); }
-  else if (has("energy") || ((titleChanged || sizeChanged) && guessed.has("energy"))) {
-    set("energy", guessEnergy(get("title"), get("size"))); guessed.add("energy");
-  }
 
   if (has("canSplit") && typeof changes.canSplit === "boolean") { set("canSplit", changes.canSplit); guessed.delete("canSplit"); }
   else if (sizeChanged && guessed.has("canSplit")) set("canSplit", get("size") >= SPLIT_FROM);
@@ -233,5 +206,5 @@ export function editTask(task, changes, { now = Date.now(), history = [] } = {})
 export const completeTask = (task, { now = Date.now() } = {}) =>
   ({ status: "done", doneAt: now, skipsSinceStart: 0, touchedAt: now });
 
-// Ready to be offered at all? engine.js filterOut adds window, energy, skips.
+// Ready to be offered at all? engine.js filterOut adds window and skips.
 export const isAvailable = (task) => task.status === "ready";
