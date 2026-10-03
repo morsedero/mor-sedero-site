@@ -3,7 +3,7 @@
    firebase.js and store.js are swapped for fakes, tasks come from a scenario
    below. Everything else is the real app code.
 
-     node daisey/test/v1/preview/preview.js [scenario] [--wide] [--tasks] [--out dir] [--click "sel" ...]
+     node daisey/test/v1/preview/preview.js [scenario] [--wide] [--tasks] [--cal spec] [--out dir] [--click "sel" ...]
 
    Writes <out>/<scenario>[-tasks][-wide].png and prints the path. Needs
    playwright from daisey/test/ (npm install there once). */
@@ -39,12 +39,20 @@ for (let c; (c = flag("--click"));) clicks.push(c);
 const wide = args.includes("--wide"), tasksTab = args.includes("--tasks");
 const name = args.find((a) => !a.startsWith("--")) || "en";
 const scenario = SCENARIOS[name] || (() => { throw new Error("no scenario " + name); })();
+// --cal: "none" (connected, empty), "reauth", or "<min>:<title>" — an hour-long
+// event starting in <min> minutes (negative = already running). Omitted → not connected.
+const cal = flag("--cal");
+const calReply = !cal ? { status: 404, body: { error: "not_connected" } }
+  : cal === "reauth" ? { status: 409, body: { error: "needs_reauth" } }
+  : cal === "none" ? { status: 200, body: { events: [] } }
+  : (() => { const [m, title = "Teaching"] = cal.split(":"); const start = Date.now() + Number(m) * 60000;
+    return { status: 200, body: { events: [{ title, start: new Date(start).toISOString(), end: new Date(start + 3600000).toISOString() }] } }; })();
 
 const FAKES = {
   "js/config.js": "export const configured = true;",
   "js/firebase.js": `const user = { uid: "u1", email: "mor@example.com", displayName: "Mor" };
     export const onUser = (cb) => setTimeout(() => cb(user)); export const currentUid = () => "u1";
-    export const signIn = async () => {}; export const signOut = () => {};`,
+    export const signIn = async () => {}; export const signOut = () => {}; export const idToken = async () => "fake";`,
   "js/store.js": fs.readFileSync(path.join(__dirname, "fake-store.js"), "utf8"),
 };
 
@@ -56,6 +64,7 @@ const FAKES = {
   await page.addInitScript((s) => { window.__FAKE = s; }, scenario);
   await page.route(ORIGIN + "/**", (route) => {
     const rel = new URL(route.request().url()).pathname.replace(/^\//, "") || "index.html";
+    if (rel === ".netlify/functions/daisey-now-calendar") return route.fulfill({ status: calReply.status, contentType: "application/json", body: JSON.stringify(calReply.body) });
     if (FAKES[rel]) return route.fulfill({ contentType: "text/javascript", body: FAKES[rel] });
     const file = path.join(APP, rel);
     if (!fs.existsSync(file)) return route.fulfill({ status: 404, body: "" });
@@ -66,7 +75,7 @@ const FAKES = {
   await page.waitForTimeout(150);
   for (const sel of clicks) { await page.click(sel); await page.waitForTimeout(150); }
   fs.mkdirSync(outDir, { recursive: true });
-  const file = path.join(outDir, `${name}${tasksTab ? "-tasks" : ""}${clicks.length ? "-click" : ""}${wide ? "-wide" : ""}.png`);
+  const file = path.join(outDir, `${name}${tasksTab ? "-tasks" : ""}${cal ? "-cal" + cal.replace(/\W/g, "") : ""}${clicks.length ? "-click" : ""}${wide ? "-wide" : ""}.png`);
   await page.screenshot({ path: file, fullPage: true });
   console.log(file);
   await browser.close();

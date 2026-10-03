@@ -28,6 +28,18 @@ export function timeBucket(now = Date.now()){
   };
 }
 
+// The free window from the calendar's busy events ({ title, start, end },
+// ISO strings, sorted). In an event → 0 until it ends. Else minutes until
+// the next one (readMoment caps it). restOfDay: nothing else today.
+export function freeWindow(events, now = Date.now()){
+  const ev = events.map((e) => ({ title: e.title, start: Date.parse(e.start), end: Date.parse(e.end) }));
+  const current = ev.find((e) => e.start <= now && now < e.end) || null;
+  if (current) return { window: 0, current, next: null, restOfDay: false };
+  const next = ev.find((e) => e.start > now) || null;
+  const restOfDay = !next || localDate(next.start) !== localDate(now);
+  return { window: next ? Math.floor((next.start - now) / MIN) : W.WINDOW_CAP, current: null, next: restOfDay ? null : next, restOfDay };
+}
+
 // Everything the engine knows about right now. All optional:
 //   window          free minutes (no calendar yet → 60), capped at 180
 //   lastProject     project last started or finished today

@@ -136,7 +136,10 @@ textarea {
 /* The Now card is the hero: no outer card chrome, the task card itself is the box. */
 .nowcard { display: grid; gap: 14px; margin-block-end: 16px; padding: 0; background: none; border: 0; box-shadow: none; }
 .nowcard > .muted { padding: 20px; }
-.now-greet { margin: 4px 2px 0; font-size: 17px; color: var(--ink-2); }
+.now-greet { margin: 4px 2px 0; display: grid; gap: 2px; }
+.now-greet p { margin: 0; font-size: 17px; color: var(--ink-2); }
+.now-greet p.muted { font-size: 13px; }
+.now-greet a { color: inherit; }
 .now-card.empty { border-color: var(--line); box-shadow: none; }
 .now-card.empty .now-empty { margin-block: 8px 0; }
 .nowcard[hidden] { display: none; }

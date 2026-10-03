@@ -18,6 +18,8 @@ export const db = fs.initializeFirestore(app, {
 
 export function onUser(cb){ return auth.onAuthStateChanged(a, cb); }
 export const currentUid = () => a.currentUser?.uid ?? null;
+// For our own Netlify functions, which verify it server-side.
+export const idToken = () => a.currentUser?.getIdToken() ?? Promise.reject(new Error("signed out"));
 
 // Popup, not redirect: redirect sign-in breaks in Safari (and soon Chrome)
 // when the page and authDomain (*.firebaseapp.com) are different sites,

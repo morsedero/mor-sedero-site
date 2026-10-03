@@ -20,6 +20,20 @@ const why = (t, o) => E.rank([t], { now: NOW, ...o }).pick.why;
 
 // ---------- step 1 ----------
 
+const ev = (title, sh, sm, eh, em, d = 5) => ({ title, start: new Date(at(d, sh, sm)).toISOString(), end: new Date(at(d, eh, em)).toISOString() });
+
+test("calendar window: minutes to the next event; inside one → 0; none today → rest of day", () => {
+  const next = E.freeWindow([ev("Teaching", 10, 45, 12, 0)], NOW);
+  assert.deepEqual([next.window, next.next.title, next.restOfDay], [45, "Teaching", false]);
+  const inside = E.freeWindow([ev("Teaching", 9, 30, 11, 0), ev("Call", 12, 0, 13, 0)], NOW);
+  assert.deepEqual([inside.window, inside.current.title], [0, "Teaching"]);
+  const done = E.freeWindow([ev("Earlier", 8, 0, 9, 0)], NOW);
+  assert.deepEqual([done.window, done.restOfDay], [W.WINDOW_CAP, true]);
+  const tomorrow = E.freeWindow([ev("Early", 9, 0, 10, 0, 6)], at(5, 22));
+  assert.deepEqual([tomorrow.window, tomorrow.next, tomorrow.restOfDay], [660, null, true]); // readMoment caps it
+  assert.equal(E.readMoment({ now: NOW, window: tomorrow.window }).window, W.WINDOW_CAP);
+});
+
 test("moment: no calendar → 60 min, window capped at 180", () => {
   const m = E.readMoment({ now: NOW });
   assert.equal(m.window, 60);
