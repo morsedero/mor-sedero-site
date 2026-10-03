@@ -72,10 +72,11 @@ const FAKES = {
     if (!fs.existsSync(file)) return route.fulfill({ status: 404, body: "" });
     route.fulfill({ path: file });
   });
-  await page.goto(ORIGIN + "/" + (tasksTab ? "#tasks" : ""));
-  await page.waitForSelector(tasksTab ? ".tk-board, .tk-empty" : "#viewNow .now-card, #viewNow .focus, #viewNow .now-empty");
+  await page.goto(ORIGIN + "/");
+  await page.waitForSelector(".now-card, .focus, .now-empty, .tk-empty");
   await page.waitForTimeout(150);
   for (const sel of clicks) { await page.click(sel); await page.waitForTimeout(150); }
+  if (tasksTab) { await page.evaluate(() => { const b = document.querySelector("#board"); b.scrollLeft = b.scrollWidth; }); await page.waitForTimeout(100); }
   if (args.includes("--text")) console.log(await page.innerText("body"));
   if (args.includes("--tasks-dump")) console.log(await page.evaluate(() => window.__store.tasks.map((t) => t.title + ": " + t.status + (t.skipCount ? " skips " + t.skipCount : "")).join(" | ")));
   fs.mkdirSync(outDir, { recursive: true });

@@ -36,19 +36,11 @@
     <p id="signinMsg" class="msg" role="alert"></p>
   </section>
 
-  <!-- Signed in: two windows, Now and Tasks. -->
-  <nav id="tabs" class="tabs" role="tablist" hidden>
-    <button id="tabNow" class="tab" role="tab" aria-controls="viewNow" type="button">Now</button>
-    <button id="tabTasks" class="tab" role="tab" aria-controls="viewTasks" type="button">Tasks</button>
-  </nav>
-
-  <!-- Now: one line of context, then the card. -->
-  <div id="viewNow" role="tabpanel" aria-labelledby="tabNow" hidden>
-    <section id="nowcard" class="card nowcard" hidden></section>
+  <!-- Signed in: one sideways slider. The Now card is the first panel, the
+       project columns follow it (Mor, 2026-10-03: no tabs, just a slider). -->
+  <div id="board" hidden>
+    <section id="nowcard" class="nowpanel" aria-label="Now" hidden></section>
   </div>
-
-  <!-- Tasks: one column per project. -->
-  <div id="viewTasks" role="tabpanel" aria-labelledby="tabTasks" hidden></div>
 
   <button id="add" class="fab" type="button" aria-label="Add task" hidden>+</button>
   <dialog id="addtask" class="now" aria-labelledby="addTitle"></dialog>

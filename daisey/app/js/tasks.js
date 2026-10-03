@@ -11,7 +11,8 @@ import { h, bdi, pieces, sizeText } from "./ui.js";
 
 const shortDate = (s) => new Date(`${s}T12:00`).toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" });
 
-export function mountTasks(root, uid, { onAdd } = {}){
+// lead: an element to keep as the first panel of the board (the Now card).
+export function mountTasks(root, uid, { onAdd, lead } = {}){
   let tasks = null, onCard = null, menuFor = null;
   const openDone = new Set(); // projects whose Completed fold is open (survives re-renders)
   const fail = (e) => console.error("[daisey] tasks", e);
@@ -54,8 +55,16 @@ export function mountTasks(root, uid, { onAdd } = {}){
         onclick: () => { if (confirm(`Delete “${t.title}”?`)) removeTask(uid, t.id).catch(fail); } }));
   }
 
+  // The board scrolls sideways; `lead` stays at its head and the scroll
+  // position survives a re-render.
+  function fill(...kids){
+    const x = root.scrollLeft;
+    root.replaceChildren(...(lead ? [lead, ...kids] : kids));
+    root.scrollLeft = x;
+  }
+
   function render(){
-    if (tasks == null) { root.replaceChildren(h("p", { className: "muted", textContent: "Loading tasks…" })); return; }
+    if (tasks == null) { fill(h("p", { className: "muted", textContent: "Loading tasks…" })); return; }
     const byProject = new Map();
     for (const t of tasks) {
       if (!byProject.has(t.project)) byProject.set(t.project, []);
@@ -63,7 +72,7 @@ export function mountTasks(root, uid, { onAdd } = {}){
     }
     const names = [...byProject.keys()].sort((a, b) => (b === INBOX) - (a === INBOX) || a.localeCompare(b));
     if (!names.length) {
-      root.replaceChildren(h("div", { className: "tk-empty card" }, h("p", { textContent: "No tasks yet." }),
+      fill(h("div", { className: "tk-empty card" }, h("p", { textContent: "No tasks yet." }),
         h("button", { className: "btn primary", type: "button", textContent: "+ Add task", onclick: () => onAdd?.() })));
       return;
     }
@@ -86,10 +95,7 @@ export function mountTasks(root, uid, { onAdd } = {}){
           h("summary", { textContent: `Completed (${done.length})` }),
           h("ul", { className: "tk-list" }, ...done.map(doneRow))));
     });
-    const x = root.querySelector(".tk-board")?.scrollLeft || 0; // keep the horizontal scroll
-    const board = h("div", { className: "tk-board" }, ...cols);
-    root.replaceChildren(board);
-    board.scrollLeft = x;
+    fill(...cols);
   }
 
   // Tap anywhere else closes an open ⋯ menu.
@@ -100,6 +106,6 @@ export function mountTasks(root, uid, { onAdd } = {}){
 
   return {
     setCurrent(id){ onCard = id; render(); },
-    unmount(){ unsub(); document.removeEventListener("click", closeMenu); root.replaceChildren(); },
+    unmount(){ unsub(); document.removeEventListener("click", closeMenu); root.replaceChildren(...(lead ? [lead] : [])); },
   };
 }

@@ -39,26 +39,12 @@ async function boot(){
   document.addEventListener("keydown", (e) => { if (e.key === "Escape") setMenu(false); });
   $("#signout").onclick = () => { setMenu(false); fb.signOut(); };
 
-  // Two windows. The URL hash remembers which (#tasks), so back/refresh keep it.
-  const SIGNED_IN = ["#tabs", "#add"];
-  const setTab = (tab) => {
-    for (const [id, view] of [["tabNow", "viewNow"], ["tabTasks", "viewTasks"]]) {
-      const on = (tab === "tasks") === (id === "tabTasks");
-      $("#" + id).setAttribute("aria-selected", String(on));
-      $("#" + view).hidden = !on;
-    }
-    document.body.classList.toggle("wide", tab === "tasks");
-  };
-  const tabFromHash = () => (location.hash === "#tasks" ? "tasks" : "now");
-  $("#tabNow").onclick = () => { history.replaceState(null, "", location.pathname + location.search); setTab("now"); };
-  $("#tabTasks").onclick = () => { location.hash = "tasks"; };
-  window.addEventListener("hashchange", () => { if (mounted) setTab(tabFromHash()); });
+  const SIGNED_IN = ["#board", "#add"];
 
   fb.onUser((user) => {
     setMenu(false);
     if (mounted) { for (const m of Object.values(mounted)) m?.unmount(); mounted = null; }
     for (const s of SIGNED_IN) $(s).hidden = true;
-    $("#viewNow").hidden = $("#viewTasks").hidden = true;
     avatar.hidden = !user;
     if (!user) { show("signedout"); return; }
 
@@ -78,12 +64,12 @@ async function boot(){
         if (fb.currentUid() !== user.uid || mounted) return;
         const m = mounted = {};
         m.adder = mountAddTask($("#addtask"), user.uid);
-        m.tasks = mountTasks($("#viewTasks"), user.uid, { onAdd: (project) => m.adder.open(project) });
+        // The Now card rides in the same scroller as the columns, first in line.
+         m.tasks = mountTasks($("#board"), user.uid, { lead: $("#nowcard"), onAdd: (project) => m.adder.open(project) });
         m.now = mountNow($("#nowcard"), user.uid, { onCard: (id) => { onCard = id; m.tasks?.setCurrent(id); } });
         m.tasks.setCurrent(onCard);
         $("#add").onclick = () => m.adder.open();
         for (const s of SIGNED_IN) $(s).hidden = false;
-        setTab(tabFromHash());
       }).catch((e) => console.error("[daisey] boot views", e));
   });
 }
