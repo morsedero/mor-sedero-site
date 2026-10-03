@@ -3,7 +3,6 @@
 // there for the satisfaction of seeing it. Goes away once the Now card
 // (session 4) exists.
 import { watchTasks, addTask, updateTask, finishTask, removeTask } from "./store.js";
-import { mountEngine } from "./debug-engine.js";
 
 const h = (tag, props = {}, ...kids) => {
   const el = Object.assign(document.createElement(tag), props);
@@ -55,9 +54,7 @@ export function mountDebug(root, uid){
   const tabs = { open: tabBtn("open"), done: tabBtn("done") };
   const offline = h("span", { className: "muted" });
   const list = h("ul", { className: "dbg-list" });
-  const engineEl = h("div", { className: "eng" });
-  const engine = mountEngine(engineEl);
-  root.replaceChildren(engineEl, h("h2", { className: "label", textContent: "Tasks (debug)" }), form, msg,
+  root.replaceChildren(h("h2", { className: "label", textContent: "Tasks (debug)" }), form, msg,
     h("div", { className: "dbg-tabs", role: "tablist" }, tabs.open, tabs.done, offline), list);
 
   function row(t){
@@ -108,6 +105,6 @@ export function mountDebug(root, uid){
   }
 
   root.hidden = false;
-  const unsub = watchTasks(uid, (ts, meta) => { tasks = ts; render(meta); engine.update(ts); }, fail);
-  return () => { unsub(); engine.unmount(); root.hidden = true; root.replaceChildren(); };
+  const unsub = watchTasks(uid, (ts, meta) => { tasks = ts; render(meta); }, fail);
+  return () => { unsub(); root.hidden = true; root.replaceChildren(); };
 }

@@ -51,11 +51,11 @@ async function boot(){
     $("#who").textContent = user.email;
     show("signedin");
 
-    // The Now popup opens by itself on entry (not over the debug tools).
+    // The Now popup opens by itself on entry.
     import("./now.js").then(({ mountNow }) => {
       if (fb.currentUid() !== user.uid || now) return;
       now = mountNow($("#now"), user.uid);
-      if (!DEBUG) now.open();
+      now.open();
     }).catch((e) => console.error("[daisey] now", e));
 
     if (DEBUG) {
