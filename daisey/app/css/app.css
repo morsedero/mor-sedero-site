@@ -136,12 +136,12 @@ textarea {
 .chip[aria-checked="true"] { background: var(--ink); border-color: var(--ink); color: var(--card); }
 .now-card { display: grid; gap: 4px; padding: 16px; border-radius: 14px; border: 1px solid var(--line); background: var(--surface); text-align: start; }
 .now-card.main {
-  gap: 8px; padding: 24px 22px 20px; border: 2px solid var(--accent); border-radius: 22px;
-  box-shadow: 0 2px 4px rgb(0 0 0 / .04), 0 14px 36px rgb(245 179 1 / .16);
+  gap: 6px; padding: 18px 18px 14px; border: 2px solid var(--accent); border-radius: 20px;
+  box-shadow: 0 2px 4px rgb(0 0 0 / .04), 0 12px 30px rgb(245 179 1 / .14);
 }
-.now-card.main .now-title { font-size: 28px; line-height: 1.2; }
-.now-card.main .now-why { font-size: 16px; }
-.btn.start { margin-block-start: 14px; min-block-size: 56px; font-size: 19px; font-weight: 700; }
+.now-card.main .now-title { font-size: 23px; line-height: 1.22; }
+.now-card.main .now-why { font-size: 15px; }
+.btn.start { margin-block-start: 12px; min-block-size: 48px; font-size: 17px; font-weight: 700; }
 .btn.quiet { background: none; border-color: transparent; color: var(--ink-2); font-weight: 500; }
 .btn.quiet:hover:not(:disabled) { color: var(--ink); background: var(--bg); }
 .now-meta { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--ink-2); }
@@ -153,7 +153,7 @@ textarea {
   display: grid; justify-items: center; gap: 2px; cursor: pointer;
   font: inherit; font-size: 12px; font-weight: 600; color: var(--ink-2);
   background: none; border: 1px solid transparent; border-radius: 14px;
-  min-inline-size: 76px; min-block-size: 56px; padding: 6px 10px;
+  min-inline-size: 68px; min-block-size: 50px; padding: 4px 10px;
 }
 .iconbtn svg { inline-size: 22px; block-size: 22px; }
 .iconbtn:hover:not(:disabled) { color: var(--ink); background: var(--bg); border-color: var(--line); }
@@ -221,7 +221,9 @@ body.focus .shell { display: grid; min-block-size: 100dvh; align-content: center
   display: flex; gap: 12px; align-items: flex-start; overflow-x: auto; scroll-snap-type: x mandatory;
   padding-block-end: 8px;
 }
-.nowpanel { flex: 0 0 min(420px, calc(100vw - 48px)); scroll-snap-align: start; display: grid; gap: 14px; }
+/* First panel: the card, then the day under it. */
+.nowpanel { flex: 0 0 min(380px, calc(100vw - 48px)); scroll-snap-align: start; display: grid; gap: 24px; align-content: start; }
+#nowcard { display: grid; gap: 14px; }
 @media (max-width: 600px) { #board { margin-inline: -16px; padding-inline: 16px; scroll-padding-inline: 16px; } }
 
 /* Add task: floating button, bottom end corner. */
@@ -233,7 +235,10 @@ body.focus .shell { display: grid; min-block-size: 100dvh; align-content: center
 .shell { padding-block-end: 96px; } /* room so the FAB never covers the last row */
 
 /* Schedule: the calendar's own panel, between the card and the projects. */
-.sch { display: grid; gap: 10px; align-content: start; }
+.sch {
+  display: grid; gap: 10px; align-content: start; padding: 14px;
+  background: var(--card); border: 1px solid var(--line); border-radius: var(--radius);
+}
 .sch-head { margin: 0; font-size: 17px; }
 .sch-note { margin: 0; font-size: 13px; }
 .sch-day { display: grid; gap: 6px; }

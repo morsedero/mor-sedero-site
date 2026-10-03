@@ -73,7 +73,7 @@ async function boot(){
         // The Now card rides in the same scroller as the columns, first in line.
          m.schedule = mountSchedule($("#schedule"));
         // The slider reads: the Now card, what the day holds, then the projects.
-        m.tasks = mountTasks($("#board"), user.uid, { lead: [$("#nowcard"), $("#schedule")],
+        m.tasks = mountTasks($("#board"), user.uid, { lead: [$(".nowpanel")],
           onAdd: (project) => m.adder.open(project), onEdit: (task) => m.adder.edit(task) });
         m.now = mountNow($("#nowcard"), user.uid, { onCard: (id) => { onCard = id; m.tasks?.setCurrent(id); } });
         m.tasks.setCurrent(onCard);

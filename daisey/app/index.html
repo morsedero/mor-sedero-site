@@ -46,8 +46,10 @@
   <!-- Signed in: one sideways slider. The Now card is the first panel, the
        project columns follow it (Mor, 2026-10-03: no tabs, just a slider). -->
   <div id="board" hidden>
-    <section id="nowcard" class="nowpanel" aria-label="Now" hidden></section>
-    <section id="schedule" class="tk-col sch" aria-label="Schedule" hidden></section>
+    <div class="nowpanel">
+      <section id="nowcard" aria-label="Now" hidden></section>
+      <section id="schedule" class="sch" aria-label="Schedule" hidden></section>
+    </div>
   </div>
 
   <button id="add" class="fab" type="button" aria-label="Add task" hidden>+</button>
