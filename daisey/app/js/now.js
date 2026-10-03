@@ -1,6 +1,6 @@
 // The Now card, always on top of the page. One task that fits this moment,
-// and why. The context line above it says what Daisey assumed (free time,
-// energy guess); tap either to fix it. Not now → next pick (hidden for this
+// and why. Above it: free time (tap to change) and an energy slider showing
+// Daisey's guess until you move it. "Replan" reopens today's check-in. Not now → next pick (hidden for this
 // page load). Something else → 2–3 alternatives, tap one to make it the card.
 // Tasks ticked in today's check-in get a boost (engine "today" factor).
 // Start / the timer arrive in session 5; Hebrew + RTL in session 4.
@@ -8,15 +8,15 @@ import { watchTasks, watchToday } from "./store.js";
 import { rank } from "./engine.js";
 import { localDate } from "./model.js";
 import { getWindow, setWindow, getEnergy, setEnergy } from "./prefs.js";
-import { h, chips, ENERGIES, sizeText } from "./ui.js";
+import { h, chips, energySlider, sizeText } from "./ui.js";
 
 const WINDOWS = [[15, "15 min"], [30, "30 min"], [60, "1 h"], [90, "1.5 h"], [120, "2 h+"]];
 const windowText = (w) => WINDOWS.find(([v]) => v === w)?.[1] ?? `${w} min`;
 
-export function mountNow(root, uid){
+export function mountNow(root, uid, { onReplan } = {}){
   let tasks = null; // null until the first snapshot
   let today = null;
-  const state = { edit: null, chosen: null, showAlts: false }; // edit: "window" | "energy" | null
+  const state = { edit: false, chosen: null, showAlts: false }; // edit: free-time chips open
   const skips = new Set();
   const reset = () => { state.chosen = null; state.showAlts = false; };
 
@@ -29,18 +29,15 @@ export function mountNow(root, uid){
 
   function render(){
     const window = getWindow(), energy = getEnergy();
-    const toggle = (which) => { state.edit = state.edit === which ? null : which; render(); };
-    const context = h("div", { className: "now-context" },
-      h("button", { type: "button", className: "now-pill", ariaExpanded: String(state.edit === "window"),
-        textContent: `${windowText(window)} free ✎`, onclick: () => toggle("window") }),
-      h("button", { type: "button", className: "now-pill", ariaExpanded: String(state.edit === "energy"),
-        textContent: `Energy: ${energy.level}${energy.guessed ? " (guess)" : ""} ✎`, onclick: () => toggle("energy") }));
-    const editor = state.edit === "window"
-      ? chips("How much time do you have?", WINDOWS, window, (v) => { setWindow(v); state.edit = null; reset(); render(); })
-      : state.edit === "energy"
-      ? chips("How's your energy?", ENERGIES, energy.guessed ? null : energy.level, (v) => { setEnergy(v); state.edit = null; reset(); render(); })
-      : null;
-    const head = [h("h2", { className: "now-h", textContent: "Now" }), context, editor];
+    const head = [
+      h("div", { className: "now-top" }, h("h2", { className: "now-h", textContent: "Now" }),
+        onReplan && h("button", { type: "button", className: "btn small", textContent: "Replan", onclick: onReplan })),
+      h("div", { className: "now-context" },
+        h("button", { type: "button", className: "now-pill", ariaExpanded: String(state.edit),
+          textContent: `${windowText(window)} free ✎`, onclick: () => { state.edit = !state.edit; render(); } })),
+      state.edit && chips("How much time do you have?", WINDOWS, window, (v) => { setWindow(v); state.edit = false; reset(); render(); }),
+      energySlider(energy, (v) => { setEnergy(v); reset(); render(); }),
+    ];
 
     if (tasks == null) { fill(...head, h("p", { className: "muted", textContent: "Loading tasks…" })); return; }
 

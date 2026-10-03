@@ -39,7 +39,6 @@ async function boot(){
     }
   };
   $("#signout").onclick = () => fb.signOut();
-  $("#plantoday").onclick = () => checkin?.open();
 
   fb.onUser((user) => {
     if (unsub) { unsub(); unsub = null; }
@@ -56,7 +55,7 @@ async function boot(){
     // Now card on top; the check-in opens by itself on the day's first visit.
     Promise.all([import("./now.js"), import("./checkin.js")]).then(([{ mountNow }, { mountCheckin }]) => {
       if (fb.currentUid() !== user.uid || now) return;
-      now = mountNow($("#nowcard"), user.uid);
+      now = mountNow($("#nowcard"), user.uid, { onReplan: () => checkin?.open() });
       checkin = mountCheckin($("#checkin"), user.uid, { onSaved: () => now?.refresh() });
     }).catch((e) => console.error("[daisey] now", e));
 

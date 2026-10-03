@@ -1,5 +1,5 @@
 // The daily check-in: a popup on the first visit each day, reopened from
-// "Plan today". Hours free today, energy (guess, tap to fix), and tick what
+// "Replan" on the Now card. Hours free today, energy slider, and tick what
 // you'd like done today. Ticked tasks get a boost on the Now card. No clock
 // times and no order — the Now card still decides the next step, so nothing
 // breaks when the day changes. Saved in users/{uid}/state/today.
@@ -7,7 +7,7 @@ import { watchTasks, watchToday, saveToday } from "./store.js";
 import { readMoment, scoreTask, compare } from "./engine.js";
 import { localDate } from "./model.js";
 import { getEnergy, setEnergy } from "./prefs.js";
-import { h, chips, ENERGIES, sizeText } from "./ui.js";
+import { h, chips, energySlider, sizeText } from "./ui.js";
 
 const HOURS = [[1, "1 h"], [2, "2 h"], [4, "4 h"], [6, "6 h"], [8, "8 h+"]];
 const hm = (min) => (min >= 60 ? `${Math.floor(min / 60)} h${min % 60 ? ` ${min % 60}` : ""}` : `${min} min`);
@@ -15,13 +15,13 @@ const hm = (min) => (min >= 60 ? `${Math.floor(min / 60)} h${min % 60 ? ` ${min 
 export function mountCheckin(dialog, uid, { onSaved } = {}){
   let tasks = null, today = undefined; // undefined until the first snapshot
   let draft = null; // { hours, picks: Set } while open
-  let editEnergy = false;
   let autoChecked = false;
 
   const body = h("div", { className: "now-body" });
   const fill = (...kids) => body.replaceChildren(...kids.filter(Boolean));
   const close = h("button", { className: "now-x", type: "button", ariaLabel: "Close", textContent: "✕", onclick: () => dialog.close() });
-  dialog.replaceChildren(h("div", { className: "now-head" }, h("h2", { id: "checkinTitle", textContent: "Plan today" }), close), body);
+  const title = h("h2", { id: "checkinTitle", textContent: "Plan today" });
+  dialog.replaceChildren(h("div", { className: "now-head" }, title, close), body);
   dialog.addEventListener("click", (e) => { if (e.target === dialog) dialog.close(); });
 
   const planned = () => today?.date === localDate();
@@ -31,9 +31,7 @@ export function mountCheckin(dialog, uid, { onSaved } = {}){
     const energy = getEnergy();
     const head = [
       chips("Hours free today", HOURS, draft.hours, (v) => { draft.hours = v; render(); }),
-      h("button", { type: "button", className: "now-pill", ariaExpanded: String(editEnergy),
-        textContent: `Energy: ${energy.level}${energy.guessed ? " (guess)" : ""} ✎`, onclick: () => { editEnergy = !editEnergy; render(); } }),
-      editEnergy && chips("How's your energy?", ENERGIES, energy.guessed ? null : energy.level, (v) => { setEnergy(v); editEnergy = false; render(); }),
+      energySlider(energy, (v) => { setEnergy(v); render(); }),
     ];
     if (tasks == null) { fill(...head, h("p", { className: "muted", textContent: "Loading tasks…" })); return; }
 
@@ -71,7 +69,7 @@ export function mountCheckin(dialog, uid, { onSaved } = {}){
   function open(){
     const same = planned();
     draft = { hours: same ? today.hours ?? null : null, picks: new Set(same ? today.picks || [] : []) };
-    editEnergy = false;
+    title.textContent = same ? "Replan today" : "Plan today";
     render();
     if (!dialog.open) dialog.showModal();
   }

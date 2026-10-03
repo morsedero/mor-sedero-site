@@ -147,3 +147,10 @@ textarea {
 .ci-item input { inline-size: 22px; block-size: 22px; margin: 2px 0 0; accent-color: var(--ink); flex: none; }
 .ci-text { display: grid; gap: 2px; min-inline-size: 0; }
 .ci-title { font-weight: 600; }
+.now-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+
+/* Energy slider: 3 stops. Dashed track while it's still Daisey's guess. */
+.energy { display: grid; gap: 4px; }
+.energy-range { inline-size: 100%; margin: 0; accent-color: var(--ink); block-size: 32px; cursor: pointer; }
+.energy.guessed .energy-range { accent-color: var(--ink-2); opacity: .75; }
+.energy-ticks { display: flex; justify-content: space-between; font-size: 13px; color: var(--ink-2); }
