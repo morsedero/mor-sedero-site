@@ -225,6 +225,12 @@ body.focus .shell { display: grid; min-block-size: 100dvh; align-content: center
 .tk-list { list-style: none; margin: 0; padding: 0; }
 .tk-row { position: relative; display: flex; gap: 10px; align-items: flex-start; padding-block: 8px; border-block-start: 1px solid var(--line); }
 .tk-row.waiting .tk-title { color: var(--ink-2); }
+.tk-row.now { background: color-mix(in srgb, var(--accent) 12%, transparent); border-radius: 10px; }
+.tk-now {
+  margin-inline-start: 6px; padding: 1px 7px; border-radius: 999px; vertical-align: 1px;
+  font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em;
+  background: var(--accent); color: var(--ink);
+}
 .tk-check {
   flex: none; inline-size: 22px; block-size: 22px; margin-block-start: 1px; border-radius: 50%; cursor: pointer;
   border: 2px solid var(--ink-2); background: #fff; color: #fff; font-size: 13px; font-weight: 800; line-height: 1; padding: 0;

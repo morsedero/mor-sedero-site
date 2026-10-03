@@ -2,9 +2,9 @@
 // Tap the circle to complete; completed tasks fold into "Completed (n)" at
 // the bottom of their column (the Done list "for satisfaction"), and
 // tapping the circle there reopens one. ⋯ holds Waiting and Delete.
-// The task on the Now card is set aside while it's there (Mor: it's
-// "physically" on the card) and comes back when the card moves on or it's
-// done.
+// The task on the Now card stays in its column, marked "now", and counts
+// in the column's total (Mor, 2026-10-03: it shouldn't vanish from the
+// list while it's on the card).
 import { watchTasks, updateTask, finishTask, removeTask } from "./store.js";
 import { INBOX } from "./model.js";
 import { h, bdi, pieces, sizeText } from "./ui.js";
@@ -35,12 +35,14 @@ export function mountTasks(root, uid, { onAdd, lead } = {}){
   }
 
   function row(t){
+    const isNow = t.id === onCard;
     const meta = pieces(sizeText(t.size), t.due && `due ${shortDate(t.due)}${t.dueTime ? " " + t.dueTime : ""}`,
       t.status === "waiting" && `waiting${t.waitingOn ? " on " + t.waitingOn : ""}`);
-    return h("li", { className: "tk-row" + (t.status === "waiting" ? " waiting" : "") },
+    return h("li", { className: "tk-row" + (t.status === "waiting" ? " waiting" : "") + (isNow ? " now" : "") },
       circle(t, false),
       h("div", { className: "tk-text" },
-        h("div", { className: "tk-title", dir: "auto", textContent: t.title }),
+        h("div", { className: "tk-title" }, bdi(t.title),
+          isNow && h("span", { className: "tk-now", title: "On the Now card", textContent: "now" })),
         h("div", { className: "muted tk-meta" }, ...meta)),
       h("button", { type: "button", className: "tk-more", ariaLabel: `More for ${t.title}`, ariaExpanded: String(menuFor === t.id), textContent: "⋯",
         onclick: (e) => { e.stopPropagation(); menuFor = menuFor === t.id ? null : t.id; render(); } }),
@@ -78,18 +80,18 @@ export function mountTasks(root, uid, { onAdd, lead } = {}){
     }
     const cols = names.map((name) => {
       const all = byProject.get(name);
-      const open = all.filter((t) => t.status !== "done" && t.id !== onCard)
-        .sort((a, b) => (a.status === "waiting") - (b.status === "waiting") || (a.due || "9999").localeCompare(b.due || "9999") || b.createdAt - a.createdAt);
+      // The one on the card sorts to the top of its column.
+      const open = all.filter((t) => t.status !== "done")
+        .sort((a, b) => (b.id === onCard) - (a.id === onCard) || (a.status === "waiting") - (b.status === "waiting")
+          || (a.due || "9999").localeCompare(b.due || "9999") || b.createdAt - a.createdAt);
       const done = all.filter((t) => t.status === "done").sort((a, b) => (b.doneAt || 0) - (a.doneAt || 0));
-      const carded = all.some((t) => t.id === onCard && t.status !== "done");
       return h("section", { className: "tk-col", ariaLabel: name },
         h("header", { className: "tk-head" },
           h("h3", { dir: "auto", textContent: name }),
           h("span", { className: "muted", textContent: String(open.length) })),
         h("button", { type: "button", className: "tk-add", textContent: "+ Add a task", onclick: () => onAdd?.(name === INBOX ? "" : name) }),
-        carded && h("p", { className: "muted tk-note", textContent: "1 on the Now card" }),
         open.length ? h("ul", { className: "tk-list" }, ...open.map(row))
-          : !carded && h("p", { className: "muted tk-note", textContent: "All done here." }),
+          : h("p", { className: "muted tk-note", textContent: "All done here." }),
         done.length > 0 && h("details", { className: "tk-done", open: openDone.has(name),
           ontoggle: (e) => { e.currentTarget.open ? openDone.add(name) : openDone.delete(name); } },
           h("summary", { textContent: `Completed (${done.length})` }),
