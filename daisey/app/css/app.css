@@ -6,10 +6,30 @@
   --ink-2: #6b665d;
   --line: #e6e0d2;
   --accent: #f5b301;
+  --on-accent: #1f1d1a; /* text on the yellow; stays dark in both themes */
   --danger: #c0392b;
+  --surface: #fff; /* rows, inputs, menus — the layer above --card */
+  --shadow: 0 10px 30px rgb(0 0 0 / .15);
   --radius: 16px;
-  color-scheme: light;
+  color-scheme: light dark;
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans Hebrew", sans-serif;
+}
+
+/* Dark: the same light-on-paper feel inverted, same yellow. Nothing here
+   changes layout — only the tokens above. */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #16150f;
+    --card: #1e1d16;
+    --ink: #f3efe2;
+    --ink-2: #a9a292;
+    --line: #342f24;
+    --surface: #26241b;
+    --danger: #ff8a7a;
+    --shadow: 0 10px 30px rgb(0 0 0 / .5);
+  }
+  .fab, .acct-menu, .cap-bar { box-shadow: var(--shadow); }
+  .now-card.main { box-shadow: 0 2px 4px rgb(0 0 0 / .3), 0 14px 36px rgb(245 179 1 / .10); }
 }
 
 * { box-sizing: border-box; }
@@ -65,12 +85,12 @@ code { font-size: 0.9em; }
   padding-inline: 16px;
   border-radius: 999px;
   border: 1px solid var(--line);
-  background: #fff;
+  background: var(--surface);
   color: var(--ink);
   cursor: pointer;
   min-block-size: 44px;
 }
-.btn.primary { background: var(--accent); border-color: var(--accent); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
 
 textarea {
   inline-size: 100%;
@@ -79,7 +99,7 @@ textarea {
   padding: 12px;
   border: 1px solid var(--line);
   border-radius: 12px;
-  background: #fff;
+  background: var(--surface);
   resize: vertical;
 }
 
@@ -90,7 +110,7 @@ textarea {
 .field label { font-size: 14px; font-weight: 600; color: var(--ink-2); }
 .field input, .field select {
   font: inherit; font-size: 16px; padding: 8px 10px; min-inline-size: 0;
-  border: 1px solid var(--line); border-radius: 10px; background: #fff;
+  border: 1px solid var(--line); border-radius: 10px; background: var(--surface);
 }
 .btn.small { min-block-size: 32px; padding-block: 4px; padding-inline: 12px; font-size: 14px; }
 
@@ -111,10 +131,10 @@ textarea {
 .now-chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .chip {
   font: inherit; font-size: 15px; font-weight: 600; cursor: pointer; min-block-size: 40px;
-  padding-inline: 14px; border-radius: 999px; border: 1px solid var(--line); background: #fff; color: var(--ink);
+  padding-inline: 14px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); color: var(--ink);
 }
-.chip[aria-checked="true"] { background: var(--ink); border-color: var(--ink); color: #fff; }
-.now-card { display: grid; gap: 4px; padding: 16px; border-radius: 14px; border: 1px solid var(--line); background: #fff; text-align: start; }
+.chip[aria-checked="true"] { background: var(--ink); border-color: var(--ink); color: var(--card); }
+.now-card { display: grid; gap: 4px; padding: 16px; border-radius: 14px; border: 1px solid var(--line); background: var(--surface); text-align: start; }
 .now-card.main {
   gap: 8px; padding: 24px 22px 20px; border: 2px solid var(--accent); border-radius: 22px;
   box-shadow: 0 2px 4px rgb(0 0 0 / .04), 0 14px 36px rgb(245 179 1 / .16);
@@ -168,7 +188,7 @@ textarea {
   position: fixed; z-index: 7; inset-block-end: max(20px, env(safe-area-inset-bottom));
   inset-inline: 16px; margin-inline: auto; max-inline-size: 420px;
   padding: 12px 14px; border-radius: 14px;
-  background: var(--ink); color: #fff; box-shadow: 0 10px 30px rgba(0,0,0,.25);
+  background: var(--ink); color: var(--card); box-shadow: 0 10px 30px rgb(0 0 0 / .35);
 }
 .toast { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .toast-text { font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-inline-size: 0; }
@@ -234,7 +254,7 @@ body.focus .shell { display: grid; min-block-size: 100dvh; align-content: center
 }
 .tk-check {
   flex: none; inline-size: 22px; block-size: 22px; margin-block-start: 1px; border-radius: 50%; cursor: pointer;
-  border: 2px solid var(--ink-2); background: #fff; color: #fff; font-size: 13px; font-weight: 800; line-height: 1; padding: 0;
+  border: 2px solid var(--ink-2); background: var(--surface); color: var(--card); font-size: 13px; font-weight: 800; line-height: 1; padding: 0;
 }
 .tk-check:hover { border-color: var(--ink); }
 .tk-check.done { background: var(--ink); border-color: var(--ink); }
@@ -246,7 +266,7 @@ body.focus .shell { display: grid; min-block-size: 100dvh; align-content: center
 .tk-more:hover { background: var(--bg); }
 .tk-menu {
   position: absolute; inset-inline-end: 0; inset-block-start: 40px; z-index: 6; display: grid; min-inline-size: 190px;
-  background: #fff; border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,.15); padding: 6px;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,.15); padding: 6px;
 }
 .tk-menu-item { font: inherit; text-align: start; padding: 10px 12px; border: 0; border-radius: 8px; background: none; cursor: pointer; }
 .tk-menu-item:hover { background: var(--bg); }

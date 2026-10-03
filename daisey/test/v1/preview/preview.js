@@ -70,7 +70,8 @@ const FAKES = {
 
 (async () => {
   const browser = await chromium.launch();
-  const page = await browser.newPage({ viewport: wide ? { width: 1200, height: 900 } : { width: 390, height: 844 }, deviceScaleFactor: 2 });
+  const page = await browser.newPage({ viewport: wide ? { width: 1200, height: 900 } : { width: 390, height: 844 }, deviceScaleFactor: 2,
+    colorScheme: args.includes("--dark") ? "dark" : "light" });
   page.on("pageerror", (e) => console.error("pageerror:", e.message));
   page.on("console", (m) => { if (m.type() === "error") console.error("console:", m.text()); });
   await page.addInitScript((s) => { window.__FAKE = s; }, scenario);
@@ -90,7 +91,7 @@ const FAKES = {
   if (args.includes("--text")) console.log(await page.innerText("body"));
   if (args.includes("--tasks-dump")) console.log(await page.evaluate(() => window.__store.tasks.map((t) => t.title + ": " + t.status + (t.skipCount ? " skips " + t.skipCount : "")).join(" | ")));
   fs.mkdirSync(outDir, { recursive: true });
-  const file = path.join(outDir, `${name}${tasksTab ? "-tasks" : ""}${cal ? "-cal" + cal.replace(/\W/g, "") : ""}${running ? "-run" + running.replace(/\W/g, "") : ""}${clicks.length ? "-" + clicks.join("").replace(/\W/g, "").slice(0, 24) : ""}${wide ? "-wide" : ""}.png`);
+  const file = path.join(outDir, `${name}${tasksTab ? "-tasks" : ""}${cal ? "-cal" + cal.replace(/\W/g, "") : ""}${running ? "-run" + running.replace(/\W/g, "") : ""}${clicks.length ? "-" + clicks.join("").replace(/\W/g, "").slice(0, 24) : ""}${wide ? "-wide" : ""}${args.includes("--dark") ? "-dark" : ""}.png`);
   await page.screenshot({ path: file, fullPage: true });
   console.log(file);
   await browser.close();

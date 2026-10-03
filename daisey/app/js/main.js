@@ -2,6 +2,12 @@
 import { configured } from "./config.js";
 
 const $ = (s) => document.querySelector(s);
+
+// Registering a worker is what makes "add to home screen" offer a real app
+// window; sw.js caches nothing on purpose.
+if ("serviceWorker" in navigator) {
+  addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch((e) => console.warn("[daisey] sw", e)));
+}
 const show = (id) => {
   for (const el of document.querySelectorAll("[data-view]")) el.hidden = el.dataset.view !== id;
 };

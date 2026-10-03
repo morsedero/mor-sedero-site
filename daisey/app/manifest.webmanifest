@@ -1,0 +1,16 @@
+{
+  "name": "Daisey",
+  "short_name": "Daisey",
+  "description": "One task at a time, and why.",
+  "start_url": ".",
+  "scope": ".",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#fbf8ef",
+  "theme_color": "#fbf8ef",
+  "icons": [
+    { "src": "icons/daisey-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icons/daisey-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icons/daisey-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
