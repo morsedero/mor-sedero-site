@@ -32,6 +32,7 @@ const SCENARIOS = {
 };
 
 const args = process.argv.slice(2);
+const flag2 = (f) => { const i = args.indexOf(f); return i < 0 ? null : args.splice(i, 2)[1] ?? true; };
 const flag = (f) => { const i = args.indexOf(f); return i < 0 ? null : args.splice(i, 2)[1] ?? true; };
 const outDir = flag("--out") || path.join(require("os").tmpdir(), "daisey-preview");
 const clicks = [];
@@ -75,6 +76,8 @@ const FAKES = {
   await page.goto(ORIGIN + "/");
   await page.waitForSelector(".now-card, .focus, .now-empty, .tk-empty");
   await page.waitForTimeout(150);
+  const typed = flag2("--type"); // text to put in the capture bar, then Enter
+  if (typed) { await page.fill(".cap-input", typed); await page.press(".cap-input", "Enter"); await page.waitForTimeout(150); }
   for (const sel of clicks) { await page.click(sel); await page.waitForTimeout(150); }
   if (tasksTab) { await page.evaluate(() => { const b = document.querySelector("#board"); b.scrollLeft = b.scrollWidth; }); await page.waitForTimeout(100); }
   if (args.includes("--text")) console.log(await page.innerText("body"));

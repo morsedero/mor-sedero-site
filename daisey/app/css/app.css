@@ -83,29 +83,14 @@ textarea {
   resize: vertical;
 }
 
-/* Form fields (Add task popup). */
-.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-.form-grid > :nth-child(-n+2), .form-grid > button { grid-column: 1 / -1; }
-.field { display: grid; gap: 4px; min-inline-size: 0; }
-.field label { font-size: 14px; font-weight: 600; color: var(--ink-2); }
-.field input, .field select {
-  font: inherit; font-size: 16px; padding: 8px 10px; min-inline-size: 0;
-  border: 1px solid var(--line); border-radius: 10px; background: #fff;
-}
 .btn.small { min-block-size: 32px; padding-block: 4px; padding-inline: 12px; font-size: 14px; }
 
 
 /* The Now popup. */
-.now {
   inline-size: min(480px, calc(100vw - 32px)); max-block-size: calc(100dvh - 32px);
   padding: 20px; border: 0; border-radius: var(--radius);
   background: var(--card); color: var(--ink); box-shadow: 0 20px 60px rgba(0,0,0,.25);
 }
-.now::backdrop { background: rgba(31,29,26,.45); }
-.now-head { display: flex; align-items: center; justify-content: space-between; margin-block-end: 8px; }
-.now-head h2 { margin: 0; font-size: 22px; }
-.now-x { font: inherit; font-size: 18px; inline-size: 40px; block-size: 40px; border: 0; border-radius: 999px; background: transparent; color: var(--ink-2); cursor: pointer; }
-.now-body { display: grid; gap: 14px; }
 .now-group { display: grid; gap: 6px; }
 .now-label { font-size: 14px; font-weight: 600; color: var(--ink-2); }
 .now-chips { display: flex; flex-wrap: wrap; gap: 6px; }
@@ -164,7 +149,7 @@ textarea {
 
 /* Undo + the reasons, for five seconds after Not now. */
 .toast {
-  position: fixed; z-index: 7; inset-block-end: max(20px, env(safe-area-inset-bottom));
+  position: fixed; z-index: 8; inset-block-end: calc(76px + env(safe-area-inset-bottom));
   inset-inline: 16px; margin-inline: auto; max-inline-size: 420px;
   padding: 12px 14px; border-radius: 14px;
   background: var(--ink); color: #fff; box-shadow: 0 10px 30px rgba(0,0,0,.25);
@@ -205,11 +190,42 @@ body.focus .shell { display: grid; min-block-size: 100dvh; align-content: center
 
 /* Add task: floating button, bottom end corner. */
 .fab {
-  position: fixed; inset-inline-end: max(20px, env(safe-area-inset-right)); inset-block-end: max(20px, env(safe-area-inset-bottom));
-  inline-size: 56px; block-size: 56px; border-radius: 18px; cursor: pointer; z-index: 5;
+  position: fixed; inset-inline-end: max(16px, env(safe-area-inset-right)); inset-block-end: calc(76px + env(safe-area-inset-bottom));
+  inline-size: 48px; block-size: 48px; border-radius: 16px; cursor: pointer; z-index: 7;
   background: var(--card); border: 1px solid var(--line); color: var(--ink); font-size: 30px; line-height: 1; box-shadow: 0 6px 18px rgba(0,0,0,.12);
 }
-.shell { padding-block-end: 96px; } /* room so the FAB never covers the last row */
+.shell { padding-block-end: 150px; } /* room for the capture bar and the FAB */
+
+/* Capture: a bar pinned to the bottom, with the confirm card above it. */
+.capture {
+  position: fixed; z-index: 6; inset-block-end: 0; inset-inline: 0;
+  display: grid; gap: 8px; justify-items: center;
+  padding: 10px 16px max(10px, env(safe-area-inset-bottom));
+  background: linear-gradient(to top, var(--bg) 70%, transparent);
+}
+.cap-bar {
+  display: flex; gap: 8px; align-items: center; inline-size: min(520px, 100%);
+  padding: 6px 6px 6px 14px; border: 1px solid var(--line); border-radius: 999px;
+  background: #fff; box-shadow: 0 6px 20px rgb(0 0 0 / .08);
+}
+.cap-input { flex: 1; min-inline-size: 0; font: inherit; font-size: 16px; border: 0; background: none; padding-block: 10px; }
+.cap-input:focus { outline: none; }
+.cap-mic { flex: none; inline-size: 40px; block-size: 40px; border: 0; border-radius: 50%; background: var(--bg); color: var(--ink-2); cursor: pointer; }
+.cap-mic:disabled { opacity: .5; cursor: default; }
+.cap-mic svg { inline-size: 20px; block-size: 20px; }
+.cap-confirm {
+  inline-size: min(520px, 100%); display: grid; gap: 8px; padding: 12px;
+  border: 1px solid var(--line); border-radius: 16px; background: var(--card); box-shadow: 0 10px 30px rgb(0 0 0 / .12);
+}
+.cap-row { display: flex; gap: 8px; align-items: center; }
+.cap-guesses { flex-wrap: wrap; }
+.cap-title { flex: 1; min-inline-size: 0; font: inherit; font-size: 16px; font-weight: 600; padding: 8px 10px; border: 1px solid var(--line); border-radius: 10px; background: #fff; }
+.cap-field { font: inherit; font-size: 14px; padding: 6px 8px; border: 1px solid var(--line); border-radius: 999px; background: #fff; min-inline-size: 0; }
+.cap-ok, .cap-no { flex: none; inline-size: 40px; block-size: 40px; border-radius: 50%; border: 1px solid var(--line); background: #fff; font-size: 16px; cursor: pointer; }
+.cap-ok { background: var(--accent); border-color: var(--accent); font-weight: 700; }
+.cap-msg { margin: 0; font-size: 13px; }
+.cap-msg:empty { display: none; }
+body.focus .capture, body.focus .fab, body.capturing .fab { display: none; }
 
 /* Tasks board: columns per project, scroll sideways on a phone. */
 .tk-col {
