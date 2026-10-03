@@ -104,3 +104,35 @@ textarea {
 .eng-card { border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; margin-block: 8px; display: grid; gap: 2px; }
 .eng-card.pick { border-color: var(--accent); border-width: 2px; }
 .eng-empty { font-weight: 600; }
+
+/* The Now popup. */
+.btn.wide { inline-size: 100%; margin-block-end: 16px; }
+.now {
+  inline-size: min(480px, calc(100vw - 32px)); max-block-size: calc(100dvh - 32px);
+  padding: 20px; border: 0; border-radius: var(--radius);
+  background: var(--card); color: var(--ink); box-shadow: 0 20px 60px rgba(0,0,0,.25);
+}
+.now::backdrop { background: rgba(31,29,26,.45); }
+.now-head { display: flex; align-items: center; justify-content: space-between; margin-block-end: 8px; }
+.now-head h2 { margin: 0; font-size: 22px; }
+.now-x { font: inherit; font-size: 18px; inline-size: 40px; block-size: 40px; border: 0; border-radius: 999px; background: transparent; color: var(--ink-2); cursor: pointer; }
+.now-body { display: grid; gap: 14px; }
+.now-group { display: grid; gap: 6px; }
+.now-label { font-size: 14px; font-weight: 600; color: var(--ink-2); }
+.now-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip {
+  font: inherit; font-size: 15px; font-weight: 600; cursor: pointer; min-block-size: 40px;
+  padding-inline: 14px; border-radius: 999px; border: 1px solid var(--line); background: #fff; color: var(--ink);
+}
+.chip[aria-checked="true"] { background: var(--ink); border-color: var(--ink); color: #fff; }
+.now-card { display: grid; gap: 4px; padding: 16px; border-radius: 14px; border: 2px solid var(--accent); background: #fff; text-align: start; }
+.now-meta { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--ink-2); }
+.now-title { font-size: 22px; font-weight: 700; line-height: 1.25; }
+.now-why { margin: 4px 0 0; color: var(--ink-2); }
+.now-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.now-alts { display: grid; gap: 8px; }
+.now-alt { font: inherit; color: inherit; padding: 0; border: 0; background: none; cursor: pointer; text-align: start; }
+.now-alt .now-card { border: 1px solid var(--line); }
+.now-alt .now-title { font-size: 17px; }
+.now-empty { font-weight: 600; margin: 0; }
+.btn:disabled { opacity: .45; cursor: default; }

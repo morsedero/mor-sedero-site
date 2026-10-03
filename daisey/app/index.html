@@ -31,9 +31,13 @@
       <span id="who" class="muted"></span>
       <button id="signout" class="btn">Sign out</button>
     </div>
+    <button id="whatnow" class="btn primary wide">What now?</button>
     <label for="note" class="label">Test note <span id="noteStatus" class="muted"></span></label>
     <textarea id="note" dir="auto" rows="5" placeholder="Type here, watch it appear on your other device."></textarea>
   </section>
+
+  <!-- The Now popup: opens on entry, reopened by "What now?". -->
+  <dialog id="now" class="now" aria-labelledby="nowTitle"></dialog>
 
   <!-- Temporary task debug list, only at ?debug (session 2). -->
   <section id="debug" class="card dbg" hidden></section>

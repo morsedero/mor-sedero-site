@@ -25,6 +25,7 @@ async function boot(){
   const fb = await import("./firebase.js");
   let unsub = null;
   let unmountDebug = null;
+  let now = null;
 
   $("#signin").onclick = async () => {
     $("#signinMsg").textContent = "";
@@ -37,16 +38,25 @@ async function boot(){
     }
   };
   $("#signout").onclick = () => fb.signOut();
+  $("#whatnow").onclick = () => now?.open();
 
   fb.onUser((user) => {
     if (unsub) { unsub(); unsub = null; }
     if (unmountDebug) { unmountDebug(); unmountDebug = null; }
+    if (now) { now.unmount(); now = null; }
     const note = $("#note");
     note.value = "";
     if (!user) { show("signedout"); return; }
 
     $("#who").textContent = user.email;
     show("signedin");
+
+    // The Now popup opens by itself on entry (not over the debug tools).
+    import("./now.js").then(({ mountNow }) => {
+      if (fb.currentUid() !== user.uid || now) return;
+      now = mountNow($("#now"), user.uid);
+      if (!DEBUG) now.open();
+    }).catch((e) => console.error("[daisey] now", e));
 
     if (DEBUG) {
       import("./debug.js").then(({ mountDebug }) => {
