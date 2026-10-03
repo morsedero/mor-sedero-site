@@ -7,7 +7,7 @@
 // done.
 import { watchTasks, updateTask, finishTask, removeTask } from "./store.js";
 import { INBOX } from "./model.js";
-import { h, sizeText } from "./ui.js";
+import { h, bdi, pieces, sizeText } from "./ui.js";
 
 const shortDate = (s) => new Date(`${s}T12:00`).toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" });
 
@@ -34,13 +34,13 @@ export function mountTasks(root, uid, { onAdd } = {}){
   }
 
   function row(t){
-    const meta = [sizeText(t.size), t.due && `due ${shortDate(t.due)}${t.dueTime ? " " + t.dueTime : ""}`,
-      t.status === "waiting" && `waiting${t.waitingOn ? " on " + t.waitingOn : ""}`].filter(Boolean).join(" · ");
+    const meta = pieces(sizeText(t.size), t.due && `due ${shortDate(t.due)}${t.dueTime ? " " + t.dueTime : ""}`,
+      t.status === "waiting" && `waiting${t.waitingOn ? " on " + t.waitingOn : ""}`);
     return h("li", { className: "tk-row" + (t.status === "waiting" ? " waiting" : "") },
       circle(t, false),
       h("div", { className: "tk-text" },
         h("div", { className: "tk-title", dir: "auto", textContent: t.title }),
-        h("div", { className: "muted tk-meta", textContent: meta })),
+        h("div", { className: "muted tk-meta" }, ...meta)),
       h("button", { type: "button", className: "tk-more", ariaLabel: `More for ${t.title}`, ariaExpanded: String(menuFor === t.id), textContent: "⋯",
         onclick: (e) => { e.stopPropagation(); menuFor = menuFor === t.id ? null : t.id; render(); } }),
       menuFor === t.id && menu(t));

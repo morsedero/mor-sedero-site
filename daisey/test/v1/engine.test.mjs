@@ -224,7 +224,7 @@ test("why: urgency phrases — overdue, today, tomorrow, weekday, date, getting 
 test("why: window, momentum, neglect, learned, next event phrases", () => {
   assert.match(why(task({ size: 5 })), /5 min, quick win/i);
   assert.match(why(task({ size: 90, canSplit: true }), { window: 45 }), /a piece fits your 45 min/i);
-  assert.match(why(task({ size: 30 }), { window: 90 }), /fits your 1.5 h/i);
+  assert.match(why(task({ size: 30 }), { window: 90 }), /fits your 1 h 30 min/i);
   assert.match(why(task({ size: 30, project: "Monster Punk" }), { lastProject: "Monster Punk" }), /keeps Monster Punk going/i);
   assert.match(why(task({ size: 5, touchedAt: NOW - 6 * 864e5 })), /untouched for 6 days/i);
   assert.match(why(task({ size: 5 }), { learned: () => 9 }), /you usually do these in the morning/i);

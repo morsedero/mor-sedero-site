@@ -73,7 +73,7 @@ const FAKES = {
     route.fulfill({ path: file });
   });
   await page.goto(ORIGIN + "/" + (tasksTab ? "#tasks" : ""));
-  await page.waitForSelector(".now-card, .focus, .tk-board, .tk-empty, .now-empty");
+  await page.waitForSelector(tasksTab ? ".tk-board, .tk-empty" : "#viewNow .now-card, #viewNow .focus, #viewNow .now-empty");
   await page.waitForTimeout(150);
   for (const sel of clicks) { await page.click(sel); await page.waitForTimeout(150); }
   if (args.includes("--text")) console.log(await page.innerText("body"));

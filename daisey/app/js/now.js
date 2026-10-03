@@ -15,7 +15,7 @@ import { focusView, handoffView, elapsedMinutes } from "./focus.js";
 import { watchCalendar } from "./calendar.js";
 import { rank, timeBucket, freeWindow, whySaid } from "./engine.js";
 import { skipSnapshot } from "./model.js";
-import { h, icon, sizeText, dur } from "./ui.js";
+import { h, icon, bdi, pieces, sizeText, dur } from "./ui.js";
 
 const GREETING = { morning: "Morning.", afternoon: "Afternoon.", evening: "Evening." };
 const UNDO_MS = 5000;
@@ -49,7 +49,7 @@ export function mountNow(root, uid, { onCard } = {}){
   function taskCard(s, main, ...extra){
     const why = main ? whySaid(s) : s.why;
     return h("div", { className: "now-card" + (main ? " main" : "") },
-      h("div", { className: "now-meta", dir: "auto", textContent: `${s.task.project} · ${sizeText(s.task.size)}` }),
+      h("div", { className: "now-meta" }, ...pieces(s.task.project, sizeText(s.task.size))),
       h("div", { className: "now-title", dir: "auto", textContent: s.task.title }),
       why && h("p", { className: "now-why", textContent: why }),
       ...extra);
@@ -83,13 +83,13 @@ export function mountNow(root, uid, { onCard } = {}){
 
   // Later and Pending both move the card on: it slides out, the next slides
   // in, and for 5 seconds a toast offers Undo. Nothing waits on the write.
-  function stepAside(task, { text, write }){
+  function stepAside(task, { label, write }){
     const before = skipSnapshot(task);
     const go = () => {
       skips.add(task.id);
       reset();
       slideIn = true;
-      setToast({ task, before, text });
+      setToast({ task, before, label });
       write().catch(fail);
       render();
     };
@@ -97,8 +97,8 @@ export function mountNow(root, uid, { onCard } = {}){
     if (el && motionOK()) { el.classList.add("out"); setTimeout(go, SLIDE_MS); } else go();
   }
 
-  const later = (task) => stepAside(task, { text: `Later: ${task.title}`, write: () => skipNow(uid, task) });
-  const pending = (task) => stepAside(task, { text: `Pending: ${task.title}`, write: () => blockTask(uid, task) });
+  const later = (task) => stepAside(task, { label: "Later: ", write: () => skipNow(uid, task) });
+  const pending = (task) => stepAside(task, { label: "Pending: ", write: () => blockTask(uid, task) });
 
   function setToast(t){
     clearTimeout(toastTimer);
@@ -116,9 +116,9 @@ export function mountNow(root, uid, { onCard } = {}){
   }
 
   function toastView(){
-    const { task, text } = toast;
+    const { task } = toast;
     return h("div", { className: "toast", role: "status" },
-      h("span", { className: "toast-text", dir: "auto", textContent: text }),
+      h("span", { className: "toast-text" }, toast.label, bdi(task.title)),
       h("button", { className: "toast-undo", type: "button", textContent: "Undo",
         ariaLabel: `Undo: put ${task.title} back on the card`, onclick: undo }));
   }
@@ -148,11 +148,13 @@ export function mountNow(root, uid, { onCard } = {}){
     }
     const fw = cal.status === "ok" ? freeWindow(cal.events) : null;
     lastWindow = fw?.window;
-    const line = !fw ? "" : fw.current ? ` In ${fw.current.title} until ${clock(fw.current.end)}.`
-      : fw.restOfDay ? " Free for the rest of the day."
-      : ` ${dur(fw.window)} free, then ${fw.next.title}.`;
+    const hello = GREETING[timeBucket().part];
+    const line = !fw ? [hello]
+      : fw.current ? [`${hello} In `, bdi(fw.current.title), ` until ${clock(fw.current.end)}.`]
+      : fw.restOfDay ? [`${hello} Free for the rest of the day.`]
+      : [`${hello} ${dur(fw.window)} free, then `, bdi(fw.next.title), "."];
     const greet = h("div", { className: "now-greet" },
-      h("p", { dir: "auto", textContent: GREETING[timeBucket().part] + line }),
+      h("p", {}, ...line),
       CAL_NOTE[cal.status] && h("p", { className: "muted" }, CAL_NOTE[cal.status] + " ", h("a", { href: "/daisey/", textContent: "Open old Daisey" })));
 
     if (tasks == null) { fill(greet, h("p", { className: "muted", textContent: "Loading tasks…" })); return; }

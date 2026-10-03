@@ -172,7 +172,8 @@ textarea {
   background: var(--ink); color: #fff; box-shadow: 0 10px 30px rgba(0,0,0,.25);
 }
 .toast { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-.toast-text { font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.toast-text { font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-inline-size: 0; }
+.toast-text bdi { display: inline; }
 .toast-undo { font: inherit; font-weight: 700; color: var(--accent); background: none; border: 0; cursor: pointer; padding: 6px 2px; }
 body:has(.toast) .fab { display: none; }
 @media (prefers-reduced-motion: reduce) { .now-card.main.in, .now-card.main.out { animation: none; } }

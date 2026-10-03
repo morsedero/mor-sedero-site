@@ -1,4 +1,6 @@
 // Tiny DOM helpers shared by the Now card and the Tasks board.
+import { durText } from "./model.js";
+
 export const h = (tag, props = {}, ...kids) => {
   const el = Object.assign(document.createElement(tag), props);
   el.append(...kids.filter((k) => k != null && k !== false));
@@ -16,13 +18,15 @@ export const chips = (label, options, current, pick) => h("div", { className: "n
 export const sizeText = (n) => `${n >= 90 ? "90+" : n} min`;
 
 
-// Minutes as "45 min", "1 h", "1 h 30 min" — never "1.5 h" or "4 h 5".
-export const dur = (m) => {
-  m = Math.round(m);
-  if (m < 60) return `${m} min`;
-  const r = m % 60;
-  return `${Math.floor(m / 60)} h` + (r ? ` ${r} min` : "");
-};
+export const dur = durText;
+
+// Every piece of text that can be Hebrew or English goes in its own <bdi>,
+// so a Hebrew project never drags "5 min" around it or flips it to "min 5".
+export const bdi = (text) => h("bdi", { dir: "auto", textContent: text });
+
+// Those pieces joined by " · ", each isolated: "חתונה · 5 min" stays that way.
+export const pieces = (...parts) => parts.filter(Boolean)
+  .flatMap((p, i) => (i ? [document.createTextNode(" · "), bdi(p)] : [bdi(p)]));
 
 // Inline icons for the card's three quiet actions. One path each, drawn on a
 // 24-grid and stroked in currentColor so they follow the button's text colour.

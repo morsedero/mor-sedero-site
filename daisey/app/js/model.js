@@ -64,6 +64,15 @@ export const toTime = (v) => (typeof v === "string" && /^([01]\d|2[0-3]):[0-5]\d
 
 // ---------- guesses ----------
 
+// Minutes as "45 min", "1 h", "1 h 30 min". Never a decimal hour and never
+// "4 h 5": a bare trailing number next to Hebrew reads as part of it.
+export function durText(min){
+  const m = Math.max(0, Math.round(min));
+  if (m < 60) return `${m} min`;
+  const rest = m % 60;
+  return `${Math.floor(m / 60)} h` + (rest ? ` ${rest} min` : "");
+}
+
 export const tokens = (s) => String(s || "").toLowerCase().match(/[\p{L}\p{N}]+/gu) || [];
 const HEBREW = /[֐-׿]/;
 

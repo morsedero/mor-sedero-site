@@ -7,7 +7,7 @@
 // Later sessions fill the rest of the moment: calendar (8), learned fit
 // (10). Until then those parts score 0. No energy (Mor, 2026-10-03).
 import * as W from "./weights.js";
-import { localDate } from "./model.js";
+import { localDate, durText } from "./model.js";
 
 const MIN = 60000;
 const DAY = 86400000;
@@ -187,7 +187,7 @@ function dueWords(task, days){
   return "due " + when;
 }
 
-const sizeWords = (n) => n === 60 ? "hour" : n > 60 ? `${+(n / 60).toFixed(1)} h` : `${n} min`;
+const sizeWords = (n) => (n === 60 ? "hour" : durText(n));
 
 const PHRASES = {
   urgency: (s, d) => d.overdue ? "overdue" : dueWords(s.task, d.days) + (d.hard ? ", getting tight" : ""),

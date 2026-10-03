@@ -8,7 +8,7 @@
 // The run lives in Firestore (state/now), so a reload or the other device
 // shows the same timer still going; elapsed is always worked out from
 // startedAt rather than counted here.
-import { h, dur } from "./ui.js";
+import { h, bdi, dur } from "./ui.js";
 
 export const elapsedMinutes = (run, now = Date.now()) => Math.max(0, (now - run.startedAt) / 60000);
 export const targetMinutes = (run, task) => (task?.size || 0) + (run.extra || 0);
@@ -60,7 +60,7 @@ export function focusView(run, task, { onDone, onStop, onExtend }, state = {}){
 // After Done: what Daisey would do next, offered the same way the card does.
 export function handoffView(doneTitle, next, { onStart, onSkip }){
   return h("div", { className: "focus" },
-    h("div", { className: "focus-done", dir: "auto", textContent: `Done. ${doneTitle}` }),
+    h("div", { className: "focus-done" }, "Done. ", bdi(doneTitle)),
     next
       ? h("div", { className: "now-card main" },
         h("div", { className: "now-meta", dir: "auto", textContent: "Next" }),

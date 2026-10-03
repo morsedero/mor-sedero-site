@@ -110,6 +110,15 @@ test("done goes to Done and leaves the available list", () => {
   assert.equal(M.isAvailable({ ...t, ...p }), false);
 });
 
+test("durations always carry their unit: no decimal hours, no bare trailing number", () => {
+  assert.equal(M.durText(45), "45 min");
+  assert.equal(M.durText(60), "1 h");
+  assert.equal(M.durText(90), "1 h 30 min");
+  assert.equal(M.durText(245), "4 h 5 min"); // never "4 h 5"
+  assert.equal(M.durText(0), "0 min");
+  assert.equal(M.durText(-5), "0 min");
+});
+
 test("not now: the skip counts; the reason is a second patch; blocked waits", () => {
   const t = { ...M.createTask({ title: "x" }, opts), skipCount: 2, skipsSinceStart: 1 };
   assert.deepEqual(M.skipTask(t, opts), { skipCount: 3, skipsSinceStart: 2, touchedAt: NOW });
