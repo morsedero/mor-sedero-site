@@ -244,5 +244,11 @@ and window fit scores 0.
 field, guess, filter, score factor or UI. Session 9 (energy guess) is
 dropped; the spec's energy sections no longer apply.
 
+**Now-screen pass (Mor, 2026-10-03):** the day planner under the card is
+gone — Daisey picks one task at a time, never lays out the day. Above the
+card, a time-of-day greeting. **Free time is never asked for**: no hours
+chips, no manual window. It comes only from the calendar (session 8); until
+then the default 60 filters and scores nothing.
+
 **After 11:** the one-week test from the spec. Then cutover: move v1 to
 `/daisey/`, retire the old pieces listed in section 1, with your approval.

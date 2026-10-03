@@ -137,13 +137,6 @@ textarea {
 .nowcard { display: grid; gap: 14px; margin-block-end: 16px; padding: 0; background: none; border: 0; box-shadow: none; }
 .nowcard > .muted { padding: 20px; }
 .now-greet { margin: 4px 2px 0; font-size: 17px; color: var(--ink-2); }
-.now-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-.ctx-chip {
-  flex: none; font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; min-block-size: 32px;
-  padding-inline: 12px; border-radius: 999px; border: 1px solid var(--line); background: var(--bg); color: var(--ink-2);
-}
-.ctx-chip[aria-expanded="true"] { border-color: var(--ink-2); color: var(--ink); }
-.now-card.main > .now-group { margin-block: 6px; }
 .now-card.empty { border-color: var(--line); box-shadow: none; }
 .now-card.empty .now-empty { margin-block: 8px 0; }
 .nowcard[hidden] { display: none; }

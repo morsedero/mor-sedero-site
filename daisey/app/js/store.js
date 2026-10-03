@@ -34,16 +34,3 @@ export function finishTask(uid, task){
 export function removeTask(uid, id){
   return fb.deleteDoc(taskDoc(uid, id));
 }
-
-// Free time you told Daisey, users/{uid}/state/context: { minutes, setAt }.
-// It counts down from setAt (now.js); once it runs out Daisey is back to its
-// default guess. The calendar replaces this in session 8.
-const contextDoc = (uid) => fb.doc(fb.db, "users", uid, "state", "context");
-
-export function watchContext(uid, cb, onError){
-  return fb.onSnapshot(contextDoc(uid), (snap) => cb(snap.exists() ? snap.data() : null), onError);
-}
-
-export function saveContext(uid, ctx){
-  return fb.setDoc(contextDoc(uid), ctx);
-}
