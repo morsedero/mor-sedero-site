@@ -1,10 +1,19 @@
 # mor-sedero-site
 
-Mor Sedero's personal portfolio site, plus `tools/` — small self-contained
-apps that are unrelated to the site itself.
+Two unrelated things in one repo, split by top-level folder:
 
-**Daisey and the audio-sync function are documented in `tools/CLAUDE.md`,**
-not here. That file only loads when you're working in `tools/`, which keeps
+- **`site/`** — Mor Sedero's portfolio, served at https://morsedero.com.
+  Netlify's publish dir. Work on the site happens only in here.
+- **`daisey/`** — Daisey, the day-planning app: source, tests, build script,
+  its Netlify functions (`daisey/functions/`), the `share/` handout.
+
+The one crossover: `site/daisey/index.html` is Daisey's page, GENERATED into
+the publish dir at deploy time so it serves at morsedero.com/daisey/. Never
+edit it; it isn't site work. (Split into folders 2026-10-03; before that the
+site sat at repo root and Daisey lived in `tools/` + `netlify/functions/`.)
+
+**Daisey and the audio-sync function are documented in `daisey/CLAUDE.md`,**
+not here. That file only loads when you're working in `daisey/`, which keeps
 ~21k tokens of scheduling-widget detail out of every site session.
 
 ## Keep replies short
@@ -20,7 +29,7 @@ full — a terse reply that buries a broken publish or a data-loss risk has
 failed at the job, not succeeded at being short. Everything else gets cut.
 
 Note that the *documentation* in this repo is deliberately long-form — that is
-a different thing from a reply. Don't read `tools/CLAUDE.md`'s register as
+a different thing from a reply. Don't read `daisey/CLAUDE.md`'s register as
 permission to write like that in chat.
 
 ## Context cost is a real cost
@@ -36,18 +45,19 @@ files get read.
 - Don't re-read a file to verify an edit that already succeeded.
 - Filter long command output (`| tail -30`, or grep for the lines that
   matter) rather than pasting it whole.
-- `/clear` between unrelated tasks — site work and `tools/` work share
+- `/clear` between unrelated tasks — site work and `daisey/` work share
   nothing, and carrying one into the other doubles the bill.
 
-`tools/CLAUDE.md` has the detailed version of this, including the exact test
-filter, since `tools/` is where the large files live.
+`daisey/CLAUDE.md` has the detailed version of this, including the exact test
+filter, since `daisey/` is where the large files live.
 
 ## The site
 
-`index.html` (single page), `css/styles.css`, `js/main.js`, `assets/`.
+`site/index.html` (single page), `site/css/styles.css`, `site/js/main.js`,
+`site/assets/`, `site/cv-source/`.
 No framework, and for the SITE's own files no build step either — the files
 in the repo are the files that get served. (There is now a build command in
-`netlify.toml`, but it exists only to generate Daisey's `daisey/index.html`;
+`netlify.toml`, but it exists only to generate Daisey's `site/daisey/index.html`;
 it does not touch anything above.)
 
 ### Deploying — read this before you deploy
@@ -71,9 +81,9 @@ Two habits that would have caught it, both still worth keeping:
   (`grep -c` for a class name you know is new), not just that the commit
   succeeded — and check the LIVE artifact after, not the deploy log.
 - Say what a commit touches in its message. A site change buried in a
-  `tools/` commit is a change nobody will find again.
+  `daisey/` commit is a change nobody will find again.
 
-`netlify deploy --prod --dir .` also works from a linked folder, but it
+`netlify deploy --prod --dir site` also works from a linked folder, but it
 deploys *whatever is in that folder right now* with no branch check at all,
 which is the sharper edge of the same knife. Prefer the push.
 
@@ -94,11 +104,12 @@ count are real evidence; a green deploy log is not.
 more** (consolidated 2026-08-27). The two bodies of work are separated by
 DIRECTORY, not by branch:
 
-- **The portfolio** — `index.html`, `css/`, `js/`, `assets/`, `cv-source/`.
-- **Daisey** — `tools/` (source + the test suite), `daisey/` (the generated
-  page that actually ships), and its own Netlify functions: `daisey-proxy`,
-  the five `daisey-auth-*`, `_daisey-lib/`, plus `audio-sync.js` and
-  `trello-webhook.js` (both write Trello data only Daisey reads).
+- **The portfolio** — everything in `site/` except `site/daisey/`.
+- **Daisey** — `daisey/` (source + the test suite), `site/daisey/` (the
+  generated page that actually ships), and its own Netlify functions in
+  `daisey/functions/`: `daisey-proxy`, the five `daisey-auth-*`,
+  `_daisey-lib/`, plus `audio-sync.js` and `trello-webhook.js` (both write
+  Trello data only Daisey reads).
 
 **Why the branch is gone.** Netlify only ever deployed `master`, so a branch
 could hold Daisey's *source* but never Daisey itself — every part users touch
@@ -111,25 +122,25 @@ webhook kept writing the old visible `▶ Starts …` text into real Trello
 cards. Every individual step looked right each time, which is exactly why
 nobody caught it.
 
-**`daisey/index.html` is GENERATED — never hand-edit it.** Netlify runs
-`node tools/build-standalone.js` at deploy time (see `netlify.toml`), so the
-shipped page is always built from the `tools/daisey.html` in the same commit.
+**`site/daisey/index.html` is GENERATED — never hand-edit it.** Netlify runs
+`node daisey/build-standalone.js` at deploy time (see `netlify.toml`), so the
+shipped page is always built from the `daisey/daisey.html` in the same commit.
 Edit the source, push, done. The script self-checks its output and exits
 non-zero on a bad splice, so a broken build fails the deploy rather than
 shipping something broken.
 
-**One consequence worth knowing:** a `tools/` change now rebuilds on every
+**One consequence worth knowing:** a `daisey/` change now rebuilds on every
 deploy, so a genuinely broken `build-standalone.js` fails the *whole site's*
 deploy, not just Daisey's page. That is deliberate — failing loudly beats
 silently serving a stale build, which is the failure this replaced.
 
 ## Netlify functions
 
-`netlify/functions/` holds two scheduled/triggered functions that run
-server-side, independent of the site and of Daisey's own tab:
+`daisey/functions/` (set in `netlify.toml`) holds all of them — every
+function is Daisey's. Two run server-side independent of Daisey's own tab:
 
 - `trello-webhook.js` — syncs Trello card start dates into card descriptions.
-- `audio-sync.js` — every 30 min; documented in `tools/CLAUDE.md`.
+- `audio-sync.js` — every 30 min; documented in `daisey/CLAUDE.md`.
 
 Both use `TRELLO_API_KEY`/`TRELLO_API_TOKEN` from Netlify env, via raw REST —
 they do not go through the MCP connector or any artifact capability manifest.
@@ -137,7 +148,7 @@ they do not go through the MCP connector or any artifact capability manifest.
 ## Several sessions edit this repo at once
 
 Expect to find another session's in-flight work in the tree, especially in
-`tools/`. Before overwriting any shared file, re-read it immediately prior to
-writing and confirm it hasn't changed under you — edits to `tools/daisey.html`
+`daisey/`. Before overwriting any shared file, re-read it immediately prior to
+writing and confirm it hasn't changed under you — edits to `daisey/daisey.html`
 have been silently lost to this at least twice. Prefer targeted edits over
 whole-file rewrites on anything you did not just create.

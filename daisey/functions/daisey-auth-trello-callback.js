@@ -17,7 +17,7 @@ exports.handler = async () => {
     return;
   }
   try{
-    const res = await fetch("/.netlify/functions/daisey-auth-trello-save", {
+    const res = await fetch("/.daisey/functions/daisey-auth-trello-save", {
       method: "POST",
       credentials: "include",
       headers: { "Content-Type": "application/json" },

@@ -1,5 +1,5 @@
-# Daisey's deployed page is GENERATED from tools/daisey.html at deploy time.
-# Before this existed, tools/ lived on a separate branch and daisey/index.html
+# Daisey's deployed page is GENERATED from daisey/daisey.html at deploy time.
+# Before this existed, daisey/ lived on a separate branch and site/daisey/index.html
 # was copied across by hand — the live site served a build several revisions
 # old on two separate occasions, and nobody noticed because every individual
 # step looked right. Building it here means what ships is always built from
@@ -7,13 +7,13 @@
 # forget. build-standalone.js self-checks its own output and exits non-zero on
 # a bad splice, so a broken build fails the deploy instead of shipping.
 [build]
-  command = "node tools/build-standalone.js"
-  publish = "."
+  command = "node daisey/build-standalone.js"
+  publish = "site"
 
 [functions]
-  directory = "netlify/functions"
+  directory = "daisey/functions"
 
-# Audio project -> PROJECTS session/work-day card sync. See netlify/functions/audio-sync.js
+# Audio project -> PROJECTS session/work-day card sync. See daisey/functions/audio-sync.js
 # for what it does and why. Every 30 min.
 [functions."audio-sync"]
   schedule = "*/30 * * * *"

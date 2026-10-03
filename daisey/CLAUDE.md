@@ -1,19 +1,25 @@
-# Daisey and tools/
+# Daisey
 
-Guidance for `tools/` — Daisey and the audio-sync function. The site itself
-(`index.html`, `css/`, `js/`) is covered by the root `CLAUDE.md`.
+Guidance for `daisey/` — Daisey and the audio-sync function. The portfolio
+site lives in `site/` and is covered by the root `CLAUDE.md`.
+
+Layout (since 2026-10-03; was `tools/` + `netlify/functions/` + `share/`):
+`daisey/daisey.html` (source of truth), `daisey/test/`, `daisey/build-standalone.js`
++ `_standalone-src/`, `daisey/functions/` (ALL Netlify functions),
+`daisey/share/` (sendable handout). Build output: `site/daisey/index.html`,
+served at morsedero.com/daisey/ — generated, never edit.
 
 ## Reading these files without burning the context window
 
-`tools/daisey.html` is ~7.6k lines and this file is ~1.7k. A session that
+`daisey/daisey.html` is ~7.6k lines and this file is ~1.7k. A session that
 `cat`s either one has spent more context on a single command than on every
 reply it will write all session. Context is never freed until compaction, so
 one careless read is paid for until the session ends.
 
 Rules, in the order they save the most:
 
-- **Never `cat tools/daisey.html`.** Locate first, then read a window:
-  `grep -n "renderHighlights" tools/daisey.html` to get the line, then
+- **Never `cat daisey/daisey.html`.** Locate first, then read a window:
+  `grep -n "renderHighlights" daisey/daisey.html` to get the line, then
   `Read` with `offset`/`limit` (or `sed -n '820,880p'`) for the ~40 lines
   around it. The same goes for this file — `grep -n "^## "` for the section
   index, then read only that section's range.
@@ -21,12 +27,12 @@ Rules, in the order they save the most:
   loudly if the match missed; a successful edit needs no verification read.
   Re-reading a 7.6k-line file to check a three-line change is the single
   most expensive habit available.
-- **Run the suite with one command: `cd tools/test && npm test`.**
-  `run-all.js` copies `tools/daisey.html` over the gitignored test copy
+- **Run the suite with one command: `cd daisey/test && npm test`.**
+  `run-all.js` copies `daisey/daisey.html` over the gitignored test copy
   first, runs every suite, and exits non-zero if any failed — so a single
   filtered line is all you need:
 
-      cd tools/test && npm test 2>&1 | tail -20
+      cd daisey/test && npm test 2>&1 | tail -20
 
   It prints one `ok`/`FAIL`/`FLAKY`/`DUMP` line per suite plus a summary,
   and dumps only the last 25 lines of any suite that failed. Pass a name to
@@ -49,7 +55,7 @@ Rules, in the order they save the most:
   that covers Day-view geometry — it asserts, and it discriminates.)
 - **Prefer `Read` with `offset`/`limit` over shell `cat`.** When a session is
   in Bash-only/auto mode that tool is unavailable and every read is a raw
-  dump. For work in `tools/`, turn auto mode off — the line-windowing is
+  dump. For work in `daisey/`, turn auto mode off — the line-windowing is
   worth more here than the shell convenience.
 - **`/clear` between unrelated tasks.** Finishing a Daisey change and moving
   to the site means the whole Daisey read history is dead weight. Clearing
@@ -59,7 +65,7 @@ Rules, in the order they save the most:
 ## Daisey
 
 A daily focus widget over Google Calendar + Trello. One file:
-`tools/daisey.html`, published as a Claude artifact.
+`daisey/daisey.html`, published as a Claude artifact.
 
 **2026-08-26 — Week view is gone, and Daisey is day-only now.** Direct user
 request: one page, current task made big/bold/dominant, the red now-line
@@ -104,7 +110,7 @@ code — read those bullets as history, not current behavior. What's true now:
   taller and the browser moves the rest down. The dead-button bug it was
   written for (an open card's actions rendering UNDER the next card) cannot
   recur in flow layout.
-  **`tools/test/layout.js` is the guard**, and it discriminates — each
+  **`daisey/test/layout.js` is the guard**, and it discriminates — each
   assertion was verified to fail against a deliberately reintroduced version
   of the specific bug it covers, not merely against the old file: rows must
   not overlap (reproduces the 13px overlap), document order must match clock
@@ -322,7 +328,7 @@ code — read those bullets as history, not current behavior. What's true now:
      button's own colour>` instead of a soft blur, and `:active` drops the
      button 2px and removes the shadow so it visibly presses in. Scoped to
      `.hero-slot .item.hub .mini` only; the list's own `.mini` buttons
-     (`tools/CLAUDE.md`'s 2026-08-27 colour bullet above) are untouched.
+     (`daisey/CLAUDE.md`'s 2026-08-27 colour bullet above) are untouched.
   4. **`nextUpCard()` and `scheduleButton()`** are new, built in
      `paintHero` alongside `heroCard()` — NOT via `timelineItem`/`rowLead`,
      since neither is a row in the list (no drag, no accordion, no action
@@ -457,7 +463,7 @@ failure recorded here (four swatches vs three, internal scroll at 667px) is
    created: cards 13/14/46/59 already cover menu, GameLoop, home and
    main-stage music, and a duplicate would have double-scheduled them.
 3. ~~**Verify `moveAssetTo`'s write shape.**~~ Verified, and it was
-   **wrong** — fixed in `tools/daisey.html`, not yet published. The real
+   **wrong** — fixed in `daisey/daisey.html`, not yet published. The real
    move is `{action:"move", cardId, listId}` (plus `boardId` when the
    destination is on another board, and an optional `pos`). The guessed
    `{action:"update", cardId, listId}` could never have worked: `update`
@@ -467,13 +473,13 @@ failure recorded here (four swatches vs three, internal scroll at 667px) is
 
 ### Working on it
 
-- Edit `tools/daisey.html`, then republish to the URL above.
-- Tests: `cd tools/test && npm i playwright && npm test` (see
-  `tools/test/README.md`). They drive the real page in Chromium against
+- Edit `daisey/daisey.html`, then republish to the URL above.
+- Tests: `cd daisey/test && npm i playwright && npm test` (see
+  `daisey/test/README.md`). They drive the real page in Chromium against
   a stubbed connector bridge — no network, no real writes.
 - **You no longer need to copy the page into the test dir by hand.**
   `run-all.js` does it on every run, before anything else. Every test reads
-  `tools/test/daisey.html`, a gitignored copy, and that copy used to go
+  `daisey/test/daisey.html`, a gitignored copy, and that copy used to go
   stale silently — the suite would then pass against whatever the file said
   last time somebody copied it. Not theoretical: a `moveAssetTo` fix was
   "confirmed" by a green `tracker.js` still driving the old shape, and only
@@ -504,11 +510,11 @@ failure recorded here (four swatches vs three, internal scroll at 667px) is
   the press-and-hold-drags-instead-of-selecting behaviour.
   Run `proj.js` after any change to the Projects view, the mirrored
   audio scoring, or `S.stats` persistence — **and after any edit to
-  `netlify/functions/audio-sync.js`'s `classify`/`splitSubject`**, since
+  `daisey/functions/audio-sync.js`'s `classify`/`splitSubject`**, since
   that suite is the only thing holding the two copies of that scoring
   together (see the Projects manager bullet).
 - **Several sessions edit this file at once.** The publish ships the
-  *whole* file, so check `git diff tools/daisey.html` before publishing
+  *whole* file, so check `git diff daisey/daisey.html` before publishing
   and expect to find other sessions' half-finished work in it — say so
   rather than shipping it blind. On a publish conflict, re-read and merge;
   `force:true` silently discards whatever the other session published.
@@ -574,7 +580,7 @@ failure recorded here (four swatches vs three, internal scroll at 667px) is
   See `setup.js` for the eight cases that separate "works for anyone" from
   "works because I'm the author".
 
-  **A sendable copy lives in `share/`** (`daisey.html` + `README.txt`), built
+  **A sendable copy lives in `daisey/share/`** (`daisey.html` + `README.txt`), built
   by stripping the `LEGACY_*` block — it holds the author's own calendar
   address and board ids, which are inert for anyone else (the gate needs his
   board to be *visible*) but shouldn't travel in a file he hands out. With it
@@ -712,7 +718,7 @@ failure recorded here (four swatches vs three, internal scroll at 667px) is
   would have been silently counted twice, inflating pressure worst on exactly
   the projects furthest along. `covered.add(bareId(...))` without the matching
   `covered.has(bareId(...))` was the shape of the mistake.
-  **The scoring is duplicated from `netlify/functions/audio-sync.js`, on
+  **The scoring is duplicated from `daisey/functions/audio-sync.js`, on
   purpose and unavoidably** (`audioClassify`, `splitSubject`, `audioScoreItems`,
   `AUDIO_MARK_RE`, the caps). That file is a CommonJS Netlify function, this one
   is a single-file artifact with no build step — there is no import path between
@@ -1235,7 +1241,7 @@ failure recorded here (four swatches vs three, internal scroll at 667px) is
   in-flight chain re-writes once when it finishes, coalescing any number of
   overlapping updates into one final consistent write. `S.stats` is still
   assigned synchronously, so local reads and the UI stay instant.
-  `tools/test/stats.js` is the guard, and it **discriminates**: verified to
+  `daisey/test/stats.js` is the guard, and it **discriminates**: verified to
   fail against the pre-fix code (three overlapping saves → 3 concurrent
   in-flight writes) and pass against the fix (→ 2 writes, the last carrying
   the newest value). Don't "simplify" the queue away.
@@ -1294,7 +1300,7 @@ failure recorded here (four swatches vs three, internal scroll at 667px) is
   as blocking — re-tested with the marker stripped, so any other
   blocking text the card independently contains still holds it back.
 - **"Don't assign an activity before its Trello start date" is live**,
-  as of `netlify/functions/trello-webhook.js` (2026-08-18, untracked —
+  as of `daisey/functions/trello-webhook.js` (2026-08-18, untracked —
   not yet committed). History first: the original code guessed `n.start`
   would mirror `n.due` off Trello's own API shape; it never did — always
   `undefined`, so `candidates()`'s eligibility gate was permanently dead.
@@ -1780,7 +1786,7 @@ failure recorded here (four swatches vs three, internal scroll at 667px) is
   size. Published — the user confirmed the pre-fix behavior first (a
   screenshot of a title still dropping to the far left on its own line),
   which turned out to be real: **this whole change was silently wiped from
-  `tools/daisey.html` on disk by another concurrent session between being
+  `daisey/daisey.html` on disk by another concurrent session between being
   written and being published** — `grep -c "row-lead"` went from 4 to 0
   with no edit of mine in between, while the same session's *other*,
   unrelated `DEFAULTS`/`findSlots` changes (see the bullet below) stayed
@@ -1984,7 +1990,7 @@ Passing a non-empty `capabilities` object is a **full-set** declaration —
 anything stored but not restated is revoked — so always restate all twelve.
 Enumerate them before publishing rather than trusting this list:
 
-    grep -oE '(callTool|watchTool)\((TRELLO|GCAL), *"[a-zA-Z_]+"' tools/daisey.html | sort -u
+    grep -oE '(callTool|watchTool)\((TRELLO|GCAL), *"[a-zA-Z_]+"' daisey/daisey.html | sort -u
 
 Same bug, older: `statsListId()` also calls `trelloReadList`, so the
 "create the state card if it's missing" path documented above could never
@@ -2006,29 +2012,29 @@ or raw `S.mcp.watchTool()` — 12 distinct tool operations, two choke points.
 `legacySetup()`, needs to change — the work is building a same-shaped
 replacement for what `S.mcp` *is* (real HTTP to a backend holding real OAuth
 tokens), not rewriting the app. **This is proven, not assumed** —
-`tools/test/standalone.js` boots the real generated file against a real HTTP
+`daisey/test/standalone.js` boots the real generated file against a real HTTP
 mock and shows `SETUP` gets adopted from the same Trello-state-card mechanism
 unchanged, a real write reaches the mock as a real `trelloWriteCard` call,
 and `window.claude` is `"undefined"` throughout.
 
-**`tools/daisey-standalone.html` is GENERATED, never hand-edited.** Produced
-by `node tools/build-standalone.js` from `tools/daisey.html`. This is the
+**`site/daisey/index.html` is GENERATED, never hand-edited.** Produced
+by `node daisey/build-standalone.js` from `daisey/daisey.html`. This is the
 load-bearing decision in the whole effort: a hand-maintained fork would
-silently drift from the real app exactly the way `tools/test/daisey.html`
+silently drift from the real app exactly the way `daisey/test/daisey.html`
 already has to be actively re-copied before every test run to avoid (see the
 "Several sessions edit this file at once" section above, and the `row-lead`
 incident it documents) — a build script makes that class of bug structurally
 impossible instead of something to remember. **Run it after every edit to
-`tools/daisey.html`** if the standalone build needs to reflect it; nothing
-runs it automatically yet (no Netlify build hook), so a stale
-`daisey-standalone.html` fails loudly only if someone notices, not by design.
+`daisey/daisey.html`** to test the standalone build locally; Netlify runs it
+at every deploy (`netlify.toml` build command) and CI runs it before the suite,
+so the shipped page can't go stale.
 
 **How the splice works**: two literal marker comments —
 `BUILD-STANDALONE:MCP-RESOLVE` / `END BUILD-STANDALONE:MCP-RESOLVE` — wrap
 the `window.claude.use("mcp")` line inside `boot()`. The build script does a
 literal text replace between them (not parsing), inlines
-`tools/_standalone-src/boot-block.js` in their place, and inlines
-`tools/_standalone-src/mcp-shim.js`'s function definitions just before the
+`daisey/_standalone-src/boot-block.js` in their place, and inlines
+`daisey/_standalone-src/mcp-shim.js`'s function definitions just before the
 closing `</script>` tag (in scope for `boot()` via hoisting — no module
 system, matching this file's single-`<script>`-block design). It then
 self-checks: the output must parse as JS, must contain the shim's function
@@ -2061,8 +2067,8 @@ in" state the backend would otherwise have to expose). **Google first,
 Trello second is deliberate**: Google mints the session; Trello only ever
 links into an existing one.
 
-**The shim** (`tools/_standalone-src/mcp-shim.js`) implements `callTool`/
-`watchTool`/`invalidate` over `fetch("/.netlify/functions/daisey-proxy", ...)`
+**The shim** (`daisey/_standalone-src/mcp-shim.js`) implements `callTool`/
+`watchTool`/`invalidate` over `fetch("/.daisey/functions/daisey-proxy", ...)`
 — that backend function doesn't exist yet (next build-order step). `watchTool`
 polls at the *same* `refetchInterval`s the app already passes per call site
 (180000/600000/120000ms) rather than inventing new ones — those numbers
@@ -2072,7 +2078,7 @@ Trello/Google token (`{code:"needs_reauth"}` in a 200 body) — the former means
 "we don't know who this is," the latter "we know, but the tokens are dead."
 
 **Test harness quirk worth knowing if this area gets touched again**:
-`tools/test/mock-proxy.js` (a plain Node `http` server, not Netlify-shaped —
+`daisey/test/mock-proxy.js` (a plain Node `http` server, not Netlify-shaped —
 it only needs to prove the shim/splice, not the real proxy's auth logic yet)
 first shipped without a `charset=utf-8` on its `text/html` response. Chromium
 defaulted to Latin-1, mojibake'd every emoji/Hebrew character in the served
@@ -2107,11 +2113,11 @@ this). **Verified with a real write, then a real read from a separate
 invocation** — same value came back. `daisey-proxy.js` should copy this
 exact `openStore()` pattern rather than a bare `getStore()` call, or it
 will hit the same error.
-`netlify/functions/daisey-blobs-smoketest.js` is safe to delete once
+`daisey/functions/daisey-blobs-smoketest.js` is safe to delete once
 `daisey-proxy.js` is built and this pattern is copied into it — it's a
 throwaway, scoped to its own `"smoketest"` store only.
 
-**Still not built**: the real `netlify/functions/daisey-proxy.js` (the one
+**Still not built**: the real `daisey/functions/daisey-proxy.js` (the one
 generic tool-call endpoint — reads/writes the store, dispatches to
 Trello/Google REST) and the Trello OAuth start/callback/relay functions.
 `mcp-shim.js` has real endpoints to talk to for Google now, nothing for
@@ -2168,7 +2174,7 @@ with or reused by the new functions).
 ## Audio project → PROJECTS sync
 
 A user request ("Trello needs to create cards in PROJECTS that pull from a
-project's own board") turned into `netlify/functions/audio-sync.js` — a
+project's own board") turned into `daisey/functions/audio-sync.js` — a
 **scheduled Netlify function** (every 30 min, `netlify.toml`), not code
 inside `daisey.html`. Decided 2026-08-18: Daisey's own automation (rollover
 sweep, chores lock screen) only runs while the tab is open; this needed to
@@ -2221,7 +2227,7 @@ with no further wiring.
   build step: this is CommonJS on Netlify, that is a single-file artifact.
   **Editing a keyword list here without editing it there makes the pressure
   read silently disagree with the cards that actually get made.**
-  `tools/test/proj.js` asserts the two agree across a fixed table, lifting
+  `daisey/test/proj.js` asserts the two agree across a fixed table, lifting
   this file's real function source at test time — run it after touching
   either. Note also that this function writes **raw Trello ids** into the
   marker while Daisey holds ARIs, which is why the reader normalises both

@@ -1,6 +1,6 @@
 // Shared Blobs access, using the manual siteID+token pattern —
 // NETLIFY_BLOBS_CONTEXT auto-detection is confirmed broken on this
-// project (see tools/CLAUDE.md, "Daisey standalone" section). Every
+// project (see daisey/CLAUDE.md, "Daisey standalone" section). Every
 // function that touches Blobs should go through this, not call
 // getStore() directly, or it will hit MissingBlobsEnvironmentError again.
 const { getStore } = require("@netlify/blobs");

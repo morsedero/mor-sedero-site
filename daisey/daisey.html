@@ -1,7 +1,3 @@
-<!-- GENERATED FILE — do not hand-edit.
-     Produced by tools/build-standalone.js from tools/daisey.html.
-     Edit tools/daisey.html, then re-run: node tools/build-standalone.js
-     Built 2026-08-28T12:43:26.402Z -->
 <title>Daisey</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <style>
@@ -648,6 +644,14 @@ html,body{overflow:hidden;}
   cursor:pointer;transition:box-shadow .15s,transform .1s;
   margin-bottom:10px;
 }
+/* Collapsed width: roughly half the hero column, not the full slot width —
+   "next up" is a preview, not a peer of the hero card above it, and full
+   width read as too much weight for a glance-only element (2026-08-28,
+   direct user request). .next-up-wrap carries the width, not .next-up
+   itself, so the toggle (anchored to the wrap, see its own comment) tracks
+   the shrunk edge instead of sitting out at the old full-width edge. */
+.next-up-wrap.collapsed{width:min(100%,220px);}
+.next-up-wrap.collapsed .next-up{width:100%;}
 .next-up:hover{box-shadow:var(--shadow-lg);transform:translateY(-1px);}
 .next-up:active{transform:translateY(0);}
 .next-up::before{
@@ -688,33 +692,105 @@ html,body{overflow:hidden;}
 
 /* Expandable queue (2026-08-28, ported from the "Daisey Tetris Cards"
    design canvas) — a small round toggle on the next-up card's own edge
-   that expands to a 3-per-row grid of up to 6 upcoming real tasks.
-   S.queueOpen is the one flag (tab-lifetime only, same "not written to
-   settings" treatment as S.scheduleOpen — which is "normal" here varies
+   that expands to a 3-per-row grid of up to 6 upcoming real tasks,
+   including the next-up card itself as the grid's first cell (2026-08-28
+   follow-up, direct user request: collapsed it's a half-width preview,
+   expanded it shrinks down to match the other 5 so all 6 sit evenly 3-per-
+   row). S.queueOpen is the one flag (tab-lifetime only, same "not written
+   to settings" treatment as S.scheduleOpen — which is "normal" here varies
    call to call, not day to day), read by both nextUpQueue (its own icon
-   rotation) and paintHero (which of .queue-grid / the plain next-up card
-   to show). .next-up-wrap, not .next-up itself, carries position:relative
-   for this to anchor against — .next-up has overflow:hidden (it clips its
-   own board-colour spine to the card's rounded corners), which would clip
-   the toggle's own right:-8px overhang if it were that element's child. */
+   rotation and .expanded/.collapsed class) and paintHero (only ever calls
+   nextUpQueue the one way; the two states live inside it, not as two call
+   sites). .next-up-wrap, not .next-up itself, carries position:relative
+   for the collapsed toggle to anchor against — .next-up has
+   overflow:hidden (it clips its own board-colour spine to the card's
+   rounded corners), which would clip the toggle's own right:-8px overhang
+   if it were that element's child. */
 .next-up-wrap{position:relative;}
+.next-up-wrap.expanded{
+  display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;
+  width:100%;margin:0 2px 10px;
+}
+/* Slick open/close (2026-08-28, direct user request) — every render is a
+   full DOM rebuild here (see paintHero), so there's no persistent element
+   to CSS-transition between states; a staggered entrance keyframe on the
+   freshly-built cards is what "animates" instead. `will-change` off after
+   the animation ends (via `animation-fill-mode:both` + JS below) so these
+   6 cards don't sit composited forever between renders. */
+@keyframes queueIn{
+  from{opacity:0;transform:scale(.85) translateY(4px);}
+  to{opacity:1;transform:scale(1) translateY(0);}
+}
+.next-up-wrap.expanded .queue-card,
+.next-up-wrap.expanded .next-up{
+  animation:queueIn .22s cubic-bezier(.2,.8,.3,1) both;
+}
+.next-up-wrap.expanded .next-up{animation-delay:0ms;}
+.next-up-wrap.expanded .queue-card:nth-of-type(1){animation-delay:30ms;}
+.next-up-wrap.expanded .queue-card:nth-of-type(2){animation-delay:60ms;}
+.next-up-wrap.expanded .queue-card:nth-of-type(3){animation-delay:90ms;}
+.next-up-wrap.expanded .queue-card:nth-of-type(4){animation-delay:120ms;}
+.next-up-wrap.expanded .queue-card:nth-of-type(5){animation-delay:150ms;}
+/* Collapsing back has nothing to animate OUT (the cards are simply gone
+   from the next render's DOM), so instead the surviving next-up card gets
+   a quick "settle" pulse — the one visible cue that something changed. */
+@keyframes queueSettle{
+  0%{transform:scale(1.04);}
+  100%{transform:scale(1);}
+}
+.next-up-wrap.collapsed .next-up{animation:queueSettle .18s ease-out both;}
+@media (prefers-reduced-motion: reduce){
+  .next-up-wrap.expanded .queue-card,
+  .next-up-wrap.expanded .next-up,
+  .next-up-wrap.collapsed .next-up{animation:none;}
+}
+/* Grid mode: the next-up card is restyled down to the same queue-card
+   shell as its 5 siblings — .next-up's own bigger padding/gap/shadow would
+   make cell 1 visibly larger than cells 2-6 otherwise. The toggle no
+   longer lives here at all once expanded — see .queue-card .queue-toggle
+   and nextUpQueue's own comment for where it moves to. */
+.next-up-wrap.expanded .next-up{
+  display:flex;flex-direction:column;align-items:flex-start;gap:3px;
+  background:var(--surface);border:2px solid var(--line-2);border-radius:10px;
+  padding:8px 8px 9px;min-height:74px;box-shadow:none;margin-bottom:0;
+  cursor:pointer;
+}
+.next-up-wrap.expanded .next-up::before{width:5px;}
+.next-up-wrap.expanded .next-up-lead{flex-direction:row;align-items:center;gap:4px;min-width:0;}
+.next-up-wrap.expanded .next-up-k{font-size:8px;padding-left:5px;}
+.next-up-wrap.expanded .next-up-time{font-size:9.5px;color:var(--bc,var(--ink-2));}
+.next-up-wrap.expanded .next-up-n{
+  font-family:var(--font-display);font-weight:800;font-size:11px;line-height:1.25;
+  color:var(--ink-2);white-space:normal;
+  display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;
+}
+.next-up-wrap.expanded .next-up-dot{display:none;}
+/* Pinned to whichever card is last in the grid (queue-anchor, see
+   nextUpQueue) — collapsed, that's the next-up card's own right edge;
+   expanded, the last of the up-to-5 queue-cards (2026-08-28 follow-up,
+   direct user report: expanded, this used to render as its own full 74px
+   grid tile just to hold a 13px icon — "the arrow becomes too big" —
+   because it was a 7th grid CELL, not an overlay on real content). Sits
+   fully INSIDE the anchor's own box (no overhang) so its overflow:hidden
+   (there to clip the card's own spine) doesn't clip the badge — collapsed
+   keeps the old half-overhanging right:-8px look since it's a child of
+   .next-up-wrap, not .next-up, and the wrap carries no overflow clip.
+   Same size and same arrow rotation in both states (2026-08-28 follow-up,
+   direct user request: "the arrow of opened next cards should look
+   exactly like the closed next cards arrow") — no `.open`/`.queue-card`
+   variant left to rotate or resize it; only the click handler's meaning
+   changes, not the glyph. */
 .queue-toggle{
   position:absolute;right:-8px;top:50%;transform:translateY(-50%);
   width:26px;height:26px;border-radius:50%;
   background:var(--surface);border:2px solid var(--line-2);
   display:flex;align-items:center;justify-content:center;color:var(--ink-3);
   cursor:pointer;box-shadow:0 2px 0 var(--line-2);
+  z-index:1;
 }
-.queue-toggle svg{width:13px;height:13px;transition:transform .15s;transform:rotate(-90deg);}
+.queue-toggle svg{width:13px;height:13px;transform:rotate(-90deg);transition:transform .18s;}
 .queue-toggle.open svg{transform:rotate(90deg);}
-.queue-toggle.static{
-  position:static;transform:none;margin:2px auto 0;grid-column:1/-1;
-}
-
-.queue-grid{
-  display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;
-  margin:0 2px 10px;
-}
+.queue-card .queue-toggle{left:4px;right:auto;top:50%;transform:translateY(-50%);}
 .queue-card{
   position:relative;background:var(--surface);border:2px solid var(--line-2);
   border-radius:10px;padding:8px 8px 9px;min-height:74px;
@@ -724,7 +800,6 @@ html,body{overflow:hidden;}
   content:"";position:absolute;left:0;top:0;bottom:0;width:5px;
   background:var(--bc,var(--b-none));
 }
-.queue-card .qc-n{font-family:var(--mono);font-size:8px;font-weight:800;color:var(--ink-3);padding-left:5px;}
 .queue-card .qc-time{font-family:var(--mono);font-size:9.5px;font-weight:800;color:var(--bc,var(--ink-2));padding-left:5px;}
 .queue-card .qc-title{
   font-family:var(--font-display);font-weight:800;font-size:11px;line-height:1.25;color:var(--ink-2);
@@ -1314,9 +1389,12 @@ html,body{overflow:hidden;}
 .mini.ok:disabled,.mini.swap:disabled,.mini.pend:disabled,
 .mini.del:disabled,.mini.info:disabled{opacity:.38;}
 .mini.text{width:auto;padding:0 10px;font-size:11px;font-weight:800;}
-/* Settings' "Clear Activity Data" is the one remaining .mini.text button —
-   reuses the red remove-card colour at rest, unlike the icon actions above. */
-.mini.text.del{color:var(--crit);}
+/* Settings' "Clear Activity Data" is the one remaining .mini.text button.
+   Plain red-on-white text measured ~2.5:1 — read as "not visible" against
+   the dialog's glass background — so it's a soft red fill instead, same
+   family as .mini.del's solid button but low-key enough not to compete
+   with Save as the loudest thing in the footer. */
+.mini.text.del{background:var(--crit-soft);color:var(--crit);border-radius:8px;}
 .resize-handle{
   position:absolute;left:0;right:0;bottom:0;height:9px;cursor:ns-resize;touch-action:none;
 }
@@ -1802,6 +1880,21 @@ html,body{overflow:hidden;}
    this app is phone-first. */
 .swatch-card.draggable{cursor:grab;touch-action:none;}
 .swatch-card.draggable.dragging{cursor:grabbing;opacity:.85;position:relative;filter:drop-shadow(0 4px 8px rgba(0,0,0,.25));}
+/* Rebuild dialog's priority list (see rebuildPriorityList) — same drag-to-
+   reorder mechanism as the settings swatches, but a vertical name list
+   instead of colour squares: no colour picker belongs in a confirm dialog,
+   and vertical stacks better in a narrow sheet than 3-across swatches would
+   at this width. */
+.prio-list{display:flex;flex-direction:column;gap:6px;width:100%;}
+.prio-row{
+  display:flex;align-items:center;gap:8px;padding:8px 10px;
+  background:var(--surface-2);border:1.5px solid var(--line-2);border-radius:10px;
+  cursor:grab;touch-action:none;
+}
+.prio-row.dragging{cursor:grabbing;opacity:.85;position:relative;z-index:5;filter:drop-shadow(0 4px 8px rgba(0,0,0,.25));}
+.prio-row .prio-num{position:static;width:18px;height:18px;font-size:10px;flex:0 0 auto;}
+.prio-row .prio-name{font-size:13px;font-weight:700;flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.prio-row .prio-grip{color:var(--ink-3);flex:0 0 auto;}
 .chore-set{display:flex;flex-direction:column;gap:8px;width:100%;}
 .chore-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
 .chore-name{display:flex;align-items:center;gap:4px;font-size:11.5px;font-weight:700;color:var(--ink-2);min-width:88px;}
@@ -1981,7 +2074,6 @@ html,body{overflow:hidden;}
       <button id="next" class="navbtn" aria-label="Next">›</button>
     </div>
     <div class="dash-right" id="dashRight" hidden>
-      <button class="progress-pill" id="progressPill" type="button" title="Tasks finished today" aria-label="Tasks finished today"></button>
       <button class="rebuild" id="replanBtn" aria-label="Re-plan day">↻</button>
     </div>
   </div>
@@ -2561,13 +2653,13 @@ const AUTHZ = new Set(["needs_reauth","server_not_connected","selection_required
 const LIFECYCLE = new Set(["not_granted","capability_disabled","capability_removed"]);
 
 /* BUILD-STANDALONE:FLAG — flipped to `true` by a literal text replace in
-   tools/build-standalone.js. Stays `false` in daisey.html itself and
+   daisey/build-standalone.js. Stays `false` in daisey.html itself and
    therefore in the published Claude artifact. A module-level flag rather
    than a parameter threaded through errCopy's ~30 call sites on purpose:
    every one of those sites is a bare `errCopy(e)`, and adding a second
    argument everywhere is exactly the kind of many-places-to-keep-in-sync
    edit this whole plan exists to avoid. errCopy just reads the flag. */
-let STANDALONE = false; // overridden to true at runtime, see boot()
+let STANDALONE = false;
 /* Shared between both deployments, not forked: every code's copy other than
    the two "go reconnect" ones (rate_limited, server_unavailable, tool_error…)
    means exactly the same thing whether this is the Claude artifact or
@@ -2605,9 +2697,9 @@ function errCopy(e){
 function errFixUrl(e){
   if(!STANDALONE || !e) return null;
   const c = e.code;
-  if(c === "no_session") return "/.netlify/functions/daisey-auth-google-start";
+  if(c === "no_session") return "/.daisey/functions/daisey-auth-google-start";
   if(c !== "needs_reauth" && c !== "server_not_connected") return null;
-  return e.server === "Trello" ? "/.netlify/functions/daisey-auth-trello-start" : "/.netlify/functions/daisey-auth-google-start";
+  return e.server === "Trello" ? "/.daisey/functions/daisey-auth-trello-start" : "/.daisey/functions/daisey-auth-google-start";
 }
 /* errCopy has always promised "Retrying shortly." / "Pausing briefly." for the
    transient codes and nothing was behind it — there was no retry anywhere in
@@ -2767,7 +2859,7 @@ const PENDING_RE = /^⏳ Pending(?: until (\d{4}-\d{2}-\d{2}))? — /;
 const pendingMark = until => until ? `⏳ Pending until ${until} — ` : "⏳ Pending — ";
 /* Trello's own Start Date field isn't exposed by the connector — no `start`
    key comes back from any read tool, in any shape (checked exhaustively,
-   2026-08-18). A Netlify function (netlify/functions/trello-webhook.js)
+   2026-08-18). A Netlify function (daisey/functions/trello-webhook.js)
    subscribes to Trello webhooks on the three scheduled boards, reads the
    real field via Trello's REST API directly, and mirrors it into the
    description as this marker — so the connector limitation never has to be
@@ -2800,7 +2892,7 @@ function sizeFromLabels(labels){
 }
 
 /* ------------------------------------------------- audio segment scoring
-   MIRRORED FROM netlify/functions/audio-sync.js — classify(), splitSubject(),
+   MIRRORED FROM daisey/functions/audio-sync.js — classify(), splitSubject(),
    scoreSfxItems()'s chain-merge, normName(), AUDIO_SUFFIX_RE, MARKER_RE and
    the two caps, all copied verbatim.
 
@@ -3547,7 +3639,7 @@ function candidates(date){
      covers a dozen of them, so they are tracked and moved from the Pipeline
      view and never scheduled — see BOARDS.
      `c.start` (see START_RE / normCard) is Trello's real Start Date field,
-     synced in by netlify/functions/trello-webhook.js since the connector
+     synced in by daisey/functions/trello-webhook.js since the connector
      itself can't read it. A card whose start day is still in the future
      sits out the same way a blocked/pending card does — today and past are
      both fair game, only a future start date holds it back.
@@ -5569,7 +5661,6 @@ function wellRow(wellItems, cur){
    same accordion every other row already uses, then scrolls it into view —
    "next up" is a preview, not a duplicate action surface. */
 function nextUpCard(item){
-  const rowId = item.card ? item.ev.id+":"+item.card.id : item.ev.id;
   const card = el("div","next-up "+boardClass(item.card, item.task, item.isBreak)+listClass(item.card));
   /* item.s, not item.ev.start (2026-08-28 fix): a brick sibling (a merged
      quick-task window — see CLAUDE.md) shares one Google Calendar event
@@ -5587,40 +5678,41 @@ function nextUpCard(item){
   n.appendChild(bidiSpan(item.title));
   card.appendChild(n);
   card.appendChild(el("span","next-up-dot"));
-  card.addEventListener("click", ()=>{
-    S.openRow = rowId;
-    /* the row this opens lives in #pageMain — expand it first (2026-08-28,
-       same day the schedule became collapsible) or the accordion opens
-       behind a `host.hidden` list and scrollIntoView below has nothing
-       visible to scroll to. */
-    S.scheduleOpen = true;
-    render();
-    requestAnimationFrame(()=>{
-      const row = document.querySelector(`[data-row-id="${CSS.escape(rowId)}"]`);
-      if(row) row.scrollIntoView({block:"center", behavior:"smooth"});
-    });
-  });
+  /* No click-to-open any more (2026-08-28 follow-up, direct user report:
+     "when clicking on the next card it opens the schedule, stop it") — it's
+     a preview, and the queue-toggle sitting right next to/on top of it made
+     an open-the-schedule click too easy to trigger by accident. The row it
+     used to jump to is still reachable the normal way, by opening the
+     schedule and scrolling to it by hand. */
   return card;
 }
 /* Expandable queue (2026-08-28, ported from the "Daisey Tetris Cards"
    design canvas) — wraps nextUpCard with a small round toggle on its own
-   edge; collapsed (the default) shows just that one card, unchanged.
-   Expanded shows up to 6 upcoming real open tasks after current, 3 per
-   row, each with its own time/title — real data from `open` (splitAgenda's
-   already-time-sorted list of open, non-break items), not the mockup's
-   fake QUEUE array. `open` always contains current itself plus nextUp
-   (both already in it — see splitAgenda), so the grid filters both out
-   rather than re-deriving "everything after nextUp" some other way. */
+   edge; collapsed (the default) shows just that one card, at roughly half
+   width (see .next-up-wrap.collapsed). Expanded shows up to 6 upcoming
+   real open tasks after current, 3 per row, INCLUDING the next-up card
+   itself as the grid's first cell (2026-08-28 follow-up, direct user
+   request: "when user clicks on the arrow to expand up to 6 it shrinks to
+   fit the 3 in each row, so 6 including it") — real data from `open`
+   (splitAgenda's already-time-sorted list of open, non-break items), not
+   the mockup's fake QUEUE array. `open` always contains current itself
+   plus nextUp (both already in it — see splitAgenda), so the grid filters
+   both out rather than re-deriving "everything after nextUp" some other
+   way. */
 function nextUpQueue(nextUp, current, open){
-  const wrap = el("div","next-up-wrap");
+  const wrap = el("div","next-up-wrap"+(S.queueOpen?" expanded":" collapsed"));
   const card = nextUpCard(nextUp);
   wrap.appendChild(card);
-  /* Appended to wrap, not to the card itself (2026-08-28 fix caught while
-     building this): .next-up has overflow:hidden, on purpose, to clip its
-     own board-colour spine (::before) to the card's rounded corners — an
-     absolutely-positioned toggle sitting half outside the card's own box
-     (right:-8px, see .queue-toggle's CSS) would be silently clipped by
-     that same overflow:hidden if it were the card's own child. */
+  /* The toggle pins to a CORNER of whichever card is last in the grid — the
+     next-up card itself while collapsed (only tile there is), the last
+     upcoming queue-card once expanded (2026-08-28 follow-up, direct user
+     report: expanded, the toggle rendered as its own full-size 74px grid
+     tile — "the arrow becomes too big" — because .queue-toggle.static used
+     to BE a 7th cell sized like a real card just to hold a 13px icon).
+     Small round overlay on real content beats a whole tile spent on one
+     icon; "stick to the last card" is exactly what an absolutely-positioned
+     corner badge on that card does, no matter how many upcoming tasks
+     there are (1 to 5). */
   const toggle = el("button","queue-toggle"+(S.queueOpen?" open":""));
   toggle.type = "button";
   toggle.setAttribute("aria-label", S.queueOpen ? "Show just next" : "See full queue");
@@ -5631,27 +5723,31 @@ function nextUpQueue(nextUp, current, open){
     S.queueOpen = !S.queueOpen;
     render();
   });
-  wrap.appendChild(toggle);
   if(S.queueOpen){
     const upcoming = (open || []).filter(i => i !== current && i !== nextUp).slice(0, 5);
-    const grid = el("div","queue-grid");
-    const labels = ["Then","+3","+4","+5","+6"];
+    let lastCard = card;
     upcoming.forEach((i, idx) => {
       const qc = el("div","queue-card "+boardClass(i.card, i.task, i.isBreak)+listClass(i.card));
-      qc.appendChild(el("div","qc-n", labels[idx] || `+${idx+2}`));
       qc.appendChild(el("div","qc-time", hhmm(atMin(S.anchor, i.s))));
       const t = el("div","qc-title");
       t.appendChild(bidiSpan(i.title));
       qc.appendChild(t);
-      grid.appendChild(qc);
+      wrap.appendChild(qc);
+      lastCard = qc;
     });
-    const closeBtn = el("button","queue-toggle open static");
-    closeBtn.type = "button";
-    closeBtn.setAttribute("aria-label", "Show just next");
-    closeBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"></path></svg>';
-    closeBtn.addEventListener("click", ()=>{ S.queueOpen = false; render(); });
-    grid.appendChild(closeBtn);
-    wrap.appendChild(grid);
+    /* A real child of the last card, not an overhanging sibling like the
+       collapsed case below — every grid card clips its own overflow (to
+       round off its board-colour spine), so the toggle has to sit fully
+       inside that box here (see .queue-card .queue-toggle's smaller,
+       overhang-free CSS) rather than half outside it. */
+    lastCard.appendChild(toggle);
+  } else {
+    /* Collapsed: a sibling of .next-up inside .next-up-wrap, which is what
+       actually carries position:relative and no overflow clip — .next-up
+       itself clips (same spine reason), so the toggle's old half-outside
+       right:-8px overhang would be silently cut off as this element's own
+       child. */
+    wrap.appendChild(toggle);
   }
   return wrap;
 }
@@ -5866,8 +5962,6 @@ function paintMain(){
      the ✓ glyph is a plain CSS ::before, nothing left to set as text. The
      real count survives as the accessible name/tooltip, same as any other
      icon-only button in this app. */
-  $("#progressPill").title = `${doneCount}/${doneCount + open.length} tasks finished today`;
-  $("#progressPill").setAttribute("aria-label", `${doneCount}/${doneCount + open.length} tasks finished today`);
   /* only today is buildable — the rebuild button only ever creates new
      blocks, so it has nothing honest to do on any other day */
   $("#replanBtn").hidden = isLockedDay(d);
@@ -8289,6 +8383,108 @@ function confirmDialog(title, detail, okLabel){
   });
 }
 
+/* Rebuild's own confirm, direct user request: "let the user choose which
+   priority of boards to make, sync it with what is in settings." Same
+   CFG.boardPriority the settings sheet edits (renderSwatches/wireSwatchDrag)
+   — this dialog opens pre-ordered from it, and Save there writes right back
+   into it via saveCfg(), so the two controls are always looking at the same
+   list, not a fork of it. Reorder-only (no colour picker; that stays a
+   settings-only control) via a vertical drag list, since 3-across swatches
+   don't fit a narrow confirm sheet the way they do the wider settings panel.
+   Resolves the (possibly reordered) key array, or false on cancel — same
+   true/false shape as confirmDialog, just carrying the order along with it. */
+function rebuildDialog(clearable, quickTotal, shortMin){
+  return new Promise(resolve => {
+    let order = [...( (CFG.boardPriority && CFG.boardPriority.length) ? CFG.boardPriority : DEFAULTS.boardPriority )];
+    const scrim = el("div","scrim");
+    const dlg = el("div","dialog");
+    dlg.setAttribute("role","dialog"); dlg.setAttribute("aria-modal","true");
+    const h = el("div","dh");
+    h.appendChild(el("h3",null,"Rebuild today?"));
+    const p = el("p");
+    bidi(p, `Clears ${clearable.length} block${clearable.length===1?"":"s"} and re-lays the day.\n\nSchedules tasks by available time: quick tasks take ${quickTotal}min each, sessions take ${shortMin}min. Meetings, finished and past work stay.`);
+    h.appendChild(p);
+    h.appendChild(el("div","set-h","Board Priority"));
+    const list = el("div","prio-list");
+    h.appendChild(list);
+    dlg.appendChild(h);
+
+    const DRAG_THRESH = 6;
+    function wireRowDrag(row, key){
+      let pid=null, startY=0, dragging=false, snapshot=[];
+      const onMove = e => {
+        if(pid===null || e.pointerId!==pid) return;
+        const dy = e.clientY-startY;
+        if(!dragging){
+          if(Math.abs(dy) < DRAG_THRESH) return;
+          dragging = true;
+          row.classList.add("dragging");
+          try{ row.setPointerCapture(pid); }catch(_){}
+          snapshot = [...list.querySelectorAll(".prio-row")].map(x=>x.getBoundingClientRect());
+        }
+        row.style.transform = `translateY(${dy}px)`;
+        e.preventDefault();
+      };
+      const onUp = e => {
+        if(pid===null || e.pointerId!==pid) return;
+        if(dragging){
+          row.classList.remove("dragging");
+          row.style.transform = "";
+          let bestI=0, bestD=Infinity;
+          snapshot.forEach((s,i)=>{
+            const mid=s.top+s.height/2, d=Math.abs(e.clientY-mid);
+            if(d<bestD){ bestD=d; bestI=i; }
+          });
+          const cur = order.indexOf(key);
+          if(cur>=0 && bestI!==cur){
+            order.splice(cur,1);
+            order.splice(bestI,0,key);
+          }
+          renderList();
+        }
+        pid=null; dragging=false;
+        document.removeEventListener("pointermove", onMove);
+        document.removeEventListener("pointerup", onUp);
+        document.removeEventListener("pointercancel", onUp);
+      };
+      row.addEventListener("pointerdown", e=>{
+        pid=e.pointerId; startY=e.clientY; dragging=false;
+        document.addEventListener("pointermove", onMove);
+        document.addEventListener("pointerup", onUp);
+        document.addEventListener("pointercancel", onUp);
+      });
+    }
+    function renderList(){
+      list.innerHTML = "";
+      const ordered = order.map(k => SCHED_BOARDS.find(b=>b.key===k)).filter(Boolean);
+      ordered.forEach((b,i) => {
+        const row = el("div","prio-row");
+        row.appendChild(el("span","prio-num", String(i+1)));
+        const name = el("span","prio-name", b.name);
+        name.setAttribute("dir","auto");
+        row.appendChild(name);
+        row.appendChild(el("span","prio-grip","⠿"));
+        list.appendChild(row);
+        wireRowDrag(row, b.key);
+      });
+    }
+    renderList();
+
+    const f = el("div","df");
+    const cancel = el("button","btn quiet","Keep");
+    const go = el("button","btn primary","Rebuild");
+    cancel.addEventListener("click", ()=>{ close(); resolve(false); });
+    go.addEventListener("click", ()=>{ close(); resolve(order); });
+    f.appendChild(cancel); f.appendChild(go);
+    dlg.appendChild(f);
+    function close(){ scrim.remove(); document.removeEventListener("keydown", onKey); }
+    function onKey(e){ if(e.key==="Escape"){ close(); resolve(false); } }
+    document.addEventListener("keydown", onKey);
+    scrim.addEventListener("click", e => { if(e.target===scrim){ close(); resolve(false); } });
+    scrim.appendChild(dlg); document.body.appendChild(scrim); go.focus();
+  });
+}
+
 /* Chore identity (icon/colour) is fixed; the schedule — which weekdays each
    one is due — is a user setting (CFG.choreDays), same pattern as everything
    else in the settings panel. */
@@ -8562,7 +8758,6 @@ $("#next").addEventListener("click", ()=>stepNav(1));
 $("#setBtn").addEventListener("click", settingsPanel);
 $("#replanBtn").addEventListener("click", ()=>replan());
 $("#dateWrap").addEventListener("click", ()=>goDay(0));
-$("#progressPill").addEventListener("click", doneDialog);
 
 for(const b of $("#viewSwitch").children){
   /* TOGGLES, it doesn't just set. With the "Day" tab removed (2026-08-26)
@@ -8581,11 +8776,9 @@ async function replan(){
   const date = startOfDay(S.anchor);
   const clearable = clearableBlocks(date);
   if(clearable.length){
-    const ok = await confirmDialog(
-      "Rebuild today?",
-      `Clears ${clearable.length} block${clearable.length===1?"":"s"} and re-lays the day.\n\nSchedules tasks by available time: quick tasks take ${CFG.quickTotal}min each, sessions take ${CFG.shortMin}min. Meetings, finished and past work stay.`,
-      "Rebuild");
-    if(!ok) return;
+    const order = await rebuildDialog(clearable, CFG.quickTotal, CFG.shortMin);
+    if(!order) return;
+    if(order.join() !== CFG.boardPriority.join()){ CFG.boardPriority = order; saveCfg(); }
   }
   applyPlan(date, "normal", null, true);
 }
@@ -8706,20 +8899,14 @@ setInterval(render, 60000);   // keep "now" honest
 (async function boot(){
   render();
   let mcp = null;
-  /* --- standalone boot: see tools/_standalone-src/boot-block.js --- */
-  STANDALONE = true;
-  const qs = new URLSearchParams(location.search);
-  if(qs.get("needsTrello")){
-    history.replaceState(null, "", location.pathname);
-    S.needsTrello = true; S.ready = true; render();
-    return;
-  }
-  const loggedIn = await checkStandaloneSession();
-  if(!loggedIn){
-    S.needsLogin = true; S.ready = true; render();
-    return;
-  }
-  mcp = standaloneMcp();
+  /* BUILD-STANDALONE:MCP-RESOLVE — daisey/build-standalone.js replaces this
+     exact block (between the markers) with the standalone login gate + shim.
+     Keep the marker comments intact; the build script matches on them
+     literally, not on surrounding code, so unrelated edits nearby are safe
+     but renaming/reordering these two lines breaks the build silently. */
+  try{ mcp = await (window.claude && window.claude.use ? window.claude.use("mcp") : null); }
+  catch(_){ mcp = null; }
+  /* END BUILD-STANDALONE:MCP-RESOLVE */
 
   if(!mcp){ S.noMcp = true; S.ready = true; render(); return; }
   S.mcp = mcp;
@@ -8777,154 +8964,5 @@ setInterval(render, 60000);   // keep "now" honest
      while the wizard is still open — there is nothing to boot yet. */
   setTimeout(()=>{ if(SETUP && BOARDS.length) go(); }, 25000);
 })();
-
-/* ==== injected by tools/build-standalone.js from tools/_standalone-src/mcp-shim.js ==== */
-/* ============================================================
-   STANDALONE ONLY — spliced into daisey.html by build-standalone.js
-   at the BUILD-STANDALONE:MCP-RESOLVE marker inside boot(). Never
-   present in the Claude artifact. See tools/CLAUDE.md's "Daisey
-   standalone" section for the architecture this implements.
-   ============================================================ */
-
-/* The whole point: daisey.html's 27 Trello/Google call sites all go through
-   callTool()/S.mcp.watchTool()/S.mcp.invalidate(). This object implements
-   that exact three-method shape over real HTTP to daisey-proxy.js, so NONE
-   of those 27 call sites — or anything else in the file below boot() —
-   needs to change. Session auth rides on the browser's own cookie jar
-   (credentials:"include"); the shim itself holds no token, ever. */
-function standaloneMcp(){
-  async function callTool(server, tool, input){
-    const res = await fetch("/.netlify/functions/daisey-proxy", {
-      method:"POST", credentials:"include",
-      headers:{ "Content-Type":"application/json" },
-      body: JSON.stringify({ server, tool, input })
-    });
-    if(res.status === 401){
-      /* The session cookie is missing or the proxy rejected it outright —
-         distinct from a Trello/Google token being stale (that comes back as
-         a 200 whose body carries {code:"needs_reauth"}, handled below). A
-         bare 401 means "we don't know who this is," so route it through the
-         same needsLogin path startWatches' errors go through rather than
-         surfacing it as a per-call toast — see boot()'s session check. */
-      throw { code:"no_session", server, message:"Sign in to continue." };
-    }
-    let body;
-    try{ body = await res.json(); }
-    catch(_){ body = {}; }
-    if(!res.ok || body.error){
-      const err = body.error || body;
-      throw { code: err.code || "tool_error", message: err.message, server };
-    }
-    return body;
-  }
-
-  /* No push transport exists from Trello/Google REST without materially
-     more infrastructure (webhooks + a relay) than this app's own staleness
-     tolerance needs. Polling at the SAME intervals the app already passes
-     as opts.refetchInterval (180000 cards / 600000 tracker lists / 120000
-     calendar) is the honest equivalent of watchTool's live updates — those
-     numbers already encode "how fresh does this actually need to be,"
-     nothing here reinvents that. */
-  /* invalidate(server, tool) has no input of its own — the real MCP
-     capability replays whatever the live watchTool subscription already
-     owns. This map is what makes that true here too: every active watch
-     registers its own (server,tool,input,fire) under a shared key, so
-     invalidate can re-fire the SAME request a bare empty-input call
-     never could (list_events needs calendarId/startTime/endTime; an
-     empty {} 404s at the proxy and gets swallowed, silently leaving
-     stale/empty data on screen — this is what that bug looked like). */
-  const live = new Map(); // key -> { input, fire }
-
-  function watchTool(server, tool, input, handler, opts){
-    const key = server + "|" + tool;
-    let alive = true;
-    const interval = (opts && opts.refetchInterval) || 180000;
-    const fire = () => {
-      if(!alive) return;
-      callTool(server, tool, input)
-        .then(result => { if(alive) handler({ type:"data", result }); })
-        .catch(error => { if(alive) handler({ type:"error", error }); });
-    };
-    live.set(key, { input, fire });
-    fire();
-    const id = setInterval(fire, interval);
-    return () => {
-      alive = false; clearInterval(id);
-      if(live.get(key) && live.get(key).fire === fire) live.delete(key);
-    };
-  }
-
-  /* Re-fires the matching watchTool's own last request right now, same as
-     the real capability's cache-bust. If no watch is registered for this
-     (server,tool) — shouldn't happen given every call site pairs the two —
-     falls back to the old empty-input call rather than doing nothing. */
-  async function invalidate(server, tool){
-    const key = server + "|" + tool;
-    const entry = live.get(key);
-    if(entry){ entry.fire(); return; }
-    await callTool(server, tool, {}).catch(()=>{});
-  }
-
-  return { callTool, watchTool, invalidate };
-}
-
-/* Checks whether the visitor has a usable session WITHOUT assuming — a
-   stale/expired cookie must not look like "logged in" to boot(). Cheapest
-   real check: ask the proxy for something trivial. Reuses trelloReadBoard
-   action:"get" against a placeholder id would be wasteful; instead the
-   proxy exposes a dedicated lightweight whoami-shaped check via the same
-   callTool path so there's still only one request shape to reason about. */
-async function checkStandaloneSession(){
-  try{
-    const res = await fetch("/.netlify/functions/daisey-proxy", {
-      method:"POST", credentials:"include",
-      headers:{ "Content-Type":"application/json" },
-      body: JSON.stringify({ server:"Session", tool:"whoami", input:{} })
-    });
-    return res.ok;
-  }catch(_){ return false; }
-}
-
-/* The in-page login gate. Deliberately NOT a route/second file — the
-   BUILD-STANDALONE plan chose "logic inside daisey.html, gated before
-   boot() runs" specifically because this is a single-file app by design and
-   already has this exact "render an inline state instead of the real app"
-   pattern (S.noMcp, see sharedState()). Google first, Trello second: Google
-   mints the session (daisey-auth-google-callback.js creates the userId and
-   sets the cookie); Trello only ever links INTO an existing session, so
-   attempting it first would have nothing to attach to. */
-function renderLoginGate(){
-  const wrap = el("div","state login-gate");
-  wrap.appendChild(el("div","big","🌼"));
-  wrap.appendChild(el("h2",null,"Sign in to Daisey"));
-  wrap.appendChild(el("p",null,"Connect your Google Calendar and Trello. Nothing is shared with anyone else — this runs entirely against your own accounts."));
-  const acts = el("div","acts");
-  const g = el("a","btn primary","Sign in with Google");
-  g.href = "/.netlify/functions/daisey-auth-google-start";
-  acts.appendChild(g);
-  wrap.appendChild(acts);
-  wrap.appendChild(el("p","dim","Trello connects as a second step, right after."));
-  return wrap;
-}
-
-/* Trello-linking step: shown once Google succeeded but Trello hasn't been
-   connected yet. daisey-auth-google-callback.js redirects back to the app
-   with ?needsTrello=1 rather than the app polling for this — a redirect
-   query param is simpler than inventing a "half-logged-in" session shape
-   the proxy would otherwise need to expose. */
-function renderTrelloLinkGate(){
-  const wrap = el("div","state login-gate");
-  wrap.appendChild(el("div","big","🔗"));
-  wrap.appendChild(el("h2",null,"Connect Trello"));
-  wrap.appendChild(el("p",null,"One more step — Daisey reads your boards and writes the plan back as cards."));
-  const acts = el("div","acts");
-  const t = el("a","btn primary","Connect Trello");
-  t.href = "/.netlify/functions/daisey-auth-trello-start";
-  acts.appendChild(t);
-  wrap.appendChild(acts);
-  return wrap;
-}
-
-/* ==== end injected shim ==== */
 </script>
 </body></html>

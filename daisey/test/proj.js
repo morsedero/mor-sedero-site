@@ -3,7 +3,7 @@
  * What actually needs guarding here, in rough order of how expensive the bug
  * would be:
  *
- *  1. The scoring mirrored from netlify/functions/audio-sync.js. That function
+ *  1. The scoring mirrored from daisey/functions/audio-sync.js. That function
  *     creates the batch cards; this page predicts what it will create. There is
  *     no shared module (CommonJS function vs. single-file artifact), so the two
  *     copies can only be kept honest by asserting them against each other —
@@ -34,7 +34,7 @@ const MP_LIST="692ad0f8af173930081b8cc0";
    Read the source and eval just the two functions, so the assertion is
    against what actually ships rather than a second hand-copy that could
    drift in the same direction as the first. */
-const SYNC=fs.readFileSync(__dirname+"/../../netlify/functions/audio-sync.js","utf8");
+const SYNC=fs.readFileSync(__dirname+"/../functions/audio-sync.js","utf8");
 function lift(name){
   const i=SYNC.indexOf("function "+name+"(");
   if(i<0) throw new Error("couldn't find "+name+"() in audio-sync.js");

@@ -1,5 +1,5 @@
 // The one generic tool-call endpoint. Every one of daisey.html's ~27
-// Trello/Google call sites, through the shim in tools/_standalone-src,
+// Trello/Google call sites, through the shim in daisey/_standalone-src,
 // ends up here as {server, tool, input}. Verify session -> get/refresh
 // tokens -> dispatch -> shape the response -> return {payload}.
 const { getUserId } = require("./_daisey-lib/session");

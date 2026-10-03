@@ -1,7 +1,7 @@
 // Google redirects here after consent. Verifies `state`, exchanges the code
 // for tokens, mints/reuses a userId keyed to the Google account, stores the
 // tokens, creates a session, redirects into the app. If Trello isn't linked
-// yet, redirects with ?needsTrello=1 instead (see tools/_standalone-src —
+// yet, redirects with ?needsTrello=1 instead (see daisey/_standalone-src —
 // the app's login gate reads that).
 const crypto = require("crypto");
 const { saveGoogleTokens, hasTrello } = require("./_daisey-lib/tokens");
@@ -11,7 +11,7 @@ const { openStore } = require("./_daisey-lib/blobs");
 const CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 const CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
 const SESSION_SECRET = process.env.SESSION_SECRET;
-const REDIRECT_URI = "https://morsedero.com/.netlify/functions/daisey-auth-google-callback";
+const REDIRECT_URI = "https://morsedero.com/.daisey/functions/daisey-auth-google-callback";
 
 function sign(value) {
   return crypto.createHmac("sha256", SESSION_SECRET).update(value).digest("hex");

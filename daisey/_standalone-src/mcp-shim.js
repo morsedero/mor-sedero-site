@@ -1,7 +1,7 @@
 /* ============================================================
    STANDALONE ONLY — spliced into daisey.html by build-standalone.js
    at the BUILD-STANDALONE:MCP-RESOLVE marker inside boot(). Never
-   present in the Claude artifact. See tools/CLAUDE.md's "Daisey
+   present in the Claude artifact. See daisey/CLAUDE.md's "Daisey
    standalone" section for the architecture this implements.
    ============================================================ */
 
@@ -13,7 +13,7 @@
    (credentials:"include"); the shim itself holds no token, ever. */
 function standaloneMcp(){
   async function callTool(server, tool, input){
-    const res = await fetch("/.netlify/functions/daisey-proxy", {
+    const res = await fetch("/.daisey/functions/daisey-proxy", {
       method:"POST", credentials:"include",
       headers:{ "Content-Type":"application/json" },
       body: JSON.stringify({ server, tool, input })
@@ -95,7 +95,7 @@ function standaloneMcp(){
    callTool path so there's still only one request shape to reason about. */
 async function checkStandaloneSession(){
   try{
-    const res = await fetch("/.netlify/functions/daisey-proxy", {
+    const res = await fetch("/.daisey/functions/daisey-proxy", {
       method:"POST", credentials:"include",
       headers:{ "Content-Type":"application/json" },
       body: JSON.stringify({ server:"Session", tool:"whoami", input:{} })
@@ -119,7 +119,7 @@ function renderLoginGate(){
   wrap.appendChild(el("p",null,"Connect your Google Calendar and Trello. Nothing is shared with anyone else — this runs entirely against your own accounts."));
   const acts = el("div","acts");
   const g = el("a","btn primary","Sign in with Google");
-  g.href = "/.netlify/functions/daisey-auth-google-start";
+  g.href = "/.daisey/functions/daisey-auth-google-start";
   acts.appendChild(g);
   wrap.appendChild(acts);
   wrap.appendChild(el("p","dim","Trello connects as a second step, right after."));
@@ -138,7 +138,7 @@ function renderTrelloLinkGate(){
   wrap.appendChild(el("p",null,"One more step — Daisey reads your boards and writes the plan back as cards."));
   const acts = el("div","acts");
   const t = el("a","btn primary","Connect Trello");
-  t.href = "/.netlify/functions/daisey-auth-trello-start";
+  t.href = "/.daisey/functions/daisey-auth-trello-start";
   acts.appendChild(t);
   wrap.appendChild(acts);
   return wrap;

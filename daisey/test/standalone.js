@@ -1,6 +1,6 @@
 /* Build order step 2: prove the daisey.html -> daisey-standalone.html splice
  * actually works end to end — real HTTP to a mock proxy standing in for
- * netlify/functions/daisey-proxy.js, no window.claude anywhere in the page.
+ * daisey/functions/daisey-proxy.js, no window.claude anywhere in the page.
  *
  * This is the step that has to pass before any OAuth/Netlify Function work
  * starts: if the shim/splice itself is broken, nothing built on top of it
@@ -18,7 +18,7 @@ const fs = require("fs");
 const { chromium } = require("playwright");
 const mockProxy = require("./mock-proxy");
 
-const STANDALONE_HTML = __dirname + "/../daisey-standalone.html";
+const STANDALONE_HTML = __dirname + "/../../site/daisey/index.html";
 
 (async () => {
   const bad = [];

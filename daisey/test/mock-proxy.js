@@ -1,9 +1,9 @@
-/* A tiny HTTP server standing in for netlify/functions/daisey-proxy.js.
+/* A tiny HTTP server standing in for daisey/functions/daisey-proxy.js.
  *
  * Build order step 2: prove the daisey.html -> daisey-standalone.html splice
  * actually works — that the app boots, watches fire, writes land — before
  * any real OAuth or Netlify Function exists. Fixture shapes mirror
- * tools/test/harness.js's FIX/LISTS/CHECKLISTS, but with BARE ids (no ARI
+ * daisey/test/harness.js's FIX/LISTS/CHECKLISTS, but with BARE ids (no ARI
  * wrapping) since that's what real Trello/Google REST returns and what the
  * real daisey-proxy.js will produce — see build-standalone plan §3/§5:
  * bareId() becomes a no-op once ids are already bare, nothing else needs to
@@ -125,7 +125,7 @@ function handle(server, tool, input){
   return {};
 }
 
-/* Serves BOTH the app html (so fetch("/.netlify/functions/daisey-proxy",...)
+/* Serves BOTH the app html (so fetch("/.daisey/functions/daisey-proxy",...)
    resolves same-origin — relative fetch paths need a real http:// origin,
    not file://) and the mock proxy endpoint, on one port. `html` is the
    already-read daisey-standalone.html contents. */

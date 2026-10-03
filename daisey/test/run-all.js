@@ -6,8 +6,8 @@
 
    Two jobs, and the first matters more than the second:
 
-   1. REFRESH THE COPY. Every test reads `tools/test/daisey.html`, which is a
-      gitignored manual copy of `tools/daisey.html`. It goes stale silently
+   1. REFRESH THE COPY. Every test reads `daisey/test/daisey.html`, which is a
+      gitignored manual copy of `daisey/daisey.html`. It goes stale silently
       and the suite then passes against whatever the file said last time
       somebody copied it — that is not theoretical, a `moveAssetTo` fix was
       once "confirmed" by a green tracker.js still driving the old shape.

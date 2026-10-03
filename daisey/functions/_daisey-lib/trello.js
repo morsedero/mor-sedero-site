@@ -1,7 +1,7 @@
 // Maps the app's Trello tool calls onto real Trello REST. Response shapes
-// mirror tools/test/harness.js's fixtures exactly, minus ARI wrapping —
+// mirror daisey/test/harness.js's fixtures exactly, minus ARI wrapping —
 // real ids are already bare, and bareId() in daisey.html is a no-op on
-// them, so nothing there needs to change. See tools/CLAUDE.md's
+// them, so nothing there needs to change. See daisey/CLAUDE.md's
 // "Daisey standalone" section for the full shape-by-shape reasoning.
 const KEY = process.env.TRELLO_STANDALONE_API_KEY;
 

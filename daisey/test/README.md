@@ -1,6 +1,6 @@
 # Daisey test harness
 
-Drives the real `tools/daisey.html` in Chromium against a stubbed connector
+Drives the real `daisey/daisey.html` in Chromium against a stubbed connector
 bridge that replays the request/response shapes observed from live Trello and
 Google Calendar calls. No network, no real writes.
 
@@ -12,7 +12,7 @@ calendar grid. Scripts below scope selectors to `#pageMain` mostly out of
 habit carried over from the old two-page split — there's only the one page
 now, so it's no longer load-bearing.
 
-    cd tools/test && npm i playwright && npm test
+    cd daisey/test && npm i playwright && npm test
 
 `npm test` runs `run-all.js`, which refreshes `daisey.html` from
 `../daisey.html` first (that copy is gitignored and used to go stale
