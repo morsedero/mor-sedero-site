@@ -62,10 +62,10 @@ const calReply = !cal ? { status: 404, body: { error: "not_connected" } }
       const tm = (h) => { const d = new Date(); d.setDate(d.getDate() + 1); d.setHours(h, 0, 0, 0); return d.toISOString(); };
       const day = (n) => { const d = new Date(); d.setDate(d.getDate() + n); return d.toLocaleDateString("en-CA"); };
       return [
-        { title: "ILLUSTRATION WEEK", start: day(0), end: day(1), allDay: true, busy: false },
-        { title: "Standup", start: at(9), end: at(9, 15), allDay: false, busy: true },
-        { title: "שיעור גיטרה", start: at(13), end: at(14, 30), allDay: false, busy: true },
-        { title: "Studio session", start: at(16), end: at(18), allDay: false, busy: true },
+        { title: "ILLUSTRATION WEEK", start: day(0), end: day(1), allDay: true, busy: false, color: "#7986cb" },
+        { title: "Standup", start: at(9), end: at(9, 15), allDay: false, busy: true, color: "#33b679" },
+        { title: "שיעור גיטרה", start: at(13), end: at(14, 30), allDay: false, busy: true, color: "#f6bf26" },
+        { title: "Studio session", start: at(16), end: at(18), allDay: false, busy: true, color: "#e67c73" },
         { title: "Rehearsal", start: tm(10), end: tm(12), allDay: false, busy: true },
         { title: "Mix delivery", start: tm(15), end: tm(16), allDay: false, busy: true },
         ...[2, 3, 5].map((n) => { const d = new Date(); d.setDate(d.getDate() + n); d.setHours(11, 0, 0, 0);

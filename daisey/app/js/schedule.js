@@ -1,15 +1,16 @@
-// The Schedule panel: what Google Calendar says a day holds. One day at a
-// time, with ‹ › to step up to a week ahead (Mor, 2026-10-04: today and
-// tomorrow stacked in one card was both too much and not enough). Read-only
-// — Daisey never writes to the calendar in v1.
+// The Schedule panel: what Google Calendar says a day holds. One day fills
+// the panel and the days slide sideways — swipe, or use ‹ › — up to a week
+// ahead. Read-only; Daisey never writes to the calendar in v1.
 //
-// The same read as the Now card's free window (calendar.js), so the panel
-// and the greeting can never disagree. Events already finished are kept, in
-// grey, because a day you can't see the start of is hard to place yourself in.
+// It reads the same fetch as the Now card's free window (calendar.js), so
+// the panel and the card can never disagree. Events already finished stay,
+// in grey, because a day you can't see the start of is hard to place
+// yourself in, and a red line marks where "now" falls, as Google's does.
 import { watchCalendar } from "./calendar.js";
 import { localDate } from "./model.js";
 import { h, bdi, dur } from "./ui.js";
 
+const DAYS_AHEAD = 7; // as far as the days slide, and as far as the fetch reaches
 const clock = (iso) => new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
 const NOTE = {
   loading: "Checking the calendar…",
@@ -18,75 +19,114 @@ const NOTE = {
   error: "Couldn't reach the calendar.",
 };
 
-// Each event, plus the gap before it, so the free stretches are visible —
-// that is what the panel is for. `from` is where the day's clock starts:
-// now, for today. Tomorrow has no "now", so it shows no opening gap —
-// "7 h 59 min free" before a 10:00 rehearsal is noise, not information.
+// "Today", "Tomorrow", then the weekday and date.
+const dayLabel = (offset, ms) => (offset === 0 ? "Today" : offset === 1 ? "Tomorrow"
+  : new Date(ms).toLocaleDateString([], { weekday: "long", day: "numeric", month: "short" }));
+
+const dayStart = (now, offset) => { const d = new Date(now); d.setDate(d.getDate() + offset); return d.getTime(); };
+
+// Each event, the gap before it, and — on today — the line marking now.
+// `from` is where the day's clock starts: now, for today; null otherwise,
+// since "7 h 59 min free" before a 10:00 rehearsal is noise, not information.
 function dayRows(events, now, from){
   const rows = [];
   let cursor = from;
+  let marked = from == null; // the now line belongs to today alone
   for (const e of events) {
     const start = Date.parse(e.start), end = Date.parse(e.end || e.start);
+    // The line comes before the gap it starts, not after it.
+    if (!marked && !e.allDay && start > now) { rows.push({ nowLine: true }); marked = true; }
     if (!e.allDay && cursor != null && start > cursor) {
       const gap = Math.round((start - cursor) / 60000);
       if (gap >= 15) rows.push({ gap, minutes: gap });
     }
-    rows.push({ event: e, past: !e.allDay && end <= now, running: !e.allDay && start <= now && end > now });
-    if (!e.allDay) cursor = Math.max(cursor, end);
+    const running = !e.allDay && start <= now && end > now;
+    rows.push({ event: e, past: !e.allDay && end <= now, running });
+    if (running) marked = true; // the line would fall inside this event; its own highlight says so
+    if (!e.allDay) cursor = Math.max(cursor ?? start, end);
   }
+  if (!marked && rows.length) rows.push({ nowLine: true }); // everything today is already over
   return rows;
-}
-
-const DAYS_AHEAD = 7; // as far as the step arrows go, and as far as the fetch reaches
-
-// "Today", "Tomorrow", then the weekday and date.
-function dayLabel(offset, date){
-  if (offset === 0) return "Today";
-  if (offset === 1) return "Tomorrow";
-  return new Date(date).toLocaleDateString([], { weekday: "long", day: "numeric", month: "short" });
 }
 
 export function mountSchedule(root){
   let cal = { status: "loading", events: [] };
   let offset = 0; // days from today
+  let strip = null; // the sliding row of days
+  let heading, back, prev, next;
 
-  function day(now){
-    const when = new Date(now); when.setDate(when.getDate() + offset);
-    const date = localDate(when.getTime());
-    const events = cal.events.filter((e) => localDate(Date.parse(e.start)) === date)
-      .sort((a, b) => (a.allDay === b.allDay ? Date.parse(a.start) - Date.parse(b.start) : a.allDay ? -1 : 1));
-    // Only today has a "now" to measure the first gap from.
-    const rows = dayRows(events, now, offset === 0 ? now : null);
-    return h("section", { className: "sch-day" },
-      rows.length === 0
-        ? h("p", { className: "muted sch-free", textContent: "Nothing on the calendar." })
-        : h("ul", { className: "sch-list" }, ...rows.map((r) => r.gap
-          ? h("li", { className: "sch-gap", textContent: `${dur(r.minutes)} free` })
-          : h("li", { className: "sch-row" + (r.past ? " past" : "") + (r.running ? " running" : "") },
-            h("span", { className: "sch-time", textContent: r.event.allDay ? "all day" : clock(r.event.start) }),
-            h("span", { className: "sch-title" }, bdi(r.event.title),
-              r.running && h("span", { className: "sch-now", textContent: "now" }))))));
+  function eventRow(r){
+    const e = r.event;
+    const time = e.allDay ? "all day" : e.end ? `${clock(e.start)}–${clock(e.end)}` : clock(e.start);
+    return h("li", { className: "sch-row" + (r.past ? " past" : "") + (r.running ? " running" : "") },
+      // The colour is the one the user sees in Google Calendar.
+      h("span", { className: "sch-dot", style: e.color ? `background:${e.color}` : "" }),
+      h("span", { className: "sch-time", textContent: time }),
+      h("span", { className: "sch-title" }, bdi(e.title),
+        r.running && h("span", { className: "sch-now", textContent: "now" })));
   }
 
-  const step = (by, label, disabled) => h("button", {
-    className: "sch-step", type: "button", textContent: by < 0 ? "‹" : "›", ariaLabel: label, disabled,
-    onclick: () => { offset = Math.min(DAYS_AHEAD, Math.max(0, offset + by)); render(); },
+  function dayPanel(now, n){
+    const date = localDate(dayStart(now, n));
+    const events = cal.events.filter((e) => localDate(Date.parse(e.start)) === date)
+      .sort((a, b) => (a.allDay === b.allDay ? Date.parse(a.start) - Date.parse(b.start) : a.allDay ? -1 : 1));
+    const rows = dayRows(events, now, n === 0 ? now : null);
+    return h("section", { className: "sch-day", ariaLabel: dayLabel(n, dayStart(now, n)) },
+      events.length === 0
+        ? h("p", { className: "muted sch-free", textContent: "Nothing on the calendar." })
+        : h("ul", { className: "sch-list" }, ...rows.map((r) => (r.nowLine
+          ? h("li", { className: "sch-nowline" }, h("span", { className: "sch-nowtime", textContent: clock(now) }))
+          : r.gap ? h("li", { className: "sch-gap", textContent: `${dur(r.minutes)} free` })
+          : eventRow(r)))));
+  }
+
+  // The header follows whichever day the strip is resting on.
+  function head(){
+    const now = Date.now();
+    heading.textContent = dayLabel(offset, dayStart(now, offset));
+    prev.disabled = offset === 0;
+    next.disabled = offset === DAYS_AHEAD;
+    back.hidden = offset === 0;
+  }
+
+  function setOffset(n, smooth = true){
+    offset = Math.min(DAYS_AHEAD, Math.max(0, n));
+    if (strip) strip.scrollTo({ left: offset * strip.clientWidth, behavior: smooth ? "smooth" : "auto" });
+    head();
+  }
+
+  const step = (by, label) => h("button", {
+    className: "sch-step", type: "button", textContent: by < 0 ? "‹" : "›", ariaLabel: label,
+    onclick: () => setOffset(offset + by),
   });
 
   function render(){
     const now = Date.now();
-    const when = new Date(now); when.setDate(when.getDate() + offset);
-    root.replaceChildren(...[
-      h("header", { className: "sch-nav" },
-        step(-1, "The day before", offset === 0),
-        h("h2", { className: "sch-head", textContent: dayLabel(offset, when.getTime()) }),
-        step(1, "The day after", offset === DAYS_AHEAD)),
-      NOTE[cal.status] && h("p", { className: "muted sch-note" }, NOTE[cal.status],
-        ["not_connected", "needs_reauth"].includes(cal.status) ? h("a", { href: "/daisey/", textContent: " Open old Daisey" }) : null),
-      cal.status === "ok" && day(now),
-      cal.status === "ok" && offset > 0 && h("button", { className: "btn quiet sch-today", type: "button",
-        textContent: "Back to today", onclick: () => { offset = 0; render(); } }),
-    ].filter(Boolean));
+    heading = h("h2", { className: "sch-head" });
+    prev = step(-1, "The day before");
+    next = step(1, "The day after");
+    back = h("button", { className: "btn quiet sch-today", type: "button", textContent: "Back to today",
+      hidden: true, onclick: () => setOffset(0) });
+
+    const kids = [h("header", { className: "sch-nav" }, prev, heading, next)];
+    if (NOTE[cal.status]) {
+      kids.push(h("p", { className: "muted sch-note" }, NOTE[cal.status],
+        ["not_connected", "needs_reauth"].includes(cal.status)
+          ? h("a", { href: "/daisey/", textContent: " Open old Daisey" }) : null));
+    }
+    if (cal.status === "ok") {
+      strip = h("div", { className: "sch-strip" }, ...Array.from({ length: DAYS_AHEAD + 1 }, (_, n) => dayPanel(now, n)));
+      // Swiping is the main way through the week; the arrows only scroll it.
+      strip.onscroll = () => {
+        const n = Math.round(strip.scrollLeft / strip.clientWidth);
+        if (n !== offset) { offset = n; head(); }
+      };
+      kids.push(strip, back);
+    } else strip = null;
+
+    root.replaceChildren(...kids);
+    head();
+    if (strip) strip.scrollLeft = offset * strip.clientWidth; // hold the day across re-renders
   }
 
   const unsub = watchCalendar((c) => { cal = c; render(); });

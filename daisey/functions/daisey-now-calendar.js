@@ -1,7 +1,9 @@
 // Daisey v1's calendar read: GET ?from=ISO&to=ISO with
 // "Authorization: Bearer <Firebase ID token>". Returns the primary
 // calendar's agenda for that range:
-//   { events: [{ title, start, end, allDay, busy }] }
+//   { events: [{ title, start, end, allDay, busy, color }] }
+// `color` is the hex the user sees in Google Calendar — the event's own
+// colour if it has one, else the calendar's.
 // Everything the user would see in Google Calendar is listed, so the app can
 // show the day; `busy` says whether it should also block Daisey's picks.
 // All-day entries, events marked free and ones the user declined are listed
@@ -39,7 +41,7 @@ function isBusy(e) {
   return !(e.attendees || []).some((a) => a.self && a.responseStatus === "declined");
 }
 
-function shape(e) {
+function shape(e, colors, calendarColor) {
   const allDay = !e.start.dateTime;
   return {
     title: e.summary || (allDay ? "All day" : "Busy"),
@@ -47,7 +49,29 @@ function shape(e) {
     end: e.end?.dateTime || e.end?.date || null,
     allDay,
     busy: isBusy(e),
+    // The colour the user sees in Google Calendar: the event's own if it has
+    // one, otherwise the calendar's.
+    color: (e.colorId && colors?.event?.[e.colorId]?.background) || calendarColor || null,
   };
+}
+
+const gJson = async (url, accessToken) => {
+  const res = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } });
+  return res.ok ? res.json() : null;
+};
+
+// The palette and the calendar's own colour change about never; one lookup
+// per warm function instance is plenty.
+let palette = null;
+async function colorsFor(accessToken) {
+  if (!palette) {
+    const [colors, primary] = await Promise.all([
+      gJson("https://www.googleapis.com/calendar/v3/colors", accessToken),
+      gJson("https://www.googleapis.com/calendar/v3/users/me/calendarList/primary", accessToken),
+    ]);
+    if (colors) palette = { colors, calendarColor: primary?.backgroundColor || null };
+  }
+  return palette || { colors: null, calendarColor: null };
 }
 
 exports.handler = async (event) => {
@@ -80,5 +104,6 @@ exports.handler = async (event) => {
   if (!res.ok) { console.error("daisey-now-calendar google", res.status, await res.text()); return fail(502, "google"); }
 
   const { items = [] } = await res.json();
-  return reply(200, { events: items.filter(listed).map(shape) });
+  const { colors, calendarColor } = await colorsFor(accessToken);
+  return reply(200, { events: items.filter(listed).map((e) => shape(e, colors, calendarColor)) });
 };

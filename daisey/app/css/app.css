@@ -245,9 +245,13 @@ body.focus .shell { display: grid; min-block-size: 100dvh; align-content: center
 
 /* Schedule: the calendar's own panel, between the card and the projects. */
 .sch {
-  display: grid; gap: 10px; align-content: start; padding: 14px;
+  display: grid; grid-template-rows: auto 1fr auto; gap: 8px; padding: 14px;
   background: var(--card); border: 1px solid var(--line); border-radius: var(--radius);
 }
+/* One day fills the panel; the week slides sideways under the header. */
+.sch-strip { display: flex; overflow-x: auto; overflow-y: hidden; scroll-snap-type: x mandatory; scrollbar-width: none; }
+.sch-strip::-webkit-scrollbar { display: none; }
+.sch-day { flex: 0 0 100%; scroll-snap-align: start; overflow-y: auto; }
 .sch-nav {
   position: sticky; inset-block-start: -14px; z-index: 1; background: var(--card);
   display: flex; align-items: center; gap: 4px; padding-block: 2px;
@@ -263,16 +267,21 @@ body.focus .shell { display: grid; min-block-size: 100dvh; align-content: center
 .sch-today { justify-self: start; min-block-size: 34px; padding-inline: 10px; font-size: 13px; }
 .sch-head { margin: 0; font-size: 17px; }
 .sch-note { margin: 0; font-size: 13px; }
-.sch-day { display: grid; gap: 6px; }
 .sch-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
-.sch-row { display: flex; gap: 10px; align-items: baseline; padding-block: 4px; }
+.sch-row { display: flex; gap: 8px; align-items: baseline; padding-block: 4px; }
+.sch-dot { flex: none; inline-size: 8px; block-size: 8px; border-radius: 50%; background: var(--ink-2); align-self: center; }
+.sch-row.past .sch-dot { background: var(--ink-2); }
 .sch-row.past { opacity: .45; }
 .sch-row.running { font-weight: 700; }
-.sch-time { flex: none; inline-size: 52px; font-size: 13px; font-variant-numeric: tabular-nums; color: var(--ink-2); }
+.sch-time { flex: none; inline-size: 86px; font-size: 12px; font-variant-numeric: tabular-nums; color: var(--ink-2); }
 .sch-row.running .sch-time { color: var(--ink); }
 .sch-title { min-inline-size: 0; overflow-wrap: anywhere; }
 .sch-now { margin-inline-start: 6px; padding: 1px 7px; border-radius: 999px; font-size: 11px; font-weight: 700; text-transform: uppercase; background: var(--accent); color: var(--on-accent); }
-.sch-gap { font-size: 13px; color: var(--ink-2); padding-inline-start: 62px; }
+.sch-gap { font-size: 13px; color: var(--ink-2); padding-inline-start: 94px; }
+/* Where "now" falls, the way Google draws it. */
+.sch-nowline { display: flex; align-items: center; gap: 6px; margin-block: 2px; }
+.sch-nowline::after { content: ""; flex: 1; block-size: 2px; background: #ea4335; border-radius: 2px; }
+.sch-nowtime { flex: none; inline-size: 86px; font-size: 11px; font-weight: 700; color: #ea4335; font-variant-numeric: tabular-nums; }
 .sch-free { margin: 0; }
 
 /* Tasks board: columns per project, scroll sideways on a phone. */
