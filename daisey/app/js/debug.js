@@ -14,6 +14,7 @@ export function mountDebug(root, uid){
   let tasks = [];
   let tab = "open";
   let lastMeta = {};
+  let onCard = null; // id of the task on the Now card
   const msg = h("p", { className: "msg", role: "alert" });
   const fail = (e) => { console.error("[daisey] debug", e); msg.textContent = e.message || String(e); };
 
@@ -61,17 +62,23 @@ export function mountDebug(root, uid){
 
   function render(meta = {}){
     lastMeta = meta;
-    const open = tasks.filter((t) => t.status !== "done")
+    // The task on the Now card is set aside; it returns when the card moves
+    // on (Not now, Something else) or lands in Done.
+    const open = tasks.filter((t) => t.status !== "done" && t.id !== onCard)
       .sort((a, b) => (a.status === "waiting") - (b.status === "waiting") || b.createdAt - a.createdAt);
     const done = tasks.filter((t) => t.status === "done").sort((a, b) => (b.doneAt || 0) - (a.doneAt || 0));
     tabs.open.textContent = `Open ${open.length}`;
     tabs.done.textContent = `Done ${done.length}`;
     for (const id of ["open", "done"]) tabs[id].setAttribute("aria-selected", String(tab === id));
-    offline.textContent = meta.fromCache ? "offline copy" : "";
+    offline.textContent = [onCard && tasks.some((t) => t.id === onCard && t.status !== "done") && "1 on the Now card",
+      meta.fromCache && "offline copy"].filter(Boolean).join(" · ");
     list.replaceChildren(...(tab === "open" ? open.map(row) : done.map(doneRow)));
   }
 
   root.hidden = false;
   const unsub = watchTasks(uid, (ts, meta) => { tasks = ts; render(meta); }, fail);
-  return () => { unsub(); root.hidden = true; root.replaceChildren(); };
+  return {
+    setCurrent(id){ onCard = id; render(lastMeta); },
+    unmount(){ unsub(); root.hidden = true; root.replaceChildren(); },
+  };
 }

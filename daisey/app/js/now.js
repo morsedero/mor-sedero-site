@@ -11,12 +11,16 @@ import { h, sizeText } from "./ui.js";
 
 const minText = (m) => (m >= 60 ? `${+(m / 60).toFixed(1)} h` : `${m} min`);
 
-export function mountNow(root, uid){
+// onCard(id | null) fires whenever the task on the card changes, so the task
+// list can set it aside while it's "physically" on the card.
+export function mountNow(root, uid, { onCard } = {}){
   let tasks = null; // null until the first snapshot
   let today = null;
   const state = { chosen: null, showAlts: false };
   const skips = new Set();
   const reset = () => { state.chosen = null; state.showAlts = false; };
+  let shown;
+  const showing = (id) => { if (id !== shown) { shown = id; onCard?.(id); } };
 
   function taskCard(s, main){
     return h("div", { className: "now-card" + (main ? " main" : "") },
@@ -38,6 +42,7 @@ export function mountNow(root, uid){
     const window = plan?.hours ? plan.hours * 60 : undefined;
     const r = rank(tasks, { window, sessionSkips: [...skips], todayPicks: picks });
     const card = (state.chosen && r.ranked.find((s) => s.task.id === state.chosen)) || r.pick;
+    showing(card?.task.id ?? null);
     if (!card) {
       fill(...head, h("p", { className: "now-empty", textContent: r.empty === "none"
         ? "No tasks yet. Add a few and Daisey will pick."
@@ -71,6 +76,6 @@ export function mountNow(root, uid){
 
   return {
     refresh: render,
-    unmount(){ unsubs.forEach((u) => u()); document.removeEventListener("visibilitychange", onVisible); root.replaceChildren(); root.hidden = true; },
+    unmount(){ showing(null); unsubs.forEach((u) => u()); document.removeEventListener("visibilitychange", onVisible); root.replaceChildren(); root.hidden = true; },
   };
 }

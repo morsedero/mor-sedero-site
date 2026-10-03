@@ -19,7 +19,8 @@ if (!configured) {
 
 async function boot(){
   const fb = await import("./firebase.js");
-  let unmountDebug = null;
+  let debug = null;
+  let onCard = null; // task id on the Now card, shared with the debug list
   let now = null;
   let checkin = null;
   let adder = null;
@@ -43,7 +44,7 @@ async function boot(){
   $("#signout").onclick = () => { setMenu(false); fb.signOut(); };
 
   fb.onUser((user) => {
-    if (unmountDebug) { unmountDebug(); unmountDebug = null; }
+    if (debug) { debug.unmount(); debug = null; }
     if (now) { now.unmount(); now = null; }
     $("#actions").hidden = true;
     if (checkin) { checkin.unmount(); checkin = null; }
@@ -66,7 +67,7 @@ async function boot(){
     // Now card on top; the check-in opens by itself on the day's first visit.
     Promise.all([import("./now.js"), import("./checkin.js"), import("./addtask.js")]).then(([{ mountNow }, { mountCheckin }, { mountAddTask }]) => {
       if (fb.currentUid() !== user.uid || now) return;
-      now = mountNow($("#nowcard"), user.uid);
+      now = mountNow($("#nowcard"), user.uid, { onCard: (id) => { onCard = id; debug?.setCurrent(id); } });
       checkin = mountCheckin($("#checkin"), user.uid, { onSaved: () => now?.refresh() });
       adder = mountAddTask($("#addtask"), user.uid);
       $("#replan").onclick = () => checkin.open();
@@ -76,7 +77,9 @@ async function boot(){
 
     if (DEBUG) {
       import("./debug.js").then(({ mountDebug }) => {
-        if (fb.currentUid() === user.uid && !unmountDebug) unmountDebug = mountDebug($("#debug"), user.uid);
+        if (fb.currentUid() !== user.uid || debug) return;
+        debug = mountDebug($("#debug"), user.uid);
+        debug.setCurrent(onCard);
       }).catch((e) => console.error("[daisey] debug", e));
     }
   });
