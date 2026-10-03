@@ -10,14 +10,17 @@
 // alternatives, tap one to make it the card. Start → focus mode (focus.js):
 // the run lives in Firestore, so this tab, a reload and the phone all show
 // the same timer.
-import { watchTasks, watchRun, startRun, extendRun, endRun, skipNow, blockTask, restoreTask } from "./store.js";
+import { watchTasks, watchRun, watchSkips, saveSkips, startRun, extendRun, endRun, skipNow, blockTask, restoreTask } from "./store.js";
 import { focusView, handoffView, elapsedMinutes } from "./focus.js";
 import { watchCalendar } from "./calendar.js";
+import { LATER_MINUTES } from "./weights.js";
 import { rank, timeBucket, freeWindow, whySaid } from "./engine.js";
-import { skipSnapshot } from "./model.js";
+import { localDate, skipSnapshot } from "./model.js";
 import { h, icon, bdi, pieces, sizeText, dur } from "./ui.js";
 
 const GREETING = { morning: "Morning.", afternoon: "Afternoon.", evening: "Evening." };
+const LATER_MS = LATER_MINUTES * 60000;
+const RECENT_DAYS = 2;
 const UNDO_MS = 5000;
 const SLIDE_MS = 140; // matches the card-out animation in app.css
 const motionOK = () => !window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
@@ -39,7 +42,30 @@ export function mountNow(root, uid, { onCard } = {}){
   let slideIn = false; // one slide per step-aside, not one per snapshot
   let toastTimer = null;
   const state = { chosen: null, showAlts: false, asking: false };
-  const skips = new Set();
+  // { date, items: { id: { count, until } } } — today's Laters, from Firestore.
+  let skipDoc = null;
+  const skipItems = () => (skipDoc?.date === localDate() ? skipDoc.items || {} : {});
+  const hidden = (now = Date.now()) => Object.entries(skipItems()).filter(([, v]) => v.until > now).map(([id]) => id);
+  const skipCounts = () => Object.fromEntries(Object.entries(skipItems()).map(([id, v]) => [id, v.count]));
+  const skips = {
+    add(id){
+      const items = { ...skipItems() };
+      items[id] = { count: (items[id]?.count || 0) + 1, until: Date.now() + LATER_MS };
+      skipDoc = { date: localDate(), items };
+      saveSkips(uid, skipDoc).catch(fail);
+    },
+    delete(id){
+      const items = { ...skipItems() };
+      delete items[id];
+      skipDoc = { date: localDate(), items };
+      saveSkips(uid, skipDoc).catch(fail);
+    },
+    clear(){
+      skipDoc = { date: localDate(), items: {} };
+      saveSkips(uid, skipDoc).catch(fail);
+    },
+    get size(){ return hidden().length; },
+  };
   const reset = () => { state.chosen = null; state.showAlts = false; state.asking = false; };
   let shown;
   const showing = (id) => { if (id !== shown) { shown = id; onCard?.(id); } };
@@ -97,7 +123,7 @@ export function mountNow(root, uid, { onCard } = {}){
     if (el && motionOK()) { el.classList.add("out"); setTimeout(go, SLIDE_MS); } else go();
   }
 
-  const later = (task) => stepAside(task, { label: "Later: ", write: () => skipNow(uid, task) });
+  const later = (task) => stepAside(task, { label: `Later (${dur(LATER_MINUTES)}): `, write: () => skipNow(uid, task) });
   const pending = (task) => stepAside(task, { label: "Pending: ", write: () => blockTask(uid, task) });
 
   function setToast(t){
@@ -129,17 +155,33 @@ export function mountNow(root, uid, { onCard } = {}){
     className: "iconbtn", type: "button", title: `${label} — ${hint}`, ariaLabel: `${label}: ${hint}`, ...props,
   }, icon(name), h("span", { className: "iconbtn-text", textContent: label }));
 
-  // What the engine knows about this moment, from the calendar if it answered.
-  const momentInput = (fw = cal.status === "ok" ? freeWindow(cal.events) : null) => (fw
-    ? { window: fw.window, nextEvent: fw.next?.title ?? null }
-    : { realWindow: false });
+  // What the engine knows about this moment: the calendar's window if it
+  // answered, today's Laters, and which projects are already warm — momentum
+  // and the skip penalty were both scoring zero until this was passed in.
+  function momentInput(fw = cal.status === "ok" ? freeWindow(cal.events) : null){
+    const now = Date.now(), today = localDate(now);
+    // Worked on, not merely added or edited: otherwise every project you
+    // typed in today counts as momentum and the why line says "back to X"
+    // about everything.
+    const worked = (tasks || []).filter((t) => t.touchedAt && (t.starts || t.doneAt || t.spentMinutes))
+      .sort((a, b) => b.touchedAt - a.touchedAt);
+    const lastToday = worked.find((t) => localDate(t.touchedAt) === today);
+    return {
+      ...(fw ? { window: fw.window, nextEvent: fw.next?.title ?? null } : { realWindow: false }),
+      lastProject: lastToday?.project || null,
+      recentProjects: worked.filter((t) => now - t.touchedAt < RECENT_DAYS * 864e5).map((t) => t.project),
+      sessionSkips: hidden(now),
+      skipsToday: skipCounts(),
+    };
+  }
 
   function render(){
     document.body.classList.toggle("focus", !!run || !!handoff);
     if (run) { fill(renderFocus()); return; }
     if (handoff) {
       // The task just worked on isn't offered straight back.
-      const r = rank(tasks || [], { ...momentInput(), sessionSkips: [...skips, handoff.skip] });
+      const m = momentInput();
+      const r = rank(tasks || [], { ...m, sessionSkips: [...m.sessionSkips, handoff.skip] });
       fill(handoffView(handoff.title, r.pick, {
         onStart: begin,
         onSkip: (task) => { if (task) skips.add(task.id); handoff = null; showing(null); render(); },
@@ -159,7 +201,7 @@ export function mountNow(root, uid, { onCard } = {}){
 
     if (tasks == null) { fill(greet, h("p", { className: "muted", textContent: "Loading tasks…" })); return; }
 
-    const r = rank(tasks, { ...momentInput(fw), sessionSkips: [...skips] });
+    const r = rank(tasks, momentInput(fw));
     const card = (state.chosen && r.ranked.find((s) => s.task.id === state.chosen)) || r.pick;
     showing(card?.task.id ?? null);
     const tip = toast && toastView();
@@ -169,7 +211,7 @@ export function mountNow(root, uid, { onCard } = {}){
           ? "No tasks yet. Add a few and Daisey will pick."
           : fw?.current ? "Nothing to pick until it ends."
           : `Nothing fits the next ${dur(r.moment.window)}. Take the break.` }),
-        skips.size > 0 && h("button", { className: "btn quiet", type: "button", textContent: `Show the ${skips.size} you skipped`, ariaLabel: `Show the ${skips.size} tasks you skipped this session`, onclick: () => { skips.clear(); setToast(null); render(); } })), tip);
+        skips.size > 0 && h("button", { className: "btn quiet", type: "button", textContent: `Show the ${skips.size} you put off`, ariaLabel: `Show the ${skips.size} tasks you put off today`, onclick: () => { skips.clear(); setToast(null); render(); } })), tip);
       return;
     }
 
@@ -200,6 +242,7 @@ export function mountNow(root, uid, { onCard } = {}){
     watchTasks(uid, (ts) => { tasks = ts; render(); }, fail),
     watchCalendar((c) => { cal = c; render(); }),
     watchRun(uid, (r) => { run = r; if (r) handoff = null; render(); }, fail),
+    watchSkips(uid, (s) => { skipDoc = s; render(); }, fail),
   ];
   // The timer ticks every second while running; otherwise this only
   // re-renders when the free window's minute changes.

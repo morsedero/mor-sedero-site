@@ -8,8 +8,8 @@ let tasks = (seed.tasks || []).map((t) => ({ id: "t" + ++n, ...createTask(t), ..
 // seed.run: { task: <title>, minutes: <elapsed>, extra } — a run already going.
 const run = seed.run && (() => { const t = tasks.find((x) => x.title === seed.run.task) || tasks[0];
   return { taskId: t.id, startedAt: Date.now() - (seed.run.minutes || 0) * 60000, extra: seed.run.extra || 0 }; })();
-const docs = { now: run || null };
-const subs = { tasks: new Set(), now: new Set() };
+const docs = { now: run || null, skips: seed.skips ?? null };
+const subs = { tasks: new Set(), now: new Set(), skips: new Set() };
 
 const emit = (k) => setTimeout(() => { for (const cb of subs[k]) cb(k === "tasks" ? tasks.map((t) => ({ ...t })) : docs[k], {}); });
 const watch = (k) => (uid, cb) => { subs[k].add(cb); setTimeout(() => cb(k === "tasks" ? tasks.map((t) => ({ ...t })) : docs[k], {})); return () => subs[k].delete(cb); };
@@ -20,6 +20,8 @@ export const skipNow = (uid, task) => patchTask(uid, task.id, skipTask(task));
 export const blockTask = (uid, task) => patchTask(uid, task.id, { ...skipTask(task), ...skipReason(task, "blocked") });
 export const restoreTask = (uid, id, fields) => patchTask(uid, id, fields);
 export const watchRun = watch("now");
+export const watchSkips = watch("skips");
+export const saveSkips = (uid, state) => { docs.skips = state; return ok("skips"); };
 export const startRun = (uid, task) => { docs.now = { taskId: task.id, startedAt: Date.now(), extra: 0 }; patchTask(uid, task.id, startedTask(task)); return ok("now"); };
 export const extendRun = (uid, run, m) => { docs.now = { ...run, extra: (run.extra || 0) + m }; return ok("now"); };
 export const endRun = (uid, task, minutes, o = {}) => { docs.now = null; if (task) patchTask(uid, task.id, workedTask(task, minutes, o)); return ok("now"); };

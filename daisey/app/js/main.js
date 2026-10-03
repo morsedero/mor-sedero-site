@@ -65,7 +65,8 @@ async function boot(){
         const m = mounted = {};
         m.adder = mountAddTask($("#addtask"), user.uid);
         // The Now card rides in the same scroller as the columns, first in line.
-         m.tasks = mountTasks($("#board"), user.uid, { lead: $("#nowcard"), onAdd: (project) => m.adder.open(project) });
+         m.tasks = mountTasks($("#board"), user.uid, { lead: $("#nowcard"),
+          onAdd: (project) => m.adder.open(project), onEdit: (task) => m.adder.edit(task) });
         m.now = mountNow($("#nowcard"), user.uid, { onCard: (id) => { onCard = id; m.tasks?.setCurrent(id); } });
         m.tasks.setCurrent(onCard);
         $("#add").onclick = () => m.adder.open();

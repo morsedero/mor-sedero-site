@@ -29,6 +29,16 @@ const SCENARIOS = {
     { title: "Mix review", project: "חתונה", size: 90, over: ago(3) },
   ] },
   empty: { tasks: [] },
+  one: { tasks: [{ title: "Send invoice to Uri", project: "Admin", size: 5, due: day(0) }] },
+  long: { tasks: [
+    { title: "Follow up with the production company about the revised cue sheet and the delivery deadline", project: "Reprise Productions International", size: 90 },
+    { title: "x", project: "A", size: 5 },
+  ] },
+  many: { tasks: Array.from({ length: 9 }, (_, i) => ({ title: `Task ${i + 1}`, project: `Project ${i + 1}`, size: 30 })) },
+  waiting: { tasks: [
+    { title: "Waiting on Yuval", project: "Reprise", size: 30, over: { status: "waiting", waitingOn: "Yuval" } },
+    { title: "Big edit", project: "Reprise", size: 240 },
+  ] },
 };
 
 const args = process.argv.slice(2);

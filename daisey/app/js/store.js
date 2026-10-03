@@ -49,6 +49,19 @@ export function restoreTask(uid, id, fields){
   return fb.updateDoc(taskDoc(uid, id), fields);
 }
 
+// Today's skips, users/{uid}/state/skips: { date, items: { id: { count, until } } }.
+// Later writes here, so a reload — or the other device — still knows the
+// task was pushed off, and the engine can charge its skip penalty.
+const skipsDoc = (uid) => fb.doc(fb.db, "users", uid, "state", "skips");
+
+export function watchSkips(uid, cb, onError){
+  return fb.onSnapshot(skipsDoc(uid), (snap) => cb(snap.exists() ? snap.data() : null), onError);
+}
+
+export function saveSkips(uid, state){
+  return fb.setDoc(skipsDoc(uid), state);
+}
+
 // The running task, users/{uid}/state/now: { taskId, startedAt, extra }.
 // One doc, so a reload — or the other device — finds the same timer running.
 // `extra` is minutes added by "+15 min" past the estimate.

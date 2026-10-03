@@ -15,7 +15,8 @@ export const chips = (label, options, current, pick) => h("div", { className: "n
     type: "button", className: "chip", role: "radio", ariaChecked: String(v === current), textContent: text, onclick: () => pick(v),
   }))));
 
-export const sizeText = (n) => `${n >= 90 ? "90+" : n} min`;
+// A size shows as what it is: a 4 h job must not read "90+ min".
+export const sizeText = durText;
 
 
 export const dur = durText;

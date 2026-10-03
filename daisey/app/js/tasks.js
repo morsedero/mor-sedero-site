@@ -12,7 +12,7 @@ import { h, bdi, pieces, sizeText } from "./ui.js";
 const shortDate = (s) => new Date(`${s}T12:00`).toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" });
 
 // lead: an element to keep as the first panel of the board (the Now card).
-export function mountTasks(root, uid, { onAdd, lead } = {}){
+export function mountTasks(root, uid, { onAdd, onEdit, lead } = {}){
   let tasks = null, onCard = null, menuFor = null;
   const openDone = new Set(); // projects whose Completed fold is open (survives re-renders)
   const fail = (e) => console.error("[daisey] tasks", e);
@@ -26,6 +26,7 @@ export function mountTasks(root, uid, { onAdd, lead } = {}){
     const act = (label, fn) => h("button", { type: "button", className: "tk-menu-item", textContent: label,
       onclick: () => { menuFor = null; render(); fn()?.catch(fail); } });
     return h("div", { className: "tk-menu" },
+      onEdit && act("Edit…", () => { onEdit(t); return null; }),
       t.status === "ready" && act("Waiting on…", () => {
         const who = prompt("Waiting on who or what?");
         return who == null ? null : updateTask(uid, t, { waitingOn: who || "something", status: "waiting" }, tasks);

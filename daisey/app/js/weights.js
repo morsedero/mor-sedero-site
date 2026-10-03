@@ -56,6 +56,10 @@ export const LEARNED_MIN = -10; // learned fit arrives in session 10
 export const LEARNED_MAX = 10;
 export const SKIP_PENALTY = 8; // per skip of this task today
 
+// Later: how long a skipped task stays off the card. Long enough that
+// "not now" means something, short enough that it comes back the same day.
+export const LATER_MINUTES = 120;
+
 // Something else
 export const ALTERNATIVES = 3;
 export const VARIETY_WITHIN = 15; // points; prefer another project if it scores this close
