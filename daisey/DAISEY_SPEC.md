@@ -285,7 +285,8 @@ one voice is speaking at a time.
 **Focus mode.** Start fills the screen: the task, a running timer, Done,
 Stop, nothing else. The run is stored, so a reload or the other device shows
 the same timer still going. Past the estimate it asks once, quietly — "Still
-on it? +15 min · Stuck" — with no sound and no red. Done asks "Finished, or
+on it? +15 min · Stuck" — with no sound and no red. Stop means "pause, still
+mine"; Stuck also sets the task to Pending. Done asks "Finished, or
 more left?", then hands off: the next task with its why line, Start or Not
 now. Real minutes are saved either way.
 

@@ -2,8 +2,10 @@
 // timer, Done and Stop — nothing else (the tabs, the + button and the
 // greeting are hidden by body.focus).
 //
-// Past the estimate it asks once, quietly: "Still on it? +15 min · Done ·
-// Stuck". No sound, no red — running over is normal.
+// Past the estimate it asks once, quietly: "Still on it? +15 min · Stuck".
+// No sound, no red — running over is normal. Stop means "pause, still
+// mine"; Stuck also sets the task to Pending, so Daisey stops offering it
+// until whatever is blocking clears.
 //
 // The run lives in Firestore (state/now), so a reload or the other device
 // shows the same timer still going; elapsed is always worked out from
@@ -22,7 +24,7 @@ const clock = (min) => {
 
 // run: the state/now doc. task: the task it names (may be missing if it was
 // deleted elsewhere — then only Stop is offered).
-// Callers: onDone(finished) · onStop() · onExtend(minutes).
+// Callers: onDone(finished) · onStop({ pending }) · onExtend(minutes).
 export function focusView(run, task, { onDone, onStop, onExtend }, state = {}){
   const mins = elapsedMinutes(run);
   const over = task && isOver(run, task);
@@ -49,12 +51,12 @@ export function focusView(run, task, { onDone, onStop, onExtend }, state = {}){
         h("button", { className: "chip", type: "button", textContent: "+15 min",
           ariaLabel: "Still on it: give it 15 more minutes", onclick: () => onExtend(15) }),
         h("button", { className: "chip", type: "button", textContent: "Stuck",
-          ariaLabel: "Stuck: stop here and keep the time spent", onclick: () => onStop() }))),
+          ariaLabel: "Stuck: stop and set this task to Pending", onclick: () => onStop({ pending: true }) }))),
     h("div", { className: "focus-actions" },
       h("button", { className: "btn primary", type: "button", textContent: "Done",
         ariaLabel: `Done with ${task?.title || "this task"}`, onclick: () => onDone(), disabled: !task }),
       h("button", { className: "btn quiet", type: "button", textContent: "Stop",
-        ariaLabel: "Stop without finishing; the time still counts", onclick: () => onStop() })));
+        ariaLabel: "Stop without finishing; the time still counts and the task stays yours", onclick: () => onStop() })));
 }
 
 // After Done: what Daisey would do next, offered the same way the card does.

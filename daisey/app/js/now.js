@@ -95,10 +95,12 @@ export function mountNow(root, uid, { onCard } = {}){
         endRun(uid, task, minutes, { finished }).catch(fail);
         run = null; render();
       },
-      onStop: () => {
+      // Stop keeps the task yours; Stuck also sets it Pending (Waiting).
+      onStop: ({ pending } = {}) => {
         const minutes = elapsedMinutes(run);
         state.asking = false;
-        endRun(uid, task, minutes, { finished: false }).catch(fail);
+        endRun(uid, task, minutes, { finished: false })
+          .then(() => (pending && task ? blockTask(uid, task) : null)).catch(fail);
         run = null; render();
       },
       onExtend: (m) => { const prev = run; run = { ...run, extra: (run.extra || 0) + m }; render(); extendRun(uid, prev, m).catch(fail); },
