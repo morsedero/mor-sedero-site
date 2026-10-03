@@ -206,5 +206,20 @@ export function editTask(task, changes, { now = Date.now(), history = [] } = {})
 export const completeTask = (task, { now = Date.now() } = {}) =>
   ({ status: "done", doneAt: now, skipsSinceStart: 0, touchedAt: now });
 
+// Focus mode. Starting clears the stale-skip count: a task you actually
+// start isn't one you keep refusing.
+export const startedTask = (task, { now = Date.now() } = {}) =>
+  ({ starts: (task.starts || 0) + 1, skipsSinceStart: 0, touchedAt: now });
+
+// Leaving focus mode: the real minutes always count, whether or not the
+// task is finished. `finished` completes it; otherwise it stays open and
+// the stop is recorded (two stops → Daisey offers to split it, session 10).
+export function workedTask(task, minutes, { finished = false, now = Date.now() } = {}){
+  const spent = (task.spentMinutes || 0) + Math.max(0, Math.round(minutes));
+  return finished
+    ? { ...completeTask(task, { now }), spentMinutes: spent }
+    : { spentMinutes: spent, stopsUnfinished: (task.stopsUnfinished || 0) + 1, touchedAt: now };
+}
+
 // Ready to be offered at all? engine.js filterOut adds window and skips.
 export const isAvailable = (task) => task.status === "ready";

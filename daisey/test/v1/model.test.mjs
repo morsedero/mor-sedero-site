@@ -110,6 +110,22 @@ test("done goes to Done and leaves the available list", () => {
   assert.equal(M.isAvailable({ ...t, ...p }), false);
 });
 
+test("focus mode: starting counts a start and clears the stale-skip count", () => {
+  const t = { ...M.createTask({ title: "x" }, opts), starts: 1, skipsSinceStart: 3 };
+  assert.deepEqual(M.startedTask(t, opts), { starts: 2, skipsSinceStart: 0, touchedAt: NOW });
+});
+
+test("focus mode: real minutes always count; finishing completes, stopping is recorded", () => {
+  const t = { ...M.createTask({ title: "x" }, opts), spentMinutes: 10, stopsUnfinished: 1 };
+  const more = M.workedTask(t, 12.4, opts);
+  assert.deepEqual(more, { spentMinutes: 22, stopsUnfinished: 2, touchedAt: NOW });
+  const done = M.workedTask(t, 12.6, { ...opts, finished: true });
+  assert.equal(done.spentMinutes, 23);
+  assert.equal(done.status, "done");
+  assert.equal(done.stopsUnfinished, undefined); // finishing isn't a stop
+  assert.equal(M.workedTask(t, -5, opts).spentMinutes, 10); // a clock skew never takes time away
+});
+
 test("edit: only changed fields, user values stop being guesses", () => {
   const t = { id: "a", ...M.createTask({ title: "thing" }, opts) };
   assert.deepEqual(M.editTask(t, { title: "thing" }, opts), {});

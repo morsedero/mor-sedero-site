@@ -3,7 +3,7 @@
 // only moves documents. `tasks` arguments are the current list from
 // watchTasks, used as history for "similar past tasks" guesses.
 import * as fb from "./firebase.js";
-import { createTask, editTask, completeTask } from "./model.js";
+import { createTask, editTask, completeTask, startedTask, workedTask } from "./model.js";
 
 const tasksCol = (uid) => fb.collection(fb.db, "users", uid, "tasks");
 const taskDoc = (uid, id) => fb.doc(fb.db, "users", uid, "tasks", id);
@@ -33,4 +33,32 @@ export function finishTask(uid, task){
 
 export function removeTask(uid, id){
   return fb.deleteDoc(taskDoc(uid, id));
+}
+
+// The running task, users/{uid}/state/now: { taskId, startedAt, extra }.
+// One doc, so a reload — or the other device — finds the same timer running.
+// `extra` is minutes added by "+15 min" past the estimate.
+const runDoc = (uid) => fb.doc(fb.db, "users", uid, "state", "now");
+
+export function watchRun(uid, cb, onError){
+  return fb.onSnapshot(runDoc(uid), (snap) => cb(snap.exists() ? snap.data() : null), onError);
+}
+
+export function startRun(uid, task){
+  return Promise.all([
+    fb.setDoc(runDoc(uid), { taskId: task.id, startedAt: Date.now(), extra: 0 }),
+    fb.updateDoc(taskDoc(uid, task.id), startedTask(task)),
+  ]);
+}
+
+export function extendRun(uid, run, minutes){
+  return fb.setDoc(runDoc(uid), { ...run, extra: (run.extra || 0) + minutes });
+}
+
+// Ends the run and books the time against the task.
+export function endRun(uid, task, minutes, { finished = false } = {}){
+  return Promise.all([
+    fb.deleteDoc(runDoc(uid)),
+    task ? fb.updateDoc(taskDoc(uid, task.id), workedTask(task, minutes, { finished })) : null,
+  ]);
 }

@@ -3,7 +3,7 @@
    firebase.js and store.js are swapped for fakes, tasks come from a scenario
    below. Everything else is the real app code.
 
-     node daisey/test/v1/preview/preview.js [scenario] [--wide] [--tasks] [--cal spec] [--out dir] [--click "sel" ...]
+     node daisey/test/v1/preview/preview.js [scenario] [--wide] [--tasks] [--cal spec] [--run "title:minutes"] [--out dir] [--click "sel" ...]
 
    Writes <out>/<scenario>[-tasks][-wide].png and prints the path. Needs
    playwright from daisey/test/ (npm install there once). */
@@ -41,6 +41,8 @@ const name = args.find((a) => !a.startsWith("--")) || "en";
 const scenario = SCENARIOS[name] || (() => { throw new Error("no scenario " + name); })();
 // --cal: "none" (connected, empty), "reauth", or "<min>:<title>" — an hour-long
 // event starting in <min> minutes (negative = already running). Omitted → not connected.
+const running = flag("--run"); // "<task title>:<minutes elapsed>"
+if (running) { const [task, m] = running.split(":"); scenario.run = { task, minutes: Number(m || 0) }; }
 const cal = flag("--cal");
 const calReply = !cal ? { status: 404, body: { error: "not_connected" } }
   : cal === "reauth" ? { status: 409, body: { error: "needs_reauth" } }
@@ -71,11 +73,12 @@ const FAKES = {
     route.fulfill({ path: file });
   });
   await page.goto(ORIGIN + "/" + (tasksTab ? "#tasks" : ""));
-  await page.waitForSelector("#tabs:not([hidden])");
+  await page.waitForSelector(".now-card, .focus, .tk-board, .tk-empty, .now-empty");
   await page.waitForTimeout(150);
   for (const sel of clicks) { await page.click(sel); await page.waitForTimeout(150); }
+  if (args.includes("--text")) console.log(await page.innerText("body"));
   fs.mkdirSync(outDir, { recursive: true });
-  const file = path.join(outDir, `${name}${tasksTab ? "-tasks" : ""}${cal ? "-cal" + cal.replace(/\W/g, "") : ""}${clicks.length ? "-click" : ""}${wide ? "-wide" : ""}.png`);
+  const file = path.join(outDir, `${name}${tasksTab ? "-tasks" : ""}${cal ? "-cal" + cal.replace(/\W/g, "") : ""}${running ? "-run" + running.replace(/\W/g, "") : ""}${clicks.length ? "-" + clicks.join("").replace(/\W/g, "").slice(0, 24) : ""}${wide ? "-wide" : ""}.png`);
   await page.screenshot({ path: file, fullPage: true });
   console.log(file);
   await browser.close();

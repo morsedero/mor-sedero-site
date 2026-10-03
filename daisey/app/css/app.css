@@ -144,6 +144,22 @@ textarea {
 .now-card.empty .now-empty { margin-block: 8px 0; }
 .nowcard[hidden] { display: none; }
 
+/* Focus mode: the task fills the screen, nothing else on it. */
+body.focus .topbar, body.focus .tabs, body.focus .fab, body.focus .now-greet { display: none; }
+body.focus .shell { display: grid; min-block-size: 100dvh; align-content: center; padding-block: 24px; }
+.focus { display: grid; gap: 12px; justify-items: center; text-align: center; }
+.focus-title { font-size: 26px; font-weight: 700; line-height: 1.25; }
+.focus-timer { font-size: 64px; font-weight: 800; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+.focus-of { color: var(--ink-2); margin-block-start: -8px; }
+.focus-ask { margin: 0; color: var(--ink-2); font-size: 17px; }
+.focus-over { display: grid; gap: 8px; justify-items: center; margin-block: 8px; }
+.focus-chips { display: flex; gap: 8px; }
+.focus-actions { display: grid; gap: 10px; inline-size: min(320px, 100%); margin-block-start: 12px; }
+.focus-actions .btn { inline-size: 100%; }
+.focus-actions .btn.primary { min-block-size: 56px; font-size: 19px; font-weight: 700; }
+.focus-done { font-size: 20px; font-weight: 700; }
+.focus .now-card.main { inline-size: min(420px, 100%); text-align: start; }
+
 /* Two windows: Now | Tasks. */
 .tabs { display: flex; gap: 6px; margin-block-end: 16px; }
 .tab {
