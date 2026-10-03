@@ -6,8 +6,9 @@
 # the source in the same commit; there is nothing to remember and nothing to
 # forget. build-standalone.js self-checks its own output and exits non-zero on
 # a bad splice, so a broken build fails the deploy instead of shipping.
+# build-app.js copies Daisey v1 (daisey/app/) to site/daisey/now/ the same way.
 [build]
-  command = "node daisey/build-standalone.js"
+  command = "node daisey/build-standalone.js && node daisey/build-app.js"
   publish = "site"
 
 [functions]

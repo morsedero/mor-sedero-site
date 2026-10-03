@@ -4,3 +4,6 @@
 # Raw/original uploads not needed in the repo (large, unprocessed source files)
 Files for upload/
 
+
+# Daisey v1, generated at deploy by daisey/build-app.js from daisey/app/
+site/daisey/now/

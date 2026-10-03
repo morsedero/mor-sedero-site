@@ -1,0 +1,71 @@
+/* Logical properties only (inline/block, start/end) so RTL works by flipping dir. */
+:root {
+  --bg: #fbf8ef;
+  --card: #fffdf6;
+  --ink: #1f1d1a;
+  --ink-2: #6b665d;
+  --line: #e6e0d2;
+  --accent: #f5b301;
+  --danger: #c0392b;
+  --radius: 16px;
+  color-scheme: light;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans Hebrew", sans-serif;
+}
+
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  min-block-size: 100dvh;
+}
+
+.shell {
+  max-inline-size: 520px;
+  margin-inline: auto;
+  padding: max(24px, env(safe-area-inset-top)) 16px max(24px, env(safe-area-inset-bottom));
+}
+
+.brand { font-size: 22px; font-weight: 800; letter-spacing: -0.02em; margin: 0 0 16px; }
+
+.card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 20px;
+  box-shadow: 0 1px 2px rgb(0 0 0 / .04), 0 8px 24px rgb(0 0 0 / .05);
+}
+.card p:first-child { margin-block-start: 0; }
+
+.row { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-block-end: 16px; }
+.muted { color: var(--ink-2); font-size: 14px; }
+.msg { color: var(--danger); font-size: 14px; min-block-size: 1em; margin-block-end: 0; }
+.label { display: block; font-weight: 600; margin-block-end: 8px; }
+code { font-size: 0.9em; }
+
+.btn {
+  font: inherit;
+  font-weight: 600;
+  padding-block: 10px;
+  padding-inline: 16px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: #fff;
+  color: var(--ink);
+  cursor: pointer;
+  min-block-size: 44px;
+}
+.btn.primary { background: var(--accent); border-color: var(--accent); }
+
+textarea {
+  inline-size: 100%;
+  font: inherit;
+  font-size: 16px; /* 16px stops iOS zooming on focus */
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #fff;
+  resize: vertical;
+}
