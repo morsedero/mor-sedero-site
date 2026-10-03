@@ -38,6 +38,10 @@ export function mountNow(root, uid, { onCard } = {}){
   let lastWindow, lastClock;
   let run = null; // the state/now doc while a task is running
   let handoff = null; // { title, next } after Done, until the next choice
+  // The event you said you're free from, as its start time in ms (what
+  // engine.freeWindow reports). Cleared on its own once that event is no
+  // longer the one running.
+  let freeFrom = null;
   let toast = null; // { text, task, before } for 5 s after Later or Pending
   let slideIn = false; // one slide per step-aside, not one per snapshot
   let toastTimer = null;
@@ -160,7 +164,19 @@ export function mountNow(root, uid, { onCard } = {}){
   // What the engine knows about this moment: the calendar's window if it
   // answered, today's Laters, and which projects are already warm — momentum
   // and the skip penalty were both scoring zero until this was passed in.
-  function momentInput(fw = cal.status === "ok" ? freeWindow(cal.events) : null){
+  // The calendar as Daisey should read it now: an event you've overridden
+  // doesn't count as busy.
+  function calendarNow(){
+    if (cal.status !== "ok") return null;
+    const events = freeFrom ? cal.events.filter((e) => Date.parse(e.start) !== freeFrom) : cal.events;
+    const fw = freeWindow(events);
+    // The override only ever applies to the event that was running; once it
+    // ends, or another starts, the calendar speaks for itself again.
+    if (freeFrom && !cal.events.some((e) => Date.parse(e.start) === freeFrom && Date.parse(e.end) > Date.now())) freeFrom = null;
+    return fw;
+  }
+
+  function momentInput(fw = calendarNow()){
     const now = Date.now(), today = localDate(now);
     // Worked on, not merely added or edited: otherwise every project you
     // typed in today counts as momentum and the why line says "back to X"
@@ -190,7 +206,8 @@ export function mountNow(root, uid, { onCard } = {}){
       }));
       return;
     }
-    const fw = cal.status === "ok" ? freeWindow(cal.events) : null;
+    const busy = cal.status === "ok" ? freeWindow(cal.events).current : null; // before any override
+    const fw = calendarNow();
     lastWindow = fw?.window;
     const hello = GREETING[timeBucket().part];
     const line = !fw ? [hello]
@@ -199,6 +216,10 @@ export function mountNow(root, uid, { onCard } = {}){
       : [`${hello} ${dur(fw.window)} free, then `, bdi(fw.next.title), "."];
     const greet = h("div", { className: "now-greet" },
       h("p", {}, ...line),
+      // Said you're free during an event that is still on the calendar.
+      freeFrom && busy && h("p", { className: "muted" }, "Ignoring ", bdi(busy.title), " ",
+        h("button", { className: "linkish", type: "button", textContent: "put it back",
+          ariaLabel: `Stop ignoring ${busy.title}`, onclick: () => { freeFrom = null; render(); } })),
       CAL_NOTE[cal.status] && h("p", { className: "muted" }, CAL_NOTE[cal.status] + " ", h("a", { href: "/daisey/", textContent: "Open old Daisey" })));
 
     if (tasks == null) { fill(greet, h("p", { className: "muted", textContent: "Loading tasks…" })); return; }
@@ -213,6 +234,9 @@ export function mountNow(root, uid, { onCard } = {}){
           ? "No tasks yet. Add a few and Daisey will pick."
           : fw?.current ? "Nothing to pick until it ends."
           : `Nothing fits the next ${dur(r.moment.window)}. Take the break.` }),
+        fw?.current && h("button", { className: "btn", type: "button", textContent: "I'm free now",
+          ariaLabel: `I'm free now: ignore ${fw.current.title} and pick a task anyway`,
+          onclick: () => { freeFrom = fw.current.start; render(); } }),
         skips.size > 0 && h("button", { className: "btn quiet", type: "button", textContent: `Show the ${skips.size} you put off`, ariaLabel: `Show the ${skips.size} tasks you put off today`, onclick: () => { skips.clear(); setToast(null); render(); } })), tip);
       return;
     }

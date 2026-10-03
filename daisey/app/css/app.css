@@ -149,6 +149,7 @@ textarea {
 .now-greet p { margin: 0; font-size: 17px; color: var(--ink-2); }
 .now-greet p.muted { font-size: 13px; }
 .now-greet a { color: inherit; }
+.linkish { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; text-decoration: underline; }
 .now-card.empty { border-color: var(--line); box-shadow: none; }
 .now-card.empty .now-empty { margin-block: 8px 0; }
 

@@ -264,6 +264,11 @@ for; it comes only from the calendar, so there is nothing to keep setting.
 Without a connected calendar Daisey assumes 60 minutes, which filters out
 what cannot fit but earns no points for fitting.
 
+During an event the card is empty — "Nothing to pick until it ends" — with
+an **I'm free now** button beside it, because meetings end early and get
+cancelled. It ignores that one event (the greeting says so, and offers to
+put it back) and clears itself once the event is over.
+
 **The card.** It is the hero and the only yellow thing on the screen: project
 and size, title, why line, a big **Start**, and three quiet icon actions
 under it, each with its sentence as the tooltip:
