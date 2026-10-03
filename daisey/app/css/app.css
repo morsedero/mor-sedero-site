@@ -200,7 +200,8 @@ body:has(.toast) .fab { display: none; }
 /* Focus mode: the task fills the screen, nothing else on it. */
 body.focus .topbar, body.focus .fab, body.focus .now-greet { display: none; }
 body.focus #board { display: block; overflow: visible; }
-body.focus .tk-col { display: none; }
+body.focus .tk-col, body.focus .sch { display: none; }
+body.focus .nowpanel { flex: 1; }
 body.focus .shell { display: grid; min-block-size: 100dvh; align-content: center; padding-block: 24px; }
 .focus { display: grid; gap: 12px; justify-items: center; text-align: center; }
 .focus-title { font-size: 26px; font-weight: 700; line-height: 1.25; }
