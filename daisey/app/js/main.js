@@ -3,6 +3,19 @@ import { configured } from "./config.js";
 
 const $ = (s) => document.querySelector(s);
 
+// The top line carries the local date and time, beside the name and the
+// avatar. It ticks on the minute, not on a timer of its own frequency.
+const stamp = (d = new Date()) =>
+  `${d.toLocaleDateString([], { weekday: "short", day: "numeric", month: "short" })} · ${d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hourCycle: "h23" })}`;
+{
+  const el = () => document.getElementById("clock");
+  let shown = "";
+  const tick = () => { const s = stamp(); if (s !== shown && el()) { shown = s; el().textContent = s; } };
+  tick();
+  setInterval(() => { if (!document.hidden) tick(); }, 1000);
+  document.addEventListener("visibilitychange", tick);
+}
+
 // Registering a worker is what makes "add to home screen" offer a real app
 // window; sw.js caches nothing on purpose.
 if ("serviceWorker" in navigator) {

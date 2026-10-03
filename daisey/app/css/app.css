@@ -49,7 +49,9 @@ body {
 }
 
 .brand { font-size: 22px; font-weight: 800; letter-spacing: -0.02em; margin: 0; }
-.topbar { display: flex; align-items: center; justify-content: space-between; margin-block-end: 16px; min-block-size: 40px; }
+.topbar { display: flex; align-items: center; gap: 12px; margin-block-end: 16px; min-block-size: 40px; }
+.clock { margin: 0 auto 0 0; font-size: 13px; color: var(--ink-2); font-variant-numeric: tabular-nums; white-space: nowrap; }
+:dir(rtl) .clock { margin: 0 0 0 auto; }
 .acct { position: relative; }
 .avatar {
   inline-size: 36px; block-size: 36px; padding: 0; border-radius: 50%; overflow: hidden; cursor: pointer;
@@ -136,12 +138,12 @@ textarea {
 .chip[aria-checked="true"] { background: var(--ink); border-color: var(--ink); color: var(--card); }
 .now-card { display: grid; gap: 4px; padding: 16px; border-radius: 14px; border: 1px solid var(--line); background: var(--surface); text-align: start; }
 .now-card.main {
-  gap: 6px; padding: 18px 18px 14px; border: 2px solid var(--accent); border-radius: 20px;
-  box-shadow: 0 2px 4px rgb(0 0 0 / .04), 0 12px 30px rgb(245 179 1 / .14);
+  gap: 4px; padding: 14px 16px 10px; border: 2px solid var(--accent); border-radius: 18px;
+  box-shadow: 0 2px 4px rgb(0 0 0 / .04), 0 10px 24px rgb(245 179 1 / .12);
 }
-.now-card.main .now-title { font-size: 23px; line-height: 1.22; }
-.now-card.main .now-why { font-size: 15px; }
-.btn.start { margin-block-start: 12px; min-block-size: 48px; font-size: 17px; font-weight: 700; }
+.now-card.main .now-title { font-size: 20px; line-height: 1.2; }
+.now-card.main .now-why { font-size: 14px; margin-block-start: 2px; }
+.btn.start { margin-block-start: 10px; min-block-size: 44px; font-size: 16px; font-weight: 700; }
 .btn.quiet { background: none; border-color: transparent; color: var(--ink-2); font-weight: 500; }
 .btn.quiet:hover:not(:disabled) { color: var(--ink); background: var(--bg); }
 .now-meta { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--ink-2); }
@@ -153,9 +155,9 @@ textarea {
   display: grid; justify-items: center; gap: 2px; cursor: pointer;
   font: inherit; font-size: 12px; font-weight: 600; color: var(--ink-2);
   background: none; border: 1px solid transparent; border-radius: 14px;
-  min-inline-size: 68px; min-block-size: 50px; padding: 4px 10px;
+  min-inline-size: 62px; min-block-size: 44px; padding: 2px 8px;
 }
-.iconbtn svg { inline-size: 22px; block-size: 22px; }
+.iconbtn svg { inline-size: 19px; block-size: 19px; }
 .iconbtn:hover:not(:disabled) { color: var(--ink); background: var(--bg); border-color: var(--line); }
 .iconbtn:disabled { opacity: .4; cursor: default; }
 .now-alts { display: grid; gap: 8px; }
@@ -165,9 +167,9 @@ textarea {
 .btn:disabled { opacity: .45; cursor: default; }
 /* The Now card is the hero: no outer card chrome, the task card itself is the box. */
 .nowpanel > .muted { padding: 20px; }
-.now-greet { margin: 4px 2px 0; display: grid; gap: 2px; }
-.now-greet p { margin: 0; font-size: 15px; color: var(--ink-2); }
-.now-clock { font-variant-numeric: tabular-nums; letter-spacing: .01em; }
+.now-greet { display: grid; gap: 2px; }
+.now-greet:empty { display: none; }
+.now-greet p { margin: 0; font-size: 14px; color: var(--ink-2); }
 .now-greet p.muted { font-size: 13px; }
 .now-greet a { color: inherit; }
 .linkish { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; text-decoration: underline; }
@@ -218,7 +220,7 @@ body.focus .shell { display: grid; min-block-size: 100dvh; align-content: center
 
 /* The Now card sits still at the top; under it one pane with two tabs. */
 .shell { max-inline-size: 560px; }
-#board { display: grid; gap: 14px; }
+#board { display: grid; gap: 12px; }
 #nowcard { display: grid; gap: 14px; }
 
 .panetabs { display: flex; gap: 6px; }

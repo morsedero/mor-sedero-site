@@ -18,12 +18,8 @@ import { rank, freeWindow, whySaid } from "./engine.js";
 import { localDate, skipSnapshot } from "./model.js";
 import { h, icon, bdi, pieces, sizeText, dur } from "./ui.js";
 
-// The clock line above the card. The free-time sentence that used to live
-// here was cut (Mor, 2026-10-04): the Schedule panel already says it.
-const stamp = (now = Date.now()) => {
-  const d = new Date(now);
-  return `${d.toLocaleDateString([], { weekday: "short", day: "numeric", month: "short" })} · ${d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hourCycle: "h23" })}`;
-};
+// Nothing sits above the card but the warnings below: the date and time are
+// in the top bar (main.js) and the day is in the Schedule panel.
 const LATER_MS = LATER_MINUTES * 60000;
 const RECENT_DAYS = 2;
 const UNDO_MS = 5000;
@@ -40,7 +36,7 @@ const CAL_NOTE = {
 export function mountNow(root, uid, { onCard } = {}){
   let tasks = null; // null until the first snapshot
   let cal = { status: "loading", events: [] };
-  let lastWindow, lastClock, lastStamp;
+  let lastWindow, lastClock;
   let run = null; // the state/now doc while a task is running
   let handoff = null; // { title, next } after Done, until the next choice
   // The event you said you're free from, as its start time in ms (what
@@ -216,9 +212,7 @@ export function mountNow(root, uid, { onCard } = {}){
       ? freeWindow(cal.events.filter((e) => e.busy !== false && !e.allDay)).current : null;
     const fw = calendarNow();
     lastWindow = fw?.window;
-    lastStamp = stamp();
     const greet = h("div", { className: "now-greet" },
-      h("p", { className: "now-clock", textContent: lastStamp }),
       // Said you're free during an event that is still on the calendar.
       freeFrom && busy && h("p", { className: "muted" }, "Ignoring ", bdi(busy.title), " ",
         h("button", { className: "linkish", type: "button", textContent: "put it back",
@@ -278,7 +272,6 @@ export function mountNow(root, uid, { onCard } = {}){
   const tick = setInterval(() => {
     if (document.hidden) return;
     if (run) { const c = Math.floor(elapsedMinutes(run) * 60); if (c !== lastClock) { lastClock = c; render(); } return; }
-    if (stamp() !== lastStamp) { render(); return; }
     if (cal.status === "ok" && freeWindow(cal.events).window !== lastWindow) render();
   }, 1000);
   const onVisible = () => { if (!document.hidden) render(); };

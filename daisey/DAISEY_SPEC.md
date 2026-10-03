@@ -266,8 +266,9 @@ It comes from the same read as the free window, so the panel and the greeting
 can never disagree. All-day entries and events marked free never block a pick
 — only real, timed, accepted events do.
 
-**Clock line.** Above the card, the local date and time, ticking each minute
-— nothing else. Free time is never asked for; it comes only from the calendar,
+**Clock.** The local date and time sit in the top bar, beside the name and
+the avatar, ticking each minute. Nothing sits above the card but a warning
+when there is one. Free time is never asked for; it comes only from the calendar,
 and the Schedule panel below says what the day holds. Without a connected
 calendar Daisey assumes 60 minutes, which filters out what cannot fit but
 earns no points for fitting.
