@@ -34,3 +34,15 @@ export function finishTask(uid, task){
 export function removeTask(uid, id){
   return fb.deleteDoc(taskDoc(uid, id));
 }
+
+// Today's check-in, users/{uid}/state/today: { date, hours, picks: [taskId] }.
+// A doc from an earlier date means today hasn't been planned yet.
+const todayDoc = (uid) => fb.doc(fb.db, "users", uid, "state", "today");
+
+export function watchToday(uid, cb, onError){
+  return fb.onSnapshot(todayDoc(uid), (snap) => cb(snap.exists() ? snap.data() : null), onError);
+}
+
+export function saveToday(uid, plan){
+  return fb.setDoc(todayDoc(uid), { ...plan, savedAt: Date.now() });
+}

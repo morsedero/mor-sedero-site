@@ -26,18 +26,21 @@
     <p id="signinMsg" class="msg" role="alert"></p>
   </section>
 
+  <!-- The Now card, always on top once signed in. -->
+  <section id="nowcard" class="card nowcard" hidden></section>
+
   <section data-view="signedin" class="card" hidden>
     <div class="row">
       <span id="who" class="muted"></span>
       <button id="signout" class="btn">Sign out</button>
     </div>
-    <button id="whatnow" class="btn primary wide">What now?</button>
+    <button id="plantoday" class="btn wide">Plan today</button>
     <label for="note" class="label">Test note <span id="noteStatus" class="muted"></span></label>
     <textarea id="note" dir="auto" rows="5" placeholder="Type here, watch it appear on your other device."></textarea>
   </section>
 
-  <!-- The Now popup: opens on entry, reopened by "What now?". -->
-  <dialog id="now" class="now" aria-labelledby="nowTitle"></dialog>
+  <!-- Daily check-in: opens on the first visit each day, reopened by "Plan today". -->
+  <dialog id="checkin" class="now" aria-labelledby="checkinTitle"></dialog>
 
   <!-- Temporary task debug list, only at ?debug (session 2). -->
   <section id="debug" class="card dbg" hidden></section>

@@ -118,19 +118,32 @@ textarea {
   padding-inline: 14px; border-radius: 999px; border: 1px solid var(--line); background: #fff; color: var(--ink);
 }
 .chip[aria-checked="true"] { background: var(--ink); border-color: var(--ink); color: #fff; }
-.now-card { display: grid; gap: 4px; padding: 16px; border-radius: 14px; border: 2px solid var(--accent); background: #fff; text-align: start; }
+.now-card { display: grid; gap: 4px; padding: 16px; border-radius: 14px; border: 1px solid var(--line); background: #fff; text-align: start; }
+.now-card.main { border: 2px solid var(--accent); }
 .now-meta { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--ink-2); }
 .now-title { font-size: 22px; font-weight: 700; line-height: 1.25; }
 .now-why { margin: 4px 0 0; color: var(--ink-2); }
 .now-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .now-alts { display: grid; gap: 8px; }
 .now-alt { font: inherit; color: inherit; padding: 0; border: 0; background: none; cursor: pointer; text-align: start; }
-.now-alt .now-card { border: 1px solid var(--line); }
 .now-alt .now-title { font-size: 17px; }
 .now-empty { font-weight: 600; margin: 0; }
 .btn:disabled { opacity: .45; cursor: default; }
-.now-energy {
+.now-pill {
   justify-self: start; font: inherit; font-size: 15px; font-weight: 600; cursor: pointer;
   min-block-size: 40px; padding-inline: 14px; border-radius: 999px;
   border: 1px dashed var(--ink-2); background: transparent; color: var(--ink);
 }
+.nowcard { display: grid; gap: 14px; margin-block-end: 16px; }
+.nowcard[hidden] { display: none; }
+.now-h { margin: 0; font-size: 22px; }
+.now-context { display: flex; flex-wrap: wrap; gap: 6px; }
+.now-context .now-pill { font-size: 14px; padding-inline: 11px; }
+.now-pill[aria-expanded="true"] { border-style: solid; background: #fff; }
+
+/* Daily check-in list. */
+.ci-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; max-block-size: 45dvh; overflow-y: auto; }
+.ci-item { display: flex; gap: 12px; align-items: flex-start; padding: 10px 4px; border-block-end: 1px solid var(--line); cursor: pointer; }
+.ci-item input { inline-size: 22px; block-size: 22px; margin: 2px 0 0; accent-color: var(--ink); flex: none; }
+.ci-text { display: grid; gap: 2px; min-inline-size: 0; }
+.ci-title { font-weight: 600; }

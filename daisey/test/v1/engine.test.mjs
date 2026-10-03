@@ -151,6 +151,7 @@ test("skip penalty: −8 per skip today; the score is the sum of all parts", () 
   const s = E.scoreTask(t, moment({ skipsToday: { [t.id]: 2 } }));
   assert.equal(s.parts.skips, -16);
   assert.equal(s.score, 0 + 25 + 15 + 0 + 0 + 0 - 16);
+  assert.equal(s.parts.today, 0);
 });
 
 // ---------- ranking ----------
@@ -260,4 +261,15 @@ test("energy: a correction wins for 3 hours, then it's a Medium guess again", ()
   assert.deepEqual(currentEnergy({ now: NOW + CORRECTION_HOLD - 1, correction }), { level: "low", guessed: false });
   assert.deepEqual(currentEnergy({ now: NOW + CORRECTION_HOLD, correction }), { level: "medium", guessed: true });
   assert.deepEqual(currentEnergy({ now: NOW, correction: { level: "wrecked", at: NOW } }), { level: "medium", guessed: true });
+});
+
+test("today's picks: +20 and a why phrase; a picked task beats an equal unpicked one", () => {
+  const a = task(), b = task();
+  const r = E.rank([a, b], { now: NOW, todayPicks: [b.id] });
+  assert.equal(r.pick.task.id, b.id);
+  assert.equal(r.pick.parts.today, W.TODAY_PICK);
+  assert.match(r.pick.why, /on today's list/);
+  // an overdue task still outranks a plain pick
+  const late = task({ due: "2026-10-01" });
+  assert.equal(E.rank([b, late], { now: NOW, todayPicks: [b.id] }).pick.task.id, late.id);
 });

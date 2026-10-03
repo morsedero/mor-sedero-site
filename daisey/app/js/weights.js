@@ -62,6 +62,10 @@ export const NEGLECT_MAX = 10;
 export const LEARNED_MIN = -10; // learned fit arrives in session 10
 export const LEARNED_MAX = 10;
 export const SKIP_PENALTY = 8; // per skip of this task today
+// OURS (Mor, 2026-10-03): tasks ticked in the morning check-in. Big enough
+// that a picked task usually wins, small enough that an overdue one or a
+// bad energy fit can still beat it.
+export const TODAY_PICK = 20;
 
 // Something else
 export const ALTERNATIVES = 3;

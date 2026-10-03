@@ -26,6 +26,7 @@ async function boot(){
   let unsub = null;
   let unmountDebug = null;
   let now = null;
+  let checkin = null;
 
   $("#signin").onclick = async () => {
     $("#signinMsg").textContent = "";
@@ -38,12 +39,13 @@ async function boot(){
     }
   };
   $("#signout").onclick = () => fb.signOut();
-  $("#whatnow").onclick = () => now?.open();
+  $("#plantoday").onclick = () => checkin?.open();
 
   fb.onUser((user) => {
     if (unsub) { unsub(); unsub = null; }
     if (unmountDebug) { unmountDebug(); unmountDebug = null; }
     if (now) { now.unmount(); now = null; }
+    if (checkin) { checkin.unmount(); checkin = null; }
     const note = $("#note");
     note.value = "";
     if (!user) { show("signedout"); return; }
@@ -51,11 +53,11 @@ async function boot(){
     $("#who").textContent = user.email;
     show("signedin");
 
-    // The Now popup opens by itself on entry.
-    import("./now.js").then(({ mountNow }) => {
+    // Now card on top; the check-in opens by itself on the day's first visit.
+    Promise.all([import("./now.js"), import("./checkin.js")]).then(([{ mountNow }, { mountCheckin }]) => {
       if (fb.currentUid() !== user.uid || now) return;
-      now = mountNow($("#now"), user.uid);
-      now.open();
+      now = mountNow($("#nowcard"), user.uid);
+      checkin = mountCheckin($("#checkin"), user.uid, { onSaved: () => now?.refresh() });
     }).catch((e) => console.error("[daisey] now", e));
 
     if (DEBUG) {

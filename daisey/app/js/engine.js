@@ -12,7 +12,7 @@ import { toEnergy, localDate } from "./model.js";
 const MIN = 60000;
 const DAY = 86400000;
 const LEVEL = { low: 0, medium: 1, high: 2 };
-const FACTORS = ["urgency", "energy", "window", "momentum", "neglect", "learned"]; // why-line tie order
+const FACTORS = ["urgency", "today", "energy", "window", "momentum", "neglect", "learned"]; // why-line tie order
 const DAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
@@ -36,6 +36,7 @@ export function timeBucket(now = Date.now()){
 //   recentProjects  projects worked on in the last 2 days
 //   sessionSkips    ids hidden by Not now this session
 //   skipsToday      { id: count } — the skip penalty
+//   todayPicks      ids ticked in today's check-in
 //   learned         (task, moment) → −10…10, session 10
 //   nextEvent       title of the next calendar event, session 8
 export function readMoment(input = {}){
@@ -51,6 +52,7 @@ export function readMoment(input = {}){
     recentProjects: (input.recentProjects || []).map(projectKey),
     sessionSkips: new Set(input.sessionSkips || []),
     skipsToday: input.skipsToday || {},
+    todayPicks: new Set(input.todayPicks || []),
     learned: input.learned || null,
     nextEvent: input.nextEvent || null,
   };
@@ -153,7 +155,7 @@ function learned(task, m){
 
 // Score parts, total and the details the why line needs.
 export function scoreTask(task, m){
-  const f = { urgency: urgency(task, m), energy: energyFit(task, m), window: windowFit(task, m),
+  const f = { urgency: urgency(task, m), today: { points: m.todayPicks.has(task.id) ? W.TODAY_PICK : 0, detail: null }, energy: energyFit(task, m), window: windowFit(task, m),
     momentum: momentum(task, m), neglect: neglect(task, m), learned: learned(task, m) };
   const parts = Object.fromEntries(FACTORS.map((k) => [k, f[k].points]));
   const details = Object.fromEntries(FACTORS.map((k) => [k, f[k].detail]));
@@ -184,6 +186,7 @@ const sizeWords = (n) => n === 60 ? "hour" : n > 60 ? `${+(n / 60).toFixed(1)} h
 
 const PHRASES = {
   urgency: (s, d) => d.overdue ? "overdue" : dueWords(s.task, d.days) + (d.hard ? ", getting tight" : ""),
+  today: () => "on today's list",
   energy: (s, d) => d.fit === "same"
     ? { low: "light one, you're low", medium: "matches your energy", high: "good for high energy" }[d.you]
     : d.fit === "harder" ? null : "easy on your energy",
