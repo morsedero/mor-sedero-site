@@ -1,22 +1,21 @@
 // The Now card, always on top of the page. One task that fits this moment,
-// and why. Above it: free time (tap to change) and an energy slider showing
-// Daisey's guess until you move it. "Replan" reopens today's check-in. Not now → next pick (hidden for this
-// page load). Something else → 2–3 alternatives, tap one to make it the card.
+// and why — nothing else (Mor: the card holds only the current task). Free
+// time and energy come from today's check-in. Not now → next pick (hidden
+// for this page load). Something else → 2–3 alternatives, tap one to make it the card.
 // Tasks ticked in today's check-in get a boost (engine "today" factor).
 // Start / the timer arrive in session 5; Hebrew + RTL in session 4.
 import { watchTasks, watchToday } from "./store.js";
 import { rank } from "./engine.js";
 import { localDate } from "./model.js";
-import { getWindow, setWindow, getEnergy, setEnergy } from "./prefs.js";
-import { h, chips, energySlider, sizeText } from "./ui.js";
+import { getEnergy } from "./prefs.js";
+import { h, sizeText } from "./ui.js";
 
-const WINDOWS = [[15, "15 min"], [30, "30 min"], [60, "1 h"], [90, "1.5 h"], [120, "2 h+"]];
-const windowText = (w) => WINDOWS.find(([v]) => v === w)?.[1] ?? `${w} min`;
+const minText = (m) => (m >= 60 ? `${+(m / 60).toFixed(1)} h` : `${m} min`);
 
-export function mountNow(root, uid, { onReplan } = {}){
+export function mountNow(root, uid){
   let tasks = null; // null until the first snapshot
   let today = null;
-  const state = { edit: false, chosen: null, showAlts: false }; // edit: free-time chips open
+  const state = { chosen: null, showAlts: false };
   const skips = new Set();
   const reset = () => { state.chosen = null; state.showAlts = false; };
 
@@ -28,26 +27,22 @@ export function mountNow(root, uid, { onReplan } = {}){
   }
 
   function render(){
-    const window = getWindow(), energy = getEnergy();
-    const head = [
-      h("div", { className: "now-top" }, h("h2", { className: "now-h", textContent: "Now" }),
-        onReplan && h("button", { type: "button", className: "btn small", textContent: "Replan", onclick: onReplan })),
-      h("div", { className: "now-context" },
-        h("button", { type: "button", className: "now-pill", ariaExpanded: String(state.edit),
-          textContent: `${windowText(window)} free ✎`, onclick: () => { state.edit = !state.edit; render(); } })),
-      state.edit && chips("How much time do you have?", WINDOWS, window, (v) => { setWindow(v); state.edit = false; reset(); render(); }),
-      energySlider(energy, (v) => { setEnergy(v); reset(); render(); }),
-    ];
+    const head = [];
 
     if (tasks == null) { fill(...head, h("p", { className: "muted", textContent: "Loading tasks…" })); return; }
 
-    const picks = today?.date === localDate() ? today.picks || [] : [];
-    const r = rank(tasks, { window, energy: energy.level, sessionSkips: [...skips], todayPicks: picks });
+    // Until the calendar (session 8) gives a real free window, the stretch
+    // is today's free hours from the check-in (capped at 180 by the engine);
+    // no check-in → the engine's no-calendar 60.
+    const plan = today?.date === localDate() ? today : null;
+    const picks = plan?.picks || [];
+    const window = plan?.hours ? plan.hours * 60 : undefined;
+    const r = rank(tasks, { window, energy: getEnergy().level, sessionSkips: [...skips], todayPicks: picks });
     const card = (state.chosen && r.ranked.find((s) => s.task.id === state.chosen)) || r.pick;
     if (!card) {
       fill(...head, h("p", { className: "now-empty", textContent: r.empty === "none"
         ? "No tasks yet. Add a few and Daisey will pick."
-        : `Nothing fits the next ${windowText(window)}. Take the break.` }),
+        : `Nothing fits the next ${minText(r.moment.window)}. Take the break.` }),
         skips.size > 0 && h("button", { className: "btn small", type: "button", textContent: `Show the ${skips.size} you skipped`, onclick: () => { skips.clear(); render(); } }));
       return;
     }

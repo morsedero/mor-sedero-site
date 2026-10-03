@@ -129,17 +129,8 @@ textarea {
 .now-alt .now-title { font-size: 17px; }
 .now-empty { font-weight: 600; margin: 0; }
 .btn:disabled { opacity: .45; cursor: default; }
-.now-pill {
-  justify-self: start; font: inherit; font-size: 15px; font-weight: 600; cursor: pointer;
-  min-block-size: 40px; padding-inline: 14px; border-radius: 999px;
-  border: 1px dashed var(--ink-2); background: transparent; color: var(--ink);
-}
 .nowcard { display: grid; gap: 14px; margin-block-end: 16px; }
 .nowcard[hidden] { display: none; }
-.now-h { margin: 0; font-size: 22px; }
-.now-context { display: flex; flex-wrap: wrap; gap: 6px; }
-.now-context .now-pill { font-size: 14px; padding-inline: 11px; }
-.now-pill[aria-expanded="true"] { border-style: solid; background: #fff; }
 
 /* Daily check-in list. */
 .ci-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; max-block-size: 45dvh; overflow-y: auto; }
@@ -147,7 +138,6 @@ textarea {
 .ci-item input { inline-size: 22px; block-size: 22px; margin: 2px 0 0; accent-color: var(--ink); flex: none; }
 .ci-text { display: grid; gap: 2px; min-inline-size: 0; }
 .ci-title { font-weight: 600; }
-.now-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 
 /* Energy slider: 3 stops. Dashed track while it's still Daisey's guess. */
 .energy { display: grid; gap: 4px; }

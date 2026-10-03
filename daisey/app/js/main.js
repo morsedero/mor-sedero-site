@@ -44,6 +44,7 @@ async function boot(){
     if (unsub) { unsub(); unsub = null; }
     if (unmountDebug) { unmountDebug(); unmountDebug = null; }
     if (now) { now.unmount(); now = null; }
+    $("#replan").hidden = true;
     if (checkin) { checkin.unmount(); checkin = null; }
     const note = $("#note");
     note.value = "";
@@ -55,8 +56,10 @@ async function boot(){
     // Now card on top; the check-in opens by itself on the day's first visit.
     Promise.all([import("./now.js"), import("./checkin.js")]).then(([{ mountNow }, { mountCheckin }]) => {
       if (fb.currentUid() !== user.uid || now) return;
-      now = mountNow($("#nowcard"), user.uid, { onReplan: () => checkin?.open() });
+      now = mountNow($("#nowcard"), user.uid);
       checkin = mountCheckin($("#checkin"), user.uid, { onSaved: () => now?.refresh() });
+      $("#replan").onclick = () => checkin.open();
+      $("#replan").hidden = false;
     }).catch((e) => console.error("[daisey] now", e));
 
     if (DEBUG) {
