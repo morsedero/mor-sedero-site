@@ -144,6 +144,31 @@ textarea {
 .now-card.empty .now-empty { margin-block: 8px 0; }
 .nowcard[hidden] { display: none; }
 
+/* Not now: the card slides out, the next slides in. */
+@keyframes card-out { to { opacity: 0; transform: translateX(-12%); } }
+@keyframes card-in { from { opacity: 0; transform: translateX(14%); } }
+.now-card.main.out { animation: card-out .14s ease-in forwards; }
+.now-card.main.in { animation: card-in .18s ease-out; }
+:dir(rtl) .now-card.main.out { animation-name: card-out-rtl; }
+:dir(rtl) .now-card.main.in { animation-name: card-in-rtl; }
+@keyframes card-out-rtl { to { opacity: 0; transform: translateX(12%); } }
+@keyframes card-in-rtl { from { opacity: 0; transform: translateX(-14%); } }
+
+/* Undo + the reasons, for five seconds after Not now. */
+.toast {
+  position: fixed; z-index: 7; inset-block-end: max(20px, env(safe-area-inset-bottom));
+  inset-inline: 16px; margin-inline: auto; max-inline-size: 420px;
+  display: grid; gap: 8px; padding: 12px 14px; border-radius: 14px;
+  background: var(--ink); color: #fff; box-shadow: 0 10px 30px rgba(0,0,0,.25);
+}
+.toast-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.toast-text { font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.toast-undo { font: inherit; font-weight: 700; color: var(--accent); background: none; border: 0; cursor: pointer; padding: 6px 2px; }
+.toast-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.toast .chip { min-block-size: 32px; font-size: 13px; padding-inline: 10px; background: transparent; border-color: rgba(255,255,255,.35); color: #fff; }
+body:has(.toast) .fab { display: none; }
+@media (prefers-reduced-motion: reduce) { .now-card.main.in, .now-card.main.out { animation: none; } }
+
 /* Focus mode: the task fills the screen, nothing else on it. */
 body.focus .topbar, body.focus .tabs, body.focus .fab, body.focus .now-greet { display: none; }
 body.focus .shell { display: grid; min-block-size: 100dvh; align-content: center; padding-block: 24px; }

@@ -206,6 +206,28 @@ export function editTask(task, changes, { now = Date.now(), history = [] } = {})
 export const completeTask = (task, { now = Date.now() } = {}) =>
   ({ status: "done", doneAt: now, skipsSinceStart: 0, touchedAt: now });
 
+// Not now. The skip counts straight away; the reason is a second, optional
+// patch, because the chips only appear after the card has already moved on.
+export const skipTask = (task, { now = Date.now() } = {}) =>
+  ({ skipCount: (task.skipCount || 0) + 1, skipsSinceStart: (task.skipsSinceStart || 0) + 1, touchedAt: now });
+
+// "Blocked" is the one reason that changes the task itself: it's waiting on
+// something, so Daisey stops offering it until that's cleared.
+export function skipReason(task, reason, { now = Date.now() } = {}){
+  if (!SKIP_REASONS.includes(reason)) return {};
+  const counts = { ...Object.fromEntries(SKIP_REASONS.map((r) => [r, 0])), ...(task.skipReasons || {}) };
+  const patch = { skipReasons: { ...counts, [reason]: counts[reason] + 1 }, touchedAt: now };
+  if (reason === "blocked") patch.status = "waiting";
+  return patch;
+}
+
+// Everything the two patches above can touch, as it was — so Undo puts the
+// task back exactly, not approximately.
+export const skipSnapshot = (task) => ({
+  skipCount: task.skipCount || 0, skipsSinceStart: task.skipsSinceStart || 0,
+  skipReasons: task.skipReasons || {}, status: task.status, touchedAt: task.touchedAt ?? null,
+});
+
 // Focus mode. Starting clears the stale-skip count: a task you actually
 // start isn't one you keep refusing.
 export const startedTask = (task, { now = Date.now() } = {}) =>

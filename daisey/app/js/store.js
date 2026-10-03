@@ -3,7 +3,7 @@
 // only moves documents. `tasks` arguments are the current list from
 // watchTasks, used as history for "similar past tasks" guesses.
 import * as fb from "./firebase.js";
-import { createTask, editTask, completeTask, startedTask, workedTask } from "./model.js";
+import { createTask, editTask, completeTask, startedTask, workedTask, skipTask, skipReason } from "./model.js";
 
 const tasksCol = (uid) => fb.collection(fb.db, "users", uid, "tasks");
 const taskDoc = (uid, id) => fb.doc(fb.db, "users", uid, "tasks", id);
@@ -33,6 +33,20 @@ export function finishTask(uid, task){
 
 export function removeTask(uid, id){
   return fb.deleteDoc(taskDoc(uid, id));
+}
+
+// Not now, its optional reason, and Undo putting both back (model.skipSnapshot).
+export function skipNow(uid, task){
+  return fb.updateDoc(taskDoc(uid, task.id), skipTask(task));
+}
+
+export function reasonForSkip(uid, task, reason){
+  const patch = skipReason(task, reason);
+  return Object.keys(patch).length ? fb.updateDoc(taskDoc(uid, task.id), patch) : Promise.resolve();
+}
+
+export function restoreTask(uid, id, fields){
+  return fb.updateDoc(taskDoc(uid, id), fields);
 }
 
 // The running task, users/{uid}/state/now: { taskId, startedAt, extra }.

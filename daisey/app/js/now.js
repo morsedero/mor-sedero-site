@@ -10,13 +10,19 @@
 // alternatives, tap one to make it the card. Start → focus mode (focus.js):
 // the run lives in Firestore, so this tab, a reload and the phone all show
 // the same timer.
-import { watchTasks, watchRun, startRun, extendRun, endRun } from "./store.js";
+import { watchTasks, watchRun, startRun, extendRun, endRun, skipNow, reasonForSkip, restoreTask } from "./store.js";
 import { focusView, handoffView, elapsedMinutes } from "./focus.js";
 import { watchCalendar } from "./calendar.js";
 import { rank, timeBucket, freeWindow, whySaid } from "./engine.js";
+import { skipSnapshot } from "./model.js";
 import { h, sizeText, dur } from "./ui.js";
 
 const GREETING = { morning: "Morning.", afternoon: "Afternoon.", evening: "Evening." };
+// Why it was skipped. Optional, and the card has already moved on either way.
+const REASONS = [["tired", "tired"], ["notime", "no time"], ["mood", "not now"], ["blocked", "blocked"]];
+const UNDO_MS = 5000;
+const SLIDE_MS = 140; // matches the card-out animation in app.css
+const motionOK = () => !window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 const clock = (ms) => new Date(ms).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
 const CAL_NOTE = {
   not_connected: "Calendar not connected. Sign in to the old Daisey once to link it.",
@@ -31,6 +37,8 @@ export function mountNow(root, uid, { onCard } = {}){
   let lastWindow, lastClock;
   let run = null; // the state/now doc while a task is running
   let handoff = null; // { title, next } after Done, until the next choice
+  let toast = null; // { task, before } for 5 s after Not now: reasons + Undo
+  let toastTimer = null;
   const state = { chosen: null, showAlts: false, asking: false };
   const skips = new Set();
   const reset = () => { state.chosen = null; state.showAlts = false; state.asking = false; };
@@ -74,6 +82,51 @@ export function mountNow(root, uid, { onCard } = {}){
 
   const begin = (task) => { handoff = null; reset(); run = { taskId: task.id, startedAt: Date.now(), extra: 0 }; render(); startRun(uid, task).catch(fail); };
 
+  // Not now: the card slides out, the next slides in, and for 5 seconds a
+  // toast offers Undo and the four reasons. Nothing waits on the write.
+  function notNow(task){
+    const before = skipSnapshot(task);
+    const go = () => {
+      skips.add(task.id);
+      reset();
+      setToast({ task, before });
+      skipNow(uid, task).catch(fail);
+      render();
+    };
+    const el = root.querySelector(".now-card.main");
+    if (el && motionOK()) { el.classList.add("out"); setTimeout(go, SLIDE_MS); } else go();
+  }
+
+  function setToast(t){
+    clearTimeout(toastTimer);
+    toast = t;
+    if (t) toastTimer = setTimeout(() => { toast = null; render(); }, UNDO_MS);
+  }
+
+  function undo(){
+    const { task, before } = toast;
+    skips.delete(task.id);
+    state.chosen = task.id;
+    setToast(null);
+    restoreTask(uid, task.id, before).catch(fail);
+    render();
+  }
+
+  function toastView(){
+    const { task } = toast;
+    return h("div", { className: "toast", role: "status" },
+      h("div", { className: "toast-row" },
+        h("span", { className: "toast-text", dir: "auto", textContent: `Skipped ${task.title}` }),
+        h("button", { className: "toast-undo", type: "button", textContent: "Undo",
+          ariaLabel: `Undo: put ${task.title} back on the card`, onclick: undo })),
+      h("div", { className: "toast-chips", role: "group", ariaLabel: "Why not now?" },
+        ...REASONS.map(([value, label]) => h("button", {
+          className: "chip", type: "button", textContent: label,
+          ariaLabel: value === "blocked" ? `Blocked: mark ${task.title} as waiting` : `Reason: ${label}`,
+          onclick: () => { reasonForSkip(uid, task, value).catch(fail); setToast(null); render(); },
+        }))));
+  }
+
   // What the engine knows about this moment, from the calendar if it answered.
   const momentInput = (fw = cal.status === "ok" ? freeWindow(cal.events) : null) => (fw
     ? { window: fw.window, nextEvent: fw.next?.title ?? null }
@@ -105,13 +158,14 @@ export function mountNow(root, uid, { onCard } = {}){
     const r = rank(tasks, { ...momentInput(fw), sessionSkips: [...skips] });
     const card = (state.chosen && r.ranked.find((s) => s.task.id === state.chosen)) || r.pick;
     showing(card?.task.id ?? null);
+    const tip = toast && toastView();
     if (!card) {
       fill(greet, h("div", { className: "now-card main empty" },
         h("p", { className: "now-empty", textContent: r.empty === "none"
           ? "No tasks yet. Add a few and Daisey will pick."
           : fw?.current ? "Nothing to pick until it ends."
           : `Nothing fits the next ${dur(r.moment.window)}. Take the break.` }),
-        skips.size > 0 && h("button", { className: "btn quiet", type: "button", textContent: `Show the ${skips.size} you skipped`, ariaLabel: `Show the ${skips.size} tasks you skipped this session`, onclick: () => { skips.clear(); render(); } })));
+        skips.size > 0 && h("button", { className: "btn quiet", type: "button", textContent: `Show the ${skips.size} you skipped`, ariaLabel: `Show the ${skips.size} tasks you skipped this session`, onclick: () => { skips.clear(); setToast(null); render(); } })), tip);
       return;
     }
 
@@ -123,14 +177,16 @@ export function mountNow(root, uid, { onCard } = {}){
       h("div", { className: "now-actions" },
         h("button", { className: "btn quiet", type: "button", textContent: "Not now",
           ariaLabel: `Not now: skip ${card.task.title} and show the next one`,
-          onclick: () => { skips.add(card.task.id); reset(); render(); } }),
+          onclick: () => notNow(card.task) }),
         h("button", { className: "btn quiet", type: "button", textContent: "Something else", disabled: !alts.length,
           ariaLabel: state.showAlts ? "Hide the other tasks" : `Something else: ${alts.length} other tasks`,
           ariaExpanded: String(state.showAlts), onclick: () => { state.showAlts = !state.showAlts; render(); } }))),
       state.showAlts && h("div", { className: "now-alts", role: "group", ariaLabel: "Other tasks" }, ...alts.map((s) => h("button", {
         type: "button", className: "now-alt", ariaLabel: `Put ${s.task.title} on the card instead${s.why ? ". " + s.why : ""}`,
         onclick: () => { state.chosen = s.task.id; state.showAlts = false; render(); },
-      }, taskCard(s, false)))));
+      }, taskCard(s, false)))), tip);
+    // The new card slides in where the skipped one left.
+    if (toast && motionOK()) root.querySelector(".now-card.main")?.classList.add("in");
   }
 
   const fill = (...kids) => root.replaceChildren(...kids.filter(Boolean));
@@ -154,6 +210,6 @@ export function mountNow(root, uid, { onCard } = {}){
 
   return {
     refresh: render,
-    unmount(){ showing(null); document.body.classList.remove("focus"); unsubs.forEach((u) => u()); clearInterval(tick); document.removeEventListener("visibilitychange", onVisible); root.replaceChildren(); root.hidden = true; },
+    unmount(){ showing(null); clearTimeout(toastTimer); document.body.classList.remove("focus"); unsubs.forEach((u) => u()); clearInterval(tick); document.removeEventListener("visibilitychange", onVisible); root.replaceChildren(); root.hidden = true; },
   };
 }

@@ -3,7 +3,7 @@
    firebase.js and store.js are swapped for fakes, tasks come from a scenario
    below. Everything else is the real app code.
 
-     node daisey/test/v1/preview/preview.js [scenario] [--wide] [--tasks] [--cal spec] [--run "title:minutes"] [--out dir] [--click "sel" ...]
+     node daisey/test/v1/preview/preview.js [scenario] [--wide] [--tasks] [--cal spec] [--tasks-dump] [--run "title:minutes"] [--out dir] [--click "sel" ...]
 
    Writes <out>/<scenario>[-tasks][-wide].png and prints the path. Needs
    playwright from daisey/test/ (npm install there once). */
@@ -77,6 +77,7 @@ const FAKES = {
   await page.waitForTimeout(150);
   for (const sel of clicks) { await page.click(sel); await page.waitForTimeout(150); }
   if (args.includes("--text")) console.log(await page.innerText("body"));
+  if (args.includes("--tasks-dump")) console.log(await page.evaluate(() => window.__store.tasks.map((t) => t.title + ": " + t.status + (t.skipCount ? " skips " + t.skipCount : "")).join(" | ")));
   fs.mkdirSync(outDir, { recursive: true });
   const file = path.join(outDir, `${name}${tasksTab ? "-tasks" : ""}${cal ? "-cal" + cal.replace(/\W/g, "") : ""}${running ? "-run" + running.replace(/\W/g, "") : ""}${clicks.length ? "-" + clicks.join("").replace(/\W/g, "").slice(0, 24) : ""}${wide ? "-wide" : ""}.png`);
   await page.screenshot({ path: file, fullPage: true });

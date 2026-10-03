@@ -110,6 +110,24 @@ test("done goes to Done and leaves the available list", () => {
   assert.equal(M.isAvailable({ ...t, ...p }), false);
 });
 
+test("not now: the skip counts; the reason is a second patch; blocked waits", () => {
+  const t = { ...M.createTask({ title: "x" }, opts), skipCount: 2, skipsSinceStart: 1 };
+  assert.deepEqual(M.skipTask(t, opts), { skipCount: 3, skipsSinceStart: 2, touchedAt: NOW });
+  const tired = M.skipReason(t, "tired", opts);
+  assert.equal(tired.skipReasons.tired, 1);
+  assert.equal(tired.status, undefined); // only "blocked" changes the task
+  assert.equal(M.skipReason(t, "blocked", opts).status, "waiting");
+  assert.deepEqual(M.skipReason(t, "nonsense", opts), {});
+});
+
+test("not now: Undo puts back exactly what the skip touched", () => {
+  const t = { ...M.createTask({ title: "x" }, opts), skipCount: 2, skipsSinceStart: 1, touchedAt: NOW - 5 };
+  const before = M.skipSnapshot(t);
+  const after = { ...t, ...M.skipTask(t, opts), ...M.skipReason(t, "blocked", opts) };
+  assert.equal(after.status, "waiting");
+  assert.deepEqual({ ...after, ...before }, t);
+});
+
 test("focus mode: starting counts a start and clears the stale-skip count", () => {
   const t = { ...M.createTask({ title: "x" }, opts), starts: 1, skipsSinceStart: 3 };
   assert.deepEqual(M.startedTask(t, opts), { starts: 2, skipsSinceStart: 0, touchedAt: NOW });

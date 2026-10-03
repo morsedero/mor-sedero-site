@@ -1,6 +1,6 @@
 // Stand-in for app/js/store.js in the preview: same exports, tasks held in
 // memory instead of Firestore. Seeded from window.__FAKE (set by preview.js).
-import { createTask, editTask, completeTask, startedTask, workedTask } from "./model.js";
+import { createTask, editTask, completeTask, startedTask, workedTask, skipTask, skipReason } from "./model.js";
 
 const seed = window.__FAKE || {};
 let n = 0;
@@ -16,6 +16,9 @@ const watch = (k) => (uid, cb) => { subs[k].add(cb); setTimeout(() => cb(k === "
 const ok = (k) => { emit(k); return Promise.resolve(); };
 
 export const watchTasks = watch("tasks");
+export const skipNow = (uid, task) => patchTask(uid, task.id, skipTask(task));
+export const reasonForSkip = (uid, task, reason) => patchTask(uid, task.id, skipReason(task, reason));
+export const restoreTask = (uid, id, fields) => patchTask(uid, id, fields);
 export const watchRun = watch("now");
 export const startRun = (uid, task) => { docs.now = { taskId: task.id, startedAt: Date.now(), extra: 0 }; patchTask(uid, task.id, startedTask(task)); return ok("now"); };
 export const extendRun = (uid, run, m) => { docs.now = { ...run, extra: (run.extra || 0) + m }; return ok("now"); };
