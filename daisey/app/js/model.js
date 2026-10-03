@@ -1,16 +1,23 @@
-// Task fields, defaults, first-pass size/energy guesses, repeats.
+// Task fields, defaults, first-pass size/energy guesses.
 // PURE: no Firebase, no DOM, and the clock is only read as a default argument,
 // so the node tests in daisey/test/v1/ import this file directly.
 //
 // Dates are local calendar days as "YYYY-MM-DD" strings, times are "HH:MM",
-// timestamps are epoch ms. Day maths runs on UTC midnights of those strings,
-// so a DST change never shifts a day.
+// timestamps are epoch ms.
+//
+// Decided with Mor after session 2 (2026-10-03), departing from the spec:
+// - Energy is never asked when adding a task; Daisey guesses it. The user
+//   weighs in when choosing a task (how: to be decided).
+// - No "hard due" field. A due turns hard on its own when the time left
+//   before it gets tight for the task's size — the engine works that out
+//   each moment (session 3), so nothing is stored.
+// - No repeating tasks.
+// - Waiting is set by acting on an existing task, never when adding one.
 
 export const SIZES = [5, 15, 30, 60, 90]; // guess buckets; 90 reads as "90+"
 export const ENERGY = ["low", "medium", "high"];
 export const STATUS = ["ready", "waiting", "done"];
 export const SKIP_REASONS = ["tired", "notime", "mood", "blocked"];
-export const WEEKDAYS = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
 export const INBOX = "Inbox";
 export const DEFAULT_SIZE = 30;
 export const DEFAULT_ENERGY = "medium";
@@ -38,16 +45,11 @@ const ENERGY_HINTS = [
 // ---------- dates ----------
 
 const pad = (n) => String(n).padStart(2, "0");
-const utc = (d) => { const [y, m, dd] = d.split("-").map(Number); return Date.UTC(y, m - 1, dd); };
-const iso = (t) => new Date(t).toISOString().slice(0, 10);
 
 export function localDate(ms = Date.now()){
   const d = new Date(ms);
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
-export const addDays = (d, n) => iso(utc(d) + n * 864e5);
-export const diffDays = (a, b) => Math.round((utc(a) - utc(b)) / 864e5); // a − b
-export const weekday = (d) => new Date(utc(d)).getUTCDay(); // 0 = Sunday
 
 // ---------- field cleaning ----------
 
@@ -68,23 +70,11 @@ export function toEnergy(v){
 
 export function toDate(v){
   if (typeof v !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(v)) return null;
-  return iso(utc(v)) === v ? v : null; // rejects 2026-02-30
+  const [y, m, d] = v.split("-").map(Number);
+  return new Date(Date.UTC(y, m - 1, d)).toISOString().slice(0, 10) === v ? v : null; // rejects 2026-02-30
 }
 
 export const toTime = (v) => (typeof v === "string" && /^([01]\d|2[0-3]):[0-5]\d$/.test(v) ? v : null);
-
-// { every: N, anchor } repeats every N days counting from anchor;
-// { weekdays: [1, 4] } repeats on those days (0 = Sunday).
-export function toRepeat(v, anchor){
-  if (!v || typeof v !== "object") return null;
-  if (Array.isArray(v.weekdays)) {
-    const days = [...new Set(v.weekdays.map(Number))].filter((d) => Number.isInteger(d) && d >= 0 && d <= 6).sort();
-    return days.length ? { weekdays: days } : null;
-  }
-  const every = Number(v.every);
-  if (Number.isInteger(every) && every >= 1) return { every, anchor: toDate(v.anchor) || anchor };
-  return null;
-}
 
 // ---------- guesses ----------
 
@@ -108,11 +98,10 @@ function similarity(toksA, titleB){
   return both / (a.size + b.size - both);
 }
 
-// What a past task says about duration: real minutes per finish if it was
-// ever finished, else the size the user set (a guess teaches nothing).
+// What a past task says about duration: real minutes if it was finished,
+// else the size the user set (a guess teaches nothing).
 function pastMinutes(t){
-  const done = t.doneCount || (t.status === "done" ? 1 : 0);
-  if (done && t.spentMinutes > 0) return t.spentMinutes / done;
+  if (t.status === "done" && t.spentMinutes > 0) return t.spentMinutes;
   if (!(t.guessed || []).includes("size") && t.size > 0) return t.size;
   return null;
 }
@@ -143,24 +132,6 @@ export function guessEnergy(title, size){
   return DEFAULT_ENERGY;
 }
 
-// ---------- repeats ----------
-
-// First occurrence strictly after `after`.
-export function nextOccurrence(repeat, after){
-  if (repeat.weekdays) {
-    for (let i = 1; i <= 7; i++) {
-      const d = addDays(after, i);
-      if (repeat.weekdays.includes(weekday(d))) return d;
-    }
-    return null; // unreachable with a valid repeat
-  }
-  const gap = diffDays(after, repeat.anchor);
-  if (gap < 0) return repeat.anchor;
-  return addDays(repeat.anchor, (Math.floor(gap / repeat.every) + 1) * repeat.every);
-}
-
-export const firstOccurrence = (repeat, from) => nextOccurrence(repeat, addDays(from, -1));
-
 // ---------- tasks ----------
 
 const freshCounters = () => ({
@@ -170,47 +141,36 @@ const freshCounters = () => ({
   spentMinutes: 0,
   starts: 0,
   stopsUnfinished: 0,
-  doneCount: 0,
   doneAt: null,
 });
 
-// Only the title is required. Every other field gets a default or a guess;
-// guessed fields are listed in `guessed` so the UI can mark them and a later
-// edit can tell the user's values from Daisey's. `history` is the user's
-// other tasks, used for "similar past tasks".
-export function createTask(input, { now = Date.now(), today = localDate(now), history = [] } = {}){
+// Only the title is required. Adding a task takes project, title, size and
+// due; everything else is a default or a guess. Guessed fields are listed in
+// `guessed` so the UI can mark them and a later edit can tell the user's
+// values from Daisey's. `history` is the user's other tasks, used for
+// "similar past tasks".
+export function createTask(input, { now = Date.now(), history = [] } = {}){
   const title = text(input.title);
   if (!title) throw new Error("A task needs a title.");
-  const guessed = [];
+  const guessed = ["energy"];
 
   let size = toMinutes(input.size);
-  if (size == null) { size = guessSize(title, history); guessed.push("size"); }
-  let energy = toEnergy(input.energy);
-  if (energy == null) { energy = guessEnergy(title, size); guessed.push("energy"); }
+  if (size == null) { size = guessSize(title, history); guessed.unshift("size"); }
   let canSplit = input.canSplit;
   if (typeof canSplit !== "boolean") { canSplit = size >= SPLIT_FROM; guessed.push("canSplit"); }
-
-  let due = toDate(input.due);
-  const repeat = toRepeat(input.repeat, due || today);
-  if (repeat && !due) due = firstOccurrence(repeat, today);
-
-  const waitingOn = text(input.waitingOn) || null;
-  const status = STATUS.includes(input.status) ? input.status : waitingOn ? "waiting" : "ready";
+  const due = toDate(input.due);
 
   return {
-    title,
     project: text(input.project) || INBOX,
+    title,
     size,
-    energy,
+    energy: guessEnergy(title, size),
     due,
     dueTime: due ? toTime(input.dueTime) : null,
-    hardDue: !!(due && input.hardDue === true),
-    status,
-    waitingOn,
+    status: "ready",
+    waitingOn: null,
     canSplit,
     notes: notesText(input.notes) || null,
-    repeat,
-    availableFrom: null, // a repeat done this cycle hides until this day
     guessed,
     createdAt: now,
     touchedAt: now,
@@ -224,7 +184,7 @@ const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 // named in `changes` becomes the user's own; passing null/"" for size or
 // energy hands it back to Daisey to guess. Guessed fields are re-guessed when
 // what they were guessed from (title, size) changes.
-export function editTask(task, changes, { now = Date.now(), today = localDate(now), history = [] } = {}){
+export function editTask(task, changes, { now = Date.now(), history = [] } = {}){
   const patch = {};
   const set = (k, v) => { if (!same(task[k], v)) patch[k] = v; };
   const has = (k) => Object.prototype.hasOwnProperty.call(changes, k);
@@ -253,14 +213,7 @@ export function editTask(task, changes, { now = Date.now(), today = localDate(no
   else if (sizeChanged && guessed.has("canSplit")) set("canSplit", get("size") >= SPLIT_FROM);
 
   if (has("due")) set("due", toDate(changes.due));
-  if (has("repeat")) {
-    const repeat = toRepeat(changes.repeat, get("due") || today);
-    set("repeat", repeat);
-    if (repeat && !get("due")) set("due", firstOccurrence(repeat, today));
-    if (!repeat) set("availableFrom", null);
-  }
   if (has("dueTime") || !get("due")) set("dueTime", get("due") ? toTime(changes.dueTime ?? task.dueTime) : null);
-  if (has("hardDue") || !get("due")) set("hardDue", !!(get("due") && (has("hardDue") ? changes.hardDue === true : task.hardDue)));
 
   if (has("waitingOn")) set("waitingOn", text(changes.waitingOn) || null);
   if (has("status") && STATUS.includes(changes.status)) {
@@ -276,18 +229,8 @@ export function editTask(task, changes, { now = Date.now(), today = localDate(no
   return patch;
 }
 
-// Done. A one-off becomes Done. A repeat stays one task: its due moves to the
-// next occurrence and it hides until the next cycle starts, so it shows once
-// per cycle however many cycles were missed — never stacked.
-export function completeTask(task, { now = Date.now(), today = localDate(now) } = {}){
-  const patch = { doneAt: now, doneCount: (task.doneCount || 0) + 1, skipsSinceStart: 0, touchedAt: now };
-  if (!task.repeat) return { ...patch, status: "done" };
-  const due = nextOccurrence(task.repeat, task.due && task.due > today ? task.due : today);
-  const cycleStart = addDays(task.due || today, 1);
-  const tomorrow = addDays(today, 1);
-  return { ...patch, status: "ready", waitingOn: null, due, availableFrom: cycleStart > tomorrow ? cycleStart : tomorrow };
-}
+export const completeTask = (task, { now = Date.now() } = {}) =>
+  ({ status: "done", doneAt: now, skipsSinceStart: 0, touchedAt: now });
 
-// Could the engine offer this task today? (Window and energy are session 3.)
-export const isAvailable = (task, today = localDate()) =>
-  task.status === "ready" && (!task.availableFrom || task.availableFrom <= today);
+// Could the engine offer this task? (Window and energy are session 3.)
+export const isAvailable = (task) => task.status === "ready";

@@ -210,8 +210,8 @@ use today is touched.
 | # | Session | Needs | You test |
 |---|---|---|---|
 | 1 | **Sign-in + Firebase storage.** Page with Google sign-in; `build-app.js` + `netlify.toml` change; Firestore rules. A throwaway "note" field proves sync. | A–D | Sign in on computer and phone. Type a note on one, see it on the other within seconds. Sign out → nothing shows. |
-| 2 | **Task data model.** `model.js` + `store.js`: all spec fields, defaults, first-pass size/energy guesses, repeating tasks (once per cycle). Temporary debug list at `?debug`. Node tests. | — | Add a task with only a title; see project=Inbox, size and energy guessed. Add a weekly task; it appears once. |
-| 3 | **Now engine.** `engine.js` + `weights.js`: filter, score table, tie-break, Something-else variety rule, stale rule, why line. Manual window + energy inputs on the debug page. Node tests for every table row. | — | Set "20 min, low" and see the ranking and why lines change sensibly. |
+| 2 | **Task data model.** `model.js` + `store.js`: all spec fields, defaults, first-pass size/energy guesses. Temporary debug list at `?debug`. Node tests. | — | Add a task with only a title; see project=Inbox, size and energy guessed. Done leaves the list. |
+| 3 | **Now engine.** `engine.js` + `weights.js`: filter, score table, tie-break, Something-else variety rule, stale rule, why line. Manual window + energy inputs on the debug page. Urgency: a due turns hard on its own when time left gets tight for the task's size (no stored hard-due field). Node tests for every table row. | — | Set "20 min, low" and see the ranking and why lines change sensibly. |
 | 4 | **Now card UI.** Single card, three buttons, Not now reasons, 2–3 alternatives, both empty states, energy chip, he/en switch, full RTL. | — | On phone in Hebrew and English: skip, pick something else, check mixed-language titles read right. |
 | 5 | **Timer + Done.** Running state saved in Firestore (survives reload, visible on the other device). Done → "Finished, or more left?". Stop. Real minutes logged. | — | Start on computer, see it running on phone, finish there. |
 | 6 | **Server function.** `daisey-now-chat.js`: rejects anyone not signed in or not allow-listed, calls Gemini, returns structured actions only. | F, G | A test button returns parsed actions; signed out it refuses. |
@@ -220,6 +220,12 @@ use today is touched.
 | 9 | **Energy guess.** Correction wins for 3 h; draining events (tags in settings, e.g. "teaching", "שיעור"); bucket average after 5 corrections. | — | Correct energy, reload, see it held; check guess after a long event. |
 | 10 | **Learning.** Learned fit from starts/skips, size updates from finish times, too-tired / no-time nudges, Something-else wins, stop-twice → offer split, skipped-5× → "keep, shrink, or drop?". | — | Tests on synthetic history; then a few days of normal use. |
 | 11 | **Voice.** Hold-to-talk, Hebrew and English, feeds the same chat path. | — | Hold and speak both languages on phone. Note: works in Chrome (Android, desktop); iPhone Safari support is patchy; Firefox has none. |
+
+**Changed after session 2 (Mor, 2026-10-03):** energy is never asked when
+adding a task (set when choosing tasks; how is still open); hard due is
+computed, not a field; no repeating tasks; Waiting only by acting on an
+existing task; Done tasks leave the list, with a separate Done list "for
+satisfaction" later. `model.js`'s header has the same list.
 
 **After 11:** the one-week test from the spec. Then cutover: move v1 to
 `/daisey/`, retire the old pieces listed in section 1, with your approval.
