@@ -85,5 +85,14 @@ textarea {
 .dbg-task.off { opacity: .5; }
 .dbg-project { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--ink-2); }
 .dbg-title { font-weight: 600; }
+.dbg-title.done { color: var(--ink-2); }
+.dbg-tabs { display: flex; align-items: center; gap: 6px; margin-block: 8px; }
+.dbg-tabs .muted { margin-inline-start: auto; }
+.dbg-tab {
+  font: inherit; font-size: 14px; font-weight: 600; cursor: pointer;
+  padding-block: 6px; padding-inline: 14px; border-radius: 999px;
+  border: 1px solid var(--line); background: #fff; color: var(--ink-2);
+}
+.dbg-tab[aria-selected="true"] { background: var(--ink); border-color: var(--ink); color: #fff; }
 .dbg-actions { display: flex; gap: 6px; margin-block-start: 6px; }
 .btn.small { min-block-size: 32px; padding-block: 4px; padding-inline: 12px; font-size: 14px; }

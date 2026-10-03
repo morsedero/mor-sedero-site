@@ -162,3 +162,12 @@ test("edit: clearing due clears due time", () => {
   assert.equal(p.due, null);
   assert.equal(p.dueTime, null);
 });
+
+test("reopening a done task clears doneAt", () => {
+  const t = { id: "a", ...M.createTask({ title: "x" }, opts) };
+  const d = { ...t, ...M.completeTask(t, opts) };
+  const p = M.editTask(d, { status: "ready" }, opts);
+  assert.equal(p.status, "ready");
+  assert.equal(p.doneAt, null);
+  assert.equal(M.isAvailable({ ...d, ...p }), true);
+});

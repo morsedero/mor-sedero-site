@@ -1,6 +1,7 @@
 // TEMPORARY debug list at ?debug (session 2). Add a task, see what Daisey
-// filled in, mark it Waiting or Done. Done tasks leave the list (a separate
-// Done list comes later). Goes away once the Now card (session 4) exists.
+// filled in, mark it Waiting or Done. Open and Done are two tabs; Done is
+// there for the satisfaction of seeing it. Goes away once the Now card
+// (session 4) exists.
 import { watchTasks, addTask, updateTask, finishTask, removeTask } from "./store.js";
 
 const h = (tag, props = {}, ...kids) => {
@@ -18,6 +19,8 @@ const field = (label, input) => {
 
 export function mountDebug(root, uid){
   let tasks = [];
+  let tab = "open";
+  let lastMeta = {};
   const msg = h("p", { className: "msg", role: "alert" });
   const fail = (e) => { console.error("[daisey] debug", e); msg.textContent = e.message || String(e); };
 
@@ -47,9 +50,12 @@ export function mountDebug(root, uid){
     } catch (e) { fail(e); }
   };
 
-  const summary = h("p", { className: "muted" });
+  const tabBtn = (id) => h("button", { type: "button", role: "tab", className: "dbg-tab", onclick: () => { tab = id; render(lastMeta); } });
+  const tabs = { open: tabBtn("open"), done: tabBtn("done") };
+  const offline = h("span", { className: "muted" });
   const list = h("ul", { className: "dbg-list" });
-  root.replaceChildren(h("h2", { className: "label", textContent: "Tasks (debug)" }), form, msg, summary, list);
+  root.replaceChildren(h("h2", { className: "label", textContent: "Tasks (debug)" }), form, msg,
+    h("div", { className: "dbg-tabs", role: "tablist" }, tabs.open, tabs.done, offline), list);
 
   function row(t){
     const g = (field, v) => (t.guessed || []).includes(field) ? `${v} (guess)` : v;
@@ -74,12 +80,28 @@ export function mountDebug(root, uid){
         act("Delete", () => removeTask(uid, t.id))));
   }
 
+  function doneRow(t){
+    const when = t.doneAt ? new Date(t.doneAt).toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" }) : "";
+    const act = (label, fn) => h("button", { className: "btn small", type: "button", textContent: label, onclick: () => fn().catch(fail) });
+    return h("li", { className: "dbg-task" },
+      h("div", { className: "dbg-project", dir: "auto", textContent: t.project }),
+      h("div", { className: "dbg-title done", dir: "auto", textContent: "✓ " + t.title }),
+      h("div", { className: "muted", textContent: `done ${when}` }),
+      h("div", { className: "dbg-actions" },
+        act("Reopen", () => updateTask(uid, t, { status: "ready" }, tasks)),
+        act("Delete", () => removeTask(uid, t.id))));
+  }
+
   function render(meta = {}){
+    lastMeta = meta;
     const open = tasks.filter((t) => t.status !== "done")
       .sort((a, b) => (a.status === "waiting") - (b.status === "waiting") || b.createdAt - a.createdAt);
-    const done = tasks.length - open.length;
-    summary.textContent = `${open.length} open · ${done} done` + (meta.fromCache ? " · offline copy" : "");
-    list.replaceChildren(...open.map(row));
+    const done = tasks.filter((t) => t.status === "done").sort((a, b) => (b.doneAt || 0) - (a.doneAt || 0));
+    tabs.open.textContent = `Open ${open.length}`;
+    tabs.done.textContent = `Done ${done.length}`;
+    for (const id of ["open", "done"]) tabs[id].setAttribute("aria-selected", String(tab === id));
+    offline.textContent = meta.fromCache ? "offline copy" : "";
+    list.replaceChildren(...(tab === "open" ? open.map(row) : done.map(doneRow)));
   }
 
   root.hidden = false;

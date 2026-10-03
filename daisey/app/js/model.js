@@ -219,6 +219,7 @@ export function editTask(task, changes, { now = Date.now(), history = [] } = {})
   if (has("status") && STATUS.includes(changes.status)) {
     set("status", changes.status);
     if (changes.status !== "waiting" && !has("waitingOn")) set("waitingOn", null);
+    if (changes.status !== "done") set("doneAt", null); // reopened
   } else if (has("waitingOn") && get("waitingOn") && get("status") === "ready") {
     set("status", "waiting");
   }
