@@ -191,7 +191,7 @@ const sizeWords = (n) => n === 60 ? "hour" : n > 60 ? `${+(n / 60).toFixed(1)} h
 
 const PHRASES = {
   urgency: (s, d) => d.overdue ? "overdue" : dueWords(s.task, d.days) + (d.hard ? ", getting tight" : ""),
-  window: (s, d) => d.fit === "small" ? "quick one"
+  window: (s, d) => d.fit === "small" ? `${sizeWords(s.task.size)}, quick win`
     : d.fit === "piece" ? `a piece fits your ${sizeWords(d.window)}`
     : d.nextEvent ? `fits before ${d.nextEvent}`
     : d.fit === "full" ? `fills your free ${sizeWords(d.window)}` : `fits your ${sizeWords(d.window)}`,
@@ -200,19 +200,31 @@ const PHRASES = {
   learned: (s, d) => s.parts.learned > 0 ? `you usually do these in the ${d.bucket}` : null,
 };
 
-// The two or three factors that gave the most points, as one sentence.
-// `skip` drops factors that make no sense in context (the day list has no
-// real window, so "fills your free 3 h" would be noise).
-export function whyLine(s, skip = []){
-  const phrases = FACTORS
+// The two or three factors that gave the most points, each as a short
+// lowercase phrase. `skip` drops factors that make no sense in context.
+export function whyPhrases(s, skip = []){
+  return FACTORS
     .filter((k) => !skip.includes(k) && s.parts[k] >= W.WHY_MIN_POINTS)
     .sort((a, b) => s.parts[b] - s.parts[a] || FACTORS.indexOf(a) - FACTORS.indexOf(b))
     .map((k) => PHRASES[k](s, s.details[k]))
     .filter(Boolean)
     .slice(0, W.WHY_PARTS);
+}
+
+// Those phrases as one sentence: "Due today, 5 min, quick win."
+export function whyLine(s, skip = []){
+  const phrases = whyPhrases(s, skip);
   if (!phrases.length) return "";
   const line = phrases.join(", ");
   return line[0].toUpperCase() + line.slice(1) + ".";
+}
+
+// The same reasons in Daisey's own voice, for the card it is proposing:
+// "I'd do this now: 5 min, quick win." Nothing to say → a plain opener,
+// never an empty line under the title.
+export function whySaid(s, skip = []){
+  const phrases = whyPhrases(s, skip);
+  return phrases.length ? `I'd do this now: ${phrases.join(", ")}.` : "I'd do this one next.";
 }
 
 // ---------- Something else ----------

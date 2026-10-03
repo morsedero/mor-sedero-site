@@ -222,7 +222,7 @@ test("why: urgency phrases — overdue, today, tomorrow, weekday, date, getting 
 });
 
 test("why: window, momentum, neglect, learned, next event phrases", () => {
-  assert.match(why(task({ size: 5 })), /quick one/i);
+  assert.match(why(task({ size: 5 })), /5 min, quick win/i);
   assert.match(why(task({ size: 90, canSplit: true }), { window: 45 }), /a piece fits your 45 min/i);
   assert.match(why(task({ size: 30 }), { window: 90 }), /fits your 1.5 h/i);
   assert.match(why(task({ size: 30, project: "Monster Punk" }), { lastProject: "Monster Punk" }), /keeps Monster Punk going/i);
@@ -231,9 +231,15 @@ test("why: window, momentum, neglect, learned, next event phrases", () => {
   assert.match(why(task({ size: 40 }), { nextEvent: "teaching" }), /fits before teaching/i);
 });
 
+test("why: Daisey's own voice on the card it proposes", () => {
+  const said = (t, o) => E.whySaid(E.rank([t], { now: NOW, ...o }).pick);
+  assert.equal(said(task({ size: 5 })), "I'd do this now: 5 min, quick win.");
+  assert.equal(said(task({ size: 30 }), { realWindow: false }), "I'd do this one next."); // no factor worth saying
+});
+
 test("why: weak factors (a little neglect) are never reasons; max 3 parts", () => {
   const w = why(task({ size: 5, touchedAt: NOW - 2 * 864e5 }));
-  assert.equal(w, "Quick one."); // neglect 2 < 5
+  assert.equal(w, "5 min, quick win."); // neglect 2 < 5
   const full = why(task({ size: 30, due: "2026-10-05", project: "X", touchedAt: NOW - 8 * 864e5 }), { lastProject: "X" });
   assert.equal(full.split(", ").length, 3);
 });

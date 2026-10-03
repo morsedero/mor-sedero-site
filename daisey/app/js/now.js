@@ -10,7 +10,7 @@
 // alternatives, tap one to make it the card.
 import { watchTasks } from "./store.js";
 import { watchCalendar } from "./calendar.js";
-import { rank, timeBucket, freeWindow } from "./engine.js";
+import { rank, timeBucket, freeWindow, whySaid } from "./engine.js";
 import { h, sizeText, dur } from "./ui.js";
 
 const GREETING = { morning: "Morning.", afternoon: "Afternoon.", evening: "Evening." };
@@ -32,11 +32,14 @@ export function mountNow(root, uid, { onCard } = {}){
   let shown;
   const showing = (id) => { if (id !== shown) { shown = id; onCard?.(id); } };
 
+  // The card Daisey is proposing says its reasons in the first person; the
+  // alternatives keep the plain why line, so only one voice is speaking.
   function taskCard(s, main, ...extra){
+    const why = main ? whySaid(s) : s.why;
     return h("div", { className: "now-card" + (main ? " main" : "") },
       h("div", { className: "now-meta", dir: "auto", textContent: `${s.task.project} · ${sizeText(s.task.size)}` }),
       h("div", { className: "now-title", dir: "auto", textContent: s.task.title }),
-      s.why && h("p", { className: "now-why", textContent: s.why }),
+      why && h("p", { className: "now-why", textContent: why }),
       ...extra);
   }
 
@@ -63,7 +66,7 @@ export function mountNow(root, uid, { onCard } = {}){
           ? "No tasks yet. Add a few and Daisey will pick."
           : fw?.current ? "Nothing to pick until it ends."
           : `Nothing fits the next ${dur(r.moment.window)}. Take the break.` }),
-        skips.size > 0 && h("button", { className: "btn quiet", type: "button", textContent: `Show the ${skips.size} you skipped`, onclick: () => { skips.clear(); render(); } })));
+        skips.size > 0 && h("button", { className: "btn quiet", type: "button", textContent: `Show the ${skips.size} you skipped`, ariaLabel: `Show the ${skips.size} tasks you skipped this session`, onclick: () => { skips.clear(); render(); } })));
       return;
     }
 
@@ -71,13 +74,18 @@ export function mountNow(root, uid, { onCard } = {}){
     // Start is the one loud thing on the tab; the other two stay quiet under it.
     // Start opens focus mode (step 4 of the Now-screen pass); inert until then.
     fill(greet, taskCard(card, true,
-      h("button", { className: "btn primary start", type: "button", textContent: "Start" }),
+      h("button", { className: "btn primary start", type: "button", textContent: "Start",
+        ariaLabel: `Start: ${card.task.title}` }),
       h("div", { className: "now-actions" },
-        h("button", { className: "btn quiet", type: "button", textContent: "Not now", onclick: () => { skips.add(card.task.id); reset(); render(); } }),
+        h("button", { className: "btn quiet", type: "button", textContent: "Not now",
+          ariaLabel: `Not now: skip ${card.task.title} and show the next one`,
+          onclick: () => { skips.add(card.task.id); reset(); render(); } }),
         h("button", { className: "btn quiet", type: "button", textContent: "Something else", disabled: !alts.length,
+          ariaLabel: state.showAlts ? "Hide the other tasks" : `Something else: ${alts.length} other tasks`,
           ariaExpanded: String(state.showAlts), onclick: () => { state.showAlts = !state.showAlts; render(); } }))),
-      state.showAlts && h("div", { className: "now-alts" }, ...alts.map((s) => h("button", {
-        type: "button", className: "now-alt", onclick: () => { state.chosen = s.task.id; state.showAlts = false; render(); },
+      state.showAlts && h("div", { className: "now-alts", role: "group", ariaLabel: "Other tasks" }, ...alts.map((s) => h("button", {
+        type: "button", className: "now-alt", ariaLabel: `Put ${s.task.title} on the card instead${s.why ? ". " + s.why : ""}`,
+        onclick: () => { state.chosen = s.task.id; state.showAlts = false; render(); },
       }, taskCard(s, false)))));
   }
 

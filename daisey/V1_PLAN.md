@@ -247,8 +247,10 @@ dropped; the spec's energy sections no longer apply.
 **Now-screen pass (Mor, 2026-10-03):** the day planner under the card is
 gone — Daisey picks one task at a time, never lays out the day. Above the
 card, a time-of-day greeting. **Free time is never asked for**: no hours
-chips, no manual window. It comes only from the calendar (session 8); until
-then the default 60 filters and scores nothing.
+chips, no manual window. It comes only from the calendar. Calendar read was
+pulled forward: `functions/daisey-now-calendar.js` reuses old Daisey's stored
+Google token, so step E isn't needed yet — but old Daisey's Google auth must
+not be retired until v1 has its own.
 
 **After 11:** the one-week test from the spec. Then cutover: move v1 to
 `/daisey/`, retire the old pieces listed in section 1, with your approval.
