@@ -56,9 +56,6 @@ export const LEARNED_MIN = -10; // learned fit arrives in session 10
 export const LEARNED_MAX = 10;
 export const SKIP_PENALTY = 8; // per skip of this task today
 
-// Daisey's day (the check-in preview)
-export const DAY_LIST_MAX = 8; // at most this many tasks, however many hours
-
 // Something else
 export const ALTERNATIVES = 3;
 export const VARIETY_WITHIN = 15; // points; prefer another project if it scores this close

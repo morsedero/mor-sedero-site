@@ -18,8 +18,8 @@ if (!configured) {
 
 async function boot(){
   const fb = await import("./firebase.js");
-  let mounted = null; // { now, day, tasks, adder } while signed in
-  let onCard = null; // task id on the Now card, shared with the day list and the board
+  let mounted = null; // { now, tasks, adder } while signed in
+  let onCard = null; // task id on the Now card, shared with the board
 
   $("#signin").onclick = async () => {
     $("#signinMsg").textContent = "";
@@ -73,15 +73,14 @@ async function boot(){
     } else initial();
     show("signedin"); // no element of its own: just clears loading/sign-in views
 
-    Promise.all([import("./now.js"), import("./day.js"), import("./tasks.js"), import("./addtask.js")])
-      .then(([{ mountNow }, { mountDay }, { mountTasks }, { mountAddTask }]) => {
+    Promise.all([import("./now.js"), import("./tasks.js"), import("./addtask.js")])
+      .then(([{ mountNow }, { mountTasks }, { mountAddTask }]) => {
         if (fb.currentUid() !== user.uid || mounted) return;
         const m = mounted = {};
         m.adder = mountAddTask($("#addtask"), user.uid);
-        m.day = mountDay($("#day"), user.uid);
         m.tasks = mountTasks($("#viewTasks"), user.uid, { onAdd: (project) => m.adder.open(project) });
-        m.now = mountNow($("#nowcard"), user.uid, { onCard: (id) => { onCard = id; m.day?.setCurrent(id); m.tasks?.setCurrent(id); } });
-        m.day.setCurrent(onCard); m.tasks.setCurrent(onCard);
+        m.now = mountNow($("#nowcard"), user.uid, { onCard: (id) => { onCard = id; m.tasks?.setCurrent(id); } });
+        m.tasks.setCurrent(onCard);
         $("#add").onclick = () => m.adder.open();
         for (const s of SIGNED_IN) $(s).hidden = false;
         setTab(tabFromHash());

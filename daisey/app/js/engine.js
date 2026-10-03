@@ -3,7 +3,7 @@
 // dates are local time, so the node tests in daisey/test/v1/ drive it with
 // fixed moments. Every number lives in weights.js.
 //
-// Session 3 takes the window as a plain input (today's check-in hours).
+// Session 3 takes the window as a plain input (the free time you set on the Now card).
 // Later sessions fill the rest of the moment: calendar (8), learned fit
 // (10). Until then those parts score 0. No energy (Mor, 2026-10-03).
 import * as W from "./weights.js";
@@ -222,30 +222,6 @@ export function somethingElse(ranked, count = W.ALTERNATIVES){
     pool.splice(pool.indexOf(choice), 1);
   }
   return out;
-}
-
-// ---------- Daisey's day ----------
-
-// What today holds, as Daisey sees it: ready tasks in score order (urgent
-// first), added while they fit in today's free hours, at most DAY_LIST_MAX.
-// Read-only — it explains the day; the Now card still picks each moment.
-// A task too big for what's left is passed over for smaller ones after it.
-export function planDay(tasks, { now = Date.now(), hours } = {}){
-  const budget = Math.max(0, Math.round((Number(hours) || 0) * 60));
-  const m = readMoment({ now, window: W.WINDOW_CAP });
-  const scored = tasks.filter((t) => t.status === "ready" && (t.skipsSinceStart || 0) < W.STALE_SKIPS)
-    // No real window here, so window fit mustn't order the day: drop it.
-    .map((t) => { const sc = scoreTask(t, m); return { ...sc, score: sc.score - sc.parts.window }; })
-    .sort(compare);
-  const items = [];
-  let used = 0;
-  for (const s of scored) {
-    if (items.length >= W.DAY_LIST_MAX) break;
-    if (used + s.task.size > budget) continue;
-    used += s.task.size;
-    items.push({ ...s, why: whyLine(s, ["window"]) });
-  }
-  return { items, minutes: used, budget, left: scored.length - items.length };
 }
 
 // ---------- the whole pass ----------

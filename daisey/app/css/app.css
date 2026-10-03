@@ -135,13 +135,18 @@ textarea {
 .btn:disabled { opacity: .45; cursor: default; }
 /* The Now card is the hero: no outer card chrome, the task card itself is the box. */
 .nowcard { display: grid; gap: 14px; margin-block-end: 16px; padding: 0; background: none; border: 0; box-shadow: none; }
-.nowcard > .now-empty, .nowcard > .muted { padding: 20px; }
+.nowcard > .muted { padding: 20px; }
+.now-greet { margin: 4px 2px 0; font-size: 17px; color: var(--ink-2); }
+.now-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.ctx-chip {
+  flex: none; font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; min-block-size: 32px;
+  padding-inline: 12px; border-radius: 999px; border: 1px solid var(--line); background: var(--bg); color: var(--ink-2);
+}
+.ctx-chip[aria-expanded="true"] { border-color: var(--ink-2); color: var(--ink); }
+.now-card.main > .now-group { margin-block: 6px; }
+.now-card.empty { border-color: var(--line); box-shadow: none; }
+.now-card.empty .now-empty { margin-block: 8px 0; }
 .nowcard[hidden] { display: none; }
-
-/* Daisey's day, in the check-in. */
-.day-list { margin: 0; padding-inline-start: 22px; display: grid; gap: 10px; max-block-size: 45dvh; overflow-y: auto; }
-.day-title { font-weight: 600; }
-
 
 /* Two windows: Now | Tasks. */
 .tabs { display: flex; gap: 6px; margin-block-end: 16px; }
@@ -159,11 +164,6 @@ body.wide .shell { max-inline-size: 1240px; }
   background: var(--card); border: 1px solid var(--line); color: var(--ink); font-size: 30px; line-height: 1; box-shadow: 0 6px 18px rgba(0,0,0,.12);
 }
 .shell { padding-block-end: 96px; } /* room so the FAB never covers the last row */
-
-/* Day planner under the Now card. */
-.day { display: grid; gap: 12px; }
-.day-h { margin: 0; font-size: 20px; }
-.day-list li.on-card .day-title { color: var(--ink-2); }
 
 /* Tasks board: columns per project, scroll sideways on a phone. */
 .tk-board {

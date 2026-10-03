@@ -3,7 +3,7 @@
    firebase.js and store.js are swapped for fakes, tasks come from a scenario
    below. Everything else is the real app code.
 
-     node daisey/test/v1/preview/preview.js [scenario] [--wide] [--tasks] [--out dir] [--click "sel" ...]
+     node daisey/test/v1/preview/preview.js [scenario] [--wide] [--tasks] [--free min] [--out dir] [--click "sel" ...]
 
    Writes <out>/<scenario>[-tasks][-wide].png and prints the path. Needs
    playwright from daisey/test/ (npm install there once). */
@@ -39,6 +39,8 @@ for (let c; (c = flag("--click"));) clicks.push(c);
 const wide = args.includes("--wide"), tasksTab = args.includes("--tasks");
 const name = args.find((a) => !a.startsWith("--")) || "en";
 const scenario = SCENARIOS[name] || (() => { throw new Error("no scenario " + name); })();
+const free = flag("--free"); // minutes of free time already set on the card
+if (free) scenario.context = { minutes: Number(free), setAt: Date.now() };
 
 const FAKES = {
   "js/config.js": "export const configured = true;",
@@ -66,7 +68,7 @@ const FAKES = {
   await page.waitForTimeout(150);
   for (const sel of clicks) { await page.click(sel); await page.waitForTimeout(150); }
   fs.mkdirSync(outDir, { recursive: true });
-  const file = path.join(outDir, `${name}${tasksTab ? "-tasks" : ""}${wide ? "-wide" : ""}.png`);
+  const file = path.join(outDir, `${name}${tasksTab ? "-tasks" : ""}${free ? "-" + free : ""}${clicks.length ? "-click" : ""}${wide ? "-wide" : ""}.png`);
   await page.screenshot({ path: file, fullPage: true });
   console.log(file);
   await browser.close();

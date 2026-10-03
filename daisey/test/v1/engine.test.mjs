@@ -242,26 +242,3 @@ test("scenario: 20 min picks the short task due tomorrow; 2 h picks the deep wor
   assert.equal(long.pick.task.title, "Mix review for Reprise");
   assert.ok(long.alternatives.every((s) => s.task.project !== "Reprise"));
 });
-
-test("Daisey's day: urgent first, fits the hours, skips what won't fit, no window talk", () => {
-  const tasks = [
-    task({ title: "big later", size: 120 }),
-    task({ title: "overdue", size: 30, due: "2026-10-01" }),
-    task({ title: "tomorrow", size: 60, due: "2026-10-06" }),
-    task({ title: "small", size: 15 }),
-    task({ title: "waiting", size: 15, status: "waiting" }),
-    task({ title: "stale", size: 15, skipsSinceStart: 5 }),
-  ];
-  const d = E.planDay(tasks, { now: NOW, hours: 2 });
-  assert.deepEqual(d.items.map((s) => s.task.title), ["overdue", "tomorrow", "small"]); // 120 doesn't fit the 15 left
-  assert.equal(d.minutes, 105);
-  assert.equal(d.budget, 120);
-  assert.equal(d.left, 1);
-  assert.match(d.items[0].why, /^Overdue/);
-  assert.ok(d.items.every((s) => !/fills|fits your|quick one|piece/i.test(s.why)));
-  assert.deepEqual(E.planDay(tasks, { now: NOW }).items, []); // no hours → nothing
-  // window fit doesn't reorder the day: due tomorrow beats a bigger task due later
-  const order = E.planDay([task({ title: "big", size: 90, due: "2026-10-08" }), task({ title: "soon", size: 15, due: "2026-10-06" })], { now: NOW, hours: 4 });
-  assert.deepEqual(order.items.map((s) => s.task.title), ["soon", "big"]);
-  assert.equal(E.planDay(Array.from({ length: 20 }, () => task({ size: 5 })), { now: NOW, hours: 8 }).items.length, W.DAY_LIST_MAX);
-});
