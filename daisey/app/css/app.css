@@ -152,3 +152,4 @@ textarea {
 .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-block-end: 16px; }
 .actions[hidden] { display: none; }
 #addtask .dbg-form { margin-block-start: 4px; }
+.now-actions.one { grid-template-columns: 1fr; }

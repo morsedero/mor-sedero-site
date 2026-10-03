@@ -27,8 +27,7 @@ export function mountCheckin(dialog, uid, { onSaved } = {}){
 
   function render(){
     const head = chips("Hours free today", HOURS, hours, (v) => { hours = v; render(); });
-    const actions = h("div", { className: "now-actions" },
-      h("button", { className: "btn", type: "button", textContent: "Skip today", onclick: () => save(null) }),
+    const actions = h("div", { className: "now-actions one" },
       h("button", { className: "btn primary", type: "button", textContent: "Start the day", disabled: !hours, onclick: () => save(hours) }));
     if (tasks == null) { fill(head, h("p", { className: "muted", textContent: "Loading tasks…" }), actions); return; }
     if (!hours) { fill(head, h("p", { className: "muted", textContent: "Pick your hours and Daisey will lay out the day." }), actions); return; }
