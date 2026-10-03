@@ -2,7 +2,6 @@
 import { configured } from "./config.js";
 
 const $ = (s) => document.querySelector(s);
-const DEBUG = new URLSearchParams(location.search).has("debug");
 const show = (id) => {
   for (const el of document.querySelectorAll("[data-view]")) el.hidden = el.dataset.view !== id;
 };
@@ -19,11 +18,8 @@ if (!configured) {
 
 async function boot(){
   const fb = await import("./firebase.js");
-  let debug = null;
-  let onCard = null; // task id on the Now card, shared with the debug list
-  let now = null;
-  let checkin = null;
-  let adder = null;
+  let mounted = null; // { now, day, tasks, adder } while signed in
+  let onCard = null; // task id on the Now card, shared with the day list and the board
 
   $("#signin").onclick = async () => {
     $("#signinMsg").textContent = "";
@@ -43,13 +39,26 @@ async function boot(){
   document.addEventListener("keydown", (e) => { if (e.key === "Escape") setMenu(false); });
   $("#signout").onclick = () => { setMenu(false); fb.signOut(); };
 
+  // Two windows. The URL hash remembers which (#tasks), so back/refresh keep it.
+  const SIGNED_IN = ["#tabs", "#add"];
+  const setTab = (tab) => {
+    for (const [id, view] of [["tabNow", "viewNow"], ["tabTasks", "viewTasks"]]) {
+      const on = (tab === "tasks") === (id === "tabTasks");
+      $("#" + id).setAttribute("aria-selected", String(on));
+      $("#" + view).hidden = !on;
+    }
+    document.body.classList.toggle("wide", tab === "tasks");
+  };
+  const tabFromHash = () => (location.hash === "#tasks" ? "tasks" : "now");
+  $("#tabNow").onclick = () => { history.replaceState(null, "", location.pathname + location.search); setTab("now"); };
+  $("#tabTasks").onclick = () => { location.hash = "tasks"; };
+  window.addEventListener("hashchange", () => { if (mounted) setTab(tabFromHash()); });
+
   fb.onUser((user) => {
-    if (debug) { debug.unmount(); debug = null; }
-    if (now) { now.unmount(); now = null; }
-    $("#actions").hidden = true;
-    if (checkin) { checkin.unmount(); checkin = null; }
-    if (adder) { adder.unmount(); adder = null; }
     setMenu(false);
+    if (mounted) { for (const m of Object.values(mounted)) m?.unmount(); mounted = null; }
+    for (const s of SIGNED_IN) $(s).hidden = true;
+    $("#viewNow").hidden = $("#viewTasks").hidden = true;
     avatar.hidden = !user;
     if (!user) { show("signedout"); return; }
 
@@ -64,23 +73,18 @@ async function boot(){
     } else initial();
     show("signedin"); // no element of its own: just clears loading/sign-in views
 
-    // Now card on top; the check-in opens by itself on the day's first visit.
-    Promise.all([import("./now.js"), import("./checkin.js"), import("./addtask.js")]).then(([{ mountNow }, { mountCheckin }, { mountAddTask }]) => {
-      if (fb.currentUid() !== user.uid || now) return;
-      now = mountNow($("#nowcard"), user.uid, { onCard: (id) => { onCard = id; debug?.setCurrent(id); } });
-      checkin = mountCheckin($("#checkin"), user.uid, { onSaved: () => now?.refresh() });
-      adder = mountAddTask($("#addtask"), user.uid);
-      $("#replan").onclick = () => checkin.open();
-      $("#add").onclick = () => adder.open();
-      $("#actions").hidden = false;
-    }).catch((e) => console.error("[daisey] now", e));
-
-    if (DEBUG) {
-      import("./debug.js").then(({ mountDebug }) => {
-        if (fb.currentUid() !== user.uid || debug) return;
-        debug = mountDebug($("#debug"), user.uid);
-        debug.setCurrent(onCard);
-      }).catch((e) => console.error("[daisey] debug", e));
-    }
+    Promise.all([import("./now.js"), import("./day.js"), import("./tasks.js"), import("./addtask.js")])
+      .then(([{ mountNow }, { mountDay }, { mountTasks }, { mountAddTask }]) => {
+        if (fb.currentUid() !== user.uid || mounted) return;
+        const m = mounted = {};
+        m.adder = mountAddTask($("#addtask"), user.uid);
+        m.day = mountDay($("#day"), user.uid);
+        m.tasks = mountTasks($("#viewTasks"), user.uid, { onAdd: (project) => m.adder.open(project) });
+        m.now = mountNow($("#nowcard"), user.uid, { onCard: (id) => { onCard = id; m.day?.setCurrent(id); m.tasks?.setCurrent(id); } });
+        m.day.setCurrent(onCard); m.tasks.setCurrent(onCard);
+        $("#add").onclick = () => m.adder.open();
+        for (const s of SIGNED_IN) $(s).hidden = false;
+        setTab(tabFromHash());
+      }).catch((e) => console.error("[daisey] boot views", e));
   });
 }

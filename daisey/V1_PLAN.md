@@ -227,17 +227,18 @@ computed, not a field; no repeating tasks; Waiting only by acting on an
 existing task; Done tasks leave the list, with a separate Done list "for
 satisfaction" later. `model.js`'s header has the same list.
 
-**Changed during session 3 (Mor, 2026-10-03):** the page always leads with
-the Now card, and it holds only the current task (title, why, Not now,
-Something else). Free time is not on the card. A daily check-in popup opens on
-the day's first visit: you give hours free today, and Daisey shows its
-read-only take on the day (urgent first, as much as fits, each with why).
-The user never picks what matters — that's the app's job (Mor). Until the
-calendar exists, window fit scores 0 (the window is only a stand-in). "Replan today" reopens it; "+ Add
-task" opens the task form as a popup. Account is an avatar in the top corner.
-No timed schedule, no ordered list. Until session 8, the free window is
-today's hours from the check-in (60 if skipped). Session 4 builds on this
-layout rather than the spec's card-as-whole-screen.
+**Changed during session 3 (Mor, 2026-10-03):** two windows, tabs "Now" and
+"Tasks". **Now**: the Now card on top (only the current task: title, why,
+Not now, Something else), and under it the **day planner** — you give hours
+free today, Daisey shows its read-only take on the day (urgent first, as much
+as fits, each with why), live as tasks change. The user never picks what
+matters; that's the app's job. No popup check-in. **Tasks**: one column per
+project, like Google Tasks — circle to complete, "Completed (n)" fold per
+column, ⋯ for Waiting / Delete, "+ Add a task" per column; the task on the
+Now card is set aside from its column while it's there. "+" floating button
+adds a task anywhere. Account is an avatar in the top corner. The ?debug list
+is gone. Until the calendar exists, the window is today's hours (60 if none)
+and window fit scores 0.
 
 **Energy is gone entirely (Mor, 2026-10-03: "feels pointless").** No energy
 field, guess, filter, score factor or UI. Session 9 (energy guess) is

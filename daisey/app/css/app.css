@@ -83,36 +83,19 @@ textarea {
   resize: vertical;
 }
 
-/* Temporary ?debug task list (session 2). */
-.dbg { margin-block-start: 16px; }
-.dbg-form { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-.dbg-form > :nth-child(-n+2), .dbg-form > button { grid-column: 1 / -1; }
-.dbg-field { display: grid; gap: 4px; min-inline-size: 0; }
-.dbg-field label { font-size: 14px; font-weight: 600; color: var(--ink-2); }
-.dbg-field input, .dbg-field select {
+/* Form fields (Add task popup). */
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.form-grid > :nth-child(-n+2), .form-grid > button { grid-column: 1 / -1; }
+.field { display: grid; gap: 4px; min-inline-size: 0; }
+.field label { font-size: 14px; font-weight: 600; color: var(--ink-2); }
+.field input, .field select {
   font: inherit; font-size: 16px; padding: 8px 10px; min-inline-size: 0;
   border: 1px solid var(--line); border-radius: 10px; background: #fff;
 }
-.dbg-list { list-style: none; padding: 0; margin: 0; }
-.dbg-task { border-block-start: 1px solid var(--line); padding-block: 10px; }
-.dbg-task.off { opacity: .5; }
-.dbg-project { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--ink-2); }
-.dbg-title { font-weight: 600; }
-.dbg-title.done { color: var(--ink-2); }
-.dbg-tabs { display: flex; align-items: center; gap: 6px; margin-block: 8px; }
-.dbg-tabs .muted { margin-inline-start: auto; }
-.dbg-tab {
-  font: inherit; font-size: 14px; font-weight: 600; cursor: pointer;
-  padding-block: 6px; padding-inline: 14px; border-radius: 999px;
-  border: 1px solid var(--line); background: #fff; color: var(--ink-2);
-}
-.dbg-tab[aria-selected="true"] { background: var(--ink); border-color: var(--ink); color: #fff; }
-.dbg-actions { display: flex; gap: 6px; margin-block-start: 6px; }
 .btn.small { min-block-size: 32px; padding-block: 4px; padding-inline: 12px; font-size: 14px; }
 
 
 /* The Now popup. */
-.btn.wide { inline-size: 100%; margin-block-end: 16px; }
 .now {
   inline-size: min(480px, calc(100vw - 32px)); max-block-size: calc(100dvh - 32px);
   padding: 20px; border: 0; border-radius: var(--radius);
@@ -149,7 +132,67 @@ textarea {
 .day-list { margin: 0; padding-inline-start: 22px; display: grid; gap: 10px; max-block-size: 45dvh; overflow-y: auto; }
 .day-title { font-weight: 600; }
 
-.actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-block-end: 16px; }
-.actions[hidden] { display: none; }
-#addtask .dbg-form { margin-block-start: 4px; }
-.now-actions.one { grid-template-columns: 1fr; }
+
+/* Two windows: Now | Tasks. */
+.tabs { display: flex; gap: 6px; margin-block-end: 16px; }
+.tab {
+  font: inherit; font-size: 15px; font-weight: 600; cursor: pointer; min-block-size: 40px;
+  padding-inline: 18px; border-radius: 999px; border: 1px solid var(--line); background: #fff; color: var(--ink-2);
+}
+.tab[aria-selected="true"] { background: var(--ink); border-color: var(--ink); color: #fff; }
+body.wide .shell { max-inline-size: 1240px; }
+
+/* Add task: floating button, bottom end corner. */
+.fab {
+  position: fixed; inset-inline-end: max(20px, env(safe-area-inset-right)); inset-block-end: max(20px, env(safe-area-inset-bottom));
+  inline-size: 56px; block-size: 56px; border-radius: 18px; border: 0; cursor: pointer; z-index: 5;
+  background: var(--accent); color: var(--ink); font-size: 30px; line-height: 1; box-shadow: 0 6px 18px rgba(0,0,0,.2);
+}
+.shell { padding-block-end: 96px; } /* room so the FAB never covers the last row */
+
+/* Day planner under the Now card. */
+.day { display: grid; gap: 12px; }
+.day-h { margin: 0; font-size: 20px; }
+.day-list li.on-card .day-title { color: var(--ink-2); }
+
+/* Tasks board: columns per project, scroll sideways on a phone. */
+.tk-board {
+  display: flex; gap: 12px; align-items: flex-start; overflow-x: auto; scroll-snap-type: x mandatory;
+  padding-block-end: 8px;
+}
+@media (max-width: 600px) { .tk-board { margin-inline: -16px; padding-inline: 16px; scroll-padding-inline: 16px; } } /* edge-to-edge swipe on a phone */
+.tk-col {
+  flex: 0 0 min(320px, calc(100vw - 48px)); scroll-snap-align: start;
+  background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px;
+}
+.tk-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.tk-head h3 { margin: 0; font-size: 17px; }
+.tk-add {
+  font: inherit; font-weight: 600; color: var(--ink-2); background: none; border: 0; cursor: pointer;
+  padding-block: 10px; padding-inline: 0; text-align: start; inline-size: 100%;
+}
+.tk-list { list-style: none; margin: 0; padding: 0; }
+.tk-row { position: relative; display: flex; gap: 10px; align-items: flex-start; padding-block: 8px; border-block-start: 1px solid var(--line); }
+.tk-row.waiting .tk-title { color: var(--ink-2); }
+.tk-check {
+  flex: none; inline-size: 22px; block-size: 22px; margin-block-start: 1px; border-radius: 50%; cursor: pointer;
+  border: 2px solid var(--ink-2); background: #fff; color: #fff; font-size: 13px; font-weight: 800; line-height: 1; padding: 0;
+}
+.tk-check:hover { border-color: var(--ink); }
+.tk-check.done { background: var(--ink); border-color: var(--ink); }
+.tk-text { flex: 1; min-inline-size: 0; display: grid; gap: 2px; }
+.tk-title { font-weight: 600; overflow-wrap: anywhere; }
+.tk-row.done .tk-title { font-weight: 400; color: var(--ink-2); text-decoration: line-through; }
+.tk-meta { font-size: 13px; }
+.tk-more { flex: none; font: inherit; font-size: 18px; inline-size: 32px; block-size: 32px; border: 0; border-radius: 8px; background: none; color: var(--ink-2); cursor: pointer; }
+.tk-more:hover { background: var(--bg); }
+.tk-menu {
+  position: absolute; inset-inline-end: 0; inset-block-start: 40px; z-index: 6; display: grid; min-inline-size: 190px;
+  background: #fff; border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,.15); padding: 6px;
+}
+.tk-menu-item { font: inherit; text-align: start; padding: 10px 12px; border: 0; border-radius: 8px; background: none; cursor: pointer; }
+.tk-menu-item:hover { background: var(--bg); }
+.tk-note { margin: 4px 0; font-size: 13px; }
+.tk-done { margin-block-start: 8px; }
+.tk-done summary { cursor: pointer; font-weight: 600; color: var(--ink-2); padding-block: 8px; }
+.tk-empty { display: grid; gap: 12px; justify-items: start; }

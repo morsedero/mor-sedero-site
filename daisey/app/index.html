@@ -36,19 +36,23 @@
     <p id="signinMsg" class="msg" role="alert"></p>
   </section>
 
-  <!-- The Now card, always on top once signed in. -->
-  <section id="nowcard" class="card nowcard" hidden></section>
-  <div id="actions" class="actions" hidden>
-    <button id="add" class="btn primary">+ Add task</button>
-    <button id="replan" class="btn">Replan today</button>
+  <!-- Signed in: two windows, Now and Tasks. -->
+  <nav id="tabs" class="tabs" role="tablist" hidden>
+    <button id="tabNow" class="tab" role="tab" aria-controls="viewNow" type="button">Now</button>
+    <button id="tabTasks" class="tab" role="tab" aria-controls="viewTasks" type="button">Tasks</button>
+  </nav>
+
+  <!-- Now: the card on top, the day planner under it. -->
+  <div id="viewNow" role="tabpanel" aria-labelledby="tabNow" hidden>
+    <section id="nowcard" class="card nowcard" hidden></section>
+    <section id="day" class="card day" hidden></section>
   </div>
 
-  <!-- Daily check-in: opens on the first visit each day, reopened by "Replan today". -->
-  <dialog id="checkin" class="now" aria-labelledby="checkinTitle"></dialog>
-  <dialog id="addtask" class="now" aria-labelledby="addTitle"></dialog>
+  <!-- Tasks: one column per project. -->
+  <div id="viewTasks" role="tabpanel" aria-labelledby="tabTasks" hidden></div>
 
-  <!-- Temporary task debug list, only at ?debug (session 2). -->
-  <section id="debug" class="card dbg" hidden></section>
+  <button id="add" class="fab" type="button" aria-label="Add task" hidden>+</button>
+  <dialog id="addtask" class="now" aria-labelledby="addTitle"></dialog>
 </main>
 </body>
 </html>

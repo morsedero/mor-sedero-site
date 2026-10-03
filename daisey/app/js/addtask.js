@@ -7,7 +7,7 @@ import { h } from "./ui.js";
 let n = 0;
 const field = (label, input) => {
   input.id = `add-f${++n}`;
-  return h("div", { className: "dbg-field" }, h("label", { htmlFor: input.id, textContent: label }), input);
+  return h("div", { className: "field" }, h("label", { htmlFor: input.id, textContent: label }), input);
 };
 
 export function mountAddTask(dialog, uid){
@@ -21,7 +21,7 @@ export function mountAddTask(dialog, uid){
   };
   f.project.setAttribute("list", "add-projects");
   const msg = h("p", { className: "muted", role: "status" });
-  const form = h("form", { className: "dbg-form" },
+  const form = h("form", { className: "form-grid" },
     field("Project (empty = Inbox)", f.project),
     field("Task", f.title),
     field("Size", f.size),
@@ -55,7 +55,13 @@ export function mountAddTask(dialog, uid){
   }, (e) => console.error("[daisey] add", e));
 
   return {
-    open(){ msg.textContent = ""; if (!dialog.open) dialog.showModal(); f.project.value ? f.title.focus() : f.project.focus(); },
+    // project: prefill from a Tasks column ("" = Inbox); omitted = keep the last one.
+    open(project){
+      msg.textContent = "";
+      if (project !== undefined) f.project.value = project;
+      if (!dialog.open) dialog.showModal();
+      f.project.value || project === "" ? f.title.focus() : f.project.focus();
+    },
     unmount(){ unsub(); if (dialog.open) dialog.close(); dialog.replaceChildren(); },
   };
 }
