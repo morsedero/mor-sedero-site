@@ -47,6 +47,20 @@ async function boot(){
 
   const SIGNED_IN = ["#board", "#add"];
 
+  // One pane under the card, two tabs. The hash remembers which (#tasks), so
+  // a reload or the back button lands where you were.
+  const setPane = (pane) => {
+    for (const [tab, view] of [["tabSchedule", "schedule"], ["tabTasks", "tasksview"]]) {
+      const on = (pane === "tasks") === (tab === "tabTasks");
+      $("#" + tab).setAttribute("aria-selected", String(on));
+      $("#" + view).hidden = !on;
+    }
+  };
+  const paneFromHash = () => (location.hash === "#tasks" ? "tasks" : "schedule");
+  $("#tabSchedule").onclick = () => { history.replaceState(null, "", location.pathname + location.search); setPane("schedule"); };
+  $("#tabTasks").onclick = () => { location.hash = "tasks"; };
+  window.addEventListener("hashchange", () => { if (mounted) setPane(paneFromHash()); });
+
   fb.onUser((user) => {
     setMenu(false);
     if (mounted) { for (const m of Object.values(mounted)) m?.unmount(); mounted = null; }
@@ -72,13 +86,13 @@ async function boot(){
         m.adder = mountAddTask($("#addtask"), user.uid);
         // The Now card rides in the same scroller as the columns, first in line.
          m.schedule = mountSchedule($("#schedule"));
-        // The slider reads: the Now card, what the day holds, then the projects.
-        m.tasks = mountTasks($("#board"), user.uid, { lead: [$(".nowpanel")],
-          onAdd: (project) => m.adder.open(project), onEdit: (task) => m.adder.edit(task) });
+        m.tasks = mountTasks($("#tasksview"), user.uid,
+          { onAdd: (project) => m.adder.open(project), onEdit: (task) => m.adder.edit(task) });
         m.now = mountNow($("#nowcard"), user.uid, { onCard: (id) => { onCard = id; m.tasks?.setCurrent(id); } });
         m.tasks.setCurrent(onCard);
         $("#add").onclick = () => m.adder.open();
         for (const s of SIGNED_IN) $(s).hidden = false;
+        setPane(paneFromHash());
       }).catch((e) => console.error("[daisey] boot views", e));
   });
 }

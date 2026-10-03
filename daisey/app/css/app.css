@@ -199,9 +199,8 @@ body:has(.toast) .fab { display: none; }
 
 /* Focus mode: the task fills the screen, nothing else on it. */
 body.focus .topbar, body.focus .fab, body.focus .now-greet { display: none; }
-body.focus #board { display: block; overflow: visible; }
-body.focus .tk-col, body.focus .sch { display: none; }
-body.focus .nowpanel { flex: 1; }
+body.focus #board { display: block; }
+body.focus .pane, body.focus .panetabs { display: none; }
 body.focus .shell { display: grid; min-block-size: 100dvh; align-content: center; padding-block: 24px; }
 .focus { display: grid; gap: 12px; justify-items: center; text-align: center; }
 .focus-title { font-size: 26px; font-weight: 700; line-height: 1.25; }
@@ -216,16 +215,22 @@ body.focus .shell { display: grid; min-block-size: 100dvh; align-content: center
 .focus-done { font-size: 20px; font-weight: 700; }
 .focus .now-card.main { inline-size: min(420px, 100%); text-align: start; }
 
-/* One sideways slider: the Now card, then a column per project. */
-.shell { max-inline-size: 1240px; }
-#board {
-  display: flex; gap: 12px; align-items: flex-start; overflow-x: auto; scroll-snap-type: x mandatory;
-  padding-block-end: 8px;
-}
-/* First panel: the card, then the day under it. */
-.nowpanel { flex: 0 0 min(380px, calc(100vw - 48px)); scroll-snap-align: start; display: grid; gap: 24px; align-content: start; }
+/* The Now card sits still at the top; under it one pane with two tabs. */
+.shell { max-inline-size: 560px; }
+#board { display: grid; gap: 14px; }
 #nowcard { display: grid; gap: 14px; }
-@media (max-width: 600px) { #board { margin-inline: -16px; padding-inline: 16px; scroll-padding-inline: 16px; } }
+
+.panetabs { display: flex; gap: 6px; }
+.tab {
+  font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; min-block-size: 36px;
+  padding-inline: 16px; border-radius: 999px; border: 1px solid var(--line); background: var(--card); color: var(--ink-2);
+}
+.tab[aria-selected="true"] { background: var(--ink); border-color: var(--ink); color: var(--card); }
+
+/* Both tabs are the same height, so switching never moves the card. */
+.pane { block-size: min(46dvh, 460px); overflow: hidden; }
+.pane > * { block-size: 100%; overflow-y: auto; }
+.pane > [hidden] { display: none; }
 
 /* Add task: floating button, bottom end corner. */
 .fab {
@@ -240,6 +245,7 @@ body.focus .shell { display: grid; min-block-size: 100dvh; align-content: center
   display: grid; gap: 10px; align-content: start; padding: 14px;
   background: var(--card); border: 1px solid var(--line); border-radius: var(--radius);
 }
+.sch-head { position: sticky; inset-block-start: -14px; background: var(--card); padding-block: 2px; }
 .sch-head { margin: 0; font-size: 17px; }
 .sch-note { margin: 0; font-size: 13px; }
 .sch-day { display: grid; gap: 6px; }
@@ -256,8 +262,12 @@ body.focus .shell { display: grid; min-block-size: 100dvh; align-content: center
 .sch-free { margin: 0; }
 
 /* Tasks board: columns per project, scroll sideways on a phone. */
+.tk-board {
+  display: flex; gap: 12px; align-items: stretch; block-size: 100%;
+  overflow-x: auto; overflow-y: hidden; scroll-snap-type: x mandatory;
+}
 .tk-col {
-  flex: 0 0 min(320px, calc(100vw - 48px)); scroll-snap-align: start;
+  flex: 0 0 min(300px, calc(100vw - 64px)); scroll-snap-align: start; overflow-y: auto;
   background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px;
 }
 .tk-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }

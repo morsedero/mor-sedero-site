@@ -11,9 +11,7 @@ import { h, bdi, pieces, sizeText } from "./ui.js";
 
 const shortDate = (s) => new Date(`${s}T12:00`).toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" });
 
-// lead: elements to keep at the head of the board (the Now card, the
-// Schedule panel) — they share its scroller rather than having their own.
-export function mountTasks(root, uid, { onAdd, onEdit, lead = [] } = {}){
+export function mountTasks(root, uid, { onAdd, onEdit } = {}){
   let tasks = null, onCard = null, menuFor = null;
   const openDone = new Set(); // projects whose Completed fold is open (survives re-renders)
   const fail = (e) => console.error("[daisey] tasks", e);
@@ -59,12 +57,13 @@ export function mountTasks(root, uid, { onAdd, onEdit, lead = [] } = {}){
         onclick: () => { if (confirm(`Delete “${t.title}”?`)) removeTask(uid, t.id).catch(fail); } }));
   }
 
-  // The board scrolls sideways; `lead` stays at its head and the scroll
-  // position survives a re-render.
+  // The columns scroll sideways inside the pane; keep where you were.
   function fill(...kids){
-    const x = root.scrollLeft;
-    root.replaceChildren(...lead, ...kids);
-    root.scrollLeft = x;
+    const board = root.querySelector(".tk-board");
+    const x = board ? board.scrollLeft : 0;
+    const next = h("div", { className: "tk-board" }, ...kids);
+    root.replaceChildren(next);
+    next.scrollLeft = x;
   }
 
   function render(){
@@ -110,6 +109,6 @@ export function mountTasks(root, uid, { onAdd, onEdit, lead = [] } = {}){
 
   return {
     setCurrent(id){ onCard = id; render(); },
-    unmount(){ unsub(); document.removeEventListener("click", closeMenu); root.replaceChildren(...lead); },
+    unmount(){ unsub(); document.removeEventListener("click", closeMenu); root.replaceChildren(); },
   };
 }

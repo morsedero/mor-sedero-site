@@ -43,12 +43,17 @@
     <p id="signinMsg" class="msg" role="alert"></p>
   </section>
 
-  <!-- Signed in: one sideways slider. The Now card is the first panel, the
-       project columns follow it (Mor, 2026-10-03: no tabs, just a slider). -->
+  <!-- Signed in: the Now card stays put at the top; under it one pane that
+       switches between the day and the projects (Mor, 2026-10-04). -->
   <div id="board" hidden>
-    <div class="nowpanel">
-      <section id="nowcard" aria-label="Now" hidden></section>
-      <section id="schedule" class="sch" aria-label="Schedule" hidden></section>
+    <section id="nowcard" aria-label="Now" hidden></section>
+    <nav class="panetabs" role="tablist" aria-label="Under the card">
+      <button id="tabSchedule" class="tab" role="tab" aria-controls="schedule" type="button">Schedule</button>
+      <button id="tabTasks" class="tab" role="tab" aria-controls="tasksview" type="button">Tasks</button>
+    </nav>
+    <div class="pane">
+      <section id="schedule" class="sch" role="tabpanel" aria-labelledby="tabSchedule" hidden></section>
+      <div id="tasksview" role="tabpanel" aria-labelledby="tabTasks" hidden></div>
     </div>
   </div>
 
