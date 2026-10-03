@@ -249,3 +249,15 @@ test("scenario: '20 min, low' picks a light short task; '2 h, high' picks the de
   assert.equal(high.pick.task.title, "Mix review for Reprise");
   assert.ok(high.alternatives.every((s) => s.task.project !== "Reprise"));
 });
+
+// ---------- energy (session 3/4 version) ----------
+
+import { currentEnergy, CORRECTION_HOLD } from "../../app/js/energy.js";
+
+test("energy: a correction wins for 3 hours, then it's a Medium guess again", () => {
+  assert.deepEqual(currentEnergy({ now: NOW }), { level: "medium", guessed: true });
+  const correction = { level: "low", at: NOW };
+  assert.deepEqual(currentEnergy({ now: NOW + CORRECTION_HOLD - 1, correction }), { level: "low", guessed: false });
+  assert.deepEqual(currentEnergy({ now: NOW + CORRECTION_HOLD, correction }), { level: "medium", guessed: true });
+  assert.deepEqual(currentEnergy({ now: NOW, correction: { level: "wrecked", at: NOW } }), { level: "medium", guessed: true });
+});

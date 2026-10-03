@@ -136,3 +136,8 @@ textarea {
 .now-alt .now-title { font-size: 17px; }
 .now-empty { font-weight: 600; margin: 0; }
 .btn:disabled { opacity: .45; cursor: default; }
+.now-energy {
+  justify-self: start; font: inherit; font-size: 15px; font-weight: 600; cursor: pointer;
+  min-block-size: 40px; padding-inline: 14px; border-radius: 999px;
+  border: 1px dashed var(--ink-2); background: transparent; color: var(--ink);
+}

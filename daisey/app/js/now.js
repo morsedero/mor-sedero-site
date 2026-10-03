@@ -1,10 +1,12 @@
 // The Now popup: opens when you enter the app, reopens from "What now?".
-// You say how much time you have and how much energy; the engine picks one
-// task and says why. Not now → next pick (hidden for this page load).
+// You say how much time you have; Daisey guesses your energy and shows the
+// guess as one chip you tap only if it's wrong. The engine picks one task
+// and says why. Not now → next pick (hidden for this page load).
 // Something else → 2–3 alternatives, tap one to make it the card.
 // Start / the timer arrive in session 5; Hebrew + RTL in session 4.
 import { watchTasks } from "./store.js";
 import { rank } from "./engine.js";
+import { currentEnergy, CORRECTION_HOLD } from "./energy.js";
 
 const h = (tag, props = {}, ...kids) => {
   const el = Object.assign(document.createElement(tag), props);
@@ -14,28 +16,29 @@ const h = (tag, props = {}, ...kids) => {
 
 const WINDOWS = [15, 30, 60, 90, 120];
 const ENERGIES = [["low", "Low"], ["medium", "Medium"], ["high", "High"]];
-const KEY = "daisey.now.v1";
-const HOLD = 3 * 3600000; // the spec's "your correction wins for 3 hours"
-
-// Per-device convenience only; the page works the same without it.
-function loadChoice(){
+// Per-device for now (session 9 moves the energy correction to Firestore so
+// it follows you across devices). The page works the same without storage.
+const load = (key) => {
   try {
-    const c = JSON.parse(localStorage.getItem(KEY) || "null");
-    if (c && Date.now() - c.at < HOLD) return c;
+    const v = JSON.parse(localStorage.getItem(key) || "null");
+    if (v && Date.now() - v.at < CORRECTION_HOLD) return v;
   } catch {}
   return null;
-}
-function saveChoice(c){
-  try { localStorage.setItem(KEY, JSON.stringify({ ...c, at: Date.now() })); } catch {}
-}
+};
+const save = (key, v) => { try { localStorage.setItem(key, JSON.stringify({ ...v, at: Date.now() })); } catch {} };
+const WINDOW_KEY = "daisey.window.v1";
+const ENERGY_KEY = "daisey.energy.v1";
 
 export function mountNow(dialog, uid){
   let tasks = null; // null until the first snapshot
-  const saved = loadChoice();
-  const state = { window: saved?.window ?? 60, energy: saved?.energy ?? "medium", chosen: null, showAlts: false };
+  const state = { window: load(WINDOW_KEY)?.window ?? 60, energy: currentEnergy(), editEnergy: false, chosen: null, showAlts: false };
+  const refreshEnergy = () => { state.energy = currentEnergy({ correction: load(ENERGY_KEY) }); };
+  refreshEnergy();
+  const reset = () => { state.chosen = null; state.showAlts = false; };
   const skips = new Set();
 
   const body = h("div", { className: "now-body" });
+  const fill = (...kids) => body.replaceChildren(...kids.filter(Boolean));
   const close = h("button", { className: "now-x", type: "button", ariaLabel: "Close", textContent: "✕", onclick: () => dialog.close() });
   dialog.replaceChildren(h("div", { className: "now-head" }, h("h2", { id: "nowTitle", textContent: "What now?" }), close), body);
   // Tap outside the box closes it.
@@ -45,7 +48,7 @@ export function mountNow(dialog, uid){
     h("div", { className: "now-label", textContent: label }),
     h("div", { className: "now-chips" }, ...options.map(([v, text]) => h("button", {
       type: "button", className: "chip", role: "radio", ariaChecked: String(v === current), textContent: text,
-      onclick: () => { pick(v); saveChoice({ window: state.window, energy: state.energy }); state.chosen = null; state.showAlts = false; render(); },
+      onclick: () => { pick(v); reset(); render(); },
     }))));
 
   function taskCard(s){
@@ -57,15 +60,21 @@ export function mountNow(dialog, uid){
 
   function render(){
     const controls = [
-      chips("Free time", WINDOWS.map((w) => [w, w === 120 ? "2 h+" : w === 90 ? "1.5 h" : w === 60 ? "1 h" : `${w} min`]), state.window, (v) => { state.window = v; }),
-      chips("Energy", ENERGIES, state.energy, (v) => { state.energy = v; }),
-    ];
-    if (tasks == null) { body.replaceChildren(...controls, h("p", { className: "muted", textContent: "Loading tasks…" })); return; }
+      chips("Free time", WINDOWS.map((w) => [w, w === 120 ? "2 h+" : w === 90 ? "1.5 h" : w === 60 ? "1 h" : `${w} min`]), state.window,
+        (v) => { state.window = v; save(WINDOW_KEY, { window: v }); }),
+      h("button", { type: "button", className: "now-energy", ariaExpanded: String(state.editEnergy),
+        textContent: `Energy: ${state.energy.level}${state.energy.guessed ? " (guess)" : ""} ✎`,
+        onclick: () => { state.editEnergy = !state.editEnergy; render(); } }),
+      state.editEnergy && chips("How's your energy?", ENERGIES, state.energy.guessed ? null : state.energy.level, (v) => {
+        save(ENERGY_KEY, { level: v }); refreshEnergy(); state.editEnergy = false;
+      }),
+    ].filter(Boolean);
+    if (tasks == null) { fill(...controls, h("p", { className: "muted", textContent: "Loading tasks…" })); return; }
 
-    const r = rank(tasks, { window: state.window, energy: state.energy, sessionSkips: [...skips] });
+    const r = rank(tasks, { window: state.window, energy: state.energy.level, sessionSkips: [...skips] });
     const card = (state.chosen && r.ranked.find((s) => s.task.id === state.chosen)) || r.pick;
     if (!card) {
-      body.replaceChildren(...controls, h("p", { className: "now-empty", textContent: r.empty === "none"
+      fill(...controls, h("p", { className: "now-empty", textContent: r.empty === "none"
         ? "No tasks yet. Add a few and Daisey will pick."
         : `Nothing fits the next ${state.window} minutes. Take the break.` }),
         skips.size > 0 && h("button", { className: "btn small", type: "button", textContent: `Show the ${skips.size} you skipped`, onclick: () => { skips.clear(); render(); } }));
@@ -79,7 +88,7 @@ export function mountNow(dialog, uid){
     const other = h("button", { className: "btn", type: "button", textContent: "Something else", disabled: !alts.length,
       ariaExpanded: String(state.showAlts), onclick: () => { state.showAlts = !state.showAlts; render(); } });
 
-    body.replaceChildren(...controls, taskCard(card),
+    fill(...controls, taskCard(card),
       h("div", { className: "now-actions" }, notNow, other),
       state.showAlts && h("div", { className: "now-alts" }, ...alts.map((s) => h("button", {
         type: "button", className: "now-alt", onclick: () => { state.chosen = s.task.id; state.showAlts = false; render(); },
@@ -89,7 +98,7 @@ export function mountNow(dialog, uid){
   const unsub = watchTasks(uid, (ts) => { tasks = ts; if (dialog.open) render(); }, (e) => console.error("[daisey] now", e));
 
   return {
-    open(){ state.chosen = null; state.showAlts = false; render(); if (!dialog.open) dialog.showModal(); },
+    open(){ reset(); refreshEnergy(); state.editEnergy = false; render(); if (!dialog.open) dialog.showModal(); },
     unmount(){ unsub(); if (dialog.open) dialog.close(); dialog.replaceChildren(); },
   };
 }
