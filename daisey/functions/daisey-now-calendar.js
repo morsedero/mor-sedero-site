@@ -20,7 +20,7 @@ const { verifyIdToken } = require("./_daisey-lib/firebase-auth");
 const { openStore } = require("./_daisey-lib/blobs");
 const { getGoogleAccessToken } = require("./_daisey-lib/tokens");
 
-const MAX_RANGE = 3 * 864e5;
+const MAX_RANGE = 9 * 864e5; // today plus a week, with room for timezone edges
 const isDaiseyBlock = (e) => /\[(daisey|dayflow)\]/.test(e.description || ""); // old Daisey's own planning blocks
 
 const reply = (statusCode, body) => ({
@@ -74,7 +74,7 @@ exports.handler = async (event) => {
 
   const url = new URL("https://www.googleapis.com/calendar/v3/calendars/primary/events");
   for (const [k, v] of Object.entries({ timeMin: new Date(from).toISOString(), timeMax: new Date(to).toISOString(),
-    singleEvents: "true", orderBy: "startTime", maxResults: "100" })) url.searchParams.set(k, v);
+    singleEvents: "true", orderBy: "startTime", maxResults: "250" })) url.searchParams.set(k, v);
   const res = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } });
   if (res.status === 401) return fail(409, "needs_reauth");
   if (!res.ok) { console.error("daisey-now-calendar google", res.status, await res.text()); return fail(502, "google"); }

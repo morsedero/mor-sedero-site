@@ -67,6 +67,9 @@ const calReply = !cal ? { status: 404, body: { error: "not_connected" } }
         { title: "שיעור גיטרה", start: at(13), end: at(14, 30), allDay: false, busy: true },
         { title: "Studio session", start: at(16), end: at(18), allDay: false, busy: true },
         { title: "Rehearsal", start: tm(10), end: tm(12), allDay: false, busy: true },
+        { title: "Mix delivery", start: tm(15), end: tm(16), allDay: false, busy: true },
+        ...[2, 3, 5].map((n) => { const d = new Date(); d.setDate(d.getDate() + n); d.setHours(11, 0, 0, 0);
+          return { title: `Day ${n} meeting`, start: d.toISOString(), end: new Date(d.getTime() + 36e5).toISOString(), allDay: false, busy: true }; }),
       ];
     })() } }
   : (() => { const [m, title = "Teaching"] = cal.split(":"); const start = Date.now() + Number(m) * 60000;
@@ -99,7 +102,7 @@ const FAKES = {
   await page.waitForSelector(".now-card, .focus, .now-empty, .tk-empty");
   await page.waitForTimeout(150);
   for (const sel of clicks) { await page.click(sel); await page.waitForTimeout(150); }
-  if (tasksTab) { await page.evaluate(() => { const b = document.querySelector("#board"); b.scrollLeft = b.scrollWidth; }); await page.waitForTimeout(100); }
+  if (tasksTab) { await page.click("#tabTasks"); await page.waitForTimeout(150); }
   if (args.includes("--text")) console.log(await page.innerText("body"));
   if (args.includes("--tasks-dump")) console.log(await page.evaluate(() => window.__store.tasks.map((t) => t.title + ": " + t.status + (t.skipCount ? " skips " + t.skipCount : "")).join(" | ")));
   fs.mkdirSync(outDir, { recursive: true });

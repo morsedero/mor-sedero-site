@@ -1,4 +1,4 @@
-// Calendar read: the agenda from now to the end of tomorrow, via the
+// Calendar read: the agenda from the start of today to a week ahead, via the
 // daisey-now-calendar function (which reuses old Daisey's Google token — no
 // separate calendar sign-in). Refetches every 10 min and when the tab comes
 // back; the window itself is worked out each render (engine.freeWindow), so
@@ -19,9 +19,11 @@ export function watchCalendar(cb){
 
   async function load(){
     try {
-      // From the start of today, so the panel can show what already happened.
+      // From the start of today, so the panel can show what already
+       // happened, to the end of the seventh day ahead — what the Schedule
+       // panel can step through.
       const from = new Date(); from.setHours(0, 0, 0, 0);
-      const end = new Date(); end.setDate(end.getDate() + 2); end.setHours(0, 0, 0, 0);
+      const end = new Date(); end.setDate(end.getDate() + 8); end.setHours(0, 0, 0, 0);
       const q = new URLSearchParams({ from: from.toISOString(), to: end.toISOString() });
       const res = await fetch(`${URL_}?${q}`, { headers: { Authorization: `Bearer ${await idToken()}` } });
       const body = await res.json().catch(() => ({}));

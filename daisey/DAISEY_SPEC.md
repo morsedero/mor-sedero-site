@@ -259,9 +259,11 @@ switching never moves the card. Tasks keeps the column-per-project board,
 scrolling sideways inside the pane. (An earlier version put all of it in one
 sideways slider; the card drifted off screen.)
 
-**Schedule panel.** Google Calendar's own day, read-only: today and tomorrow,
-each event with its time, the free gaps between them spelled out, all-day
-entries marked, what's running now highlighted and what's finished greyed.
+**Schedule panel.** Google Calendar's own day, read-only: one day at a time,
+with ‹ › stepping up to a week ahead and "Back to today" to return. Each
+event with its time, the free gaps between them spelled out, all-day entries
+marked, what's running now highlighted and what's finished greyed. Only today
+measures its first gap from the clock.
 It comes from the same read as the free window, so the panel and the greeting
 can never disagree. All-day entries and events marked free never block a pick
 — only real, timed, accepted events do.

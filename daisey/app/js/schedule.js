@@ -1,7 +1,7 @@
-// The Schedule panel: what Google Calendar says today and tomorrow hold.
-// Read-only — Daisey never writes to the calendar in v1 — and it sits in the
-// slider next to the Now card, so "what's on?" is a swipe rather than
-// another app.
+// The Schedule panel: what Google Calendar says a day holds. One day at a
+// time, with ‹ › to step up to a week ahead (Mor, 2026-10-04: today and
+// tomorrow stacked in one card was both too much and not enough). Read-only
+// — Daisey never writes to the calendar in v1.
 //
 // The same read as the Now card's free window (calendar.js), so the panel
 // and the greeting can never disagree. Events already finished are kept, in
@@ -37,15 +37,27 @@ function dayRows(events, now, from){
   return rows;
 }
 
+const DAYS_AHEAD = 7; // as far as the step arrows go, and as far as the fetch reaches
+
+// "Today", "Tomorrow", then the weekday and date.
+function dayLabel(offset, date){
+  if (offset === 0) return "Today";
+  if (offset === 1) return "Tomorrow";
+  return new Date(date).toLocaleDateString([], { weekday: "long", day: "numeric", month: "short" });
+}
+
 export function mountSchedule(root){
   let cal = { status: "loading", events: [] };
+  let offset = 0; // days from today
 
-  function group(label, date, now, today){
+  function day(now){
+    const when = new Date(now); when.setDate(when.getDate() + offset);
+    const date = localDate(when.getTime());
     const events = cal.events.filter((e) => localDate(Date.parse(e.start)) === date)
       .sort((a, b) => (a.allDay === b.allDay ? Date.parse(a.start) - Date.parse(b.start) : a.allDay ? -1 : 1));
-    const rows = dayRows(events, now, today ? now : null);
+    // Only today has a "now" to measure the first gap from.
+    const rows = dayRows(events, now, offset === 0 ? now : null);
     return h("section", { className: "sch-day" },
-      h("h3", { className: "sch-h", textContent: label }),
       rows.length === 0
         ? h("p", { className: "muted sch-free", textContent: "Nothing on the calendar." })
         : h("ul", { className: "sch-list" }, ...rows.map((r) => r.gap
@@ -56,14 +68,24 @@ export function mountSchedule(root){
               r.running && h("span", { className: "sch-now", textContent: "now" }))))));
   }
 
+  const step = (by, label, disabled) => h("button", {
+    className: "sch-step", type: "button", textContent: by < 0 ? "‹" : "›", ariaLabel: label, disabled,
+    onclick: () => { offset = Math.min(DAYS_AHEAD, Math.max(0, offset + by)); render(); },
+  });
+
   function render(){
     const now = Date.now();
+    const when = new Date(now); when.setDate(when.getDate() + offset);
     root.replaceChildren(...[
-      h("header", { className: "tk-head" }, h("h2", { className: "sch-head", textContent: "Schedule" })),
+      h("header", { className: "sch-nav" },
+        step(-1, "The day before", offset === 0),
+        h("h2", { className: "sch-head", textContent: dayLabel(offset, when.getTime()) }),
+        step(1, "The day after", offset === DAYS_AHEAD)),
       NOTE[cal.status] && h("p", { className: "muted sch-note" }, NOTE[cal.status],
         ["not_connected", "needs_reauth"].includes(cal.status) ? h("a", { href: "/daisey/", textContent: " Open old Daisey" }) : null),
-      cal.status === "ok" && group("Today", localDate(now), now, true),
-      cal.status === "ok" && group("Tomorrow", localDate(now + 864e5), now, false),
+      cal.status === "ok" && day(now),
+      cal.status === "ok" && offset > 0 && h("button", { className: "btn quiet sch-today", type: "button",
+        textContent: "Back to today", onclick: () => { offset = 0; render(); } }),
     ].filter(Boolean));
   }
 

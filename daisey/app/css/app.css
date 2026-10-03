@@ -248,11 +248,22 @@ body.focus .shell { display: grid; min-block-size: 100dvh; align-content: center
   display: grid; gap: 10px; align-content: start; padding: 14px;
   background: var(--card); border: 1px solid var(--line); border-radius: var(--radius);
 }
-.sch-head { position: sticky; inset-block-start: -14px; background: var(--card); padding-block: 2px; }
+.sch-nav {
+  position: sticky; inset-block-start: -14px; z-index: 1; background: var(--card);
+  display: flex; align-items: center; gap: 4px; padding-block: 2px;
+}
+.sch-head { margin: 0 auto; font-size: 16px; }
+.sch-step {
+  flex: none; font: inherit; font-size: 20px; line-height: 1; cursor: pointer;
+  inline-size: 34px; block-size: 34px; border-radius: 50%; border: 1px solid var(--line);
+  background: var(--surface); color: var(--ink);
+}
+.sch-step:disabled { opacity: .35; cursor: default; }
+:dir(rtl) .sch-step { transform: scaleX(-1); }
+.sch-today { justify-self: start; min-block-size: 34px; padding-inline: 10px; font-size: 13px; }
 .sch-head { margin: 0; font-size: 17px; }
 .sch-note { margin: 0; font-size: 13px; }
 .sch-day { display: grid; gap: 6px; }
-.sch-h { margin: 6px 0 0; font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--ink-2); }
 .sch-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
 .sch-row { display: flex; gap: 10px; align-items: baseline; padding-block: 4px; }
 .sch-row.past { opacity: .45; }
