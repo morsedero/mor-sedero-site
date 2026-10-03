@@ -1,20 +1,13 @@
-// TEMPORARY debug list at ?debug (session 2). Add a task, see what Daisey
-// filled in, mark it Waiting or Done. Open and Done are two tabs; Done is
+// TEMPORARY debug list at ?debug (session 2). See what Daisey filled in
+// for each task, mark it Waiting or Done. Adding is the "+ Add task" popup. Open and Done are two tabs; Done is
 // there for the satisfaction of seeing it. Goes away once the Now card
 // (session 4) exists.
-import { watchTasks, addTask, updateTask, finishTask, removeTask } from "./store.js";
+import { watchTasks, updateTask, finishTask, removeTask } from "./store.js";
 
 const h = (tag, props = {}, ...kids) => {
   const el = Object.assign(document.createElement(tag), props);
   el.append(...kids.filter((k) => k != null && k !== false));
   return el;
-};
-
-// Label above the box, so it stays visible while typing.
-let n = 0;
-const field = (label, input) => {
-  input.id = `dbg-f${++n}`;
-  return h("div", { className: "dbg-field" }, h("label", { htmlFor: input.id, textContent: label }), input);
 };
 
 export function mountDebug(root, uid){
@@ -24,37 +17,11 @@ export function mountDebug(root, uid){
   const msg = h("p", { className: "msg", role: "alert" });
   const fail = (e) => { console.error("[daisey] debug", e); msg.textContent = e.message || String(e); };
 
-  const f = {
-    project: h("input", { dir: "auto" }),
-    title: h("input", { dir: "auto", required: true }),
-    size: h("select", {}, ...["", 5, 15, 30, 60, 90, 120].map((v) => h("option", { value: v, textContent: v ? `${v} min` : "Let Daisey guess" }))),
-    due: h("input", { type: "date" }),
-  };
-  const form = h("form", { className: "dbg-form" },
-    field("Project (empty = Inbox)", f.project),
-    field("Task", f.title),
-    field("Size", f.size),
-    field("Due (optional)", f.due),
-    h("button", { className: "btn primary", type: "submit", textContent: "Add task" }));
-  form.onsubmit = (ev) => {
-    ev.preventDefault();
-    msg.textContent = "";
-    try {
-      const input = { title: f.title.value };
-      for (const k of ["project", "size", "due"]) if (f[k].value) input[k] = f[k].value;
-      addTask(uid, input, tasks).catch(fail);
-      const project = f.project.value;
-      form.reset();
-      f.project.value = project; // usually adding several to one project
-      f.title.focus();
-    } catch (e) { fail(e); }
-  };
-
   const tabBtn = (id) => h("button", { type: "button", role: "tab", className: "dbg-tab", onclick: () => { tab = id; render(lastMeta); } });
   const tabs = { open: tabBtn("open"), done: tabBtn("done") };
   const offline = h("span", { className: "muted" });
   const list = h("ul", { className: "dbg-list" });
-  root.replaceChildren(h("h2", { className: "label", textContent: "Tasks (debug)" }), form, msg,
+  root.replaceChildren(h("h2", { className: "label", textContent: "Tasks (debug)" }), msg,
     h("div", { className: "dbg-tabs", role: "tablist" }, tabs.open, tabs.done, offline), list);
 
   function row(t){

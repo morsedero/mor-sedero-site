@@ -28,19 +28,21 @@
 
   <!-- The Now card, always on top once signed in. -->
   <section id="nowcard" class="card nowcard" hidden></section>
-  <button id="replan" class="btn wide" hidden>Replan today</button>
+  <div id="actions" class="actions" hidden>
+    <button id="add" class="btn primary">+ Add task</button>
+    <button id="replan" class="btn">Replan today</button>
+  </div>
 
   <section data-view="signedin" class="card" hidden>
     <div class="row">
       <span id="who" class="muted"></span>
       <button id="signout" class="btn">Sign out</button>
     </div>
-    <label for="note" class="label">Test note <span id="noteStatus" class="muted"></span></label>
-    <textarea id="note" dir="auto" rows="5" placeholder="Type here, watch it appear on your other device."></textarea>
   </section>
 
   <!-- Daily check-in: opens on the first visit each day, reopened by "Plan today". -->
   <dialog id="checkin" class="now" aria-labelledby="checkinTitle"></dialog>
+  <dialog id="addtask" class="now" aria-labelledby="addTitle"></dialog>
 
   <!-- Temporary task debug list, only at ?debug (session 2). -->
   <section id="debug" class="card dbg" hidden></section>
