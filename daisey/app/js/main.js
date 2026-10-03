@@ -4,6 +4,8 @@
 import { configured } from "./config.js";
 
 const $ = (s) => document.querySelector(s);
+// Identifies this page load as the writer, so its own echoes can be ignored.
+const TAB = crypto.randomUUID();
 const show = (id) => {
   for (const el of document.querySelectorAll("[data-view]")) el.hidden = el.dataset.view !== id;
 };
@@ -52,17 +54,19 @@ async function boot(){
       clearTimeout(timer);
       timer = setTimeout(() => {
         timer = null;
-        fb.setDoc(ref, { text: note.value, updatedAt: fb.serverTimestamp() })
+        fb.setDoc(ref, { text: note.value, by: TAB, updatedAt: fb.serverTimestamp() })
           .catch((e) => { console.error("[daisey] note save", e); status.textContent = "Not saved: " + e.code; });
       }, 400);
     };
 
     unsub = fb.onSnapshot(ref, { includeMetadataChanges: true }, (snap) => {
       const pending = snap.metadata.hasPendingWrites;
-      // Don't clobber what's being typed: only take the remote value when
-      // nothing local is waiting to go out.
-      if (!pending && timer === null) {
-        const text = snap.exists() ? snap.data().text || "" : "";
+      // Only take text another tab/device wrote. Our own writes echo back
+      // (local, then server-confirmed), and an echo of an older save can land
+      // after newer typing — applying it erased what had just been typed.
+      const data = snap.exists() ? snap.data() : null;
+      if (data?.by !== TAB && timer === null) {
+        const text = data?.text || "";
         if (note.value !== text) note.value = text;
       }
       status.textContent = pending || timer ? "Saving…" : snap.metadata.fromCache ? "Offline copy" : "Synced";
