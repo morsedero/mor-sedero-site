@@ -1,5 +1,5 @@
 // TEMPORARY engine panel on the ?debug page (session 3). Set the moment by
-// hand (free minutes, energy, optionally a pretend time and last project) and
+// hand (free minutes, energy, optionally a pretend time) and
 // see the pick, Something else and the full ranking with each task's points.
 // "Not now" here only lives in this tab: it hides the task for the session
 // and counts toward today's skip penalty. Goes away with the debug list once
@@ -33,7 +33,6 @@ export function mountEngine(root){
   const f = {
     window: h("input", { type: "number", min: 0, max: 180, step: 5, value: 60, inputMode: "numeric" }),
     energy: h("select", {}, ...["low", "medium", "high"].map((v) => h("option", { value: v, textContent: v, selected: v === "medium" }))),
-    last: h("select"),
     time: h("input", { type: "datetime-local" }),
   };
   for (const el of Object.values(f)) el.oninput = () => render();
@@ -43,18 +42,8 @@ export function mountEngine(root){
     h("h2", { className: "label", textContent: "Now engine (debug)" }),
     h("div", { className: "eng-form" },
       field("Free minutes", f.window), field("Energy", f.energy),
-      field("Last project today", f.last), field("Pretend time (empty = now)", f.time)),
+      field("Pretend time (empty = now)", f.time)),
     out);
-
-  function lastProjectOptions(auto){
-    const projects = [...new Set(tasks.map((t) => t.project))].sort();
-    const keep = f.last.value;
-    f.last.replaceChildren(
-      h("option", { value: "", textContent: auto ? `Auto (${auto})` : "Auto (none today)" }),
-      h("option", { value: "-", textContent: "None" }),
-      ...projects.map((p) => h("option", { value: p, textContent: p })));
-    f.last.value = [...f.last.options].some((o) => o.value === keep) ? keep : "";
-  }
 
   const pts = (s) => PARTS.filter(([k]) => s.parts[k]).map(([k, l]) => `${l}${s.parts[k] > 0 ? "+" : ""}${s.parts[k]}`).join(" ");
 
@@ -71,9 +60,7 @@ export function mountEngine(root){
     const today = localDate(now);
     // Until the action log exists (session 5), "activity" = finishing a task.
     const done = tasks.filter((t) => t.doneAt && t.doneAt <= now).sort((a, b) => b.doneAt - a.doneAt);
-    const autoLast = done.find((t) => localDate(t.doneAt) === today)?.project || null;
-    lastProjectOptions(autoLast);
-    const last = f.last.value === "" ? autoLast : f.last.value === "-" ? null : f.last.value;
+    const last = done.find((t) => localDate(t.doneAt) === today)?.project || null;
 
     const r = rank(tasks, {
       now, window: f.window.value, energy: f.energy.value, lastProject: last,
@@ -92,7 +79,7 @@ export function mountEngine(root){
     out.replaceChildren(...[
       h("p", { className: "muted", textContent:
         `${r.moment.window} min free · energy ${r.moment.energy} · ${r.moment.bucket.part}${r.moment.bucket.weekend ? " (weekend)" : ""}` +
-        (last ? ` · last: ${last}` : "") + (sessionSkips.size ? ` · ${sessionSkips.size} hidden this session` : "") }),
+        (last ? ` · momentum: ${last}` : "") + (sessionSkips.size ? ` · ${sessionSkips.size} hidden this session` : "") }),
       empty && h("p", { className: "eng-empty", textContent: empty }),
       r.pick && card(r.pick, "Now"),
       r.alternatives.length > 0 && h("h3", { className: "label", textContent: "Something else" }),
