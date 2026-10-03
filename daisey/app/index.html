@@ -10,7 +10,17 @@
 </head>
 <body>
 <main class="shell">
-  <h1 class="brand">Daisey</h1>
+  <header class="topbar">
+    <h1 class="brand">Daisey</h1>
+    <!-- Account: Google-style avatar, top end corner; tap for email + sign out. -->
+    <div class="acct">
+      <button id="avatar" class="avatar" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="acctMenu" hidden></button>
+      <div id="acctMenu" class="acct-menu" hidden>
+        <p id="who" class="muted"></p>
+        <button id="signout" class="btn small" type="button">Sign out</button>
+      </div>
+    </div>
+  </header>
 
   <section data-view="loading" class="card"><p class="muted">Loading…</p></section>
 
@@ -33,14 +43,7 @@
     <button id="replan" class="btn">Replan today</button>
   </div>
 
-  <section data-view="signedin" class="card" hidden>
-    <div class="row">
-      <span id="who" class="muted"></span>
-      <button id="signout" class="btn">Sign out</button>
-    </div>
-  </section>
-
-  <!-- Daily check-in: opens on the first visit each day, reopened by "Plan today". -->
+  <!-- Daily check-in: opens on the first visit each day, reopened by "Replan today". -->
   <dialog id="checkin" class="now" aria-labelledby="checkinTitle"></dialog>
   <dialog id="addtask" class="now" aria-labelledby="addTitle"></dialog>
 

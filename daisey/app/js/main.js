@@ -34,7 +34,13 @@ async function boot(){
         : "Sign-in failed: " + (e.code || e.message);
     }
   };
-  $("#signout").onclick = () => fb.signOut();
+  // Account menu under the avatar.
+  const menu = $("#acctMenu"), avatar = $("#avatar");
+  const setMenu = (open) => { menu.hidden = !open; avatar.setAttribute("aria-expanded", String(open)); };
+  avatar.onclick = (e) => { e.stopPropagation(); setMenu(menu.hidden); };
+  document.addEventListener("click", (e) => { if (!menu.hidden && !menu.contains(e.target)) setMenu(false); });
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape") setMenu(false); });
+  $("#signout").onclick = () => { setMenu(false); fb.signOut(); };
 
   fb.onUser((user) => {
     if (unmountDebug) { unmountDebug(); unmountDebug = null; }
@@ -42,10 +48,20 @@ async function boot(){
     $("#actions").hidden = true;
     if (checkin) { checkin.unmount(); checkin = null; }
     if (adder) { adder.unmount(); adder = null; }
+    setMenu(false);
+    avatar.hidden = !user;
     if (!user) { show("signedout"); return; }
 
     $("#who").textContent = user.email;
-    show("signedin");
+    avatar.setAttribute("aria-label", `Account: ${user.email}`);
+    avatar.replaceChildren();
+    const initial = () => { avatar.textContent = (user.displayName || user.email || "?").trim()[0].toUpperCase(); };
+    if (user.photoURL) {
+      const img = Object.assign(document.createElement("img"), { src: user.photoURL, alt: "", referrerPolicy: "no-referrer" });
+      img.onerror = () => { img.remove(); initial(); };
+      avatar.append(img);
+    } else initial();
+    show("signedin"); // no element of its own: just clears loading/sign-in views
 
     // Now card on top; the check-in opens by itself on the day's first visit.
     Promise.all([import("./now.js"), import("./checkin.js"), import("./addtask.js")]).then(([{ mountNow }, { mountCheckin }, { mountAddTask }]) => {

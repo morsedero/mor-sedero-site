@@ -28,7 +28,20 @@ body {
   padding: max(24px, env(safe-area-inset-top)) 16px max(24px, env(safe-area-inset-bottom));
 }
 
-.brand { font-size: 22px; font-weight: 800; letter-spacing: -0.02em; margin: 0 0 16px; }
+.brand { font-size: 22px; font-weight: 800; letter-spacing: -0.02em; margin: 0; }
+.topbar { display: flex; align-items: center; justify-content: space-between; margin-block-end: 16px; min-block-size: 40px; }
+.acct { position: relative; }
+.avatar {
+  inline-size: 36px; block-size: 36px; padding: 0; border-radius: 50%; overflow: hidden; cursor: pointer;
+  border: 2px solid var(--line); background: var(--accent); color: var(--ink); font: inherit; font-weight: 700;
+}
+.avatar img { inline-size: 100%; block-size: 100%; object-fit: cover; display: block; }
+.acct-menu {
+  position: absolute; inset-inline-end: 0; inset-block-start: calc(100% + 8px); z-index: 10;
+  display: grid; gap: 10px; justify-items: start; min-inline-size: 220px; padding: 14px;
+  background: var(--card); border: 1px solid var(--line); border-radius: 14px; box-shadow: 0 10px 30px rgba(0,0,0,.15);
+}
+.acct-menu p { margin: 0; overflow-wrap: anywhere; }
 
 .card {
   background: var(--card);
