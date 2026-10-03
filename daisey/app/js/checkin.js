@@ -1,10 +1,10 @@
 // The daily check-in: a popup on the first visit each day, reopened from
-// "Replan" on the Now card. Hours free today, and tick what
-// you'd like done today. Ticked tasks get a boost on the Now card. No clock
-// times and no order — the Now card still decides the next step, so nothing
-// breaks when the day changes. Saved in users/{uid}/state/today.
+// "Replan today". You give one thing — hours free today — and Daisey shows
+// its take on the day: what's urgent first, as much as fits, each with why.
+// You don't pick (Mor: deciding what matters is the app's job). Read-only;
+// the Now card still picks moment to moment. Saved in users/{uid}/state/today.
 import { watchTasks, watchToday, saveToday } from "./store.js";
-import { readMoment, scoreTask, compare } from "./engine.js";
+import { planDay } from "./engine.js";
 import { localDate } from "./model.js";
 import { h, chips, sizeText } from "./ui.js";
 
@@ -13,7 +13,7 @@ const hm = (min) => (min >= 60 ? `${Math.floor(min / 60)} h${min % 60 ? ` ${min 
 
 export function mountCheckin(dialog, uid, { onSaved } = {}){
   let tasks = null, today = undefined; // undefined until the first snapshot
-  let draft = null; // { hours, picks: Set } while open
+  let hours = null; // the draft while open
   let autoChecked = false;
 
   const body = h("div", { className: "now-body" });
@@ -26,46 +26,34 @@ export function mountCheckin(dialog, uid, { onSaved } = {}){
   const planned = () => today?.date === localDate();
 
   function render(){
-    if (!draft) return;
-    const head = [
-      chips("Hours free today", HOURS, draft.hours, (v) => { draft.hours = v; render(); }),
-    ];
-    if (tasks == null) { fill(...head, h("p", { className: "muted", textContent: "Loading tasks…" })); return; }
+    const head = chips("Hours free today", HOURS, hours, (v) => { hours = v; render(); });
+    const actions = h("div", { className: "now-actions" },
+      h("button", { className: "btn", type: "button", textContent: "Skip today", onclick: () => save(null) }),
+      h("button", { className: "btn primary", type: "button", textContent: "Start the day", disabled: !hours, onclick: () => save(hours) }));
+    if (tasks == null) { fill(head, h("p", { className: "muted", textContent: "Loading tasks…" }), actions); return; }
+    if (!hours) { fill(head, h("p", { className: "muted", textContent: "Pick your hours and Daisey will lay out the day." }), actions); return; }
 
-    // Every ready task, best fit for a long stretch first.
-    const m = readMoment({ window: 180 });
-    const list = tasks.filter((t) => t.status === "ready").map((t) => scoreTask(t, m)).sort(compare);
-    const minutes = list.filter((s) => draft.picks.has(s.task.id)).reduce((a, s) => a + s.task.size, 0);
-    const budget = draft.hours ? draft.hours * 60 : null;
-
-    fill(...head,
-      h("div", { className: "now-label", textContent: "What would you like done today?" }),
-      list.length === 0 && h("p", { className: "muted", textContent: "No open tasks yet." }),
-      h("ul", { className: "ci-list" }, ...list.map((s) => {
-        const id = `ci-${s.task.id}`;
-        const box = h("input", { type: "checkbox", id, checked: draft.picks.has(s.task.id),
-          onchange: () => { box.checked ? draft.picks.add(s.task.id) : draft.picks.delete(s.task.id); render(); } });
-        return h("li", {}, h("label", { className: "ci-item", htmlFor: id }, box,
-          h("span", { className: "ci-text" },
-            h("span", { className: "ci-title", dir: "auto", textContent: s.task.title }),
-            h("span", { className: "muted", dir: "auto", textContent: [s.task.project, sizeText(s.task.size), s.task.due && `due ${s.task.due}`].filter(Boolean).join(" · ") }))));
-      })),
-      draft.picks.size > 0 && h("p", { className: "muted", textContent: `Picked ${hm(minutes)}` + (budget ? ` of ${hm(budget)}` : "") +
-        (budget && minutes > budget ? " — more than fits; Daisey will offer the best ones first." : "") }),
-      h("div", { className: "now-actions" },
-        h("button", { className: "btn", type: "button", textContent: "Skip today", onclick: () => save([]) }),
-        h("button", { className: "btn primary", type: "button", textContent: "Start the day", onclick: () => save([...draft.picks]) })));
+    const d = planDay(tasks, { hours });
+    fill(head,
+      h("div", { className: "now-label", textContent: d.items.length ? `Daisey's take on today (${hm(d.minutes)})` : "Daisey's take on today" }),
+      d.items.length === 0 && h("p", { className: "muted", textContent: tasks.some((t) => t.status === "ready")
+        ? "Nothing fits in that time. Try more hours, or take it easy." : "No open tasks yet." }),
+      d.items.length > 0 && h("ol", { className: "day-list" }, ...d.items.map((s) => h("li", {},
+        h("div", { className: "day-title", dir: "auto", textContent: s.task.title }),
+        h("div", { className: "muted", dir: "auto", textContent: [s.task.project, sizeText(s.task.size)].join(" · ") + (s.why ? ` — ${s.why}` : "") })))),
+      d.left > 0 && d.items.length > 0 && h("p", { className: "muted", textContent: `${d.left} more can wait.` }),
+      actions);
   }
 
-  function save(picks){
-    saveToday(uid, { date: localDate(), hours: draft.hours, picks }).catch((e) => console.error("[daisey] checkin save", e));
+  function save(hrs){
+    saveToday(uid, { date: localDate(), hours: hrs }).catch((e) => console.error("[daisey] checkin save", e));
     dialog.close();
     onSaved?.();
   }
 
   function open(){
     const same = planned();
-    draft = { hours: same ? today.hours ?? null : null, picks: new Set(same ? today.picks || [] : []) };
+    hours = same ? today.hours ?? null : null;
     title.textContent = same ? "Replan today" : "Plan today";
     render();
     if (!dialog.open) dialog.showModal();

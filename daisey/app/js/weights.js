@@ -55,10 +55,9 @@ export const NEGLECT_MAX = 10;
 export const LEARNED_MIN = -10; // learned fit arrives in session 10
 export const LEARNED_MAX = 10;
 export const SKIP_PENALTY = 8; // per skip of this task today
-// OURS (Mor, 2026-10-03): tasks ticked in the morning check-in. Big enough
-// that a picked task usually wins, small enough that an overdue one can
-// still beat it.
-export const TODAY_PICK = 20;
+
+// Daisey's day (the check-in preview)
+export const DAY_LIST_MAX = 8; // at most this many tasks, however many hours
 
 // Something else
 export const ALTERNATIVES = 3;

@@ -230,8 +230,10 @@ satisfaction" later. `model.js`'s header has the same list.
 **Changed during session 3 (Mor, 2026-10-03):** the page always leads with
 the Now card, and it holds only the current task (title, why, Not now,
 Something else). Free time is not on the card. A daily check-in popup opens on
-the day's first visit: hours free today, and tick what you'd like done
-today (ticked → +20, "on today's list"). "Replan today" reopens it; "+ Add
+the day's first visit: you give hours free today, and Daisey shows its
+read-only take on the day (urgent first, as much as fits, each with why).
+The user never picks what matters — that's the app's job (Mor). Until the
+calendar exists, window fit scores 0 (the window is only a stand-in). "Replan today" reopens it; "+ Add
 task" opens the task form as a popup. Account is an avatar in the top corner.
 No timed schedule, no ordered list. Until session 8, the free window is
 today's hours from the check-in (60 if skipped). Session 4 builds on this

@@ -2,7 +2,6 @@
 // and why — nothing else (Mor: the card holds only the current task). Free
 // time comes from today's check-in. Not now → next pick (hidden
 // for this page load). Something else → 2–3 alternatives, tap one to make it the card.
-// Tasks ticked in today's check-in get a boost (engine "today" factor).
 // Start / the timer arrive in session 5; Hebrew + RTL in session 4.
 import { watchTasks, watchToday } from "./store.js";
 import { rank } from "./engine.js";
@@ -38,9 +37,8 @@ export function mountNow(root, uid, { onCard } = {}){
     // is today's free hours from the check-in (capped at 180 by the engine);
     // no check-in → the engine's no-calendar 60.
     const plan = today?.date === localDate() ? today : null;
-    const picks = plan?.picks || [];
     const window = plan?.hours ? plan.hours * 60 : undefined;
-    const r = rank(tasks, { window, sessionSkips: [...skips], todayPicks: picks });
+    const r = rank(tasks, { window, realWindow: false, sessionSkips: [...skips] });
     const card = (state.chosen && r.ranked.find((s) => s.task.id === state.chosen)) || r.pick;
     showing(card?.task.id ?? null);
     if (!card) {

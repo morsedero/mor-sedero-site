@@ -16,6 +16,7 @@ const task = (o = {}) => ({
 });
 const moment = (o = {}) => E.readMoment({ now: NOW, window: 60, ...o });
 const parts = (t, o) => E.scoreTask(t, moment(o)).parts;
+const why = (t, o) => E.rank([t], { now: NOW, ...o }).pick.why;
 
 // ---------- step 1 ----------
 
@@ -117,6 +118,12 @@ test("window fit: 50–100% 15, 25–50% 10, under 25% 6, split piece 8", () => 
   assert.equal(parts(task({ size: 90, canSplit: true })).window, 8);
 });
 
+test("window fit: a stand-in window (no calendar) still filters but scores 0", () => {
+  assert.equal(parts(task({ size: 30 }), { realWindow: false }).window, 0);
+  assert.equal(E.filterOut(task({ size: 90 }), moment({ realWindow: false })), "size");
+  assert.equal(why(task({ size: 5, due: "2026-10-06" }), { realWindow: false }), "Due tomorrow.");
+});
+
 test("momentum: last project today 10 (any case), recent project 5, else 0", () => {
   assert.equal(parts(task({ project: "Monster Punk" }), { lastProject: "monster punk" }).momentum, 10);
   assert.equal(parts(task({ project: "Reprise" }), { recentProjects: ["Reprise"] }).momentum, 5);
@@ -140,7 +147,6 @@ test("skip penalty: −8 per skip today; the score is the sum of all parts", () 
   const s = E.scoreTask(t, moment({ skipsToday: { [t.id]: 2 } }));
   assert.equal(s.parts.skips, -16);
   assert.equal(s.score, 0 + 15 + 0 + 0 + 0 - 16);
-  assert.equal(s.parts.today, 0);
 });
 
 // ---------- ranking ----------
@@ -184,7 +190,6 @@ test("empty states: no open tasks → none; nothing fits → nofit", () => {
 
 // ---------- why line ----------
 
-const why = (t, o) => E.rank([t], { now: NOW, ...o }).pick.why;
 
 test("why: top factors in points order, as one sentence", () => {
   // window 15 (15 of 20 min), urgency 12
@@ -238,13 +243,25 @@ test("scenario: 20 min picks the short task due tomorrow; 2 h picks the deep wor
   assert.ok(long.alternatives.every((s) => s.task.project !== "Reprise"));
 });
 
-test("today's picks: +20 and a why phrase; a picked task beats an equal unpicked one", () => {
-  const a = task(), b = task();
-  const r = E.rank([a, b], { now: NOW, todayPicks: [b.id] });
-  assert.equal(r.pick.task.id, b.id);
-  assert.equal(r.pick.parts.today, W.TODAY_PICK);
-  assert.match(r.pick.why, /on today's list/i);
-  // an overdue task still outranks a plain pick
-  const late = task({ due: "2026-10-01" });
-  assert.equal(E.rank([b, late], { now: NOW, todayPicks: [b.id] }).pick.task.id, late.id);
+test("Daisey's day: urgent first, fits the hours, skips what won't fit, no window talk", () => {
+  const tasks = [
+    task({ title: "big later", size: 120 }),
+    task({ title: "overdue", size: 30, due: "2026-10-01" }),
+    task({ title: "tomorrow", size: 60, due: "2026-10-06" }),
+    task({ title: "small", size: 15 }),
+    task({ title: "waiting", size: 15, status: "waiting" }),
+    task({ title: "stale", size: 15, skipsSinceStart: 5 }),
+  ];
+  const d = E.planDay(tasks, { now: NOW, hours: 2 });
+  assert.deepEqual(d.items.map((s) => s.task.title), ["overdue", "tomorrow", "small"]); // 120 doesn't fit the 15 left
+  assert.equal(d.minutes, 105);
+  assert.equal(d.budget, 120);
+  assert.equal(d.left, 1);
+  assert.match(d.items[0].why, /^Overdue/);
+  assert.ok(d.items.every((s) => !/fills|fits your|quick one|piece/i.test(s.why)));
+  assert.deepEqual(E.planDay(tasks, { now: NOW }).items, []); // no hours → nothing
+  // window fit doesn't reorder the day: due tomorrow beats a bigger task due later
+  const order = E.planDay([task({ title: "big", size: 90, due: "2026-10-08" }), task({ title: "soon", size: 15, due: "2026-10-06" })], { now: NOW, hours: 4 });
+  assert.deepEqual(order.items.map((s) => s.task.title), ["soon", "big"]);
+  assert.equal(E.planDay(Array.from({ length: 20 }, () => task({ size: 5 })), { now: NOW, hours: 8 }).items.length, W.DAY_LIST_MAX);
 });

@@ -11,7 +11,7 @@ import { localDate } from "./model.js";
 
 const MIN = 60000;
 const DAY = 86400000;
-const FACTORS = ["urgency", "today", "window", "momentum", "neglect", "learned"]; // why-line tie order
+const FACTORS = ["urgency", "window", "momentum", "neglect", "learned"]; // why-line tie order
 const DAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
@@ -34,9 +34,11 @@ export function timeBucket(now = Date.now()){
 //   recentProjects  projects worked on in the last 2 days
 //   sessionSkips    ids hidden by Not now this session
 //   skipsToday      { id: count } — the skip penalty
-//   todayPicks      ids ticked in today's check-in
 //   learned         (task, moment) → −10…10, session 10
 //   nextEvent       title of the next calendar event, session 8
+//   realWindow      false = the window is a stand-in (no calendar yet): it
+//                   still filters what fits, but earns no window-fit points,
+//                   which would just favour whatever is closest to it
 export function readMoment(input = {}){
   const now = input.now ?? Date.now();
   const w = Number(input.window);
@@ -49,9 +51,9 @@ export function readMoment(input = {}){
     recentProjects: (input.recentProjects || []).map(projectKey),
     sessionSkips: new Set(input.sessionSkips || []),
     skipsToday: input.skipsToday || {},
-    todayPicks: new Set(input.todayPicks || []),
     learned: input.learned || null,
     nextEvent: input.nextEvent || null,
+    realWindow: input.realWindow !== false,
   };
 }
 
@@ -121,6 +123,7 @@ function urgency(task, m){
 // ---------- step 3: score ----------
 
 function windowFit(task, m){
+  if (!m.realWindow) return { points: 0, detail: null };
   const r = m.window > 0 ? task.size / m.window : Infinity;
   const fit = r > 1 ? "piece" : r >= 0.5 ? "full" : r >= 0.25 ? "half" : "small";
   return { points: W.WINDOW_FIT[fit], detail: { fit, window: m.window, nextEvent: m.nextEvent } };
@@ -145,7 +148,7 @@ function learned(task, m){
 
 // Score parts, total and the details the why line needs.
 export function scoreTask(task, m){
-  const f = { urgency: urgency(task, m), today: { points: m.todayPicks.has(task.id) ? W.TODAY_PICK : 0, detail: null }, window: windowFit(task, m),
+  const f = { urgency: urgency(task, m), window: windowFit(task, m),
     momentum: momentum(task, m), neglect: neglect(task, m), learned: learned(task, m) };
   const parts = Object.fromEntries(FACTORS.map((k) => [k, f[k].points]));
   const details = Object.fromEntries(FACTORS.map((k) => [k, f[k].detail]));
@@ -176,7 +179,6 @@ const sizeWords = (n) => n === 60 ? "hour" : n > 60 ? `${+(n / 60).toFixed(1)} h
 
 const PHRASES = {
   urgency: (s, d) => d.overdue ? "overdue" : dueWords(s.task, d.days) + (d.hard ? ", getting tight" : ""),
-  today: () => "on today's list",
   window: (s, d) => d.fit === "small" ? "quick one"
     : d.fit === "piece" ? `a piece fits your ${sizeWords(d.window)}`
     : d.nextEvent ? `fits before ${d.nextEvent}`
@@ -187,9 +189,11 @@ const PHRASES = {
 };
 
 // The two or three factors that gave the most points, as one sentence.
-export function whyLine(s){
+// `skip` drops factors that make no sense in context (the day list has no
+// real window, so "fills your free 3 h" would be noise).
+export function whyLine(s, skip = []){
   const phrases = FACTORS
-    .filter((k) => s.parts[k] >= W.WHY_MIN_POINTS)
+    .filter((k) => !skip.includes(k) && s.parts[k] >= W.WHY_MIN_POINTS)
     .sort((a, b) => s.parts[b] - s.parts[a] || FACTORS.indexOf(a) - FACTORS.indexOf(b))
     .map((k) => PHRASES[k](s, s.details[k]))
     .filter(Boolean)
@@ -218,6 +222,30 @@ export function somethingElse(ranked, count = W.ALTERNATIVES){
     pool.splice(pool.indexOf(choice), 1);
   }
   return out;
+}
+
+// ---------- Daisey's day ----------
+
+// What today holds, as Daisey sees it: ready tasks in score order (urgent
+// first), added while they fit in today's free hours, at most DAY_LIST_MAX.
+// Read-only — it explains the day; the Now card still picks each moment.
+// A task too big for what's left is passed over for smaller ones after it.
+export function planDay(tasks, { now = Date.now(), hours } = {}){
+  const budget = Math.max(0, Math.round((Number(hours) || 0) * 60));
+  const m = readMoment({ now, window: W.WINDOW_CAP });
+  const scored = tasks.filter((t) => t.status === "ready" && (t.skipsSinceStart || 0) < W.STALE_SKIPS)
+    // No real window here, so window fit mustn't order the day: drop it.
+    .map((t) => { const sc = scoreTask(t, m); return { ...sc, score: sc.score - sc.parts.window }; })
+    .sort(compare);
+  const items = [];
+  let used = 0;
+  for (const s of scored) {
+    if (items.length >= W.DAY_LIST_MAX) break;
+    if (used + s.task.size > budget) continue;
+    used += s.task.size;
+    items.push({ ...s, why: whyLine(s, ["window"]) });
+  }
+  return { items, minutes: used, budget, left: scored.length - items.length };
 }
 
 // ---------- the whole pass ----------

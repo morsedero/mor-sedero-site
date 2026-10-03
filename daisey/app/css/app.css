@@ -145,12 +145,9 @@ textarea {
 .nowcard { display: grid; gap: 14px; margin-block-end: 16px; }
 .nowcard[hidden] { display: none; }
 
-/* Daily check-in list. */
-.ci-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; max-block-size: 45dvh; overflow-y: auto; }
-.ci-item { display: flex; gap: 12px; align-items: flex-start; padding: 10px 4px; border-block-end: 1px solid var(--line); cursor: pointer; }
-.ci-item input { inline-size: 22px; block-size: 22px; margin: 2px 0 0; accent-color: var(--ink); flex: none; }
-.ci-text { display: grid; gap: 2px; min-inline-size: 0; }
-.ci-title { font-weight: 600; }
+/* Daisey's day, in the check-in. */
+.day-list { margin: 0; padding-inline-start: 22px; display: grid; gap: 10px; max-block-size: 45dvh; overflow-y: auto; }
+.day-title { font-weight: 600; }
 
 .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-block-end: 16px; }
 .actions[hidden] { display: none; }
