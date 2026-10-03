@@ -233,5 +233,5 @@ export function editTask(task, changes, { now = Date.now(), history = [] } = {})
 export const completeTask = (task, { now = Date.now() } = {}) =>
   ({ status: "done", doneAt: now, skipsSinceStart: 0, touchedAt: now });
 
-// Could the engine offer this task? (Window and energy are session 3.)
+// Ready to be offered at all? engine.js filterOut adds window, energy, skips.
 export const isAvailable = (task) => task.status === "ready";
