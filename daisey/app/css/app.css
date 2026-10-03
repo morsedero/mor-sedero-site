@@ -69,3 +69,19 @@ textarea {
   background: #fff;
   resize: vertical;
 }
+
+/* Temporary ?debug task list (session 2). */
+.dbg { margin-block-start: 16px; }
+.dbg-form { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.dbg-form > :first-child, .dbg-form > button { grid-column: 1 / -1; }
+.dbg-form input:not([type=checkbox]), .dbg-form select {
+  font: inherit; font-size: 16px; padding: 8px 10px; min-inline-size: 0;
+  border: 1px solid var(--line); border-radius: 10px; background: #fff;
+}
+.dbg-check { display: flex; align-items: center; gap: 6px; font-size: 14px; }
+.dbg-list { list-style: none; padding: 0; margin: 0; }
+.dbg-task { border-block-start: 1px solid var(--line); padding-block: 10px; }
+.dbg-task.off { opacity: .5; }
+.dbg-title { font-weight: 600; }
+.dbg-actions { display: flex; gap: 6px; margin-block-start: 6px; }
+.btn.small { min-block-size: 32px; padding-block: 4px; padding-inline: 12px; font-size: 14px; }

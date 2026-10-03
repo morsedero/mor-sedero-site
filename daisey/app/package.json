@@ -1,0 +1,4 @@
+{
+  "//": "Tells Node the app's js/ files are ES modules, so daisey/test/v1/ can import them. Not copied to the site.",
+  "type": "module"
+}

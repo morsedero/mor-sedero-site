@@ -17,6 +17,7 @@ export const db = fs.initializeFirestore(app, {
 });
 
 export function onUser(cb){ return auth.onAuthStateChanged(a, cb); }
+export const currentUid = () => a.currentUser?.uid ?? null;
 
 // Popup, not redirect: redirect sign-in breaks in Safari (and soon Chrome)
 // when the page and authDomain (*.firebaseapp.com) are different sites,
@@ -29,4 +30,4 @@ export async function signIn(){
 
 export function signOut(){ return auth.signOut(a); }
 
-export const { doc, setDoc, onSnapshot, serverTimestamp } = fs;
+export const { doc, collection, setDoc, addDoc, updateDoc, deleteDoc, onSnapshot, serverTimestamp } = fs;

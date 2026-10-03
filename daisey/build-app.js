@@ -17,7 +17,8 @@ function fail(msg){
 if(!fs.existsSync(path.join(SRC, "index.html"))) fail("daisey/app/index.html is missing");
 
 fs.rmSync(OUT, { recursive: true, force: true });
-fs.cpSync(SRC, OUT, { recursive: true });
+// package.json only exists so node tests can import the modules; don't serve it.
+fs.cpSync(SRC, OUT, { recursive: true, filter: (src) => src !== path.join(SRC, "package.json") });
 
 // Every local file index.html references must have been copied.
 const html = fs.readFileSync(path.join(OUT, "index.html"), "utf8");

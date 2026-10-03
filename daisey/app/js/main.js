@@ -6,6 +6,7 @@ import { configured } from "./config.js";
 const $ = (s) => document.querySelector(s);
 // Identifies this page load as the writer, so its own echoes can be ignored.
 const TAB = crypto.randomUUID();
+const DEBUG = new URLSearchParams(location.search).has("debug");
 const show = (id) => {
   for (const el of document.querySelectorAll("[data-view]")) el.hidden = el.dataset.view !== id;
 };
@@ -23,6 +24,7 @@ if (!configured) {
 async function boot(){
   const fb = await import("./firebase.js");
   let unsub = null;
+  let unmountDebug = null;
 
   $("#signin").onclick = async () => {
     $("#signinMsg").textContent = "";
@@ -38,12 +40,19 @@ async function boot(){
 
   fb.onUser((user) => {
     if (unsub) { unsub(); unsub = null; }
+    if (unmountDebug) { unmountDebug(); unmountDebug = null; }
     const note = $("#note");
     note.value = "";
     if (!user) { show("signedout"); return; }
 
     $("#who").textContent = user.email;
     show("signedin");
+
+    if (DEBUG) {
+      import("./debug.js").then(({ mountDebug }) => {
+        if (fb.currentUid() === user.uid && !unmountDebug) unmountDebug = mountDebug($("#debug"), user.uid);
+      }).catch((e) => console.error("[daisey] debug", e));
+    }
 
     const ref = fb.doc(fb.db, "users", user.uid, "state", "note");
     let timer = null;
