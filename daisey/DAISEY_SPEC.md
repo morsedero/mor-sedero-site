@@ -266,17 +266,16 @@ It comes from the same read as the free window, so the panel and the greeting
 can never disagree. All-day entries and events marked free never block a pick
 — only real, timed, accepted events do.
 
-**Context line.** Above the card, one quiet line: the time of day plus what
-the calendar says — "Afternoon. 45 min free, then Teaching.", "In Teaching
-until 15:00.", or "Free for the rest of the day." Free time is never asked
-for; it comes only from the calendar, so there is nothing to keep setting.
-Without a connected calendar Daisey assumes 60 minutes, which filters out
-what cannot fit but earns no points for fitting.
+**Clock line.** Above the card, the local date and time, ticking each minute
+— nothing else. Free time is never asked for; it comes only from the calendar,
+and the Schedule panel below says what the day holds. Without a connected
+calendar Daisey assumes 60 minutes, which filters out what cannot fit but
+earns no points for fitting.
 
 During an event the card is empty — "Nothing to pick until it ends" — with
 an **I'm free now** button beside it, because meetings end early and get
-cancelled. It ignores that one event (the greeting says so, and offers to
-put it back) and clears itself once the event is over.
+cancelled. It ignores that one event (a line under the clock says so, and
+offers to put it back) and clears itself once the event is over.
 
 **The card.** It is the hero and the only yellow thing on the screen: project
 and size, title, why line, a big **Start**, and three quiet icon actions
