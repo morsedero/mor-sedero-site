@@ -241,3 +241,59 @@ v1 is done when the Now card picks a task you actually start, most days, for one
 - **Chat model:** Gemini API. The key never sits in page code; a small server function (Netlify Function if the site is on Netlify) calls Gemini.
 - **Language:** Hebrew and English from day one: RTL layout, mixed-language task titles, chat and voice in both.
 - **Finished-task history:** used for learning only in v1; no history screen.
+
+## UX additions (built Oct 3, 2026)
+
+What the Now screen actually does, after a pass with Mor. Where this differs
+from the sections above, this wins.
+
+**The day plan is gone.** The "Today" panel — hours-free chips plus Daisey's
+numbered take on the day — was removed. Daisey picks one task at a time and
+never lays out the day, so there is nothing to keep in step when the day
+changes. There is no daily check-in either; it was folded into that panel
+earlier the same day and went with it.
+
+**Layout: one slider, no tabs.** The Now/Tasks tabs are gone. The screen is a
+single horizontal scroller: the Now card is the first panel, then one column
+per project. A swipe on a phone, all of it at once on a wide screen.
+
+**Context line.** Above the card, one quiet line: the time of day plus what
+the calendar says — "Afternoon. 45 min free, then Teaching.", "In Teaching
+until 15:00.", or "Free for the rest of the day." Free time is never asked
+for; it comes only from the calendar, so there is nothing to keep setting.
+Without a connected calendar Daisey assumes 60 minutes, which filters out
+what cannot fit but earns no points for fitting.
+
+**The card.** It is the hero and the only yellow thing on the screen: project
+and size, title, why line, a big **Start**, and three quiet icon actions
+under it, each with its sentence as the tooltip:
+
+| Action | What happens |
+| --- | --- |
+| Later | The card slides out, the next slides in. The skip is counted. |
+| Switch | 2–3 alternatives with their why lines; tap one to put it on the card. |
+| Pending | Same slide, and the task is set to Waiting. |
+
+After Later or Pending, a toast sits for five seconds offering **Undo**,
+which puts the task back exactly as it was. (An earlier version asked for a
+reason — tired, no time, blocked — and Mor cut it.)
+
+**The why line, in Daisey's voice.** The proposed card says "I'd do this now:
+due today, 5 min, quick win." Alternatives keep the plain sentence, so only
+one voice is speaking at a time.
+
+**Focus mode.** Start fills the screen: the task, a running timer, Done,
+Stop, nothing else. The run is stored, so a reload or the other device shows
+the same timer still going. Past the estimate it asks once, quietly — "Still
+on it? +15 min · Stuck" — with no sound and no red. Done asks "Finished, or
+more left?", then hands off: the next task with its why line, Start or Not
+now. Real minutes are saved either way.
+
+**Hebrew and English.** Every piece that could be either language is isolated
+(`<bdi>`), so "חתונה · 5 min" never reorders itself. Durations always carry
+their unit: "1 h 30 min", never "1.5 h" and never a bare trailing number.
+Note for later: `\b` does not work on Hebrew letters in JavaScript regexes.
+
+**Still as it was:** tasks are added through the "+" form (a capture bar was
+built and rejected — for one task it was no better), and the task on the Now
+card stays in its project column with a "now" badge rather than disappearing.
