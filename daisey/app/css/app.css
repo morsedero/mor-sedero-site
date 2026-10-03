@@ -232,6 +232,23 @@ body.focus .shell { display: grid; min-block-size: 100dvh; align-content: center
 }
 .shell { padding-block-end: 96px; } /* room so the FAB never covers the last row */
 
+/* Schedule: the calendar's own panel, between the card and the projects. */
+.sch { display: grid; gap: 10px; align-content: start; }
+.sch-head { margin: 0; font-size: 17px; }
+.sch-note { margin: 0; font-size: 13px; }
+.sch-day { display: grid; gap: 6px; }
+.sch-h { margin: 6px 0 0; font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--ink-2); }
+.sch-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.sch-row { display: flex; gap: 10px; align-items: baseline; padding-block: 4px; }
+.sch-row.past { opacity: .45; }
+.sch-row.running { font-weight: 700; }
+.sch-time { flex: none; inline-size: 52px; font-size: 13px; font-variant-numeric: tabular-nums; color: var(--ink-2); }
+.sch-row.running .sch-time { color: var(--ink); }
+.sch-title { min-inline-size: 0; overflow-wrap: anywhere; }
+.sch-now { margin-inline-start: 6px; padding: 1px 7px; border-radius: 999px; font-size: 11px; font-weight: 700; text-transform: uppercase; background: var(--accent); color: var(--on-accent); }
+.sch-gap { font-size: 13px; color: var(--ink-2); padding-inline-start: 62px; }
+.sch-free { margin: 0; }
+
 /* Tasks board: columns per project, scroll sideways on a phone. */
 .tk-col {
   flex: 0 0 min(320px, calc(100vw - 48px)); scroll-snap-align: start;

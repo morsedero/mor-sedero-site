@@ -254,8 +254,15 @@ changes. There is no daily check-in either; it was folded into that panel
 earlier the same day and went with it.
 
 **Layout: one slider, no tabs.** The Now/Tasks tabs are gone. The screen is a
-single horizontal scroller: the Now card is the first panel, then one column
+single horizontal scroller: the Now card, then **Schedule**, then one column
 per project. A swipe on a phone, all of it at once on a wide screen.
+
+**Schedule panel.** Google Calendar's own day, read-only: today and tomorrow,
+each event with its time, the free gaps between them spelled out, all-day
+entries marked, what's running now highlighted and what's finished greyed.
+It comes from the same read as the free window, so the panel and the greeting
+can never disagree. All-day entries and events marked free never block a pick
+— only real, timed, accepted events do.
 
 **Context line.** Above the card, one quiet line: the time of day plus what
 the calendar says — "Afternoon. 45 min free, then Teaching.", "In Teaching

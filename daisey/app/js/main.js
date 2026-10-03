@@ -65,13 +65,15 @@ async function boot(){
     } else initial();
     show("signedin"); // no element of its own: just clears loading/sign-in views
 
-    Promise.all([import("./now.js"), import("./tasks.js"), import("./addtask.js")])
-      .then(([{ mountNow }, { mountTasks }, { mountAddTask }]) => {
+    Promise.all([import("./now.js"), import("./tasks.js"), import("./addtask.js"), import("./schedule.js")])
+      .then(([{ mountNow }, { mountTasks }, { mountAddTask }, { mountSchedule }]) => {
         if (fb.currentUid() !== user.uid || mounted) return;
         const m = mounted = {};
         m.adder = mountAddTask($("#addtask"), user.uid);
         // The Now card rides in the same scroller as the columns, first in line.
-         m.tasks = mountTasks($("#board"), user.uid, { lead: $("#nowcard"),
+         m.schedule = mountSchedule($("#schedule"));
+        // The slider reads: the Now card, what the day holds, then the projects.
+        m.tasks = mountTasks($("#board"), user.uid, { lead: [$("#nowcard"), $("#schedule")],
           onAdd: (project) => m.adder.open(project), onEdit: (task) => m.adder.edit(task) });
         m.now = mountNow($("#nowcard"), user.uid, { onCard: (id) => { onCard = id; m.tasks?.setCurrent(id); } });
         m.tasks.setCurrent(onCard);

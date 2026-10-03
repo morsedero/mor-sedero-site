@@ -57,6 +57,18 @@ const cal = flag("--cal");
 const calReply = !cal ? { status: 404, body: { error: "not_connected" } }
   : cal === "reauth" ? { status: 409, body: { error: "needs_reauth" } }
   : cal === "none" ? { status: 200, body: { events: [] } }
+  : cal === "day" ? { status: 200, body: { events: (() => {
+      const at = (h, m = 0) => { const d = new Date(); d.setHours(h, m, 0, 0); return d.toISOString(); };
+      const tm = (h) => { const d = new Date(); d.setDate(d.getDate() + 1); d.setHours(h, 0, 0, 0); return d.toISOString(); };
+      const day = (n) => { const d = new Date(); d.setDate(d.getDate() + n); return d.toLocaleDateString("en-CA"); };
+      return [
+        { title: "ILLUSTRATION WEEK", start: day(0), end: day(1), allDay: true, busy: false },
+        { title: "Standup", start: at(9), end: at(9, 15), allDay: false, busy: true },
+        { title: "שיעור גיטרה", start: at(13), end: at(14, 30), allDay: false, busy: true },
+        { title: "Studio session", start: at(16), end: at(18), allDay: false, busy: true },
+        { title: "Rehearsal", start: tm(10), end: tm(12), allDay: false, busy: true },
+      ];
+    })() } }
   : (() => { const [m, title = "Teaching"] = cal.split(":"); const start = Date.now() + Number(m) * 60000;
     return { status: 200, body: { events: [{ title, start: new Date(start).toISOString(), end: new Date(start + 3600000).toISOString() }] } }; })();
 

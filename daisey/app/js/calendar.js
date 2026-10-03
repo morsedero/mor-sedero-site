@@ -1,8 +1,12 @@
-// Calendar read: busy events from now to the end of tomorrow, via the
-// daisey-now-calendar function (which reuses old Daisey's Google token —
-// no separate calendar sign-in). Refetches every 10 min and when the tab
-// comes back; the window itself is worked out each render (engine.freeWindow),
-// so it counts down between fetches.
+// Calendar read: the agenda from now to the end of tomorrow, via the
+// daisey-now-calendar function (which reuses old Daisey's Google token — no
+// separate calendar sign-in). Refetches every 10 min and when the tab comes
+// back; the window itself is worked out each render (engine.freeWindow), so
+// it counts down between fetches.
+//
+// Every event the user would see is here, so the schedule panel can show the
+// day. `busy` marks the ones that should also stop Daisey picking a task —
+// an all-day "ILLUSTRATION WEEK" shouldn't blank the card.
 import { idToken } from "./firebase.js";
 
 const URL_ = "/.netlify/functions/daisey-now-calendar";
@@ -15,8 +19,10 @@ export function watchCalendar(cb){
 
   async function load(){
     try {
+      // From the start of today, so the panel can show what already happened.
+      const from = new Date(); from.setHours(0, 0, 0, 0);
       const end = new Date(); end.setDate(end.getDate() + 2); end.setHours(0, 0, 0, 0);
-      const q = new URLSearchParams({ from: new Date().toISOString(), to: end.toISOString() });
+      const q = new URLSearchParams({ from: from.toISOString(), to: end.toISOString() });
       const res = await fetch(`${URL_}?${q}`, { headers: { Authorization: `Bearer ${await idToken()}` } });
       const body = await res.json().catch(() => ({}));
       if (res.ok) send({ status: "ok", events: body.events || [] });

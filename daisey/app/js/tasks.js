@@ -11,8 +11,9 @@ import { h, bdi, pieces, sizeText } from "./ui.js";
 
 const shortDate = (s) => new Date(`${s}T12:00`).toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" });
 
-// lead: an element to keep as the first panel of the board (the Now card).
-export function mountTasks(root, uid, { onAdd, onEdit, lead } = {}){
+// lead: elements to keep at the head of the board (the Now card, the
+// Schedule panel) — they share its scroller rather than having their own.
+export function mountTasks(root, uid, { onAdd, onEdit, lead = [] } = {}){
   let tasks = null, onCard = null, menuFor = null;
   const openDone = new Set(); // projects whose Completed fold is open (survives re-renders)
   const fail = (e) => console.error("[daisey] tasks", e);
@@ -62,7 +63,7 @@ export function mountTasks(root, uid, { onAdd, onEdit, lead } = {}){
   // position survives a re-render.
   function fill(...kids){
     const x = root.scrollLeft;
-    root.replaceChildren(...(lead ? [lead, ...kids] : kids));
+    root.replaceChildren(...lead, ...kids);
     root.scrollLeft = x;
   }
 
@@ -109,6 +110,6 @@ export function mountTasks(root, uid, { onAdd, onEdit, lead } = {}){
 
   return {
     setCurrent(id){ onCard = id; render(); },
-    unmount(){ unsub(); document.removeEventListener("click", closeMenu); root.replaceChildren(...(lead ? [lead] : [])); },
+    unmount(){ unsub(); document.removeEventListener("click", closeMenu); root.replaceChildren(...lead); },
   };
 }

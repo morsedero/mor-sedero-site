@@ -168,7 +168,8 @@ export function mountNow(root, uid, { onCard } = {}){
   // doesn't count as busy.
   function calendarNow(){
     if (cal.status !== "ok") return null;
-    const events = freeFrom ? cal.events.filter((e) => Date.parse(e.start) !== freeFrom) : cal.events;
+    const busy = cal.events.filter((e) => e.busy !== false && !e.allDay);
+    const events = freeFrom ? busy.filter((e) => Date.parse(e.start) !== freeFrom) : busy;
     const fw = freeWindow(events);
     // The override only ever applies to the event that was running; once it
     // ends, or another starts, the calendar speaks for itself again.
@@ -206,7 +207,8 @@ export function mountNow(root, uid, { onCard } = {}){
       }));
       return;
     }
-    const busy = cal.status === "ok" ? freeWindow(cal.events).current : null; // before any override
+    const busy = cal.status === "ok" // the event being ignored, before any override
+      ? freeWindow(cal.events.filter((e) => e.busy !== false && !e.allDay)).current : null;
     const fw = calendarNow();
     lastWindow = fw?.window;
     const hello = GREETING[timeBucket().part];

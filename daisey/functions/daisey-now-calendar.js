@@ -1,6 +1,12 @@
 // Daisey v1's calendar read: GET ?from=ISO&to=ISO with
-// "Authorization: Bearer <Firebase ID token>". Returns the busy timed
-// events on the primary calendar in that range: { events: [{ title, start, end }] }.
+// "Authorization: Bearer <Firebase ID token>". Returns the primary
+// calendar's agenda for that range:
+//   { events: [{ title, start, end, allDay, busy }] }
+// Everything the user would see in Google Calendar is listed, so the app can
+// show the day; `busy` says whether it should also block Daisey's picks.
+// All-day entries, events marked free and ones the user declined are listed
+// with busy: false. Cancelled events and old Daisey's own planning blocks
+// are dropped entirely — they are not part of anyone's day.
 //
 // No calendar sign-in of its own: it reuses the Google token old Daisey
 // already stores (Netlify Blobs, user:<id>:google, keyed by the Google
@@ -24,11 +30,24 @@ const reply = (statusCode, body) => ({
 });
 const fail = (statusCode, code) => reply(statusCode, { error: code });
 
-// Busy, timed, not cancelled, not declined, not Daisey's own block.
-function busy(e) {
-  if (e.status === "cancelled" || !e.start?.dateTime || !e.end?.dateTime) return false;
-  if (e.transparency === "transparent" || isDaiseyBlock(e)) return false;
+const listed = (e) => e.status !== "cancelled" && !isDaiseyBlock(e) && (e.start?.dateTime || e.start?.date);
+
+// Blocks Daisey's picks: timed, not marked free, not declined.
+function isBusy(e) {
+  if (!e.start?.dateTime || !e.end?.dateTime) return false;
+  if (e.transparency === "transparent") return false;
   return !(e.attendees || []).some((a) => a.self && a.responseStatus === "declined");
+}
+
+function shape(e) {
+  const allDay = !e.start.dateTime;
+  return {
+    title: e.summary || (allDay ? "All day" : "Busy"),
+    start: e.start.dateTime || e.start.date,
+    end: e.end?.dateTime || e.end?.date || null,
+    allDay,
+    busy: isBusy(e),
+  };
 }
 
 exports.handler = async (event) => {
@@ -61,5 +80,5 @@ exports.handler = async (event) => {
   if (!res.ok) { console.error("daisey-now-calendar google", res.status, await res.text()); return fail(502, "google"); }
 
   const { items = [] } = await res.json();
-  return reply(200, { events: items.filter(busy).map((e) => ({ title: e.summary || "Busy", start: e.start.dateTime, end: e.end.dateTime })) });
+  return reply(200, { events: items.filter(listed).map(shape) });
 };
