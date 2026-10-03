@@ -253,9 +253,11 @@ never lays out the day, so there is nothing to keep in step when the day
 changes. There is no daily check-in either; it was folded into that panel
 earlier the same day and went with it.
 
-**Layout: one slider, no tabs.** The Now/Tasks tabs are gone. The screen is a
-single horizontal scroller whose first panel holds the Now card with
-**Schedule** under it, then one column per project. A swipe on a phone, all of it at once on a wide screen.
+**Layout.** The Now card stays put at the top of the screen. Under it, one
+pane with two tabs — **Schedule** and **Tasks** — both the same height, so
+switching never moves the card. Tasks keeps the column-per-project board,
+scrolling sideways inside the pane. (An earlier version put all of it in one
+sideways slider; the card drifted off screen.)
 
 **Schedule panel.** Google Calendar's own day, read-only: today and tomorrow,
 each event with its time, the free gaps between them spelled out, all-day
