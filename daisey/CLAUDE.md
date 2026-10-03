@@ -2068,7 +2068,7 @@ Trello second is deliberate**: Google mints the session; Trello only ever
 links into an existing one.
 
 **The shim** (`daisey/_standalone-src/mcp-shim.js`) implements `callTool`/
-`watchTool`/`invalidate` over `fetch("/.daisey/functions/daisey-proxy", ...)`
+`watchTool`/`invalidate` over `fetch("/.netlify/functions/daisey-proxy", ...)`
 — that backend function doesn't exist yet (next build-order step). `watchTool`
 polls at the *same* `refetchInterval`s the app already passes per call site
 (180000/600000/120000ms) rather than inventing new ones — those numbers

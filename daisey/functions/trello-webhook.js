@@ -14,7 +14,7 @@ const crypto = require("crypto");
 const TRELLO_KEY = process.env.TRELLO_API_KEY;
 const TRELLO_TOKEN = process.env.TRELLO_API_TOKEN;
 const TRELLO_SECRET = process.env.TRELLO_API_SECRET;
-const CALLBACK_URL = "https://morsedero.com/.daisey/functions/trello-webhook";
+const CALLBACK_URL = "https://morsedero.com/.netlify/functions/trello-webhook";
 
 const START_RE = /<!--\s*daisey-start:\d{4}-\d{2}-\d{2}\s*-->/g;
 const marker = date => `<!-- daisey-start:${date} -->`;

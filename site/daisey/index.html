@@ -1,7 +1,7 @@
 <!-- GENERATED FILE — do not hand-edit.
      Produced by daisey/build-standalone.js from daisey/daisey.html.
      Edit daisey/daisey.html, then re-run: node daisey/build-standalone.js
-     Built 2026-10-03T11:27:02.264Z -->
+     Built 2026-10-03T11:48:54.154Z -->
 <title>Daisey</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <style>
@@ -2701,9 +2701,9 @@ function errCopy(e){
 function errFixUrl(e){
   if(!STANDALONE || !e) return null;
   const c = e.code;
-  if(c === "no_session") return "/.daisey/functions/daisey-auth-google-start";
+  if(c === "no_session") return "/.netlify/functions/daisey-auth-google-start";
   if(c !== "needs_reauth" && c !== "server_not_connected") return null;
-  return e.server === "Trello" ? "/.daisey/functions/daisey-auth-trello-start" : "/.daisey/functions/daisey-auth-google-start";
+  return e.server === "Trello" ? "/.netlify/functions/daisey-auth-trello-start" : "/.netlify/functions/daisey-auth-google-start";
 }
 /* errCopy has always promised "Retrying shortly." / "Pausing briefly." for the
    transient codes and nothing was behind it — there was no retry anywhere in
@@ -8991,7 +8991,7 @@ setInterval(render, 60000);   // keep "now" honest
    (credentials:"include"); the shim itself holds no token, ever. */
 function standaloneMcp(){
   async function callTool(server, tool, input){
-    const res = await fetch("/.daisey/functions/daisey-proxy", {
+    const res = await fetch("/.netlify/functions/daisey-proxy", {
       method:"POST", credentials:"include",
       headers:{ "Content-Type":"application/json" },
       body: JSON.stringify({ server, tool, input })
@@ -9073,7 +9073,7 @@ function standaloneMcp(){
    callTool path so there's still only one request shape to reason about. */
 async function checkStandaloneSession(){
   try{
-    const res = await fetch("/.daisey/functions/daisey-proxy", {
+    const res = await fetch("/.netlify/functions/daisey-proxy", {
       method:"POST", credentials:"include",
       headers:{ "Content-Type":"application/json" },
       body: JSON.stringify({ server:"Session", tool:"whoami", input:{} })
@@ -9097,7 +9097,7 @@ function renderLoginGate(){
   wrap.appendChild(el("p",null,"Connect your Google Calendar and Trello. Nothing is shared with anyone else — this runs entirely against your own accounts."));
   const acts = el("div","acts");
   const g = el("a","btn primary","Sign in with Google");
-  g.href = "/.daisey/functions/daisey-auth-google-start";
+  g.href = "/.netlify/functions/daisey-auth-google-start";
   acts.appendChild(g);
   wrap.appendChild(acts);
   wrap.appendChild(el("p","dim","Trello connects as a second step, right after."));
@@ -9116,7 +9116,7 @@ function renderTrelloLinkGate(){
   wrap.appendChild(el("p",null,"One more step — Daisey reads your boards and writes the plan back as cards."));
   const acts = el("div","acts");
   const t = el("a","btn primary","Connect Trello");
-  t.href = "/.daisey/functions/daisey-auth-trello-start";
+  t.href = "/.netlify/functions/daisey-auth-trello-start";
   acts.appendChild(t);
   wrap.appendChild(acts);
   return wrap;

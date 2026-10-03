@@ -125,7 +125,7 @@ function handle(server, tool, input){
   return {};
 }
 
-/* Serves BOTH the app html (so fetch("/.daisey/functions/daisey-proxy",...)
+/* Serves BOTH the app html (so fetch("/.netlify/functions/daisey-proxy",...)
    resolves same-origin — relative fetch paths need a real http:// origin,
    not file://) and the mock proxy endpoint, on one port. `html` is the
    already-read daisey-standalone.html contents. */

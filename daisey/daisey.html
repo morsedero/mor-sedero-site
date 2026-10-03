@@ -2697,9 +2697,9 @@ function errCopy(e){
 function errFixUrl(e){
   if(!STANDALONE || !e) return null;
   const c = e.code;
-  if(c === "no_session") return "/.daisey/functions/daisey-auth-google-start";
+  if(c === "no_session") return "/.netlify/functions/daisey-auth-google-start";
   if(c !== "needs_reauth" && c !== "server_not_connected") return null;
-  return e.server === "Trello" ? "/.daisey/functions/daisey-auth-trello-start" : "/.daisey/functions/daisey-auth-google-start";
+  return e.server === "Trello" ? "/.netlify/functions/daisey-auth-trello-start" : "/.netlify/functions/daisey-auth-google-start";
 }
 /* errCopy has always promised "Retrying shortly." / "Pausing briefly." for the
    transient codes and nothing was behind it — there was no retry anywhere in

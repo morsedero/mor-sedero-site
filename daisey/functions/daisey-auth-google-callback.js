@@ -11,7 +11,7 @@ const { openStore } = require("./_daisey-lib/blobs");
 const CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 const CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
 const SESSION_SECRET = process.env.SESSION_SECRET;
-const REDIRECT_URI = "https://morsedero.com/.daisey/functions/daisey-auth-google-callback";
+const REDIRECT_URI = "https://morsedero.com/.netlify/functions/daisey-auth-google-callback";
 
 function sign(value) {
   return crypto.createHmac("sha256", SESSION_SECRET).update(value).digest("hex");

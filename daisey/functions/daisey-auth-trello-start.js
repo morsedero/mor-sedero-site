@@ -4,7 +4,7 @@
 // never sends to a server. return_url points at the relay page, which
 // reads the fragment client-side and POSTs it to daisey-auth-trello-save.
 const KEY = process.env.TRELLO_STANDALONE_API_KEY;
-const RETURN_URL = "https://morsedero.com/.daisey/functions/daisey-auth-trello-callback";
+const RETURN_URL = "https://morsedero.com/.netlify/functions/daisey-auth-trello-callback";
 
 exports.handler = async () => {
   if (!KEY) {
