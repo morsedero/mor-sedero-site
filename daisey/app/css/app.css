@@ -11,6 +11,7 @@
   --surface: #fff; /* rows, inputs, menus — the layer above --card */
   --shadow: 0 10px 30px rgb(0 0 0 / .15);
   --radius: 16px;
+  --sch-gut: 86px; /* the schedule's time column: gaps and actions line up with it */
   color-scheme: light dark;
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans Hebrew", sans-serif;
 }
@@ -333,37 +334,28 @@ body.focus .shell { display: grid; min-block-size: 100dvh; align-content: center
   position: sticky; inset-block-start: -14px; z-index: 1; background: var(--card);
   display: flex; align-items: center; gap: 4px; padding-block: 2px;
 }
-.sch-head { margin: 0 auto; font-size: 16px; }
-.sch-step {
+/* The two arrows and + New event: one round button, three uses. */
+.sch-step, .sch-add {
   flex: none; font: inherit; font-size: 20px; line-height: 1; cursor: pointer;
   inline-size: 34px; block-size: 34px; border-radius: 50%; border: 1px solid var(--line);
   background: var(--surface); color: var(--ink);
 }
 .sch-step:disabled { opacity: .35; cursor: default; }
-/* New event: same size as the arrows, at the end of the same row. */
-.sch-add {
-  flex: none; font: inherit; font-size: 20px; line-height: 1; cursor: pointer;
-  inline-size: 34px; block-size: 34px; border-radius: 50%; border: 1px solid var(--line);
-  background: var(--surface); color: var(--ink);
-}
-.sch-nav .sch-head { flex: 1; margin: 0; text-align: center; } /* the arrows and + sit either side */
+.sch-nav .sch-head { flex: 1; margin: 0; font-size: 17px; text-align: center; } /* the arrows and + sit either side */
 .sch-nav::before { content: ""; flex: none; inline-size: 38px; } /* balances the + so the day name sits centred */
 :dir(rtl) .sch-step { transform: scaleX(-1); }
 .sch-today { justify-self: start; min-block-size: 34px; padding-inline: 10px; font-size: 13px; }
-.sch-head { margin: 0; font-size: 17px; }
 .sch-note { margin: 0; font-size: 13px; }
 .sch-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
-.sch-row { position: relative; display: flex; gap: 8px; align-items: baseline; padding-block: 4px; }
+.sch-row { position: relative; display: flex; gap: 8px; align-items: baseline; padding-block: 4px; transition: background .12s, padding-block .12s; }
 .sch-dot { flex: none; inline-size: 8px; block-size: 8px; border-radius: 50%; background: var(--ink-2); align-self: center; }
-.sch-row.past .sch-dot { background: var(--ink-2); }
 .sch-row.past { opacity: .45; }
 .sch-row.running { font-weight: 700; }
-.sch-time { flex: none; inline-size: 86px; font-size: 12px; font-variant-numeric: tabular-nums; color: var(--ink-2); }
+.sch-time { flex: none; inline-size: var(--sch-gut); font-size: 12px; font-variant-numeric: tabular-nums; color: var(--ink-2); }
 .sch-row.running .sch-time { color: var(--ink); }
 .sch-title { min-inline-size: 0; overflow-wrap: anywhere; }
 .sch-now { margin-inline-start: 6px; padding: 1px 7px; border-radius: 999px; font-size: 11px; font-weight: 700; text-transform: uppercase; background: var(--accent); color: var(--on-accent); }
-.sch-gap { font-size: 13px; color: var(--ink-2); padding-inline-start: 94px; }
-/* Where "now" falls, the way Google draws it. */
+.sch-gap { font-size: 13px; color: var(--ink-2); padding-inline-start: calc(var(--sch-gut) + 8px); }
 /* Import from Trello. */
 .imp-lists { display: grid; gap: 6px; margin-block: 10px; max-block-size: 48dvh; overflow-y: auto; }
 .imp-list { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
@@ -372,24 +364,42 @@ body.focus .shell { display: grid; min-block-size: 100dvh; align-content: center
 .imp-board { inline-size: 100%; text-align: start; }
 .imp-actions { display: flex; gap: 8px; justify-content: flex-end; }
 
-/* Tapping an event opens its two actions. */
+/* Tapping an event opens its actions; dragging it is the CSS below. */
 .sch-open { display: flex; flex: 1; min-inline-size: 0; gap: 8px; align-items: baseline; font: inherit; color: inherit; text-align: start; background: none; border: 0; padding: 0; cursor: pointer; }
-.sch-row.open { background: var(--bg); border-radius: 10px; }
-/* Your own timed events can be dragged: the dot moves them, the top and
-   bottom edges change their length. touch-action:none keeps a finger on the
+/* An open row makes room for its two edge bars: tapping an event is what
+   reveals them, so an invisible full-width strip can never swallow the tap
+   that opens the row or the double-tap that renames it. A mouse gets them on
+   hover too, where the ns-resize cursor says what they are. */
+.sch-row.open { background: var(--bg); border-radius: 10px 10px 0 0; padding: 12px; margin-inline: -12px; }
+/* Your own timed events can be dragged: the dot moves the whole block, the
+   edge bars change its start or end. touch-action:none keeps a finger on a
    handle from scrolling the day instead. */
-.sch-grip { cursor: grab; touch-action: none; align-self: center; }
-.sch-edge { position: absolute; inset-inline: 0; block-size: 12px; cursor: ns-resize; touch-action: none; z-index: 1; }
-.sch-edge.top { inset-block-start: -6px; }
-.sch-edge.bottom { inset-block-end: -6px; }
-.sch-edge::after { content: ""; position: absolute; inset-inline: 40%; inset-block-start: 4px; block-size: 3px; border-radius: 2px; background: var(--line); }
-.sch-row.open .sch-edge::after { background: var(--ink-2); }
-.sch-row.dragging { background: color-mix(in srgb, var(--accent) 18%, transparent); border-radius: 10px; }
+.sch-grip { position: relative; cursor: grab; touch-action: none; user-select: none; align-self: center; }
+.sch-grip::before { content: ""; position: absolute; inset: -8px; } /* a finger's worth of target around an 8px dot */
+.sch-grip:active { cursor: grabbing; }
+.sch-edge {
+  position: absolute; inset-inline: 0; block-size: 10px; z-index: 1;
+  cursor: ns-resize; touch-action: none; user-select: none;
+  opacity: 0; pointer-events: none; transition: opacity .12s;
+}
+.sch-edge.top { inset-block-start: 0; }
+.sch-edge.bottom { inset-block-end: 0; }
+.sch-edge::after { content: ""; position: absolute; inset-inline: 42%; inset-block-start: 4px; block-size: 3px; border-radius: 2px; background: var(--ink-2); }
+.sch-row.open .sch-edge, .sch-row.dragging .sch-edge { opacity: .9; pointer-events: auto; }
+@media (hover: hover) { .sch-row.editable:hover .sch-edge { opacity: .5; pointer-events: auto; } }
+.sch-row.dragging { background: color-mix(in srgb, var(--accent) 18%, transparent); border-radius: 10px; user-select: none; }
 .sch-row.dragging .sch-time { color: var(--ink); font-weight: 700; }
+/* The rename, in place of the title. */
 .sch-renaming { flex: 1; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
-.sch-renaming .sch-dot { align-self: center; }
-.sch-renaming .sch-rename { flex: 1 1 160px; }
-.sch-actions { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding: 6px 0 8px 94px; }
+.sch-rename {
+  flex: 1 1 160px; min-inline-size: 0; font: inherit; font-size: 16px; padding: 4px 10px; min-block-size: 32px;
+  border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--ink);
+}
+/* An open row and its controls are one panel: same surface, rounded once
+   around the whole of it. They used to be indented to the title column,
+   which left ~250px of a phone for two time fields and a button. */
+.sch-actions { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; background: var(--bg); padding: 2px 12px 4px; margin-inline: -12px; }
+.sch-actions.end { padding-block-end: 10px; border-end-start-radius: 10px; border-end-end-radius: 10px; }
 .sch-actions .muted { font-size: 13px; }
 .sch-actions .chip { min-block-size: 32px; font-size: 13px; padding-inline: 10px; }
 .sch-actions .chip.danger { color: var(--danger); border-color: color-mix(in srgb, var(--danger) 40%, var(--line)); }
@@ -399,7 +409,7 @@ body.focus .shell { display: grid; min-block-size: 100dvh; align-content: center
 
 .sch-nowline { display: flex; align-items: center; gap: 6px; margin-block: 2px; }
 .sch-nowline::after { content: ""; flex: 1; block-size: 2px; background: #ea4335; border-radius: 2px; }
-.sch-nowtime { flex: none; inline-size: 86px; font-size: 11px; font-weight: 700; color: #ea4335; font-variant-numeric: tabular-nums; }
+.sch-nowtime { flex: none; inline-size: var(--sch-gut); font-size: 11px; font-weight: 700; color: #ea4335; font-variant-numeric: tabular-nums; }
 .sch-free { margin: 0; }
 
 /* Tasks: one list, sections by when. */
@@ -541,8 +551,7 @@ dialog.now { overflow-y: auto; overscroll-behavior: contain; }
 .pend-row { display: flex; gap: 6px; }
 .pend-row input { flex: 1; min-inline-size: 0; font: inherit; font-size: 16px; padding: 6px 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--ink); }
 .ctx-line > .ctx-block { flex-basis: 100%; font-size: 13px; font-weight: 600; color: var(--ink); }
-.ctx-line > .ctx-block::after { content: none; }
-.sch-rename { flex: 1 1 160px; min-inline-size: 0; font: inherit; font-size: 16px; padding: 4px 10px; min-block-size: 32px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--ink); }
+.ctx-line > .ctx-block::after, .ctx-line > span:last-child::after { content: none; }
 
 /* A project name that leads to its tab in Tasks. */
 .now-proj { font: inherit; letter-spacing: inherit; text-transform: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; text-decoration: underline dotted; text-underline-offset: 3px; }

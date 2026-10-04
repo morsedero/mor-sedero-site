@@ -101,15 +101,6 @@ export function retime(ev, start, end){
     start: new Date(start).toISOString(), end: new Date(end).toISOString() });
 }
 
-// `at` is "HH:MM" on the event's own day; the length is kept.
-export function moveEventTo(ev, at){
-  const [hh, mm] = at.split(":").map(Number);
-  const start = new Date(Date.parse(ev.start));
-  start.setHours(hh, mm, 0, 0);
-  const end = new Date(start.getTime() + (Date.parse(ev.end) - Date.parse(ev.start)));
-  return write({ action: "move", calendarId: ev.calendarId, eventId: ev.id, start: start.toISOString(), end: end.toISOString() });
-}
-
 export const deleteEvent = (ev) => write({ action: "delete", calendarId: ev.calendarId, eventId: ev.id });
 
 // A new title; times, guests and description stay as they are.

@@ -8,19 +8,25 @@
 // yourself in, and a red line marks where "now" falls, as Google's does.
 //
 // Editing an event you own (Mor, 2026-10-04, "make it easy and fun"):
-//   · drag its coloured dot up or down to move it
-//   · drag its top or bottom edge to change its start or end
+//   · drag its coloured dot up or down to move the whole block
+//   · tap it, then drag the bar at its top or bottom edge to change when it
+//     starts or ends
 //   · double-tap its name to rename it, in place
 // Drags snap to a quarter hour and show the new times while the finger is
-// down. The typed route is still there under the row: Start/End, Move to,
-// Rename, Delete. Every change can be undone for a few seconds; a delete asks
-// first, because Google has no undo for it.
+// down. The typed route is under an open row: From/to, Rename, Delete. Every
+// change can be undone for a few seconds; a delete asks first, because Google
+// has no undo for it.
+//
+// The edge bars only take a drag while the row is open (on a mouse, also on
+// hover). They are full-width invisible strips, so if they were always live
+// they would swallow the tap that opens the row and the double-tap that
+// renames it — which is exactly what happened the first time.
 //
 // The "+ New event" button in the header opens addevent.js on the day being
 // shown (Mor, 2026-10-04 — no jumping to Google Calendar to put a meeting
 // in). Daisey still never schedules anything ITSELF; what it writes is what
 // the user typed or dragged.
-import { watchCalendar, moveEventTo, retime, deleteEvent, renameEvent, acceptBlock } from "./calendar.js";
+import { watchCalendar, retime, deleteEvent, renameEvent, acceptBlock } from "./calendar.js";
 import { watchTasks, watchMoment, watchLearn, watchPencil, savePencil } from "./store.js";
 import { sketch, capacity, blockStart } from "./pencil.js";
 import { workBase } from "./context.js";
@@ -144,6 +150,7 @@ export function mountSchedule(root, { onAdd, uid, onSweep } = {}){
 
   // The one way a block's times change: write them, then offer to put them back.
   function commitTimes(e, start, end){
+    if (busy) return render(); // another write is in flight: show the real times again
     const before = { start: Date.parse(e.start), end: Date.parse(e.end) };
     run(async () => {
       await retime(e, start, end);
@@ -176,41 +183,33 @@ export function mountSchedule(root, { onAdd, uid, onSweep } = {}){
   // The typed route under a row (the drag route is on the row itself).
   function actions(e){
     if (confirming === e.id) {
-      return [h("li", { className: "sch-actions" },
+      return [h("li", { className: "sch-actions end" },
         h("span", { className: "muted", textContent: "Delete it?" }),
         h("button", { className: "chip danger", type: "button", textContent: "Delete", disabled: busy,
           onclick: () => run(async () => { await deleteEvent(e); confirming = null; openId = null; }) }),
         h("button", { className: "chip", type: "button", textContent: "Keep", onclick: () => { confirming = null; render(); } }))];
     }
-    const at = h("input", { type: "time", className: "sch-at", value: clock(e.start), ariaLabel: "Move to" });
+    // From/to is the only typed way to change the times: it moves AND
+    // resizes, so a separate "move to" control would be the same thing twice.
     const from = h("input", { type: "time", className: "sch-at", value: clock(e.start), ariaLabel: "Start" });
     const to = h("input", { type: "time", className: "sch-at", value: clock(e.end), ariaLabel: "End" });
-    const move = () => {
-      if (!at.value) return;
-      const before = { start: Date.parse(e.start), end: Date.parse(e.end) };
-      run(async () => {
-        await moveEventTo(e, at.value);
-        openId = null;
-        offerUndo(`Moved to ${at.value}`, () => retime(e, before.start, before.end));
-      });
-    };
     const setTimes = () => {
       if (!from.value || !to.value) return;
       const s = onDay(e.start, from.value), en = onDay(e.end, to.value);
       if (en <= s) { problem = "The end has to be after the start."; return render(); }
       commitTimes(e, s, en);
     };
-    const times = h("li", { className: "sch-actions" },
-      h("span", { className: "muted", textContent: "From" }), from,
-      h("span", { className: "muted", textContent: "to" }), to,
-      h("button", { className: "chip", type: "button", textContent: "Set times", disabled: busy, onclick: setTimes }));
-    return [h("li", { className: "sch-actions" },
-      at,
-      h("button", { className: "chip", type: "button", textContent: "Move to", disabled: busy, onclick: move }),
-      h("button", { className: "chip", type: "button", textContent: "Rename", disabled: busy,
-        onclick: () => { renaming = e.id; renameText = null; render(); } }),
-      h("button", { className: "chip danger", type: "button", textContent: "Delete", disabled: busy,
-        onclick: () => { confirming = e.id; render(); } })), times];
+    return [
+      h("li", { className: "sch-actions" },
+        h("span", { className: "muted", textContent: "From" }), from,
+        h("span", { className: "muted", textContent: "to" }), to,
+        h("button", { className: "chip", type: "button", textContent: "Set times", disabled: busy, onclick: setTimes })),
+      h("li", { className: "sch-actions end" },
+        h("button", { className: "chip", type: "button", textContent: "Rename", disabled: busy,
+          onclick: () => { renaming = e.id; renameText = null; render(); } }),
+        h("button", { className: "chip danger", type: "button", textContent: "Delete", disabled: busy,
+          onclick: () => { confirming = e.id; render(); } })),
+    ];
   }
 
   // ---------- drag ----------
@@ -279,15 +278,15 @@ export function mountSchedule(root, { onAdd, uid, onSweep } = {}){
     const cls = "sch-row" + (r.past ? " past" : "") + (r.running ? " running" : "") + (openId === e.id ? " open" : "") + (canEdit ? " editable" : "");
     if (!canEdit) return h("li", { className: cls }, dot(), ...inside);
     return h("li", { className: cls },
-      h("span", { className: "sch-dot sch-grip", title: "Drag to move", ariaLabel: `Drag ${e.title} to move it`, ...gripping(e, "move") }),
+      h("span", { className: "sch-dot sch-grip", title: "Drag to move", ariaHidden: "true", ...gripping(e, "move") }),
       h("button", { className: "sch-open", type: "button", ariaExpanded: String(openId === e.id),
         ariaLabel: `${e.title}, ${time} — move, resize, rename or delete`,
         onclick: () => {
           if (tapTwice(e.id)) { renaming = e.id; renameText = null; openId = e.id; confirming = null; return render(); }
           openId = openId === e.id ? null : e.id; confirming = null; render();
         } }, ...inside),
-      h("span", { className: "sch-edge top", ariaLabel: `Drag to change when ${e.title} starts`, ...gripping(e, "start") }),
-      h("span", { className: "sch-edge bottom", ariaLabel: `Drag to change when ${e.title} ends`, ...gripping(e, "end") }));
+      h("span", { className: "sch-edge top", title: "Drag to change the start", ariaHidden: "true", ...gripping(e, "start") }),
+      h("span", { className: "sch-edge bottom", title: "Drag to change the end", ariaHidden: "true", ...gripping(e, "end") }));
   }
 
   // ---------- pencil ----------
@@ -331,7 +330,7 @@ export function mountSchedule(root, { onAdd, uid, onSweep } = {}){
 
   function pencilActions(p){
     const { start, end } = span(p);
-    return h("li", { className: "sch-actions" },
+    return h("li", { className: "sch-actions end" },
       h("button", { className: "chip", type: "button", textContent: "Accept", disabled: busy,
         ariaLabel: `Accept: put ${p.task.title} on your Daisey calendar, ${clock(start)}–${clock(end)}`,
         onclick: () => run(async () => { await acceptBlock({ task: p.task, start, end, title: pencilTitle(p) }); openPencil = null; }) }),
@@ -369,7 +368,7 @@ export function mountSchedule(root, { onAdd, uid, onSweep } = {}){
             return openPencil === p.key ? [pencilRow(p), pencilActions(p)] : [pencilRow(p)];
           }
           const li = eventRow(r);
-          return openId === r.event.id && !renaming ? [li, ...actions(r.event)] : [li];
+          return openId === r.event.id && renaming !== r.event.id ? [li, ...actions(r.event)] : [li];
         })));
   }
 
