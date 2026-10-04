@@ -227,7 +227,7 @@ The calendar becomes context, not a plan to obey. Daisey reads it freely and wri
 
 | Situation | Daisey proposes | Default |
 | --- | --- | --- |
-| You tap the next-piece square | Nothing — it shows a different pick for that gap | Local to today |
+| You tap the next-piece pill | Nothing — it shows a different pick for that gap | Local to today |
 | A task with a real deadline has no realistic window before it | "Block 90 min Wed 10:00 for mix review?" | Off until tapped |
 | You ask in chat to schedule something | The event, shown as a confirm card | Requires ✓ |
 | You finish a task | Logs it as a past event ("Done: boss SFX · 47 min") | Setting, off by default |
@@ -247,8 +247,8 @@ The calendar becomes context, not a plan to obey. Daisey reads it freely and wri
 Daisey shows the day in ink, and one small square on the Now card saying what it would put up next. You can take it, replace it, or ignore it with no cost.
 
 - **Ink** = calendar events: meetings, teaching, appointments, anything set by other people or the clock. Shown solid in the Schedule panel. The free stretches between them say only "1 h 30 min free" — the panel suggests nothing.
-- **The next piece** = a dashed square in the Now card's bottom-right corner: the task Daisey would put up in the next free gap, and the time that gap starts. Mor's shape, 2026-10-05: "like the square showing the next piece in tetris", small and out of the schedule list. The pick is the Now engine run forward for that gap, using its length, office hours, place, and the energy guess after the event before it.
-- **Tapping the square** means "not that one": it shows the following pick for that gap and remembers the pass for today. Nothing is written to a calendar.
+- **The next piece** = a small dashed pill at the right end of the Schedule/Tasks row: the task Daisey would put up in the next free gap, and the time that gap starts. Mor's shape, 2026-10-05: "like the square showing the next piece in tetris", small, out of the schedule list and off the card. The pick is the Now engine run forward for that gap, using its length, office hours, place, and the energy guess after the event before it.
+- **Tapping the pill** means "not that one": it shows the following pick for that gap and remembers the pass for today. Nothing is written to a calendar.
 - **Live re-sketch.** Whenever a task is done, skipped or added, or the calendar changes, the pencil items are rebuilt. Nothing carries over as "missed".
 - **One pick per gap.** Gaps under 20 min get a batch of quick tasks or nothing.
 - **Morning capacity line**: "2 h free today, 8 open. Realistic: 3." with a "Move the rest" button that runs the sweep.

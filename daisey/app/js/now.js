@@ -37,7 +37,7 @@ const CAL_NOTE = {
 // list can set it aside while it's "physically" on the card.
 // onSweep() opens the old-dates sweep (sweep.js). onProject(name) shows that
 // project's tab in Tasks.
-export function mountNow(root, uid, { onCard, onSweep, onProject } = {}){
+export function mountNow(root, uid, { onCard, onSweep, onProject, nextHost } = {}){
   let tasks = null; // null until the first snapshot
   let settings = {}; // state/settings: when the sweep was last offered
   let momentDoc = {}; // state/moment: energy and place corrections
@@ -393,8 +393,10 @@ export function mountNow(root, uid, { onCard, onSweep, onProject } = {}){
   }
 
   // The next piece (Mor, 2026-10-05: "like the square showing the next piece
-  // in tetris"). One small square in the card's bottom-right corner: the task
-  // the engine would put up in the next free gap, with the time it starts.
+  // in tetris"). One small dashed pill at the right end of the Schedule/Tasks
+  // row — not on the card, which is about one task, and not in the schedule
+  // list, where anything unbooked reads as booked. It names the task the
+  // engine would put up in the next free gap, and the time that gap starts.
   // Tapping it is "not that one" — it shows the following pick for that gap
   // and remembers the pass for today (state/pencil), the same store the
   // Schedule panel used to write. Nothing here is booked and nothing is
@@ -402,14 +404,14 @@ export function mountNow(root, uid, { onCard, onSweep, onProject } = {}){
   // about one task without the day feeling hidden.
   const todayPencil = () => (pencilDoc.date === localDate() ? pencilDoc : { date: localDate(), dismissed: [], swaps: {} });
 
-  function nextPiece(card){
+  function nextPiece(cardId){
     if (!tasks || cal.status !== "ok") return null;
     const now = Date.now();
     const today = localDate(now);
     const pd = todayPencil();
     // Already on the Daisey calendar for today, or on the card right now.
     const booked = cal.events.filter((e) => e.taskId && localDate(Date.parse(e.start)) === today).map((e) => e.taskId);
-    const pen = sketch(tasks, cal.events, { now, exclude: [...(pd.dismissed || []), ...booked, ...(card ? [card.task.id] : [])],
+    const pen = sketch(tasks, cal.events, { now, exclude: [...(pd.dismissed || []), ...booked, ...(cardId ? [cardId] : [])],
       swaps: pd.swaps || {}, base: { ...workBase(tasks, now), learnStats }, moment: momentDoc });
     return pen.find((p) => !p.isNow) || null; // the gap after this one, not this one
   }
@@ -422,8 +424,8 @@ export function mountNow(root, uid, { onCard, onSweep, onProject } = {}){
     savePencil(uid, pd).catch(fail);
   }
 
-  function nextSquare(card){
-    const p = nextPiece(card);
+  function nextSquare(){
+    const p = nextPiece(shown);
     if (!p) return null;
     const title = p.task.title + (p.part ? " (part)" : "");
     return h("button", { className: "upnext", type: "button", title: "Tap for a different one",
@@ -508,8 +510,7 @@ export function mountNow(root, uid, { onCard, onSweep, onProject } = {}){
           { disabled: !alts.length, ariaExpanded: String(state.showAlts),
             onclick: () => { state.showAlts = !state.showAlts; state.laterAsk = false; state.pendAsk = false; render(); } }),
         action("pending", "Pending", `${card.task.title} is blocked — set it to Waiting`,
-          { ariaExpanded: String(state.pendAsk), onclick: () => { state.pendAsk = !state.pendAsk; state.laterAsk = false; state.showAlts = false; render(); } }),
-        nextSquare(card)),
+          { ariaExpanded: String(state.pendAsk), onclick: () => { state.pendAsk = !state.pendAsk; state.laterAsk = false; state.showAlts = false; render(); } })),
       state.pendAsk && pendingAsk(card.task),
       state.laterAsk && h("div", { className: "later-ask", role: "group", ariaLabel: "When instead?" },
         h("span", { className: "muted", textContent: "When?" }),
@@ -554,7 +555,14 @@ export function mountNow(root, uid, { onCard, onSweep, onProject } = {}){
         h("button", { className: "chip quiet", type: "button", textContent: "Drop", onclick: () => answer({ status: "dropped" }) })));
   }
 
-  const fill = (...kids) => root.replaceChildren(...kids.filter(Boolean));
+  const fill = (...kids) => { root.replaceChildren(...kids.filter(Boolean)); paintNext(); };
+  // The pill lives outside this root, in the tab row, so every render paints
+  // it separately. Focus mode hides that row anyway; paint nothing into it.
+  function paintNext(){
+    if (!nextHost) return;
+    const sq = run || handoff ? null : nextSquare();
+    nextHost.replaceChildren(...(sq ? [sq] : []));
+  }
   const fail = (e) => console.error("[daisey] now", e);
   const unsubs = [
     watchTasks(uid, (ts) => { tasks = ts; render(); }, fail),
@@ -590,6 +598,6 @@ export function mountNow(root, uid, { onCard, onSweep, onProject } = {}){
       state.showAlts = false;
       render();
     },
-    unmount(){ showing(null); clearTimeout(toastTimer); document.body.classList.remove("focus"); unsubs.forEach((u) => u()); clearInterval(tick); document.removeEventListener("visibilitychange", onVisible); root.replaceChildren(); root.hidden = true; },
+    unmount(){ showing(null); nextHost?.replaceChildren(); clearTimeout(toastTimer); document.body.classList.remove("focus"); unsubs.forEach((u) => u()); clearInterval(tick); document.removeEventListener("visibilitychange", onVisible); root.replaceChildren(); root.hidden = true; },
   };
 }
