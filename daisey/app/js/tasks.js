@@ -152,22 +152,35 @@ export function mountTasks(root, uid, { onAdd, onOpen } = {}){
 
     const stopGlide = () => { cancelAnimationFrame(glide); glide = 0; };
 
-    // Which chip is nearest the row's own start edge — measured from the
-    // rectangles, so it reads the same in Hebrew, where scrollLeft is
+    // Brings a chip's start edge flush with the row's own: the one asked for
+    // (showChip, after a pick), or else whichever is nearest. Measured from
+    // the rectangles, so it reads the same in Hebrew, where scrollLeft is
     // negative and the start edge is the right one.
+    //
+    // `wanted` is consumed on the first settle after a pick, so a stray
+    // scrollend arriving mid-animation can't re-decide on "nearest" and
+    // leave the chip clipped again — which is what happened to the chip at
+    // the start edge (Mor: "left still not working", after a slide).
+    let wanted = null;
     function settle(){
       const rtl = getComputedStyle(row).direction === "rtl";
       const edge = (el) => { const r = el.getBoundingClientRect(); return rtl ? r.right : r.left; };
       const here = edge(row);
-      // null, not 0, for "none yet": a chip already flush measures 0, and 0
-      // read as unset let the chip after it win and yank the row backwards.
-      let shortest = null;
-      for (const c of row.children) {
-        const d = edge(c) - here;
-        if (shortest === null || Math.abs(d) < Math.abs(shortest)) shortest = d;
+      const target = wanted?.isConnected ? wanted : null;
+      wanted = null;
+      let shortest = target ? edge(target) - here : null;
+      if (!target) {
+        // null, not 0, for "none yet": a chip already flush measures 0, and 0
+        // read as unset let the chip after it win and yank the row backwards.
+        for (const c of row.children) {
+          const d = edge(c) - here;
+          if (shortest === null || Math.abs(d) < Math.abs(shortest)) shortest = d;
+        }
       }
       if (shortest && Math.abs(shortest) > 1) row.scrollBy({ left: shortest, behavior: "smooth" });
     }
+    // Called by fill() with the chip just picked, if it isn't wholly in view.
+    row.showChip = (chip) => { wanted = chip; stopGlide(); settle(); };
 
     // speed is px per frame, carried over from the pointer's last movement.
     function fling(){
@@ -287,11 +300,8 @@ export function mountTasks(root, uid, { onAdd, onOpen } = {}){
       reveal = false;
       const chip = chips.querySelector('.chip[aria-checked="true"]');
       if (chip) {
-        const rtl = getComputedStyle(chips).direction === "rtl";
         const box = chips.getBoundingClientRect(), own = chip.getBoundingClientRect();
-        if (own.left < box.left - 1 || own.right > box.right + 1) {
-          chips.scrollBy({ left: (rtl ? own.right - box.right : own.left - box.left), behavior: "smooth" });
-        }
+        if (own.left < box.left - 1 || own.right > box.right + 1) chips.showChip?.(chip);
       }
     }
   }
