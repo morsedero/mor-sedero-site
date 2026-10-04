@@ -521,3 +521,9 @@ dialog.now { overflow-y: auto; overscroll-behavior: contain; }
 /* Later → "When?": three choices under the card's actions. */
 .later-ask { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 5px; margin-block-start: 4px; font-size: 13px; }
 .later-ask .chip { min-block-size: 36px; font-size: 13px; padding-inline: 10px; }
+
+/* Pending → "Waiting on what?": one optional line under the actions. */
+.pend-ask { display: grid; gap: 4px; margin-block-start: 4px; }
+.pend-ask label { font-size: 13px; font-weight: 600; color: var(--ink-2); }
+.pend-row { display: flex; gap: 6px; }
+.pend-row input { flex: 1; min-inline-size: 0; font: inherit; font-size: 16px; padding: 6px 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--ink); }

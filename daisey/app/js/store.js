@@ -60,8 +60,10 @@ export function skipNow(uid, task){
 }
 
 // Pending: the card's third action. Counts as a skip and sets it Waiting.
-export function blockTask(uid, task){
-  return fb.updateDoc(taskDoc(uid, task.id), { ...skipTask(task), ...skipReason(task, "blocked") });
+// `waitingOn`: the reason the user typed ("Yuval sends the stems"), if any.
+export function blockTask(uid, task, waitingOn = ""){
+  const why = String(waitingOn || "").trim();
+  return fb.updateDoc(taskDoc(uid, task.id), { ...skipTask(task), ...skipReason(task, "blocked"), ...(why ? { waitingOn: why } : {}) });
 }
 
 export function restoreTask(uid, id, fields){

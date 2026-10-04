@@ -54,7 +54,8 @@ export function mountNow(root, uid, { onCard, onSweep } = {}){
   let slideIn = false; // one slide per step-aside, not one per snapshot
   let toastTimer = null;
   // laterAsk: Later was tapped and the card is asking "when?"
-  const state = { chosen: null, showAlts: false, asking: false, laterAsk: false };
+  // pendAsk: Pending was tapped and the card asks what it's waiting on.
+  const state = { chosen: null, showAlts: false, asking: false, laterAsk: false, pendAsk: false };
   // { date, items: { id: { count, until } } } — today's Laters, from Firestore.
   let skipDoc = null;
   const skipItems = () => (skipDoc?.date === localDate() ? skipDoc.items || {} : {});
@@ -79,7 +80,7 @@ export function mountNow(root, uid, { onCard, onSweep } = {}){
     },
     get size(){ return hidden().length; },
   };
-  const reset = () => { state.chosen = null; state.showAlts = false; state.asking = false; state.laterAsk = false; };
+  const reset = () => { state.chosen = null; state.showAlts = false; state.asking = false; state.laterAsk = false; state.pendAsk = false; state.pendText = ""; };
   let shown;
   const showing = (id) => { if (id !== shown) { shown = id; onCard?.(id); } };
 
@@ -231,7 +232,24 @@ export function mountNow(root, uid, { onCard, onSweep } = {}){
       stepAside(task, { label: "Someday: ", write: () => Promise.all([restoreTask(uid, task.id, { status: "someday", touchedAt: Date.now() }), declined(task)]) });
     }
   }
-  const pending = (task) => stepAside(task, { label: "Pending: ", write: () => blockTask(uid, task) });
+  // Pending asks what it's waiting on (Mor, 2026-10-04); the reason is
+  // optional and lands in the task's "Waiting on".
+  const pending = (task, why = "") => stepAside(task, { label: "Pending: ", write: () => blockTask(uid, task, why) });
+
+  function pendingAsk(task){
+    // The card redraws on every snapshot and each minute; what's typed lives
+    // in state so a redraw doesn't wipe it.
+    const input = h("input", { id: "pendWhy", dir: "auto", autocomplete: "off", value: state.pendText || "",
+      oninput: (e) => { state.pendText = e.target.value; } });
+    const go = () => { const why = input.value; state.pendText = ""; pending(task, why); };
+    input.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); go(); } });
+    const box = h("div", { className: "pend-ask" },
+      h("label", { htmlFor: "pendWhy", textContent: "Waiting on what? (optional)" }),
+      h("div", { className: "pend-row" }, input,
+        h("button", { className: "btn primary small", type: "button", textContent: "Set pending", onclick: go })));
+    setTimeout(() => { input.focus(); input.setSelectionRange(input.value.length, input.value.length); });
+    return box;
+  }
 
   function setToast(t){
     clearTimeout(toastTimer);
@@ -369,12 +387,13 @@ export function mountNow(root, uid, { onCard, onSweep } = {}){
         ariaLabel: `Start: ${card.task.title}`, onclick: () => begin(card.task) }),
       h("div", { className: "now-actions" },
         action("later", "Later", `not now — choose when to see ${card.task.title} again`,
-          { ariaExpanded: String(state.laterAsk), onclick: () => { state.laterAsk = !state.laterAsk; state.showAlts = false; render(); } }),
+          { ariaExpanded: String(state.laterAsk), onclick: () => { state.laterAsk = !state.laterAsk; state.pendAsk = false; state.showAlts = false; render(); } }),
         action("switch", "Switch", state.showAlts ? "hide the other tasks" : `something else — ${alts.length} other tasks`,
           { disabled: !alts.length, ariaExpanded: String(state.showAlts),
-            onclick: () => { state.showAlts = !state.showAlts; state.laterAsk = false; render(); } }),
+            onclick: () => { state.showAlts = !state.showAlts; state.laterAsk = false; state.pendAsk = false; render(); } }),
         action("pending", "Pending", `${card.task.title} is blocked — set it to Waiting`,
-          { onclick: () => pending(card.task) })),
+          { ariaExpanded: String(state.pendAsk), onclick: () => { state.pendAsk = !state.pendAsk; state.laterAsk = false; state.showAlts = false; render(); } })),
+      state.pendAsk && pendingAsk(card.task),
       state.laterAsk && h("div", { className: "later-ask", role: "group", ariaLabel: "When instead?" },
         h("span", { className: "muted", textContent: "When?" }),
         ...[["today", "Later today"], ["week", "This week"], ["someday", "Someday"]].map(([w, text]) =>
