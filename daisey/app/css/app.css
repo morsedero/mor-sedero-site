@@ -137,18 +137,22 @@ textarea {
   padding-inline: 14px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); color: var(--ink);
 }
 .chip[aria-checked="true"] { background: var(--ink); border-color: var(--ink); color: var(--card); }
-.now-card { display: grid; gap: 4px; padding: 16px; border-radius: 14px; border: 1px solid var(--line); background: var(--surface); text-align: start; }
+.now-card { display: grid; gap: 3px; padding: 12px 14px; border-radius: 14px; border: 1px solid var(--line); background: var(--surface); text-align: start; }
+/* Smaller than it was, on every tab (Mor, 2026-10-04): the card is still the
+   loudest thing on the page, but the pane under it does the most work, so the
+   card gives the height back. Tap targets are untouched — only type, padding
+   and gaps shrank. */
 .now-card.main {
-  gap: 4px; padding: 14px 16px 10px; border: 2px solid var(--accent); border-radius: 18px;
+  gap: 3px; padding: 10px 14px 8px; border: 2px solid var(--accent); border-radius: 16px;
   box-shadow: 0 2px 4px rgb(0 0 0 / .04), 0 10px 24px rgb(245 179 1 / .12);
 }
-.now-card.main .now-title { font-size: 20px; line-height: 1.2; }
-.now-card.main .now-why { font-size: 14px; margin-block-start: 2px; }
-.btn.start { margin-block-start: 10px; min-block-size: 44px; font-size: 16px; font-weight: 700; }
+.now-card.main .now-title { font-size: 18px; line-height: 1.2; }
+.now-card.main .now-why { font-size: 13px; margin-block-start: 1px; }
+.btn.start { margin-block-start: 8px; min-block-size: 42px; font-size: 15px; font-weight: 700; }
 .btn.quiet { background: none; border-color: transparent; color: var(--ink-2); font-weight: 500; }
 .btn.quiet:hover:not(:disabled) { color: var(--ink); background: var(--bg); }
-.now-meta { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--ink-2); }
-.now-title { font-size: 22px; font-weight: 700; line-height: 1.25; }
+.now-meta { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--ink-2); }
+.now-title { font-size: 19px; font-weight: 700; line-height: 1.25; }
 .now-why { margin: 4px 0 0; color: var(--ink-2); }
 /* Three quiet icon actions under Start: Later, Switch, Pending. */
 .now-actions { display: flex; justify-content: center; gap: 8px; }
@@ -222,7 +226,7 @@ body.focus .shell { display: grid; min-block-size: 100dvh; align-content: center
 /* The Now card sits still at the top; under it one pane with two tabs. */
 .shell { max-inline-size: 560px; }
 #board { display: grid; gap: 12px; }
-#nowcard { display: grid; gap: 14px; }
+#nowcard { display: grid; gap: 10px; }
 
 .panetabs { display: flex; gap: 6px; }
 .tab {
@@ -231,10 +235,13 @@ body.focus .shell { display: grid; min-block-size: 100dvh; align-content: center
 }
 .tab[aria-selected="true"] { background: var(--ink); border-color: var(--ink); color: var(--card); }
 
-/* Both tabs are the same height, so switching never moves the card. */
-.pane { block-size: min(46dvh, 460px); overflow: hidden; }
+/* Both tabs are the same height, so switching never moves the card. The card
+   shrank, so this is what the height went to. */
+.pane { block-size: min(58dvh, 560px); overflow: hidden; }
 .pane > * { block-size: 100%; overflow-y: auto; }
 .pane > [hidden] { display: none; }
+/* Tasks keeps its own switcher pinned and scrolls only the tasks under it. */
+.pane > #tasksview { overflow: hidden; display: grid; grid-template-rows: auto minmax(0, 1fr); gap: 8px; }
 
 /* Add task: floating button, bottom end corner. */
 .fab {
@@ -303,16 +310,63 @@ body.focus .shell { display: grid; min-block-size: 100dvh; align-content: center
 .sch-nowtime { flex: none; inline-size: 86px; font-size: 11px; font-weight: 700; color: #ea4335; font-variant-numeric: tabular-nums; }
 .sch-free { margin: 0; }
 
-/* Tasks board: columns per project, scroll sideways on a phone. */
+/* Tasks: a switcher, then either one list grouped by when, or a column per
+   project. Both draw the same .tk-row. */
+.seg { display: inline-flex; padding: 3px; gap: 2px; border-radius: 999px; background: var(--bg); border: 1px solid var(--line); }
+.seg-btn {
+  font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; min-block-size: 30px;
+  padding-inline: 14px; border: 0; border-radius: 999px; background: none; color: var(--ink-2);
+}
+.seg-btn[aria-selected="true"] { background: var(--card); color: var(--ink); box-shadow: 0 1px 3px rgb(0 0 0 / .12); }
+.tk-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+
+/* List view: one vertical scroll, sections by when. */
+.tk-single {
+  block-size: 100%; overflow-y: auto; overflow-x: hidden; display: grid; gap: 10px; align-content: start;
+  background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 12px 14px;
+}
+/* The chips scroll sideways to the card's own edge, so a half-cut chip says
+   there are more of them. */
+.tk-filters { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding: 2px 14px; margin-inline: -14px; }
+.tk-filters::-webkit-scrollbar { display: none; }
+/* Grid children default to min-content width; without this the chip row's
+   own width pushes the whole list past the card's end padding. */
+.tk-single > *, .tk-sec, .tk-list, .tk-row, .tk-open, .tk-meta { min-inline-size: 0; }
+.tk-filters .chip { flex: none; min-block-size: 32px; font-size: 13px; padding-inline: 12px; gap: 6px; display: inline-flex; align-items: center; }
+.chip-n { font-size: 11px; font-weight: 700; opacity: .65; }
+.tk-secs { display: grid; gap: 14px; }
+.tk-sec-h {
+  display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin: 0 0 2px;
+  font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--ink-2);
+}
+.tk-sec.quiet { opacity: .72; } /* Waiting is there to be seen, not acted on */
+.tk-tag {
+  margin-inline-end: 6px; padding: 1px 7px; border-radius: 999px; font-size: 11px; font-weight: 600;
+  background: var(--bg); border: 1px solid var(--line); color: var(--ink-2);
+}
+
+/* Projects view: columns, scroll sideways on a phone, dots to say so. */
+.tk-wrap { block-size: 100%; display: grid; grid-template-rows: minmax(0, 1fr) auto; gap: 6px; }
 .tk-board {
   display: flex; gap: 12px; align-items: stretch; block-size: 100%;
   overflow-x: auto; overflow-y: hidden; scroll-snap-type: x mandatory;
 }
 .tk-col {
   flex: 0 0 min(300px, calc(100vw - 64px)); scroll-snap-align: start; overflow-y: auto;
-  background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px;
+  background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 0 14px 14px;
 }
-.tk-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.tk-dots { display: flex; gap: 6px; justify-content: center; }
+.tk-dot {
+  inline-size: 22px; block-size: 22px; padding: 0; border: 0; background: none; cursor: pointer;
+  display: grid; place-items: center;
+}
+.tk-dot::before { content: ""; inline-size: 6px; block-size: 6px; border-radius: 50%; background: var(--ink-2); opacity: .35; }
+.tk-dot[aria-selected="true"]::before { opacity: 1; background: var(--accent); inline-size: 8px; block-size: 8px; }
+/* The project name stays put while its own tasks scroll past it. */
+.tk-head {
+  position: sticky; inset-block-start: 0; z-index: 1; background: var(--card);
+  display: flex; align-items: baseline; justify-content: space-between; gap: 8px; padding-block: 12px 6px;
+}
 .tk-head h3 { margin: 0; font-size: 17px; }
 .tk-add {
   font: inherit; font-weight: 600; color: var(--ink-2); background: none; border: 0; cursor: pointer;
@@ -321,7 +375,10 @@ body.focus .shell { display: grid; min-block-size: 100dvh; align-content: center
 .tk-list { list-style: none; margin: 0; padding: 0; }
 .tk-row { position: relative; display: flex; gap: 10px; align-items: flex-start; padding-block: 8px; border-block-start: 1px solid var(--line); }
 .tk-row.waiting .tk-title { color: var(--ink-2); }
-.tk-row.now { background: color-mix(in srgb, var(--accent) 12%, transparent); border-radius: 10px; }
+/* .is-now, not .now: `.now` is the dialog class (line 122), and a row wearing
+   it picked up the dialog's 480px width and 20px padding — which is why rows
+   used to hang past the end of the panel. */
+.tk-row.is-now { background: color-mix(in srgb, var(--accent) 12%, transparent); border-radius: 10px; padding-inline: 8px; margin-inline: -8px; }
 .tk-now {
   margin-inline-start: 6px; padding: 1px 7px; border-radius: 999px; vertical-align: 1px;
   font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em;
@@ -333,20 +390,27 @@ body.focus .shell { display: grid; min-block-size: 100dvh; align-content: center
 }
 .tk-check:hover { border-color: var(--ink); }
 .tk-check.done { background: var(--ink); border-color: var(--ink); }
-.tk-text { flex: 1; min-inline-size: 0; display: grid; gap: 2px; }
+/* The whole row is the way into the task sheet, so it's one button — no ⋯
+   menu, and nothing here falls back to prompt() or confirm(). */
+.tk-open {
+  flex: 1; min-inline-size: 0; display: grid; gap: 2px; justify-items: start; text-align: start;
+  font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; border-radius: 8px;
+}
+.tk-open:hover .tk-title { text-decoration: underline; text-decoration-color: var(--line); text-underline-offset: 3px; }
 .tk-title { font-weight: 600; overflow-wrap: anywhere; }
 .tk-row.done .tk-title { font-weight: 400; color: var(--ink-2); text-decoration: line-through; }
-.tk-meta { font-size: 13px; }
-.tk-notes { font-size: 13px; margin-block-start: 2px; overflow-wrap: anywhere; white-space: pre-wrap; }
-.tk-more { flex: none; font: inherit; font-size: 18px; inline-size: 32px; block-size: 32px; border: 0; border-radius: 8px; background: none; color: var(--ink-2); cursor: pointer; }
-.tk-more:hover { background: var(--bg); }
-.tk-menu {
-  position: absolute; inset-inline-end: 0; inset-block-start: 40px; z-index: 6; display: grid; min-inline-size: 190px;
-  background: var(--surface); border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,.15); padding: 6px;
-}
-.tk-menu-item { font: inherit; text-align: start; padding: 10px 12px; border: 0; border-radius: 8px; background: none; cursor: pointer; }
-.tk-menu-item:hover { background: var(--bg); }
+.tk-meta { font-size: 13px; display: flex; align-items: center; flex-wrap: wrap; }
+.tk-meta:empty, .tk-meta > .muted:empty { display: none; }
+/* Two lines of notes on a row; the sheet has the rest. */
+.tk-notes { font-size: 13px; margin-block-start: 2px; overflow-wrap: anywhere; white-space: pre-wrap;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .tk-note { margin: 4px 0; font-size: 13px; }
-.tk-done { margin-block-start: 8px; }
-.tk-done summary { cursor: pointer; font-weight: 600; color: var(--ink-2); padding-block: 8px; }
+.tk-done { margin-block-start: 4px; }
+.tk-done summary { cursor: pointer; font-weight: 600; color: var(--ink-2); padding-block: 8px; font-size: 14px; }
 .tk-empty { display: grid; gap: 12px; justify-items: start; }
+
+/* The task sheet's own actions, under the fields (addtask.js in edit mode). */
+.sheet-actions { display: flex; gap: 8px; align-items: center; margin-block-start: 12px; padding-block-start: 12px; border-block-start: 1px solid var(--line); }
+.sheet-actions .btn.danger { margin-inline-start: auto; color: var(--danger); }
+.sheet-actions .btn.danger.arm { border-color: var(--danger); background: color-mix(in srgb, var(--danger) 10%, transparent); font-weight: 700; }
+.field.wide { grid-column: 1 / -1; }

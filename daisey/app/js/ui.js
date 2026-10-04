@@ -29,6 +29,26 @@ export const bdi = (text) => h("bdi", { dir: "auto", textContent: text });
 export const pieces = (...parts) => parts.filter(Boolean)
   .flatMap((p, i) => (i ? [document.createTextNode(" · "), bdi(p)] : [bdi(p)]));
 
+// A floating toast with an optional Undo, for actions taken away from the Now
+// card — completing a task from the list, mainly. The Now card has its own
+// copy inside its render (it needs the toast to survive its re-renders); this
+// one is for callers with no such loop, and it is why nothing in the task
+// list has to fall back to the browser's own confirm().
+export const UNDO_MS = 5000;
+let livePop = null, liveTimer = null;
+
+export function dismissFlash(){ clearTimeout(liveTimer); livePop?.remove(); livePop = null; }
+
+export function flash(label, title, { undo } = {}){
+  dismissFlash();
+  livePop = h("div", { className: "toast", role: "status" },
+    h("span", { className: "toast-text" }, label, title ? bdi(title) : null),
+    undo && h("button", { className: "toast-undo", type: "button", textContent: "Undo",
+      onclick: () => { dismissFlash(); undo(); } }));
+  document.body.append(livePop);
+  liveTimer = setTimeout(dismissFlash, UNDO_MS);
+}
+
 // Inline icons for the card's three quiet actions. One path each, drawn on a
 // 24-grid and stroked in currentColor so they follow the button's text colour.
 const PATHS = {

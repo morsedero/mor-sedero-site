@@ -281,6 +281,16 @@ export function mountNow(root, uid, { onCard } = {}){
 
   return {
     refresh: render,
+    // "Do this now" from the task sheet: the same thing Switch does, driven
+    // from the list. A task put off today is un-put-off, or the card would
+    // ignore the choice.
+    put(id){
+      handoff = null;
+      skips.delete(id);
+      state.chosen = id;
+      state.showAlts = false;
+      render();
+    },
     unmount(){ showing(null); clearTimeout(toastTimer); document.body.classList.remove("focus"); unsubs.forEach((u) => u()); clearInterval(tick); document.removeEventListener("visibilitychange", onVisible); root.replaceChildren(); root.hidden = true; },
   };
 }

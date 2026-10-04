@@ -96,13 +96,13 @@ async function boot(){
       .then(([{ mountNow }, { mountTasks }, { mountAddTask }, { mountSchedule }, { mountImport }]) => {
         if (fb.currentUid() !== user.uid || mounted) return;
         const m = mounted = {};
-        m.adder = mountAddTask($("#addtask"), user.uid);
+        m.adder = mountAddTask($("#addtask"), user.uid, { onNow: (id) => m.now?.put(id) });
         // The Now card rides in the same scroller as the columns, first in line.
          m.schedule = mountSchedule($("#schedule"));
         m.importer = mountImport($("#importdlg"), user.uid);
         $("#importTrello").onclick = () => { setMenu(false); m.importer.open(); };
         m.tasks = mountTasks($("#tasksview"), user.uid,
-          { onAdd: (project) => m.adder.open(project), onEdit: (task) => m.adder.edit(task) });
+          { onAdd: (project) => m.adder.open(project), onOpen: (task) => m.adder.edit(task) });
         m.now = mountNow($("#nowcard"), user.uid, { onCard: (id) => { onCard = id; m.tasks?.setCurrent(id); } });
         m.tasks.setCurrent(onCard);
         $("#add").onclick = () => m.adder.open();
