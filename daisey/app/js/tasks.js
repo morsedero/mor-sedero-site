@@ -48,6 +48,7 @@ export function mountTasks(root, uid, { onAdd, onOpen } = {}){
   let tasks = null, onCard = null;
   let project = null; // the List view's project filter; null = all
   let doneOpen = false; // the Completed fold
+  let lastShown = null; // the project the chip row was last slid to show
   const fail = (e) => console.error("[daisey] tasks", e);
 
   // Completing is the one thing that happens without the sheet, so it is the
@@ -274,6 +275,23 @@ export function mountTasks(root, uid, { onAdd, onOpen } = {}){
     if (list) list.scrollTop = y;
     const chips = root.querySelector(".tk-chips");
     if (chips && x != null) chips.scrollLeft = x;
+    // A chip you just picked shows its whole name (Mor): if the one that's
+    // now checked is cut off at either edge, the row slides it flush with the
+    // start. Flush, not merely "in view", so the settle that follows the
+    // scroll has nothing left to move and can't cut it again. Only when the
+    // choice changed — otherwise every passing re-render would yank the row
+    // back from wherever it had been dragged.
+    if (chips && project !== lastShown) {
+      lastShown = project;
+      const chip = chips.querySelector('.chip[aria-checked="true"]');
+      if (chip) {
+        const rtl = getComputedStyle(chips).direction === "rtl";
+        const box = chips.getBoundingClientRect(), own = chip.getBoundingClientRect();
+        if (own.left < box.left - 1 || own.right > box.right + 1) {
+          chips.scrollBy({ left: (rtl ? own.right - box.right : own.left - box.left), behavior: "smooth" });
+        }
+      }
+    }
   }
 
   function render(){
