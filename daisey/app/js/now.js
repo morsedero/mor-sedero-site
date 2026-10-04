@@ -15,8 +15,8 @@ import { energyNow, placeNow } from "./context.js";
 import { shouldOffer, sweepList, pickWeekDay } from "./triage.js";
 import { focusView, handoffView, elapsedMinutes } from "./focus.js";
 import { watchCalendar } from "./calendar.js";
-import { LATER_MINUTES } from "./weights.js";
-import { rank, freeWindow, whySaid, timeBucket } from "./engine.js";
+import { LATER_MINUTES, DRAIN } from "./weights.js";
+import { rank, freeWindow, whySaid, timeBucket, matchProject } from "./engine.js";
 import { localDate, skipSnapshot } from "./model.js";
 import { h, icon, bdi, pieces, sizeText, dur, say } from "./ui.js";
 
@@ -122,7 +122,7 @@ export function mountNow(root, uid, { onCard, onSweep } = {}){
   // Place and energy are chips; tapping one shows its three choices, and a
   // choice is a correction that holds for 3 hours on every device.
   function contextLine(){
-    const f = feel(), fw = calendarNow();
+    const f = feel(), fw = calendarNow(), block = blockOf(fw);
     const chip = (k, text, guessed) => h("button", { type: "button", className: "ctx-chip" + (guessed ? " guess" : ""),
       ariaExpanded: String(ctxOpen === k), ariaLabel: `${k === "place" ? "Where you are" : "Your energy"}: ${text}${guessed ? ", Daisey's guess" : ""}. Change`,
       onclick: () => { ctxOpen = ctxOpen === k ? null : k; render(); } }, text);
@@ -144,6 +144,7 @@ export function mountNow(root, uid, { onCard, onSweep } = {}){
     return h("div", { className: "ctx" },
       h("div", { className: "ctx-line" },
         fw && !fw.current && h("span", { textContent: `${dur(Math.min(fw.window, 180))}${fw.window >= 180 ? "+" : ""} free` }),
+        block && h("span", { className: "ctx-block" }, "Working on ", bdi(block.project), ` until ${clock(block.end)}`),
         chip("place", PLACES.find(([v]) => v === f.place.value)[1], f.place.guessed),
         chip("energy", `energy ${f.energy.value}${f.energy.guessed ? " (guess)" : ""}`, f.energy.guessed)),
       opts);
@@ -296,6 +297,22 @@ export function mountNow(root, uid, { onCard, onSweep } = {}){
     return fw;
   }
 
+  // A project block: the event running now is titled after a project
+  // ("daisey", "Monster Punk audio"). Then the card isn't hidden behind the
+  // event — it shows that project's best task, with the time until the
+  // block ends as the window (DAISEY_SPEC "Current block"). Any other event
+  // keeps the meeting card.
+  function blockOf(fw){
+    if (!fw?.current) return null;
+    // A lesson or rehearsal is the thing itself, not time set aside for a
+    // project — even when a project shares its name ("Teaching").
+    const title = String(fw.current.title || "").toLowerCase();
+    if (DRAIN.words.some((w) => title.includes(w))) return null;
+    const open = (tasks || []).filter((t) => t.status !== "done" && t.status !== "dropped").map((t) => t.project);
+    const project = matchProject(fw.current.title, open);
+    return project ? { project, start: fw.current.start, end: fw.current.end } : null;
+  }
+
   // What a re-render is worth watching for: normally the free window, but
   // inside a meeting the window stays 0 while the minutes left tick down, and
   // the card now states those minutes.
@@ -312,12 +329,15 @@ export function mountNow(root, uid, { onCard, onSweep } = {}){
       .sort((a, b) => b.touchedAt - a.touchedAt);
     const lastToday = worked.find((t) => localDate(t.touchedAt) === today);
     const f = feel();
+    const block = blockOf(fw);
     // Tasks finished this week (from Sunday), per area: the area balance.
     const week = new Date(now); week.setHours(0, 0, 0, 0); week.setDate(week.getDate() - week.getDay());
     const areaDone = {};
     for (const t of tasks || []) if (t.status === "done" && t.doneAt >= week.getTime() && t.area) areaDone[t.area] = (areaDone[t.area] || 0) + 1;
     return {
-      ...(fw ? { window: fw.window, nextEvent: fw.next?.title ?? null } : { realWindow: false }),
+      ...(!fw ? { realWindow: false }
+        : block ? { window: Math.floor((block.end - now) / 60000), blockProject: block.project }
+        : { window: fw.window, nextEvent: fw.next?.title ?? null }),
       lastProject: lastToday?.project || null,
       recentProjects: worked.filter((t) => now - t.touchedAt < RECENT_DAYS * 864e5).map((t) => t.project),
       sessionSkips: hidden(now),
@@ -369,6 +389,15 @@ export function mountNow(root, uid, { onCard, onSweep } = {}){
     // which one and how much of it is left (Mor, 2026-10-04) instead of
     // "nothing to pick until it ends", which named nothing and read as if
     // Daisey had simply given up. "I'm free now" still overrides it.
+    const block = blockOf(fw);
+    if (!card && block) {
+      fill(greet, h("div", { className: "now-card main empty" }, contextLine(),
+        h("p", { className: "now-empty" }, "Nothing in ", bdi(block.project), " fits right now."),
+        h("button", { className: "btn quiet", type: "button", textContent: "I'm free now",
+          ariaLabel: `I'm free now: ignore the ${block.project} block and pick any task`,
+          onclick: () => { freeFrom = block.start; render(); } })), tip);
+      return;
+    }
     if (!card && fw?.current) { fill(greet, meetingCard(fw.current), tip); return; }
     if (!card) {
       fill(greet, h("div", { className: "now-card main empty" },

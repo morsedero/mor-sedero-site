@@ -45,6 +45,24 @@ export function freeWindow(events, now = Date.now()){
   return { window: next ? Math.floor((next.start - now) / MIN) : W.WINDOW_CAP, current: null, next: restOfDay ? null : next, restOfDay };
 }
 
+// The project a calendar event is a block for: its title equals a project's
+// name, or holds it as whole words ("Daisey work" → Daisey). Longest name
+// wins, so "Monster Punk audio" beats a project called "Monster". Inbox
+// never counts. Case-insensitive; Hebrew prefix letters aren't stripped.
+export function matchProject(title, projects){
+  const words = String(title || "").toLowerCase().match(/[\p{L}\p{N}]+/gu) || [];
+  let best = null;
+  for (const p of new Set(projects)) {
+    const name = String(p || "").trim();
+    if (!name || name.toLowerCase() === "inbox") continue;
+    const pw = name.toLowerCase().match(/[\p{L}\p{N}]+/gu) || [];
+    if (!pw.length) continue;
+    const hit = words.some((_, i) => pw.every((w, j) => words[i + j] === w));
+    if (hit && (!best || name.length > best.length)) best = name;
+  }
+  return best;
+}
+
 // Everything the engine knows about right now. All optional:
 //   window          free minutes (no calendar → 60), capped at 180
 //   realWindow      false = the window is a stand-in: it still filters what

@@ -141,6 +141,17 @@ test("gate 1: a calendar block named after a project keeps only that project", (
   assert.equal(E.filterOut(task({ project: "Reprise" }), m), "block");
 });
 
+test("project blocks: an event titled after a project names it (whole words, longest, never Inbox)", () => {
+  const ps = ["Daisey", "Monster", "Monster Punk", "Inbox", "חתונה"];
+  assert.equal(E.matchProject("daisey", ps), "Daisey");
+  assert.equal(E.matchProject("Daisey work session", ps), "Daisey");
+  assert.equal(E.matchProject("Monster Punk audio", ps), "Monster Punk");
+  assert.equal(E.matchProject("Daiseyland", ps), null); // not a whole word
+  assert.equal(E.matchProject("Teaching", ps), null);
+  assert.equal(E.matchProject("inbox zero", ps), null);
+  assert.equal(E.matchProject("עבודה על חתונה", ps), "חתונה");
+});
+
 // ---------- Gate 2: what does leaving it cost? ----------
 
 test("gate 2 deadline: past or today 35, within 2 days 25, within 7 days 12, later 0", () => {

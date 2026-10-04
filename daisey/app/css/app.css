@@ -527,3 +527,5 @@ dialog.now { overflow-y: auto; overscroll-behavior: contain; }
 .pend-ask label { font-size: 13px; font-weight: 600; color: var(--ink-2); }
 .pend-row { display: flex; gap: 6px; }
 .pend-row input { flex: 1; min-inline-size: 0; font: inherit; font-size: 16px; padding: 6px 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--ink); }
+.ctx-line > .ctx-block { flex-basis: 100%; font-size: 13px; font-weight: 600; color: var(--ink); }
+.ctx-line > .ctx-block::after { content: none; }
