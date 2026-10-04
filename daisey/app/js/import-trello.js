@@ -6,8 +6,31 @@
 // cards already here are listed as "already in Daisey" and only the new ones
 // come over. Nothing is written until the button is pressed.
 import { idToken } from "./firebase.js";
-import { watchTasks, addTask } from "./store.js";
+import { watchTasks, addTask, updateTask } from "./store.js";
 import { h, bdi } from "./ui.js";
+
+// Earlier imports wrote the card's URL into the notes. They're cleaned out
+// wherever they're found, once per sign-in — a line that is nothing but a
+// Trello link goes, and a link inside a sentence the user wrote is left
+// alone. Delete this when the tasks that have one are gone.
+const TRELLO_LINK = /https?:\/\/(?:www\.)?trello\.com\/\S*/gi;
+const stripLink = (notes) => String(notes || "")
+  .split("\n")
+  .filter((line) => !/^\s*https?:\/\/(?:www\.)?trello\.com\/\S*\s*$/i.test(line))
+  .join("\n")
+  .trim();
+
+function dropCardLinks(uid, tasks, done){
+  for (const t of tasks) {
+    if (done.has(t.id) || t.source?.app !== "trello" || !t.notes) continue;
+    TRELLO_LINK.lastIndex = 0;
+    if (!TRELLO_LINK.test(t.notes)) continue;
+    const notes = stripLink(t.notes);
+    if (notes === t.notes) continue; // a link inside their own sentence
+    done.add(t.id);
+    updateTask(uid, t, { notes }, tasks).catch((e) => console.error("[daisey] trello notes", e));
+  }
+}
 
 const URL_ = "/.netlify/functions/daisey-now-trello";
 const ERROR = {
@@ -68,11 +91,13 @@ export function mountImport(dialog, uid){
     for (const c of cards) {
       // The list is the project, which is how Trello boards are usually
       // organised anyway. Size is left to Daisey to guess.
+      // No card link in the notes (Mor, 2026-10-04: "don't need it"). The
+      // card id is kept in `source` either way, which is what re-importing
+      // reads; the notes are for what the user writes there.
       await addTask(uid, {
         title: c.name,
         project: c.listName || state.board.name,
         due: c.due ? c.due.slice(0, 10) : "",
-        notes: c.url,
         source: { app: "trello", cardId: c.id, boardId: state.board.id },
       }, tasks).catch((e) => { throw e; });
     }
@@ -121,7 +146,12 @@ export function mountImport(dialog, uid){
   }
 
   dialog.addEventListener("click", (e) => { if (e.target === dialog) close(); });
-  const unsub = watchTasks(uid, (ts) => { tasks = ts; if (dialog.open) render(); }, (e) => console.error("[daisey] import", e));
+  const cleaned = new Set(); // ids already patched, so a snapshot loop can't repeat one
+  const unsub = watchTasks(uid, (ts) => {
+    tasks = ts;
+    dropCardLinks(uid, ts, cleaned);
+    if (dialog.open) render();
+  }, (e) => console.error("[daisey] import", e));
 
   return {
     open(){
