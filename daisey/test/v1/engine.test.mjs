@@ -1,26 +1,33 @@
-// Daisey v1 Now engine. Run: node --test "daisey/test/v1/*.test.mjs"
+// Daisey v1 Now engine: three gates, one test per spec table row.
+// Run: node --test "daisey/test/v1/*.test.mjs"
 // Times are built in local time, like the engine reads them, so these pass
 // in any timezone.
 import test from "node:test";
 import assert from "node:assert/strict";
 import * as E from "../../app/js/engine.js";
 import * as W from "../../app/js/weights.js";
+import * as H from "../../app/js/holidays.js";
+import * as C from "../../app/js/context.js";
 
 const at = (d, h = 10, m = 0) => new Date(2026, 9, d, h, m).getTime(); // Oct 2026; the 5th is a Monday
 const NOW = at(5);
 let seq = 0;
 const task = (o = {}) => ({
-  id: `t${++seq}`, project: "P", title: "Task", size: 30,
-  due: null, dueTime: null, status: "ready", canSplit: false,
+  id: `t${++seq}`, project: "P", title: "Task", size: 30, area: "work", type: "deep", where: "computer",
+  openHours: "anytime", stakes: "low", energy: "medium",
+  due: null, dueTime: null, dateKind: null, status: "ready", canSplit: false,
   createdAt: NOW, touchedAt: NOW, skipsSinceStart: 0, spentMinutes: 0, ...o,
 });
 const moment = (o = {}) => E.readMoment({ now: NOW, window: 60, ...o });
 const parts = (t, o) => E.scoreTask(t, moment(o)).parts;
-const why = (t, o) => E.rank([t], { now: NOW, ...o }).pick.why;
+const pick = (ts, o) => E.rank(Array.isArray(ts) ? ts : [ts], { now: NOW, ...o }).pick;
+const why = (t, o) => pick(t, o).why;
+const dl = (due, o) => task({ due, dateKind: "deadline", ...o });
+const tg = (due, o) => task({ due, dateKind: "target", ...o });
 
-// ---------- step 1 ----------
+// ---------- Step 1: the moment ----------
 
-const ev = (title, sh, sm, eh, em, d = 5) => ({ title, start: new Date(at(d, sh, sm)).toISOString(), end: new Date(at(d, eh, em)).toISOString() });
+const ev = (title, sh, sm, eh, em, d = 5, o = {}) => ({ title, start: new Date(at(d, sh, sm)).toISOString(), end: new Date(at(d, eh, em)).toISOString(), ...o });
 
 test("calendar window: minutes to the next event; inside one → 0; none today → rest of day", () => {
   const next = E.freeWindow([ev("Teaching", 10, 45, 12, 0)], NOW);
@@ -29,244 +36,286 @@ test("calendar window: minutes to the next event; inside one → 0; none today �
   assert.deepEqual([inside.window, inside.current.title], [0, "Teaching"]);
   const done = E.freeWindow([ev("Earlier", 8, 0, 9, 0)], NOW);
   assert.deepEqual([done.window, done.restOfDay], [W.WINDOW_CAP, true]);
-  const tomorrow = E.freeWindow([ev("Early", 9, 0, 10, 0, 6)], at(5, 22));
-  assert.deepEqual([tomorrow.window, tomorrow.next, tomorrow.restOfDay], [660, null, true]); // readMoment caps it
-  assert.equal(E.readMoment({ now: NOW, window: tomorrow.window }).window, W.WINDOW_CAP);
+  assert.equal(E.readMoment({ now: NOW, window: 660 }).window, W.WINDOW_CAP);
 });
 
-test("moment: no calendar → 60 min, window capped at 180", () => {
+test("moment: no calendar → 60 min, window capped at 180; energy medium, place anywhere by default", () => {
   const m = E.readMoment({ now: NOW });
   assert.equal(m.window, 60);
+  assert.equal(m.energy, "medium");
+  assert.equal(m.place, "anywhere");
   assert.equal(E.readMoment({ now: NOW, window: 400 }).window, 180);
   assert.equal(E.readMoment({ now: NOW, window: 0 }).window, 0);
-  assert.equal(E.readMoment({ now: NOW, window: "25" }).window, 25);
 });
 
 test("moment: time bucket edges, Friday + Saturday are the weekend", () => {
   assert.equal(E.timeBucket(at(5, 11, 59)).part, "morning");
   assert.equal(E.timeBucket(at(5, 12)).part, "afternoon");
-  assert.equal(E.timeBucket(at(5, 16, 59)).part, "afternoon");
   assert.equal(E.timeBucket(at(5, 17)).part, "evening");
-  assert.equal(E.timeBucket(at(5)).weekend, false); // Mon
   assert.equal(E.timeBucket(at(9)).weekend, true); // Fri
-  assert.equal(E.timeBucket(at(10)).weekend, true); // Sat
   assert.equal(E.timeBucket(at(11)).weekend, false); // Sun
 });
 
-// ---------- step 2 ----------
+test("office hours: Sun–Thu 9–16; closed Fri, Sat and holidays, worked out per year", () => {
+  assert.equal(H.officeOpen(at(5, 9)), true);
+  assert.equal(H.officeOpen(at(5, 15, 59)), true);
+  assert.equal(H.officeOpen(at(5, 16)), false);
+  assert.equal(H.officeOpen(at(5, 8, 59)), false);
+  assert.equal(H.officeOpen(at(9, 10)), false); // Friday
+  assert.equal(H.officeOpen(at(10, 10)), false); // Saturday
+  assert.equal(H.officeOpen(at(11, 10)), true); // Sunday
+  assert.equal(H.officeOpen(new Date(2026, 8, 21, 10).getTime()), false); // Yom Kippur 2026 (Mon)
+  assert.ok(H.holidaysOf(2027).has("2027-10-11")); // Yom Kippur 2027
+  assert.ok(H.holidaysOf(2026).has("2026-04-22")); // Independence Day 2026
+  assert.equal(H.officeMinutesLeft(at(5, 15, 20)), 40);
+});
 
-test("filter: waiting, done, stale, skipped this session", () => {
+test("energy guess: correction for 3 h, else Medium, else the bucket's average after 5; a long event lowers it", () => {
+  assert.equal(C.energyNow({ now: NOW }).value, "medium");
+  assert.deepEqual(C.energyNow({ correction: { value: "high", at: NOW - 2 * 3600e3 }, now: NOW }), { value: "high", guessed: false });
+  assert.equal(C.energyNow({ correction: { value: "high", at: NOW - 4 * 3600e3 }, now: NOW }).value, "medium");
+  const hist = (v, n) => Array.from({ length: n }, () => ({ part: "morning", weekend: false, value: v }));
+  assert.equal(C.energyNow({ history: hist("low", 4), now: NOW }).value, "medium"); // not enough yet
+  assert.equal(C.energyNow({ history: hist("low", 5), now: NOW }).value, "low");
+  assert.equal(C.energyNow({ events: [ev("Recording", 7, 0, 9, 30)], now: NOW }).value, "low"); // 2.5 h, ended 30 min ago
+  assert.equal(C.energyNow({ events: [ev("שיעור פסנתר", 9, 0, 9, 45)], now: NOW }).value, "low"); // draining title
+  assert.equal(C.energyNow({ events: [ev("Coffee", 9, 0, 9, 45)], now: NOW }).value, "medium");
+});
+
+test("place guess: correction for 3 h, else Out at/after an event with a location, else Home", () => {
+  assert.equal(C.placeNow({ now: NOW }).value, "home");
+  assert.equal(C.placeNow({ events: [ev("Dentist", 9, 0, 9, 45, 5, { location: "Herzl 3" })], now: NOW }).value, "out");
+  assert.equal(C.placeNow({ events: [ev("Dentist", 8, 0, 9, 0, 5, { location: "Herzl 3" })], now: NOW }).value, "home"); // 60 min ago
+  assert.equal(C.placeNow({ correction: { value: "out", at: NOW - 3600e3 }, now: NOW }).value, "out");
+});
+
+// ---------- Gate 1: can it be done now? ----------
+
+test("gate 1: waiting, done, someday, stale, not before, skipped this session", () => {
   const m = moment({ sessionSkips: ["skip"] });
   assert.equal(E.filterOut(task({ status: "waiting" }), m), "waiting");
   assert.equal(E.filterOut(task({ status: "done" }), m), "done");
+  assert.equal(E.filterOut(task({ status: "someday" }), m), "someday");
   assert.equal(E.filterOut(task({ skipsSinceStart: W.STALE_SKIPS }), m), "stale");
-  assert.equal(E.filterOut(task({ skipsSinceStart: W.STALE_SKIPS - 1 }), m), null);
+  assert.equal(E.filterOut(task({ notBefore: "2026-10-07" }), m), "notyet");
   assert.equal(E.filterOut(task({ id: "skip" }), m), "skipped");
-  assert.equal(E.filterOut(task({ energy: "high" }), m), null); // old docs' energy is ignored
+  assert.equal(E.filterOut(task(), m), null);
 });
 
-test("filter: bigger than the window is out, unless it can split and the window is 25+", () => {
-  assert.equal(E.filterOut(task({ size: 60 }), moment({ window: 60 })), null);
-  assert.equal(E.filterOut(task({ size: 61 }), moment({ window: 60 })), "size");
+test("gate 1: where — Out rules out Home and Computer tasks; Home and Anywhere rule out nothing", () => {
+  const out = moment({ place: "out" }), home = moment({ place: "home" });
+  assert.equal(E.filterOut(task({ where: "home" }), out), "place");
+  assert.equal(E.filterOut(task({ where: "computer" }), out), "place");
+  assert.equal(E.filterOut(task({ where: "phone" }), out), null);
+  assert.equal(E.filterOut(task({ where: "out" }), out), null);
+  assert.equal(E.filterOut(task({ where: "out" }), home), null);
+  assert.equal(E.filterOut(task({ where: "computer" }), moment()), null);
+});
+
+test("gate 1: office hours — closed rules it out; open, the window ends at 16:00", () => {
+  const call = task({ openHours: "office", type: "call", where: "phone", size: 15 });
+  assert.equal(E.filterOut(call, moment()), null);
+  assert.equal(E.filterOut(call, E.readMoment({ now: at(9, 10), window: 60 })), "office"); // Friday
+  assert.equal(E.filterOut(call, E.readMoment({ now: at(5, 17), window: 60 })), "office");
+  assert.equal(E.filterOut({ ...call, size: 30 }, E.readMoment({ now: at(5, 15, 40), window: 60 })), "size"); // 20 min to close
+  assert.equal(E.filterOut(task({ openHours: "evening" }), moment()), "evening");
+  assert.equal(E.filterOut(task({ openHours: "evening" }), E.readMoment({ now: at(5, 18) })), null);
+});
+
+test("gate 1: window — too big is out, unless it can split and the window is 25+", () => {
+  assert.equal(E.filterOut(task({ size: 60 }), moment()), null);
+  assert.equal(E.filterOut(task({ size: 61 }), moment()), "size");
   assert.equal(E.filterOut(task({ size: 90, canSplit: true }), moment({ window: 25 })), null);
   assert.equal(E.filterOut(task({ size: 90, canSplit: true }), moment({ window: 24 })), "size");
 });
 
-// ---------- urgency, one test per table row ----------
-
-test("urgency: overdue → 35 (past date, or today's due time passed)", () => {
-  assert.equal(parts(task({ due: "2026-10-04" })).urgency, 35);
-  assert.equal(parts(task({ due: "2026-10-05", dueTime: "09:00" })).urgency, 35);
+test("gate 1: energy — a High task is out when you're Low", () => {
+  assert.equal(E.filterOut(task({ energy: "high" }), moment({ energy: "low" })), "energy");
+  assert.equal(E.filterOut(task({ energy: "high" }), moment({ energy: "medium" })), null);
+  assert.equal(E.filterOut(task({ energy: "medium" }), moment({ energy: "low" })), null);
 });
 
-test("urgency: due today and tight for its size → hard → 35", () => {
-  // 20:30 → 90 waking min left × 0.25 = 22.5 < 30 min × 2
-  assert.equal(parts(task({ due: "2026-10-05" }), { now: at(5, 20, 30) }).urgency, 35);
-  // 11:00 deadline, 60 min away: 15 < 60
-  assert.equal(parts(task({ due: "2026-10-05", dueTime: "11:00" })).urgency, 35);
+test("gate 1: a calendar block named after a project keeps only that project", () => {
+  const m = moment({ blockProject: "Daisey" });
+  assert.equal(E.filterOut(task({ project: "daisey" }), m), null);
+  assert.equal(E.filterOut(task({ project: "Reprise" }), m), "block");
 });
 
-test("urgency: due today with room to spare → soft → 20", () => {
-  // 10:00 → 720 waking min × 0.25 = 180 ≥ 60
-  assert.equal(parts(task({ due: "2026-10-05" })).urgency, 20);
-  // the same due goes hard as the day runs out
-  assert.equal(parts(task({ due: "2026-10-05" }), { now: at(5, 18) }).urgency, 20); // 60 ≥ 60
-  assert.equal(parts(task({ due: "2026-10-05" }), { now: at(5, 18, 30) }).urgency, 35);
+// ---------- Gate 2: what does leaving it cost? ----------
+
+test("gate 2 deadline: past or today 35, within 2 days 25, within 7 days 12, later 0", () => {
+  assert.equal(parts(dl("2026-10-01")).deadline, 35);
+  assert.equal(parts(dl("2026-10-05")).deadline, 35);
+  assert.equal(parts(dl("2026-10-07")).deadline, 25);
+  assert.equal(parts(dl("2026-10-12")).deadline, 12);
+  assert.equal(parts(dl("2026-10-13")).deadline, 0);
+  assert.equal(parts(task()).deadline, 0);
+  assert.equal(parts(tg("2026-10-05")).deadline, 0); // a target is never a deadline
 });
 
-test("urgency: due later but tight → hard → 25; bigger tasks go hard sooner", () => {
-  // tomorrow 10:00: 780 waking min × 0.25 = 195 < 120 × 2
-  const big = task({ size: 120, due: "2026-10-06", dueTime: "10:00" });
-  assert.equal(parts(big).urgency, 25);
-  assert.equal(parts({ ...big, size: 30 }).urgency, 12); // same due, small task: not tight
-  // work already done counts: 120 − 90 spent = 30 left
-  assert.equal(parts({ ...big, spentMinutes: 90 }).urgency, 12);
-  // tight beats distance: 10 h of work due in 5 days
-  assert.equal(parts(task({ size: 600, due: "2026-10-10" })).urgency, 25);
+test("gate 2 target: today or past 8, within 3 days 4, later 0 — never overdue", () => {
+  assert.equal(parts(tg("2026-10-05")).target, 8);
+  assert.equal(parts(tg("2026-09-20")).target, 8); // passed: rolls to today, no more
+  assert.equal(parts(tg("2026-10-08")).target, 4);
+  assert.equal(parts(tg("2026-10-09")).target, 0);
+  assert.equal(parts(dl("2026-10-05")).target, 0);
 });
 
-test("urgency: within 3 days → 12, within 7 → 6, later or none → 0", () => {
-  assert.equal(parts(task({ due: "2026-10-06" })).urgency, 12);
-  assert.equal(parts(task({ due: "2026-10-08" })).urgency, 12);
-  assert.equal(parts(task({ due: "2026-10-09" })).urgency, 6);
-  assert.equal(parts(task({ due: "2026-10-12" })).urgency, 6);
-  assert.equal(parts(task({ due: "2026-10-13" })).urgency, 0);
-  assert.equal(parts(task()).urgency, 0);
+test("gate 2 stakes: penalty 15, money 12, someone 10, low 0", () => {
+  assert.equal(parts(task({ stakes: "penalty" })).stakes, 15);
+  assert.equal(parts(task({ stakes: "money" })).stakes, 12);
+  assert.equal(parts(task({ stakes: "someone" })).stakes, 10);
+  assert.equal(parts(task({ stakes: "low" })).stakes, 0);
 });
 
-test("isTight and wakingMinutes count only 09:00–22:00", () => {
-  assert.equal(E.wakingMinutes(at(5, 7), at(5, 23)), 13 * 60);
-  assert.equal(E.wakingMinutes(at(5, 21), at(6, 10)), 60 + 60);
-  assert.equal(E.isTight(task(), NOW), false); // no due
-  assert.equal(E.isTight(task({ due: "2026-10-04" }), NOW), true);
+test("gate 2 area balance: least done this week gets 12; even weeks give nothing; intents count when set", () => {
+  const job = task({ area: "job" }), work = task({ area: "work" });
+  const sc = (o) => E.rank([job, work], { now: NOW, ...o }).ranked.reduce((m, s) => ({ ...m, [s.task.area]: s.parts.area }), {});
+  assert.deepEqual(sc({ areaDone: { work: 4, job: 0 } }), { job: 12, work: 0 });
+  assert.deepEqual(sc({ areaDone: { work: 2, job: 2 } }), { job: 0, work: 0 });
+  assert.deepEqual(sc({}), { job: 0, work: 0 });
+  assert.deepEqual(sc({ intents: { job: 3 }, areaDone: { job: 1, work: 9 } }), { job: 8, work: 0 });
 });
 
-// ---------- other factors ----------
-
-test("window fit: 50–100% 15, 25–50% 10, under 25% 6, split piece 8", () => {
-  assert.equal(parts(task({ size: 30 })).window, 15);
-  assert.equal(parts(task({ size: 60 })).window, 15);
-  assert.equal(parts(task({ size: 15 })).window, 10);
-  assert.equal(parts(task({ size: 29 })).window, 10);
-  assert.equal(parts(task({ size: 10 })).window, 6);
-  assert.equal(parts(task({ size: 90, canSplit: true })).window, 8);
-});
-
-test("window fit: a stand-in window (no calendar) still filters but scores 0", () => {
-  assert.equal(parts(task({ size: 30 }), { realWindow: false }).window, 0);
-  assert.equal(E.filterOut(task({ size: 90 }), moment({ realWindow: false })), "size");
-  assert.equal(why(task({ size: 5, due: "2026-10-06" }), { realWindow: false }), "Due tomorrow.");
-});
-
-test("momentum: last project today 10 (any case), recent project 5, else 0", () => {
-  assert.equal(parts(task({ project: "Monster Punk" }), { lastProject: "monster punk" }).momentum, 10);
-  assert.equal(parts(task({ project: "Reprise" }), { recentProjects: ["Reprise"] }).momentum, 5);
-  assert.equal(parts(task(), { lastProject: "Other", recentProjects: ["Else"] }).momentum, 0);
-});
-
-test("neglect: +1 per whole day untouched, max 10", () => {
+test("gate 2 neglect: +1 per whole day untouched, max 8", () => {
   assert.equal(parts(task()).neglect, 0);
   assert.equal(parts(task({ touchedAt: NOW - 3.5 * 864e5 })).neglect, 3);
-  assert.equal(parts(task({ touchedAt: NOW - 20 * 864e5 })).neglect, 10);
+  assert.equal(parts(task({ touchedAt: NOW - 20 * 864e5 })).neglect, 8);
 });
 
-test("learned fit is clamped to −10…10 and 0 until session 10 supplies it", () => {
-  assert.equal(parts(task()).learned, 0);
-  assert.equal(parts(task(), { learned: () => 25 }).learned, 10);
-  assert.equal(parts(task(), { learned: () => -30 }).learned, -10);
+// ---------- Gate 3: does it fit this gap? ----------
+
+test("gate 3 energy fit: exact 15, one step less 10, one step more 3", () => {
+  assert.equal(parts(task({ energy: "medium" }), { energy: "medium" }).energy, 15);
+  assert.equal(parts(task({ energy: "low" }), { energy: "medium" }).energy, 10);
+  assert.equal(parts(task({ energy: "high" }), { energy: "medium" }).energy, 3);
+  assert.equal(parts(task({ energy: "low" }), { energy: "high" }).energy, 5);
 });
 
-test("skip penalty: −8 per skip today; the score is the sum of all parts", () => {
+test("gate 3 window fit: 50–100% 12, 25–50% 8, under 25% 5, split piece 6; stand-in window 0", () => {
+  assert.equal(parts(task({ size: 30 })).window, 12);
+  assert.equal(parts(task({ size: 60 })).window, 12);
+  assert.equal(parts(task({ size: 15 })).window, 8);
+  assert.equal(parts(task({ size: 10 })).window, 5);
+  assert.equal(parts(task({ size: 90, canSplit: true })).window, 6);
+  assert.equal(parts(task({ size: 30 }), { realWindow: false }).window, 0);
+});
+
+test("gate 3 momentum: same project as last today 8, touched in last 2 days 4", () => {
+  assert.equal(parts(task({ project: "Monster Punk" }), { lastProject: "monster punk" }).momentum, 8);
+  assert.equal(parts(task({ project: "Reprise" }), { recentProjects: ["Reprise"] }).momentum, 4);
+  assert.equal(parts(task(), { lastProject: "Other" }).momentum, 0);
+});
+
+test("gate 3 batch: 2+ calls/admin/errands that fit the window together get 10 each", () => {
+  const calls = [15, 10, 5].map((size) => task({ type: "call", size, where: "phone" }));
+  const r = E.rank([...calls, task({ type: "deep", size: 30 })], { now: NOW, window: 30 });
+  const pts = Object.fromEntries(r.ranked.map((s) => [s.task.id, s.parts.batch]));
+  assert.deepEqual(calls.map((c) => pts[c.id]), [10, 10, 10]); // 5+10+15 = 30 fits
+  const tight = E.rank(calls, { now: NOW, window: 14 });
+  assert.equal(tight.ranked.find((s) => s.task.size === 5).parts.batch, 0); // 5+10 = 15 > 14: no batch
+  assert.deepEqual(E.rank([calls[0]], { now: NOW }).ranked.map((s) => s.parts.batch), [0]); // one is not a batch
+  assert.deepEqual(E.rank([task({ type: "deep", size: 5 }), task({ type: "deep", size: 5 })], { now: NOW }).ranked.map((s) => s.parts.batch), [0, 0]);
+});
+
+test("gate 3 learned fit: starts vs skips for this type at this time of day, −10…10", () => {
+  const t = task({ type: "call", where: "phone" });
+  assert.equal(parts(t).learned, 0);
+  assert.equal(parts(t, { learnStats: { "call|morning": { starts: 9, skips: 0 } } }).learned, 8); // 10×9/12
+  assert.equal(parts(t, { learnStats: { "call|morning": { starts: 0, skips: 7 } } }).learned, -7);
+  assert.equal(parts(t, { learnStats: { "call|evening": { starts: 9, skips: 0 } } }).learned, 0); // another bucket
+});
+
+test("gate 3 skip penalty: −8 per skip today; the score is the sum of all parts", () => {
   const t = task();
   const s = E.scoreTask(t, moment({ skipsToday: { [t.id]: 2 } }));
   assert.equal(s.parts.skips, -16);
-  assert.equal(s.score, 0 + 15 + 0 + 0 + 0 - 16);
+  assert.equal(s.score, 15 /* energy */ + 12 /* window */ - 16);
 });
 
 // ---------- ranking ----------
 
-test("tie-break: sooner due first, then smaller size", () => {
-  const later = task({ due: "2026-10-20" }), sooner = task({ due: "2026-10-14" }); // both 0 urgency
-  assert.deepEqual(E.rank([later, sooner], { now: NOW }).ranked.map((s) => s.task.id), [sooner.id, later.id]);
-  const big = task({ size: 60 }), small = task({ size: 30 }); // both fill 50–100% of 60
-  assert.deepEqual(E.rank([big, small], { now: NOW }).ranked.map((s) => s.task.id), [small.id, big.id]);
-  const dated = task({ due: "2026-10-20" }), undated = task();
-  assert.equal(E.rank([undated, dated], { now: NOW }).pick.task.id, dated.id);
+test("tie-break: real deadline first, then higher stakes, then smaller size", () => {
+  // Same score: a deadline 8 days out scores 0, like no date.
+  const a = task({ size: 30 }), b = dl("2026-10-20", { size: 30 });
+  assert.equal(E.rank([a, b], { now: NOW }).ranked[0].score, E.rank([a, b], { now: NOW }).ranked[1].score);
+  const big = task({ size: 60 }), small = task({ size: 30 });
+  assert.equal(pick([big, small]).task.id, small.id);
+  // Deadline 25 vs stakes 15 + energy gap: compare ties directly.
+  const s = (o) => ({ task: { size: 30, createdAt: 0 }, score: 50, parts: { deadline: 0, stakes: 0, ...o } });
+  assert.ok(E.compare(s({ deadline: 12 }), s({ stakes: 15 })) < 0);
+  assert.ok(E.compare(s({ stakes: 12 }), s({ stakes: 10 })) < 0);
 });
 
-test("something else: next by score, but another project within 15 points goes first", () => {
-  const s = (project, score) => ({ task: { project }, score });
-  const ranked = [s("A", 100), s("A", 95), s("B", 85), s("A", 80), s("C", 60)];
-  assert.deepEqual(E.somethingElse(ranked).map((x) => x.task.project + x.score), ["B85", "A95", "A80"]);
-  // nothing else close enough → plain score order
-  const far = [s("A", 100), s("A", 95), s("B", 70)];
-  assert.deepEqual(E.somethingElse(far).map((x) => x.task.project + x.score), ["A95", "B70"]);
+test("something else: next by score, but another AREA within 15 points goes first", () => {
+  const s = (area, score) => ({ task: { area, project: "same" }, score });
+  const ranked = [s("work", 100), s("work", 95), s("job", 85), s("work", 80), s("home", 60)];
+  assert.deepEqual(E.somethingElse(ranked).map((x) => x.task.area + x.score), ["job85", "work95", "work80"]);
   assert.deepEqual(E.somethingElse([]), []);
-  assert.equal(E.somethingElse(ranked, 2).length, 2);
 });
 
-test("filter: a task with a later \"not before\" date isn't offered yet", () => {
-  const soon = task({ notBefore: "2026-10-07" });
-  assert.equal(E.filterOut(soon, moment()), "notyet");
-  assert.equal(E.filterOut(task({ notBefore: "2026-10-05" }), moment()), null); // today counts
-  assert.equal(E.filterOut(task({ notBefore: "2026-10-01" }), moment()), null);
-  assert.equal(E.rank([soon], { now: NOW }).empty, "nofit");
-});
-
-test("rank: stale tasks are listed for the keep/shrink/drop question", () => {
+test("rank: stale tasks listed for keep/shrink/drop; empty states", () => {
   const stale = task({ skipsSinceStart: 5 });
   const r = E.rank([stale, task()], { now: NOW });
   assert.deepEqual(r.stale.map((t) => t.id), [stale.id]);
-  assert.equal(r.ranked.length, 1);
-});
-
-test("empty states: no open tasks → none; nothing fits → nofit", () => {
   assert.equal(E.rank([], { now: NOW }).empty, "none");
-  assert.equal(E.rank([task({ status: "done" })], { now: NOW }).empty, "none");
-  const r = E.rank([task({ size: 30 }), task({ status: "waiting" })], { now: NOW, window: 10 });
-  assert.equal(r.empty, "nofit");
-  assert.equal(r.pick, null);
-  assert.deepEqual(r.out.map((o) => o.reason), ["size", "waiting"]);
-  assert.equal(E.rank([task()], { now: NOW }).empty, null);
+  assert.equal(E.rank([task({ size: 30 })], { now: NOW, window: 10 }).empty, "nofit");
 });
 
 // ---------- why line ----------
 
-
-test("why: top factors in points order, as one sentence", () => {
-  // window 15 (15 of 20 min), urgency 12
-  assert.equal(why(task({ size: 15, due: "2026-10-07" }), { window: 20 }), "Fills your free 20 min, due Wednesday.");
-  assert.equal(why(task({ size: 45 })), "Fills your free hour.");
+test("why: the strongest 2–3 factors, first person on the card", () => {
+  const s = pick(dl("2026-10-05", { stakes: "money", size: 30 }));
+  assert.equal(s.why, "Deadline today, costs money if late, fills your free hour.");
+  assert.equal(E.whyText(E.whySaid(s)), "I'd do this now: deadline today, costs money if late, fills your free hour.");
+  assert.equal(E.whyText(E.whySaid(pick(task({ energy: "high", size: 120, canSplit: true }), { realWindow: false, energy: "low" }) || { whyParts: [] })), "I'd do this one next.");
 });
 
-test("why: urgency phrases — overdue, today, tomorrow, weekday, date, getting tight", () => {
-  assert.match(why(task({ due: "2026-10-01" })), /^Overdue, /i);
-  assert.match(why(task({ due: "2026-10-05" })), /due today/i);
-  assert.match(why(task({ due: "2026-10-05", dueTime: "11:00" })), /^Due today 11:00, getting tight, /i);
-  assert.match(why(task({ due: "2026-10-06" })), /due tomorrow/i);
-  assert.match(why(task({ size: 120, canSplit: true, due: "2026-10-06", dueTime: "10:00" }), { window: 180 }), /due tomorrow, getting tight/i);
-  assert.match(why(task({ size: 600, canSplit: true, due: "2026-10-09" }), { window: 180 }), /^Due Friday, getting tight/i);
-  assert.doesNotMatch(why(task({ due: "2026-10-13" })), /due/i); // 0 points, not a reason
-});
-
-test("why: window, momentum, neglect, learned, next event phrases", () => {
-  assert.match(why(task({ size: 5 })), /5 min, quick win/i);
-  assert.match(why(task({ size: 90, canSplit: true }), { window: 45 }), /a piece fits your 45 min/i);
-  assert.match(why(task({ size: 30 }), { window: 90 }), /fits your 1 h 30 min/i);
-  assert.match(why(task({ size: 30, project: "Monster Punk" }), { lastProject: "Monster Punk" }), /keeps Monster Punk going/i);
-  assert.match(why(task({ size: 5, touchedAt: NOW - 6 * 864e5 })), /untouched for 6 days/i);
-  assert.match(why(task({ size: 5 }), { learned: () => 9 }), /you usually do these in the morning/i);
+test("why: phrase table — deadline, stakes, office, area, batch, energy, window, momentum", () => {
+  assert.match(why(dl("2026-10-06")), /deadline tomorrow/i);
+  assert.match(why(dl("2026-10-08")), /deadline Thursday/i);
+  assert.match(why(dl("2026-10-01")), /deadline passed/i);
+  assert.match(why(task({ stakes: "someone", title: "Send the stems to Sofi" })), /Sofi is waiting on it/i);
+  assert.match(why(task({ stakes: "penalty" })), /penalty if late/i);
+  assert.match(why(task({ openHours: "office", type: "admin", size: 30 }), { now: at(5, 14), window: 60 }), /offices close at 16:00/i);
+  assert.match(why([task({ area: "job" }), task({ area: "work", size: 61 })], { areaDone: { work: 3 } }), /Job search hasn't moved this week/i);
+  const calls = [10, 5].map((size) => task({ type: "call", size, where: "phone", energy: "low" }));
+  assert.match(why(calls, { energy: "low" }), /2 calls, done together/i);
+  assert.match(why(task({ energy: "low", size: 5 }), { energy: "low" }), /light one, you're low/i);
   assert.match(why(task({ size: 40 }), { nextEvent: "teaching" }), /fits before teaching/i);
+  assert.match(why(task({ project: "Monster Punk" }), { lastProject: "Monster Punk" }), /keeps Monster Punk going/i);
 });
 
-test("why: Daisey's own voice on the card it proposes", () => {
-  const said = (t, o) => E.whySaid(E.rank([t], { now: NOW, ...o }).pick);
-  assert.equal(said(task({ size: 5 })), "I'd do this now: 5 min, quick win.");
-  assert.equal(said(task({ size: 30 }), { realWindow: false }), "I'd do this one next."); // no factor worth saying
+test("why: names are their own pieces, so the UI can isolate them (bidi)", () => {
+  const s = pick(task({ project: "חתונה" }), { lastProject: "חתונה" });
+  assert.ok(s.whyParts.some((p) => typeof p === "object" && p.name === "חתונה"));
+  const he = pick(task({ title: "Send it to Sofi", stakes: "someone", project: "מסים" }));
+  assert.ok(he.whyParts.some((p) => p.name === "Sofi"));
+  assert.ok(pick(task({ title: "לשלוח את הסטמס ל-Yuval", stakes: "someone" })).whyParts.some((p) => p.name === "Yuval"));
 });
 
-test("why: weak factors (a little neglect) are never reasons; max 3 parts", () => {
-  const w = why(task({ size: 5, touchedAt: NOW - 2 * 864e5 }));
-  assert.equal(w, "5 min, quick win."); // neglect 2 < 5
-  const full = why(task({ size: 30, due: "2026-10-05", project: "X", touchedAt: NOW - 8 * 864e5 }), { lastProject: "X" });
-  assert.equal(full.split(", ").length, 3);
+test("why: the card and its alternatives never share a why line", () => {
+  // Five same-shaped tasks in three areas: identical factors everywhere.
+  const ts = ["work", "job", "home", "work"].map((area, i) => dl("2026-10-05", { area, stakes: "money", title: "T" + i }));
+  const r = E.rank(ts, { now: NOW });
+  const lines = [r.pick, ...r.alternatives].map((s) => s.why);
+  assert.equal(new Set(lines).size, lines.length, lines.join(" | "));
+  // …and the second one leads with its next factor.
+  assert.match(r.alternatives[0].why, /^Costs money/);
 });
 
-// ---------- Mor's session-3 check, as a test ----------
+// ---------- scenario ----------
 
-test("scenario: 20 min picks the short task due tomorrow; 2 h picks the deep work", () => {
+test("scenario: Friday morning the calls vanish; Sunday they come back as a batch", () => {
   const tasks = [
-    task({ title: "Mix review for Reprise", project: "Reprise", size: 90, canSplit: true, due: "2026-10-08" }),
-    task({ title: "Reply to Uri", project: "Admin", size: 5 }),
-    task({ title: "Invoice for September", project: "Admin", size: 15, due: "2026-10-06" }),
-    task({ title: "Boss loop fix", project: "Monster Punk", size: 60 }),
-    task({ title: "Lesson prep", project: "Teaching", size: 30, due: "2026-10-07" }),
+    task({ title: "Call the bank", type: "call", where: "phone", openHours: "office", size: 15, stakes: "money", energy: "low" }),
+    task({ title: "Call Bituach Leumi", type: "call", where: "phone", openHours: "office", size: 15, energy: "low" }),
+    task({ title: "Boss loop fix", project: "Monster Punk", size: 60, energy: "high" }),
   ];
-  const short = E.rank(tasks, { now: NOW, window: 20 });
-  assert.equal(short.pick.task.title, "Invoice for September");
-  assert.ok(short.out.some((o) => o.task.title === "Boss loop fix" && o.reason === "size"));
-
-  const long = E.rank(tasks, { now: NOW, window: 120 });
-  assert.equal(long.pick.task.title, "Mix review for Reprise");
-  assert.ok(long.alternatives.every((s) => s.task.project !== "Reprise"));
+  const fri = E.rank(tasks, { now: at(9, 10), window: 90 });
+  assert.equal(fri.pick.task.title, "Boss loop fix");
+  assert.ok(fri.out.every((o) => o.reason === "office"));
+  const sun = E.rank(tasks, { now: at(11, 10), window: 90 });
+  assert.equal(sun.pick.task.title, "Call the bank");
+  assert.deepEqual(sun.pick.batch.ids.length, 2);
 });

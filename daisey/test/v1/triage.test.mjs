@@ -78,7 +78,7 @@ test("engine: someday and dropped never reach the card; a passed target isn't ov
   const r = E.rank([task({ status: "someday" }), task({ status: "dropped" })], { now: NOW });
   assert.equal(r.pick, null);
   const late = E.rank([tg("2026-10-01")], { now: NOW }).pick;
-  assert.notEqual(late.details.urgency.overdue, true);
-  assert.equal(late.details.urgency.days, 0);
-  assert.equal(E.rank([dl("2026-10-01")], { now: NOW }).pick.details.urgency.overdue, true);
+  assert.equal(late.parts.deadline, 0);
+  assert.equal(late.details.target.days, 0);
+  assert.equal(E.rank([dl("2026-10-01")], { now: NOW }).pick.details.deadline.passed, true);
 });

@@ -10,14 +10,15 @@
 // alternatives, tap one to make it the card. Start → focus mode (focus.js):
 // the run lives in Firestore, so this tab, a reload and the phone all show
 // the same timer.
-import { watchTasks, watchRun, watchSkips, saveSkips, startRun, extendRun, endRun, skipNow, blockTask, restoreTask, watchSettings, saveSettings } from "./store.js";
+import { watchTasks, watchRun, watchSkips, saveSkips, startRun, extendRun, endRun, skipNow, blockTask, restoreTask, watchSettings, saveSettings, watchMoment, saveMoment, watchLearn, bumpLearn } from "./store.js";
+import { energyNow, placeNow } from "./context.js";
 import { shouldOffer, sweepList } from "./triage.js";
 import { focusView, handoffView, elapsedMinutes } from "./focus.js";
 import { watchCalendar } from "./calendar.js";
 import { LATER_MINUTES } from "./weights.js";
-import { rank, freeWindow, whySaid } from "./engine.js";
+import { rank, freeWindow, whySaid, timeBucket } from "./engine.js";
 import { localDate, skipSnapshot } from "./model.js";
-import { h, icon, bdi, pieces, sizeText, dur } from "./ui.js";
+import { h, icon, bdi, pieces, sizeText, dur, say } from "./ui.js";
 
 // Nothing sits above the card but the warnings below: the date and time are
 // in the top bar (main.js) and the day is in the Schedule panel.
@@ -38,6 +39,9 @@ const CAL_NOTE = {
 export function mountNow(root, uid, { onCard, onSweep } = {}){
   let tasks = null; // null until the first snapshot
   let settings = {}; // state/settings: when the sweep was last offered
+  let momentDoc = {}; // state/moment: energy and place corrections
+  let learnStats = {}; // state/learn: starts and skips per type and time of day
+  let ctxOpen = null; // "energy" | "place": the chip whose choices are showing
   let cal = { status: "loading", events: [] };
   let lastWindow, lastClock;
   let run = null; // the state/now doc while a task is running
@@ -80,14 +84,67 @@ export function mountNow(root, uid, { onCard, onSweep } = {}){
 
   // The card Daisey is proposing says its reasons in the first person; the
   // alternatives keep the plain why line, so only one voice is speaking.
+  // Names in the why line (projects, people, events) are their own <bdi>.
   function taskCard(s, main, ...extra){
-    const why = main ? whySaid(s) : s.why;
+    const why = main ? whySaid(s) : sentence(s.whyParts);
     return h("div", { className: "now-card" + (main ? " main" : "") },
+      main && contextLine(),
       h("div", { className: "now-meta" }, ...pieces(s.task.project, sizeText(s.task.size))),
       h("div", { className: "now-title", dir: "auto", textContent: s.task.title }),
       s.task.nextStep && h("p", { className: "now-next" }, "Next: ", bdi(s.task.nextStep)),
-      why && h("p", { className: "now-why", textContent: why }),
+      why && h("p", { className: "now-why" }, ...say(why)),
       ...extra);
+  }
+
+  // The engine's pieces as a plain sentence: capital first, full stop last.
+  function sentence(parts){
+    if (!parts?.length) return null;
+    const [first, ...rest] = parts;
+    return [typeof first === "string" ? first[0].toUpperCase() + first.slice(1) : first, ...rest, "."];
+  }
+
+  // Energy and place right now: the user's correction for 3 hours, else
+  // Daisey's guess from the time of day and the calendar (context.js).
+  function feel(){
+    const events = cal.status === "ok" ? cal.events : [];
+    return {
+      energy: energyNow({ correction: momentDoc.energy, history: momentDoc.history || [], events }),
+      place: placeNow({ correction: momentDoc.place, events }),
+    };
+  }
+
+  const PLACES = [["home", "Home"], ["out", "Out"], ["anywhere", "Anywhere"]];
+  const ENERGIES = [["low", "Low"], ["medium", "Medium"], ["high", "High"]];
+
+  // The card's context line: "45 min free · Home · energy medium (guess)".
+  // Place and energy are chips; tapping one shows its three choices, and a
+  // choice is a correction that holds for 3 hours on every device.
+  function contextLine(){
+    const f = feel(), fw = calendarNow();
+    const chip = (k, text, guessed) => h("button", { type: "button", className: "ctx-chip" + (guessed ? " guess" : ""),
+      ariaExpanded: String(ctxOpen === k), ariaLabel: `${k === "place" ? "Where you are" : "Your energy"}: ${text}${guessed ? ", Daisey's guess" : ""}. Change`,
+      onclick: () => { ctxOpen = ctxOpen === k ? null : k; render(); } }, text);
+    const choose = (k, value) => {
+      const at = Date.now();
+      const patch = k === "place" ? { place: { value, at } } : {
+        energy: { value, at },
+        // Every correction teaches the pattern for this time of day.
+        history: [...(momentDoc.history || []).slice(-49), { ...timeBucket(at), value }],
+      };
+      momentDoc = { ...momentDoc, ...patch };
+      ctxOpen = null;
+      render();
+      saveMoment(uid, patch).catch(fail);
+    };
+    const opts = ctxOpen && h("div", { className: "ctx-opts", role: "radiogroup", ariaLabel: ctxOpen === "place" ? "Where you are" : "Your energy" },
+      ...(ctxOpen === "place" ? PLACES : ENERGIES).map(([v, text]) => h("button", { type: "button", className: "chip", role: "radio",
+        ariaChecked: String(f[ctxOpen].value === v), textContent: text, onclick: () => choose(ctxOpen, v) })));
+    return h("div", { className: "ctx" },
+      h("div", { className: "ctx-line" },
+        fw && !fw.current && h("span", { textContent: `${dur(Math.min(fw.window, 180))}${fw.window >= 180 ? "+" : ""} free` }),
+        chip("place", PLACES.find(([v]) => v === f.place.value)[1], f.place.guessed),
+        chip("energy", `energy ${f.energy.value}${f.energy.guessed ? " (guess)" : ""}`, f.energy.guessed)),
+      opts);
   }
 
   // The calendar's answer to "what now": the event that's running, when it
@@ -136,7 +193,7 @@ export function mountNow(root, uid, { onCard, onSweep } = {}){
     }, state);
   }
 
-  const begin = (task) => { handoff = null; reset(); run = { taskId: task.id, startedAt: Date.now(), extra: 0 }; render(); startRun(uid, task).catch(fail); };
+  const begin = (task) => { bumpLearn(uid, task.type, timeBucket().part, "starts").catch(fail); handoff = null; reset(); run = { taskId: task.id, startedAt: Date.now(), extra: 0 }; render(); startRun(uid, task).catch(fail); };
 
   // Later and Pending both move the card on: it slides out, the next slides
   // in, and for 5 seconds a toast offers Undo. Nothing waits on the write.
@@ -154,7 +211,8 @@ export function mountNow(root, uid, { onCard, onSweep } = {}){
     if (el && motionOK()) { el.classList.add("out"); setTimeout(go, SLIDE_MS); } else go();
   }
 
-  const later = (task) => stepAside(task, { label: `Later (${dur(LATER_MINUTES)}): `, write: () => skipNow(uid, task) });
+  const later = (task) => stepAside(task, { label: `Later (${dur(LATER_MINUTES)}): `,
+    write: () => Promise.all([skipNow(uid, task), bumpLearn(uid, task.type, timeBucket().part, "skips")]) });
   const pending = (task) => stepAside(task, { label: "Pending: ", write: () => blockTask(uid, task) });
 
   function setToast(t){
@@ -217,12 +275,21 @@ export function mountNow(root, uid, { onCard, onSweep } = {}){
     const worked = (tasks || []).filter((t) => t.touchedAt && (t.starts || t.doneAt || t.spentMinutes))
       .sort((a, b) => b.touchedAt - a.touchedAt);
     const lastToday = worked.find((t) => localDate(t.touchedAt) === today);
+    const f = feel();
+    // Tasks finished this week (from Sunday), per area: the area balance.
+    const week = new Date(now); week.setHours(0, 0, 0, 0); week.setDate(week.getDate() - week.getDay());
+    const areaDone = {};
+    for (const t of tasks || []) if (t.status === "done" && t.doneAt >= week.getTime() && t.area) areaDone[t.area] = (areaDone[t.area] || 0) + 1;
     return {
       ...(fw ? { window: fw.window, nextEvent: fw.next?.title ?? null } : { realWindow: false }),
       lastProject: lastToday?.project || null,
       recentProjects: worked.filter((t) => now - t.touchedAt < RECENT_DAYS * 864e5).map((t) => t.project),
       sessionSkips: hidden(now),
       skipsToday: skipCounts(),
+      energy: f.energy.value,
+      place: f.place.value,
+      areaDone,
+      learnStats,
     };
   }
 
@@ -269,6 +336,7 @@ export function mountNow(root, uid, { onCard, onSweep } = {}){
     if (!card && fw?.current) { fill(greet, meetingCard(fw.current), tip); return; }
     if (!card) {
       fill(greet, h("div", { className: "now-card main empty" },
+        r.empty === "nofit" && contextLine(), // nothing fits: maybe you're not where Daisey thinks
         h("p", { className: "now-empty", textContent: r.empty === "none"
           ? "No tasks yet. Add a few and Daisey will pick."
           : `Nothing fits the next ${dur(r.moment.window)}. Take the break.` }),
@@ -305,6 +373,8 @@ export function mountNow(root, uid, { onCard, onSweep } = {}){
     watchRun(uid, (r) => { run = r; if (r) handoff = null; render(); }, fail),
     watchSkips(uid, (s) => { skipDoc = s; render(); }, fail),
     watchSettings(uid, (s) => { settings = s || {}; render(); }, fail),
+    watchMoment(uid, (d) => { momentDoc = d || {}; render(); }, fail),
+    watchLearn(uid, (d) => { learnStats = d || {}; render(); }, fail),
   ];
   // The timer ticks every second while running; otherwise this only
   // re-renders when the free window's minute changes.

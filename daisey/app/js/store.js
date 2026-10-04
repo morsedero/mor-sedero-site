@@ -120,3 +120,28 @@ export function watchSettings(uid, cb, onError){
 export function saveSettings(uid, fields){
   return fb.setDoc(settingsDoc(uid), fields, { merge: true });
 }
+
+// The card's two chips, users/{uid}/state/moment:
+// { energy: { value, at }, place: { value, at }, history: [{ part, weekend, value }] }.
+// A correction holds 3 hours (context.js); history feeds the energy pattern.
+const momentDoc = (uid) => fb.doc(fb.db, "users", uid, "state", "moment");
+
+export function watchMoment(uid, cb, onError){
+  return fb.onSnapshot(momentDoc(uid), (snap) => cb(snap.exists() ? snap.data() : {}), onError);
+}
+
+export function saveMoment(uid, fields){
+  return fb.setDoc(momentDoc(uid), fields, { merge: true });
+}
+
+// Learned fit, users/{uid}/state/learn: { "<type>|<time of day>": { starts, skips } }.
+const learnDoc = (uid) => fb.doc(fb.db, "users", uid, "state", "learn");
+
+export function watchLearn(uid, cb, onError){
+  return fb.onSnapshot(learnDoc(uid), (snap) => cb(snap.exists() ? snap.data() : {}), onError);
+}
+
+// field: "starts" | "skips"
+export function bumpLearn(uid, type, part, field){
+  return fb.setDoc(learnDoc(uid), { [`${type || "deep"}|${part}`]: { [field]: fb.increment(1) } }, { merge: true });
+}

@@ -504,3 +504,16 @@ body.focus .shell { display: grid; min-block-size: 100dvh; align-content: center
 html:has(dialog[open]), html:has(dialog[open]) body { overflow: hidden; }
 html:has(dialog[open]) :is(.pane > *, .sch-day, .sch-strip, .tk-single, .tk-chips) { overflow: hidden !important; }
 dialog.now { overflow-y: auto; overscroll-behavior: contain; }
+
+/* The card's context line: free time · place chip · energy chip. */
+.ctx { display: grid; gap: 6px; margin-block-end: 4px; }
+.ctx-line { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 12px; color: var(--ink-2); }
+.ctx-line > span::after { content: " ·"; }
+.ctx-chip {
+  font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; min-block-size: 28px; padding-inline: 9px;
+  border-radius: 999px; border: 1px solid var(--line); background: var(--surface); color: var(--ink);
+}
+.ctx-chip.guess { border-style: dashed; color: var(--ink-2); background: transparent; }
+.ctx-chip[aria-expanded="true"] { border-color: var(--accent); }
+.ctx-opts { display: flex; flex-wrap: wrap; gap: 6px; }
+.ctx-opts .chip { min-block-size: 32px; font-size: 13px; padding-inline: 11px; }

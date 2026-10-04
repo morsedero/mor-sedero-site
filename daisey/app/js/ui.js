@@ -25,6 +25,11 @@ export const dur = durText;
 // so a Hebrew project never drags "5 min" around it or flips it to "min 5".
 export const bdi = (text) => h("bdi", { dir: "auto", textContent: text });
 
+// A why line from the engine: plain strings, and { name } for anything the
+// user typed — each name in its own <bdi>, so "keeps חתונה going" reads in
+// order in both directions.
+export const say = (pieces) => pieces.map((p) => (typeof p === "string" ? document.createTextNode(p) : bdi(p.name)));
+
 // Those pieces joined by " · ", each isolated: "חתונה · 5 min" stays that way.
 export const pieces = (...parts) => parts.filter(Boolean)
   .flatMap((p, i) => (i ? [document.createTextNode(" · "), bdi(p)] : [bdi(p)]));

@@ -56,6 +56,9 @@ function shape(e, colors, cal) {
     end: e.end?.dateTime || e.end?.date || null,
     allDay,
     busy: isBusy(e),
+    // Where it happens: an event with a place means you are Out (the Now
+    // card's place guess).
+    location: e.location || null,
     // The colour the user sees in Google Calendar: the event's own if it has
     // one, otherwise the calendar's.
     color: (e.colorId && colors?.event?.[e.colorId]?.background) || cal.color || null,

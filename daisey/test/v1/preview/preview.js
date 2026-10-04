@@ -36,6 +36,14 @@ const SCENARIOS = {
     { title: "Send CV to Ubisoft", project: "Job search", size: 30, over: { status: "done", doneAt: Date.now() } },
     { title: "Pay water bill", project: "Home", size: 15, over: { status: "done", doneAt: Date.now() } },
   ] },
+  // Mixed directions inside one line: Hebrew task in an English project
+  // and the reverse, with names (project, person) inside the why line.
+  mixed: { tasks: [
+    { title: "לשלוח את הסטמס ל-Yuval", project: "Reprise", size: 15, stakes: "someone", over: { starts: 1, touchedAt: Date.now() } },
+    { title: "Send the playlist to Sofi", project: "חתונה", size: 15, due: day(0), dateKind: "deadline", over: { starts: 1, touchedAt: Date.now() - 864e5 } },
+    { title: "Book the DJ", project: "חתונה", size: 15, type: "admin" },
+    { title: "לבחור שירים לחופה", project: "חתונה", size: 30, type: "deep", energy: "medium" },
+  ] },
   bidi: { tasks: [
     { title: "להזמין צלם", project: "Wedding", size: 5, due: day(0) },
     { title: "Book the DJ", project: "חתונה", size: 15, due: day(1) },

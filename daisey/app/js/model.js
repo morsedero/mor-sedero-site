@@ -228,7 +228,7 @@ export function guessStakes(title){
   const toks = tokens(title);
   if (anyOf(toks, PENALTY_WORDS)) return "penalty";
   if (anyOf(toks, MONEY_WORDS)) return "money";
-  if (anyOf(toks, SOMEONE_WORDS) || anyOf(toks, FAMILY_WORDS) || /\b(?:to|for)\s+\p{Lu}/u.test(String(title))) return "someone";
+  if (anyOf(toks, SOMEONE_WORDS) || anyOf(toks, FAMILY_WORDS) || /(?:\b(?:to|for)\s+|ל-?)\p{Lu}/u.test(String(title))) return "someone";
   return "low";
 }
 
