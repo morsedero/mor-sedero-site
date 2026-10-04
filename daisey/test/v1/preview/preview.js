@@ -44,6 +44,13 @@ const SCENARIOS = {
     { title: "Book the DJ", project: "חתונה", size: 15, type: "admin" },
     { title: "לבחור שירים לחופה", project: "חתונה", size: 30, type: "deep", energy: "medium" },
   ] },
+  // Three quick admin tasks that fit an hour together: the batch offer.
+  batch: { tasks: [
+    { title: "Send invoice to Uri", project: "Admin", size: 15, type: "admin", stakes: "money" },
+    { title: "Reply to the venue", project: "Reprise", size: 5, type: "admin" },
+    { title: "Renew the domain", project: "Admin", size: 15, type: "admin" },
+    { title: "Fix the boss loop", project: "Monster Punk", size: 60 },
+  ] },
   bidi: { tasks: [
     { title: "להזמין צלם", project: "Wedding", size: 5, due: day(0) },
     { title: "Book the DJ", project: "חתונה", size: 15, due: day(1) },

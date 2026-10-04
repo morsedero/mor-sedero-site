@@ -535,3 +535,12 @@ dialog.now { overflow-y: auto; overscroll-behavior: contain; }
 .now-proj { font: inherit; letter-spacing: inherit; text-transform: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; text-decoration: underline dotted; text-underline-offset: 3px; }
 .tk-tag.link { cursor: pointer; }
 .tk-tag.link:hover { border-color: var(--ink-2); }
+
+/* Batches: the offer on the card, and the checklist in focus mode. */
+.batch-preview { list-style: none; margin: 4px 0 6px; padding: 0; display: grid; gap: 2px; font-size: 15px; }
+.batch-preview li { overflow-wrap: anywhere; }
+.batch-list { list-style: none; margin: 18px 0; padding: 0; display: grid; gap: 6px; inline-size: min(100%, 420px); }
+.batch-item { font: inherit; font-size: 17px; display: flex; align-items: center; gap: 12px; inline-size: 100%; min-block-size: 52px; padding: 8px 14px;
+  border: 1px solid var(--line); border-radius: 14px; background: var(--surface); color: var(--ink); cursor: pointer; text-align: start; }
+.batch-item.done { opacity: .55; text-decoration: line-through; cursor: default; }
+.batch-item .tk-check { flex: none; }

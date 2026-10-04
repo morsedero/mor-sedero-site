@@ -12,6 +12,13 @@
 // startedAt rather than counted here.
 import { h, bdi, dur } from "./ui.js";
 
+const BATCH_NOUN = { call: ["call", "calls"], admin: ["admin bit", "admin bits"], errand: ["errand", "errands"] };
+// "3 calls", "1 errand".
+export const batchName = (type, n) => `${n} ${(BATCH_NOUN[type] || ["task", "tasks"])[n === 1 ? 0 : 1]}`;
+
+// Minutes since the last tick (or the start): what the next tick books.
+export const sinceMark = (run, now = Date.now()) => Math.max(0, (now - (run.mark ?? run.startedAt)) / 60000);
+
 export const elapsedMinutes = (run, now = Date.now()) => Math.max(0, (now - run.startedAt) / 60000);
 export const targetMinutes = (run, task) => (task?.size || 0) + (run.extra || 0);
 export const isOver = (run, task, now = Date.now()) => elapsedMinutes(run, now) > targetMinutes(run, task);
@@ -76,4 +83,26 @@ export function handoffView(doneTitle, next, { onStart, onSkip }){
       : h("div", { className: "focus-actions" },
         h("p", { className: "focus-ask", textContent: "Nothing else fits right now. Take the break." }),
         h("button", { className: "btn", type: "button", textContent: "Back", onclick: () => onSkip(null) })));
+}
+
+// A batch in focus mode: a checklist, one timer for the lot. Tick each as it
+// gets done; the last tick ends the batch. Stop leaves the unticked ones open.
+// tasks: the batch's tasks in order (missing ones already dropped).
+// Callers: onTick(task) · onStop().
+export function batchFocusView(run, tasks, type, { onTick, onStop }){
+  const mins = elapsedMinutes(run), done = new Set(run.done || []);
+  const total = tasks.reduce((s, t) => s + (t.size || 0), 0);
+  return h("div", { className: "focus" },
+    h("div", { className: "focus-title", textContent: batchName(type, tasks.length) + ", together" }),
+    h("div", { className: "focus-timer", role: "timer", ariaLabel: `${dur(Math.round(mins))} so far`, textContent: clock(mins) }),
+    h("div", { className: "focus-of", textContent: `of about ${dur(total)}` }),
+    h("ul", { className: "batch-list" }, ...tasks.map((t) => {
+      const ticked = done.has(t.id);
+      return h("li", {}, h("button", { type: "button", className: "batch-item" + (ticked ? " done" : ""), disabled: ticked,
+        ariaLabel: ticked ? `Done: ${t.title}` : `Mark done: ${t.title}`, onclick: () => onTick(t) },
+        h("span", { className: "tk-check" + (ticked ? " done" : ""), textContent: ticked ? "✓" : "" }), bdi(t.title)));
+    })),
+    h("div", { className: "focus-actions" },
+      h("button", { className: "btn quiet", type: "button", textContent: "Stop",
+        ariaLabel: "Stop the batch; the ones not ticked stay open", onclick: () => onStop() })));
 }

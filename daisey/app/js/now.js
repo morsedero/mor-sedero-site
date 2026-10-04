@@ -10,10 +10,10 @@
 // alternatives, tap one to make it the card. Start → focus mode (focus.js):
 // the run lives in Firestore, so this tab, a reload and the phone all show
 // the same timer.
-import { watchTasks, watchRun, watchSkips, saveSkips, startRun, extendRun, endRun, skipNow, blockTask, restoreTask, watchSettings, saveSettings, watchMoment, saveMoment, watchLearn, bumpLearn } from "./store.js";
+import { watchTasks, watchRun, watchSkips, saveSkips, startRun, extendRun, endRun, startBatch, tickBatch, endBatch, skipNow, blockTask, restoreTask, watchSettings, saveSettings, watchMoment, saveMoment, watchLearn, bumpLearn } from "./store.js";
 import { energyNow, placeNow } from "./context.js";
 import { shouldOffer, sweepList, pickWeekDay } from "./triage.js";
-import { focusView, handoffView, elapsedMinutes } from "./focus.js";
+import { focusView, handoffView, elapsedMinutes, batchFocusView, batchName, sinceMark } from "./focus.js";
 import { watchCalendar } from "./calendar.js";
 import { LATER_MINUTES, DRAIN } from "./weights.js";
 import { rank, freeWindow, whySaid, timeBucket, matchProject } from "./engine.js";
@@ -81,7 +81,7 @@ export function mountNow(root, uid, { onCard, onSweep, onProject } = {}){
     },
     get size(){ return hidden().length; },
   };
-  const reset = () => { state.chosen = null; state.showAlts = false; state.asking = false; state.laterAsk = false; state.pendAsk = false; state.pendText = ""; };
+  const reset = () => { state.chosen = null; state.showAlts = false; state.asking = false; state.laterAsk = false; state.pendAsk = false; state.pendText = ""; state.single = false; };
   let shown;
   const showing = (id) => { if (id !== shown) { shown = id; onCard?.(id); } };
 
@@ -177,7 +177,38 @@ export function mountNow(root, uid, { onCard, onSweep, onProject } = {}){
 
   // Focus mode and the handoff own the whole screen (body.focus hides the
   // tabs, the greeting and the + button).
+  // A batch: a checklist in focus mode. The last tick ends it and hands off
+  // like Done; Stop leaves the unticked ones open with their share of the time.
+  function renderBatch(){
+    const byId = new Map((tasks || []).map((t) => [t.id, t]));
+    const list = run.batch.map((id) => byId.get(id)).filter(Boolean);
+    const type = list[0]?.type;
+    showing(run.taskId);
+    return batchFocusView(run, list, type, {
+      onTick: (t) => {
+        const prev = run, minutes = sinceMark(run);
+        const done = [...(run.done || []), t.id];
+        const last = list.every((x) => done.includes(x.id));
+        if (last) {
+          handoff = { title: batchName(type, list.length), skip: prev.taskId };
+          tickBatch(uid, prev, t, minutes).then(() => endBatch(uid, [], 0)).catch(fail);
+          run = null;
+        } else {
+          run = { ...run, done, mark: Date.now() };
+          tickBatch(uid, prev, t, minutes).catch(fail);
+        }
+        render();
+      },
+      onStop: () => {
+        const left = list.filter((x) => !(run.done || []).includes(x.id));
+        endBatch(uid, left, sinceMark(run)).catch(fail);
+        run = null; render();
+      },
+    });
+  }
+
   function renderFocus(){
+    if (run.batch) return renderBatch();
     const task = tasks?.find((t) => t.id === run.taskId) || null;
     showing(run.taskId);
     return focusView(run, task, {
@@ -202,6 +233,36 @@ export function mountNow(root, uid, { onCard, onSweep, onProject } = {}){
   }
 
   const begin = (task) => { bumpLearn(uid, task.type, timeBucket().part, "starts").catch(fail); handoff = null; reset(); run = { taskId: task.id, startedAt: Date.now(), extra: 0 }; render(); startRun(uid, task).catch(fail); };
+
+  const beginBatch = (list) => {
+    bumpLearn(uid, list[0].type, timeBucket().part, "starts").catch(fail);
+    handoff = null; reset();
+    const now = Date.now();
+    run = { taskId: list[0].id, batch: list.map((t) => t.id), done: [], mark: now, startedAt: now, extra: 0 };
+    render();
+    startBatch(uid, list).catch(fail);
+  };
+
+  // The batch offer (DAISEY_SPEC "Batches"): when the pick earned the batch
+  // bonus, the card offers the whole batch — "Offices are open: 3 calls,
+  // ~20 min. Together?" — with the list. Start all runs it as a checklist;
+  // Just one falls back to the single task, with its usual actions.
+  function batchCard(r, b){
+    const list = r.ranked.filter((s) => b.ids.includes(s.task.id)).map((s) => s.task);
+    const name = batchName(b.type, list.length);
+    const office = r.moment.officeOpen && list.some((t) => t.openHours === "office");
+    return h("div", { className: "now-card main batch" },
+      contextLine(),
+      h("div", { className: "now-meta", textContent: `Batch · ~${dur(b.minutes)}` }),
+      h("div", { className: "now-title", textContent: name }),
+      h("p", { className: "now-why", textContent: `${office ? "Offices are open: " : ""}${name}, ~${dur(b.minutes)}. Together?` }),
+      h("ul", { className: "batch-preview" }, ...list.map((t) => h("li", {}, bdi(t.title), h("span", { className: "muted", textContent: ` · ${dur(t.size)}` })))),
+      h("button", { className: "btn primary start", type: "button", textContent: "Start all",
+        ariaLabel: `Start all ${list.length} as one checklist`, onclick: () => beginBatch(list) }),
+      h("div", { className: "now-actions" },
+        h("button", { className: "btn quiet", type: "button", textContent: "Just one",
+          ariaLabel: `Just one: show only ${list[0].title}`, onclick: () => { state.single = true; render(); } })));
+  }
 
   // Later and Pending both move the card on: it slides out, the next slides
   // in, and for 5 seconds a toast offers Undo. Nothing waits on the write.
@@ -414,6 +475,7 @@ export function mountNow(root, uid, { onCard, onSweep, onProject } = {}){
       return;
     }
 
+    if (card === r.pick && r.pick.batch && !state.chosen && !state.single) { fill(greet, batchCard(r, r.pick.batch), tip); return; }
     const alts = r.ranked.length > 1 ? [r.pick, ...r.alternatives].filter((s) => s !== card).slice(0, 3) : [];
     // Start is the one loud thing on the tab; the other two stay quiet under it.
     fill(greet, taskCard(card, true,

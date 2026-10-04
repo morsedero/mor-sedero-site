@@ -99,6 +99,37 @@ export function startRun(uid, task){
   ]);
 }
 
+// A batch run (DAISEY_SPEC "Batches"): several calls / admin bits / errands
+// as one checklist. state/now gains batch (ids, in order), done (ids ticked)
+// and mark (when the last one was ticked): each tick books the minutes since
+// the mark to that task and finishes it.
+export function startBatch(uid, tasks){
+  const now = Date.now(), ids = tasks.map((t) => t.id);
+  return Promise.all([
+    fb.setDoc(runDoc(uid), { taskId: ids[0], batch: ids, done: [], mark: now, startedAt: now, extra: 0 }),
+    ...tasks.map((t) => fb.updateDoc(taskDoc(uid, t.id), startedTask(t))),
+  ]);
+}
+
+export function tickBatch(uid, run, task, minutes){
+  const now = Date.now();
+  return Promise.all([
+    fb.setDoc(runDoc(uid), { ...run, done: [...(run.done || []), task.id], mark: now }),
+    fb.updateDoc(taskDoc(uid, task.id), workedTask(task, minutes, { finished: true })),
+  ]);
+}
+
+// Ends a batch. The minutes since the last tick are shared by the ones left
+// unticked; they stay open, and it isn't counted as a stop — a batch ending
+// early is the batch's doing, not a sign any one task is too big.
+export function endBatch(uid, left, minutes){
+  const each = left.length ? Math.round(minutes / left.length) : 0;
+  return Promise.all([
+    fb.deleteDoc(runDoc(uid)),
+    ...left.map((t) => fb.updateDoc(taskDoc(uid, t.id), { spentMinutes: (t.spentMinutes || 0) + each, touchedAt: Date.now() })),
+  ]);
+}
+
 export function extendRun(uid, run, minutes){
   return fb.setDoc(runDoc(uid), { ...run, extra: (run.extra || 0) + minutes });
 }
