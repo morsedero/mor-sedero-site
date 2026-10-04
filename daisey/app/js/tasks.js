@@ -22,6 +22,8 @@ import { h, bdi, pieces, sizeText, flash } from "./ui.js";
 
 const shortDate = (s) => new Date(`${s}T12:00`).toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" });
 const DRAG = 0.6; // how far the chip row moves per pixel of pointer — under 1 = heavier
+const FLING_DECAY = 0.93; // what's left of the glide's speed each frame after release
+const FLING_STOP = 0.4; // px a frame, below which the glide is over and the row settles
 const dayFrom = (n) => { const d = new Date(); d.setDate(d.getDate() + n); return localDate(d.getTime()); };
 
 // Which section of the List view a task falls in. Waiting outranks a date:
@@ -129,9 +131,15 @@ export function mountTasks(root, uid, { onAdd, onOpen } = {}){
       chip(null, "All", open.length),
       ...names.map((n) => chip(n, n, open.filter((t) => t.project === n).length)));
 
-    // Touch is left to the browser — it already scrolls this, with momentum.
-    // The pointer handlers are for the mouse, and the capture-phase click
-    // swallows the one that would otherwise fire on the chip a drag ended on.
+    // Touch is left to the browser — it already scrolls this, with momentum
+    // and its own snapping. The handlers below are the mouse's version of the
+    // same feel (Mor: "let me slide it, only when releasing snap it, and with
+    // a drag, so it will feel smooth"):
+    //
+    //   while the pointer is down  the row follows it freely, snapping OFF,
+    //                              so nothing tugs at it mid-drag
+    //   on release                 it keeps going and slows down (FLING_DECAY)
+    //   when it stops              the nearest chip settles flush
     //
     // The pointer is captured only ONCE A DRAG STARTS, never on the press.
     // Capturing on pointerdown retargets the click to the row, so every chip
@@ -139,10 +147,46 @@ export function mountTasks(root, uid, { onAdd, onOpen } = {}){
     //
     // DRAG is the weight: the row moves that fraction of the pointer, so it
     // takes a deliberate pull rather than flying off on a twitch.
-    let from = null, dragged = false;
+    let from = null, dragged = false, speed = 0, last = null, glide = 0;
+
+    const stopGlide = () => { cancelAnimationFrame(glide); glide = 0; };
+
+    // Which chip is nearest the row's own start edge — measured from the
+    // rectangles, so it reads the same in Hebrew, where scrollLeft is
+    // negative and the start edge is the right one.
+    function settle(){
+      const rtl = getComputedStyle(row).direction === "rtl";
+      const edge = (el) => { const r = el.getBoundingClientRect(); return rtl ? r.right : r.left; };
+      const here = edge(row);
+      // null, not 0, for "none yet": a chip already flush measures 0, and 0
+      // read as unset let the chip after it win and yank the row backwards.
+      let shortest = null;
+      for (const c of row.children) {
+        const d = edge(c) - here;
+        if (shortest === null || Math.abs(d) < Math.abs(shortest)) shortest = d;
+      }
+      if (shortest && Math.abs(shortest) > 1) row.scrollBy({ left: shortest, behavior: "smooth" });
+    }
+
+    // speed is px per frame, carried over from the pointer's last movement.
+    function fling(){
+      const step = () => {
+        speed *= FLING_DECAY;
+        if (Math.abs(speed) < FLING_STOP) { glide = 0; settle(); return; }
+        const was = row.scrollLeft;
+        row.scrollLeft += speed;
+        if (row.scrollLeft === was) { glide = 0; settle(); return; } // hit an end
+        glide = requestAnimationFrame(step);
+      };
+      glide = requestAnimationFrame(step);
+    }
+
     row.addEventListener("pointerdown", (e) => {
       if (e.pointerType === "touch" || e.button !== 0) return;
+      stopGlide();
       from = { x: e.clientX, at: row.scrollLeft, id: e.pointerId };
+      last = { x: e.clientX, t: e.timeStamp };
+      speed = 0;
       dragged = false;
     });
     row.addEventListener("pointermove", (e) => {
@@ -153,13 +197,20 @@ export function mountTasks(root, uid, { onAdd, onOpen } = {}){
         row.classList.add("dragging");
         try { row.setPointerCapture(from.id); } catch { /* the press already ended */ }
       }
-      if (dragged) row.scrollLeft = from.at - dx * DRAG;
+      if (!dragged) return;
+      row.scrollLeft = from.at - dx * DRAG;
+      // Smoothed, so one stuttering frame at the end doesn't decide the throw.
+      const ms = Math.max(1, e.timeStamp - last.t);
+      speed = 0.7 * (-(e.clientX - last.x) * DRAG * 16 / ms) + 0.3 * speed;
+      last = { x: e.clientX, t: e.timeStamp };
     });
     const letGo = (e) => {
       if (!from) return;
       from = null;
       row.classList.remove("dragging");
       try { row.releasePointerCapture(e.pointerId); } catch { /* already gone */ }
+      if (!dragged) return;
+      Math.abs(speed) > FLING_STOP ? fling() : settle();
     };
     row.addEventListener("pointerup", letGo);
     row.addEventListener("pointercancel", letGo);
@@ -169,6 +220,17 @@ export function mountTasks(root, uid, { onAdd, onOpen } = {}){
       e.preventDefault();
       e.stopPropagation();
     }, true);
+    // Settling is this file's job, not the stylesheet's. CSS scroll-snap was
+    // tried first and fought back: with proximity snap on, Chrome remembers
+    // the element it last snapped to and re-aligns to THAT when the property
+    // comes back, so a drag that settled correctly on one chip was dragged
+    // on to another a frame later (measured: 190 → 154 → 60).
+    // Here the browser scrolls freely and the row settles when it comes to
+    // rest — after a flick, after a swipe, after a wheel.
+    const atRest = () => { if (!from && !glide) settle(); };
+    if ("onscrollend" in row) row.addEventListener("scrollend", atRest);
+    else row.addEventListener("touchend", () => setTimeout(atRest, 400)); // no scrollend yet
+
     row.addEventListener("wheel", (e) => {
       const by = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
       if (!by) return;

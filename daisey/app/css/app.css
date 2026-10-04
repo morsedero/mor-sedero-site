@@ -374,14 +374,13 @@ body.focus .shell { display: grid; min-block-size: 100dvh; align-content: center
 .tk-chips {
   flex: 1; min-inline-size: 0; display: flex; gap: 6px; padding-block: 1px;
   overflow-x: auto; scrollbar-width: none; cursor: grab;
-  /* Proximity, not mandatory: a drag that lands near a chip's edge settles
-     flush, a drag that lands anywhere else is left where it was put. With
-     chips of every width, mandatory fights short drags. */
-  scroll-snap-type: x proximity;
+  /* No scroll-snap here on purpose: tasks.js settles the row itself when it
+     comes to rest. CSS snap re-aligned to the chip it last remembered the
+     moment the property came back, which undid that settling. */
 }
 .tk-chips::-webkit-scrollbar { display: none; }
 .tk-chips.dragging { cursor: grabbing; user-select: none; }
-.tk-chips > .chip { flex: none; scroll-snap-align: start; }
+.tk-chips > .chip { flex: none; }
 .tk-filters:empty { margin: 0; padding: 0; } /* one project: no bar, and no gap where it would be */
 .tk-filters::-webkit-scrollbar { display: none; }
 /* Grid children default to min-content width; without this the chip row's
