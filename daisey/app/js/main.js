@@ -139,7 +139,7 @@ async function boot(){
         m.importer = mountImport($("#importdlg"), user.uid);
         $("#importTrello").onclick = () => { setMenu(false); m.importer.open(); };
         m.tasks = mountTasks($("#tasksview"), user.uid,
-          { onAdd: (project) => m.adder.open(project), onOpen: (task) => m.adder.edit(task) });
+          { onAdd: (project) => m.adder.open(project), onOpen: (task) => m.adder.edit(task), onSweep: () => m.sweep.open() });
         m.now = mountNow($("#nowcard"), user.uid, { onCard: (id) => { onCard = id; m.tasks?.setCurrent(id); }, onSweep: () => m.sweep.open() });
         m.tasks.setCurrent(onCard);
         $("#add").onclick = () => m.adder.open();

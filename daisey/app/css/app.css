@@ -496,6 +496,7 @@ body.focus .shell { display: grid; min-block-size: 100dvh; align-content: center
 /* Someday: folded at the bottom of the list, out of the way. */
 .tk-someday { margin-block-start: 8px; }
 .tk-rolled { color: var(--ink-2); }
+.tk-sort { margin-inline-start: auto; margin-inline-end: 10px; font-size: 13px; font-weight: 600; letter-spacing: 0; text-transform: none; color: var(--ink); }
 
 /* A popup owns the screen: nothing behind it scrolls (Mor, 2026-10-04).
    The page and every scroller in it freeze while any dialog is open, and a

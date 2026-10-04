@@ -18,7 +18,7 @@
 // while it's on the card).
 import { watchTasks, finishTask, restoreTask } from "./store.js";
 import { INBOX, notYet, localDate } from "./model.js";
-import { isOverdue, isRolled } from "./triage.js";
+import { isOverdue, isRolled, sweepList } from "./triage.js";
 import { h, bdi, pieces, sizeText, flash } from "./ui.js";
 
 const shortDate = (s) => new Date(`${s}T12:00`).toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" });
@@ -48,7 +48,7 @@ const SECTIONS = [
   ["waiting", "Waiting"],
 ];
 
-export function mountTasks(root, uid, { onAdd, onOpen } = {}){
+export function mountTasks(root, uid, { onAdd, onOpen, onSweep } = {}){
   let tasks = null, onCard = null;
   let project = null; // the List view's project filter; null = all
   let doneOpen = false; // the Completed fold
@@ -285,10 +285,16 @@ export function mountTasks(root, uid, { onAdd, onOpen } = {}){
     const groups = new Map([...SECTIONS.map(([k]) => [k, []]), ["someday", []]]);
     for (const t of shown) groups.get(bucketOf(t, today, weekEnd)).push(t);
 
+    // "Sort old dates" opens the sweep any time (Mor, 2026-10-04), not only
+    // when the Now tab offers it: on the Overdue heading, or on Today's when
+    // only passed targets are left.
+    const sortAt = !sweepList(open).length ? null : groups.get("overdue").length ? "overdue" : "today";
     const sections = SECTIONS.filter(([k]) => groups.get(k).length).map(([k, label]) => {
       const items = groups.get(k).sort(order);
       return h("section", { className: "tk-sec" + (k === "waiting" ? " quiet" : ""), ariaLabel: label },
-        h("h3", { className: "tk-sec-h" }, h("span", { textContent: label }), h("span", { className: "muted", textContent: String(items.length) })),
+        h("h3", { className: "tk-sec-h" }, h("span", { textContent: label }),
+          k === sortAt && h("button", { className: "linkish tk-sort", type: "button", textContent: "Sort old dates", onclick: () => onSweep?.() }),
+          h("span", { className: "muted", textContent: String(items.length) })),
         h("ul", { className: "tk-list" }, ...items.map((t) => row(t, { withProject: !project }))));
     });
 
