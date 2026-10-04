@@ -104,13 +104,16 @@ export function mountTasks(root, uid, { onAdd, onOpen } = {}){
   // grid area, which is exactly its own height. One project means nothing to
   // filter, so there's no bar at all.
   //
-  // One row that slides (Mor, 2026-10-04, after seeing it wrap). Wrapping
-  // ate the list's height; a bare sideways scroller hid projects behind a
-  // gesture nothing announced, which is what the screenshot of a chip cut off
-  // at the edge was about. So: still one row, still scrolling, but with a
-  // chevron at each end that slides it — the hidden chips are visibly
-  // reachable, and on a tap they come to you. The chevrons appear only when
-  // there is something past the edge, and each greys out at its end.
+  // One row that slides (Mor, 2026-10-04, through three goes at it). Wrapping
+  // ate the list's height; a plain scroller was unreachable on a desktop,
+  // where there is no finger to swipe with; chevrons answered that and were
+  // clutter. So the row is dragged: a finger scrolls it as any scroller
+  // scrolls, and a mouse drags it, which is the same gesture. A wheel over it
+  // works too, either axis.
+  //
+  // Where it is slid to SURVIVES a redraw (fill), so choosing a project three
+  // chips along doesn't snap the row back to the start with the chosen chip
+  // off screen.
   function filterBar(open){
     const names = [...new Set(open.map((t) => t.project))].sort((a, b) => (b === INBOX) - (a === INBOX) || a.localeCompare(b));
     // Always the element, even with nothing in it: it holds the frame's first
@@ -125,28 +128,44 @@ export function mountTasks(root, uid, { onAdd, onOpen } = {}){
       chip(null, "All", open.length),
       ...names.map((n) => chip(n, n, open.filter((t) => t.project === n).length)));
 
-    // scrollLeft runs negative in RTL, so every reading is taken as a
-    // distance from the start and every slide in the row's own direction.
-    const slide = (sign) => {
-      const rtl = getComputedStyle(row).direction === "rtl";
-      row.scrollBy({ left: sign * (rtl ? -1 : 1) * Math.round(row.clientWidth * 0.7), behavior: "smooth" });
+    // Touch is left to the browser — it already scrolls this, with momentum.
+    // The pointer handlers are for the mouse, and the capture-phase click
+    // swallows the one that would otherwise fire on the chip a drag ended on.
+    let from = null, dragged = false;
+    row.addEventListener("pointerdown", (e) => {
+      if (e.pointerType === "touch" || e.button !== 0) return;
+      from = { x: e.clientX, at: row.scrollLeft };
+      dragged = false;
+      row.setPointerCapture(e.pointerId);
+    });
+    row.addEventListener("pointermove", (e) => {
+      if (!from) return;
+      const dx = e.clientX - from.x;
+      if (Math.abs(dx) > 3) { dragged = true; row.classList.add("dragging"); }
+      row.scrollLeft = from.at - dx;
+    });
+    const letGo = (e) => {
+      if (!from) return;
+      from = null;
+      row.classList.remove("dragging");
+      try { row.releasePointerCapture(e.pointerId); } catch { /* already gone */ }
     };
-    const step = (sign, label) => h("button", { type: "button", className: "tk-step", textContent: sign < 0 ? "‹" : "›",
-      ariaLabel: label, onclick: () => slide(sign) });
-    const prev = step(-1, "Projects before these");
-    const next = step(1, "More projects");
+    row.addEventListener("pointerup", letGo);
+    row.addEventListener("pointercancel", letGo);
+    row.addEventListener("click", (e) => {
+      if (!dragged) return;
+      dragged = false;
+      e.preventDefault();
+      e.stopPropagation();
+    }, true);
+    row.addEventListener("wheel", (e) => {
+      const by = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
+      if (!by) return;
+      row.scrollLeft += by;
+      e.preventDefault();
+    }, { passive: false });
 
-    const bar = h("div", { className: "tk-filters" }, prev, row, next);
-    // Runs after the bar is in the document (fill), and on every slide.
-    bar.sync = () => {
-      const max = row.scrollWidth - row.clientWidth - 1;
-      const at = Math.abs(row.scrollLeft);
-      prev.hidden = next.hidden = max <= 0;
-      prev.disabled = at <= 0;
-      next.disabled = at >= max;
-    };
-    row.onscroll = bar.sync;
-    return bar;
+    return h("div", { className: "tk-filters" }, row);
   }
 
   function listView(open, done){
@@ -172,13 +191,16 @@ export function mountTasks(root, uid, { onAdd, onOpen } = {}){
 
   // ---------- frame ----------
 
-  // Keeps where you were scrolled through a redraw.
+  // Keeps where you were scrolled through a redraw — down the list, and
+  // along the chips (Mor: a chosen project shouldn't snap out of sight).
   function fill(...kids){
     const y = root.querySelector(".tk-single")?.scrollTop || 0;
+    const x = root.querySelector(".tk-chips")?.scrollLeft;
     root.replaceChildren(...kids.filter(Boolean));
-    const next = root.querySelector(".tk-single");
-    if (next) next.scrollTop = y;
-    root.querySelector(".tk-filters")?.sync?.(); // chevrons need the real widths
+    const list = root.querySelector(".tk-single");
+    if (list) list.scrollTop = y;
+    const chips = root.querySelector(".tk-chips");
+    if (chips && x != null) chips.scrollLeft = x;
   }
 
   function render(){
@@ -195,16 +217,10 @@ export function mountTasks(root, uid, { onAdd, onOpen } = {}){
   }
 
   const unsub = watchTasks(uid, (ts) => { tasks = ts; render(); }, fail);
-  // The view is mounted while the Schedule tab is in front, so the first
-  // render measures a pane of width 0 and would decide the chips fit. This
-  // asks again the moment it has a real size — on the tab opening, on a
-  // rotation, on any resize.
-  const ro = new ResizeObserver(() => root.querySelector(".tk-filters")?.sync?.());
-  ro.observe(root);
   render();
 
   return {
     setCurrent(id){ onCard = id; render(); },
-    unmount(){ unsub(); ro.disconnect(); root.replaceChildren(); },
+    unmount(){ unsub(); root.replaceChildren(); },
   };
 }
