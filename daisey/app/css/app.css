@@ -569,3 +569,11 @@ dialog.now { overflow-y: auto; overscroll-behavior: contain; }
 .sch-pencil.open .sch-open, .sch-pencil .sch-open:hover { opacity: 1; }
 .sch-dot.pencil { background: transparent; border: 1.5px dashed var(--ink-2); box-sizing: border-box; }
 .sch-cap { margin: 0 0 10px; font-size: 14px; display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: baseline; }
+
+/* Weekly goals: quiet progress in Tasks, and the steppers in their sheet. */
+.tk-goals { margin: 0 0 8px; font-size: 13px; }
+.int-list { display: grid; gap: 4px; margin-block-start: 10px; }
+.int-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-block-size: 44px; }
+.int-name { font-weight: 600; }
+.int-step { display: flex; align-items: center; gap: 8px; }
+.int-n { min-inline-size: 84px; text-align: center; font-size: 14px; color: var(--ink-2); }

@@ -36,6 +36,13 @@ const SCENARIOS = {
     { title: "Send CV to Ubisoft", project: "Job search", size: 30, over: { status: "done", doneAt: Date.now() } },
     { title: "Pay water bill", project: "Home", size: 15, over: { status: "done", doneAt: Date.now() } },
   ] },
+  // Weekly goals: job 3 a week (1 done), home 2 (2 done), admin unset.
+  goals: { settings: { deadlinesAsked: true, intents: { job: 3, home: 2 } }, tasks: [
+    { title: "Update the CV", project: "Job search", size: 60, area: "job", over: { status: "done", doneAt: Date.now() } },
+    { title: "Fold laundry", project: "Home", size: 30, area: "home", over: { status: "done", doneAt: Date.now() } },
+    { title: "Fix the washer", project: "Home", size: 30, area: "home", over: { status: "done", doneAt: Date.now() } },
+    { title: "Send the portfolio", project: "Job search", size: 30, area: "job" },
+  ] },
   // Mixed directions inside one line: Hebrew task in an English project
   // and the reverse, with names (project, person) inside the why line.
   mixed: { tasks: [

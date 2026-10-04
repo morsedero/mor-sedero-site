@@ -16,7 +16,7 @@
 // meeting in). Daisey still never schedules anything ITSELF; what it writes
 // is what the user typed.
 import { watchCalendar, moveEvent, moveEventTo, deleteEvent, renameEvent, acceptBlock } from "./calendar.js";
-import { watchTasks, watchMoment, watchLearn, watchPencil, savePencil } from "./store.js";
+import { watchTasks, watchMoment, watchLearn, watchPencil, watchSettings, savePencil } from "./store.js";
 import { sketch, capacity, blockStart } from "./pencil.js";
 import { workBase } from "./context.js";
 import { ROOM_HOURS } from "./weights.js";
@@ -79,7 +79,7 @@ function dayRows(events, now, from, until = null){
 // uid: the signed-in user. onSweep(ids) opens the sweep on those tasks.
 export function mountSchedule(root, { onAdd, uid, onSweep } = {}){
   let cal = { status: "loading", events: [] };
-  let tasks = null, momentDoc = {}, learnStats = {}, pencilDoc = {};
+  let tasks = null, momentDoc = {}, learnStats = {}, pencilDoc = {}, settings = {};
   let currentId = null; // the task on the Now card: the current gap's pencil
   let openPencil = null; // the pencil whose actions are showing (its gap key)
   let offset = 0; // days from today
@@ -200,7 +200,7 @@ export function mountSchedule(root, { onAdd, uid, onSweep } = {}){
     const booked = cal.events.filter((e) => e.taskId && localDate(Date.parse(e.start)) === today).map((e) => e.taskId);
     const pd = todayPencil(now);
     return sketch(tasks, cal.events, { now, exclude: [...(pd.dismissed || []), ...booked], swaps: pd.swaps || {}, currentId,
-      base: { ...workBase(tasks, now), learnStats }, moment: momentDoc });
+      base: { ...workBase(tasks, now), learnStats, intents: settings.intents || {} }, moment: momentDoc });
   }
 
   function answer(p, kind){
@@ -343,6 +343,7 @@ export function mountSchedule(root, { onAdd, uid, onSweep } = {}){
       watchMoment(uid, (d) => { momentDoc = d || {}; render(); }, fail),
       watchLearn(uid, (d) => { learnStats = d || {}; render(); }, fail),
       watchPencil(uid, (d) => { pencilDoc = d || {}; render(); }, fail),
+      watchSettings(uid, (d) => { settings = d || {}; render(); }, fail),
     ] : []),
   ];
   // Keep "now", the greying of finished events and the gaps honest.

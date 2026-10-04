@@ -405,6 +405,7 @@ export function mountNow(root, uid, { onCard, onSweep, onProject } = {}){
       energy: f.energy.value,
       place: f.place.value,
       learnStats,
+      intents: settings.intents || {},
     };
   }
 

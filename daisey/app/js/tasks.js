@@ -16,8 +16,9 @@
 // The task on the Now card stays in place, marked "now", and still counts in
 // its project's total (Mor, 2026-10-03: it shouldn't vanish from the list
 // while it's on the card).
-import { watchTasks, finishTask, restoreTask } from "./store.js";
-import { INBOX, notYet, localDate } from "./model.js";
+import { watchTasks, finishTask, restoreTask, watchSettings } from "./store.js";
+import { weekProgress } from "./context.js";
+import { INBOX, LABELS, notYet, localDate } from "./model.js";
 import { isOverdue, isRolled, sweepList } from "./triage.js";
 import { h, bdi, pieces, sizeText, flash } from "./ui.js";
 
@@ -53,6 +54,7 @@ export function mountTasks(root, uid, { onAdd, onOpen, onSweep } = {}){
   let project = null; // the List view's project filter; null = all
   let doneOpen = false; // the Completed fold
   let somedayOpen = false; // the Someday fold
+  let intents = {}; // weekly goals (intents.js), for the progress line
   let reveal = 0; // a chip was just picked: tries left to slide it fully into view
   const showProject = (name) => { project = name; reveal = 1; render(); };
   const fail = (e) => console.error("[daisey] tasks", e);
@@ -357,16 +359,26 @@ export function mountTasks(root, uid, { onAdd, onOpen, onSweep } = {}){
     const open = tasks.filter((t) => t.status !== "done" && t.status !== "dropped");
     const done = tasks.filter((t) => t.status === "done");
     if (project && !open.some((t) => t.project === project)) project = null; // the filtered project emptied out
-    fill(filterBar(open), listView(open, done));
+    fill(goalsLine(), filterBar(open), listView(open, done));
+  }
+
+  // "Job search 1 of 3 · Home 2 of 2" — finished this week against each goal.
+  // Muted on purpose: no streaks, no red.
+  function goalsLine(){
+    const items = weekProgress(tasks || [], intents);
+    if (!items.length) return null;
+    return h("p", { className: "tk-goals muted" }, ...items.flatMap((it, i) => [
+      i ? " · " : "", `${LABELS.area[it.area]} ${Math.min(it.done, it.intent)} of ${it.intent}`]));
   }
 
   const unsub = watchTasks(uid, (ts) => { tasks = ts; render(); }, fail);
+  const unsubGoals = watchSettings(uid, (s) => { intents = s?.intents || {}; render(); }, fail);
   render();
 
   return {
     setCurrent(id){ onCard = id; render(); },
     // Filter to one project's tab (from the Now card's project name).
     showProject,
-    unmount(){ unsub(); root.replaceChildren(); },
+    unmount(){ unsub(); unsubGoals(); root.replaceChildren(); },
   };
 }
