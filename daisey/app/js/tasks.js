@@ -48,7 +48,7 @@ export function mountTasks(root, uid, { onAdd, onOpen } = {}){
   let tasks = null, onCard = null;
   let project = null; // the List view's project filter; null = all
   let doneOpen = false; // the Completed fold
-  let lastShown = null; // the project the chip row was last slid to show
+  let reveal = false; // a chip was just picked: slide it fully into view once
   const fail = (e) => console.error("[daisey] tasks", e);
 
   // Completing is the one thing that happens without the sheet, so it is the
@@ -125,7 +125,7 @@ export function mountTasks(root, uid, { onAdd, onOpen } = {}){
     // it has no height (.tk-filters:empty).
     if (names.length < 2) return h("div", { className: "tk-filters" });
     const chip = (name, label, count) => h("button", { type: "button", className: "chip", role: "radio",
-      ariaChecked: String(project === name), onclick: () => { project = name; render(); } },
+      ariaChecked: String(project === name), onclick: () => { project = name; reveal = true; render(); } },
       bdi(label), h("span", { className: "chip-n", textContent: String(count) }));
 
     const row = h("div", { className: "tk-chips", role: "radiogroup", ariaLabel: "Filter by project" },
@@ -275,14 +275,16 @@ export function mountTasks(root, uid, { onAdd, onOpen } = {}){
     if (list) list.scrollTop = y;
     const chips = root.querySelector(".tk-chips");
     if (chips && x != null) chips.scrollLeft = x;
-    // A chip you just picked shows its whole name (Mor): if the one that's
-    // now checked is cut off at either edge, the row slides it flush with the
-    // start. Flush, not merely "in view", so the settle that follows the
-    // scroll has nothing left to move and can't cut it again. Only when the
-    // choice changed — otherwise every passing re-render would yank the row
-    // back from wherever it had been dragged.
-    if (chips && project !== lastShown) {
-      lastShown = project;
+    // A chip you just picked shows its whole name (Mor): if it's clipped at
+    // either edge, the row slides it flush with the start. Flush rather than
+    // merely visible, so the settle that follows has nothing left to move and
+    // can't clip it again.
+    //
+    // Driven by the pick itself, not by the project CHANGING: picking "All"
+    // while already on All changes nothing, and that was the chip most often
+    // clipped off the start edge — the one case that looked broken.
+    if (chips && reveal) {
+      reveal = false;
       const chip = chips.querySelector('.chip[aria-checked="true"]');
       if (chip) {
         const rtl = getComputedStyle(chips).direction === "rtl";
