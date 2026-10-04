@@ -123,14 +123,15 @@ async function boot(){
     } else initial();
     show("signedin"); // no element of its own: just clears loading/sign-in views
 
-    Promise.all([import("./now.js"), import("./tasks.js"), import("./addtask.js"), import("./schedule.js"), import("./import-trello.js"), import("./addevent.js"), import("./store.js"), import("./deadlines.js")])
-      .then(([{ mountNow }, { mountTasks }, { mountAddTask }, { mountSchedule }, { mountImport }, { mountAddEvent }, { migrateTasks }, { mountDeadlines }]) => {
+    Promise.all([import("./now.js"), import("./tasks.js"), import("./addtask.js"), import("./schedule.js"), import("./import-trello.js"), import("./addevent.js"), import("./store.js"), import("./deadlines.js"), import("./sweep.js")])
+      .then(([{ mountNow }, { mountTasks }, { mountAddTask }, { mountSchedule }, { mountImport }, { mountAddEvent }, { migrateTasks }, { mountDeadlines }, { mountSweep }]) => {
         if (fb.currentUid() !== user.uid || mounted) return;
         const m = mounted = {};
         // Old tasks get the new fields first; then, once, which dates are real.
         const stopMigrate = migrateTasks(user.uid);
         m.migrate = { unmount: stopMigrate };
         m.deadlines = mountDeadlines($("#deadlinedlg"), user.uid);
+        m.sweep = mountSweep($("#sweepdlg"), user.uid);
         m.adder = mountAddTask($("#addtask"), user.uid, { onNow: (id) => m.now?.put(id) });
         // The Now card rides in the same scroller as the columns, first in line.
         m.event = mountAddEvent($("#eventdlg"));
@@ -139,7 +140,7 @@ async function boot(){
         $("#importTrello").onclick = () => { setMenu(false); m.importer.open(); };
         m.tasks = mountTasks($("#tasksview"), user.uid,
           { onAdd: (project) => m.adder.open(project), onOpen: (task) => m.adder.edit(task) });
-        m.now = mountNow($("#nowcard"), user.uid, { onCard: (id) => { onCard = id; m.tasks?.setCurrent(id); } });
+        m.now = mountNow($("#nowcard"), user.uid, { onCard: (id) => { onCard = id; m.tasks?.setCurrent(id); }, onSweep: () => m.sweep.open() });
         m.tasks.setCurrent(onCard);
         $("#add").onclick = () => m.adder.open();
         for (const s of SIGNED_IN) $(s).hidden = false;

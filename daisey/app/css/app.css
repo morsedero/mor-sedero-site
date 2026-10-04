@@ -472,3 +472,15 @@ body.focus .shell { display: grid; min-block-size: 100dvh; align-content: center
 /* The event form's first two rows aren't both full-width: only .wide is. */
 .ev-grid > :nth-child(-n+2):not(.wide) { grid-column: auto; }
 .ev-note { font-size: 13px; margin-block: 10px 0; }
+
+/* The sweep: one old date at a time. */
+.sw-count { margin: 0 0 6px; }
+.sw-task { display: grid; gap: 4px; padding: 14px; border-radius: 14px; border: 1px solid var(--line); background: var(--surface); margin-block-end: 14px; }
+.sw-answers { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.sw-last { margin-block: 12px 0; }
+.sw-done { font-size: 18px; font-weight: 700; }
+.btn.danger { color: var(--danger); }
+.offer { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; }
+/* Someday: folded at the bottom of the list, out of the way. */
+.tk-someday { margin-block-start: 8px; }
+.tk-rolled { color: var(--ink-2); }

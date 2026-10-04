@@ -16,7 +16,9 @@
 // - Waiting is set by acting on an existing task, never when adding one.
 
 export const SIZES = [5, 15, 30, 60, 90]; // guess buckets; 90 reads as "90+"
-export const STATUS = ["ready", "waiting", "done"];
+// someday: parked, never on the card until moved back. dropped: let go in the
+// sweep; kept (for learning) but shown nowhere.
+export const STATUS = ["ready", "waiting", "done", "someday", "dropped"];
 export const SKIP_REASONS = ["tired", "notime", "mood", "blocked"];
 export const INBOX = "Inbox";
 export const DEFAULT_SIZE = 30;

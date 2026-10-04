@@ -67,3 +67,11 @@ export const VARIETY_WITHIN = 15; // points; prefer another project if it scores
 // Why line
 export const WHY_PARTS = 3; // at most
 export const WHY_MIN_POINTS = 5; // a factor worth less than this isn't a reason
+
+// Overdue triage (DAISEY_SPEC "Overdue triage"). The sweep is offered when
+// MORE than this many deadlines, or targets, have passed — once a day.
+export const SWEEP = { deadlines: 3, targets: 5 };
+// "This week" in the sweep: the day with the most room, counted over these
+// waking hours, from tomorrow to the end of the week (Saturday, getDay 6).
+export const WEEK_END_DAY = 6;
+export const ROOM_HOURS = { start: 9, end: 22 };

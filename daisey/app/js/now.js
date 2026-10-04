@@ -10,7 +10,8 @@
 // alternatives, tap one to make it the card. Start → focus mode (focus.js):
 // the run lives in Firestore, so this tab, a reload and the phone all show
 // the same timer.
-import { watchTasks, watchRun, watchSkips, saveSkips, startRun, extendRun, endRun, skipNow, blockTask, restoreTask } from "./store.js";
+import { watchTasks, watchRun, watchSkips, saveSkips, startRun, extendRun, endRun, skipNow, blockTask, restoreTask, watchSettings, saveSettings } from "./store.js";
+import { shouldOffer, sweepList } from "./triage.js";
 import { focusView, handoffView, elapsedMinutes } from "./focus.js";
 import { watchCalendar } from "./calendar.js";
 import { LATER_MINUTES } from "./weights.js";
@@ -33,8 +34,10 @@ const CAL_NOTE = {
 
 // onCard(id | null) fires whenever the task on the card changes, so the task
 // list can set it aside while it's "physically" on the card.
-export function mountNow(root, uid, { onCard } = {}){
+// onSweep() opens the old-dates sweep (sweep.js).
+export function mountNow(root, uid, { onCard, onSweep } = {}){
   let tasks = null; // null until the first snapshot
+  let settings = {}; // state/settings: when the sweep was last offered
   let cal = { status: "loading", events: [] };
   let lastWindow, lastClock;
   let run = null; // the state/now doc while a task is running
@@ -245,7 +248,13 @@ export function mountNow(root, uid, { onCard } = {}){
       freeFrom && busy && h("p", { className: "muted" }, "Ignoring ", bdi(busy.title), " ",
         h("button", { className: "linkish", type: "button", textContent: "put it back",
           ariaLabel: `Stop ignoring ${busy.title}`, onclick: () => { freeFrom = null; render(); } })),
-      CAL_NOTE[cal.status] && h("p", { className: "muted" }, CAL_NOTE[cal.status] + " ", h("a", { href: "/daisey/", textContent: "Open old Daisey" })));
+      CAL_NOTE[cal.status] && h("p", { className: "muted" }, CAL_NOTE[cal.status] + " ", h("a", { href: "/daisey/", textContent: "Open old Daisey" })),
+      // Too many passed dates: one quiet line, at most once a day.
+      tasks && shouldOffer(tasks, Date.now(), settings) && h("p", { className: "muted offer" },
+        `${sweepList(tasks).length} old dates are piling up.`,
+        h("button", { className: "linkish", type: "button", textContent: "Sort them (2 min)", onclick: () => onSweep?.() }),
+        h("button", { className: "linkish", type: "button", textContent: "Not today",
+          onclick: () => { settings = { ...settings, sweepAnswered: localDate() }; render(); saveSettings(uid, { sweepAnswered: localDate() }).catch(fail); } })));
 
     if (tasks == null) { fill(greet, h("p", { className: "muted", textContent: "Loading tasks…" })); return; }
 
@@ -295,6 +304,7 @@ export function mountNow(root, uid, { onCard } = {}){
     watchCalendar((c) => { cal = c; render(); }),
     watchRun(uid, (r) => { run = r; if (r) handoff = null; render(); }, fail),
     watchSkips(uid, (s) => { skipDoc = s; render(); }, fail),
+    watchSettings(uid, (s) => { settings = s || {}; render(); }, fail),
   ];
   // The timer ticks every second while running; otherwise this only
   // re-renders when the free window's minute changes.

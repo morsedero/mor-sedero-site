@@ -134,6 +134,14 @@ export function mountAddTask(dialog, uid, { onNow } = {}){
   let armed = false; // Delete pressed once; the next press does it
   const doNow = h("button", { className: "btn", type: "button", textContent: "Do this now",
     onclick: () => { if (editing) { onNow?.(editing.id); dialog.close(); } } });
+  // Someday parks a task off the card; the same button brings it back.
+  const someday = h("button", { className: "btn", type: "button", onclick: () => {
+    if (!editing) return;
+    const back = editing.status === "someday";
+    updateTask(uid, editing, { status: back ? "ready" : "someday" }, tasks).catch((e) => console.error("[daisey] someday", e));
+    flash(back ? "Back from Someday: " : "Someday: ", editing.title);
+    dialog.close();
+  } });
   const del = h("button", { className: "btn quiet danger", type: "button", textContent: "Delete" });
   del.onclick = () => {
     if (!editing) return;
@@ -143,7 +151,7 @@ export function mountAddTask(dialog, uid, { onNow } = {}){
     removeTask(uid, gone.id).catch((e) => { console.error("[daisey] delete", e); flash("Couldn't delete ", gone.title); });
     flash("Deleted ", gone.title);
   };
-  const actions = h("div", { className: "sheet-actions" }, doNow, del);
+  const actions = h("div", { className: "sheet-actions" }, doNow, someday, del);
   const disarm = () => { armed = false; del.textContent = "Delete"; del.classList.remove("arm"); };
 
   form.onsubmit = (ev) => {
@@ -224,7 +232,9 @@ export function mountAddTask(dialog, uid, { onNow } = {}){
       submit.textContent = "Save";
       waitField.hidden = task.status === "done";
       actions.hidden = false;
-      doNow.hidden = task.status === "done";
+      doNow.hidden = task.status === "done" || task.status === "someday";
+      someday.hidden = task.status === "done";
+      someday.textContent = task.status === "someday" ? "Back from Someday" : "Someday";
       f.waitingOn.value = task.waitingOn || "";
       f.project.value = task.project === INBOX ? "" : task.project;
       f.title.value = task.title;

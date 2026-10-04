@@ -73,8 +73,9 @@ export function readMoment(input = {}){
 
 // Why a task can't be offered right now, or null if it can.
 export function filterOut(task, m){
-  if (task.status === "done") return "done";
+  if (task.status === "done" || task.status === "dropped") return "done";
   if (task.status === "waiting") return "waiting";
+  if (task.status === "someday") return "someday";
   if ((task.skipsSinceStart || 0) >= W.STALE_SKIPS) return "stale";
   if (notYet(task, m.now)) return "notyet";
   if (m.sessionSkips.has(task.id)) return "skipped";
@@ -123,9 +124,12 @@ export function isTight(task, now){
 
 function urgency(task, m){
   if (!task.due) return { points: W.URGENCY.none, detail: null };
-  const days = daysUntil(task.due, m.now);
-  const overdue = days < 0 || (days === 0 && !!task.dueTime && m.now >= dueAt(task));
-  const hard = overdue || isTight(task, m.now);
+  // A target is a wish: once passed it counts as due today, never overdue
+  // and never hard (triage.js). Only a deadline goes late.
+  const target = task.dateKind === "target";
+  const days = target ? Math.max(0, daysUntil(task.due, m.now)) : daysUntil(task.due, m.now);
+  const overdue = !target && (days < 0 || (days === 0 && !!task.dueTime && m.now >= dueAt(task)));
+  const hard = overdue || (!target && isTight(task, m.now));
   const detail = { days, overdue, hard };
   const u = W.URGENCY;
   const points = hard ? (days <= 0 ? u.hardToday : u.hardSoon)

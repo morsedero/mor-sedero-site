@@ -18,6 +18,7 @@
 // while it's on the card).
 import { watchTasks, finishTask, restoreTask } from "./store.js";
 import { INBOX, notYet, localDate } from "./model.js";
+import { isOverdue, isRolled } from "./triage.js";
 import { h, bdi, pieces, sizeText, flash } from "./ui.js";
 
 const shortDate = (s) => new Date(`${s}T12:00`).toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" });
@@ -27,12 +28,15 @@ const FLING_STOP = 0.4; // px a frame, below which the glide is over and the row
 const dayFrom = (n) => { const d = new Date(); d.setDate(d.getDate() + n); return localDate(d.getTime()); };
 
 // Which section of the List view a task falls in. Waiting outranks a date:
-// a task you can't act on isn't due today however its date reads.
+// a task you can't act on isn't due today however its date reads. Only a
+// deadline can be Overdue; a target that passed sits quietly under Today
+// (triage.js). Someday is its own fold at the bottom.
 function bucketOf(t, today, weekEnd){
+  if (t.status === "someday") return "someday";
   if (t.status === "waiting" || notYet(t)) return "waiting";
   if (!t.due) return "anytime";
-  if (t.due < today) return "overdue";
-  if (t.due === today) return "today";
+  if (isOverdue(t)) return "overdue";
+  if (t.due <= today) return "today";
   return t.due <= weekEnd ? "week" : "later";
 }
 const SECTIONS = [
@@ -48,6 +52,7 @@ export function mountTasks(root, uid, { onAdd, onOpen } = {}){
   let tasks = null, onCard = null;
   let project = null; // the List view's project filter; null = all
   let doneOpen = false; // the Completed fold
+  let somedayOpen = false; // the Someday fold
   let reveal = 0; // a chip was just picked: tries left to slide it fully into view
   const fail = (e) => console.error("[daisey] tasks", e);
 
@@ -71,7 +76,8 @@ export function mountTasks(root, uid, { onAdd, onOpen } = {}){
   function row(t, { withProject } = {}){
     const isNow = t.id === onCard;
     const meta = pieces(sizeText(t.size),
-      t.due && `${t.dateKind === "deadline" ? "deadline" : "by"} ${shortDate(t.due)}${t.dueTime ? " " + t.dueTime : ""}`,
+      t.due && (isRolled(t) ? `from ${shortDate(t.due)}`
+        : `${t.dateKind === "deadline" ? "deadline" : "by"} ${shortDate(t.due)}${t.dueTime ? " " + t.dueTime : ""}`),
       notYet(t) && `not before ${shortDate(t.notBefore)}`,
       t.status === "waiting" && `waiting${t.waitingOn ? " on " + t.waitingOn : ""}`);
     return h("li", { className: "tk-row" + (t.status === "waiting" || notYet(t) ? " waiting" : "") + (isNow ? " is-now" : "") },
@@ -274,7 +280,7 @@ export function mountTasks(root, uid, { onAdd, onOpen } = {}){
   function listView(open, done){
     const shown = project ? open.filter((t) => t.project === project) : open;
     const today = localDate(), weekEnd = dayFrom(7);
-    const groups = new Map(SECTIONS.map(([k]) => [k, []]));
+    const groups = new Map([...SECTIONS.map(([k]) => [k, []]), ["someday", []]]);
     for (const t of shown) groups.get(bucketOf(t, today, weekEnd)).push(t);
 
     const sections = SECTIONS.filter(([k]) => groups.get(k).length).map(([k, label]) => {
@@ -288,6 +294,8 @@ export function mountTasks(root, uid, { onAdd, onOpen } = {}){
       sections.length ? h("div", { className: "tk-secs" }, ...sections)
         : h("p", { className: "muted tk-note", textContent: project ? "Nothing open in this project." : "Nothing open. All done." }),
       h("button", { type: "button", className: "tk-add", textContent: "+ Add a task", onclick: () => onAdd?.(project ?? undefined) }),
+      groups.get("someday").length > 0 && h("div", { className: "tk-someday" }, fold(`Someday (${groups.get("someday").length})`,
+        groups.get("someday").sort(order).map((t) => row(t, { withProject: !project })), somedayOpen, (o) => { somedayOpen = o; })),
       done.length > 0 && fold(`Completed (${done.length})`, done.sort((a, b) => (b.doneAt || 0) - (a.doneAt || 0)).slice(0, 50).map(doneRow),
         doneOpen, (o) => { doneOpen = o; }));
   }
@@ -332,7 +340,8 @@ export function mountTasks(root, uid, { onAdd, onOpen } = {}){
         h("button", { className: "btn primary", type: "button", textContent: "+ Add task", onclick: () => onAdd?.() })));
       return;
     }
-    const open = tasks.filter((t) => t.status !== "done");
+    // Dropped tasks are kept for learning and shown nowhere.
+    const open = tasks.filter((t) => t.status !== "done" && t.status !== "dropped");
     const done = tasks.filter((t) => t.status === "done");
     if (project && !open.some((t) => t.project === project)) project = null; // the filtered project emptied out
     fill(filterBar(open), listView(open, done));

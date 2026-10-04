@@ -23,6 +23,17 @@ const SCENARIOS = {
     { title: "Fix the boss loop", project: "Monster Punk", size: 60, over: ago(6) },
     { title: "Lesson prep", project: "Teaching", size: 30, due: day(4) },
   ] },
+  // Passed dates: 4 deadlines (over the sweep's 3) and 2 targets.
+  old: { tasks: [
+    { title: "Submit grant report", project: "Admin", size: 60, due: day(-5), dateKind: "deadline" },
+    { title: "Pay arnona", project: "Home", size: 15, due: day(-3), dateKind: "deadline" },
+    { title: "להגיש טופס 106", project: "מסים", size: 30, due: day(-2), dateKind: "deadline" },
+    { title: "Call the bank", project: "Admin", size: 15, due: day(-1), dateKind: "deadline" },
+    { title: "Sketch boss theme", project: "Monster Punk", size: 90, due: day(-4) },
+    { title: "Tidy sample library", project: "Studio", size: 30, due: day(-6) },
+    { title: "Lesson prep", project: "Teaching", size: 30, due: day(2) },
+    { title: "Learn Wwise", project: "Job search", size: 60, over: { status: "someday" } },
+  ] },
   bidi: { tasks: [
     { title: "להזמין צלם", project: "Wedding", size: 5, due: day(0) },
     { title: "Book the DJ", project: "חתונה", size: 15, due: day(1) },
