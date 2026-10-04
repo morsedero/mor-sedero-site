@@ -23,21 +23,21 @@ const subs = new Set();
 let state = { status: "loading", events: [] };
 let timer = null, loading = null;
 
-async function fetchAgenda(){
+async function fetchAgenda(fresh = false){
   // From the start of today, so the panel can show what already happened, to
   // the end of the seventh day ahead — as far as the panel can step.
   const from = new Date(); from.setHours(0, 0, 0, 0);
   const end = new Date(); end.setDate(end.getDate() + 8); end.setHours(0, 0, 0, 0);
-  const q = new URLSearchParams({ from: from.toISOString(), to: end.toISOString() });
+  const q = new URLSearchParams({ from: from.toISOString(), to: end.toISOString(), ...(fresh ? { fresh: "1" } : {}) });
   const res = await fetch(`${URL_}?${q}`, { headers: { Authorization: `Bearer ${await idToken()}` } });
   const body = await res.json().catch(() => ({}));
   if (res.ok) return { status: "ok", events: body.events || [] };
   return { status: ["not_connected", "needs_reauth"].includes(body.error) ? body.error : "error", events: [] };
 }
 
-function load(){
-  if (loading) return loading; // a tab switch mid-fetch shouldn't start a second one
-  loading = fetchAgenda()
+function load(fresh = false){
+  if (loading && !fresh) return loading; // a tab switch mid-fetch shouldn't start a second one
+  loading = fetchAgenda(fresh)
     .then(publish)
     .catch((e) => {
       console.error("[daisey] calendar", e);
@@ -90,7 +90,7 @@ async function write(body){
   });
   const out = await res.json().catch(() => ({}));
   if (!res.ok) throw Object.assign(new Error(out.error || `http ${res.status}`), { code: out.error });
-  await load();
+  await load(body.calendarId === "daisey"); // a new "Daisey" calendar isn't in a cached list yet
   return out;
 }
 
@@ -126,4 +126,13 @@ export function createEvent({ title, date, at, minutes }){
   const start = new Date(y, m - 1, d, hh, mm, 0, 0);
   const end = new Date(start.getTime() + minutes * 60000);
   return write({ action: "create", calendarId: "primary", title, start: start.toISOString(), end: end.toISOString() });
+}
+
+// Accepting a pencil suggestion: a block on the user's separate "Daisey"
+// calendar (made on first use), carrying the task's id so the card can put
+// that task up while the block runs. Only ever called from the user's tap.
+export function acceptBlock({ task, start, end, title }){
+  return write({ action: "create", calendarId: "daisey", title: title || task.title, taskId: task.id,
+    start: new Date(start).toISOString(), end: new Date(end).toISOString(),
+    timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone });
 }

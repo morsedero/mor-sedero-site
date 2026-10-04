@@ -89,3 +89,6 @@ export const SWEEP = { deadlines: 3, targets: 5 };
 // waking hours, from tomorrow to the end of the week (Saturday, getDay 6).
 export const WEEK_END_DAY = 6;
 export const ROOM_HOURS = { start: 9, end: 22 };
+
+// Pencil schedule: a free gap this long or more gets a suggestion.
+export const PENCIL_MIN = 20;

@@ -9,6 +9,7 @@
 // a location runs or just after it; else Home.
 import * as W from "./weights.js";
 import { timeBucket } from "./engine.js";
+import { localDate } from "./model.js";
 
 const HOUR = 3600000, MIN = 60000;
 const fresh = (c, now) => !!c && W.ENERGY_LEVELS.concat(["home", "out", "anywhere"]).includes(c.value) && now - c.at < W.CORRECTION_HOURS * HOUR;
@@ -41,4 +42,24 @@ export function placeNow({ correction = null, events = [], now = Date.now() } = 
     return start <= now && now < end + W.OUT_AFTER_MINUTES * MIN;
   });
   return { value: out ? "out" : "home", guessed: true };
+}
+
+// What the engine needs from the task history, shared by the Now card and
+// the pencil schedule so the two can't disagree: momentum (the project
+// last worked on today, those worked on in the last 2 days) and the area
+// balance (tasks finished this week, from Sunday, per area). "Worked on"
+// means started, timed or finished — not merely added or edited, or every
+// project typed in today would count as momentum.
+export function workBase(tasks = [], now = Date.now()){
+  const today = localDate(now);
+  const worked = tasks.filter((t) => t.touchedAt && (t.starts || t.doneAt || t.spentMinutes))
+    .sort((a, b) => b.touchedAt - a.touchedAt);
+  const week = new Date(now); week.setHours(0, 0, 0, 0); week.setDate(week.getDate() - week.getDay());
+  const areaDone = {};
+  for (const t of tasks) if (t.status === "done" && t.doneAt >= week.getTime() && t.area) areaDone[t.area] = (areaDone[t.area] || 0) + 1;
+  return {
+    lastProject: worked.find((t) => localDate(t.touchedAt) === today)?.project || null,
+    recentProjects: worked.filter((t) => now - t.touchedAt < W.MOMENTUM.recentDays * 864e5).map((t) => t.project),
+    areaDone,
+  };
 }

@@ -11,7 +11,7 @@
 // the run lives in Firestore, so this tab, a reload and the phone all show
 // the same timer.
 import { watchTasks, watchRun, watchSkips, saveSkips, startRun, extendRun, endRun, startBatch, tickBatch, endBatch, skipNow, blockTask, restoreTask, watchSettings, saveSettings, watchMoment, saveMoment, watchLearn, bumpLearn } from "./store.js";
-import { energyNow, placeNow } from "./context.js";
+import { energyNow, placeNow, workBase } from "./context.js";
 import { shouldOffer, sweepList, pickWeekDay } from "./triage.js";
 import { focusView, handoffView, elapsedMinutes, batchFocusView, batchName, sinceMark } from "./focus.js";
 import { watchCalendar } from "./calendar.js";
@@ -23,7 +23,6 @@ import { h, icon, bdi, pieces, sizeText, dur, say } from "./ui.js";
 // Nothing sits above the card but the warnings below: the date and time are
 // in the top bar (main.js) and the day is in the Schedule panel.
 const LATER_MS = LATER_MINUTES * 60000;
-const RECENT_DAYS = 2;
 const UNDO_MS = 5000;
 const SLIDE_MS = 140; // matches the card-out animation in app.css
 const motionOK = () => !window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
@@ -149,7 +148,9 @@ export function mountNow(root, uid, { onCard, onSweep, onProject } = {}){
     return h("div", { className: "ctx" },
       h("div", { className: "ctx-line" },
         fw && !fw.current && h("span", { textContent: `${dur(Math.min(fw.window, 180))}${fw.window >= 180 ? "+" : ""} free` }),
-        block && h("span", { className: "ctx-block" }, "Working on ", bdi(block.project), ` until ${clock(block.end)}`),
+        block && (block.taskId
+          ? h("span", { className: "ctx-block", textContent: `Planned until ${clock(block.end)}` })
+          : h("span", { className: "ctx-block" }, "Working on ", bdi(block.project), ` until ${clock(block.end)}`)),
         chip("place", PLACES.find(([v]) => v === f.place.value)[1], f.place.guessed),
         chip("energy", `energy ${f.energy.value}${f.energy.guessed ? " (guess)" : ""}`, f.energy.guessed)),
       opts);
@@ -370,6 +371,10 @@ export function mountNow(root, uid, { onCard, onSweep, onProject } = {}){
   // keeps the meeting card.
   function blockOf(fw){
     if (!fw?.current) return null;
+    // A block accepted from the pencil schedule names its task: that task is
+    // the card while it runs (DAISEY_SPEC "Pencil schedule").
+    const planned = fw.current.taskId && (tasks || []).find((t) => t.id === fw.current.taskId && t.status !== "done" && t.status !== "dropped");
+    if (planned) return { project: planned.project, taskId: planned.id, title: planned.title, start: fw.current.start, end: fw.current.end };
     // A lesson or rehearsal is the thing itself, not time set aside for a
     // project — even when a project shares its name ("Teaching").
     const title = String(fw.current.title || "").toLowerCase();
@@ -387,30 +392,18 @@ export function mountNow(root, uid, { onCard, onSweep, onProject } = {}){
     : fw?.window);
 
   function momentInput(fw = calendarNow()){
-    const now = Date.now(), today = localDate(now);
-    // Worked on, not merely added or edited: otherwise every project you
-    // typed in today counts as momentum and the why line says "back to X"
-    // about everything.
-    const worked = (tasks || []).filter((t) => t.touchedAt && (t.starts || t.doneAt || t.spentMinutes))
-      .sort((a, b) => b.touchedAt - a.touchedAt);
-    const lastToday = worked.find((t) => localDate(t.touchedAt) === today);
+    const now = Date.now();
     const f = feel();
     const block = blockOf(fw);
-    // Tasks finished this week (from Sunday), per area: the area balance.
-    const week = new Date(now); week.setHours(0, 0, 0, 0); week.setDate(week.getDate() - week.getDay());
-    const areaDone = {};
-    for (const t of tasks || []) if (t.status === "done" && t.doneAt >= week.getTime() && t.area) areaDone[t.area] = (areaDone[t.area] || 0) + 1;
     return {
       ...(!fw ? { realWindow: false }
         : block ? { window: Math.floor((block.end - now) / 60000), blockProject: block.project }
         : { window: fw.window, nextEvent: fw.next?.title ?? null }),
-      lastProject: lastToday?.project || null,
-      recentProjects: worked.filter((t) => now - t.touchedAt < RECENT_DAYS * 864e5).map((t) => t.project),
+      ...workBase(tasks || [], now),
       sessionSkips: hidden(now),
       skipsToday: skipCounts(),
       energy: f.energy.value,
       place: f.place.value,
-      areaDone,
       learnStats,
     };
   }
@@ -448,7 +441,9 @@ export function mountNow(root, uid, { onCard, onSweep, onProject } = {}){
     if (tasks == null) { fill(greet, h("p", { className: "muted", textContent: "Loading tasks…" })); return; }
 
     const r = rank(tasks, momentInput(fw));
-    const card = (state.chosen && r.ranked.find((s) => s.task.id === state.chosen)) || r.pick;
+    const planned = blockOf(fw)?.taskId;
+    const card = (state.chosen && r.ranked.find((s) => s.task.id === state.chosen))
+      || (planned && r.ranked.find((s) => s.task.id === planned)) || r.pick;
     showing(card?.task.id ?? null);
     const tip = toast && toastView();
     // In a meeting, the meeting IS what's happening now, so the card says

@@ -59,6 +59,8 @@ function shape(e, colors, cal) {
     // Where it happens: an event with a place means you are Out (the Now
     // card's place guess).
     location: e.location || null,
+    // A block the user accepted from Daisey's pencil schedule names its task.
+    taskId: e.extendedProperties?.private?.daiseyTask || null,
     // The colour the user sees in Google Calendar: the event's own if it has
     // one, otherwise the calendar's.
     color: (e.colorId && colors?.event?.[e.colorId]?.background) || cal.color || null,
@@ -72,9 +74,13 @@ const gJson = async (url, accessToken) => {
 
 // Which calendars to read, and the palette their colours come from. Both
 // change about never, so one lookup per warm function instance is plenty.
-let cached = null;
-async function calendarsFor(accessToken) {
-  if (!cached) {
+// Kept 10 minutes, and skipped on ?fresh=1 — the client asks for that right
+// after accepting a pencil block, since the first one creates the "Daisey"
+// calendar, which a cached list wouldn't know.
+let cached = null, cachedAt = 0;
+const CACHE_MS = 10 * 60000;
+async function calendarsFor(accessToken, fresh = false) {
+  if (!cached || fresh || Date.now() - cachedAt > CACHE_MS) {
     const [colors, list] = await Promise.all([
       gJson("https://www.googleapis.com/calendar/v3/colors", accessToken),
       gJson("https://www.googleapis.com/calendar/v3/users/me/calendarList?minAccessRole=reader&maxResults=50", accessToken),
@@ -86,6 +92,7 @@ async function calendarsFor(accessToken) {
       .slice(0, MAX_CALENDARS)
       .map((c) => ({ id: c.id, color: c.backgroundColor || null, editable: ["owner", "writer"].includes(c.accessRole) }));
     cached = { colors, calendars: calendars.length ? calendars : [{ id: "primary", color: null, editable: true }] };
+    cachedAt = Date.now();
   }
   return cached;
 }
@@ -126,7 +133,7 @@ exports.handler = async (event) => {
   const accessToken = await getGoogleAccessToken(userId);
   if (!accessToken) return fail(409, "needs_reauth");
 
-  const { colors, calendars } = await calendarsFor(accessToken);
+  const { colors, calendars } = await calendarsFor(accessToken, q.fresh === "1");
   let events;
   try {
     const perCalendar = await Promise.all(calendars.map((c) => eventsFrom(c, from, to, accessToken, colors)));

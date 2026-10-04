@@ -562,3 +562,10 @@ dialog.now { overflow-y: auto; overscroll-behavior: contain; }
   border-color: var(--line); border-block-end-color: var(--card);
 }
 .tk-filters .chip:hover:not([aria-checked="true"]) { color: var(--ink); }
+
+/* Pencil: Daisey's suggestion for a free gap, faded and dashed — ink is the
+   calendar, pencil is a proposal you can take or leave. */
+.sch-pencil .sch-open { opacity: .62; font-style: italic; border: 1px dashed var(--line); border-radius: 10px; }
+.sch-pencil.open .sch-open, .sch-pencil .sch-open:hover { opacity: 1; }
+.sch-dot.pencil { background: transparent; border: 1.5px dashed var(--ink-2); box-sizing: border-box; }
+.sch-cap { margin: 0 0 10px; font-size: 14px; display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: baseline; }

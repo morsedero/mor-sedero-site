@@ -6,8 +6,14 @@
 // not the auto-scheduler the spec refuses to be: Daisey still never puts
 // anything on the calendar by itself, and still never writes a task there.
 //
+// Accepting a pencil suggestion (DAISEY_SPEC "Pencil schedule") is the one
+// write that starts with Daisey: still only on the user's tap, and always
+// into a separate "Daisey" calendar — calendarId "daisey" means that one,
+// created on first use — so its blocks are easy to hide or delete. The
+// event carries the task's id (extendedProperties.private.daiseyTask).
+//
 // POST { action: "move" | "delete" | "create" | "rename", calendarId, eventId?, start?,
-// end?, title? } with "Authorization: Bearer <Firebase ID token>". `start`
+// end?, title?, taskId? } with "Authorization: Bearer <Firebase ID token>". `start`
 // and `end` are ISO strings with an offset, and only timed events can move.
 //
 // Auth is the read endpoint's: the Firebase sign-in's Google `sub` maps to
@@ -61,12 +67,18 @@ exports.handler = async (event) => {
   const accessToken = await getGoogleAccessToken(userId);
   if (!accessToken) return fail(409, "needs_reauth");
 
-  const base = `${API}/${encodeURIComponent(calendarId)}/events`;
+  let calId = calendarId;
+  if (calId === "daisey") {
+    calId = await daiseyCalendar(accessToken, req.timeZone);
+    if (!calId) return fail(502, "google");
+  }
+  const base = `${API}/${encodeURIComponent(calId)}/events`;
   const url = action === "create" ? base : `${base}/${encodeURIComponent(eventId)}`;
   const headers = { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" };
   const times = { start: { dateTime: start }, end: { dateTime: end } };
   const res = action === "delete" ? await fetch(url, { method: "DELETE", headers })
-    : action === "create" ? await fetch(url, { method: "POST", headers, body: JSON.stringify({ summary: title, ...times }) })
+    : action === "create" ? await fetch(url, { method: "POST", headers, body: JSON.stringify({ summary: title, ...times,
+      ...(typeof req.taskId === "string" && req.taskId ? { description: "Planned with Daisey.", extendedProperties: { private: { daiseyTask: req.taskId.slice(0, 100) } } } : {}) }) })
     // PATCH, so nothing but the times (or the title) is touched — guests,
     // description and colour stay exactly as the user left them.
     : await fetch(url, { method: "PATCH", headers, body: JSON.stringify(action === "rename" ? { summary: title } : times) });
@@ -80,3 +92,19 @@ exports.handler = async (event) => {
   // doesn't need — it refetches the whole agenda so every view agrees.
   return reply(200, { ok: true });
 };
+
+// The user's own "Daisey" calendar: found by name among the calendars they
+// own, or created. Returns its id, or null if Google refused.
+async function daiseyCalendar(accessToken, timeZone){
+  const headers = { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" };
+  const list = await fetch("https://www.googleapis.com/calendar/v3/users/me/calendarList?minAccessRole=owner&maxResults=250", { headers });
+  if (list.ok) {
+    const { items = [] } = await list.json();
+    const found = items.find((c) => c.summary === "Daisey" && !c.deleted);
+    if (found) return found.id;
+  }
+  const tz = typeof timeZone === "string" && /^[A-Za-z_]+\/[A-Za-z_\/+-]+$/.test(timeZone) ? timeZone : "Asia/Jerusalem";
+  const made = await fetch(API, { method: "POST", headers, body: JSON.stringify({ summary: "Daisey", description: "Blocks you accepted from Daisey's pencil schedule.", timeZone: tz }) });
+  if (!made.ok) { console.error("daisey-now-calendar-write", "make calendar", made.status, await made.text()); return null; }
+  return (await made.json()).id;
+}

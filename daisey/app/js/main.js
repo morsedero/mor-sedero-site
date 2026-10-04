@@ -135,13 +135,13 @@ async function boot(){
         m.adder = mountAddTask($("#addtask"), user.uid, { onNow: (id) => m.now?.put(id) });
         // The Now card rides in the same scroller as the columns, first in line.
         m.event = mountAddEvent($("#eventdlg"));
-        m.schedule = mountSchedule($("#schedule"), { onAdd: (date) => m.event.open(date) });
+        m.schedule = mountSchedule($("#schedule"), { onAdd: (date) => m.event.open(date), uid: user.uid, onSweep: (ids) => m.sweep.open(ids) });
         m.importer = mountImport($("#importdlg"), user.uid);
         $("#importTrello").onclick = () => { setMenu(false); m.importer.open(); };
         m.tasks = mountTasks($("#tasksview"), user.uid,
           { onAdd: (project) => m.adder.open(project), onOpen: (task) => m.adder.edit(task), onSweep: () => m.sweep.open(),
           onProject: (name) => { location.hash = "tasks"; setPane("tasks"); m.tasks.showProject(name); $("#tasksview").scrollIntoView?.({ behavior: "smooth", block: "nearest" }); } });
-        m.now = mountNow($("#nowcard"), user.uid, { onCard: (id) => { onCard = id; m.tasks?.setCurrent(id); }, onSweep: () => m.sweep.open(),
+        m.now = mountNow($("#nowcard"), user.uid, { onCard: (id) => { onCard = id; m.tasks?.setCurrent(id); m.schedule?.setCurrent(id); }, onSweep: () => m.sweep.open(),
           onProject: (name) => { location.hash = "tasks"; setPane("tasks"); m.tasks.showProject(name); $("#tasksview").scrollIntoView?.({ behavior: "smooth", block: "nearest" }); } });
         m.tasks.setCurrent(onCard);
         $("#add").onclick = () => m.adder.open();
