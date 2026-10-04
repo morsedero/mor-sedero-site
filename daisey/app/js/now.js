@@ -10,8 +10,9 @@
 // alternatives, tap one to make it the card. Start → focus mode (focus.js):
 // the run lives in Firestore, so this tab, a reload and the phone all show
 // the same timer.
-import { watchTasks, watchRun, watchSkips, saveSkips, startRun, extendRun, endRun, startBatch, tickBatch, endBatch, skipNow, blockTask, restoreTask, watchSettings, saveSettings, watchMoment, saveMoment, watchLearn, bumpLearn } from "./store.js";
+import { watchTasks, watchRun, watchSkips, saveSkips, startRun, extendRun, endRun, startBatch, tickBatch, endBatch, skipNow, blockTask, restoreTask, watchSettings, saveSettings, watchMoment, saveMoment, watchLearn, bumpLearn, watchPencil, savePencil } from "./store.js";
 import { energyNow, placeNow, workBase } from "./context.js";
+import { sketch } from "./pencil.js";
 import { shouldOffer, sweepList, pickWeekDay } from "./triage.js";
 import { focusView, handoffView, elapsedMinutes, batchFocusView, batchName, sinceMark } from "./focus.js";
 import { watchCalendar } from "./calendar.js";
@@ -41,6 +42,7 @@ export function mountNow(root, uid, { onCard, onSweep, onProject } = {}){
   let settings = {}; // state/settings: when the sweep was last offered
   let momentDoc = {}; // state/moment: energy and place corrections
   let learnStats = {}; // state/learn: starts and skips per type and time of day
+  let pencilDoc = {}; // state/pencil: today's swapped-past and dismissed picks
   let ctxOpen = null; // "energy" | "place": the chip whose choices are showing
   let cal = { status: "loading", events: [] };
   let lastWindow, lastClock;
@@ -390,6 +392,47 @@ export function mountNow(root, uid, { onCard, onSweep, onProject } = {}){
     };
   }
 
+  // The next piece (Mor, 2026-10-05: "like the square showing the next piece
+  // in tetris"). One small square in the card's bottom-right corner: the task
+  // the engine would put up in the next free gap, with the time it starts.
+  // Tapping it is "not that one" — it shows the following pick for that gap
+  // and remembers the pass for today (state/pencil), the same store the
+  // Schedule panel used to write. Nothing here is booked and nothing is
+  // written to a calendar; it only says what's coming, so the card can be
+  // about one task without the day feeling hidden.
+  const todayPencil = () => (pencilDoc.date === localDate() ? pencilDoc : { date: localDate(), dismissed: [], swaps: {} });
+
+  function nextPiece(card){
+    if (!tasks || cal.status !== "ok") return null;
+    const now = Date.now();
+    const today = localDate(now);
+    const pd = todayPencil();
+    // Already on the Daisey calendar for today, or on the card right now.
+    const booked = cal.events.filter((e) => e.taskId && localDate(Date.parse(e.start)) === today).map((e) => e.taskId);
+    const pen = sketch(tasks, cal.events, { now, exclude: [...(pd.dismissed || []), ...booked, ...(card ? [card.task.id] : [])],
+      swaps: pd.swaps || {}, base: { ...workBase(tasks, now), learnStats }, moment: momentDoc });
+    return pen.find((p) => !p.isNow) || null; // the gap after this one, not this one
+  }
+
+  function passNext(p){
+    const pd = { ...todayPencil() };
+    pd.swaps = { ...(pd.swaps || {}), [p.key]: [...((pd.swaps || {})[p.key] || []), p.task.id] };
+    pencilDoc = pd;
+    render();
+    savePencil(uid, pd).catch(fail);
+  }
+
+  function nextSquare(card){
+    const p = nextPiece(card);
+    if (!p) return null;
+    const title = p.task.title + (p.part ? " (part)" : "");
+    return h("button", { className: "upnext", type: "button", title: "Tap for a different one",
+      ariaLabel: `Next, at ${clock(p.gap.start)}: ${title}. Tap for a different one.`, onclick: () => passNext(p) },
+      h("span", { className: "upnext-label", textContent: "Next" }),
+      h("span", { className: "upnext-title", dir: "auto", textContent: title }),
+      h("span", { className: "upnext-when", textContent: clock(p.gap.start) }));
+  }
+
   function render(){
     document.body.classList.toggle("focus", !!run || !!handoff);
     if (run) { fill(renderFocus()); return; }
@@ -465,7 +508,8 @@ export function mountNow(root, uid, { onCard, onSweep, onProject } = {}){
           { disabled: !alts.length, ariaExpanded: String(state.showAlts),
             onclick: () => { state.showAlts = !state.showAlts; state.laterAsk = false; state.pendAsk = false; render(); } }),
         action("pending", "Pending", `${card.task.title} is blocked — set it to Waiting`,
-          { ariaExpanded: String(state.pendAsk), onclick: () => { state.pendAsk = !state.pendAsk; state.laterAsk = false; state.showAlts = false; render(); } })),
+          { ariaExpanded: String(state.pendAsk), onclick: () => { state.pendAsk = !state.pendAsk; state.laterAsk = false; state.showAlts = false; render(); } }),
+        nextSquare(card)),
       state.pendAsk && pendingAsk(card.task),
       state.laterAsk && h("div", { className: "later-ask", role: "group", ariaLabel: "When instead?" },
         h("span", { className: "muted", textContent: "When?" }),
@@ -520,6 +564,7 @@ export function mountNow(root, uid, { onCard, onSweep, onProject } = {}){
     watchSettings(uid, (s) => { settings = s || {}; render(); }, fail),
     watchMoment(uid, (d) => { momentDoc = d || {}; render(); }, fail),
     watchLearn(uid, (d) => { learnStats = d || {}; render(); }, fail),
+    watchPencil(uid, (d) => { pencilDoc = d || {}; render(); }, fail),
   ];
   // The timer ticks every second while running; otherwise this only
   // re-renders when the free window's minute changes.
