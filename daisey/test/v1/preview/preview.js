@@ -33,6 +33,8 @@ const SCENARIOS = {
     { title: "Tidy sample library", project: "Studio", size: 30, due: day(-6) },
     { title: "Lesson prep", project: "Teaching", size: 30, due: day(2) },
     { title: "Learn Wwise", project: "Job search", size: 60, over: { status: "someday" } },
+    { title: "Send CV to Ubisoft", project: "Job search", size: 30, over: { status: "done", doneAt: Date.now() } },
+    { title: "Pay water bill", project: "Home", size: 15, over: { status: "done", doneAt: Date.now() } },
   ] },
   bidi: { tasks: [
     { title: "להזמין צלם", project: "Wedding", size: 5, due: day(0) },

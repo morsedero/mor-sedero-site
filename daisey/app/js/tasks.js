@@ -279,6 +279,8 @@ export function mountTasks(root, uid, { onAdd, onOpen } = {}){
 
   function listView(open, done){
     const shown = project ? open.filter((t) => t.project === project) : open;
+    // Completed follows the chip too: a project's tab shows that project's done.
+    done = project ? done.filter((t) => t.project === project) : done;
     const today = localDate(), weekEnd = dayFrom(7);
     const groups = new Map([...SECTIONS.map(([k]) => [k, []]), ["someday", []]]);
     for (const t of shown) groups.get(bucketOf(t, today, weekEnd)).push(t);
