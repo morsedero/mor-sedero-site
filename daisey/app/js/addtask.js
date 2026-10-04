@@ -8,8 +8,11 @@
 // MIN_CHARS characters) and then fade in, and what fades in is ONE QUIET LINE
 // — an icon and a value for the four that matter, no field names. Tapping the
 // line opens the full set of chips, where a dashed chip is a guess, a solid
-// one is yours, and "Daisey guesses" in the picker hands it back. The line
-// never disappears again once it is up, because vanishing is its own jump.
+// one is yours. Each chip drops its own little MENU over the form (Mor,
+// 2026-10-05: a shared row of options below the chips pushed everything down
+// every time one was tapped), and "Daisey guesses" at the foot of the menu
+// hands the field back. The line never disappears again once it is up,
+// because vanishing is its own jump.
 //
 // Every field is shown, with room between them (Mor, 2026-10-04: "no need for
 // More, just show everything, not dense"). Add closes the popup; so does
@@ -29,9 +32,11 @@
 // Delete is a two-press button instead of a confirm() dialog.
 //
 // Waiting is one press, not a blank box (Mor, 2026-10-05): PENDING is a
-// toggle, and turning it on reveals "Waiting on" for who or what. The name is
-// optional — pending with nobody named is still pending. Turning it off hands
-// the task back to ready and forgets the name.
+// toggle, and it sits in the action row beside "Do this now" and Someday,
+// because parking a task is that kind of act. Turning it on reveals "Waiting
+// on" for who or what. The name is optional — pending with nobody named is
+// still pending. Turning it off hands the task back to ready and forgets the
+// name.
 import { watchTasks, addTask, updateTask, removeTask } from "./store.js";
 import { durText, guessFields, validField, CHOICES, LABELS, INBOX } from "./model.js";
 import { h, flash, icon } from "./ui.js";
@@ -84,9 +89,8 @@ export function mountAddTask(dialog, uid, { onNow } = {}){
   const msg = h("p", { className: "muted", role: "status" });
 
   const chipRow = h("div", { className: "gchips", role: "group", ariaLabel: "Daisey's guesses — tap one to change it" });
-  const picker = h("div", { className: "gpick", role: "radiogroup" });
   const gbox = h("div", { className: "gbox" },
-    h("p", { className: "guess-cap muted", textContent: "Daisey's guesses — tap one to change it" }), chipRow, picker);
+    h("p", { className: "guess-cap muted", textContent: "Daisey's guesses — tap one to change it" }), chipRow);
   // The collapsed line: icons and values, no field names, and a word that says
   // it opens.
   const sumVals = h("span", { className: "gsum-vals" });
@@ -107,19 +111,6 @@ export function mountAddTask(dialog, uid, { onNow } = {}){
   // already blocked (model.js's note on Waiting). One press to park it; the
   // name of who or what only appears once it is parked.
   const waitField = field("Waiting on", f.waitingOn);
-  const pendBtn = h("button", { type: "button", className: "chip pend" }, icon("pending"),
-    h("span", { textContent: "Pending" }));
-  const waitBox = h("div", { className: "sheet-stack" }, pendBtn, waitField);
-  pendBtn.onclick = () => {
-    pending = !pending;
-    if (!pending) f.waitingOn.value = "";
-    paintPend();
-    if (pending) f.waitingOn.focus();
-  };
-  function paintPend(){
-    pendBtn.ariaPressed = String(pending);
-    waitField.hidden = !pending;
-  }
   const submit = h("button", { className: "btn primary", type: "submit", textContent: "Add" });
   const form = h("form", { className: "sheet-form" },
     newField,
@@ -127,7 +118,7 @@ export function mountAddTask(dialog, uid, { onNow } = {}){
     guesses,
     field("Description (optional)", f.notes),
     dateBox,
-    waitBox,
+    waitField,
     submit);
   const heading = h("h2", { id: "addTitle", dir: "auto", textContent: "Add task" });
 
@@ -184,6 +175,14 @@ export function mountAddTask(dialog, uid, { onNow } = {}){
     }, SETTLE);
   }
 
+  // One chip's menu, floated over the form rather than pushing it down.
+  const menuFor = (k) => h("div", { className: "gmenu", role: "listbox", ariaLabel: NAMES[k] },
+    ...optionsOf(k).map((v) => h("button", { type: "button", role: "option", className: "gopt",
+      ariaSelected: String(mine.has(k) && vals[k] === v), onclick: () => pick(k, v) },
+    h("bdi", { textContent: valueText(k, v) }))),
+    h("button", { type: "button", role: "option", className: "gopt quiet", ariaSelected: String(!mine.has(k)),
+      textContent: "Daisey guesses", onclick: () => pick(k, null) }));
+
   function paint(){
     guesses.hidden = !shown;
     sumLine.ariaExpanded = String(expanded);
@@ -193,21 +192,17 @@ export function mountAddTask(dialog, uid, { onNow } = {}){
     gbox.hidden = !expanded;
     chipRow.replaceChildren(...CHIPS.map((k) => {
       const own = mine.has(k);
-      return h("button", { type: "button", className: "gchip" + (own ? " mine" : ""), ariaExpanded: String(openChip === k),
+      const chip = h("button", { type: "button", className: "gchip" + (own ? " mine" : ""),
+        ariaHasPopup: "listbox", ariaExpanded: String(openChip === k),
         ariaLabel: `${NAMES[k]}: ${valueText(k, vals[k])}, ${own ? "yours" : "Daisey's guess"}. Change`,
         onclick: () => { openChip = openChip === k ? null : k; paint(); } },
       icon(k), h("bdi", { textContent: shortText(k, vals[k]) }));
+      return h("div", { className: "gchip-wrap" }, chip, openChip === k ? menuFor(k) : null);
     }));
-    picker.hidden = !openChip;
-    if (openChip) {
-      const k = openChip;
-      picker.ariaLabel = NAMES[k];
-      picker.replaceChildren(
-        ...optionsOf(k).map((v) => h("button", { type: "button", className: "chip", role: "radio",
-          ariaChecked: String(mine.has(k) && vals[k] === v), textContent: valueText(k, v), onclick: () => pick(k, v) })),
-        h("button", { type: "button", className: "chip quiet", role: "radio", ariaChecked: String(!mine.has(k)),
-          textContent: "Daisey guesses", onclick: () => pick(k, null) }));
-    }
+    // A menu on a chip near the edge hangs the other way instead of off it.
+    const menu = openChip && chipRow.querySelector(".gmenu");
+    if (menu && menu.getBoundingClientRect().right > dialog.getBoundingClientRect().right - 8)
+      menu.classList.add("end");
     kindRow.hidden = !f.due.value;
     kindRow.replaceChildren(...[["target", "Target (wish)"], ["deadline", "Deadline (real)"]].map(([v, text]) =>
       h("button", { type: "button", className: "chip", role: "radio", ariaChecked: String(kind === v), textContent: text,
@@ -244,7 +239,19 @@ export function mountAddTask(dialog, uid, { onNow } = {}){
     removeTask(uid, gone.id).catch((e) => { console.error("[daisey] delete", e); flash("Couldn't delete ", gone.title); });
     flash("Deleted ", gone.title);
   };
-  const actions = h("div", { className: "sheet-actions" }, doNow, someday, del);
+  const pendBtn = h("button", { className: "btn pend", type: "button" }, icon("pending"),
+    h("span", { textContent: "Pending" }));
+  pendBtn.onclick = () => {
+    pending = !pending;
+    if (!pending) f.waitingOn.value = "";
+    paintPend();
+    if (pending) f.waitingOn.focus();
+  };
+  function paintPend(){
+    pendBtn.ariaPressed = String(pending);
+    waitField.hidden = !pending;
+  }
+  const actions = h("div", { className: "sheet-actions" }, doNow, pendBtn, someday, del);
   const disarm = () => { armed = false; del.textContent = "Delete"; del.classList.remove("arm"); };
 
   form.onsubmit = (ev) => {
@@ -295,7 +302,15 @@ export function mountAddTask(dialog, uid, { onNow } = {}){
   const close = h("button", { className: "now-x", type: "button", ariaLabel: "Close", textContent: "✕", onclick: () => dialog.close() });
   // The heading row carries the project: the task's context, not a question.
   dialog.replaceChildren(h("div", { className: "now-head sheet-head" }, heading, projectSel, close), form, actions, msg);
-  dialog.addEventListener("click", (e) => { if (e.target === dialog) dialog.close(); });
+  dialog.addEventListener("click", (e) => {
+    if (e.target === dialog) { dialog.close(); return; }
+    // A tap anywhere else puts an open guess menu away.
+    if (openChip && !e.target.closest(".gchip-wrap")) { openChip = null; paint(); }
+  });
+  // Escape closes the menu first; a second one closes the sheet.
+  dialog.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && openChip) { e.preventDefault(); openChip = null; paint(); }
+  });
 
   const unsub = watchTasks(uid, (ts) => {
     tasks = ts;
@@ -313,7 +328,7 @@ export function mountAddTask(dialog, uid, { onNow } = {}){
       showProject(project !== undefined ? project : keep);
       heading.textContent = "Add task";
       submit.textContent = "Add";
-      waitBox.hidden = true;
+      waitField.hidden = true;
       actions.hidden = true;
       paint();
       if (!dialog.open) dialog.showModal();
@@ -327,7 +342,7 @@ export function mountAddTask(dialog, uid, { onNow } = {}){
       disarm();
       heading.textContent = task.title.length > 28 ? "Task" : task.title;
       submit.textContent = "Save";
-      waitBox.hidden = task.status === "done" || task.status === "someday";
+      pendBtn.hidden = task.status === "done" || task.status === "someday";
       actions.hidden = false;
       doNow.hidden = task.status === "done" || task.status === "someday";
       someday.hidden = task.status === "done";
@@ -335,6 +350,7 @@ export function mountAddTask(dialog, uid, { onNow } = {}){
       pending = task.status === "waiting";
       f.waitingOn.value = pending ? task.waitingOn || "" : "";
       paintPend();
+      if (pendBtn.hidden) waitField.hidden = true;
       showProject(task.project);
       f.title.value = task.title;
       f.due.value = task.due || "";

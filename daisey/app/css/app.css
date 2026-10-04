@@ -179,8 +179,25 @@ textarea {
 .gchip.mine svg { opacity: 1; }
 .gchip[aria-expanded="true"] { border-color: var(--accent); }
 .now-next { margin: 2px 0 0; font-size: 14px; color: var(--ink-2); }
-.gpick { display: flex; flex-wrap: wrap; gap: 6px; padding: 10px; border-radius: 12px; background: var(--bg); border: 1px solid var(--line); }
-.gpick .chip, .kind .chip { min-block-size: 34px; font-size: 13px; padding-inline: 11px; }
+.kind .chip { min-block-size: 34px; font-size: 13px; padding-inline: 11px; }
+/* A chip's own menu: it floats over the form, so opening one moves nothing. */
+.gchip-wrap { position: relative; }
+.gmenu {
+  position: absolute; z-index: 5; inset-block-start: calc(100% + 5px); inset-inline-start: 0;
+  min-inline-size: 160px; max-inline-size: min(260px, 72vw); max-block-size: 246px; overflow-y: auto;
+  display: grid; gap: 1px; padding: 5px; border: 1px solid var(--line); border-radius: 12px;
+  background: var(--card); box-shadow: 0 12px 32px rgba(0,0,0,.18);
+  animation: guess-in .14s ease-out both;
+}
+.gmenu.end { inset-inline-start: auto; inset-inline-end: 0; }
+.gopt {
+  font: inherit; font-size: 14px; text-align: start; cursor: pointer; min-block-size: 38px;
+  padding: 0 10px; border: 0; border-radius: 8px; background: transparent; color: var(--ink);
+}
+.gopt:hover { background: var(--bg); }
+.gopt[aria-selected="true"] { background: var(--ink); color: var(--card); font-weight: 600; }
+.gopt.quiet { color: var(--ink-2); border-block-start: 1px solid var(--line); border-radius: 0 0 8px 8px; }
+.gopt.quiet[aria-selected="true"] { background: transparent; color: var(--ink); font-weight: 600; }
 .chip.quiet { color: var(--ink-2); border-style: dashed; }
 .kind { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 6px; }
 /* The task popup: one column, every field shown, room between them. */
@@ -231,8 +248,9 @@ textarea {
 }
 .chip[aria-checked="true"], .chip[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); color: var(--card); }
 /* Pending: one press parks the task, and only then does it ask who or what. */
-.chip.pend { display: inline-flex; align-items: center; gap: 7px; justify-self: start; font-size: 14px; }
-.chip.pend svg { inline-size: 16px; block-size: 16px; flex: none; }
+.btn.pend { display: inline-flex; align-items: center; gap: 7px; }
+.btn.pend svg { inline-size: 16px; block-size: 16px; flex: none; }
+.btn.pend[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); color: var(--card); }
 .now-card { display: grid; gap: 3px; padding: 12px 14px; border-radius: 14px; border: 1px solid var(--line); background: var(--surface); text-align: start; }
 /* Smaller than it was, on every tab (Mor, 2026-10-04): the card is still the
    loudest thing on the page, but the pane under it does the most work, so the
@@ -497,7 +515,7 @@ body.focus .shell { display: grid; min-block-size: 100dvh; align-content: center
 .tk-empty { display: grid; gap: 12px; justify-items: start; }
 
 /* The task sheet's own actions, under the fields (addtask.js in edit mode). */
-.sheet-actions { display: flex; gap: 8px; align-items: center; margin-block-start: 12px; padding-block-start: 12px; border-block-start: 1px solid var(--line); }
+.sheet-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-block-start: 12px; padding-block-start: 12px; border-block-start: 1px solid var(--line); }
 .sheet-actions .btn.danger { margin-inline-start: auto; color: var(--danger); }
 .sheet-actions .btn.danger.arm { border-color: var(--danger); background: color-mix(in srgb, var(--danger) 10%, transparent); font-weight: 700; }
 .field.wide { grid-column: 1 / -1; }
