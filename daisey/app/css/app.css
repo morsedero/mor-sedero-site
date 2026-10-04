@@ -544,3 +544,21 @@ dialog.now { overflow-y: auto; overscroll-behavior: contain; }
   border: 1px solid var(--line); border-radius: 14px; background: var(--surface); color: var(--ink); cursor: pointer; text-align: start; }
 .batch-item.done { opacity: .55; text-decoration: line-through; cursor: default; }
 .batch-item .tk-check { flex: none; }
+
+/* Project tabs fused to the list (Mor, 2026-10-04): the chips are folder
+   tabs standing on the list panel. The selected one is the panel's own
+   colour and opens into it — its bottom edge paints over the panel's top
+   border, so the tab and its tasks read as one piece. The others sit on
+   the panel's edge, a shade darker, like tabs behind it. */
+.tk-filters { margin-block-end: -1px; position: relative; z-index: 1; }
+.tk-chips { gap: 3px; padding-block: 0; padding-inline: 12px; align-items: flex-end; }
+.tk-filters .chip {
+  min-block-size: 34px; border-radius: 12px 12px 0 0;
+  border: 1px solid var(--line); border-block-end: 1px solid transparent;
+  background: var(--bg); color: var(--ink-2);
+}
+.tk-filters .chip[aria-checked="true"] {
+  min-block-size: 40px; background: var(--card); color: var(--ink);
+  border-color: var(--line); border-block-end-color: var(--card);
+}
+.tk-filters .chip:hover:not([aria-checked="true"]) { color: var(--ink); }
