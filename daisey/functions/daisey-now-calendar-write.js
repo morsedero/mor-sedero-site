@@ -6,7 +6,7 @@
 // not the auto-scheduler the spec refuses to be: Daisey still never puts
 // anything on the calendar by itself, and still never writes a task there.
 //
-// POST { action: "move" | "delete" | "create", calendarId, eventId?, start?,
+// POST { action: "move" | "delete" | "create" | "rename", calendarId, eventId?, start?,
 // end?, title? } with "Authorization: Bearer <Firebase ID token>". `start`
 // and `end` are ISO strings with an offset, and only timed events can move.
 //
@@ -48,11 +48,11 @@ exports.handler = async (event) => {
   try { req = JSON.parse(event.body || "{}"); } catch (e) { return fail(400, "bad_request"); }
   const { action, calendarId, eventId, start, end } = req;
   const title = typeof req.title === "string" ? req.title.trim().replace(/\s+/g, " ").slice(0, 300) : "";
-  if (!["move", "delete", "create"].includes(action)) return fail(400, "bad_request");
+  if (!["move", "delete", "create", "rename"].includes(action)) return fail(400, "bad_request");
   if (!calendarId) return fail(400, "bad_request");
   if (action !== "create" && !eventId) return fail(400, "bad_request");
-  if (action === "create" && !title) return fail(400, "bad_request");
-  if (action !== "delete" && !(isoWithOffset(start) && isoWithOffset(end) && Date.parse(end) > Date.parse(start))) {
+  if ((action === "create" || action === "rename") && !title) return fail(400, "bad_request");
+  if ((action === "create" || action === "move") && !(isoWithOffset(start) && isoWithOffset(end) && Date.parse(end) > Date.parse(start))) {
     return fail(400, "bad_request");
   }
 
@@ -67,9 +67,9 @@ exports.handler = async (event) => {
   const times = { start: { dateTime: start }, end: { dateTime: end } };
   const res = action === "delete" ? await fetch(url, { method: "DELETE", headers })
     : action === "create" ? await fetch(url, { method: "POST", headers, body: JSON.stringify({ summary: title, ...times }) })
-    // PATCH, so nothing but the times is touched — guests, description and
-    // colour stay exactly as the user left them.
-    : await fetch(url, { method: "PATCH", headers, body: JSON.stringify(times) });
+    // PATCH, so nothing but the times (or the title) is touched — guests,
+    // description and colour stay exactly as the user left them.
+    : await fetch(url, { method: "PATCH", headers, body: JSON.stringify(action === "rename" ? { summary: title } : times) });
 
   if (res.status === 401) return fail(409, "needs_reauth");
   if (res.status === 403) return fail(403, "read_only");

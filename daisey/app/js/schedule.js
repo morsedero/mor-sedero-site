@@ -15,7 +15,7 @@
 // day being shown (Mor, 2026-10-04 — no jumping to Google Calendar to put a
 // meeting in). Daisey still never schedules anything ITSELF; what it writes
 // is what the user typed.
-import { watchCalendar, moveEvent, moveEventTo, deleteEvent } from "./calendar.js";
+import { watchCalendar, moveEvent, moveEventTo, deleteEvent, renameEvent } from "./calendar.js";
 import { localDate } from "./model.js";
 import { h, bdi, dur } from "./ui.js";
 
@@ -65,6 +65,7 @@ export function mountSchedule(root, { onAdd } = {}){
   let heading, back, prev, next;
   let openId = null; // the event whose actions are showing
   let confirming = null; // the event id waiting for "Delete?" to be confirmed
+  let renaming = null, renameText = null; // the event id being renamed, and what's typed so far
   let busy = false; // a write is in flight
   let problem = ""; // what went wrong with the last write
   let undo = null; // { id, minutes } for a few seconds after a move
@@ -106,6 +107,26 @@ export function mountSchedule(root, { onAdd } = {}){
   });
 
   function actions(e){
+    // Rename (Mor, 2026-10-04): one line with the title, Save or Cancel. What's
+    // typed lives in renameText, so the minute's calendar refetch can redraw
+    // without wiping it.
+    if (renaming === e.id) {
+      const input = h("input", { id: "schRename", className: "sch-rename", dir: "auto", autocomplete: "off",
+        value: renameText ?? e.title, ariaLabel: "New name", oninput: (ev) => { renameText = ev.target.value; } });
+      const save = () => {
+        const title = input.value.trim();
+        if (!title || title === e.title) { renaming = null; renameText = null; render(); return; }
+        run(async () => { await renameEvent(e, title); renaming = null; renameText = null; openId = null; });
+      };
+      input.addEventListener("keydown", (ev) => {
+        if (ev.key === "Enter") { ev.preventDefault(); save(); }
+        if (ev.key === "Escape") { renaming = null; renameText = null; render(); }
+      });
+      setTimeout(() => input.focus());
+      return h("li", { className: "sch-actions" }, input,
+        h("button", { className: "chip", type: "button", textContent: "Save", disabled: busy, onclick: save }),
+        h("button", { className: "chip", type: "button", textContent: "Cancel", onclick: () => { renaming = null; renameText = null; render(); } }));
+    }
     if (confirming === e.id) {
       return h("li", { className: "sch-actions" },
         h("span", { className: "muted", textContent: "Delete it?" }),
@@ -121,6 +142,8 @@ export function mountSchedule(root, { onAdd } = {}){
       at,
       h("button", { className: "chip", type: "button", textContent: "Move", disabled: busy,
         onclick: () => at.value && run(async () => { await moveEventTo(e, at.value); openId = null; }) }),
+      h("button", { className: "chip", type: "button", textContent: "Rename", disabled: busy,
+        onclick: () => { renaming = e.id; renameText = null; render(); } }),
       h("button", { className: "chip danger", type: "button", textContent: "Delete", disabled: busy,
         onclick: () => { confirming = e.id; render(); } }));
   }
@@ -141,7 +164,7 @@ export function mountSchedule(root, { onAdd } = {}){
     return h("li", { className: cls },
       h("button", { className: "sch-open", type: "button", ariaExpanded: String(openId === e.id),
         ariaLabel: `${e.title}, ${time} — move or delete`,
-        onclick: () => { openId = openId === e.id ? null : e.id; confirming = null; render(); } }, ...inside));
+        onclick: () => { openId = openId === e.id ? null : e.id; confirming = null; renaming = null; render(); } }, ...inside));
   }
 
   function dayPanel(now, n){

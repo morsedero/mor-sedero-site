@@ -112,6 +112,9 @@ export function moveEventTo(ev, at){
 
 export const deleteEvent = (ev) => write({ action: "delete", calendarId: ev.calendarId, eventId: ev.id });
 
+// A new title; times, guests and description stay as they are.
+export const renameEvent = (ev, title) => write({ action: "rename", calendarId: ev.calendarId, eventId: ev.id, title });
+
 // An event the user typed: a day ("YYYY-MM-DD"), a start ("HH:MM") and a
 // length in minutes, read in the browser's own zone. It goes in the main
 // Google calendar — the one "primary" means — because that's where a thing
