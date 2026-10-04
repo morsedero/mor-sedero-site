@@ -8,8 +8,8 @@ let tasks = (seed.tasks || []).map((t) => ({ id: "t" + ++n, ...createTask(t), ..
 // seed.run: { task: <title>, minutes: <elapsed>, extra } — a run already going.
 const run = seed.run && (() => { const t = tasks.find((x) => x.title === seed.run.task) || tasks[0];
   return { taskId: t.id, startedAt: Date.now() - (seed.run.minutes || 0) * 60000, extra: seed.run.extra || 0 }; })();
-const docs = { now: run || null, skips: seed.skips ?? null };
-const subs = { tasks: new Set(), now: new Set(), skips: new Set() };
+const docs = { now: run || null, skips: seed.skips ?? null, settings: seed.settings ?? { deadlinesAsked: true } };
+const subs = { tasks: new Set(), now: new Set(), skips: new Set(), settings: new Set() };
 
 const emit = (k) => setTimeout(() => { for (const cb of subs[k]) cb(k === "tasks" ? tasks.map((t) => ({ ...t })) : docs[k], {}); });
 const watch = (k) => (uid, cb) => { subs[k].add(cb); setTimeout(() => cb(k === "tasks" ? tasks.map((t) => ({ ...t })) : docs[k], {})); return () => subs[k].delete(cb); };
@@ -35,5 +35,9 @@ export const patchTask = (uid, id, patch) => { const i = tasks.findIndex((t) => 
 export const finishTask = (uid, task) => patchTask(uid, task.id, completeTask(task));
 export const removeTask = (uid, id) => { tasks = tasks.filter((t) => t.id !== id); return ok("tasks"); };
 export const saveNow = (uid, state) => { docs.now = state; return ok("now"); };
+
+export const migrateTasks = () => () => {};
+export const watchSettings = watch("settings");
+export const saveSettings = (uid, fields) => { docs.settings = { ...docs.settings, ...fields }; return ok("settings"); };
 
 window.__store = { get tasks(){ return tasks; }, docs };

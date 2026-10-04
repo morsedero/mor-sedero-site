@@ -3,7 +3,7 @@
 // only moves documents. `tasks` arguments are the current list from
 // watchTasks, used as history for "similar past tasks" guesses.
 import * as fb from "./firebase.js";
-import { createTask, editTask, completeTask, startedTask, workedTask, skipTask, skipReason } from "./model.js";
+import { createTask, editTask, completeTask, startedTask, workedTask, skipTask, skipReason, migrateTask } from "./model.js";
 
 const tasksCol = (uid) => fb.collection(fb.db, "users", uid, "tasks");
 const taskDoc = (uid, id) => fb.doc(fb.db, "users", uid, "tasks", id);
@@ -25,6 +25,25 @@ export function addTask(uid, input, tasks = []){
 export function updateTask(uid, task, changes, tasks = []){
   const patch = editTask(task, changes, { history: tasks });
   return Object.keys(patch).length ? fb.updateDoc(taskDoc(uid, task.id), patch) : Promise.resolve();
+}
+
+// Brings every task up to the current fields (model.migrateTask), once per
+// sign-in, on the first snapshot that came from the server: a cached one may
+// be stale, and patching from it could undo another device's change.
+// Idempotent — a current task yields an empty patch — so two devices
+// migrating at once is harmless.
+export function migrateTasks(uid){
+  let done = false, unsub = null;
+  unsub = watchTasks(uid, (tasks, { fromCache }) => {
+    if (done || fromCache) return;
+    done = true;
+    setTimeout(() => unsub?.());
+    for (const t of tasks) {
+      const patch = migrateTask(t, tasks);
+      if (Object.keys(patch).length) fb.updateDoc(taskDoc(uid, t.id), patch).catch((e) => console.error("[daisey] migrate", e));
+    }
+  }, (e) => console.error("[daisey] migrate", e));
+  return () => unsub?.();
 }
 
 export function finishTask(uid, task){
@@ -88,4 +107,16 @@ export function endRun(uid, task, minutes, { finished = false } = {}){
     fb.deleteDoc(runDoc(uid)),
     task ? fb.updateDoc(taskDoc(uid, task.id), workedTask(task, minutes, { finished })) : null,
   ]);
+}
+
+// Settings, users/{uid}/state/settings: { deadlinesAsked, ... }. Merged on
+// write, so one feature's key never clobbers another's.
+const settingsDoc = (uid) => fb.doc(fb.db, "users", uid, "state", "settings");
+
+export function watchSettings(uid, cb, onError){
+  return fb.onSnapshot(settingsDoc(uid), (snap) => cb(snap.exists() ? snap.data() : {}, { fromCache: snap.metadata.fromCache }), onError);
+}
+
+export function saveSettings(uid, fields){
+  return fb.setDoc(settingsDoc(uid), fields, { merge: true });
 }

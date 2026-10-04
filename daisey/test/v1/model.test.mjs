@@ -6,16 +6,20 @@ import * as M from "../../app/js/model.js";
 const NOW = Date.UTC(2026, 9, 5, 9);
 const opts = { now: NOW };
 
-test("title only: Inbox, guessed size, ready, counters zeroed", () => {
+test("title only: Inbox, every field guessed, ready, counters zeroed", () => {
   const t = M.createTask({ title: "  Something   vague " }, opts);
   assert.equal(t.title, "Something vague");
   assert.equal(t.project, "Inbox");
-  assert.equal(t.size, 30);
-  assert.equal("energy" in t, false);
+  assert.equal(t.type, "deep");
+  assert.equal(t.size, 60); // a Deep task's default, not a flat 30
+  assert.equal(t.energy, "high");
   assert.equal(t.status, "ready");
   assert.equal(t.waitingOn, null);
-  assert.equal(t.canSplit, false);
-  assert.deepEqual(t.guessed, ["size", "canSplit"]);
+  assert.equal(t.canSplit, true);
+  assert.equal(t.nextStep, null);
+  assert.equal(t.dateKind, null);
+  assert.equal(t.v, M.TASK_VERSION);
+  assert.deepEqual(t.guessed, M.GUESSABLE);
   assert.equal(t.due, null);
   assert.equal(t.createdAt, NOW);
   assert.equal(t.touchedAt, NOW);
@@ -43,13 +47,15 @@ test("given fields are kept, not marked as guesses", () => {
   assert.equal(t.size, 120);
   assert.equal(t.due, "2026-10-08");
   assert.equal(t.canSplit, true); // 60+ default
-  assert.deepEqual(t.guessed, ["canSplit"]);
+  assert.equal(t.dateKind, "target"); // a date is a wish until called a deadline
+  assert.deepEqual(t.guessed, M.GUESSABLE.filter((k) => k !== "size"));
 });
 
-test("adding never takes energy, status, waiting on, hard due or repeat", () => {
+test("adding never takes status, waiting on, hard due or repeat", () => {
   const t = M.createTask({ title: "email Dana", energy: "high", status: "waiting", waitingOn: "Yuval",
     hardDue: true, due: "2026-10-08", repeat: { every: 7 } }, opts);
-  assert.equal("energy" in t, false); // no energy at all
+  assert.equal(t.energy, "high"); // the user's own value
+  assert.ok(!t.guessed.includes("energy"));
   assert.equal(t.status, "ready");
   assert.equal(t.waitingOn, null);
   assert.equal("hardDue" in t, false);
@@ -89,8 +95,9 @@ test("snapSize: nearest bucket, ties go up, 90+ stays 90", () => {
 });
 
 test("cleaning rejects junk without throwing", () => {
-  const t = M.createTask({ title: "x", size: "lots", due: "2026-02-30", dueTime: "25:00" }, opts);
-  assert.equal(t.size, 30);
+  const t = M.createTask({ title: "x", size: "lots", due: "2026-02-30", dueTime: "25:00", type: "nonsense" }, opts);
+  assert.equal(t.size, 60);
+  assert.equal(t.type, "deep");
   assert.equal(t.due, null);
   assert.equal(t.dueTime, null);
   assert.equal(M.toMinutes("90+"), 90);
@@ -156,10 +163,11 @@ test("focus mode: real minutes always count; finishing completes, stopping is re
 test("edit: only changed fields, user values stop being guesses", () => {
   const t = { id: "a", ...M.createTask({ title: "thing" }, opts) };
   assert.deepEqual(M.editTask(t, { title: "thing" }, opts), {});
-  const p = M.editTask(t, { size: 90 }, { now: NOW + 1 });
-  assert.equal(p.size, 90);
-  assert.equal(p.canSplit, true); // still a default, follows size
-  assert.deepEqual(p.guessed, ["canSplit"]);
+  const p = M.editTask(t, { size: 15 }, { now: NOW + 1 });
+  assert.equal(p.size, 15);
+  assert.equal(p.canSplit, false); // still a default, follows size
+  assert.equal(p.energy, "medium"); // and so does energy
+  assert.deepEqual(p.guessed, M.GUESSABLE.filter((k) => k !== "size"));
   assert.equal(p.touchedAt, NOW + 1);
 });
 
@@ -194,3 +202,100 @@ test("reopening a done task clears doneAt", () => {
   assert.equal(p.doneAt, null);
   assert.equal(M.isAvailable({ ...d, ...p }), true);
 });
+
+test("guesses: type, where, open hours, size from the title", () => {
+  const g = (title, project = "Inbox") => M.guessFields(title, project);
+  assert.deepEqual(pick(g("call the bank")), { type: "call", where: "phone", openHours: "office", size: 15, energy: "low" });
+  assert.equal(g("call mom").openHours, "anytime"); // a person, not an office
+  assert.deepEqual(pick(g("buy strings")), { type: "errand", where: "out", openHours: "anytime", size: 45, energy: "medium" });
+  assert.equal(g("לקנות מתנה לאבא").type, "errand");
+  assert.equal(g("ולהתקשר לרופא").type, "call"); // Hebrew prefix letters
+  assert.equal(g("ולהתקשר לרופא").openHours, "office");
+  assert.equal(g("whatsapp Dana").where, "phone");
+  assert.equal(g("send invoice to Uri").type, "admin");
+  assert.equal(g("send invoice to Uri").where, "computer");
+  assert.equal(g("post office: pick up parcel").openHours, "office");
+  assert.equal(g("laundry").where, "home");
+  assert.equal(g("dinner with Sofi").type, "social");
+  assert.equal(g("fix the boss loop").type, "deep"); // "fix" is too broad to mean Home
+  assert.equal(g("practice scales").where, "home");
+  assert.equal(g("Lesson prep").size, 60);
+});
+
+test("guesses: stakes, worst first", () => {
+  const s = (t) => M.guessStakes(t);
+  assert.equal(s("submit grant application"), "penalty");
+  assert.equal(s("pay the electricity bill"), "money");
+  assert.equal(s("send invoice to Uri"), "money"); // money beats someone
+  assert.equal(s("send the stems to Yuval"), "someone");
+  assert.equal(s("reply to Dana"), "someone");
+  assert.equal(s("notes for Sofi"), "someone");
+  assert.equal(s("לשלם ארנונה"), "money");
+  assert.equal(s("להגיש טופס"), "penalty");
+  assert.equal(s("fix the boss loop"), "low");
+});
+
+test("guesses: area from words, then the project's own areas, then type", () => {
+  assert.equal(M.guessArea("update CV", "Inbox", "deep"), "job");
+  assert.equal(M.guessArea("send it", "Job search", "admin"), "job"); // the project's name
+  assert.equal(M.guessArea("dentist", "Inbox", "call"), "personal");
+  const history = [{ project: "Reprise", area: "work", guessed: [] }, { project: "Reprise", area: "social", guessed: ["area"] }];
+  assert.equal(M.guessArea("pay hall", "reprise", "admin", history), "work"); // only areas the user set count
+  assert.equal(M.guessArea("pay hall", "Inbox", "admin", history), "admin");
+  assert.equal(M.guessArea("laundry", "Inbox", "home"), "home");
+  assert.equal(M.guessArea("Fix the boss loop", "Monster Punk", "deep"), "work");
+});
+
+test("a picked type steers the rest of the guesses", () => {
+  const t = M.createTask({ title: "Uri about the mix", type: "call" }, opts);
+  assert.equal(t.where, "phone");
+  assert.equal(t.openHours, "office");
+  assert.ok(!t.guessed.includes("type"));
+});
+
+test("edit: a picked field stays put; handing it back re-guesses", () => {
+  const t = { id: "a", ...M.createTask({ title: "Call Uri" }, opts) };
+  const p = M.editTask(t, { where: "computer" }, opts);
+  assert.equal(p.where, "computer");
+  assert.ok(!p.guessed.includes("where"));
+  const t2 = { ...t, ...p };
+  assert.equal(M.editTask(t2, { title: "Call Uri again" }, opts).where, undefined); // still the user's
+  assert.equal(M.editTask(t2, { where: "" }, opts).where, "phone");
+  // Editing notes alone re-guesses nothing.
+  assert.deepEqual(Object.keys(M.editTask(t, { notes: "hi" }, opts)).sort(), ["notes", "touchedAt"]);
+});
+
+test("edit: date kind is Target by default, Deadline on request, gone with the date", () => {
+  const t = { id: "a", ...M.createTask({ title: "x", due: "2026-10-06" }, opts) };
+  assert.equal(t.dateKind, "target");
+  assert.equal(M.editTask(t, { dateKind: "deadline" }, opts).dateKind, "deadline");
+  assert.equal(M.editTask(t, { due: "" }, opts).dateKind, null);
+  assert.equal(M.editTask({ ...t, due: null, dateKind: null }, { due: "2026-10-09" }, opts).dateKind, "target");
+});
+
+test("migrate: an old task gets every field, real guesses, Targets, and keeps touchedAt", () => {
+  const old = { id: "o", project: "Inbox", title: "call the bank", size: 30, guessed: ["size", "canSplit"],
+    canSplit: false, due: "2026-10-01", status: "ready", touchedAt: 123, createdAt: 100 };
+  const p = M.migrateTask(old, [old]);
+  assert.equal(p.size, 15); // the flat 30 was a guess: re-guessed
+  assert.equal(p.type, "call");
+  assert.equal(p.where, "phone");
+  assert.equal(p.openHours, "office");
+  assert.equal(p.dateKind, "target");
+  assert.equal(p.nextStep, null);
+  assert.equal(p.v, M.TASK_VERSION);
+  assert.deepEqual(p.guessed, M.GUESSABLE);
+  assert.equal("touchedAt" in p, false);
+  for (const [k, v] of Object.entries(p)) assert.notEqual(v, undefined, k);
+  assert.deepEqual(M.migrateTask({ ...old, ...p }), {}); // once only
+});
+
+test("migrate: a size the user set survives", () => {
+  const old = { project: "Inbox", title: "call the bank", size: 30, guessed: [], canSplit: false, status: "ready" };
+  const p = M.migrateTask(old);
+  assert.equal("size" in p, false);
+  assert.equal(p.energy, "medium"); // guessed from the user's 30
+  assert.equal(p.dateKind, null); // no date: no kind
+});
+
+function pick(g){ return { type: g.type, where: g.where, openHours: g.openHours, size: g.size, energy: g.energy }; }

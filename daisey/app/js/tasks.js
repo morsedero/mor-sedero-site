@@ -71,7 +71,7 @@ export function mountTasks(root, uid, { onAdd, onOpen } = {}){
   function row(t, { withProject } = {}){
     const isNow = t.id === onCard;
     const meta = pieces(sizeText(t.size),
-      t.due && `due ${shortDate(t.due)}${t.dueTime ? " " + t.dueTime : ""}`,
+      t.due && `${t.dateKind === "deadline" ? "deadline" : "by"} ${shortDate(t.due)}${t.dueTime ? " " + t.dueTime : ""}`,
       notYet(t) && `not before ${shortDate(t.notBefore)}`,
       t.status === "waiting" && `waiting${t.waitingOn ? " on " + t.waitingOn : ""}`);
     return h("li", { className: "tk-row" + (t.status === "waiting" || notYet(t) ? " waiting" : "") + (isNow ? " is-now" : "") },

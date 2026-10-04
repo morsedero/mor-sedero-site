@@ -57,18 +57,24 @@ Opening Daisey shows a single card. That card is the whole home screen.
 
 ## Task data
 
-Only the title is required. Everything else has a default or a guess, so adding a task takes one sentence.
+Only the title is required. Gemini guesses the rest from the title (area, type, place, open hours, size, energy, stakes) and shows the guesses as chips on the confirm card. Tap a chip to fix it; each fix improves future guesses.
 
 | Field | Required | Values | Default if missing |
 | --- | --- | --- | --- |
 | Title | Yes | Free text | — |
 | Project | No | Any name the user uses | "Inbox" |
-| Size | No | 5 · 15 · 30 · 60 · 90+ min | Guessed from title and similar past tasks; else 30 |
-| Energy needed | No | Low · Medium · High | Guessed from size and type; else Medium |
-| Due | No | Date, optional time | None |
-| Hard due | No | Yes / No | No (soft target) |
+| Area | No | Work · Job search · Home · Admin · Social · Personal | Guessed from project and title |
+| Type | No | Deep · Admin · Call · Errand · Home · Social | Guessed from title |
+| Where | No | Anywhere · Computer · Home · Out · Phone | Guessed from type |
+| Open hours | No | Anytime · Office hours (Sun–Thu 9:00–16:00) · Evening | Office hours for Call and most Admin; else Anytime |
+| Size | No | 5 · 15 · 30 · 60 · 90+ min | Guessed from type, title and similar past tasks |
+| Energy needed | No | Low · Medium · High | Guessed from type and size |
+| Stakes | No | Low · Costs money · Affects someone · Deadline penalty | Guessed; else Low |
+| Date | No | Date, optional time | None |
+| Date kind | No | Deadline (real) · Target (wish) | Target |
 | Status | Auto | Ready · Waiting · Done | Ready |
 | Waiting on | No | Free text ("Yuval confirms") | — |
+| Next step | Auto | Short text | Asked once for 90+ min tasks and goals |
 | Can split | No | Yes / No | Yes for 60+ min tasks |
 | Notes | No | Free text | — |
 
@@ -80,50 +86,80 @@ Only the title is required. Everything else has a default or a guess, so adding 
 
 **Recurring tasks** (weekly lesson prep, invoices) use a simple repeat: every N days or on given weekdays. A recurring task appears once per cycle, not stacked.
 
+**Goals vs tasks.** Anything that names an outcome or can't be done in one sitting ("10 treatments by 2027", "find a game-audio job") is a goal. Daisey keeps it as a project and asks once: "What's the first step?" Only the next step is ever suggested; when it's done, Daisey asks for the next one.
+
 ## Now engine logic
 
-The engine runs in three steps every time the card is shown: read the moment, filter out what can't fit, score the rest. Highest score wins. All weights are starting values, kept as tunable constants in one place.
+The engine picks like a secretary, in three gates, every time the card is shown: can it be done right now, what does leaving it cost, and does it fit this gap. All weights are starting values, kept as tunable constants in one file.
 
 **Step 1 — Read the moment**
 
-- **Free window**: minutes until the next calendar event, capped at 180. No calendar connected → 60.
-- **Energy**: the current guess, or the user's correction if made in the last 3 hours.
-- **Time bucket**: morning (before 12) · afternoon (12–17) · evening (after 17), plus weekday vs weekend.
-- **Last activity**: which project was last started or finished today.
+- **Free window**: minutes until the next calendar event, capped at 180. No calendar → 60.
+- **Current block**: if a calendar event is happening now and its title matches a project, that project is the focus. If it's an unrelated event (teaching, a meeting), Daisey stays quiet until it ends, with an "I'm free now" override.
+- **Where**: Home, Out or Anywhere, guessed from calendar location and time of day; one tap to correct.
+- **Office hours**: open Sun–Thu 9:00–16:00, closed Fri, Sat and Israeli holidays (configurable).
+- **Energy**: the current guess, or the user's correction from the last 3 hours.
+- **Time bucket** and **last activity**, as before.
 
-**Step 2 — Filter (a task is out if any is true)**
+**Gate 1 — Can it be done now?** A task is out if any is true:
 
 - Status is Waiting or Done.
+- Its Where doesn't match (a Home task while Out, a Computer task while on the phone).
+- It needs office hours and offices are closed.
 - Size is bigger than the free window, unless it can split and the window is at least 25 min.
-- Skipped already in this session.
 - Needs High energy and current energy is Low.
+- Skipped already in this session.
+- The current block names a project and the task isn't in it (unless "I'm free now" was tapped).
 
-**Step 3 — Score (0–100 plus adjustments)**
+**Gate 2 — What does leaving it cost?**
 
 | Factor | Points | How it's computed |
 | --- | --- | --- |
-| Urgency | 0–35 | Hard due today or overdue: 35 · hard due within 2 days: 25 · soft due today: 20 · due within 3 days: 12 · within 7 days: 6 · no due: 0 |
-| Energy fit | 0–25 | Exact match: 25 · task needs one step less: 18 · task needs one step more: 5 |
-| Window fit | 0–15 | Task fills 50–100% of window: 15 · 25–50%: 10 · under 25%: 6 · split piece: 8 |
-| Momentum | 0–10 | Same project as last activity today: 10 · touched in last 2 days: 5 |
-| Neglect | 0–10 | +1 per day untouched, max 10 |
-| Learned fit | −10 to +10 | From history: how often tasks like this were started vs skipped in this time bucket and energy |
+| Real deadline | 0–35 | Past or today: 35 · within 2 days: 25 · within 7 days: 12 |
+| Target date | 0–8 | Today or past: 8 · within 3 days: 4. A target is never shown as "overdue". |
+| Stakes | 0–15 | Deadline penalty: 15 · costs money: 12 · affects someone: 10 · low: 0 |
+| Area balance | 0–12 | The area furthest behind its weekly intent (or least touched this week) gets up to 12 |
+| Neglect | 0–8 | +1 per day untouched, max 8 |
+
+**Gate 3 — Does it fit this gap?**
+
+| Factor | Points | How it's computed |
+| --- | --- | --- |
+| Energy fit | 0–15 | Exact match: 15 · task needs one step less: 10 · one step more: 3 |
+| Window fit | 0–12 | Fills 50–100% of the window: 12 · 25–50%: 8 · under 25%: 5 · split piece: 6 |
+| Momentum | 0–8 | Same project as last activity today: 8 · touched in last 2 days: 4 |
+| Batch bonus | 0–10 | 2+ ready tasks of the same type (calls, admin, errands) fit the window together: 10 |
+| Learned fit | −10 to +10 | How often similar tasks were started vs skipped in this time bucket and energy |
 | Skip penalty | −8 each | Per skip of this task today |
 
-**Tie-break:** sooner due date first, then smaller size.
+**Batches.** When the winner earns the batch bonus, the card offers the batch instead of one task: "Offices are open: 3 calls, about 20 min. Do them together?" Start runs them as a checklist in focus mode.
 
-**Something else** shows the next 2–3 by score, but forces variety: no two from the same project if another project scores within 15 points.
+**Tie-break:** real deadline first, then higher stakes, then smaller size.
+
+**Something else** shows the next 2–3 by score and forces variety across areas: no two from the same area if another area scores within 15 points.
 
 **Stale tasks.** A task skipped 5 times without starting stops being suggested. Daisey asks once in chat: "Still want 'X'? Keep, shrink, or drop?"
 
-**Building the why line.** Take the two or three factors that contributed most points and turn each into a short phrase, joined with commas:
+**Building the why line.** Take the two or three factors that added the most points and turn each into a short phrase, in first person ("I'd do this now: …"):
 
-- Urgency → "due Tuesday" / "overdue"
-- Energy fit → "light one, you're low" / "good for high energy"
-- Window fit → "fits before teaching" / "fills your free hour"
+- Real deadline → "deadline Tuesday" / "deadline today"
+- Stakes → "costs money if late" / "Sofi is waiting on it"
+- Office hours → "offices close at 16:00"
+- Area balance → "job search hasn't moved this week"
+- Batch → "3 calls, done together"
+- Energy fit → "light one, you're low"
+- Window fit → "fits before teaching"
 - Momentum → "keeps Monster Punk going"
-- Neglect → "untouched for 6 days"
-- Learned fit → "you usually do these in the morning"
+
+The card and its alternatives never share the same why line. If two tasks lead with the same factor, the second one leads with its next factor.
+
+## Overdue triage and weekly intents
+
+Only real deadlines can be overdue. Target dates that pass roll forward quietly and lose urgency, so a pile of old wish dates never floods the card.
+
+**The sweep.** When more than 3 deadlines or 5 targets have passed, Daisey offers a 2-minute sweep, at most once a day. One task at a time, four buttons: Today · This week · Someday · Drop. "Someday" tasks are never suggested until moved back.
+
+**Weekly intents.** Optional, one per area, set in chat: "I want to send 3 CVs a week", "2 home tasks a week". They feed the Area balance factor so neglected parts of life get a turn. Progress is shown quietly, never as streaks or red numbers.
 
 ## Energy guessing and learning
 
@@ -191,7 +227,8 @@ The calendar becomes context, not a plan to obey. Daisey reads it freely and wri
 
 | Situation | Daisey proposes | Default |
 | --- | --- | --- |
-| A task with a hard due date has no realistic window before it | "Block 90 min Wed 10:00 for mix review?" | Off until tapped |
+| You accept a pencil suggestion | A block on the Daisey calendar for that gap | Written on tap |
+| A task with a real deadline has no realistic window before it | "Block 90 min Wed 10:00 for mix review?" | Off until tapped |
 | You ask in chat to schedule something | The event, shown as a confirm card | Requires ✓ |
 | You finish a task | Logs it as a past event ("Done: boss SFX · 47 min") | Setting, off by default |
 
@@ -203,6 +240,20 @@ The calendar becomes context, not a plan to obey. Daisey reads it freely and wri
 
 **Calendar used:** writes go to a separate "Daisey" calendar, so they're easy to hide or delete without touching other events.
 
+**Meetings to set up (v2).** A task like "set a meeting with X" becomes: Daisey suggests 3 free slots from the calendar and drafts the message. You approve, then send it yourself.
+
+## Pencil schedule
+
+Daisey shows the day in ink and pencil: what's fixed, plus a soft suggestion for each free gap. You can follow it, change it, or ignore it with no cost.
+
+- **Ink** = calendar events: meetings, teaching, appointments, anything set by other people or the clock. Shown solid.
+- **Pencil** = Daisey's suggestion for each free gap, shown faded: "15:00–17:00 · SFX session (part 1)?" Built by running the Now engine forward for each gap, using that gap's length, office hours, place, and the energy guess after the event before it.
+- **Tap a pencil item** → Accept (becomes a Daisey-calendar block) · Swap · Dismiss. Ignoring it does nothing.
+- **Live re-sketch.** Whenever a task is done, skipped or added, or the calendar changes, the pencil items are rebuilt. Nothing carries over as "missed".
+- **One pencil item per gap.** Gaps under 20 min get a batch of quick tasks or nothing.
+- **Morning capacity line**: "2 h free today, 8 open. Realistic: 3." with a "Move the rest" button that runs the sweep.
+- **The Now card is always the pencil item for the current gap.** Same engine, two views: the card for now, the pencil schedule for the rest of today.
+
 ## v1 scope
 
 v1 is done when the Now card picks a task you actually start, most days, for one full week, with no other planning tool open.
@@ -210,22 +261,24 @@ v1 is done when the Now card picks a task you actually start, most days, for one
 **In v1 (build in this order):**
 
 - [ ] Google sign-in + Firebase storage, synced across phone and computer
-- [ ] Task data model (fields above)
-- [ ] Now engine: filter + score + why line, with manual window and energy (no calendar yet)
-- [ ] Now card UI with Start · Not now · Something else, Hebrew and RTL ready
+- [ ] Task data model (fields above, including type, where, open hours, stakes, date kind)
+- [ ] Now card UI with Start · Later · Switch · Pending, Hebrew and RTL ready
 - [ ] Running timer and Done flow
+- [ ] Google Calendar read: free window, current block, project focus, "I'm free now"
 - [ ] Server function holding the Gemini key
-- [ ] Text chat via Gemini: add task, brain dump, set context, edit, with confirm cards
-- [ ] Google Calendar read: free window
-- [ ] Energy guess from time bucket + corrections
-- [ ] Learning from start, skip reasons, finish times
+- [ ] Chat via Gemini: add task, brain dump, edit, with guessed chips on the confirm card
+- [ ] Three-gate Now engine with why line and batching
+- [ ] Overdue triage sweep and weekly intents
+- [ ] Pencil schedule in free gaps; accepting writes a Daisey-calendar block
+- [ ] Energy guess from time bucket + corrections; learning from start, skip, finish
 - [ ] Voice input in chat (browser speech recognition, Hebrew + English)
 
 **Out of v1 (parked):**
 
 - Game layer, combos, streaks
-- Calendar writes (blocks and logs)
-- Up-next list on the home screen (available via Something else only)
+- Calendar writes other than accepted pencil blocks (auto-blocks, done logs)
+- Meeting scheduling with others (find slots, draft message)
+- Evening wrap and notifications when a gap opens
 - Multiple users, sharing, accounts for others
 - Wearables or sleep data
 
@@ -241,126 +294,3 @@ v1 is done when the Now card picks a task you actually start, most days, for one
 - **Chat model:** Gemini API. The key never sits in page code; a small server function (Netlify Function if the site is on Netlify) calls Gemini.
 - **Language:** Hebrew and English from day one: RTL layout, mixed-language task titles, chat and voice in both.
 - **Finished-task history:** used for learning only in v1; no history screen.
-
-## UX additions (built Oct 3, 2026)
-
-What the Now screen actually does, after a pass with Mor. Where this differs
-from the sections above, this wins.
-
-**The day plan is gone.** The "Today" panel — hours-free chips plus Daisey's
-numbered take on the day — was removed. Daisey picks one task at a time and
-never lays out the day, so there is nothing to keep in step when the day
-changes. There is no daily check-in either; it was folded into that panel
-earlier the same day and went with it.
-
-**Layout.** The Now card stays put at the top of the screen. Under it, one
-pane with two tabs — **Schedule** and **Tasks** — both the same height, so
-switching never moves the card. Tasks is one list grouped by when —
-Overdue, Today, This week, Later, Anytime, Waiting — with the project as a
-chip on each row and a chip row that filters to one project. (The
-column-per-project board it replaced is gone; so is an earlier version that
-put all of it in one sideways slider, where the card drifted off screen.)
-Tapping a row opens the task sheet: the fields, "Waiting on", Delete, and
-"Do this now", which puts it on the card.
-
-**Moving and deleting events.** Tap an event you own and Daisey offers the
-only two writes it makes: move it (−15m, +15m, +1 h, or to a time you type,
-keeping its length) or delete it. A move can be undone for six seconds; a
-delete asks first, because Google has no undo for it. Only timed events on
-calendars the user can write to offer this; recurring events and read-only
-calendars don't.
-
-**Adding an event.** "+" in the Schedule header opens a four-field sheet —
-what, which day, what time, how long — and writes it to the main Google
-calendar, so putting a meeting in doesn't mean leaving for Google Calendar
-and coming back. It opens on the day the panel is showing, with the time
-rounded up to the next quarter hour. Guests, repeats, descriptions and the
-choice of calendar stay Google's job. This is not the auto-scheduler the
-spec refuses to be: Daisey never places anything on the calendar by itself
-and never writes a task there — what it writes is what the user typed.
-
-**Which calendars.** Every calendar ticked in Google Calendar, not just the
-primary one — merged, sorted and coloured as they are there. Unticking a
-calendar in Google hides it here too. All-day entries (holidays, birthdays,
-"illustration week") show in the panel but never block a pick.
-
-**Calendar sync.** One shared poll serves the card and the panel: once a
-minute while the tab is in front, and again whenever it comes back, so a
-change made in Google Calendar shows up within about a minute without being
-asked for.
-
-**Schedule panel.** Google Calendar's own day, read-only. One day fills the
-panel and the week slides sideways — swipe, or use ‹ › — up to seven days
-ahead, with "Back to today" to return. Each event shows its start and end,
-a dot in the colour it has in Google Calendar, and the free gaps between
-events spelled out; all-day entries are marked, what's running is
-highlighted, what's finished is greyed, and a red line marks where now falls
-(today only, as Google draws it).
-It comes from the same read as the free window, so the panel and the greeting
-can never disagree. All-day entries and events marked free never block a pick
-— only real, timed, accepted events do.
-
-**Clock.** The local date and time sit in the top bar, beside the name and
-the avatar, ticking each minute. Nothing sits above the card but a warning
-when there is one. Free time is never asked for; it comes only from the calendar,
-and the Schedule panel below says what the day holds. Without a connected
-calendar Daisey assumes 60 minutes, which filters out what cannot fit but
-earns no points for fitting.
-
-During an event the card is empty — "Nothing to pick until it ends" — with
-an **I'm free now** button beside it, because meetings end early and get
-cancelled. It ignores that one event (a line under the clock says so, and
-offers to put it back) and clears itself once the event is over.
-
-**The card.** It is the hero and the only yellow thing on the screen: project
-and size, title, why line, a big **Start**, and three quiet icon actions
-under it, each with its sentence as the tooltip:
-
-| Action | What happens |
-| --- | --- |
-| Later | The card slides out, the next slides in. The skip is counted. |
-| Switch | 2–3 alternatives with their why lines; tap one to put it on the card. |
-| Pending | Same slide, and the task is set to Waiting. |
-
-After Later or Pending, a toast sits for five seconds offering **Undo**,
-which puts the task back exactly as it was. (An earlier version asked for a
-reason — tired, no time, blocked — and Mor cut it.)
-
-**The why line, in Daisey's voice.** The proposed card says "I'd do this now:
-due today, 5 min, quick win." Alternatives keep the plain sentence, so only
-one voice is speaking at a time.
-
-**Focus mode.** Start fills the screen: the task, a running timer, Done,
-Stop, nothing else. The run is stored, so a reload or the other device shows
-the same timer still going. Past the estimate it asks once, quietly — "Still
-on it? +15 min · Stuck" — with no sound and no red. Stop means "pause, still
-mine"; Stuck also sets the task to Pending. Done asks "Finished, or
-more left?", then hands off: the next task with its why line, Start or Not
-now. Real minutes are saved either way.
-
-**Hebrew and English.** Every piece that could be either language is isolated
-(`<bdi>`), so "חתונה · 5 min" never reorders itself. Durations always carry
-their unit: "1 h 30 min", never "1.5 h" and never a bare trailing number.
-Note for later: `\b` does not work on Hebrew letters in JavaScript regexes.
-
-**Not before, and notes.** A task can carry a "not before" date — Daisey
-keeps it off the card until that day, for work that can't start yet (files
-not sent, venue not booked). It still sits in its project column, greyed,
-saying "not before Wed 7 Oct". Notes are a plain optional field on the same
-form, shown under the task in its column: why it's waiting, a link, whatever
-the title doesn't hold. Both are editable afterwards through ⋯ → Edit…, as
-project, title, size and due already were.
-
-**Importing from Trello.** The account menu has "Import from Trello…": pick
-a board, tick the lists, and the open cards become Daisey tasks — list as
-project, card name as title, due date kept, card link in the notes, size left
-to Daisey to guess. It is a **pull, not a sync**: Daisey owns a task from the
-moment it lands and never writes back, because two-way sync is what made the
-old Daisey fragile and Trello has nowhere to keep size, skips or time spent.
-Each task remembers its card id, so the import can be run again whenever —
-lists show "2 new of 5" and only the new cards come over. Cards already
-ticked off in Trello are skipped. Nothing is written before the button.
-
-**Still as it was:** tasks are added through the "+" form (a capture bar was
-built and rejected — for one task it was no better), and the task on the Now
-card stays in its project column with a "now" badge rather than disappearing.

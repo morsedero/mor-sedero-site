@@ -123,10 +123,14 @@ async function boot(){
     } else initial();
     show("signedin"); // no element of its own: just clears loading/sign-in views
 
-    Promise.all([import("./now.js"), import("./tasks.js"), import("./addtask.js"), import("./schedule.js"), import("./import-trello.js"), import("./addevent.js")])
-      .then(([{ mountNow }, { mountTasks }, { mountAddTask }, { mountSchedule }, { mountImport }, { mountAddEvent }]) => {
+    Promise.all([import("./now.js"), import("./tasks.js"), import("./addtask.js"), import("./schedule.js"), import("./import-trello.js"), import("./addevent.js"), import("./store.js"), import("./deadlines.js")])
+      .then(([{ mountNow }, { mountTasks }, { mountAddTask }, { mountSchedule }, { mountImport }, { mountAddEvent }, { migrateTasks }, { mountDeadlines }]) => {
         if (fb.currentUid() !== user.uid || mounted) return;
         const m = mounted = {};
+        // Old tasks get the new fields first; then, once, which dates are real.
+        const stopMigrate = migrateTasks(user.uid);
+        m.migrate = { unmount: stopMigrate };
+        m.deadlines = mountDeadlines($("#deadlinedlg"), user.uid);
         m.adder = mountAddTask($("#addtask"), user.uid, { onNow: (id) => m.now?.put(id) });
         // The Now card rides in the same scroller as the columns, first in line.
         m.event = mountAddEvent($("#eventdlg"));

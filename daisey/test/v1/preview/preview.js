@@ -94,7 +94,8 @@ const FAKES = {
     colorScheme: args.includes("--dark") ? "dark" : "light" });
   page.on("pageerror", (e) => console.error("pageerror:", e.message));
   page.on("console", (m) => { if (m.type() === "error") console.error("console:", m.text()); });
-  await page.addInitScript((s) => { window.__FAKE = s; }, scenario);
+  // --ask-deadlines: settings as before the one-time deadline question.
+  await page.addInitScript((s) => { window.__FAKE = s; }, args.includes("--ask-deadlines") ? { ...scenario, settings: {} } : scenario);
   await page.route(ORIGIN + "/**", (route) => {
     const rel = new URL(route.request().url()).pathname.replace(/^\//, "") || "index.html";
     if (rel === ".netlify/functions/daisey-now-trello") {
@@ -117,9 +118,15 @@ const FAKES = {
   await page.goto(ORIGIN + "/");
   await page.waitForSelector(".now-card, .focus, .now-empty, .tk-empty");
   await page.waitForTimeout(150);
-  for (const sel of clicks) { await page.click(sel); await page.waitForTimeout(150); }
+  for (const sel of clicks) {
+    // "sel=text" types into a field instead of clicking it.
+    const eq = sel.indexOf("=");
+    if (eq > 0 && !sel.startsWith("[")) await page.fill(sel.slice(0, eq), sel.slice(eq + 1)); else await page.click(sel);
+    await page.waitForTimeout(150);
+  }
   if (tasksTab) { await page.click("#tabTasks"); await page.waitForTimeout(150); }
   if (args.includes("--text")) console.log(await page.innerText("body"));
+  if (args.includes("--json-dump")) console.log(JSON.stringify(await page.evaluate(() => window.__store.tasks.map(({ title, area, type, where, openHours, size, stakes, energy, due, dateKind, guessed }) => ({ title, area, type, where, openHours, size, stakes, energy, due, dateKind, guessed })))));
   if (args.includes("--tasks-dump")) console.log(await page.evaluate(() => window.__store.tasks.map((t) => t.title + ": " + t.status + (t.skipCount ? " skips " + t.skipCount : "") + (t.source ? " [" + t.source.app + ":" + t.source.cardId + "]" : "")).join(" | ")));
   fs.mkdirSync(outDir, { recursive: true });
   const file = path.join(outDir, `${name}${tasksTab ? "-tasks" : ""}${cal ? "-cal" + cal.replace(/\W/g, "") : ""}${running ? "-run" + running.replace(/\W/g, "") : ""}${clicks.length ? "-" + clicks.join("").replace(/\W/g, "").slice(0, 24) : ""}${wide ? "-wide" : ""}${args.includes("--dark") ? "-dark" : ""}.png`);

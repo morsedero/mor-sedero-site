@@ -82,6 +82,7 @@ export function mountNow(root, uid, { onCard } = {}){
     return h("div", { className: "now-card" + (main ? " main" : "") },
       h("div", { className: "now-meta" }, ...pieces(s.task.project, sizeText(s.task.size))),
       h("div", { className: "now-title", dir: "auto", textContent: s.task.title }),
+      s.task.nextStep && h("p", { className: "now-next" }, "Next: ", bdi(s.task.nextStep)),
       why && h("p", { className: "now-why", textContent: why }),
       ...extra);
   }

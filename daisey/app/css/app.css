@@ -138,7 +138,7 @@ textarea {
 }
 
 /* Form fields (Add task popup). */
-.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; align-items: start; }
 .form-grid > :nth-child(-n+2), .form-grid > button { grid-column: 1 / -1; }
 .field { display: grid; gap: 4px; min-inline-size: 0; }
 .field label { font-size: 14px; font-weight: 600; color: var(--ink-2); }
@@ -147,6 +147,30 @@ textarea {
   font: inherit; font-size: 16px; padding: 8px 10px; min-inline-size: 0;
   border: 1px solid var(--line); border-radius: 10px; background: var(--surface);
 }
+/* Daisey's guesses under the title: dashed = a guess, solid = yours. */
+.guesses { display: grid; gap: 8px; }
+.gchips { display: flex; flex-wrap: wrap; gap: 6px; }
+.gchip {
+  font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; min-block-size: 36px;
+  display: inline-flex; align-items: center; gap: 5px; padding-inline: 10px; border-radius: 999px;
+  border: 1.5px dashed color-mix(in srgb, var(--ink-2) 45%, var(--line)); background: transparent; color: var(--ink);
+}
+.gchip.mine { border-style: solid; border-color: var(--ink); color: var(--ink); background: var(--surface); }
+.gchip[aria-expanded="true"] { border-color: var(--accent); }
+.gchip-k { font-weight: 500; color: var(--ink-2); }
+.now-next { margin: 2px 0 0; font-size: 14px; color: var(--ink-2); }
+.gpick { display: flex; flex-wrap: wrap; gap: 6px; padding: 10px; border-radius: 12px; background: var(--bg); border: 1px solid var(--line); }
+.gpick .chip, .kind .chip { min-block-size: 34px; font-size: 13px; padding-inline: 11px; }
+.chip.quiet { color: var(--ink-2); border-style: dashed; }
+.kind { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 6px; margin-block-start: -4px; }
+.more.wide { grid-column: 1 / -1; }
+.dl-list { list-style: none; margin: 0 0 14px; padding: 0; display: grid; gap: 2px; max-block-size: 50dvh; overflow-y: auto; }
+.dl-row { display: flex; align-items: center; gap: 10px; min-block-size: 44px; cursor: pointer; }
+.dl-row input { inline-size: 20px; block-size: 20px; flex: none; accent-color: var(--accent); }
+.dl-title { flex: 1; min-inline-size: 0; }
+.dl-date { flex: none; font-size: 13px; }
+.more summary { cursor: pointer; font-size: 14px; font-weight: 600; color: var(--ink-2); padding-block: 4px; }
+.more > .form-grid { margin-block-start: 8px; }
 .btn.small { min-block-size: 32px; padding-block: 4px; padding-inline: 12px; font-size: 14px; }
 
 
