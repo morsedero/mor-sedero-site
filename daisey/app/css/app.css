@@ -16,9 +16,14 @@
 }
 
 /* Dark: the same light-on-paper feel inverted, same yellow. Nothing here
-   changes layout — only the tokens above. */
+   changes layout — only the tokens above.
+   Dark applies when the system asks for it, OR when the user picked Dark in
+   the account menu; the system's answer is ignored once they've picked
+   either way (data-theme on <html>, written by main.js). The two selectors
+   carry the same declarations because CSS has no way to share them: a
+   media-scoped rule and a plain one can't be one rule. */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
     --bg: #16150f;
     --card: #1e1d16;
     --ink: #f3efe2;
@@ -28,9 +33,29 @@
     --danger: #ff8a7a;
     --shadow: 0 10px 30px rgb(0 0 0 / .5);
   }
-  .fab, .acct-menu, .cap-bar { box-shadow: var(--shadow); }
-  .now-card.main { box-shadow: 0 2px 4px rgb(0 0 0 / .3), 0 14px 36px rgb(245 179 1 / .10); }
+  :root:not([data-theme="light"]) .fab,
+  :root:not([data-theme="light"]) .acct-menu,
+  :root:not([data-theme="light"]) .cap-bar { box-shadow: var(--shadow); }
+  :root:not([data-theme="light"]) .now-card.main { box-shadow: 0 2px 4px rgb(0 0 0 / .3), 0 14px 36px rgb(245 179 1 / .10); }
 }
+:root[data-theme="dark"] {
+  --bg: #16150f;
+  --card: #1e1d16;
+  --ink: #f3efe2;
+  --ink-2: #a9a292;
+  --line: #342f24;
+  --surface: #26241b;
+  --danger: #ff8a7a;
+  --shadow: 0 10px 30px rgb(0 0 0 / .5);
+}
+:root[data-theme="dark"] .fab,
+:root[data-theme="dark"] .acct-menu,
+:root[data-theme="dark"] .cap-bar { box-shadow: var(--shadow); }
+:root[data-theme="dark"] .now-card.main { box-shadow: 0 2px 4px rgb(0 0 0 / .3), 0 14px 36px rgb(245 179 1 / .10); }
+/* So the browser's own widgets — date pickers, scrollbars, form controls —
+   follow the choice too. */
+:root[data-theme="light"] { color-scheme: light; }
+:root[data-theme="dark"] { color-scheme: dark; }
 
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
@@ -64,6 +89,13 @@ body {
   background: var(--card); border: 1px solid var(--line); border-radius: 14px; box-shadow: 0 10px 30px rgba(0,0,0,.15);
 }
 .acct-menu p { margin: 0; overflow-wrap: anywhere; }
+/* Theme: Auto, Light, Dark — a segmented row in the account menu. */
+.theme { display: inline-flex; padding: 3px; gap: 2px; border-radius: 999px; background: var(--bg); border: 1px solid var(--line); }
+.theme-btn {
+  font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; min-block-size: 30px;
+  padding-inline: 12px; border: 0; border-radius: 999px; background: none; color: var(--ink-2);
+}
+.theme-btn[aria-checked="true"] { background: var(--card); color: var(--ink); box-shadow: 0 1px 3px rgb(0 0 0 / .12); }
 
 .card {
   background: var(--card);
@@ -330,7 +362,10 @@ body.focus .shell { display: grid; min-block-size: 100dvh; align-content: center
 /* Above the scroller, beside the pane's own tabs — a control, not a row.
    Inside it, it scrolled away with the tasks and was simply missing from any
    list long enough to scroll. */
-.tk-filters { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding-block: 1px; margin-block-end: 8px; }
+/* Wrapping, not scrolling sideways: every project the bar shows is on
+   screen, and the rest are behind the "+n" chip rather than behind a swipe. */
+.tk-filters { display: flex; flex-wrap: wrap; gap: 6px; padding-block: 1px; margin-block-end: 8px; }
+.tk-more-projects { font-weight: 700; color: var(--ink-2); }
 .tk-filters:empty { margin: 0; padding: 0; } /* one project: no bar, and no gap where it would be */
 .tk-filters::-webkit-scrollbar { display: none; }
 /* Grid children default to min-content width; without this the chip row's

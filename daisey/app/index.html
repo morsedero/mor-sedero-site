@@ -7,6 +7,9 @@
 <title>Daisey</title>
 <meta name="theme-color" content="#fbf8ef" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#16150f" media="(prefers-color-scheme: dark)">
+<!-- Before the stylesheet, so a saved Light/Dark choice is in place for the
+     first paint; main.js owns it from there. -->
+<script>try{var t=localStorage.getItem("daisey.theme");if(t==="light"||t==="dark")document.documentElement.dataset.theme=t;}catch(e){}</script>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icons/daisey-192.png">
 <link rel="apple-touch-icon" href="icons/daisey-180.png">
@@ -25,6 +28,11 @@
       <button id="avatar" class="avatar" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="acctMenu" hidden></button>
       <div id="acctMenu" class="acct-menu" hidden>
         <p id="who" class="muted"></p>
+        <div class="theme" role="radiogroup" aria-label="Theme">
+          <button class="theme-btn" type="button" role="radio" data-set-theme="system">Auto</button>
+          <button class="theme-btn" type="button" role="radio" data-set-theme="light">Light</button>
+          <button class="theme-btn" type="button" role="radio" data-set-theme="dark">Dark</button>
+        </div>
         <button id="importTrello" class="btn small" type="button">Import from Trello…</button>
         <button id="signout" class="btn small" type="button">Sign out</button>
       </div>

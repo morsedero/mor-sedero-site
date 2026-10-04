@@ -25,6 +25,37 @@ const show = (id) => {
   for (const el of document.querySelectorAll("[data-view]")) el.hidden = el.dataset.view !== id;
 };
 
+// Theme (Mor, 2026-10-04). Auto follows the phone; Light and Dark override it
+// and stay overridden. The choice is a data-theme attribute on <html> that
+// app.css reads, written for the FIRST paint by the inline script in
+// index.html and owned from here after that.
+{
+  const KEY = "daisey.theme";
+  const PAPER = "#fbf8ef", NIGHT = "#16150f";
+  const saved = () => { try { const v = localStorage.getItem(KEY); return v === "light" || v === "dark" ? v : "system"; } catch { return "system"; } };
+
+  // The address bar follows too. The two <meta>s are the light-media one and
+  // the dark-media one; on Auto they keep their own colours, and an override
+  // sets both to the chosen one so the system's answer can't win.
+  function paintBar(choice){
+    const [light, dark] = document.querySelectorAll('meta[name="theme-color"]');
+    if (!light || !dark) return;
+    light.content = choice === "dark" ? NIGHT : PAPER;
+    dark.content = choice === "light" ? PAPER : NIGHT;
+  }
+
+  function apply(choice){
+    if (choice === "light" || choice === "dark") document.documentElement.dataset.theme = choice;
+    else delete document.documentElement.dataset.theme;
+    try { choice === "system" ? localStorage.removeItem(KEY) : localStorage.setItem(KEY, choice); } catch { /* private window */ }
+    for (const b of document.querySelectorAll("[data-set-theme]")) b.setAttribute("aria-checked", String(b.dataset.setTheme === choice));
+    paintBar(choice);
+  }
+
+  for (const b of document.querySelectorAll("[data-set-theme]")) b.onclick = () => apply(b.dataset.setTheme);
+  apply(saved());
+}
+
 if (!configured) {
   show("noconfig");
 } else {
