@@ -560,11 +560,18 @@ dialog.now { overflow-y: auto; overscroll-behavior: contain; }
 }
 .tk-filters .chip:hover:not([aria-checked="true"]) { color: var(--ink); }
 
-/* Pencil: Daisey's suggestion for a free gap, faded and dashed — ink is the
-   calendar, pencil is a proposal you can take or leave. */
-.sch-pencil .sch-open { opacity: .62; font-style: italic; border: 1px dashed var(--line); border-radius: 10px; }
-.sch-pencil.open .sch-open, .sch-pencil .sch-open:hover { opacity: 1; }
-.sch-dot.pencil { background: transparent; border: 1.5px dashed var(--ink-2); box-sizing: border-box; }
+/* Up next: the queue of Daisey's picks for today, dashed because nothing in
+   it is booked — ink is the calendar, this is a proposal you can take, swap
+   or leave. The next piece is solid; the ones behind it fade, like a Tetris
+   preview. */
+.sch-next { display: grid; gap: 8px; margin: 0 0 12px; padding: 10px 12px; border: 1px dashed var(--line); border-radius: 12px; }
+.sch-next-label { margin: 0; font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-2); }
+.sch-next-task { margin: 0; font-size: 16px; font-weight: 600; overflow-wrap: anywhere; }
+.sch-next-when { margin-inline-start: 8px; font-size: 12px; font-weight: 400; font-variant-numeric: tabular-nums; color: var(--ink-2); }
+.sch-next-acts { display: flex; flex-wrap: wrap; gap: 6px; }
+.sch-next-acts .chip { min-block-size: 36px; font-size: 13px; padding-inline: 11px; }
+.sch-queue { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; opacity: .5; }
+.sch-queue-item { display: flex; gap: 8px; align-items: baseline; font-size: 13px; font-style: italic; }
 .sch-cap { margin: 0 0 10px; font-size: 14px; display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: baseline; }
 
 /* Learning asks: one line under the card, the same weight as the offer. */

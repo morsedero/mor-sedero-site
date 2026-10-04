@@ -79,21 +79,30 @@ function dayRows(events, now, from, until = null){
   return rows;
 }
 
-// The pencil (DAISEY_SPEC "Pencil schedule", Mor's step 6): on today, each
-// free gap of 20+ minutes shows one faded suggestion from the engine run for
-// that gap (pencil.js). Tap it: Accept writes a block to the "Daisey"
-// calendar; Swap shows the next pick for that gap; Dismiss drops the task
-// from today's pencil. Nothing is written without a tap, and ignoring it
-// costs nothing. It redraws whenever tasks, the calendar or the energy and
-// place chips change. On top of today: "2 h free today, 8 open. Realistic:
-// 3." with "Move the rest", which opens the sweep on the ones that don't fit.
+// Up next (DAISEY_SPEC "Pencil schedule", Mor 2026-10-05 — "like tetris,
+// where the user can see what is next and can replace it if he wants"): the
+// suggestions are NOT scattered through the day any more. The engine's picks
+// for today's free gaps (pencil.js) are one queue at the top of today: the
+// next piece large, the two after it faded behind it. Replace swaps the next
+// piece for the engine's following pick in that gap; Not today drops the task
+// from the queue; Add puts it on the "Daisey" calendar, which is the only
+// thing that writes anything. Ignoring the queue costs nothing.
+//
+// Why a queue and not a row inside each gap: a faded row sitting in a 15:00
+// slot reads as something already scheduled, and the day list then held two
+// kinds of thing with one shape. One queue says "this is what's coming, and
+// it isn't booked" without needing the day to carry it. The gaps in the list
+// are back to plain "1 h 20 min free".
+//
+// It redraws whenever tasks, the calendar or the energy and place chips
+// change. On top of today: "2 h free today, 8 open. Realistic: 3." with
+// "Move the rest", which opens the sweep on the ones that don't fit.
 // uid: the signed-in user. onSweep(ids) opens the sweep on those tasks.
 // onOpen(event) hands a tapped calendar event to the sheet.
 export function mountSchedule(root, { onAdd, onOpen, uid, onSweep } = {}){
   let cal = { status: "loading", events: [] };
   let tasks = null, momentDoc = {}, learnStats = {}, pencilDoc = {};
   let currentId = null; // the task on the Now card: the current gap's pencil
-  let openPencil = null; // the pencil whose actions are showing (its gap key)
   let offset = 0; // days from today
   let strip = null; // the sliding row of days
   let heading, back, prev, next;
@@ -155,7 +164,6 @@ export function mountSchedule(root, { onAdd, onOpen, uid, onSweep } = {}){
     if (kind === "dismiss") pd.dismissed = [...(pd.dismissed || []), p.task.id];
     else pd.swaps = { ...(pd.swaps || {}), [p.key]: [...((pd.swaps || {})[p.key] || []), p.task.id] };
     pencilDoc = pd;
-    openPencil = null;
     render();
     savePencil(uid, pd).catch((e) => console.error("[daisey] pencil", e));
   }
@@ -163,25 +171,31 @@ export function mountSchedule(root, { onAdd, onOpen, uid, onSweep } = {}){
   const span = (p) => { const start = blockStart(p); return { start, end: start + p.minutes * 60000 }; };
   const pencilTitle = (p) => p.task.title + (p.part ? " (part)" : "");
 
-  function pencilRow(p){
+  // The next piece, big, with its actions; then up to two more, faded, so
+  // the shape of the rest of the day is visible without being acted on.
+  function nextUp(now){
+    const pen = pencils(now);
+    if (pen.length === 0) return null;
+    const [p, ...rest] = pen;
     const { start, end } = span(p);
-    const time = `${clock(start)}–${clock(end)}`;
-    return h("li", { className: "sch-row sch-pencil" + (openPencil === p.key ? " open" : "") },
-      h("button", { className: "sch-open", type: "button", ariaExpanded: String(openPencil === p.key),
-        ariaLabel: `Suggestion for ${time}: ${pencilTitle(p)}. Accept, swap or dismiss`,
-        onclick: () => { openPencil = openPencil === p.key ? null : p.key; render(); } },
-      h("span", { className: "sch-dot pencil" }),
-      h("span", { className: "sch-time", textContent: time }),
-      h("span", { className: "sch-title" }, bdi(pencilTitle(p)), "?")));
-  }
-
-  function pencilActions(p){
-    const { start, end } = span(p);
-    return h("li", { className: "sch-actions end" },
-      h("button", { className: "chip", type: "button", textContent: "Accept", disabled: busy,
-        ariaLabel: `Accept: put ${p.task.title} on your Daisey calendar, ${clock(start)}–${clock(end)}`,
-        onclick: () => run(async () => { await acceptBlock({ task: p.task, start, end, title: pencilTitle(p) }); openPencil = null; }) }),
-      h("button", { className: "chip", type: "button", textContent: "Dismiss", disabled: busy, onclick: () => answer(p, "dismiss") }));
+    const when = p.isNow ? "now" : clock(start);
+    return h("section", { className: "sch-next", ariaLabel: "Up next" },
+      h("p", { className: "sch-next-label", textContent: "Up next" }),
+      h("p", { className: "sch-next-task" }, bdi(pencilTitle(p)),
+        h("span", { className: "sch-next-when", textContent: `${when} · ${dur(p.minutes)}` })),
+      h("div", { className: "sch-next-acts" },
+        h("button", { className: "chip", type: "button", textContent: "Add", disabled: busy,
+          ariaLabel: `Add ${p.task.title} to your Daisey calendar, ${clock(start)}–${clock(end)}`,
+          onclick: () => run(() => acceptBlock({ task: p.task, start, end, title: pencilTitle(p) })) }),
+        h("button", { className: "chip", type: "button", textContent: "Replace", disabled: busy,
+          ariaLabel: `Replace ${p.task.title} with the next pick for ${when}`,
+          onclick: () => answer(p, "swap") }),
+        h("button", { className: "chip", type: "button", textContent: "Not today", disabled: busy,
+          ariaLabel: `Take ${p.task.title} off today's queue`, onclick: () => answer(p, "dismiss") })),
+      rest.length > 0 && h("ul", { className: "sch-queue" }, ...rest.slice(0, 2).map((q) =>
+        h("li", { className: "sch-queue-item" },
+          h("span", { className: "sch-time", textContent: clock(span(q).start) }),
+          h("span", { className: "sch-title" }, bdi(pencilTitle(q)))))));
   }
 
   function capLine(now){
@@ -200,20 +214,14 @@ export function mountSchedule(root, { onAdd, onOpen, uid, onSweep } = {}){
     const events = cal.events.filter((e) => localDate(Date.parse(e.start)) === date)
       .sort((a, b) => (a.allDay === b.allDay ? Date.parse(a.start) - Date.parse(b.start) : a.allDay ? -1 : 1));
     const rows = dayRows(events, now, today ? now : null, today ? new Date(now).setHours(ROOM_HOURS.end, 0, 0, 0) : null);
-    const pen = today ? pencils(now) : [];
-    // The pencil for a gap row: the suggestion whose gap overlaps it.
-    const penFor = (r) => pen.find((p) => p.gap.start < r.end && p.gap.end > r.start);
     return h("section", { className: "sch-day", ariaLabel: dayLabel(n, dayStart(now, n)) },
       today && capLine(now),
+      today && nextUp(now),
       rows.length === 0
         ? h("p", { className: "muted sch-free", textContent: "Nothing on the calendar." })
         : h("ul", { className: "sch-list" }, ...rows.flatMap((r) => {
           if (r.nowLine) return [h("li", { className: "sch-nowline" }, h("span", { className: "sch-nowtime", textContent: clock(now) }))];
-          if (r.gap) {
-            const p = penFor(r);
-            if (!p) return [h("li", { className: "sch-gap", textContent: `${dur(r.minutes)} free` })];
-            return openPencil === p.key ? [pencilRow(p), pencilActions(p)] : [pencilRow(p)];
-          }
+          if (r.gap) return [h("li", { className: "sch-gap", textContent: `${dur(r.minutes)} free` })];
           return [eventRow(r)];
         })));
   }

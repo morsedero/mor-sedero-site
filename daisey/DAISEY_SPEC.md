@@ -227,7 +227,7 @@ The calendar becomes context, not a plan to obey. Daisey reads it freely and wri
 
 | Situation | Daisey proposes | Default |
 | --- | --- | --- |
-| You accept a pencil suggestion | A block on the Daisey calendar for that gap | Written on tap |
+| You press Add on the queue | A block on the Daisey calendar for that gap | Written on tap |
 | A task with a real deadline has no realistic window before it | "Block 90 min Wed 10:00 for mix review?" | Off until tapped |
 | You ask in chat to schedule something | The event, shown as a confirm card | Requires ✓ |
 | You finish a task | Logs it as a past event ("Done: boss SFX · 47 min") | Setting, off by default |
@@ -244,15 +244,15 @@ The calendar becomes context, not a plan to obey. Daisey reads it freely and wri
 
 ## Pencil schedule
 
-Daisey shows the day in ink and pencil: what's fixed, plus a soft suggestion for each free gap. You can follow it, change it, or ignore it with no cost.
+Daisey shows the day in ink, and what it would suggest next as a queue above it. You can follow it, replace it, or ignore it with no cost.
 
-- **Ink** = calendar events: meetings, teaching, appointments, anything set by other people or the clock. Shown solid.
-- **Pencil** = Daisey's suggestion for each free gap, shown faded: "15:00–17:00 · SFX session (part 1)?" Built by running the Now engine forward for each gap, using that gap's length, office hours, place, and the energy guess after the event before it.
-- **Tap a pencil item** → Accept (becomes a Daisey-calendar block) · Swap · Dismiss. Ignoring it does nothing.
+- **Ink** = calendar events: meetings, teaching, appointments, anything set by other people or the clock. Shown solid. The free stretches between them say only "1 h 30 min free" — nothing unbooked sits inside the day.
+- **Up next** = one dashed card above today: the pick for the next free gap, large, with the two after it faded behind — a Tetris preview, which is how Mor asked for it (2026-10-05: "see what is next and replace it if he wants"). Each pick is the Now engine run forward for that gap, using its length, office hours, place, and the energy guess after the event before it.
+- **Its three buttons** → Add (becomes a Daisey-calendar block) · Replace (the next pick for that gap) · Not today (off today's queue). Ignoring it does nothing.
 - **Live re-sketch.** Whenever a task is done, skipped or added, or the calendar changes, the pencil items are rebuilt. Nothing carries over as "missed".
-- **One pencil item per gap.** Gaps under 20 min get a batch of quick tasks or nothing.
+- **One pick per gap.** Gaps under 20 min get a batch of quick tasks or nothing.
 - **Morning capacity line**: "2 h free today, 8 open. Realistic: 3." with a "Move the rest" button that runs the sweep.
-- **The Now card is always the pencil item for the current gap.** Same engine, two views: the card for now, the pencil schedule for the rest of today.
+- **The Now card is always the pick for the current gap.** Same engine, two views: the card for now, the pencil schedule for the rest of today.
 
 ## v1 scope
 

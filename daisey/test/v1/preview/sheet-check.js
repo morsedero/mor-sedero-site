@@ -73,7 +73,7 @@ const check = (name, pass, got) => { results.push({ pass }); console.log(`${pass
   // ---- the day is a list again, not a time grid.
   check("the day is a list of rows", await day.locator(".sch-row").count() >= 2 && await day.locator(".sch-block").count() === 0,
     `${await day.locator(".sch-row").count()} rows, ${await day.locator(".sch-block").count()} blocks`);
-  check("a free stretch is one line, not empty height", await day.locator(".sch-gap, .sch-pencil").count() > 0, "no gap line");
+  check("a free stretch is one line, not empty height", await day.locator(".sch-gap").count() > 0, "no gap line");
   check("nothing on a row is draggable", await day.locator(".sch-grip, .sch-edge").count() === 0, "a drag handle is still there");
 
   // ---- tap a row: its details, the way Google opens an event.
