@@ -35,6 +35,11 @@ const SCENARIOS = {
     { title: "x", project: "A", size: 5 },
   ] },
   many: { tasks: Array.from({ length: 9 }, (_, i) => ({ title: `Task ${i + 1}`, project: `Project ${i + 1}`, size: 30 })) },
+  notyet: { tasks: [
+    { title: "Master the EP", project: "Reprise", size: 60, notBefore: (() => { const d = new Date(); d.setDate(d.getDate() + 3); return d.toLocaleDateString("en-CA"); })(),
+      notes: "Waiting on the final mixes from Yuval." },
+    { title: "Send invoice to Uri", project: "Admin", size: 5 },
+  ] },
   waiting: { tasks: [
     { title: "Waiting on Yuval", project: "Reprise", size: 30, over: { status: "waiting", waitingOn: "Yuval" } },
     { title: "Big edit", project: "Reprise", size: 240 },

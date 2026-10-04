@@ -6,7 +6,7 @@
 // in the column's total (Mor, 2026-10-03: it shouldn't vanish from the
 // list while it's on the card).
 import { watchTasks, updateTask, finishTask, removeTask } from "./store.js";
-import { INBOX } from "./model.js";
+import { INBOX, notYet } from "./model.js";
 import { h, bdi, pieces, sizeText } from "./ui.js";
 
 const shortDate = (s) => new Date(`${s}T12:00`).toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" });
@@ -37,13 +37,15 @@ export function mountTasks(root, uid, { onAdd, onEdit } = {}){
   function row(t){
     const isNow = t.id === onCard;
     const meta = pieces(sizeText(t.size), t.due && `due ${shortDate(t.due)}${t.dueTime ? " " + t.dueTime : ""}`,
+      notYet(t) && `not before ${shortDate(t.notBefore)}`,
       t.status === "waiting" && `waiting${t.waitingOn ? " on " + t.waitingOn : ""}`);
-    return h("li", { className: "tk-row" + (t.status === "waiting" ? " waiting" : "") + (isNow ? " now" : "") },
+    return h("li", { className: "tk-row" + (t.status === "waiting" || notYet(t) ? " waiting" : "") + (isNow ? " now" : "") },
       circle(t, false),
       h("div", { className: "tk-text" },
         h("div", { className: "tk-title" }, bdi(t.title),
           isNow && h("span", { className: "tk-now", title: "On the Now card", textContent: "now" })),
-        h("div", { className: "muted tk-meta" }, ...meta)),
+        h("div", { className: "muted tk-meta" }, ...meta),
+        t.notes && h("div", { className: "muted tk-notes", dir: "auto", textContent: t.notes })),
       h("button", { type: "button", className: "tk-more", ariaLabel: `More for ${t.title}`, ariaExpanded: String(menuFor === t.id), textContent: "⋯",
         onclick: (e) => { e.stopPropagation(); menuFor = menuFor === t.id ? null : t.id; render(); } }),
       menuFor === t.id && menu(t));

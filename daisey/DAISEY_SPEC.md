@@ -331,6 +331,14 @@ now. Real minutes are saved either way.
 their unit: "1 h 30 min", never "1.5 h" and never a bare trailing number.
 Note for later: `\b` does not work on Hebrew letters in JavaScript regexes.
 
+**Not before, and notes.** A task can carry a "not before" date — Daisey
+keeps it off the card until that day, for work that can't start yet (files
+not sent, venue not booked). It still sits in its project column, greyed,
+saying "not before Wed 7 Oct". Notes are a plain optional field on the same
+form, shown under the task in its column: why it's waiting, a link, whatever
+the title doesn't hold. Both are editable afterwards through ⋯ → Edit…, as
+project, title, size and due already were.
+
 **Importing from Trello.** The account menu has "Import from Trello…": pick
 a board, tick the lists, and the open cards become Daisey tasks — list as
 project, card name as title, due date kept, card link in the notes, size left

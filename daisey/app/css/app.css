@@ -110,6 +110,7 @@ textarea {
 .form-grid > :nth-child(-n+2), .form-grid > button { grid-column: 1 / -1; }
 .field { display: grid; gap: 4px; min-inline-size: 0; }
 .field label { font-size: 14px; font-weight: 600; color: var(--ink-2); }
+.field textarea { font: inherit; font-size: 16px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); min-inline-size: 0; }
 .field input, .field select {
   font: inherit; font-size: 16px; padding: 8px 10px; min-inline-size: 0;
   border: 1px solid var(--line); border-radius: 10px; background: var(--surface);
@@ -336,6 +337,7 @@ body.focus .shell { display: grid; min-block-size: 100dvh; align-content: center
 .tk-title { font-weight: 600; overflow-wrap: anywhere; }
 .tk-row.done .tk-title { font-weight: 400; color: var(--ink-2); text-decoration: line-through; }
 .tk-meta { font-size: 13px; }
+.tk-notes { font-size: 13px; margin-block-start: 2px; overflow-wrap: anywhere; white-space: pre-wrap; }
 .tk-more { flex: none; font: inherit; font-size: 18px; inline-size: 32px; block-size: 32px; border: 0; border-radius: 8px; background: none; color: var(--ink-2); cursor: pointer; }
 .tk-more:hover { background: var(--bg); }
 .tk-menu {

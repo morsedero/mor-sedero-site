@@ -21,6 +21,8 @@ export function mountAddTask(dialog, uid){
     title: h("input", { dir: "auto", required: true, autocomplete: "off" }),
     size: h("select", {}, ...["", 5, 15, 30, 60, 90, 120, 180, 240].map((v) => h("option", { value: v, textContent: v ? durText(v) : "Let Daisey guess" }))),
     due: h("input", { type: "date" }),
+    notBefore: h("input", { type: "date" }),
+    notes: h("textarea", { dir: "auto", rows: 2 }),
   };
   f.project.setAttribute("list", "add-projects");
   const msg = h("p", { className: "muted", role: "status" });
@@ -29,6 +31,8 @@ export function mountAddTask(dialog, uid){
     field("Task", f.title),
     field("Size", f.size),
     field("Due (optional)", f.due),
+    field("Not before (optional)", f.notBefore),
+    field("Notes (optional)", f.notes),
     h("button", { className: "btn primary", type: "submit", textContent: "Add" }));
   const submit = form.lastChild;
   const heading = h("h2", { id: "addTitle", textContent: "Add task" });
@@ -38,13 +42,14 @@ export function mountAddTask(dialog, uid){
     try {
       if (editing) {
         // Blank size hands it back to Daisey to guess; blank due clears it.
-        const changes = { title: f.title.value, project: f.project.value, size: f.size.value, due: f.due.value };
+        const changes = { title: f.title.value, project: f.project.value, size: f.size.value,
+          due: f.due.value, notBefore: f.notBefore.value, notes: f.notes.value };
         updateTask(uid, editing, changes, tasks).catch((e) => { console.error("[daisey] edit", e); msg.textContent = "Not saved: " + (e.code || e.message); });
         dialog.close();
         return;
       }
       const input = { title: f.title.value };
-      for (const k of ["project", "size", "due"]) if (f[k].value) input[k] = f[k].value;
+      for (const k of ["project", "size", "due", "notBefore", "notes"]) if (f[k].value) input[k] = f[k].value;
       // Resolves on server ack, which never comes offline; the list already
       // shows the task locally, so don't wait.
       addTask(uid, input, tasks).catch((e) => { console.error("[daisey] add", e); msg.textContent = "Not saved: " + (e.code || e.message); });
@@ -87,6 +92,8 @@ export function mountAddTask(dialog, uid){
       f.title.value = task.title;
       f.size.value = [...f.size.options].some((o) => o.value === String(task.size)) ? String(task.size) : "";
       f.due.value = task.due || "";
+      f.notBefore.value = task.notBefore || "";
+      f.notes.value = task.notes || "";
       if (!dialog.open) dialog.showModal();
       f.title.focus();
     },

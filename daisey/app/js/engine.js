@@ -7,7 +7,7 @@
 // Later sessions fill the rest of the moment: calendar (8), learned fit
 // (10). Until then those parts score 0. No energy (Mor, 2026-10-03).
 import * as W from "./weights.js";
-import { localDate, durText } from "./model.js";
+import { localDate, durText, notYet } from "./model.js";
 
 const MIN = 60000;
 const DAY = 86400000;
@@ -76,6 +76,7 @@ export function filterOut(task, m){
   if (task.status === "done") return "done";
   if (task.status === "waiting") return "waiting";
   if ((task.skipsSinceStart || 0) >= W.STALE_SKIPS) return "stale";
+  if (notYet(task, m.now)) return "notyet";
   if (m.sessionSkips.has(task.id)) return "skipped";
   if (task.size > m.window && !(task.canSplit && m.window >= W.SPLIT_MIN_WINDOW)) return "size";
   return null;

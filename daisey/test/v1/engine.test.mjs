@@ -185,6 +185,14 @@ test("something else: next by score, but another project within 15 points goes f
   assert.equal(E.somethingElse(ranked, 2).length, 2);
 });
 
+test("filter: a task with a later \"not before\" date isn't offered yet", () => {
+  const soon = task({ notBefore: "2026-10-07" });
+  assert.equal(E.filterOut(soon, moment()), "notyet");
+  assert.equal(E.filterOut(task({ notBefore: "2026-10-05" }), moment()), null); // today counts
+  assert.equal(E.filterOut(task({ notBefore: "2026-10-01" }), moment()), null);
+  assert.equal(E.rank([soon], { now: NOW }).empty, "nofit");
+});
+
 test("rank: stale tasks are listed for the keep/shrink/drop question", () => {
   const stale = task({ skipsSinceStart: 5 });
   const r = E.rank([stale, task()], { now: NOW });

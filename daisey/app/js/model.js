@@ -153,6 +153,9 @@ export function createTask(input, { now = Date.now(), history = [] } = {}){
     size,
     due,
     dueTime: due ? toTime(input.dueTime) : null,
+    // Not before: Daisey keeps the task off the card until this day. For
+    // work that can't start yet — files not sent, venue not booked.
+    notBefore: toDate(input.notBefore),
     status: "ready",
     waitingOn: null,
     canSplit,
@@ -198,6 +201,7 @@ export function editTask(task, changes, { now = Date.now(), history = [] } = {})
   else if (sizeChanged && guessed.has("canSplit")) set("canSplit", get("size") >= SPLIT_FROM);
 
   if (has("due")) set("due", toDate(changes.due));
+  if (has("notBefore")) set("notBefore", toDate(changes.notBefore));
   if (has("dueTime") || !get("due")) set("dueTime", get("due") ? toTime(changes.dueTime ?? task.dueTime) : null);
 
   if (has("waitingOn")) set("waitingOn", text(changes.waitingOn) || null);
@@ -255,5 +259,9 @@ export function workedTask(task, minutes, { finished = false, now = Date.now() }
     : { spentMinutes: spent, stopsUnfinished: (task.stopsUnfinished || 0) + 1, touchedAt: now };
 }
 
-// Ready to be offered at all? engine.js filterOut adds window and skips.
+// Ready to be offered at all? engine.js filterOut adds window, skips and
+// the "not before" date.
 export const isAvailable = (task) => task.status === "ready";
+
+// Still waiting for its day to come round.
+export const notYet = (task, now = Date.now()) => !!task.notBefore && task.notBefore > localDate(now);
