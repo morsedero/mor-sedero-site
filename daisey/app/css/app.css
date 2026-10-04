@@ -11,7 +11,7 @@
   --surface: #fff; /* rows, inputs, menus — the layer above --card */
   --shadow: 0 10px 30px rgb(0 0 0 / .15);
   --radius: 16px;
-  --sch-gut: 86px; /* the schedule's time column: gaps and actions line up with it */
+  --sch-gut: 46px; /* the schedule's hour gutter */
   color-scheme: light dark;
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans Hebrew", sans-serif;
 }
@@ -346,16 +346,115 @@ body.focus .shell { display: grid; min-block-size: 100dvh; align-content: center
 :dir(rtl) .sch-step { transform: scaleX(-1); }
 .sch-today { justify-self: start; min-block-size: 34px; padding-inline: 10px; font-size: 13px; }
 .sch-note { margin: 0; font-size: 13px; }
-.sch-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
-.sch-row { position: relative; display: flex; gap: 8px; align-items: baseline; padding-block: 4px; transition: background .12s, padding-block .12s; }
-.sch-dot { flex: none; inline-size: 8px; block-size: 8px; border-radius: 50%; background: var(--ink-2); align-self: center; }
-.sch-row.past { opacity: .45; }
-.sch-row.running { font-weight: 700; }
-.sch-time { flex: none; inline-size: var(--sch-gut); font-size: 12px; font-variant-numeric: tabular-nums; color: var(--ink-2); }
-.sch-row.running .sch-time { color: var(--ink); }
-.sch-title { min-inline-size: 0; overflow-wrap: anywhere; }
-.sch-now { margin-inline-start: 6px; padding: 1px 7px; border-radius: 999px; font-size: 11px; font-weight: 700; text-transform: uppercase; background: var(--accent); color: var(--on-accent); }
-.sch-gap { font-size: 13px; color: var(--ink-2); padding-inline-start: calc(var(--sch-gut) + 8px); }
+
+/* ---------- The day grid (schedule.js) ----------
+   An hour gutter down the side and blocks at their real time, one pixel a
+   minute. The hour lines and labels are the background layer; .sch-lanes is
+   the strip beside the gutter that the blocks are positioned inside, so a
+   block's own inset-inline-start/inline-size are plain percentages of the
+   space events actually get. */
+.sch-day { position: relative; padding-inline-end: 2px; }
+.sch-allday { display: flex; flex-wrap: wrap; gap: 4px; margin-block-end: 8px; }
+.sch-chip {
+  font-size: 12px; font-weight: 600; padding: 3px 9px; border-radius: 999px;
+  background: color-mix(in srgb, var(--ev, var(--ink-2)) 16%, var(--card));
+  border: 1px solid color-mix(in srgb, var(--ev, var(--ink-2)) 40%, transparent);
+  color: var(--ink); overflow-wrap: anywhere;
+}
+.sch-grid { position: relative; margin-block-start: 6px; }
+.sch-hour { position: absolute; inset-inline: 0; block-size: 0; border-block-start: 1px solid var(--line); }
+.sch-hl {
+  position: absolute; inset-inline-start: 0; inset-block-start: -8px; inline-size: calc(var(--sch-gut) - 8px);
+  text-align: end; font-size: 11px; font-variant-numeric: tabular-nums; color: var(--ink-2); background: var(--card);
+}
+.sch-lanes { position: absolute; inset-block: 0; inset-inline-start: var(--sch-gut); inset-inline-end: 0; cursor: cell; }
+
+/* One block. The event's own Google colour tints it and paints its spine. */
+.sch-block {
+  position: absolute; overflow: hidden; display: flex; flex-direction: column; gap: 1px;
+  font: inherit; text-align: start; cursor: pointer; padding: 3px 7px;
+  border: 0; border-inline-start: 3px solid var(--ev, var(--ink-2)); border-radius: 6px;
+  background: color-mix(in srgb, var(--ev, var(--ink-2)) 15%, var(--card));
+  color: var(--ink); transition: box-shadow .12s, opacity .12s;
+}
+.sch-block + .sch-block { outline: 1px solid var(--card); } /* side by side, a hairline apart */
+.sch-bt { font-size: 10px; font-variant-numeric: tabular-nums; color: var(--ink-2); flex: none; }
+.sch-bn { font-size: 12.5px; font-weight: 600; line-height: 1.25; overflow: hidden; overflow-wrap: anywhere; }
+/* Too short for two lines: the name only, on one. The time is in the bar, the
+   tooltip and the aria-label. */
+.sch-block.short { flex-direction: row; align-items: center; gap: 5px; padding-block: 1px; }
+.sch-block.short .sch-bt { display: none; }
+.sch-block.short .sch-bn { font-size: 11.5px; white-space: nowrap; text-overflow: ellipsis; }
+.sch-block.past { opacity: .5; }
+.sch-block.running { box-shadow: 0 0 0 2px color-mix(in srgb, var(--ev, var(--accent)) 55%, transparent); }
+.sch-block.open { box-shadow: 0 0 0 2px var(--ink); }
+.sch-block.dragging { box-shadow: var(--shadow); opacity: .95; z-index: 4; }
+.sch-block.held { box-shadow: var(--shadow); transform: scale(1.02); }
+.sch-nowtag {
+  position: absolute; inset-block-start: 2px; inset-inline-end: 4px; padding: 0 5px; border-radius: 999px;
+  font-size: 9px; font-weight: 800; text-transform: uppercase; background: var(--accent); color: var(--on-accent);
+}
+/* Daisey's own suggestion for a free gap: pencil, not ink. */
+.sch-block.pencil {
+  background: transparent; border: 1px dashed var(--line); border-inline-start: 1px dashed var(--line);
+  font-style: italic; color: var(--ink-2); opacity: .9;
+}
+.sch-block.pencil .sch-bn { font-weight: 500; }
+.sch-block.pencil.open, .sch-block.pencil:hover { opacity: 1; border-color: var(--ink-2); }
+
+/* The two resize edges, inside the block's own top and bottom. They only take
+   a drag once the block is open (on a mouse, also on hover): a block is a tap
+   target first, and an always-live strip across it would eat that tap. A block
+   under EDGE_FROM px tall gets none at all — it has no room — so its times are
+   changed from the bar. */
+.sch-edge {
+  position: absolute; inset-inline: 0; block-size: 9px; z-index: 2;
+  cursor: ns-resize; touch-action: none; user-select: none;
+  opacity: 0; pointer-events: none; transition: opacity .12s;
+}
+.sch-edge.top { inset-block-start: 0; }
+.sch-edge.bottom { inset-block-end: 0; }
+.sch-edge::after {
+  content: ""; position: absolute; inset-inline: 38%; inset-block-start: 3px;
+  block-size: 3px; border-radius: 2px; background: var(--ink);
+}
+.sch-block.open .sch-edge, .sch-block.dragging .sch-edge { opacity: .75; pointer-events: auto; }
+@media (hover: hover) { .sch-block.editable:hover .sch-edge { opacity: .4; pointer-events: auto; } }
+
+/* Where "now" falls, the way Google draws it: a red rule across the day with
+   the time in the gutter. It's a label, never a target. */
+.sch-nowline { position: absolute; inset-inline: 0; block-size: 0; z-index: 3; pointer-events: none;
+  border-block-start: 2px solid #ea4335; }
+.sch-nowt {
+  position: absolute; inset-inline-start: 0; inset-block-start: -8px; inline-size: calc(var(--sch-gut) - 8px);
+  text-align: end; font-size: 11px; font-weight: 700; color: #ea4335; font-variant-numeric: tabular-nums;
+  background: var(--card);
+}
+
+/* The bar under the panel: everything you can do to the block you tapped. */
+.sch-bar {
+  position: relative; display: grid; gap: 6px; margin-block-start: 8px; padding: 8px 10px;
+  background: var(--bg); border: 1px solid var(--line); border-radius: 12px;
+}
+.sch-bar-h { margin: 0; font-size: 14px; font-weight: 600; padding-inline-end: 28px; overflow-wrap: anywhere; }
+.sch-bar-t { color: var(--ink-2); font-weight: 600; font-variant-numeric: tabular-nums; margin-inline-end: 6px; }
+.sch-bar-row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.sch-bar-row .muted { font-size: 13px; }
+.sch-bar .chip { min-block-size: 32px; font-size: 13px; padding-inline: 10px; }
+.sch-bar .chip.danger { color: var(--danger); border-color: color-mix(in srgb, var(--danger) 40%, var(--line)); }
+.sch-bar .chip.go { background: var(--accent); border-color: var(--accent); color: var(--on-accent); font-weight: 700; }
+.sch-x {
+  position: absolute; inset-block-start: 4px; inset-inline-end: 4px; inline-size: 28px; block-size: 28px;
+  font: inherit; font-size: 14px; border: 0; border-radius: 999px; background: transparent; color: var(--ink-2); cursor: pointer;
+}
+.sch-at { font: inherit; font-size: 13px; padding: 4px 6px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--ink); }
+.sch-rename {
+  flex: 1 1 160px; min-inline-size: 0; font: inherit; font-size: 16px; padding: 4px 10px; min-block-size: 32px;
+  border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--ink);
+}
+.sch-problem { margin: 0; font-size: 13px; color: var(--danger); }
+.sch-undo { margin: 0; font-size: 13px; }
+.sch-free { margin: 0 0 6px; font-size: 13px; }
 /* Import from Trello. */
 .imp-lists { display: grid; gap: 6px; margin-block: 10px; max-block-size: 48dvh; overflow-y: auto; }
 .imp-list { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
@@ -365,52 +464,6 @@ body.focus .shell { display: grid; min-block-size: 100dvh; align-content: center
 .imp-actions { display: flex; gap: 8px; justify-content: flex-end; }
 
 /* Tapping an event opens its actions; dragging it is the CSS below. */
-.sch-open { display: flex; flex: 1; min-inline-size: 0; gap: 8px; align-items: baseline; font: inherit; color: inherit; text-align: start; background: none; border: 0; padding: 0; cursor: pointer; }
-/* An open row makes room for its two edge bars: tapping an event is what
-   reveals them, so an invisible full-width strip can never swallow the tap
-   that opens the row or the double-tap that renames it. A mouse gets them on
-   hover too, where the ns-resize cursor says what they are. */
-.sch-row.open { background: var(--bg); border-radius: 10px 10px 0 0; padding: 12px; margin-inline: -12px; }
-/* Your own timed events can be dragged: the dot moves the whole block, the
-   edge bars change its start or end. touch-action:none keeps a finger on a
-   handle from scrolling the day instead. */
-.sch-grip { position: relative; cursor: grab; touch-action: none; user-select: none; align-self: center; }
-.sch-grip::before { content: ""; position: absolute; inset: -8px; } /* a finger's worth of target around an 8px dot */
-.sch-grip:active { cursor: grabbing; }
-.sch-edge {
-  position: absolute; inset-inline: 0; block-size: 10px; z-index: 1;
-  cursor: ns-resize; touch-action: none; user-select: none;
-  opacity: 0; pointer-events: none; transition: opacity .12s;
-}
-.sch-edge.top { inset-block-start: 0; }
-.sch-edge.bottom { inset-block-end: 0; }
-.sch-edge::after { content: ""; position: absolute; inset-inline: 42%; inset-block-start: 4px; block-size: 3px; border-radius: 2px; background: var(--ink-2); }
-.sch-row.open .sch-edge, .sch-row.dragging .sch-edge { opacity: .9; pointer-events: auto; }
-@media (hover: hover) { .sch-row.editable:hover .sch-edge { opacity: .5; pointer-events: auto; } }
-.sch-row.dragging { background: color-mix(in srgb, var(--accent) 18%, transparent); border-radius: 10px; user-select: none; }
-.sch-row.dragging .sch-time { color: var(--ink); font-weight: 700; }
-/* The rename, in place of the title. */
-.sch-renaming { flex: 1; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
-.sch-rename {
-  flex: 1 1 160px; min-inline-size: 0; font: inherit; font-size: 16px; padding: 4px 10px; min-block-size: 32px;
-  border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--ink);
-}
-/* An open row and its controls are one panel: same surface, rounded once
-   around the whole of it. They used to be indented to the title column,
-   which left ~250px of a phone for two time fields and a button. */
-.sch-actions { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; background: var(--bg); padding: 2px 12px 4px; margin-inline: -12px; }
-.sch-actions.end { padding-block-end: 10px; border-end-start-radius: 10px; border-end-end-radius: 10px; }
-.sch-actions .muted { font-size: 13px; }
-.sch-actions .chip { min-block-size: 32px; font-size: 13px; padding-inline: 10px; }
-.sch-actions .chip.danger { color: var(--danger); border-color: color-mix(in srgb, var(--danger) 40%, var(--line)); }
-.sch-at { font: inherit; font-size: 13px; padding: 4px 6px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--ink); }
-.sch-problem { margin: 0; font-size: 13px; color: var(--danger); }
-.sch-undo { margin: 0; font-size: 13px; }
-
-.sch-nowline { display: flex; align-items: center; gap: 6px; margin-block: 2px; }
-.sch-nowline::after { content: ""; flex: 1; block-size: 2px; background: #ea4335; border-radius: 2px; }
-.sch-nowtime { flex: none; inline-size: var(--sch-gut); font-size: 11px; font-weight: 700; color: #ea4335; font-variant-numeric: tabular-nums; }
-.sch-free { margin: 0; }
 
 /* Tasks: one list, sections by when. */
 .tk-single {
@@ -587,9 +640,6 @@ dialog.now { overflow-y: auto; overscroll-behavior: contain; }
 
 /* Pencil: Daisey's suggestion for a free gap, faded and dashed — ink is the
    calendar, pencil is a proposal you can take or leave. */
-.sch-pencil .sch-open { opacity: .62; font-style: italic; border: 1px dashed var(--line); border-radius: 10px; }
-.sch-pencil.open .sch-open, .sch-pencil .sch-open:hover { opacity: 1; }
-.sch-dot.pencil { background: transparent; border: 1.5px dashed var(--ink-2); box-sizing: border-box; }
 .sch-cap { margin: 0 0 10px; font-size: 14px; display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: baseline; }
 
 /* Learning asks: one line under the card, the same weight as the offer. */

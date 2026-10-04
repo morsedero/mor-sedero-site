@@ -82,11 +82,12 @@ export function mountAddEvent(dialog){
 
   return {
     // date: the day the Schedule panel is on ("YYYY-MM-DD"); defaults to today.
-    open(date){
+    // at: "HH:MM" — the slot tapped in the grid; otherwise the next quarter hour.
+    open(date, at){
       msg.textContent = "";
       form.reset();
       f.date.value = date || localDate();
-      f.at.value = nextQuarter();
+      f.at.value = at || nextQuarter();
       f.minutes.value = String(DEFAULT_LENGTH);
       if (!dialog.open) dialog.showModal();
       f.title.focus();

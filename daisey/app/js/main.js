@@ -135,7 +135,7 @@ async function boot(){
         m.adder = mountAddTask($("#addtask"), user.uid, { onNow: (id) => m.now?.put(id) });
         // The Now card rides in the same scroller as the columns, first in line.
         m.event = mountAddEvent($("#eventdlg"));
-        m.schedule = mountSchedule($("#schedule"), { onAdd: (date) => m.event.open(date), uid: user.uid, onSweep: (ids) => m.sweep.open(ids) });
+        m.schedule = mountSchedule($("#schedule"), { onAdd: (date, at) => m.event.open(date, at), uid: user.uid, onSweep: (ids) => m.sweep.open(ids) });
         m.importer = mountImport($("#importdlg"), user.uid);
         $("#importTrello").onclick = () => { setMenu(false); m.importer.open(); };
         m.tasks = mountTasks($("#tasksview"), user.uid,
