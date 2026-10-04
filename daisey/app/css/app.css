@@ -162,15 +162,19 @@ textarea {
 .gpick { display: flex; flex-wrap: wrap; gap: 6px; padding: 10px; border-radius: 12px; background: var(--bg); border: 1px solid var(--line); }
 .gpick .chip, .kind .chip { min-block-size: 34px; font-size: 13px; padding-inline: 11px; }
 .chip.quiet { color: var(--ink-2); border-style: dashed; }
-.kind { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 6px; margin-block-start: -4px; }
-.more.wide { grid-column: 1 / -1; }
+.kind { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 6px; }
+/* The task popup: one column, every field shown, room between them. */
+.sheet-form { display: grid; gap: 20px; }
+.sheet-form .field { gap: 7px; }
+.sheet-form .field input, .sheet-form .field select, .sheet-form .field textarea { padding: 11px 12px; border-radius: 12px; }
+.sheet-form > .btn.primary { justify-self: end; min-inline-size: 120px; }
+.sheet-stack { display: grid; gap: 10px; }
+.guess-cap { margin: 0 0 8px; font-size: 13px; }
 .dl-list { list-style: none; margin: 0 0 14px; padding: 0; display: grid; gap: 2px; max-block-size: 50dvh; overflow-y: auto; }
 .dl-row { display: flex; align-items: center; gap: 10px; min-block-size: 44px; cursor: pointer; }
 .dl-row input { inline-size: 20px; block-size: 20px; flex: none; accent-color: var(--accent); }
 .dl-title { flex: 1; min-inline-size: 0; }
 .dl-date { flex: none; font-size: 13px; }
-.more summary { cursor: pointer; font-size: 14px; font-weight: 600; color: var(--ink-2); padding-block: 4px; }
-.more > .form-grid { margin-block-start: 8px; }
 .btn.small { min-block-size: 32px; padding-block: 4px; padding-inline: 12px; font-size: 14px; }
 
 
@@ -414,21 +418,19 @@ body.focus .shell { display: grid; min-block-size: 100dvh; align-content: center
 .chip-n { font-size: 11px; font-weight: 700; opacity: .65; }
 .tk-secs { display: grid; gap: 14px; }
 .tk-sec-h {
-  display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin: 0 0 2px;
-  font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--ink-2);
+  display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin: 0 0 4px;
+  font-size: 14px; font-weight: 600; color: var(--ink-2);
 }
 .tk-sec.quiet { opacity: .72; } /* Waiting is there to be seen, not acted on */
-.tk-tag {
-  margin-inline-end: 6px; padding: 1px 7px; border-radius: 999px; font-size: 11px; font-weight: 600;
-  background: var(--bg); border: 1px solid var(--line); color: var(--ink-2);
-}
+/* The project on a row: plain text that filters the list when tapped. */
+.tk-proj { font-weight: 600; color: var(--ink-2); }
 
 .tk-add {
   font: inherit; font-weight: 600; color: var(--ink-2); background: none; border: 0; cursor: pointer;
   padding-block: 10px; padding-inline: 0; text-align: start; inline-size: 100%;
 }
 .tk-list { list-style: none; margin: 0; padding: 0; }
-.tk-row { position: relative; display: flex; gap: 10px; align-items: flex-start; padding-block: 8px; border-block-start: 1px solid var(--line); }
+.tk-row { position: relative; display: flex; gap: 12px; align-items: flex-start; padding-block: 11px; }
 .tk-row.waiting .tk-title { color: var(--ink-2); }
 /* .is-now, not .now: `.now` is the dialog class (line 122), and a row wearing
    it picked up the dialog's 480px width and 20px padding — which is why rows
@@ -452,13 +454,9 @@ body.focus .shell { display: grid; min-block-size: 100dvh; align-content: center
   font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; border-radius: 8px;
 }
 .tk-open:hover .tk-title { text-decoration: underline; text-decoration-color: var(--line); text-underline-offset: 3px; }
-.tk-title { font-weight: 600; overflow-wrap: anywhere; }
+.tk-title { font-weight: 500; font-size: 15px; overflow-wrap: anywhere; }
 .tk-row.done .tk-title { font-weight: 400; color: var(--ink-2); text-decoration: line-through; }
-.tk-meta { font-size: 13px; display: flex; align-items: center; flex-wrap: wrap; }
-.tk-meta:empty, .tk-meta > .muted:empty { display: none; }
-/* Two lines of notes on a row; the sheet has the rest. */
-.tk-notes { font-size: 13px; margin-block-start: 2px; overflow-wrap: anywhere; white-space: pre-wrap;
-  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.tk-meta { font-size: 13px; color: var(--ink-2); overflow-wrap: anywhere; }
 .tk-note { margin: 4px 0; font-size: 13px; }
 .tk-done { margin-block-start: 4px; }
 .tk-done summary { cursor: pointer; font-weight: 600; color: var(--ink-2); padding-block: 8px; font-size: 14px; }
@@ -533,8 +531,8 @@ dialog.now { overflow-y: auto; overscroll-behavior: contain; }
 
 /* A project name that leads to its tab in Tasks. */
 .now-proj { font: inherit; letter-spacing: inherit; text-transform: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; text-decoration: underline dotted; text-underline-offset: 3px; }
-.tk-tag.link { cursor: pointer; }
-.tk-tag.link:hover { border-color: var(--ink-2); }
+.tk-proj.link { cursor: pointer; text-decoration: underline; text-decoration-color: var(--line); text-underline-offset: 3px; }
+.tk-proj.link:hover { color: var(--ink); }
 
 /* Batches: the offer on the card, and the checklist in focus mode. */
 .batch-preview { list-style: none; margin: 4px 0 6px; padding: 0; display: grid; gap: 2px; font-size: 15px; }
@@ -578,6 +576,3 @@ dialog.now { overflow-y: auto; overscroll-behavior: contain; }
 .learn-row .chip { min-block-size: 36px; font-size: 13px; padding-inline: 11px; }
 
 /* Task sheet: Daisey's guesses as one line; the chips open under it. */
-.gsum { font: inherit; font-size: 14px; text-align: start; color: var(--ink-2); background: none; border: 0; padding: 4px 0; cursor: pointer; }
-.gsum-k { font-weight: 600; color: var(--ink); }
-.gsum-more { color: var(--ink-2); }

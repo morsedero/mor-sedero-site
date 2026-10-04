@@ -19,7 +19,7 @@
 import { watchTasks, finishTask, restoreTask } from "./store.js";
 import { INBOX, notYet, localDate } from "./model.js";
 import { isOverdue, isRolled, sweepList } from "./triage.js";
-import { h, bdi, pieces, sizeText, flash } from "./ui.js";
+import { h, bdi, flash } from "./ui.js";
 
 const shortDate = (s) => new Date(`${s}T12:00`).toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" });
 const DRAG = 0.6; // how far the chip row moves per pixel of pointer — under 1 = heavier
@@ -72,28 +72,35 @@ export function mountTasks(root, uid, { onAdd, onOpen, onSweep } = {}){
       onclick: (e) => { e.stopPropagation(); done ? restoreTask(uid, t.id, { status: "ready", doneAt: null }).catch(fail) : complete(t); } });
   }
 
+  // The one line under a title: when it matters, in words, and nothing else.
+  // Size and notes are on the sheet, not here (Mor, 2026-10-04: "so dense").
+  function whenOf(t){
+    if (t.status === "waiting") return t.waitingOn ? `waiting on ${t.waitingOn}` : "waiting";
+    if (notYet(t)) return `not before ${shortDate(t.notBefore)}`;
+    if (!t.due) return "";
+    if (isRolled(t)) return `moved from ${shortDate(t.due)}`;
+    return `${t.dateKind === "deadline" ? "due" : "by"} ${shortDate(t.due)}${t.dueTime ? " " + t.dueTime : ""}`;
+  }
+
   // One row shape for both views. `withProject` only in the List view, where
   // the column header isn't there to say it.
   function row(t, { withProject } = {}){
     const isNow = t.id === onCard;
-    const meta = pieces(sizeText(t.size),
-      t.due && (isRolled(t) ? `from ${shortDate(t.due)}`
-        : `${t.dateKind === "deadline" ? "deadline" : "by"} ${shortDate(t.due)}${t.dueTime ? " " + t.dueTime : ""}`),
-      notYet(t) && `not before ${shortDate(t.notBefore)}`,
-      t.status === "waiting" && `waiting${t.waitingOn ? " on " + t.waitingOn : ""}`);
+    const when = whenOf(t);
+    const showProj = withProject && t.project !== INBOX;
     return h("li", { className: "tk-row" + (t.status === "waiting" || notYet(t) ? " waiting" : "") + (isNow ? " is-now" : "") },
       circle(t, false),
       h("button", { type: "button", className: "tk-open", ariaLabel: `Open ${t.title}`, onclick: () => onOpen?.(t) },
         h("div", { className: "tk-title" }, bdi(t.title),
           isNow && h("span", { className: "tk-now", title: "On the Now card", textContent: "now" })),
-        h("div", { className: "tk-meta" },
-          // The project tag leads to its tab (Mor, 2026-10-04): tap it and the
+        (showProj || when) && h("div", { className: "tk-meta" },
+          // The project leads to its tab (Mor, 2026-10-04): tap it and the
           // list filters to that project. It sits inside the row's button, so
           // it stops the click from also opening the task.
-          withProject && t.project !== INBOX && h("span", { className: "tk-tag link", title: `Show only ${t.project}`,
+          showProj && h("span", { className: "tk-proj link", title: `Show only ${t.project}`,
             onclick: (e) => { e.stopPropagation(); showProject(t.project); } }, bdi(t.project)),
-          h("span", { className: "muted" }, ...meta)),
-        t.notes && h("div", { className: "muted tk-notes", dir: "auto", textContent: t.notes })));
+          showProj && when && h("span", { className: "tk-sep", textContent: " · " }),
+          when && h("span", { textContent: when }))));
   }
 
   const doneRow = (t) => h("li", { className: "tk-row done" }, circle(t, true),

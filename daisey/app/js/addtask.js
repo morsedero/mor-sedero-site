@@ -2,9 +2,14 @@
 // As the title is typed, Daisey's guesses for area, type, where, open hours,
 // size, stakes and energy appear under it as chips (model.guessFields). A
 // dashed chip is a guess; tap it to pick a value and it turns solid — yours.
-// "Daisey guesses" in the picker hands it back. Adding stays open so several
-// can go in at once and the project is kept between adds; editing closes on
-// save. Labels sit above the boxes.
+// "Daisey guesses" in the picker hands it back.
+//
+// Every field is shown, one under another, with room between them (Mor,
+// 2026-10-04: "no need for More, just show everything, not dense"). Add closes
+// the popup; so does saving an edit.
+//
+// The project is a list: Inbox, the projects already there, and "+ New
+// project…", which asks for the name.
 //
 // In edit mode it is the task SHEET (Mor, 2026-10-04): tapping a row in the
 // Tasks view lands here, so everything you can do to one task is in one
@@ -21,14 +26,14 @@ import { h, flash } from "./ui.js";
 const CHIPS = ["area", "type", "where", "openHours", "size", "stakes", "energy"];
 const NAMES = { area: "Area", type: "Type", where: "Where", openHours: "Open hours", size: "Size", stakes: "Stakes", energy: "Energy" };
 const SIZE_OPTIONS = [5, 15, 30, 60, 90, 120, 180, 240];
-const NEXT_STEP_FROM = 90; // minutes; a task this big gets asked for its first step
+const NEW_PROJECT = "__new"; // the project list's "+ New project…" entry
 const valueText = (k, v) => (k === "size" ? durText(v) : LABELS[k][v] ?? "");
 const optionsOf = (k) => (k === "size" ? SIZE_OPTIONS : CHOICES[k]);
 
 let n = 0;
-const field = (label, input, wide) => {
+const field = (label, input) => {
   input.id ||= `add-f${++n}`;
-  return h("div", { className: "field" + (wide ? " wide" : "") }, h("label", { htmlFor: input.id, textContent: label }), input);
+  return h("div", { className: "field" }, h("label", { htmlFor: input.id, textContent: label }), input);
 };
 
 // onNow(id) puts the task on the Now card (now.js), so the sheet can answer
@@ -40,57 +45,78 @@ export function mountAddTask(dialog, uid, { onNow } = {}){
   let mine = new Set(); // chips the user picked
   let startMine = new Set(); // …as they were when the sheet opened (edit)
   let openChip = null; // the chip whose picker is showing
-  let guessOpen = false; // the guesses are folded behind one line until asked for
   let kind = "target"; // the date's kind
-  const projects = h("datalist", { id: "add-projects" });
+  const projectSel = h("select", { ariaLabel: "Project" });
   const f = {
     title: h("input", { id: "addName", dir: "auto", required: true, autocomplete: "off" }),
-    project: h("input", { dir: "auto", autocomplete: "off" }),
+    newProject: h("input", { dir: "auto", autocomplete: "off", placeholder: "e.g. Website redesign" }),
     due: h("input", { id: "addDue", type: "date" }),
     nextStep: h("input", { dir: "auto", autocomplete: "off" }),
     notBefore: h("input", { type: "date" }),
     waitingOn: h("input", { dir: "auto", autocomplete: "off", placeholder: "nobody" }),
-    notes: h("textarea", { dir: "auto", rows: 2 }),
+    notes: h("textarea", { dir: "auto", rows: 3 }),
   };
-  f.project.setAttribute("list", "add-projects");
   const msg = h("p", { className: "muted", role: "status" });
 
   const chipRow = h("div", { className: "gchips", role: "group", ariaLabel: "Daisey's guesses — tap one to change it" });
   const picker = h("div", { className: "gpick", role: "radiogroup" });
-  const summary = h("button", { className: "gsum", type: "button", onclick: () => { guessOpen = !guessOpen; openChip = null; paint(); } });
-  const guesses = h("div", { className: "guesses" }, summary, chipRow, picker);
+  const guesses = h("div", { className: "guesses" },
+    h("p", { className: "guess-cap muted", textContent: "Daisey's guesses — tap one to change it" }), chipRow, picker);
 
+  const projectField = field("Project", projectSel);
+  const newField = field("Name the new project", f.newProject);
+  newField.hidden = true;
   // Date, and right under it whether the date is real.
   const kindRow = h("div", { className: "kind", role: "radiogroup", ariaLabel: "What kind of date" });
-  const dueField = field("Date (optional)", f.due);
-  const nextField = field("First step (optional)", f.nextStep, true);
+  const dateBox = h("div", { className: "sheet-stack" }, field("Date (optional)", f.due), kindRow);
   // Waiting only exists for a task that already exists: you don't add one
   // already blocked (model.js's note on Waiting).
-  const waitField = field("Waiting on", f.waitingOn, true);
-  const more = h("details", { className: "more wide" }, h("summary", { textContent: "More" }),
-    h("div", { className: "form-grid" }, field("Not before (optional)", f.notBefore), field("Notes (optional)", f.notes, true)));
+  const waitField = field("Waiting on", f.waitingOn);
   const submit = h("button", { className: "btn primary", type: "submit", textContent: "Add" });
-  const form = h("form", { className: "form-grid" },
-    field("Task", f.title, true),
+  const form = h("form", { className: "sheet-form" },
+    field("Task", f.title),
     guesses,
-    field("Project (empty = Inbox)", f.project),
-    dueField,
-    kindRow,
-    nextField,
+    projectField,
+    newField,
+    dateBox,
+    field("First step (optional)", f.nextStep),
     waitField,
-    more,
+    field("Not before (optional)", f.notBefore),
+    field("Notes (optional)", f.notes),
     submit);
   const heading = h("h2", { id: "addTitle", dir: "auto", textContent: "Add task" });
 
   // Other tasks teach the guesses ("similar past tasks", the project's own
   // areas); the one being edited must not teach itself.
   const history = () => (editing ? tasks.filter((t) => t.id !== editing.id) : tasks);
+  // What the project field means: the list's pick, or the name typed for a new one.
+  const projectOf = () => (projectSel.value === NEW_PROJECT ? f.newProject.value.trim() : projectSel.value) || INBOX;
+
+  // Selects a project, adding it to the list if it isn't there yet (a task
+  // being edited may name one that no other task uses).
+  function showProject(name){
+    const v = !name || name === INBOX ? "" : name;
+    if (v !== NEW_PROJECT && ![...projectSel.options].some((o) => o.value === v))
+      projectSel.insertBefore(h("option", { value: v, textContent: v }), projectSel.lastElementChild);
+    projectSel.value = v;
+    newField.hidden = v !== NEW_PROJECT;
+  }
+
+  function fillProjects(names){
+    const cur = projectSel.value;
+    projectSel.replaceChildren(
+      h("option", { value: "", textContent: INBOX }),
+      ...names.map((p) => h("option", { value: p, textContent: p })),
+      h("option", { value: NEW_PROJECT, textContent: "+ New project…" }));
+    showProject(cur);
+  }
+  fillProjects([]);
 
   function reguess(){
     const title = f.title.value.trim();
     if (title) {
       const given = Object.fromEntries([...mine].map((k) => [k, vals[k]]));
-      const g = guessFields(title, f.project.value.trim() || INBOX, given, history());
+      const g = guessFields(title, projectOf(), given, history());
       for (const k of CHIPS) if (!mine.has(k)) vals[k] = g[k];
     }
     paint();
@@ -111,13 +137,7 @@ export function mountAddTask(dialog, uid, { onNow } = {}){
         onclick: () => { openChip = openChip === k ? null : k; paint(); } },
       h("span", { className: "gchip-k", textContent: NAMES[k] }), h("bdi", { textContent: valueText(k, vals[k]) }));
     }));
-    // One line, "Daisey's guesses: …", opens the seven chips to change them.
-    const names = CHIPS.map((k) => valueText(k, vals[k])).filter(Boolean);
-    summary.setAttribute("aria-expanded", String(guessOpen));
-    summary.replaceChildren(h("span", { className: "gsum-k", textContent: "Daisey's guesses" }), " ",
-      h("bdi", { textContent: names.join(" · ") }), h("span", { className: "gsum-more", textContent: guessOpen ? " ▴" : " ▾" }));
-    chipRow.hidden = !guessOpen;
-    picker.hidden = !(guessOpen && openChip);
+    picker.hidden = !openChip;
     if (openChip) {
       const k = openChip;
       picker.ariaLabel = NAMES[k];
@@ -131,11 +151,15 @@ export function mountAddTask(dialog, uid, { onNow } = {}){
     kindRow.replaceChildren(...[["target", "Target (wish)"], ["deadline", "Deadline (real)"]].map(([v, text]) =>
       h("button", { type: "button", className: "chip", role: "radio", ariaChecked: String(kind === v), textContent: text,
         onclick: () => { kind = v; paint(); } })));
-    nextField.hidden = !(vals.size >= NEXT_STEP_FROM || f.nextStep.value.trim());
   }
 
   f.title.addEventListener("input", reguess);
-  f.project.addEventListener("input", reguess);
+  projectSel.addEventListener("change", () => {
+    newField.hidden = projectSel.value !== NEW_PROJECT;
+    if (!newField.hidden) f.newProject.focus();
+    reguess();
+  });
+  f.newProject.addEventListener("input", reguess);
   f.due.addEventListener("input", paint);
 
   // The sheet's own actions, under the fields and only when editing.
@@ -164,10 +188,15 @@ export function mountAddTask(dialog, uid, { onNow } = {}){
 
   form.onsubmit = (ev) => {
     ev.preventDefault();
+    if (projectSel.value === NEW_PROJECT && !f.newProject.value.trim()) {
+      msg.textContent = "Name the new project, or pick one from the list.";
+      f.newProject.focus();
+      return;
+    }
     try {
       if (editing) {
         // Blank due clears it. A chip handed back goes back to a guess.
-        const changes = { title: f.title.value, project: f.project.value, due: f.due.value, dateKind: kind,
+        const changes = { title: f.title.value, project: projectOf(), due: f.due.value, dateKind: kind,
           notBefore: f.notBefore.value, notes: f.notes.value, waitingOn: f.waitingOn.value, nextStep: f.nextStep.value };
         for (const k of CHIPS) {
           if (mine.has(k) && (!startMine.has(k) || vals[k] !== editing[k])) changes[k] = vals[k];
@@ -177,51 +206,45 @@ export function mountAddTask(dialog, uid, { onNow } = {}){
         // handled by editTask. A done task's status is left alone — the
         // circle in the list is what reopens one.
         if (editing.status === "waiting" && !f.waitingOn.value.trim()) changes.status = "ready";
-        updateTask(uid, editing, changes, tasks).catch((e) => { console.error("[daisey] edit", e); msg.textContent = "Not saved: " + (e.code || e.message); });
+        updateTask(uid, editing, changes, tasks).catch((e) => { console.error("[daisey] edit", e); flash("Couldn't save ", editing.title); });
         dialog.close();
         return;
       }
-      const input = { title: f.title.value };
-      for (const k of ["project", "due", "notBefore", "notes", "nextStep"]) if (f[k].value.trim()) input[k] = f[k].value;
+      const input = { title: f.title.value, project: projectOf() };
+      for (const k of ["due", "notBefore", "notes", "nextStep"]) if (f[k].value.trim()) input[k] = f[k].value;
       if (input.due) input.dateKind = kind;
       for (const k of mine) input[k] = vals[k];
       // Resolves on server ack, which never comes offline; the list already
       // shows the task locally, so don't wait.
-      addTask(uid, input, tasks).catch((e) => { console.error("[daisey] add", e); msg.textContent = "Not saved: " + (e.code || e.message); });
-      msg.textContent = `Added “${f.title.value.trim()}”.`;
-      const project = f.project.value;
-      clear();
-      f.project.value = project; // usually adding several to one project
-      paint();
-      f.title.focus();
+      addTask(uid, input, tasks).catch((e) => { console.error("[daisey] add", e); flash("Couldn't add ", input.title); });
+      flash("Added ", input.title);
+      dialog.close();
     } catch (e) { msg.textContent = e.message || String(e); }
   };
 
   function clear(){
     form.reset();
     vals = {}; mine = new Set(); startMine = new Set(); openChip = null; kind = "target";
-    more.open = false;
   }
 
   const close = h("button", { className: "now-x", type: "button", ariaLabel: "Close", textContent: "✕", onclick: () => dialog.close() });
-  dialog.replaceChildren(h("div", { className: "now-head" }, heading, close), form, actions, msg, projects);
+  dialog.replaceChildren(h("div", { className: "now-head" }, heading, close), form, actions, msg);
   dialog.addEventListener("click", (e) => { if (e.target === dialog) dialog.close(); });
 
   const unsub = watchTasks(uid, (ts) => {
     tasks = ts;
-    const names = [...new Set(ts.map((t) => t.project))].sort();
-    projects.replaceChildren(...names.map((p) => h("option", { value: p })));
+    fillProjects([...new Set(ts.map((t) => t.project))].filter((p) => p !== INBOX).sort((a, b) => a.localeCompare(b)));
   }, (e) => console.error("[daisey] add", e));
 
   return {
-    // project: prefill ("" = Inbox); omitted = keep the last one.
+    // project: prefill ("" or Inbox = Inbox); omitted = keep the last one.
     open(project){
-      const keep = f.project.value;
+      const keep = projectSel.value === NEW_PROJECT ? "" : projectSel.value;
       msg.textContent = "";
       editing = null;
       disarm();
       clear();
-      f.project.value = project !== undefined ? project : keep;
+      showProject(project !== undefined ? project : keep);
       heading.textContent = "Add task";
       submit.textContent = "Add";
       waitField.hidden = true;
@@ -244,14 +267,13 @@ export function mountAddTask(dialog, uid, { onNow } = {}){
       someday.hidden = task.status === "done";
       someday.textContent = task.status === "someday" ? "Back from Someday" : "Someday";
       f.waitingOn.value = task.waitingOn || "";
-      f.project.value = task.project === INBOX ? "" : task.project;
+      showProject(task.project);
       f.title.value = task.title;
       f.due.value = task.due || "";
       kind = task.dateKind === "deadline" ? "deadline" : "target";
       f.nextStep.value = task.nextStep || "";
       f.notBefore.value = task.notBefore || "";
       f.notes.value = task.notes || "";
-      more.open = !!(task.notBefore || task.notes);
       const guessed = new Set(task.guessed || []);
       for (const k of CHIPS) if (validField(k, task[k])) { vals[k] = task[k]; if (!guessed.has(k)) mine.add(k); }
       startMine = new Set(mine);
