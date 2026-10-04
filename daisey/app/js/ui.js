@@ -54,12 +54,21 @@ export function flash(label, title, { undo } = {}){
   liveTimer = setTimeout(dismissFlash, UNDO_MS);
 }
 
-// Inline icons for the card's three quiet actions. One path each, drawn on a
-// 24-grid and stroked in currentColor so they follow the button's text colour.
+// Inline icons: the card's three quiet actions, and one per guessed field so
+// the guess line can say "Work" without also spelling out "Area". One path
+// each, drawn on a 24-grid and stroked in currentColor so they follow the
+// text colour and read in both themes.
 const PATHS = {
   later: "M12 7v5l3 2M4 12a8 8 0 1 0 2.5-5.8M4 4v3.5h3.5",
   switch: "M4 8h13l-3-3M20 16H7l3 3",
   pending: "M7 3h10M7 21h10M8 3v3l4 4 4-4V3M8 21v-3l4-4 4 4v3",
+  area: "M3.5 12.5 11.5 4.5H20v8L12 20.5l-8.5-8ZM16 8.5h.01",
+  type: "M12 3.5l2.1 6 6 2.1-6 2.1-2.1 6-2.1-6-6-2.1 6-2.1 2.1-6Z",
+  where: "M12 21s6.5-5.8 6.5-10.2A6.5 6.5 0 0 0 5.5 10.8C5.5 15.2 12 21 12 21ZM9.6 10.6a2.4 2.4 0 1 0 4.8 0 2.4 2.4 0 1 0-4.8 0",
+  openHours: "M12 7.5V12l3 2M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0",
+  size: "M7 4h10M7 20h10M8 4v3l4 4 4-4V4M8 20v-3l4-4 4 4v3",
+  stakes: "M12 4 2.5 20h19L12 4ZM12 10v4M12 16.8h.01",
+  energy: "M13 3.5 5.5 14H10l-1 6.5L18 10h-4.5l1-6.5Z",
 };
 
 export const icon = (name) => {

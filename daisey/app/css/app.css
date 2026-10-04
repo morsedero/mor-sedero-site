@@ -148,17 +148,36 @@ textarea {
   font: inherit; font-size: 16px; padding: 8px 10px; min-inline-size: 0;
   border: 1px solid var(--line); border-radius: 10px; background: var(--surface);
 }
-/* Daisey's guesses under the title: dashed = a guess, solid = yours. */
-.guesses { display: grid; gap: 8px; }
+/* Daisey's guesses. Collapsed they are one quiet line that fades in once the
+   typing stops; open, they are chips — dashed = a guess, solid = yours. */
+.guesses { display: grid; gap: 10px; animation: guess-in .22s ease-out both; }
+@keyframes guess-in { from { opacity: 0; transform: translateY(-3px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .guesses { animation: none; } }
+.gsum {
+  font: inherit; font-size: 13px; cursor: pointer; text-align: start;
+  display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px;
+  padding: 9px 12px; border: 1px solid var(--line); border-radius: 12px;
+  background: var(--bg); color: var(--ink-2);
+}
+.gsum:hover { border-color: color-mix(in srgb, var(--ink-2) 40%, var(--line)); }
+.gsum[aria-expanded="true"] { border-color: var(--accent); }
+.gsum-k { font-weight: 600; color: var(--ink-2); }
+.gsum-vals { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; min-inline-size: 0; }
+.gsum-v { display: inline-flex; align-items: center; gap: 5px; }
+.gsum-v.mine { color: var(--ink); font-weight: 600; }
+.gsum-v svg { inline-size: 15px; block-size: 15px; flex: none; opacity: .72; }
+.gsum-more { margin-inline-start: auto; font-weight: 600; color: var(--accent); }
+.gbox { display: grid; gap: 8px; }
 .gchips { display: flex; flex-wrap: wrap; gap: 6px; }
 .gchip {
   font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; min-block-size: 36px;
-  display: inline-flex; align-items: center; gap: 5px; padding-inline: 10px; border-radius: 999px;
+  display: inline-flex; align-items: center; gap: 6px; padding-inline: 11px; border-radius: 999px;
   border: 1.5px dashed color-mix(in srgb, var(--ink-2) 45%, var(--line)); background: transparent; color: var(--ink);
 }
+.gchip svg { inline-size: 16px; block-size: 16px; flex: none; opacity: .7; }
 .gchip.mine { border-style: solid; border-color: var(--ink); color: var(--ink); background: var(--surface); }
+.gchip.mine svg { opacity: 1; }
 .gchip[aria-expanded="true"] { border-color: var(--accent); }
-.gchip-k { font-weight: 500; color: var(--ink-2); }
 .now-next { margin: 2px 0 0; font-size: 14px; color: var(--ink-2); }
 .gpick { display: flex; flex-wrap: wrap; gap: 6px; padding: 10px; border-radius: 12px; background: var(--bg); border: 1px solid var(--line); }
 .gpick .chip, .kind .chip { min-block-size: 34px; font-size: 13px; padding-inline: 11px; }

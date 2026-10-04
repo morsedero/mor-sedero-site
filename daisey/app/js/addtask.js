@@ -1,8 +1,15 @@
 // The task popup. Title first; everything else is optional (Mor, 2026-10-04).
-// As the title is typed, Daisey's guesses for area, type, where, open hours,
-// size, stakes and energy appear under it as chips (model.guessFields). A
-// dashed chip is a guess; tap it to pick a value and it turns solid — yours.
-// "Daisey guesses" in the picker hands it back.
+// Daisey guesses area, type, where, open hours, size, stakes and energy from
+// the title (model.guessFields).
+//
+// The guesses stay OUT OF THE WAY while you type (Mor, 2026-10-05: they used
+// to open roughly, re-laying the form out on every keystroke). Two things fix
+// that: they wait for the typing to stop (SETTLE ms of quiet, and at least
+// MIN_CHARS characters) and then fade in, and what fades in is ONE QUIET LINE
+// — an icon and a value for the four that matter, no field names. Tapping the
+// line opens the full set of chips, where a dashed chip is a guess, a solid
+// one is yours, and "Daisey guesses" in the picker hands it back. The line
+// never disappears again once it is up, because vanishing is its own jump.
 //
 // Every field is shown, with room between them (Mor, 2026-10-04: "no need for
 // More, just show everything, not dense"). Add closes the popup; so does
@@ -24,7 +31,7 @@
 // and why Delete is a two-press button here instead of a confirm() dialog.
 import { watchTasks, addTask, updateTask, removeTask } from "./store.js";
 import { durText, guessFields, validField, CHOICES, LABELS, INBOX } from "./model.js";
-import { h, flash } from "./ui.js";
+import { h, flash, icon } from "./ui.js";
 
 // The guessed fields shown as chips, in order. canSplit stays a quiet
 // default with no chip of its own.
@@ -32,7 +39,14 @@ const CHIPS = ["area", "type", "where", "openHours", "size", "stakes", "energy"]
 const NAMES = { area: "Area", type: "Type", where: "Where", openHours: "Open hours", size: "Size", stakes: "Stakes", energy: "Energy" };
 const SIZE_OPTIONS = [5, 15, 30, 60, 90, 120, 180, 240];
 const NEW_PROJECT = "__new"; // the project list's "+ New project…" entry
+// The four shown on the collapsed line. The rest are one tap away.
+const SUMMARY = ["area", "where", "size", "energy"];
+const SETTLE = 450; // ms of quiet typing before the guesses appear or change
+const MIN_CHARS = 3; // a title shorter than this isn't worth guessing from
 const valueText = (k, v) => (k === "size" ? durText(v) : LABELS[k][v] ?? "");
+// On a chip the icon already says which field it is, so "Low energy" is just
+// "Low" and "Office hours" is just "Office".
+const shortText = (k, v) => valueText(k, v).replace(/ (energy|stakes|hours)$/, "");
 const optionsOf = (k) => (k === "size" ? SIZE_OPTIONS : CHOICES[k]);
 
 let n = 0;
@@ -50,6 +64,9 @@ export function mountAddTask(dialog, uid, { onNow } = {}){
   let mine = new Set(); // chips the user picked
   let startMine = new Set(); // …as they were when the sheet opened (edit)
   let openChip = null; // the chip whose picker is showing
+  let shown = false; // the guess line is up (and stays up)
+  let expanded = false; // the full chip set is open
+  let settle = 0; // the "typing stopped" timer
   let kind = "target"; // the date's kind
   const projectSel = h("select", { className: "head-project", ariaLabel: "Project" });
   const f = {
@@ -64,8 +81,16 @@ export function mountAddTask(dialog, uid, { onNow } = {}){
 
   const chipRow = h("div", { className: "gchips", role: "group", ariaLabel: "Daisey's guesses — tap one to change it" });
   const picker = h("div", { className: "gpick", role: "radiogroup" });
-  const guesses = h("div", { className: "guesses" },
+  const gbox = h("div", { className: "gbox" },
     h("p", { className: "guess-cap muted", textContent: "Daisey's guesses — tap one to change it" }), chipRow, picker);
+  // The collapsed line: icons and values, no field names, and a word that says
+  // it opens.
+  const sumVals = h("span", { className: "gsum-vals" });
+  const sumLine = h("button", { type: "button", className: "gsum",
+    onclick: () => { expanded = !expanded; if (!expanded) openChip = null; paint(); } },
+    h("span", { className: "gsum-k", textContent: "Daisey" }), sumVals,
+    h("span", { className: "gsum-more", ariaHidden: "true", textContent: "Change" }));
+  const guesses = h("div", { className: "guesses" }, sumLine, gbox);
 
   const newField = field("Name the new project", f.newProject);
   newField.hidden = true;
@@ -130,14 +155,30 @@ export function mountAddTask(dialog, uid, { onNow } = {}){
     reguess(); // a picked type re-steers where, hours, size and energy
   }
 
+  // Typing never moves the form: the guesses only catch up once you stop.
+  function later(){
+    clearTimeout(settle);
+    settle = setTimeout(() => {
+      const len = f.title.value.trim().length;
+      if (len >= MIN_CHARS) shown = true;
+      else if (!len) { shown = false; expanded = false; } // cleared the title: start over
+      reguess();
+    }, SETTLE);
+  }
+
   function paint(){
-    guesses.hidden = !f.title.value.trim();
+    guesses.hidden = !shown;
+    sumLine.ariaExpanded = String(expanded);
+    sumLine.ariaLabel = `Daisey's guesses: ${CHIPS.map((k) => `${NAMES[k]} ${valueText(k, vals[k])}`).join(", ")}. Change them`;
+    sumVals.replaceChildren(...SUMMARY.map((k) =>
+      h("span", { className: "gsum-v" + (mine.has(k) ? " mine" : "") }, icon(k), h("bdi", { textContent: shortText(k, vals[k]) }))));
+    gbox.hidden = !expanded;
     chipRow.replaceChildren(...CHIPS.map((k) => {
       const own = mine.has(k);
       return h("button", { type: "button", className: "gchip" + (own ? " mine" : ""), ariaExpanded: String(openChip === k),
         ariaLabel: `${NAMES[k]}: ${valueText(k, vals[k])}, ${own ? "yours" : "Daisey's guess"}. Change`,
         onclick: () => { openChip = openChip === k ? null : k; paint(); } },
-      h("span", { className: "gchip-k", textContent: NAMES[k] }), h("bdi", { textContent: valueText(k, vals[k]) }));
+      icon(k), h("bdi", { textContent: shortText(k, vals[k]) }));
     }));
     picker.hidden = !openChip;
     if (openChip) {
@@ -155,13 +196,13 @@ export function mountAddTask(dialog, uid, { onNow } = {}){
         onclick: () => { kind = v; paint(); } })));
   }
 
-  f.title.addEventListener("input", reguess);
+  f.title.addEventListener("input", later);
   projectSel.addEventListener("change", () => {
     newField.hidden = projectSel.value !== NEW_PROJECT;
     if (!newField.hidden) f.newProject.focus();
     reguess();
   });
-  f.newProject.addEventListener("input", reguess);
+  f.newProject.addEventListener("input", later);
   f.due.addEventListener("input", paint);
 
   // The sheet's own actions, under the fields and only when editing.
@@ -226,7 +267,9 @@ export function mountAddTask(dialog, uid, { onNow } = {}){
 
   function clear(){
     form.reset();
-    vals = {}; mine = new Set(); startMine = new Set(); openChip = null; kind = "target";
+    clearTimeout(settle);
+    vals = {}; mine = new Set(); startMine = new Set(); openChip = null;
+    shown = false; expanded = false; kind = "target";
   }
 
   const close = h("button", { className: "now-x", type: "button", ariaLabel: "Close", textContent: "✕", onclick: () => dialog.close() });
@@ -281,10 +324,11 @@ export function mountAddTask(dialog, uid, { onNow } = {}){
       startMine = new Set(mine);
       // Show the stored guesses as they are; only an old task missing a
       // field gets fresh ones. Typing a new title re-guesses, as saving will.
+      shown = true; // the title is already written; nothing is about to jump
       if (CHIPS.some((k) => !(k in vals))) reguess(); else paint();
       if (!dialog.open) dialog.showModal();
       f.title.focus();
     },
-    unmount(){ unsub(); if (dialog.open) dialog.close(); dialog.replaceChildren(); },
+    unmount(){ clearTimeout(settle); unsub(); if (dialog.open) dialog.close(); dialog.replaceChildren(); },
   };
 }
