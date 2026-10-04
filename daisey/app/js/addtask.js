@@ -4,9 +4,14 @@
 // dashed chip is a guess; tap it to pick a value and it turns solid — yours.
 // "Daisey guesses" in the picker hands it back.
 //
-// Every field is shown, one under another, with room between them (Mor,
-// 2026-10-04: "no need for More, just show everything, not dense"). Add closes
-// the popup; so does saving an edit.
+// Every field is shown, with room between them (Mor, 2026-10-04: "no need for
+// More, just show everything, not dense"). Add closes the popup; so does
+// saving an edit.
+//
+// The order is the order you think in (Mor, 2026-10-05): the project sits in
+// the heading row, not in the stack, because it is context rather than a
+// question; then Task, then Description; the two dates share a row. "First
+// step" is gone — a step is a task of its own.
 //
 // The project is a list: Inbox, the projects already there, and "+ New
 // project…", which asks for the name.
@@ -46,12 +51,11 @@ export function mountAddTask(dialog, uid, { onNow } = {}){
   let startMine = new Set(); // …as they were when the sheet opened (edit)
   let openChip = null; // the chip whose picker is showing
   let kind = "target"; // the date's kind
-  const projectSel = h("select", { ariaLabel: "Project" });
+  const projectSel = h("select", { className: "head-project", ariaLabel: "Project" });
   const f = {
     title: h("input", { id: "addName", dir: "auto", required: true, autocomplete: "off" }),
     newProject: h("input", { dir: "auto", autocomplete: "off", placeholder: "e.g. Website redesign" }),
     due: h("input", { id: "addDue", type: "date" }),
-    nextStep: h("input", { dir: "auto", autocomplete: "off" }),
     notBefore: h("input", { type: "date" }),
     waitingOn: h("input", { dir: "auto", autocomplete: "off", placeholder: "nobody" }),
     notes: h("textarea", { dir: "auto", rows: 3 }),
@@ -63,26 +67,24 @@ export function mountAddTask(dialog, uid, { onNow } = {}){
   const guesses = h("div", { className: "guesses" },
     h("p", { className: "guess-cap muted", textContent: "Daisey's guesses — tap one to change it" }), chipRow, picker);
 
-  const projectField = field("Project", projectSel);
   const newField = field("Name the new project", f.newProject);
   newField.hidden = true;
-  // Date, and right under it whether the date is real.
+  // The two dates share a row; under them, whether the date is real.
   const kindRow = h("div", { className: "kind", role: "radiogroup", ariaLabel: "What kind of date" });
-  const dateBox = h("div", { className: "sheet-stack" }, field("Date (optional)", f.due), kindRow);
+  const dateBox = h("div", { className: "sheet-stack" },
+    h("div", { className: "sheet-row" }, field("Date (optional)", f.due), field("Start date (optional)", f.notBefore)),
+    kindRow);
   // Waiting only exists for a task that already exists: you don't add one
   // already blocked (model.js's note on Waiting).
   const waitField = field("Waiting on", f.waitingOn);
   const submit = h("button", { className: "btn primary", type: "submit", textContent: "Add" });
   const form = h("form", { className: "sheet-form" },
+    newField,
     field("Task", f.title),
     guesses,
-    projectField,
-    newField,
+    field("Description (optional)", f.notes),
     dateBox,
-    field("First step (optional)", f.nextStep),
     waitField,
-    field("Not before (optional)", f.notBefore),
-    field("Notes (optional)", f.notes),
     submit);
   const heading = h("h2", { id: "addTitle", dir: "auto", textContent: "Add task" });
 
@@ -197,7 +199,7 @@ export function mountAddTask(dialog, uid, { onNow } = {}){
       if (editing) {
         // Blank due clears it. A chip handed back goes back to a guess.
         const changes = { title: f.title.value, project: projectOf(), due: f.due.value, dateKind: kind,
-          notBefore: f.notBefore.value, notes: f.notes.value, waitingOn: f.waitingOn.value, nextStep: f.nextStep.value };
+          notBefore: f.notBefore.value, notes: f.notes.value, waitingOn: f.waitingOn.value };
         for (const k of CHIPS) {
           if (mine.has(k) && (!startMine.has(k) || vals[k] !== editing[k])) changes[k] = vals[k];
           else if (!mine.has(k) && startMine.has(k)) changes[k] = "";
@@ -211,7 +213,7 @@ export function mountAddTask(dialog, uid, { onNow } = {}){
         return;
       }
       const input = { title: f.title.value, project: projectOf() };
-      for (const k of ["due", "notBefore", "notes", "nextStep"]) if (f[k].value.trim()) input[k] = f[k].value;
+      for (const k of ["due", "notBefore", "notes"]) if (f[k].value.trim()) input[k] = f[k].value;
       if (input.due) input.dateKind = kind;
       for (const k of mine) input[k] = vals[k];
       // Resolves on server ack, which never comes offline; the list already
@@ -228,7 +230,8 @@ export function mountAddTask(dialog, uid, { onNow } = {}){
   }
 
   const close = h("button", { className: "now-x", type: "button", ariaLabel: "Close", textContent: "✕", onclick: () => dialog.close() });
-  dialog.replaceChildren(h("div", { className: "now-head" }, heading, close), form, actions, msg);
+  // The heading row carries the project: the task's context, not a question.
+  dialog.replaceChildren(h("div", { className: "now-head sheet-head" }, heading, projectSel, close), form, actions, msg);
   dialog.addEventListener("click", (e) => { if (e.target === dialog) dialog.close(); });
 
   const unsub = watchTasks(uid, (ts) => {
@@ -271,7 +274,6 @@ export function mountAddTask(dialog, uid, { onNow } = {}){
       f.title.value = task.title;
       f.due.value = task.due || "";
       kind = task.dateKind === "deadline" ? "deadline" : "target";
-      f.nextStep.value = task.nextStep || "";
       f.notBefore.value = task.notBefore || "";
       f.notes.value = task.notes || "";
       const guessed = new Set(task.guessed || []);
