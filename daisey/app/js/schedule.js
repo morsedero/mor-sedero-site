@@ -1,21 +1,26 @@
 // The Schedule panel: what Google Calendar says a day holds. One day fills
 // the panel and the days slide sideways — swipe, or use ‹ › — up to a week
-// ahead. Read-only; Daisey never writes to the calendar in v1.
+// ahead.
 //
 // It reads the same fetch as the Now card's free window (calendar.js), so
 // the panel and the card can never disagree. Events already finished stay,
 // in grey, because a day you can't see the start of is hard to place
 // yourself in, and a red line marks where "now" falls, as Google's does.
 //
-// Tapping an event you own opens two of the three writes Daisey makes: move
-// it, or delete it. A move can be undone for a few seconds; a delete asks
+// Editing an event you own (Mor, 2026-10-04, "make it easy and fun"):
+//   · drag its coloured dot up or down to move it
+//   · drag its top or bottom edge to change its start or end
+//   · double-tap its name to rename it, in place
+// Drags snap to a quarter hour and show the new times while the finger is
+// down. The typed route is still there under the row: Start/End, Move to,
+// Rename, Delete. Every change can be undone for a few seconds; a delete asks
 // first, because Google has no undo for it.
 //
-// The third is "+ New event" in the header, which opens addevent.js on the
-// day being shown (Mor, 2026-10-04 — no jumping to Google Calendar to put a
-// meeting in). Daisey still never schedules anything ITSELF; what it writes
-// is what the user typed.
-import { watchCalendar, moveEvent, moveEventTo, deleteEvent, renameEvent, acceptBlock } from "./calendar.js";
+// The "+ New event" button in the header opens addevent.js on the day being
+// shown (Mor, 2026-10-04 — no jumping to Google Calendar to put a meeting
+// in). Daisey still never schedules anything ITSELF; what it writes is what
+// the user typed or dragged.
+import { watchCalendar, moveEventTo, retime, deleteEvent, renameEvent, acceptBlock } from "./calendar.js";
 import { watchTasks, watchMoment, watchLearn, watchPencil, savePencil } from "./store.js";
 import { sketch, capacity, blockStart } from "./pencil.js";
 import { workBase } from "./context.js";
@@ -24,6 +29,8 @@ import { localDate } from "./model.js";
 import { h, bdi, dur } from "./ui.js";
 
 const DAYS_AHEAD = 7; // as far as the days slide, and as far as the fetch reaches
+const STEP_MIN = 15; // a drag snaps to this many minutes
+const STEP_PX = 26; // and a finger has to travel this far for one step
 const clock = (iso) => new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
 const NOTE = {
   loading: "Checking the calendar…",
@@ -37,6 +44,9 @@ const dayLabel = (offset, ms) => (offset === 0 ? "Today" : offset === 1 ? "Tomor
   : new Date(ms).toLocaleDateString([], { weekday: "long", day: "numeric", month: "short" }));
 
 const dayStart = (now, offset) => { const d = new Date(now); d.setDate(d.getDate() + offset); return d.getTime(); };
+
+// "HH:MM" on the same day as an ISO time, as a timestamp.
+const onDay = (iso, hhmm) => { const d = new Date(Date.parse(iso)); const [hh, mm] = hhmm.split(":").map(Number); d.setHours(hh, mm, 0, 0); return d.getTime(); };
 
 // Each event, the gap before it, and — on today — the line marking now.
 // `from` is where the day's clock starts: now, for today; null otherwise,
@@ -68,6 +78,17 @@ function dayRows(events, now, from, until = null){
   return rows;
 }
 
+// Two taps on the same name within this long is a double-tap (rename). Read
+// from click, not dblclick, because touch screens don't reliably fire dblclick.
+const DOUBLE_TAP_MS = 400;
+let lastTap = { id: null, t: 0 };
+function tapTwice(id){
+  const now = Date.now();
+  const again = lastTap.id === id && now - lastTap.t < DOUBLE_TAP_MS;
+  lastTap = again ? { id: null, t: 0 } : { id, t: now };
+  return again;
+}
+
 // The pencil (DAISEY_SPEC "Pencil schedule", Mor's step 6): on today, each
 // free gap of 20+ minutes shows one faded suggestion from the engine run for
 // that gap (pencil.js). Tap it: Accept writes a block to the "Daisey"
@@ -88,9 +109,10 @@ export function mountSchedule(root, { onAdd, uid, onSweep } = {}){
   let openId = null; // the event whose actions are showing
   let confirming = null; // the event id waiting for "Delete?" to be confirmed
   let renaming = null, renameText = null; // the event id being renamed, and what's typed so far
+  let drag = null; // a block being dragged: { e, mode, y, steps, orig, li }
   let busy = false; // a write is in flight
   let problem = ""; // what went wrong with the last write
-  let undo = null; // { id, minutes } for a few seconds after a move
+  let undo = null; // { label, revert } for a few seconds after a change
   let undoTimer = null;
 
   const WRITE_ERROR = {
@@ -112,78 +134,160 @@ export function mountSchedule(root, { onAdd, uid, onSweep } = {}){
     render();
   }
 
-  function offerUndo(id, minutes){
+  // `revert` is what Undo runs: it needs only the ids it closed over, so it
+  // still works after the calendar has refetched.
+  function offerUndo(label, revert){
     clearTimeout(undoTimer);
-    undo = { id, minutes };
+    undo = { label, revert };
     undoTimer = setTimeout(() => { undo = null; render(); }, 6000);
   }
 
-  // The event as it is now — after a write the list is refetched, so the
-  // object the button closed over is stale.
-  const fresh = (id) => cal.events.find((e) => e.id === id) || null;
+  // The one way a block's times change: write them, then offer to put them back.
+  function commitTimes(e, start, end){
+    const before = { start: Date.parse(e.start), end: Date.parse(e.end) };
+    run(async () => {
+      await retime(e, start, end);
+      openId = null;
+      offerUndo(`Changed to ${clock(start)}–${clock(end)}`, () => retime(e, before.start, before.end));
+    });
+  }
 
-  const moveBy = (e, minutes) => run(async () => {
-    await moveEvent(e, minutes);
-    openId = null;
-    offerUndo(e.id, minutes);
-  });
+  // The rename, in place of the title. What's typed lives in renameText, so
+  // the minute's calendar refetch can redraw without wiping it.
+  function renameBox(e){
+    const input = h("input", { id: "schRename", className: "sch-rename", dir: "auto", autocomplete: "off",
+      value: renameText ?? e.title, ariaLabel: "New name", oninput: (ev) => { renameText = ev.target.value; } });
+    const stop = () => { renaming = null; renameText = null; render(); };
+    const save = () => {
+      const title = input.value.trim();
+      if (!title || title === e.title) return stop();
+      run(async () => { await renameEvent(e, title); renaming = null; renameText = null; openId = null; });
+    };
+    input.addEventListener("keydown", (ev) => {
+      if (ev.key === "Enter") { ev.preventDefault(); save(); }
+      if (ev.key === "Escape") stop();
+    });
+    setTimeout(() => { input.focus(); input.select(); });
+    return h("div", { className: "sch-renaming" }, h("span", { className: "sch-dot" }), input,
+      h("button", { className: "chip", type: "button", textContent: "Save", disabled: busy, onclick: save }),
+      h("button", { className: "chip", type: "button", textContent: "Cancel", onclick: stop }));
+  }
 
+  // The typed route under a row (the drag route is on the row itself).
   function actions(e){
-    // Rename (Mor, 2026-10-04): one line with the title, Save or Cancel. What's
-    // typed lives in renameText, so the minute's calendar refetch can redraw
-    // without wiping it.
-    if (renaming === e.id) {
-      const input = h("input", { id: "schRename", className: "sch-rename", dir: "auto", autocomplete: "off",
-        value: renameText ?? e.title, ariaLabel: "New name", oninput: (ev) => { renameText = ev.target.value; } });
-      const save = () => {
-        const title = input.value.trim();
-        if (!title || title === e.title) { renaming = null; renameText = null; render(); return; }
-        run(async () => { await renameEvent(e, title); renaming = null; renameText = null; openId = null; });
-      };
-      input.addEventListener("keydown", (ev) => {
-        if (ev.key === "Enter") { ev.preventDefault(); save(); }
-        if (ev.key === "Escape") { renaming = null; renameText = null; render(); }
-      });
-      setTimeout(() => input.focus());
-      return h("li", { className: "sch-actions" }, input,
-        h("button", { className: "chip", type: "button", textContent: "Save", disabled: busy, onclick: save }),
-        h("button", { className: "chip", type: "button", textContent: "Cancel", onclick: () => { renaming = null; renameText = null; render(); } }));
-    }
     if (confirming === e.id) {
-      return h("li", { className: "sch-actions" },
+      return [h("li", { className: "sch-actions" },
         h("span", { className: "muted", textContent: "Delete it?" }),
         h("button", { className: "chip danger", type: "button", textContent: "Delete", disabled: busy,
           onclick: () => run(async () => { await deleteEvent(e); confirming = null; openId = null; }) }),
-        h("button", { className: "chip", type: "button", textContent: "Keep", onclick: () => { confirming = null; render(); } }));
+        h("button", { className: "chip", type: "button", textContent: "Keep", onclick: () => { confirming = null; render(); } }))];
     }
     const at = h("input", { type: "time", className: "sch-at", value: clock(e.start), ariaLabel: "Move to" });
-    return h("li", { className: "sch-actions" },
+    const from = h("input", { type: "time", className: "sch-at", value: clock(e.start), ariaLabel: "Start" });
+    const to = h("input", { type: "time", className: "sch-at", value: clock(e.end), ariaLabel: "End" });
+    const move = () => {
+      if (!at.value) return;
+      const before = { start: Date.parse(e.start), end: Date.parse(e.end) };
+      run(async () => {
+        await moveEventTo(e, at.value);
+        openId = null;
+        offerUndo(`Moved to ${at.value}`, () => retime(e, before.start, before.end));
+      });
+    };
+    const setTimes = () => {
+      if (!from.value || !to.value) return;
+      const s = onDay(e.start, from.value), en = onDay(e.end, to.value);
+      if (en <= s) { problem = "The end has to be after the start."; return render(); }
+      commitTimes(e, s, en);
+    };
+    const times = h("li", { className: "sch-actions" },
+      h("span", { className: "muted", textContent: "From" }), from,
+      h("span", { className: "muted", textContent: "to" }), to,
+      h("button", { className: "chip", type: "button", textContent: "Set times", disabled: busy, onclick: setTimes }));
+    return [h("li", { className: "sch-actions" },
       at,
-      h("button", { className: "chip", type: "button", textContent: "Move", disabled: busy,
-        onclick: () => at.value && run(async () => { await moveEventTo(e, at.value); openId = null; }) }),
+      h("button", { className: "chip", type: "button", textContent: "Move to", disabled: busy, onclick: move }),
       h("button", { className: "chip", type: "button", textContent: "Rename", disabled: busy,
         onclick: () => { renaming = e.id; renameText = null; render(); } }),
       h("button", { className: "chip danger", type: "button", textContent: "Delete", disabled: busy,
-        onclick: () => { confirming = e.id; render(); } }));
+        onclick: () => { confirming = e.id; render(); } })), times];
   }
+
+  // ---------- drag ----------
+
+  // The span the block would have if the drag ended now.
+  function spanOf(d){
+    const q = STEP_MIN * 60000, delta = d.steps * q;
+    let start = d.orig.start, end = d.orig.end;
+    if (d.mode === "move") { start += delta; end += delta; }
+    else if (d.mode === "start") start = Math.min(start + delta, end - q);
+    else end = Math.max(end + delta, start + q);
+    return { start, end };
+  }
+
+  function dragStart(ev, e, mode){
+    if (busy || drag || ev.button > 0) return;
+    ev.preventDefault();
+    ev.currentTarget.setPointerCapture(ev.pointerId);
+    const li = ev.currentTarget.closest("li");
+    drag = { e, mode, y: ev.clientY, steps: 0, li, orig: { start: Date.parse(e.start), end: Date.parse(e.end) } };
+    li.classList.add("dragging");
+  }
+
+  function dragMove(ev){
+    if (!drag) return;
+    const steps = Math.round((ev.clientY - drag.y) / STEP_PX);
+    if (steps === drag.steps) return;
+    drag.steps = steps;
+    const { start, end } = spanOf(drag);
+    drag.li.querySelector(".sch-time").textContent = `${clock(start)}–${clock(end)}`;
+  }
+
+  function dragEnd(cancel){
+    const d = drag;
+    if (!d) return;
+    drag = null;
+    d.li.classList.remove("dragging");
+    const { start, end } = spanOf(d);
+    if (cancel || (start === d.orig.start && end === d.orig.end)) return render(); // put it back as it was
+    commitTimes(d.e, start, end);
+  }
+
+  // Pointer handlers for one grip. The pointer is captured, so the drag keeps
+  // its events even when the finger leaves the grip.
+  const gripping = (e, mode) => ({
+    onpointerdown: (ev) => dragStart(ev, e, mode),
+    onpointermove: dragMove,
+    onpointerup: () => dragEnd(false),
+    onpointercancel: () => dragEnd(true),
+  });
+
+  // ---------- rows ----------
 
   function eventRow(r){
     const e = r.event;
     const time = e.allDay ? "all day" : e.end ? `${clock(e.start)}–${clock(e.end)}` : clock(e.start);
     const canEdit = e.editable && !e.allDay && e.end;
+    // The colour is the one the user sees in Google Calendar.
+    const dot = () => h("span", { className: "sch-dot", style: e.color ? `background:${e.color}` : "" });
+    if (canEdit && renaming === e.id) return h("li", { className: "sch-row renaming" }, renameBox(e));
     const inside = [
-      // The colour is the one the user sees in Google Calendar.
-      h("span", { className: "sch-dot", style: e.color ? `background:${e.color}` : "" }),
       h("span", { className: "sch-time", textContent: time }),
       h("span", { className: "sch-title" }, bdi(e.title),
         r.running && h("span", { className: "sch-now", textContent: "now" })),
     ];
-    const cls = "sch-row" + (r.past ? " past" : "") + (r.running ? " running" : "") + (openId === e.id ? " open" : "");
-    if (!canEdit) return h("li", { className: cls }, ...inside);
+    const cls = "sch-row" + (r.past ? " past" : "") + (r.running ? " running" : "") + (openId === e.id ? " open" : "") + (canEdit ? " editable" : "");
+    if (!canEdit) return h("li", { className: cls }, dot(), ...inside);
     return h("li", { className: cls },
+      h("span", { className: "sch-dot sch-grip", title: "Drag to move", ariaLabel: `Drag ${e.title} to move it`, ...gripping(e, "move") }),
       h("button", { className: "sch-open", type: "button", ariaExpanded: String(openId === e.id),
-        ariaLabel: `${e.title}, ${time} — move or delete`,
-        onclick: () => { openId = openId === e.id ? null : e.id; confirming = null; renaming = null; render(); } }, ...inside));
+        ariaLabel: `${e.title}, ${time} — move, resize, rename or delete`,
+        onclick: () => {
+          if (tapTwice(e.id)) { renaming = e.id; renameText = null; openId = e.id; confirming = null; return render(); }
+          openId = openId === e.id ? null : e.id; confirming = null; render();
+        } }, ...inside),
+      h("span", { className: "sch-edge top", ariaLabel: `Drag to change when ${e.title} starts`, ...gripping(e, "start") }),
+      h("span", { className: "sch-edge bottom", ariaLabel: `Drag to change when ${e.title} ends`, ...gripping(e, "end") }));
   }
 
   // ---------- pencil ----------
@@ -265,7 +369,7 @@ export function mountSchedule(root, { onAdd, uid, onSweep } = {}){
             return openPencil === p.key ? [pencilRow(p), pencilActions(p)] : [pencilRow(p)];
           }
           const li = eventRow(r);
-          return openId === r.event.id ? [li, actions(r.event)] : [li];
+          return openId === r.event.id && !renaming ? [li, ...actions(r.event)] : [li];
         })));
   }
 
@@ -290,6 +394,9 @@ export function mountSchedule(root, { onAdd, uid, onSweep } = {}){
   });
 
   function render(){
+    // Mid-drag the block's own row is the picture; a calendar refetch must not
+    // rebuild it under the finger. dragEnd and run() repaint when it's done.
+    if (drag) return;
     const now = Date.now();
     heading = h("h2", { className: "sch-head" });
     prev = step(-1, "The day before");
@@ -317,11 +424,11 @@ export function mountSchedule(root, { onAdd, uid, onSweep } = {}){
       if (problem) kids.push(h("p", { className: "sch-problem", role: "alert", textContent: problem }));
       if (undo) {
         kids.push(h("p", { className: "muted sch-undo" },
-          `Moved ${undo.minutes > 0 ? "+" : "−"}${dur(Math.abs(undo.minutes))}. `,
+          `${undo.label}. `,
           h("button", { className: "linkish", type: "button", textContent: "Undo", onclick: () => {
-            const e = fresh(undo.id), by = -undo.minutes;
+            const { revert } = undo;
             undo = null; clearTimeout(undoTimer);
-            if (e) run(() => moveEvent(e, by)); else render();
+            run(revert);
           } })));
       }
     } else strip = null;

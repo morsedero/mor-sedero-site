@@ -353,7 +353,7 @@ body.focus .shell { display: grid; min-block-size: 100dvh; align-content: center
 .sch-head { margin: 0; font-size: 17px; }
 .sch-note { margin: 0; font-size: 13px; }
 .sch-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
-.sch-row { display: flex; gap: 8px; align-items: baseline; padding-block: 4px; }
+.sch-row { position: relative; display: flex; gap: 8px; align-items: baseline; padding-block: 4px; }
 .sch-dot { flex: none; inline-size: 8px; block-size: 8px; border-radius: 50%; background: var(--ink-2); align-self: center; }
 .sch-row.past .sch-dot { background: var(--ink-2); }
 .sch-row.past { opacity: .45; }
@@ -373,9 +373,24 @@ body.focus .shell { display: grid; min-block-size: 100dvh; align-content: center
 .imp-actions { display: flex; gap: 8px; justify-content: flex-end; }
 
 /* Tapping an event opens its two actions. */
-.sch-open { display: flex; gap: 8px; align-items: baseline; inline-size: 100%; font: inherit; color: inherit; text-align: start; background: none; border: 0; padding: 0; cursor: pointer; }
+.sch-open { display: flex; flex: 1; min-inline-size: 0; gap: 8px; align-items: baseline; font: inherit; color: inherit; text-align: start; background: none; border: 0; padding: 0; cursor: pointer; }
 .sch-row.open { background: var(--bg); border-radius: 10px; }
+/* Your own timed events can be dragged: the dot moves them, the top and
+   bottom edges change their length. touch-action:none keeps a finger on the
+   handle from scrolling the day instead. */
+.sch-grip { cursor: grab; touch-action: none; align-self: center; }
+.sch-edge { position: absolute; inset-inline: 0; block-size: 12px; cursor: ns-resize; touch-action: none; z-index: 1; }
+.sch-edge.top { inset-block-start: -6px; }
+.sch-edge.bottom { inset-block-end: -6px; }
+.sch-edge::after { content: ""; position: absolute; inset-inline: 40%; inset-block-start: 4px; block-size: 3px; border-radius: 2px; background: var(--line); }
+.sch-row.open .sch-edge::after { background: var(--ink-2); }
+.sch-row.dragging { background: color-mix(in srgb, var(--accent) 18%, transparent); border-radius: 10px; }
+.sch-row.dragging .sch-time { color: var(--ink); font-weight: 700; }
+.sch-renaming { flex: 1; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.sch-renaming .sch-dot { align-self: center; }
+.sch-renaming .sch-rename { flex: 1 1 160px; }
 .sch-actions { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding: 6px 0 8px 94px; }
+.sch-actions .muted { font-size: 13px; }
 .sch-actions .chip { min-block-size: 32px; font-size: 13px; padding-inline: 10px; }
 .sch-actions .chip.danger { color: var(--danger); border-color: color-mix(in srgb, var(--danger) 40%, var(--line)); }
 .sch-at { font: inherit; font-size: 13px; padding: 4px 6px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--ink); }

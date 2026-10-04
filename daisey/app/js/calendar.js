@@ -94,11 +94,11 @@ async function write(body){
   return out;
 }
 
-// Keeps the length; only the start moves.
-export function moveEvent(ev, minutes){
-  const start = new Date(Date.parse(ev.start) + minutes * 60000);
-  const end = new Date(Date.parse(ev.end) + minutes * 60000);
-  return write({ action: "move", calendarId: ev.calendarId, eventId: ev.id, start: start.toISOString(), end: end.toISOString() });
+// Both ends at once: a dragged block, or a typed Start and End. The length is
+// whatever the two say, so this is how an event is moved AND resized.
+export function retime(ev, start, end){
+  return write({ action: "move", calendarId: ev.calendarId, eventId: ev.id,
+    start: new Date(start).toISOString(), end: new Date(end).toISOString() });
 }
 
 // `at` is "HH:MM" on the event's own day; the length is kept.
