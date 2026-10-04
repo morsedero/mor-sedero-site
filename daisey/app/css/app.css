@@ -474,7 +474,19 @@ body.focus .shell { display: grid; min-block-size: 100dvh; align-content: center
 .ev-note { font-size: 13px; margin-block: 10px 0; }
 
 /* The sweep: one old date at a time. */
-.sw-count { margin: 0 0 6px; }
+.sw-bar { display: flex; align-items: center; gap: 8px; margin-block-end: 8px; }
+.sw-count { margin: 0; flex: 1; text-align: center; }
+.sw-nav { font: inherit; font-size: 24px; line-height: 1; inline-size: 44px; block-size: 44px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); cursor: pointer; }
+.sw-nav:disabled { opacity: .3; cursor: default; }
+.sw-task { touch-action: pan-y; user-select: none; }
+.sw-task.answered { opacity: .75; }
+.sw-said { margin: 6px 0 0; font-size: 14px; font-weight: 600; }
+@media (prefers-reduced-motion: no-preference) {
+  .sw-task.in-next { animation: sw-in-next .18s ease-out; }
+  .sw-task.in-prev { animation: sw-in-prev .18s ease-out; }
+}
+@keyframes sw-in-next { from { transform: translateX(24px); opacity: 0; } }
+@keyframes sw-in-prev { from { transform: translateX(-24px); opacity: 0; } }
 .sw-task { display: grid; gap: 4px; padding: 14px; border-radius: 14px; border: 1px solid var(--line); background: var(--surface); margin-block-end: 14px; }
 .sw-answers { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .sw-last { margin-block: 12px 0; }
@@ -484,3 +496,10 @@ body.focus .shell { display: grid; min-block-size: 100dvh; align-content: center
 /* Someday: folded at the bottom of the list, out of the way. */
 .tk-someday { margin-block-start: 8px; }
 .tk-rolled { color: var(--ink-2); }
+
+/* A popup owns the screen: nothing behind it scrolls (Mor, 2026-10-04).
+   The page and every scroller in it freeze while any dialog is open, and a
+   scroll that reaches the popup's own edge doesn't chain to the page. */
+html:has(dialog[open]), html:has(dialog[open]) body { overflow: hidden; }
+html:has(dialog[open]) :is(.pane > *, .sch-day, .sch-strip, .tk-single, .tk-chips) { overflow: hidden !important; }
+dialog.now { overflow-y: auto; overscroll-behavior: contain; }
