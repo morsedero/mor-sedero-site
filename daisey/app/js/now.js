@@ -86,6 +86,26 @@ export function mountNow(root, uid, { onCard } = {}){
       ...extra);
   }
 
+  // The calendar's answer to "what now": the event that's running, when it
+  // ends and what's left of it. Same card as a task's, so the top of the
+  // screen always reads the same way — one thing, in big type, with its
+  // reason under it.
+  // freeWindow hands back start/end already parsed to epoch ms, not the ISO
+  // strings the calendar fetch holds.
+  function meetingCard(ev){
+    const end = ev.end;
+    const left = Math.max(0, Math.round((end - Date.now()) / 60000));
+    return h("div", { className: "now-card main meeting" },
+      h("div", { className: "now-meta", textContent: `Now · until ${clock(end)}` }),
+      h("div", { className: "now-title", dir: "auto", textContent: ev.title }),
+      h("p", { className: "now-why", textContent: left
+        ? `${dur(left)} left. Daisey picks a task again when it ends.`
+        : "Just about done." }),
+      h("button", { className: "btn quiet", type: "button", textContent: "I'm free now",
+        ariaLabel: `I'm free now: ignore ${ev.title} and pick a task anyway`,
+        onclick: () => { freeFrom = ev.start; render(); } }));
+  }
+
   // Focus mode and the handoff own the whole screen (body.focus hides the
   // tabs, the greeting and the + button).
   function renderFocus(){
@@ -178,6 +198,13 @@ export function mountNow(root, uid, { onCard } = {}){
     return fw;
   }
 
+  // What a re-render is worth watching for: normally the free window, but
+  // inside a meeting the window stays 0 while the minutes left tick down, and
+  // the card now states those minutes.
+  const windowMark = (fw) => (fw?.current
+    ? `m${Math.ceil((fw.current.end - Date.now()) / 60000)}`
+    : fw?.window);
+
   function momentInput(fw = calendarNow()){
     const now = Date.now(), today = localDate(now);
     // Worked on, not merely added or edited: otherwise every project you
@@ -211,7 +238,7 @@ export function mountNow(root, uid, { onCard } = {}){
     const busy = cal.status === "ok" // the event being ignored, before any override
       ? freeWindow(cal.events.filter((e) => e.busy !== false && !e.allDay)).current : null;
     const fw = calendarNow();
-    lastWindow = fw?.window;
+    lastWindow = windowMark(fw);
     const greet = h("div", { className: "now-greet" },
       // Said you're free during an event that is still on the calendar.
       freeFrom && busy && h("p", { className: "muted" }, "Ignoring ", bdi(busy.title), " ",
@@ -225,15 +252,16 @@ export function mountNow(root, uid, { onCard } = {}){
     const card = (state.chosen && r.ranked.find((s) => s.task.id === state.chosen)) || r.pick;
     showing(card?.task.id ?? null);
     const tip = toast && toastView();
+    // In a meeting, the meeting IS what's happening now, so the card says
+    // which one and how much of it is left (Mor, 2026-10-04) instead of
+    // "nothing to pick until it ends", which named nothing and read as if
+    // Daisey had simply given up. "I'm free now" still overrides it.
+    if (!card && fw?.current) { fill(greet, meetingCard(fw.current), tip); return; }
     if (!card) {
       fill(greet, h("div", { className: "now-card main empty" },
         h("p", { className: "now-empty", textContent: r.empty === "none"
           ? "No tasks yet. Add a few and Daisey will pick."
-          : fw?.current ? "Nothing to pick until it ends."
           : `Nothing fits the next ${dur(r.moment.window)}. Take the break.` }),
-        fw?.current && h("button", { className: "btn", type: "button", textContent: "I'm free now",
-          ariaLabel: `I'm free now: ignore ${fw.current.title} and pick a task anyway`,
-          onclick: () => { freeFrom = fw.current.start; render(); } }),
         skips.size > 0 && h("button", { className: "btn quiet", type: "button", textContent: `Show the ${skips.size} you put off`, ariaLabel: `Show the ${skips.size} tasks you put off today`, onclick: () => { skips.clear(); setToast(null); render(); } })), tip);
       return;
     }
@@ -272,7 +300,7 @@ export function mountNow(root, uid, { onCard } = {}){
   const tick = setInterval(() => {
     if (document.hidden) return;
     if (run) { const c = Math.floor(elapsedMinutes(run) * 60); if (c !== lastClock) { lastClock = c; render(); } return; }
-    if (cal.status === "ok" && freeWindow(cal.events).window !== lastWindow) render();
+    if (cal.status === "ok" && windowMark(calendarNow()) !== lastWindow) render();
   }, 1000);
   const onVisible = () => { if (!document.hidden) render(); };
   document.addEventListener("visibilitychange", onVisible);
