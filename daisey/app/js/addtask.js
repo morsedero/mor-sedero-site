@@ -111,15 +111,18 @@ export function mountAddTask(dialog, uid, { onNow } = {}){
   // already blocked (model.js's note on Waiting). One press to park it; the
   // name of who or what only appears once it is parked.
   const waitField = field("Waiting on", f.waitingOn);
+  // Save sits on the bottom line with Delete, outside the form, so the two
+  // ends of the sheet are one row (Mor, 2026-10-05). It still submits the
+  // form: that is what the form= attribute is for.
   const submit = h("button", { className: "btn primary", type: "submit", textContent: "Add" });
-  const form = h("form", { className: "sheet-form" },
+  submit.setAttribute("form", "addTaskForm");
+  const form = h("form", { id: "addTaskForm", className: "sheet-form" },
     newField,
     field("Task", f.title),
     guesses,
     field("Description (optional)", f.notes),
     dateBox,
-    waitField,
-    submit);
+    waitField);
   const heading = h("h2", { id: "addTitle", dir: "auto", textContent: "Add task" });
 
   // Other tasks teach the guesses ("similar past tasks", the project's own
@@ -251,7 +254,9 @@ export function mountAddTask(dialog, uid, { onNow } = {}){
     pendBtn.ariaPressed = String(pending);
     waitField.hidden = !pending;
   }
-  const actions = h("div", { className: "sheet-actions" }, doNow, pendBtn, someday, del);
+  const actions = h("div", { className: "sheet-actions" }, doNow, pendBtn, someday);
+  // Delete at one end, Add/Save at the other.
+  const bottom = h("div", { className: "sheet-bottom" }, del, submit);
   const disarm = () => { armed = false; del.textContent = "Delete"; del.classList.remove("arm"); };
 
   form.onsubmit = (ev) => {
@@ -301,7 +306,8 @@ export function mountAddTask(dialog, uid, { onNow } = {}){
 
   const close = h("button", { className: "now-x", type: "button", ariaLabel: "Close", textContent: "✕", onclick: () => dialog.close() });
   // The heading row carries the project: the task's context, not a question.
-  dialog.replaceChildren(h("div", { className: "now-head sheet-head" }, heading, projectSel, close), form, actions, msg);
+  dialog.replaceChildren(h("div", { className: "now-head sheet-head" }, heading, projectSel, close),
+    form, actions, bottom, msg);
   dialog.addEventListener("click", (e) => {
     if (e.target === dialog) { dialog.close(); return; }
     // A tap anywhere else puts an open guess menu away.
@@ -330,6 +336,7 @@ export function mountAddTask(dialog, uid, { onNow } = {}){
       submit.textContent = "Add";
       waitField.hidden = true;
       actions.hidden = true;
+      del.hidden = true; // nothing to delete yet
       paint();
       if (!dialog.open) dialog.showModal();
       f.title.focus();
@@ -344,6 +351,7 @@ export function mountAddTask(dialog, uid, { onNow } = {}){
       submit.textContent = "Save";
       pendBtn.hidden = task.status === "done" || task.status === "someday";
       actions.hidden = false;
+      del.hidden = false;
       doNow.hidden = task.status === "done" || task.status === "someday";
       someday.hidden = task.status === "done";
       someday.textContent = task.status === "someday" ? "Back from Someday" : "Someday";
