@@ -240,8 +240,10 @@ body.focus .shell { display: grid; min-block-size: 100dvh; align-content: center
 .pane { block-size: min(58dvh, 560px); overflow: hidden; }
 .pane > * { block-size: 100%; overflow-y: auto; }
 .pane > [hidden] { display: none; }
-/* The task list does its own scrolling, inside its own card. */
-.pane > #tasksview { overflow: hidden; display: grid; grid-template-rows: minmax(0, 1fr); }
+/* The project filter stays put; only the list under it scrolls. The first
+   track holds the filter and collapses to nothing when there isn't one, so
+   this needs no :has(). */
+.pane > #tasksview { overflow: hidden; display: grid; grid-template-rows: auto minmax(0, 1fr); }
 
 /* Add task: floating button, bottom end corner. */
 .fab {
@@ -325,7 +327,11 @@ body.focus .shell { display: grid; min-block-size: 100dvh; align-content: center
 }
 /* The chips scroll sideways to the card's own edge, so a half-cut chip says
    there are more of them. */
-.tk-filters { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding: 2px 14px; margin-inline: -14px; }
+/* Above the scroller, beside the pane's own tabs — a control, not a row.
+   Inside it, it scrolled away with the tasks and was simply missing from any
+   list long enough to scroll. */
+.tk-filters { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding-block: 1px; margin-block-end: 8px; }
+.tk-filters:empty { margin: 0; padding: 0; } /* one project: no bar, and no gap where it would be */
 .tk-filters::-webkit-scrollbar { display: none; }
 /* Grid children default to min-content width; without this the chip row's
    own width pushes the whole list past the card's end padding. */

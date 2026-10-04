@@ -96,18 +96,32 @@ export function mountTasks(root, uid, { onAdd, onOpen } = {}){
     ontoggle: (e) => onToggle(e.currentTarget.open) },
     h("summary", { textContent: label }), h("ul", { className: "tk-list" }, ...kids));
 
-  // ---------- the two views ----------
+  // ---------- the list ----------
+
+  // The project filter. It sits ABOVE the scroller, not inside it: it used to
+  // be the first thing in the list and scrolled away with the tasks, and
+  // sticky can't save a grid item — a sticky item only moves inside its own
+  // grid area, which is exactly its own height. One project means nothing to
+  // filter, so there's no bar at all.
+  function filterBar(open){
+    const names = [...new Set(open.map((t) => t.project))].sort((a, b) => (b === INBOX) - (a === INBOX) || a.localeCompare(b));
+    // Always the element, even with nothing in it: it holds the frame's first
+    // grid row, so the list below it stays in the row that can scroll. Empty,
+    // it has no height (.tk-filters:empty).
+    if (names.length < 2) return h("div", { className: "tk-filters" });
+    const chip = (name, label, count) => h("button", { type: "button", className: "chip", role: "radio",
+      ariaChecked: String(project === name), onclick: () => { project = name; render(); } },
+      bdi(label), h("span", { className: "chip-n", textContent: String(count) }));
+    return h("div", { className: "tk-filters", role: "radiogroup", ariaLabel: "Filter by project" },
+      chip(null, "All", open.length),
+      ...names.map((n) => chip(n, n, open.filter((t) => t.project === n).length)));
+  }
 
   function listView(open, done){
-    const names = [...new Set(open.map((t) => t.project))].sort((a, b) => (b === INBOX) - (a === INBOX) || a.localeCompare(b));
     const shown = project ? open.filter((t) => t.project === project) : open;
     const today = localDate(), weekEnd = dayFrom(7);
     const groups = new Map(SECTIONS.map(([k]) => [k, []]));
     for (const t of shown) groups.get(bucketOf(t, today, weekEnd)).push(t);
-
-    const chip = (name, label, count) => h("button", { type: "button", className: "chip", role: "radio",
-      ariaChecked: String(project === name), onclick: () => { project = name; render(); } },
-      bdi(label), h("span", { className: "chip-n", textContent: String(count) }));
 
     const sections = SECTIONS.filter(([k]) => groups.get(k).length).map(([k, label]) => {
       const items = groups.get(k).sort(order);
@@ -117,8 +131,6 @@ export function mountTasks(root, uid, { onAdd, onOpen } = {}){
     });
 
     return h("div", { className: "tk-single" },
-      names.length > 1 && h("div", { className: "tk-filters", role: "radiogroup", ariaLabel: "Filter by project" },
-        chip(null, "All", open.length), ...names.map((n) => chip(n, n, open.filter((t) => t.project === n).length))),
       sections.length ? h("div", { className: "tk-secs" }, ...sections)
         : h("p", { className: "muted tk-note", textContent: project ? "Nothing open in this project." : "Nothing open. All done." }),
       h("button", { type: "button", className: "tk-add", textContent: "+ Add a task", onclick: () => onAdd?.(project ?? undefined) }),
@@ -129,9 +141,9 @@ export function mountTasks(root, uid, { onAdd, onOpen } = {}){
   // ---------- frame ----------
 
   // Keeps where you were scrolled through a redraw.
-  function fill(body){
+  function fill(...kids){
     const y = root.querySelector(".tk-single")?.scrollTop || 0;
-    root.replaceChildren(body);
+    root.replaceChildren(...kids.filter(Boolean));
     const next = root.querySelector(".tk-single");
     if (next) next.scrollTop = y;
   }
@@ -146,7 +158,7 @@ export function mountTasks(root, uid, { onAdd, onOpen } = {}){
     const open = tasks.filter((t) => t.status !== "done");
     const done = tasks.filter((t) => t.status === "done");
     if (project && !open.some((t) => t.project === project)) project = null; // the filtered project emptied out
-    fill(listView(open, done));
+    fill(filterBar(open), listView(open, done));
   }
 
   const unsub = watchTasks(uid, (ts) => { tasks = ts; render(); }, fail);
