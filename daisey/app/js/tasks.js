@@ -21,6 +21,7 @@ import { INBOX, notYet, localDate } from "./model.js";
 import { h, bdi, pieces, sizeText, flash } from "./ui.js";
 
 const shortDate = (s) => new Date(`${s}T12:00`).toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" });
+const DRAG = 0.6; // how far the chip row moves per pixel of pointer — under 1 = heavier
 const dayFrom = (n) => { const d = new Date(); d.setDate(d.getDate() + n); return localDate(d.getTime()); };
 
 // Which section of the List view a task falls in. Waiting outranks a date:
@@ -131,18 +132,28 @@ export function mountTasks(root, uid, { onAdd, onOpen } = {}){
     // Touch is left to the browser — it already scrolls this, with momentum.
     // The pointer handlers are for the mouse, and the capture-phase click
     // swallows the one that would otherwise fire on the chip a drag ended on.
+    //
+    // The pointer is captured only ONCE A DRAG STARTS, never on the press.
+    // Capturing on pointerdown retargets the click to the row, so every chip
+    // stopped being pickable (Mor: "there's no option to choose a tab now").
+    //
+    // DRAG is the weight: the row moves that fraction of the pointer, so it
+    // takes a deliberate pull rather than flying off on a twitch.
     let from = null, dragged = false;
     row.addEventListener("pointerdown", (e) => {
       if (e.pointerType === "touch" || e.button !== 0) return;
-      from = { x: e.clientX, at: row.scrollLeft };
+      from = { x: e.clientX, at: row.scrollLeft, id: e.pointerId };
       dragged = false;
-      row.setPointerCapture(e.pointerId);
     });
     row.addEventListener("pointermove", (e) => {
       if (!from) return;
       const dx = e.clientX - from.x;
-      if (Math.abs(dx) > 3) { dragged = true; row.classList.add("dragging"); }
-      row.scrollLeft = from.at - dx;
+      if (!dragged && Math.abs(dx) > 4) {
+        dragged = true;
+        row.classList.add("dragging");
+        try { row.setPointerCapture(from.id); } catch { /* the press already ended */ }
+      }
+      if (dragged) row.scrollLeft = from.at - dx * DRAG;
     });
     const letGo = (e) => {
       if (!from) return;
@@ -161,7 +172,7 @@ export function mountTasks(root, uid, { onAdd, onOpen } = {}){
     row.addEventListener("wheel", (e) => {
       const by = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
       if (!by) return;
-      row.scrollLeft += by;
+      row.scrollLeft += by * DRAG;
       e.preventDefault();
     }, { passive: false });
 
