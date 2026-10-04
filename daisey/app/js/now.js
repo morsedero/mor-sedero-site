@@ -12,7 +12,7 @@
 // the same timer.
 import { watchTasks, watchRun, watchSkips, saveSkips, startRun, extendRun, endRun, skipNow, blockTask, restoreTask, watchSettings, saveSettings, watchMoment, saveMoment, watchLearn, bumpLearn } from "./store.js";
 import { energyNow, placeNow } from "./context.js";
-import { shouldOffer, sweepList } from "./triage.js";
+import { shouldOffer, sweepList, pickWeekDay } from "./triage.js";
 import { focusView, handoffView, elapsedMinutes } from "./focus.js";
 import { watchCalendar } from "./calendar.js";
 import { LATER_MINUTES } from "./weights.js";
@@ -53,7 +53,8 @@ export function mountNow(root, uid, { onCard, onSweep } = {}){
   let toast = null; // { text, task, before } for 5 s after Later or Pending
   let slideIn = false; // one slide per step-aside, not one per snapshot
   let toastTimer = null;
-  const state = { chosen: null, showAlts: false, asking: false };
+  // laterAsk: Later was tapped and the card is asking "when?"
+  const state = { chosen: null, showAlts: false, asking: false, laterAsk: false };
   // { date, items: { id: { count, until } } } — today's Laters, from Firestore.
   let skipDoc = null;
   const skipItems = () => (skipDoc?.date === localDate() ? skipDoc.items || {} : {});
@@ -78,7 +79,7 @@ export function mountNow(root, uid, { onCard, onSweep } = {}){
     },
     get size(){ return hidden().length; },
   };
-  const reset = () => { state.chosen = null; state.showAlts = false; state.asking = false; };
+  const reset = () => { state.chosen = null; state.showAlts = false; state.asking = false; state.laterAsk = false; };
   let shown;
   const showing = (id) => { if (id !== shown) { shown = id; onCard?.(id); } };
 
@@ -211,8 +212,25 @@ export function mountNow(root, uid, { onCard, onSweep } = {}){
     if (el && motionOK()) { el.classList.add("out"); setTimeout(go, SLIDE_MS); } else go();
   }
 
-  const later = (task) => stepAside(task, { label: `Later (${dur(LATER_MINUTES)}): `,
-    write: () => Promise.all([skipNow(uid, task), bumpLearn(uid, task.type, timeBucket().part, "skips")]) });
+  // Later asks when (Mor, 2026-10-04). Every answer is a "not now" to
+  // learn from; only "later today" counts toward the stale rule, since the
+  // other two are a plan, not a refusal.
+  //   today    off the card for LATER_MINUTES, back the same day
+  //   week     not before the roomiest day this week (triage.pickWeekDay)
+  //   someday  parked until moved back
+  const declined = (task) => bumpLearn(uid, task.type, timeBucket().part, "skips");
+  function later(task, when){
+    if (when === "today") {
+      stepAside(task, { label: `Later (${dur(LATER_MINUTES)}): `, write: () => Promise.all([skipNow(uid, task), declined(task)]) });
+    } else if (when === "week") {
+      let day = pickWeekDay(task, { events: cal.status === "ok" ? cal.events : [], tasks: tasks || [] });
+      if (task.dateKind === "deadline" && task.due && task.due < day) day = task.due; // never hide it past its deadline
+      const label = new Date(`${day}T12:00`).toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" });
+      stepAside(task, { label: `This week (${label}): `, write: () => Promise.all([restoreTask(uid, task.id, { notBefore: day, touchedAt: Date.now() }), declined(task)]) });
+    } else if (when === "someday") {
+      stepAside(task, { label: "Someday: ", write: () => Promise.all([restoreTask(uid, task.id, { status: "someday", touchedAt: Date.now() }), declined(task)]) });
+    }
+  }
   const pending = (task) => stepAside(task, { label: "Pending: ", write: () => blockTask(uid, task) });
 
   function setToast(t){
@@ -350,13 +368,17 @@ export function mountNow(root, uid, { onCard, onSweep } = {}){
       h("button", { className: "btn primary start", type: "button", textContent: "Start",
         ariaLabel: `Start: ${card.task.title}`, onclick: () => begin(card.task) }),
       h("div", { className: "now-actions" },
-        action("later", "Later", `not now — show the next task instead of ${card.task.title}`,
-          { onclick: () => later(card.task) }),
+        action("later", "Later", `not now — choose when to see ${card.task.title} again`,
+          { ariaExpanded: String(state.laterAsk), onclick: () => { state.laterAsk = !state.laterAsk; state.showAlts = false; render(); } }),
         action("switch", "Switch", state.showAlts ? "hide the other tasks" : `something else — ${alts.length} other tasks`,
           { disabled: !alts.length, ariaExpanded: String(state.showAlts),
-            onclick: () => { state.showAlts = !state.showAlts; render(); } }),
+            onclick: () => { state.showAlts = !state.showAlts; state.laterAsk = false; render(); } }),
         action("pending", "Pending", `${card.task.title} is blocked — set it to Waiting`,
-          { onclick: () => pending(card.task) }))),
+          { onclick: () => pending(card.task) })),
+      state.laterAsk && h("div", { className: "later-ask", role: "group", ariaLabel: "When instead?" },
+        h("span", { className: "muted", textContent: "When?" }),
+        ...[["today", "Later today"], ["week", "This week"], ["someday", "Someday"]].map(([w, text]) =>
+          h("button", { className: "chip", type: "button", textContent: text, onclick: () => later(card.task, w) })))),
       state.showAlts && h("div", { className: "now-alts", role: "group", ariaLabel: "Other tasks" }, ...alts.map((s) => h("button", {
         type: "button", className: "now-alt", ariaLabel: `Put ${s.task.title} on the card instead${s.why ? ". " + s.why : ""}`,
         onclick: () => { state.chosen = s.task.id; state.showAlts = false; render(); },

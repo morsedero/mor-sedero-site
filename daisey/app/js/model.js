@@ -463,6 +463,7 @@ export function skipReason(task, reason, { now = Date.now() } = {}){
 export const skipSnapshot = (task) => ({
   skipCount: task.skipCount || 0, skipsSinceStart: task.skipsSinceStart || 0,
   skipReasons: task.skipReasons || {}, status: task.status, touchedAt: task.touchedAt ?? null,
+  notBefore: task.notBefore ?? null, // Later → This week sets it
 });
 
 // Focus mode. Starting clears the stale-skip count: a task you actually

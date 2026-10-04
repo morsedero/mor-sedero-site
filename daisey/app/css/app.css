@@ -517,3 +517,7 @@ dialog.now { overflow-y: auto; overscroll-behavior: contain; }
 .ctx-chip[aria-expanded="true"] { border-color: var(--accent); }
 .ctx-opts { display: flex; flex-wrap: wrap; gap: 6px; }
 .ctx-opts .chip { min-block-size: 32px; font-size: 13px; padding-inline: 11px; }
+
+/* Later → "When?": three choices under the card's actions. */
+.later-ask { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 5px; margin-block-start: 4px; font-size: 13px; }
+.later-ask .chip { min-block-size: 36px; font-size: 13px; padding-inline: 10px; }
