@@ -331,6 +331,16 @@ now. Real minutes are saved either way.
 their unit: "1 h 30 min", never "1.5 h" and never a bare trailing number.
 Note for later: `\b` does not work on Hebrew letters in JavaScript regexes.
 
+**Importing from Trello.** The account menu has "Import from Trello…": pick
+a board, tick the lists, and the open cards become Daisey tasks — list as
+project, card name as title, due date kept, card link in the notes, size left
+to Daisey to guess. It is a **pull, not a sync**: Daisey owns a task from the
+moment it lands and never writes back, because two-way sync is what made the
+old Daisey fragile and Trello has nowhere to keep size, skips or time spent.
+Each task remembers its card id, so the import can be run again whenever —
+lists show "2 new of 5" and only the new cards come over. Cards already
+ticked off in Trello are skipped. Nothing is written before the button.
+
 **Still as it was:** tasks are added through the "+" form (a capture bar was
 built and rejected — for one task it was no better), and the task on the Now
 card stays in its project column with a "now" badge rather than disappearing.

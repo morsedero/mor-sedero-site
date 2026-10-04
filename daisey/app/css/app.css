@@ -279,6 +279,14 @@ body.focus .shell { display: grid; min-block-size: 100dvh; align-content: center
 .sch-now { margin-inline-start: 6px; padding: 1px 7px; border-radius: 999px; font-size: 11px; font-weight: 700; text-transform: uppercase; background: var(--accent); color: var(--on-accent); }
 .sch-gap { font-size: 13px; color: var(--ink-2); padding-inline-start: 94px; }
 /* Where "now" falls, the way Google draws it. */
+/* Import from Trello. */
+.imp-lists { display: grid; gap: 6px; margin-block: 10px; max-block-size: 48dvh; overflow-y: auto; }
+.imp-list { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
+.imp-list span:first-of-type { flex: 1; min-inline-size: 0; overflow-wrap: anywhere; }
+.imp-list input { inline-size: 18px; block-size: 18px; }
+.imp-board { inline-size: 100%; text-align: start; }
+.imp-actions { display: flex; gap: 8px; justify-content: flex-end; }
+
 /* Tapping an event opens its two actions. */
 .sch-open { display: flex; gap: 8px; align-items: baseline; inline-size: 100%; font: inherit; color: inherit; text-align: start; background: none; border: 0; padding: 0; cursor: pointer; }
 .sch-row.open { background: var(--bg); border-radius: 10px; }

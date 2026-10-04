@@ -157,6 +157,9 @@ export function createTask(input, { now = Date.now(), history = [] } = {}){
     waitingOn: null,
     canSplit,
     notes: notesText(input.notes) || null,
+    // Where it came from, when it wasn't typed here: { app, cardId, boardId }.
+    // Daisey owns the task from this moment on; nothing syncs back.
+    source: input.source && input.source.app ? { ...input.source } : null,
     guessed,
     createdAt: now,
     touchedAt: now,

@@ -92,6 +92,16 @@ const FAKES = {
   await page.addInitScript((s) => { window.__FAKE = s; }, scenario);
   await page.route(ORIGIN + "/**", (route) => {
     const rel = new URL(route.request().url()).pathname.replace(/^\//, "") || "index.html";
+    if (rel === ".netlify/functions/daisey-now-trello") {
+      const q = new URL(route.request().url()).searchParams;
+      const body = q.has("boards")
+        ? { boards: [{ id: "b1", name: "Monster Punk" }, { id: "b2", name: "חתונה" }] }
+        : { board: { id: "b1", name: "Monster Punk" }, lists: [{ id: "l1", name: "Doing" }, { id: "l2", name: "Backlog" }],
+            cards: [{ id: "c1", name: "Fix the boss loop", listId: "l1", listName: "Doing", due: null, url: "https://trello.com/c/c1" },
+                    { id: "c2", name: "Pre-attack cue", listId: "l1", listName: "Doing", due: null, url: "https://trello.com/c/c2" },
+                    { id: "c3", name: "Old idea", listId: "l2", listName: "Backlog", due: null, url: "https://trello.com/c/c3" }] };
+      return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(body) });
+    }
     if (rel === ".netlify/functions/daisey-now-calendar-write") return route.fulfill({ status: 200, contentType: "application/json", body: '{"ok":true}' });
     if (rel === ".netlify/functions/daisey-now-calendar") return route.fulfill({ status: calReply.status, contentType: "application/json", body: JSON.stringify(calReply.body) });
     if (FAKES[rel]) return route.fulfill({ contentType: "text/javascript", body: FAKES[rel] });
@@ -105,7 +115,7 @@ const FAKES = {
   for (const sel of clicks) { await page.click(sel); await page.waitForTimeout(150); }
   if (tasksTab) { await page.click("#tabTasks"); await page.waitForTimeout(150); }
   if (args.includes("--text")) console.log(await page.innerText("body"));
-  if (args.includes("--tasks-dump")) console.log(await page.evaluate(() => window.__store.tasks.map((t) => t.title + ": " + t.status + (t.skipCount ? " skips " + t.skipCount : "")).join(" | ")));
+  if (args.includes("--tasks-dump")) console.log(await page.evaluate(() => window.__store.tasks.map((t) => t.title + ": " + t.status + (t.skipCount ? " skips " + t.skipCount : "") + (t.source ? " [" + t.source.app + ":" + t.source.cardId + "]" : "")).join(" | ")));
   fs.mkdirSync(outDir, { recursive: true });
   const file = path.join(outDir, `${name}${tasksTab ? "-tasks" : ""}${cal ? "-cal" + cal.replace(/\W/g, "") : ""}${running ? "-run" + running.replace(/\W/g, "") : ""}${clicks.length ? "-" + clicks.join("").replace(/\W/g, "").slice(0, 24) : ""}${wide ? "-wide" : ""}${args.includes("--dark") ? "-dark" : ""}.png`);
   await page.screenshot({ path: file, fullPage: true });
