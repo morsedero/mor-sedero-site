@@ -1,23 +1,34 @@
-// Adding a Google Calendar event without leaving Daisey (Mor, 2026-10-04:
-// "so the user won't have to jump between the two").
+// The event sheet: adding a Google Calendar event without leaving Daisey
+// (Mor, 2026-10-04: "so the user won't have to jump between the two"), and
+// since 2026-10-05 opening and editing one too ("copy from google calendar
+// everything about opening and editing events").
+//
+// It is Google's own two steps in one dialog, because that is the flow Mor
+// asked to copy: tapping an event opens its DETAILS — name, day, time, and
+// nothing to fill in — and Edit turns the same sheet into the form. Editing
+// in a popup rather than on the row is what let the schedule go back to being
+// a plain list: nothing is dragged, so nothing has to be grabbed.
 //
 // Four fields, because that is the whole of a meeting as Daisey needs it:
 // what, which day, what time, how long. No guests, no description, no
 // recurrence, no calendar picker — those are Google Calendar's job, and the
-// event lands there to be opened if any of them are wanted. Length instead
-// of an end time: "45 min" is one choice rather than two, and it is how
-// Daisey says duration everywhere else (durText).
+// event lands there to be opened if any of them are wanted. Length instead of
+// an end time: "45 min" is one choice rather than two, and it is how Daisey
+// says duration everywhere else (durText).
 //
-// It opens on the day the Schedule panel is showing, with the time rounded
-// up to the next quarter hour, so adding something to Thursday from
+// A new event opens on the day the Schedule panel is showing, with the time
+// rounded up to the next quarter hour, so adding something to Thursday from
 // Thursday's page needs the title and nothing else.
-import { createEvent } from "./calendar.js";
+import { createEvent, retime, renameEvent, deleteEvent } from "./calendar.js";
 import { durText, localDate } from "./model.js";
-import { h } from "./ui.js";
+import { h, bdi, flash } from "./ui.js";
 
 const LENGTHS = [15, 30, 45, 60, 90, 120, 180];
 const DEFAULT_LENGTH = 60;
+const MIN = 60000;
 const pad = (n) => String(n).padStart(2, "0");
+const hhmm = (ms) => `${pad(new Date(ms).getHours())}:${pad(new Date(ms).getMinutes())}`;
+const longDay = (ms) => new Date(ms).toLocaleDateString([], { weekday: "long", day: "numeric", month: "long" });
 
 // The next quarter hour, so a new event never starts in the past.
 function nextQuarter(){
@@ -31,6 +42,7 @@ const ERROR = {
   needs_reauth: "Calendar sign-in expired. Sign in to the old Daisey again.",
   no_session: "Signed out.",
   not_connected: "Calendar not connected. Sign in to the old Daisey once to link it.",
+  gone: "That event is already gone.",
   bad_request: "Something in that didn't make sense to Google.",
 };
 
@@ -42,6 +54,8 @@ const field = (label, input, wide) => {
 
 export function mountAddEvent(dialog){
   let busy = false;
+  let editing = null; // the event being looked at or edited, or null when adding
+  let armed = false; // Delete pressed once; the next press does it
   const f = {
     title: h("input", { dir: "auto", required: true, autocomplete: "off" }),
     date: h("input", { type: "date", required: true }),
@@ -56,41 +70,143 @@ export function mountAddEvent(dialog){
     field("Starts", f.at),
     field("Length", f.minutes),
     submit);
+  const note = h("p", { className: "muted ev-note", textContent: "Goes in your main Google calendar. Guests, repeats and the rest are a tap away in Google Calendar." });
+  const heading = h("h2", { id: "evTitle", textContent: "New event" });
   const close = h("button", { className: "now-x", type: "button", ariaLabel: "Close", textContent: "✕", onclick: () => dialog.close() });
+  const details = h("div", { className: "ev-detail" });
+
+  const working = (on, label) => { busy = on; submit.disabled = on; submit.textContent = on ? "Saving…" : label; };
+
+  // A length the event already has but the list doesn't offer (an hour and a
+  // half of someone else's meeting) is added rather than silently rounded.
+  function setLength(mins){
+    if (!LENGTHS.includes(mins)) {
+      const extra = f.minutes.querySelector(".odd") || h("option", { className: "odd" });
+      extra.value = String(mins);
+      extra.textContent = durText(mins);
+      if (!extra.isConnected) f.minutes.append(extra);
+    }
+    f.minutes.value = String(mins);
+  }
+
+  // Google's event details: what it is, when it is, and the two things you can
+  // do to it. Read-only events (someone else's calendar) show no buttons —
+  // Google greys them out the same way.
+  function showDetails(ev){
+    const start = Date.parse(ev.start), end = Date.parse(ev.end || ev.start);
+    const when = ev.allDay ? "All day" : `${hhmm(start)} – ${hhmm(end)}`;
+    const mine = ev.editable && !ev.allDay && ev.end;
+    const del = h("button", { className: "btn quiet danger", type: "button", textContent: armed ? "Really delete?" : "Delete" });
+    if (armed) del.classList.add("arm");
+    del.onclick = async () => {
+      if (!armed) { armed = true; showDetails(ev); return; }
+      if (busy) return;
+      working(true);
+      try {
+        await deleteEvent(ev);
+        dialog.close();
+        flash("Deleted ", ev.title);
+      } catch (e) {
+        console.error("[daisey] delete event", e);
+        msg.textContent = ERROR[e.code] || "Couldn't delete it.";
+      }
+      working(false, "Save");
+    };
+    details.replaceChildren(
+      h("p", { className: "ev-when", textContent: longDay(start) }),
+      h("h3", { className: "ev-name", dir: "auto" }, bdi(ev.title)),
+      h("p", { className: "ev-time", textContent: when }),
+      mine
+        ? h("div", { className: "ev-acts" },
+          h("button", { className: "btn", type: "button", textContent: "Edit", onclick: () => showForm(ev) }), del)
+        : h("p", { className: "muted", textContent: "This one is read-only — open it in Google Calendar to change it." }));
+    details.hidden = false;
+    form.hidden = true;
+    note.hidden = true;
+    heading.textContent = "Event";
+  }
+
+  // The same sheet as a form: new, or the event's own values filled in.
+  function showForm(ev){
+    armed = false;
+    details.hidden = true;
+    form.hidden = false;
+    note.hidden = !!ev;
+    heading.textContent = ev ? "Edit event" : "New event";
+    submit.textContent = ev ? "Save" : "Add to calendar";
+    if (ev) {
+      const start = Date.parse(ev.start), end = Date.parse(ev.end);
+      f.title.value = ev.title;
+      f.date.value = localDate(start);
+      f.at.value = hhmm(start);
+      setLength(Math.max(5, Math.round((end - start) / MIN)));
+    }
+    setTimeout(() => f.title.focus());
+  }
 
   form.onsubmit = async (ev) => {
     ev.preventDefault();
     if (busy) return;
-    busy = true; submit.disabled = true; submit.textContent = "Adding…"; msg.textContent = "";
+    const target = editing;
+    working(true);
+    msg.textContent = "";
     try {
-      // Unlike a task, this one waits: the calendar is somebody else's
-      // database, and "it's in" has to mean Google said so.
-      await createEvent({ title: f.title.value, date: f.date.value, at: f.at.value, minutes: Number(f.minutes.value) });
-      dialog.close();
+      if (target) {
+        // What Google's Save does: whatever changed, in one go. Title and
+        // times are two different writes here, so only the ones that moved go.
+        const was = { title: target.title, start: Date.parse(target.start), end: Date.parse(target.end) };
+        const [y, m, d] = f.date.value.split("-").map(Number);
+        const [hh, mm] = f.at.value.split(":").map(Number);
+        const start = new Date(y, m - 1, d, hh, mm, 0, 0).getTime();
+        const end = start + Number(f.minutes.value) * MIN;
+        const title = f.title.value.trim();
+        if (title && title !== was.title) await renameEvent(target, title);
+        if (start !== was.start || end !== was.end) await retime(target, start, end);
+        dialog.close();
+        flash("Saved ", title || was.title, {
+          undo: async () => {
+            if (title && title !== was.title) await renameEvent(target, was.title);
+            if (start !== was.start || end !== was.end) await retime(target, was.start, was.end);
+          },
+        });
+      } else {
+        // Unlike a task, this one waits: the calendar is somebody else's
+        // database, and "it's in" has to mean Google said so.
+        await createEvent({ title: f.title.value, date: f.date.value, at: f.at.value, minutes: Number(f.minutes.value) });
+        dialog.close();
+      }
     } catch (e) {
-      console.error("[daisey] create event", e);
-      msg.textContent = ERROR[e.code] || "Couldn't add it to the calendar.";
+      console.error("[daisey] save event", e);
+      msg.textContent = ERROR[e.code] || (target ? "Couldn't save it." : "Couldn't add it to the calendar.");
     }
-    busy = false; submit.disabled = false; submit.textContent = "Add to calendar";
+    working(false, target ? "Save" : "Add to calendar");
   };
 
-  dialog.replaceChildren(
-    h("div", { className: "now-head" }, h("h2", { id: "evTitle", textContent: "New event" }), close),
-    form, msg,
-    h("p", { className: "muted ev-note", textContent: "Goes in your main Google calendar. Guests, repeats and the rest are a tap away in Google Calendar." }));
+  dialog.replaceChildren(h("div", { className: "now-head" }, heading, close), details, form, msg, note);
   dialog.addEventListener("click", (e) => { if (e.target === dialog) dialog.close(); });
 
   return {
     // date: the day the Schedule panel is on ("YYYY-MM-DD"); defaults to today.
-    // at: "HH:MM" — the slot tapped in the grid; otherwise the next quarter hour.
+    // at: "HH:MM" — a slot that was tapped; otherwise the next quarter hour.
     open(date, at){
       msg.textContent = "";
+      editing = null;
+      armed = false;
       form.reset();
       f.date.value = date || localDate();
       f.at.value = at || nextQuarter();
       f.minutes.value = String(DEFAULT_LENGTH);
+      showForm(null);
       if (!dialog.open) dialog.showModal();
-      f.title.focus();
+    },
+    // An event tapped in the schedule: its details first, Edit second.
+    view(ev){
+      msg.textContent = "";
+      editing = ev;
+      armed = false;
+      form.reset();
+      showDetails(ev);
+      if (!dialog.open) dialog.showModal();
     },
     unmount(){ if (dialog.open) dialog.close(); dialog.replaceChildren(); },
   };
