@@ -17,7 +17,7 @@ import { focusView, handoffView, elapsedMinutes, batchFocusView, batchName, sinc
 import { watchCalendar } from "./calendar.js";
 import { LATER_MINUTES, DRAIN } from "./weights.js";
 import { rank, freeWindow, whySaid, timeBucket, matchProject } from "./engine.js";
-import { localDate, skipSnapshot } from "./model.js";
+import { localDate, skipSnapshot, shrunk, shrinkPatch } from "./model.js";
 import { h, icon, bdi, pieces, sizeText, dur, say } from "./ui.js";
 
 // Nothing sits above the card but the warnings below: the date and time are
@@ -445,7 +445,7 @@ export function mountNow(root, uid, { onCard, onSweep, onProject } = {}){
     const card = (state.chosen && r.ranked.find((s) => s.task.id === state.chosen))
       || (planned && r.ranked.find((s) => s.task.id === planned)) || r.pick;
     showing(card?.task.id ?? null);
-    const tip = toast && toastView();
+    const tip = (toast && toastView()) || learnAsk(r);
     // In a meeting, the meeting IS what's happening now, so the card says
     // which one and how much of it is left (Mor, 2026-10-04) instead of
     // "nothing to pick until it ends", which named nothing and read as if
@@ -495,6 +495,37 @@ export function mountNow(root, uid, { onCard, onSweep, onProject } = {}){
       }, taskCard(s, false)))), tip);
     // One slide-in per step-aside: later snapshots must not replay it.
     if (slideIn) { slideIn = false; if (motionOK()) root.querySelector(".now-card.main")?.classList.add("in"); }
+  }
+
+  // Learning asks one thing at a time, as a single line under the card, never
+  // a form (DAISEY_SPEC "Learning"): make it smaller after two stops, and
+  // keep, shrink or drop after five skips. Each answer also clears the reason
+  // for asking, so it doesn't come back.
+  const asked = new Set();
+  function learnAsk(r){
+    // Stopped twice (the saved count, so it holds across a reload) and not yet
+    // answered: Daisey offers to make it smaller.
+    const sp = (tasks || []).find((t) => (t.stopsUnfinished || 0) >= 2 && t.status === "ready" && !asked.has("split:" + t.id));
+    if (sp) {
+      return h("div", { className: "learn-ask", role: "group", ariaLabel: "Make it smaller?" },
+        h("p", { className: "muted", textContent: "Stopped twice without finishing. Make it smaller?" }),
+        h("div", { className: "learn-title" }, bdi(sp.title)),
+        h("div", { className: "learn-row" },
+          h("button", { className: "chip", type: "button", textContent: `Shrink to ${dur(shrunk(sp.size))}`,
+            onclick: () => { asked.add("split:" + sp.id); restoreTask(uid, sp.id, shrinkPatch(sp)).catch(fail); render(); } }),
+          h("button", { className: "chip quiet", type: "button", textContent: "Not now",
+            onclick: () => { asked.add("split:" + sp.id); restoreTask(uid, sp.id, { stopsUnfinished: 0 }).catch(fail); render(); } })));
+    }
+    const st = r.stale.find((t) => !asked.has(t.id));
+    if (!st) return null;
+    const answer = (patch) => { asked.add(st.id); restoreTask(uid, st.id, { ...patch, touchedAt: Date.now() }).catch(fail); render(); };
+    return h("div", { className: "learn-ask", role: "group", ariaLabel: "Still want this task?" },
+      h("p", { className: "muted", textContent: "Skipped five times. Still want it?" }),
+      h("div", { className: "learn-title" }, bdi(st.title)),
+      h("div", { className: "learn-row" },
+        h("button", { className: "chip", type: "button", textContent: "Keep", onclick: () => answer({ skipsSinceStart: 0 }) }),
+        h("button", { className: "chip", type: "button", textContent: `Shrink to ${dur(shrunk(st.size))}`, onclick: () => answer(shrinkPatch(st)) }),
+        h("button", { className: "chip quiet", type: "button", textContent: "Drop", onclick: () => answer({ status: "dropped" }) })));
   }
 
   const fill = (...kids) => root.replaceChildren(...kids.filter(Boolean));

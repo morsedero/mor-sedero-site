@@ -569,3 +569,10 @@ dialog.now { overflow-y: auto; overscroll-behavior: contain; }
 .sch-pencil.open .sch-open, .sch-pencil .sch-open:hover { opacity: 1; }
 .sch-dot.pencil { background: transparent; border: 1.5px dashed var(--ink-2); box-sizing: border-box; }
 .sch-cap { margin: 0 0 10px; font-size: 14px; display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: baseline; }
+
+/* Learning asks: one line under the card, the same weight as the offer. */
+.learn-ask { display: grid; gap: 6px; margin-block-start: 6px; padding: 10px 12px; border: 1px dashed var(--line); border-radius: 12px; }
+.learn-ask p { margin: 0; font-size: 13px; }
+.learn-title { font-weight: 600; }
+.learn-row { display: flex; flex-wrap: wrap; gap: 6px; }
+.learn-row .chip { min-block-size: 36px; font-size: 13px; padding-inline: 11px; }

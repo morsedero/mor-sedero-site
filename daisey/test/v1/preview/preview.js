@@ -36,6 +36,11 @@ const SCENARIOS = {
     { title: "Send CV to Ubisoft", project: "Job search", size: 30, over: { status: "done", doneAt: Date.now() } },
     { title: "Pay water bill", project: "Home", size: 15, over: { status: "done", doneAt: Date.now() } },
   ] },
+  // Learning: one task skipped five times (asks keep/shrink/drop), one stopped twice (asks shrink).
+  learn: { tasks: [
+    { title: "Read the grant guidelines", project: "Admin", size: 90, over: { skipsSinceStart: 5 } },
+    { title: "Mix the trailer", project: "Reprise", size: 60, over: { stopsUnfinished: 2, touchedAt: Date.now() } },
+  ] },
   // Mixed directions inside one line: Hebrew task in an English project
   // and the reverse, with names (project, person) inside the why line.
   mixed: { tasks: [

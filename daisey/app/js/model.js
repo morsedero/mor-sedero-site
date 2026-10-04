@@ -141,11 +141,19 @@ export function snapSize(m){
 // the title's own words say. This is what stops every task landing on 30.
 export const TYPE_SIZE = { call: 15, admin: 15, errand: 45, home: 30, social: 60, deep: 60 };
 
+// Shrinking a task that keeps getting stopped or skipped: half the size, rounded
+// down to a bucket (a 90 becomes 30, never back up to 60), never under 5.
+export const shrunk = (size) => SIZES.filter((s) => s <= (size || DEFAULT_SIZE) / 2).pop() ?? SIZES[0];
+export const shrinkPatch = (task, now = Date.now()) => ({ size: shrunk(task.size), stopsUnfinished: 0, skipsSinceStart: 0, touchedAt: now });
+
 export function guessSize(title, history = [], type = null){
   const toks = tokens(title);
   const past = history.filter((h) => h && similarity(toks, h.title) >= SIMILAR).map(pastMinutes).filter((m) => m > 0);
   if (past.length) return snapSize(median(past));
   for (const [size, words] of SIZE_HINTS) if (words.some((w) => hasWord(toks, w))) return size;
+  // What this type of task has really taken, once three are finished.
+  const typical = history.filter((h) => h && h.type === type && h.status === "done" && h.spentMinutes > 0).map((h) => h.spentMinutes);
+  if (type && typical.length >= 3) return snapSize(median(typical));
   return TYPE_SIZE[type] ?? DEFAULT_SIZE;
 }
 
