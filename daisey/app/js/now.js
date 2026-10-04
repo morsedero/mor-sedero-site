@@ -125,35 +125,17 @@ export function mountNow(root, uid, { onCard, onSweep, onProject } = {}){
   // The card's context line: "45 min free · Home · energy medium (guess)".
   // Place and energy are chips; tapping one shows its three choices, and a
   // choice is a correction that holds for 3 hours on every device.
+  // The card's context line: free time, and the block it's in if any. Energy
+  // and place are still guessed (feel()) and still steer the engine; they just
+  // aren't on the card any more (Mor, 2026-10-04: behind the scenes).
   function contextLine(){
-    const f = feel(), fw = calendarNow(), block = blockOf(fw);
-    const chip = (k, text, guessed) => h("button", { type: "button", className: "ctx-chip" + (guessed ? " guess" : ""),
-      ariaExpanded: String(ctxOpen === k), ariaLabel: `${k === "place" ? "Where you are" : "Your energy"}: ${text}${guessed ? ", Daisey's guess" : ""}. Change`,
-      onclick: () => { ctxOpen = ctxOpen === k ? null : k; render(); } }, text);
-    const choose = (k, value) => {
-      const at = Date.now();
-      const patch = k === "place" ? { place: { value, at } } : {
-        energy: { value, at },
-        // Every correction teaches the pattern for this time of day.
-        history: [...(momentDoc.history || []).slice(-49), { ...timeBucket(at), value }],
-      };
-      momentDoc = { ...momentDoc, ...patch };
-      ctxOpen = null;
-      render();
-      saveMoment(uid, patch).catch(fail);
-    };
-    const opts = ctxOpen && h("div", { className: "ctx-opts", role: "radiogroup", ariaLabel: ctxOpen === "place" ? "Where you are" : "Your energy" },
-      ...(ctxOpen === "place" ? PLACES : ENERGIES).map(([v, text]) => h("button", { type: "button", className: "chip", role: "radio",
-        ariaChecked: String(f[ctxOpen].value === v), textContent: text, onclick: () => choose(ctxOpen, v) })));
+    const fw = calendarNow(), block = blockOf(fw);
     return h("div", { className: "ctx" },
       h("div", { className: "ctx-line" },
         fw && !fw.current && h("span", { textContent: `${dur(Math.min(fw.window, 180))}${fw.window >= 180 ? "+" : ""} free` }),
         block && (block.taskId
           ? h("span", { className: "ctx-block", textContent: `Planned until ${clock(block.end)}` })
-          : h("span", { className: "ctx-block" }, "Working on ", bdi(block.project), ` until ${clock(block.end)}`)),
-        chip("place", PLACES.find(([v]) => v === f.place.value)[1], f.place.guessed),
-        chip("energy", `energy ${f.energy.value}${f.energy.guessed ? " (guess)" : ""}`, f.energy.guessed)),
-      opts);
+          : h("span", { className: "ctx-block" }, "Working on ", bdi(block.project), ` until ${clock(block.end)}`))));
   }
 
   // The calendar's answer to "what now": the event that's running, when it

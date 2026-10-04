@@ -40,6 +40,7 @@ export function mountAddTask(dialog, uid, { onNow } = {}){
   let mine = new Set(); // chips the user picked
   let startMine = new Set(); // …as they were when the sheet opened (edit)
   let openChip = null; // the chip whose picker is showing
+  let guessOpen = false; // the guesses are folded behind one line until asked for
   let kind = "target"; // the date's kind
   const projects = h("datalist", { id: "add-projects" });
   const f = {
@@ -56,7 +57,8 @@ export function mountAddTask(dialog, uid, { onNow } = {}){
 
   const chipRow = h("div", { className: "gchips", role: "group", ariaLabel: "Daisey's guesses — tap one to change it" });
   const picker = h("div", { className: "gpick", role: "radiogroup" });
-  const guesses = h("div", { className: "guesses" }, chipRow, picker);
+  const summary = h("button", { className: "gsum", type: "button", onclick: () => { guessOpen = !guessOpen; openChip = null; paint(); } });
+  const guesses = h("div", { className: "guesses" }, summary, chipRow, picker);
 
   // Date, and right under it whether the date is real.
   const kindRow = h("div", { className: "kind", role: "radiogroup", ariaLabel: "What kind of date" });
@@ -109,7 +111,13 @@ export function mountAddTask(dialog, uid, { onNow } = {}){
         onclick: () => { openChip = openChip === k ? null : k; paint(); } },
       h("span", { className: "gchip-k", textContent: NAMES[k] }), h("bdi", { textContent: valueText(k, vals[k]) }));
     }));
-    picker.hidden = !openChip;
+    // One line, "Daisey's guesses: …", opens the seven chips to change them.
+    const names = CHIPS.map((k) => valueText(k, vals[k])).filter(Boolean);
+    summary.setAttribute("aria-expanded", String(guessOpen));
+    summary.replaceChildren(h("span", { className: "gsum-k", textContent: "Daisey's guesses" }), " ",
+      h("bdi", { textContent: names.join(" · ") }), h("span", { className: "gsum-more", textContent: guessOpen ? " ▴" : " ▾" }));
+    chipRow.hidden = !guessOpen;
+    picker.hidden = !(guessOpen && openChip);
     if (openChip) {
       const k = openChip;
       picker.ariaLabel = NAMES[k];

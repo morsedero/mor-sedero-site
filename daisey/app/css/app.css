@@ -576,3 +576,8 @@ dialog.now { overflow-y: auto; overscroll-behavior: contain; }
 .learn-title { font-weight: 600; }
 .learn-row { display: flex; flex-wrap: wrap; gap: 6px; }
 .learn-row .chip { min-block-size: 36px; font-size: 13px; padding-inline: 11px; }
+
+/* Task sheet: Daisey's guesses as one line; the chips open under it. */
+.gsum { font: inherit; font-size: 14px; text-align: start; color: var(--ink-2); background: none; border: 0; padding: 4px 0; cursor: pointer; }
+.gsum-k { font-weight: 600; color: var(--ink); }
+.gsum-more { color: var(--ink-2); }

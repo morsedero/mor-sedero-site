@@ -158,9 +158,6 @@ export function mountSchedule(root, { onAdd, uid, onSweep } = {}){
     }
     const at = h("input", { type: "time", className: "sch-at", value: clock(e.start), ariaLabel: "Move to" });
     return h("li", { className: "sch-actions" },
-      h("button", { className: "chip", type: "button", textContent: "−15m", disabled: busy, onclick: () => moveBy(e, -15) }),
-      h("button", { className: "chip", type: "button", textContent: "+15m", disabled: busy, onclick: () => moveBy(e, 15) }),
-      h("button", { className: "chip", type: "button", textContent: "+1 h", disabled: busy, onclick: () => moveBy(e, 60) }),
       at,
       h("button", { className: "chip", type: "button", textContent: "Move", disabled: busy,
         onclick: () => at.value && run(async () => { await moveEventTo(e, at.value); openId = null; }) }),
@@ -234,7 +231,6 @@ export function mountSchedule(root, { onAdd, uid, onSweep } = {}){
       h("button", { className: "chip", type: "button", textContent: "Accept", disabled: busy,
         ariaLabel: `Accept: put ${p.task.title} on your Daisey calendar, ${clock(start)}–${clock(end)}`,
         onclick: () => run(async () => { await acceptBlock({ task: p.task, start, end, title: pencilTitle(p) }); openPencil = null; }) }),
-      h("button", { className: "chip", type: "button", textContent: "Swap", disabled: busy, onclick: () => answer(p, "swap") }),
       h("button", { className: "chip", type: "button", textContent: "Dismiss", disabled: busy, onclick: () => answer(p, "dismiss") }));
   }
 
