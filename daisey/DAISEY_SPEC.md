@@ -255,17 +255,29 @@ earlier the same day and went with it.
 
 **Layout.** The Now card stays put at the top of the screen. Under it, one
 pane with two tabs — **Schedule** and **Tasks** — both the same height, so
-switching never moves the card. Tasks keeps the column-per-project board,
-scrolling sideways inside the pane. (An earlier version put all of it in one
-sideways slider; the card drifted off screen.)
+switching never moves the card. Tasks is one list grouped by when —
+Overdue, Today, This week, Later, Anytime, Waiting — with the project as a
+chip on each row and a chip row that filters to one project. (The
+column-per-project board it replaced is gone; so is an earlier version that
+put all of it in one sideways slider, where the card drifted off screen.)
+Tapping a row opens the task sheet: the fields, "Waiting on", Delete, and
+"Do this now", which puts it on the card.
 
 **Moving and deleting events.** Tap an event you own and Daisey offers the
 only two writes it makes: move it (−15m, +15m, +1 h, or to a time you type,
 keeping its length) or delete it. A move can be undone for six seconds; a
-delete asks first, because Google has no undo for it. Daisey never *creates*
-calendar entries — that would be the auto-scheduler it refuses to be. Only
-timed events on calendars the user can write to offer this; recurring events
-and read-only calendars don't.
+delete asks first, because Google has no undo for it. Only timed events on
+calendars the user can write to offer this; recurring events and read-only
+calendars don't.
+
+**Adding an event.** "+" in the Schedule header opens a four-field sheet —
+what, which day, what time, how long — and writes it to the main Google
+calendar, so putting a meeting in doesn't mean leaving for Google Calendar
+and coming back. It opens on the day the panel is showing, with the time
+rounded up to the next quarter hour. Guests, repeats, descriptions and the
+choice of calendar stay Google's job. This is not the auto-scheduler the
+spec refuses to be: Daisey never places anything on the calendar by itself
+and never writes a task there — what it writes is what the user typed.
 
 **Which calendars.** Every calendar ticked in Google Calendar, not just the
 primary one — merged, sorted and coloured as they are there. Unticking a

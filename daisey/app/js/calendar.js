@@ -79,9 +79,9 @@ export function watchCalendar(cb){
   };
 }
 
-// Moving and deleting are the only writes Daisey makes (daisey-now-calendar-write).
-// Both refetch straight after, so the card and the panel show the new day
-// rather than the one the user just changed.
+// Moving, deleting and creating are the writes Daisey makes
+// (daisey-now-calendar-write). Each refetches straight after, so the card and
+// the panel show the new day rather than the one the user just changed.
 async function write(body){
   const res = await fetch(WRITE_URL, {
     method: "POST",
@@ -111,3 +111,16 @@ export function moveEventTo(ev, at){
 }
 
 export const deleteEvent = (ev) => write({ action: "delete", calendarId: ev.calendarId, eventId: ev.id });
+
+// An event the user typed: a day ("YYYY-MM-DD"), a start ("HH:MM") and a
+// length in minutes, read in the browser's own zone. It goes in the main
+// Google calendar — the one "primary" means — because that's where a thing
+// you're adding by hand belongs, and picking between calendars is a question
+// nobody wants asked at the moment they're writing "dentist".
+export function createEvent({ title, date, at, minutes }){
+  const [y, m, d] = date.split("-").map(Number);
+  const [hh, mm] = at.split(":").map(Number);
+  const start = new Date(y, m - 1, d, hh, mm, 0, 0);
+  const end = new Date(start.getTime() + minutes * 60000);
+  return write({ action: "create", calendarId: "primary", title, start: start.toISOString(), end: end.toISOString() });
+}

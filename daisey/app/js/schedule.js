@@ -7,11 +7,14 @@
 // in grey, because a day you can't see the start of is hard to place
 // yourself in, and a red line marks where "now" falls, as Google's does.
 //
-// Tapping an event you own opens the two writes Daisey makes: move it, or
-// delete it. Both are reactions to a day that changed — Daisey never creates
-// calendar entries of its own (that would be the auto-scheduler the spec
-// refuses to be). A move can be undone for a few seconds; a delete asks
+// Tapping an event you own opens two of the three writes Daisey makes: move
+// it, or delete it. A move can be undone for a few seconds; a delete asks
 // first, because Google has no undo for it.
+//
+// The third is "+ New event" in the header, which opens addevent.js on the
+// day being shown (Mor, 2026-10-04 — no jumping to Google Calendar to put a
+// meeting in). Daisey still never schedules anything ITSELF; what it writes
+// is what the user typed.
 import { watchCalendar, moveEvent, moveEventTo, deleteEvent } from "./calendar.js";
 import { localDate } from "./model.js";
 import { h, bdi, dur } from "./ui.js";
@@ -55,7 +58,7 @@ function dayRows(events, now, from){
   return rows;
 }
 
-export function mountSchedule(root){
+export function mountSchedule(root, { onAdd } = {}){
   let cal = { status: "loading", events: [] };
   let offset = 0; // days from today
   let strip = null; // the sliding row of days
@@ -186,7 +189,10 @@ export function mountSchedule(root){
     back = h("button", { className: "btn quiet sch-today", type: "button", textContent: "Back to today",
       hidden: true, onclick: () => setOffset(0) });
 
-    const kids = [h("header", { className: "sch-nav" }, prev, heading, next)];
+    // New events land on the day you're looking at, not on today.
+    const add = h("button", { className: "sch-add", type: "button", textContent: "+", ariaLabel: "New event",
+      title: "New event", hidden: cal.status !== "ok", onclick: () => onAdd?.(localDate(dayStart(Date.now(), offset))) });
+    const kids = [h("header", { className: "sch-nav" }, prev, heading, next, add)];
     if (NOTE[cal.status]) {
       kids.push(h("p", { className: "muted sch-note" }, NOTE[cal.status],
         ["not_connected", "needs_reauth"].includes(cal.status)

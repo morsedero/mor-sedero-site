@@ -271,6 +271,14 @@ body.focus .shell { display: grid; min-block-size: 100dvh; align-content: center
   background: var(--surface); color: var(--ink);
 }
 .sch-step:disabled { opacity: .35; cursor: default; }
+/* New event: same size as the arrows, at the end of the same row. */
+.sch-add {
+  flex: none; font: inherit; font-size: 20px; line-height: 1; cursor: pointer;
+  inline-size: 34px; block-size: 34px; border-radius: 50%; border: 1px solid var(--line);
+  background: var(--surface); color: var(--ink);
+}
+.sch-nav .sch-head { flex: 1; margin: 0; text-align: center; } /* the arrows and + sit either side */
+.sch-nav::before { content: ""; flex: none; inline-size: 38px; } /* balances the + so the day name sits centred */
 :dir(rtl) .sch-step { transform: scaleX(-1); }
 .sch-today { justify-self: start; min-block-size: 34px; padding-inline: 10px; font-size: 13px; }
 .sch-head { margin: 0; font-size: 17px; }
@@ -381,3 +389,6 @@ body.focus .shell { display: grid; min-block-size: 100dvh; align-content: center
 .sheet-actions .btn.danger { margin-inline-start: auto; color: var(--danger); }
 .sheet-actions .btn.danger.arm { border-color: var(--danger); background: color-mix(in srgb, var(--danger) 10%, transparent); font-weight: 700; }
 .field.wide { grid-column: 1 / -1; }
+/* The event form's first two rows aren't both full-width: only .wide is. */
+.ev-grid > :nth-child(-n+2):not(.wide) { grid-column: auto; }
+.ev-note { font-size: 13px; margin-block: 10px 0; }
