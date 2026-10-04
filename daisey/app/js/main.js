@@ -123,8 +123,8 @@ async function boot(){
     } else initial();
     show("signedin"); // no element of its own: just clears loading/sign-in views
 
-    Promise.all([import("./now.js"), import("./tasks.js"), import("./addtask.js"), import("./schedule.js"), import("./import-trello.js"), import("./addevent.js"), import("./store.js"), import("./deadlines.js"), import("./sweep.js"), import("./intents.js")])
-      .then(([{ mountNow }, { mountTasks }, { mountAddTask }, { mountSchedule }, { mountImport }, { mountAddEvent }, { migrateTasks }, { mountDeadlines }, { mountSweep }, { mountIntents }]) => {
+    Promise.all([import("./now.js"), import("./tasks.js"), import("./addtask.js"), import("./schedule.js"), import("./import-trello.js"), import("./addevent.js"), import("./store.js"), import("./deadlines.js"), import("./sweep.js")])
+      .then(([{ mountNow }, { mountTasks }, { mountAddTask }, { mountSchedule }, { mountImport }, { mountAddEvent }, { migrateTasks }, { mountDeadlines }, { mountSweep }]) => {
         if (fb.currentUid() !== user.uid || mounted) return;
         const m = mounted = {};
         // Old tasks get the new fields first; then, once, which dates are real.
@@ -132,8 +132,6 @@ async function boot(){
         m.migrate = { unmount: stopMigrate };
         m.deadlines = mountDeadlines($("#deadlinedlg"), user.uid);
         m.sweep = mountSweep($("#sweepdlg"), user.uid);
-        m.intents = mountIntents($("#intentsdlg"), user.uid);
-        $("#intentsBtn").onclick = () => { setMenu(false); m.intents.open(); };
         m.adder = mountAddTask($("#addtask"), user.uid, { onNow: (id) => m.now?.put(id) });
         // The Now card rides in the same scroller as the columns, first in line.
         m.event = mountAddEvent($("#eventdlg"));

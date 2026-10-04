@@ -63,12 +63,3 @@ export function workBase(tasks = [], now = Date.now()){
     areaDone,
   };
 }
-
-// Weekly intents, quiet progress (DAISEY_SPEC "Weekly intents"): for each
-// area with an intent, how many tasks were finished this week against it.
-// Areas without an intent aren't shown; nothing here is a streak or a red.
-export function weekProgress(tasks = [], intents = {}, now = Date.now()){
-  const done = workBase(tasks, now).areaDone;
-  return Object.keys(intents).filter((a) => intents[a] > 0)
-    .map((area) => ({ area, intent: intents[area], done: done[area] || 0 }));
-}
