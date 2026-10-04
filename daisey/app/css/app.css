@@ -276,6 +276,9 @@ body.focus .shell { display: grid; min-block-size: 100dvh; align-content: center
    track holds the filter and collapses to nothing when there isn't one, so
    this needs no :has(). */
 .pane > #tasksview { overflow: hidden; display: grid; grid-template-rows: auto minmax(0, 1fr); }
+/* Without this the chip row's full width sets the grid column, and the list
+   under it is dragged past the pane with it. */
+.pane > #tasksview > * { min-inline-size: 0; }
 
 /* Add task: floating button, bottom end corner. */
 .fab {
@@ -362,10 +365,19 @@ body.focus .shell { display: grid; min-block-size: 100dvh; align-content: center
 /* Above the scroller, beside the pane's own tabs — a control, not a row.
    Inside it, it scrolled away with the tasks and was simply missing from any
    list long enough to scroll. */
-/* Wrapping, not scrolling sideways: every project the bar shows is on
-   screen, and the rest are behind the "+n" chip rather than behind a swipe. */
-.tk-filters { display: flex; flex-wrap: wrap; gap: 6px; padding-block: 1px; margin-block-end: 8px; }
-.tk-more-projects { font-weight: 700; color: var(--ink-2); }
+/* One row that slides: the chips scroll, and a chevron at each end slides
+   them, so what's past the edge is reachable without guessing at a swipe. */
+.tk-filters { display: flex; align-items: center; gap: 4px; margin-block-end: 8px; }
+.tk-chips { flex: 1; min-inline-size: 0; display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; scroll-snap-type: x proximity; padding-block: 1px; }
+.tk-chips::-webkit-scrollbar { display: none; }
+.tk-chips > .chip { flex: none; scroll-snap-align: start; }
+.tk-step {
+  flex: none; font: inherit; font-size: 17px; line-height: 1; cursor: pointer;
+  inline-size: 28px; block-size: 28px; border-radius: 50%; border: 1px solid var(--line);
+  background: var(--surface); color: var(--ink);
+}
+.tk-step:disabled { opacity: .3; cursor: default; }
+:dir(rtl) .tk-step { transform: scaleX(-1); }
 .tk-filters:empty { margin: 0; padding: 0; } /* one project: no bar, and no gap where it would be */
 .tk-filters::-webkit-scrollbar { display: none; }
 /* Grid children default to min-content width; without this the chip row's
