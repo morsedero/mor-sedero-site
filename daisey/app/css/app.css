@@ -229,7 +229,10 @@ textarea {
   font: inherit; font-size: 15px; font-weight: 600; cursor: pointer; min-block-size: 40px;
   padding-inline: 14px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); color: var(--ink);
 }
-.chip[aria-checked="true"] { background: var(--ink); border-color: var(--ink); color: var(--card); }
+.chip[aria-checked="true"], .chip[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); color: var(--card); }
+/* Pending: one press parks the task, and only then does it ask who or what. */
+.chip.pend { display: inline-flex; align-items: center; gap: 7px; justify-self: start; font-size: 14px; }
+.chip.pend svg { inline-size: 16px; block-size: 16px; flex: none; }
 .now-card { display: grid; gap: 3px; padding: 12px 14px; border-radius: 14px; border: 1px solid var(--line); background: var(--surface); text-align: start; }
 /* Smaller than it was, on every tab (Mor, 2026-10-04): the card is still the
    loudest thing on the page, but the pane under it does the most work, so the

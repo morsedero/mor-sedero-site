@@ -25,10 +25,13 @@
 //
 // In edit mode it is the task SHEET (Mor, 2026-10-04): tapping a row in the
 // Tasks view lands here, so everything you can do to one task is in one
-// place. That is why "Waiting on" is a field rather than an action — typing
-// into it sets the task Waiting, clearing it hands the task back (editTask
-// already infers the first half; this file says the second half out loud) —
-// and why Delete is a two-press button here instead of a confirm() dialog.
+// place. That is why waiting is handled here rather than as an action, and why
+// Delete is a two-press button instead of a confirm() dialog.
+//
+// Waiting is one press, not a blank box (Mor, 2026-10-05): PENDING is a
+// toggle, and turning it on reveals "Waiting on" for who or what. The name is
+// optional — pending with nobody named is still pending. Turning it off hands
+// the task back to ready and forgets the name.
 import { watchTasks, addTask, updateTask, removeTask } from "./store.js";
 import { durText, guessFields, validField, CHOICES, LABELS, INBOX } from "./model.js";
 import { h, flash, icon } from "./ui.js";
@@ -64,6 +67,7 @@ export function mountAddTask(dialog, uid, { onNow } = {}){
   let mine = new Set(); // chips the user picked
   let startMine = new Set(); // …as they were when the sheet opened (edit)
   let openChip = null; // the chip whose picker is showing
+  let pending = false; // the Pending toggle: the task is waiting on something
   let shown = false; // the guess line is up (and stays up)
   let expanded = false; // the full chip set is open
   let settle = 0; // the "typing stopped" timer
@@ -74,7 +78,7 @@ export function mountAddTask(dialog, uid, { onNow } = {}){
     newProject: h("input", { dir: "auto", autocomplete: "off", placeholder: "e.g. Website redesign" }),
     due: h("input", { id: "addDue", type: "date" }),
     notBefore: h("input", { type: "date" }),
-    waitingOn: h("input", { dir: "auto", autocomplete: "off", placeholder: "nobody" }),
+    waitingOn: h("input", { dir: "auto", autocomplete: "off", placeholder: "who or what?" }),
     notes: h("textarea", { dir: "auto", rows: 3 }),
   };
   const msg = h("p", { className: "muted", role: "status" });
@@ -100,8 +104,22 @@ export function mountAddTask(dialog, uid, { onNow } = {}){
     h("div", { className: "sheet-row" }, field("Date (optional)", f.due), field("Start date (optional)", f.notBefore)),
     kindRow);
   // Waiting only exists for a task that already exists: you don't add one
-  // already blocked (model.js's note on Waiting).
+  // already blocked (model.js's note on Waiting). One press to park it; the
+  // name of who or what only appears once it is parked.
   const waitField = field("Waiting on", f.waitingOn);
+  const pendBtn = h("button", { type: "button", className: "chip pend" }, icon("pending"),
+    h("span", { textContent: "Pending" }));
+  const waitBox = h("div", { className: "sheet-stack" }, pendBtn, waitField);
+  pendBtn.onclick = () => {
+    pending = !pending;
+    if (!pending) f.waitingOn.value = "";
+    paintPend();
+    if (pending) f.waitingOn.focus();
+  };
+  function paintPend(){
+    pendBtn.ariaPressed = String(pending);
+    waitField.hidden = !pending;
+  }
   const submit = h("button", { className: "btn primary", type: "submit", textContent: "Add" });
   const form = h("form", { className: "sheet-form" },
     newField,
@@ -109,7 +127,7 @@ export function mountAddTask(dialog, uid, { onNow } = {}){
     guesses,
     field("Description (optional)", f.notes),
     dateBox,
-    waitField,
+    waitBox,
     submit);
   const heading = h("h2", { id: "addTitle", dir: "auto", textContent: "Add task" });
 
@@ -240,15 +258,17 @@ export function mountAddTask(dialog, uid, { onNow } = {}){
       if (editing) {
         // Blank due clears it. A chip handed back goes back to a guess.
         const changes = { title: f.title.value, project: projectOf(), due: f.due.value, dateKind: kind,
-          notBefore: f.notBefore.value, notes: f.notes.value, waitingOn: f.waitingOn.value };
+          notBefore: f.notBefore.value, notes: f.notes.value,
+          waitingOn: pending ? f.waitingOn.value : "" };
         for (const k of CHIPS) {
           if (mine.has(k) && (!startMine.has(k) || vals[k] !== editing[k])) changes[k] = vals[k];
           else if (!mine.has(k) && startMine.has(k)) changes[k] = "";
         }
-        // Emptying "Waiting on" is how a task stops waiting; filling it in is
-        // handled by editTask. A done task's status is left alone — the
-        // circle in the list is what reopens one.
-        if (editing.status === "waiting" && !f.waitingOn.value.trim()) changes.status = "ready";
+        // The toggle, not the text, decides: pending with nobody named is
+        // still pending, and turning it off hands the task back. Done and Someday are
+        // left alone — the circle in the list is what reopens one.
+        if (editing.status === "ready" || editing.status === "waiting")
+          changes.status = pending ? "waiting" : "ready";
         updateTask(uid, editing, changes, tasks).catch((e) => { console.error("[daisey] edit", e); flash("Couldn't save ", editing.title); });
         dialog.close();
         return;
@@ -269,7 +289,7 @@ export function mountAddTask(dialog, uid, { onNow } = {}){
     form.reset();
     clearTimeout(settle);
     vals = {}; mine = new Set(); startMine = new Set(); openChip = null;
-    shown = false; expanded = false; kind = "target";
+    shown = false; expanded = false; pending = false; kind = "target";
   }
 
   const close = h("button", { className: "now-x", type: "button", ariaLabel: "Close", textContent: "✕", onclick: () => dialog.close() });
@@ -293,7 +313,7 @@ export function mountAddTask(dialog, uid, { onNow } = {}){
       showProject(project !== undefined ? project : keep);
       heading.textContent = "Add task";
       submit.textContent = "Add";
-      waitField.hidden = true;
+      waitBox.hidden = true;
       actions.hidden = true;
       paint();
       if (!dialog.open) dialog.showModal();
@@ -307,12 +327,14 @@ export function mountAddTask(dialog, uid, { onNow } = {}){
       disarm();
       heading.textContent = task.title.length > 28 ? "Task" : task.title;
       submit.textContent = "Save";
-      waitField.hidden = task.status === "done";
+      waitBox.hidden = task.status === "done" || task.status === "someday";
       actions.hidden = false;
       doNow.hidden = task.status === "done" || task.status === "someday";
       someday.hidden = task.status === "done";
       someday.textContent = task.status === "someday" ? "Back from Someday" : "Someday";
-      f.waitingOn.value = task.waitingOn || "";
+      pending = task.status === "waiting";
+      f.waitingOn.value = pending ? task.waitingOn || "" : "";
+      paintPend();
       showProject(task.project);
       f.title.value = task.title;
       f.due.value = task.due || "";
