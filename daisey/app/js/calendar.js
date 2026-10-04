@@ -12,6 +12,7 @@
 import { idToken } from "./firebase.js";
 
 const URL_ = "/.netlify/functions/daisey-now-calendar";
+const WRITE_URL = "/.netlify/functions/daisey-now-calendar-write";
 // A change made in Google Calendar should land here without anyone thinking
 // about it: once a minute while the tab is in front, and again the moment it
 // comes back. (Instant would mean Google push channels and a webhook to
@@ -77,3 +78,36 @@ export function watchCalendar(cb){
     }
   };
 }
+
+// Moving and deleting are the only writes Daisey makes (daisey-now-calendar-write).
+// Both refetch straight after, so the card and the panel show the new day
+// rather than the one the user just changed.
+async function write(body){
+  const res = await fetch(WRITE_URL, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${await idToken()}`, "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  const out = await res.json().catch(() => ({}));
+  if (!res.ok) throw Object.assign(new Error(out.error || `http ${res.status}`), { code: out.error });
+  await load();
+  return out;
+}
+
+// Keeps the length; only the start moves.
+export function moveEvent(ev, minutes){
+  const start = new Date(Date.parse(ev.start) + minutes * 60000);
+  const end = new Date(Date.parse(ev.end) + minutes * 60000);
+  return write({ action: "move", calendarId: ev.calendarId, eventId: ev.id, start: start.toISOString(), end: end.toISOString() });
+}
+
+// `at` is "HH:MM" on the event's own day; the length is kept.
+export function moveEventTo(ev, at){
+  const [hh, mm] = at.split(":").map(Number);
+  const start = new Date(Date.parse(ev.start));
+  start.setHours(hh, mm, 0, 0);
+  const end = new Date(start.getTime() + (Date.parse(ev.end) - Date.parse(ev.start)));
+  return write({ action: "move", calendarId: ev.calendarId, eventId: ev.id, start: start.toISOString(), end: end.toISOString() });
+}
+
+export const deleteEvent = (ev) => write({ action: "delete", calendarId: ev.calendarId, eventId: ev.id });

@@ -259,6 +259,14 @@ switching never moves the card. Tasks keeps the column-per-project board,
 scrolling sideways inside the pane. (An earlier version put all of it in one
 sideways slider; the card drifted off screen.)
 
+**Moving and deleting events.** Tap an event you own and Daisey offers the
+only two writes it makes: move it (−15m, +15m, +1 h, or to a time you type,
+keeping its length) or delete it. A move can be undone for six seconds; a
+delete asks first, because Google has no undo for it. Daisey never *creates*
+calendar entries — that would be the auto-scheduler it refuses to be. Only
+timed events on calendars the user can write to offer this; recurring events
+and read-only calendars don't.
+
 **Which calendars.** Every calendar ticked in Google Calendar, not just the
 primary one — merged, sorted and coloured as they are there. Unticking a
 calendar in Google hides it here too. All-day entries (holidays, birthdays,

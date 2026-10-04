@@ -71,7 +71,7 @@ const calReply = !cal ? { status: 404, body: { error: "not_connected" } }
         ...[2, 3, 5].map((n) => { const d = new Date(); d.setDate(d.getDate() + n); d.setHours(11, 0, 0, 0);
           return { title: `Day ${n} meeting`, start: d.toISOString(), end: new Date(d.getTime() + 36e5).toISOString(), allDay: false, busy: true }; }),
       ];
-    })() } }
+    })().map((e, i) => ({ id: "e" + i, calendarId: "primary", editable: !e.allDay, ...e })) } }
   : (() => { const [m, title = "Teaching"] = cal.split(":"); const start = Date.now() + Number(m) * 60000;
     return { status: 200, body: { events: [{ title, start: new Date(start).toISOString(), end: new Date(start + 3600000).toISOString() }] } }; })();
 
@@ -92,6 +92,7 @@ const FAKES = {
   await page.addInitScript((s) => { window.__FAKE = s; }, scenario);
   await page.route(ORIGIN + "/**", (route) => {
     const rel = new URL(route.request().url()).pathname.replace(/^\//, "") || "index.html";
+    if (rel === ".netlify/functions/daisey-now-calendar-write") return route.fulfill({ status: 200, contentType: "application/json", body: '{"ok":true}' });
     if (rel === ".netlify/functions/daisey-now-calendar") return route.fulfill({ status: calReply.status, contentType: "application/json", body: JSON.stringify(calReply.body) });
     if (FAKES[rel]) return route.fulfill({ contentType: "text/javascript", body: FAKES[rel] });
     const file = path.join(APP, rel);

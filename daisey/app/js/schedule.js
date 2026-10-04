@@ -6,7 +6,13 @@
 // the panel and the card can never disagree. Events already finished stay,
 // in grey, because a day you can't see the start of is hard to place
 // yourself in, and a red line marks where "now" falls, as Google's does.
-import { watchCalendar } from "./calendar.js";
+//
+// Tapping an event you own opens the two writes Daisey makes: move it, or
+// delete it. Both are reactions to a day that changed — Daisey never creates
+// calendar entries of its own (that would be the auto-scheduler the spec
+// refuses to be). A move can be undone for a few seconds; a delete asks
+// first, because Google has no undo for it.
+import { watchCalendar, moveEvent, moveEventTo, deleteEvent } from "./calendar.js";
 import { localDate } from "./model.js";
 import { h, bdi, dur } from "./ui.js";
 
@@ -54,16 +60,85 @@ export function mountSchedule(root){
   let offset = 0; // days from today
   let strip = null; // the sliding row of days
   let heading, back, prev, next;
+  let openId = null; // the event whose actions are showing
+  let confirming = null; // the event id waiting for "Delete?" to be confirmed
+  let busy = false; // a write is in flight
+  let problem = ""; // what went wrong with the last write
+  let undo = null; // { id, minutes } for a few seconds after a move
+  let undoTimer = null;
+
+  const WRITE_ERROR = {
+    read_only: "That calendar is read-only.",
+    gone: "That event is already gone.",
+    needs_reauth: "Calendar sign-in expired. Sign in to the old Daisey again.",
+    no_session: "Signed out.",
+  };
+
+  async function run(fn){
+    if (busy) return;
+    busy = true; problem = ""; render();
+    try { await fn(); }
+    catch (e) {
+      console.error("[daisey] calendar write", e);
+      problem = WRITE_ERROR[e.code] || "Couldn't change that event.";
+    }
+    busy = false;
+    render();
+  }
+
+  function offerUndo(id, minutes){
+    clearTimeout(undoTimer);
+    undo = { id, minutes };
+    undoTimer = setTimeout(() => { undo = null; render(); }, 6000);
+  }
+
+  // The event as it is now — after a write the list is refetched, so the
+  // object the button closed over is stale.
+  const fresh = (id) => cal.events.find((e) => e.id === id) || null;
+
+  const moveBy = (e, minutes) => run(async () => {
+    await moveEvent(e, minutes);
+    openId = null;
+    offerUndo(e.id, minutes);
+  });
+
+  function actions(e){
+    if (confirming === e.id) {
+      return h("li", { className: "sch-actions" },
+        h("span", { className: "muted", textContent: "Delete it?" }),
+        h("button", { className: "chip danger", type: "button", textContent: "Delete", disabled: busy,
+          onclick: () => run(async () => { await deleteEvent(e); confirming = null; openId = null; }) }),
+        h("button", { className: "chip", type: "button", textContent: "Keep", onclick: () => { confirming = null; render(); } }));
+    }
+    const at = h("input", { type: "time", className: "sch-at", value: clock(e.start), ariaLabel: "Move to" });
+    return h("li", { className: "sch-actions" },
+      h("button", { className: "chip", type: "button", textContent: "−15m", disabled: busy, onclick: () => moveBy(e, -15) }),
+      h("button", { className: "chip", type: "button", textContent: "+15m", disabled: busy, onclick: () => moveBy(e, 15) }),
+      h("button", { className: "chip", type: "button", textContent: "+1 h", disabled: busy, onclick: () => moveBy(e, 60) }),
+      at,
+      h("button", { className: "chip", type: "button", textContent: "Move", disabled: busy,
+        onclick: () => at.value && run(async () => { await moveEventTo(e, at.value); openId = null; }) }),
+      h("button", { className: "chip danger", type: "button", textContent: "Delete", disabled: busy,
+        onclick: () => { confirming = e.id; render(); } }));
+  }
 
   function eventRow(r){
     const e = r.event;
     const time = e.allDay ? "all day" : e.end ? `${clock(e.start)}–${clock(e.end)}` : clock(e.start);
-    return h("li", { className: "sch-row" + (r.past ? " past" : "") + (r.running ? " running" : "") },
+    const canEdit = e.editable && !e.allDay && e.end;
+    const inside = [
       // The colour is the one the user sees in Google Calendar.
       h("span", { className: "sch-dot", style: e.color ? `background:${e.color}` : "" }),
       h("span", { className: "sch-time", textContent: time }),
       h("span", { className: "sch-title" }, bdi(e.title),
-        r.running && h("span", { className: "sch-now", textContent: "now" })));
+        r.running && h("span", { className: "sch-now", textContent: "now" })),
+    ];
+    const cls = "sch-row" + (r.past ? " past" : "") + (r.running ? " running" : "") + (openId === e.id ? " open" : "");
+    if (!canEdit) return h("li", { className: cls }, ...inside);
+    return h("li", { className: cls },
+      h("button", { className: "sch-open", type: "button", ariaExpanded: String(openId === e.id),
+        ariaLabel: `${e.title}, ${time} — move or delete`,
+        onclick: () => { openId = openId === e.id ? null : e.id; confirming = null; render(); } }, ...inside));
   }
 
   function dayPanel(now, n){
@@ -77,7 +152,10 @@ export function mountSchedule(root){
         : h("ul", { className: "sch-list" }, ...rows.map((r) => (r.nowLine
           ? h("li", { className: "sch-nowline" }, h("span", { className: "sch-nowtime", textContent: clock(now) }))
           : r.gap ? h("li", { className: "sch-gap", textContent: `${dur(r.minutes)} free` })
-          : eventRow(r)))));
+          : eventRow(r))).flatMap((li, i) => {
+            const r = rows[i];
+            return r.event && openId === r.event.id ? [li, actions(r.event)] : [li];
+          })));
   }
 
   // The header follows whichever day the strip is resting on.
@@ -122,6 +200,16 @@ export function mountSchedule(root){
         if (n !== offset) { offset = n; head(); }
       };
       kids.push(strip, back);
+      if (problem) kids.push(h("p", { className: "sch-problem", role: "alert", textContent: problem }));
+      if (undo) {
+        kids.push(h("p", { className: "muted sch-undo" },
+          `Moved ${undo.minutes > 0 ? "+" : "−"}${dur(Math.abs(undo.minutes))}. `,
+          h("button", { className: "linkish", type: "button", textContent: "Undo", onclick: () => {
+            const e = fresh(undo.id), by = -undo.minutes;
+            undo = null; clearTimeout(undoTimer);
+            if (e) run(() => moveEvent(e, by)); else render();
+          } })));
+      }
     } else strip = null;
 
     root.replaceChildren(...kids);
@@ -138,6 +226,6 @@ export function mountSchedule(root){
   render();
 
   return {
-    unmount(){ unsub(); clearInterval(tick); document.removeEventListener("visibilitychange", onVisible); root.replaceChildren(); root.hidden = true; },
+    unmount(){ unsub(); clearInterval(tick); clearTimeout(undoTimer); document.removeEventListener("visibilitychange", onVisible); root.replaceChildren(); root.hidden = true; },
   };
 }

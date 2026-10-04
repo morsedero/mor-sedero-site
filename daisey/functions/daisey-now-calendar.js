@@ -2,7 +2,7 @@
 // Calendar, not just the primary one. GET ?from=ISO&to=ISO with
 // "Authorization: Bearer <Firebase ID token>". Returns the primary
 // calendar's agenda for that range:
-//   { events: [{ title, start, end, allDay, busy, color }] }
+//   { events: [{ id, calendarId, editable, title, start, end, allDay, busy, color }] }
 // `color` is the hex the user sees in Google Calendar — the event's own
 // colour if it has one, else its calendar's. Events from all the ticked
 // calendars are merged and sorted by start.
@@ -44,9 +44,13 @@ function isBusy(e) {
   return !(e.attendees || []).some((a) => a.self && a.responseStatus === "declined");
 }
 
-function shape(e, colors, calendarColor) {
+function shape(e, colors, cal) {
   const allDay = !e.start.dateTime;
   return {
+    id: e.id,
+    calendarId: cal.id,
+    // Only what the user can actually change offers Move and Delete.
+    editable: !!cal.editable && !e.recurringEventId && e.status !== "cancelled",
     title: e.summary || (allDay ? "All day" : "Busy"),
     start: e.start.dateTime || e.start.date,
     end: e.end?.dateTime || e.end?.date || null,
@@ -54,7 +58,7 @@ function shape(e, colors, calendarColor) {
     busy: isBusy(e),
     // The colour the user sees in Google Calendar: the event's own if it has
     // one, otherwise the calendar's.
-    color: (e.colorId && colors?.event?.[e.colorId]?.background) || calendarColor || null,
+    color: (e.colorId && colors?.event?.[e.colorId]?.background) || cal.color || null,
   };
 }
 
@@ -72,13 +76,13 @@ async function calendarsFor(accessToken) {
       gJson("https://www.googleapis.com/calendar/v3/colors", accessToken),
       gJson("https://www.googleapis.com/calendar/v3/users/me/calendarList?minAccessRole=reader&maxResults=50", accessToken),
     ]);
-    if (!list) return { colors: null, calendars: [{ id: "primary", color: null }] };
+    if (!list) return { colors: null, calendars: [{ id: "primary", color: null, editable: true }] };
     // Only the ones ticked in Google Calendar: an unticked calendar is one
     // the user has already said they don't want to look at.
     const calendars = (list.items || []).filter((c) => c.selected !== false && !c.deleted)
       .slice(0, MAX_CALENDARS)
-      .map((c) => ({ id: c.id, color: c.backgroundColor || null }));
-    cached = { colors, calendars: calendars.length ? calendars : [{ id: "primary", color: null }] };
+      .map((c) => ({ id: c.id, color: c.backgroundColor || null, editable: ["owner", "writer"].includes(c.accessRole) }));
+    cached = { colors, calendars: calendars.length ? calendars : [{ id: "primary", color: null, editable: true }] };
   }
   return cached;
 }
@@ -94,7 +98,7 @@ async function eventsFrom(cal, from, to, accessToken, colors) {
   // schedule down with it.
   if (!res.ok) { console.error("daisey-now-calendar", cal.id, res.status); return []; }
   const { items = [] } = await res.json();
-  return items.filter(listed).map((e) => shape(e, colors, cal.color));
+  return items.filter(listed).map((e) => shape(e, colors, cal));
 }
 
 exports.handler = async (event) => {
