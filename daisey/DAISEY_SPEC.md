@@ -259,6 +259,11 @@ switching never moves the card. Tasks keeps the column-per-project board,
 scrolling sideways inside the pane. (An earlier version put all of it in one
 sideways slider; the card drifted off screen.)
 
+**Which calendars.** Every calendar ticked in Google Calendar, not just the
+primary one — merged, sorted and coloured as they are there. Unticking a
+calendar in Google hides it here too. All-day entries (holidays, birthdays,
+"illustration week") show in the panel but never block a pick.
+
 **Calendar sync.** One shared poll serves the card and the panel: once a
 minute while the tab is in front, and again whenever it comes back, so a
 change made in Google Calendar shows up within about a minute without being

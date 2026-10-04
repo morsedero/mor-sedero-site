@@ -1,9 +1,11 @@
-// Daisey v1's calendar read: GET ?from=ISO&to=ISO with
+// Daisey v1's calendar read: every calendar the user has ticked in Google
+// Calendar, not just the primary one. GET ?from=ISO&to=ISO with
 // "Authorization: Bearer <Firebase ID token>". Returns the primary
 // calendar's agenda for that range:
 //   { events: [{ title, start, end, allDay, busy, color }] }
 // `color` is the hex the user sees in Google Calendar — the event's own
-// colour if it has one, else the calendar's.
+// colour if it has one, else its calendar's. Events from all the ticked
+// calendars are merged and sorted by start.
 // Everything the user would see in Google Calendar is listed, so the app can
 // show the day; `busy` says whether it should also block Daisey's picks.
 // All-day entries, events marked free and ones the user declined are listed
@@ -22,6 +24,7 @@ const { verifyIdToken } = require("./_daisey-lib/firebase-auth");
 const { openStore } = require("./_daisey-lib/blobs");
 const { getGoogleAccessToken } = require("./_daisey-lib/tokens");
 
+const MAX_CALENDARS = 12; // every calendar ticked in Google Calendar, within reason
 const MAX_RANGE = 9 * 864e5; // today plus a week, with room for timezone edges
 const isDaiseyBlock = (e) => /\[(daisey|dayflow)\]/.test(e.description || ""); // old Daisey's own planning blocks
 
@@ -60,18 +63,38 @@ const gJson = async (url, accessToken) => {
   return res.ok ? res.json() : null;
 };
 
-// The palette and the calendar's own colour change about never; one lookup
-// per warm function instance is plenty.
-let palette = null;
-async function colorsFor(accessToken) {
-  if (!palette) {
-    const [colors, primary] = await Promise.all([
+// Which calendars to read, and the palette their colours come from. Both
+// change about never, so one lookup per warm function instance is plenty.
+let cached = null;
+async function calendarsFor(accessToken) {
+  if (!cached) {
+    const [colors, list] = await Promise.all([
       gJson("https://www.googleapis.com/calendar/v3/colors", accessToken),
-      gJson("https://www.googleapis.com/calendar/v3/users/me/calendarList/primary", accessToken),
+      gJson("https://www.googleapis.com/calendar/v3/users/me/calendarList?minAccessRole=reader&maxResults=50", accessToken),
     ]);
-    if (colors) palette = { colors, calendarColor: primary?.backgroundColor || null };
+    if (!list) return { colors: null, calendars: [{ id: "primary", color: null }] };
+    // Only the ones ticked in Google Calendar: an unticked calendar is one
+    // the user has already said they don't want to look at.
+    const calendars = (list.items || []).filter((c) => c.selected !== false && !c.deleted)
+      .slice(0, MAX_CALENDARS)
+      .map((c) => ({ id: c.id, color: c.backgroundColor || null }));
+    cached = { colors, calendars: calendars.length ? calendars : [{ id: "primary", color: null }] };
   }
-  return palette || { colors: null, calendarColor: null };
+  return cached;
+}
+
+// One calendar's events in the range, already shaped.
+async function eventsFrom(cal, from, to, accessToken, colors) {
+  const url = new URL(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(cal.id)}/events`);
+  for (const [k, v] of Object.entries({ timeMin: new Date(from).toISOString(), timeMax: new Date(to).toISOString(),
+    singleEvents: "true", orderBy: "startTime", maxResults: "250" })) url.searchParams.set(k, v);
+  const res = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } });
+  if (res.status === 401) throw Object.assign(new Error("reauth"), { reauth: true });
+  // One calendar failing (a share revoked, say) must not take the day's
+  // schedule down with it.
+  if (!res.ok) { console.error("daisey-now-calendar", cal.id, res.status); return []; }
+  const { items = [] } = await res.json();
+  return items.filter(listed).map((e) => shape(e, colors, cal.color));
 }
 
 exports.handler = async (event) => {
@@ -96,14 +119,15 @@ exports.handler = async (event) => {
   const accessToken = await getGoogleAccessToken(userId);
   if (!accessToken) return fail(409, "needs_reauth");
 
-  const url = new URL("https://www.googleapis.com/calendar/v3/calendars/primary/events");
-  for (const [k, v] of Object.entries({ timeMin: new Date(from).toISOString(), timeMax: new Date(to).toISOString(),
-    singleEvents: "true", orderBy: "startTime", maxResults: "250" })) url.searchParams.set(k, v);
-  const res = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } });
-  if (res.status === 401) return fail(409, "needs_reauth");
-  if (!res.ok) { console.error("daisey-now-calendar google", res.status, await res.text()); return fail(502, "google"); }
-
-  const { items = [] } = await res.json();
-  const { colors, calendarColor } = await colorsFor(accessToken);
-  return reply(200, { events: items.filter(listed).map((e) => shape(e, colors, calendarColor)) });
+  const { colors, calendars } = await calendarsFor(accessToken);
+  let events;
+  try {
+    const perCalendar = await Promise.all(calendars.map((c) => eventsFrom(c, from, to, accessToken, colors)));
+    events = perCalendar.flat().sort((a, b) => Date.parse(a.start) - Date.parse(b.start));
+  } catch (e) {
+    if (e.reauth) return fail(409, "needs_reauth");
+    console.error("daisey-now-calendar", e);
+    return fail(502, "google");
+  }
+  return reply(200, { events });
 };
