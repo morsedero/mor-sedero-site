@@ -111,12 +111,15 @@ export const renameEvent = (ev, title) => write({ action: "rename", calendarId: 
 // Google calendar — the one "primary" means — because that's where a thing
 // you're adding by hand belongs, and picking between calendars is a question
 // nobody wants asked at the moment they're writing "dentist".
-export function createEvent({ title, date, at, minutes }){
+//
+// calendarId and taskId are for the undo behind Remove (addevent.js), which
+// puts a removed event back where it was rather than in the main calendar.
+export function createEvent({ title, date, at, minutes, calendarId = "primary", taskId }){
   const [y, m, d] = date.split("-").map(Number);
   const [hh, mm] = at.split(":").map(Number);
   const start = new Date(y, m - 1, d, hh, mm, 0, 0);
   const end = new Date(start.getTime() + minutes * 60000);
-  return write({ action: "create", calendarId: "primary", title, start: start.toISOString(), end: end.toISOString() });
+  return write({ action: "create", calendarId, title, ...(taskId ? { taskId } : {}), start: start.toISOString(), end: end.toISOString() });
 }
 
 // Accepting a pencil suggestion: a block on the user's separate "Daisey"

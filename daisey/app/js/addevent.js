@@ -16,6 +16,9 @@
 // an end time: "45 min" is one choice rather than two, and it is how Daisey
 // says duration everywhere else (durText).
 //
+// Delete is one tap called Remove, undone from the toast (Mor, 2026-10-05:
+// "a 1 click remove", instead of a delete and a check after).
+//
 // A new event opens on the day the Schedule panel is showing, with the time
 // rounded up to the next quarter hour, so adding something to Thursday from
 // Thursday's page needs the title and nothing else.
@@ -55,7 +58,6 @@ const field = (label, input, wide) => {
 export function mountAddEvent(dialog){
   let busy = false;
   let editing = null; // the event being looked at or edited, or null when adding
-  let armed = false; // Delete pressed once; the next press does it
   const f = {
     title: h("input", { dir: "auto", required: true, autocomplete: "off" }),
     date: h("input", { type: "date", required: true }),
@@ -96,19 +98,25 @@ export function mountAddEvent(dialog){
     const start = Date.parse(ev.start), end = Date.parse(ev.end || ev.start);
     const when = ev.allDay ? "All day" : `${hhmm(start)} – ${hhmm(end)}`;
     const mine = ev.editable && !ev.allDay && ev.end;
-    const del = h("button", { className: "btn quiet danger", type: "button", textContent: armed ? "Really delete?" : "Delete" });
-    if (armed) del.classList.add("arm");
+    // One tap, no "Really delete?" (Mor, 2026-10-05). The press that used to
+    // arm the button now does the thing, and the Undo in the toast is what
+    // makes that safe — the same bargain as Later and Pending on the card.
+    // It is a real Google delete; Undo writes the event back, on the calendar
+    // it came from, so what returns is the event Daisey could see (guests and
+    // a repeat rule, which Daisey never held, do not come back).
+    const del = h("button", { className: "btn quiet danger", type: "button", textContent: "Remove" });
     del.onclick = async () => {
-      if (!armed) { armed = true; showDetails(ev); return; }
       if (busy) return;
       working(true);
+      const was = { title: ev.title, calendarId: ev.calendarId, taskId: ev.taskId,
+        date: localDate(start), at: hhmm(start), minutes: Math.max(5, Math.round((end - start) / MIN)) };
       try {
         await deleteEvent(ev);
         dialog.close();
-        flash("Deleted ", ev.title);
+        flash("Removed ", ev.title, { undo: () => createEvent(was).catch((e) => console.error("[daisey] undo remove", e)) });
       } catch (e) {
         console.error("[daisey] delete event", e);
-        msg.textContent = ERROR[e.code] || "Couldn't delete it.";
+        msg.textContent = ERROR[e.code] || "Couldn't remove it.";
       }
       working(false, "Save");
     };
@@ -128,7 +136,6 @@ export function mountAddEvent(dialog){
 
   // The same sheet as a form: new, or the event's own values filled in.
   function showForm(ev){
-    armed = false;
     details.hidden = true;
     form.hidden = false;
     note.hidden = !!ev;
@@ -191,7 +198,6 @@ export function mountAddEvent(dialog){
     open(date, at){
       msg.textContent = "";
       editing = null;
-      armed = false;
       form.reset();
       f.date.value = date || localDate();
       f.at.value = at || nextQuarter();
@@ -203,7 +209,6 @@ export function mountAddEvent(dialog){
     view(ev){
       msg.textContent = "";
       editing = ev;
-      armed = false;
       form.reset();
       showDetails(ev);
       if (!dialog.open) dialog.showModal();

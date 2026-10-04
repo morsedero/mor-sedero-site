@@ -1,6 +1,6 @@
 /* Drives the real Schedule panel (daisey/app) in Chromium and checks the way
    an event is opened and edited: tap a row, see its details, Edit, Save,
-   Delete — Google's own flow, in Daisey's sheet (addevent.js). Same fakes as
+   Remove — Google's own flow, in Daisey's sheet (addevent.js). Same fakes as
    preview.js beside it; needs playwright from daisey/test/ (npm install there
    once).
 
@@ -54,6 +54,8 @@ const check = (name, pass, got) => { results.push({ pass }); console.log(`${pass
       if (ev && body.action === "move") { ev.start = body.start; ev.end = body.end; }
       if (ev && body.action === "rename") ev.title = body.title;
       if (ev && body.action === "delete") events = events.filter((e) => e !== ev);
+      if (body.action === "create") events = [...events, { id: "new" + writes.length, calendarId: body.calendarId, editable: true,
+        title: body.title, start: body.start, end: body.end, allDay: false, busy: true }];
       return route.fulfill({ status: 200, contentType: "application/json", body: '{"ok":true}' });
     }
     if (rel === ".netlify/functions/daisey-now-calendar") return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ events }) });
@@ -84,7 +86,7 @@ const check = (name, pass, got) => { results.push({ pass }); console.log(`${pass
     (await sheet.locator(".ev-name").textContent()).includes("Studio session") && (await sheet.locator(".ev-time").textContent()).includes("16:00"),
     await sheet.locator(".ev-detail").innerText());
   check("the details are details, not a form", await sheet.locator("form:visible").count() === 0, "a form is showing");
-  check("an event of yours offers Edit and Delete", await sheet.locator(".ev-acts .btn").count() === 2,
+  check("an event of yours offers Edit and Remove", await sheet.locator(".ev-acts .btn").count() === 2,
     `${await sheet.locator(".ev-acts .btn").count()} button(s)`);
 
   // ---- Edit: the same sheet, filled in.
@@ -127,23 +129,26 @@ const check = (name, pass, got) => { results.push({ pass }); console.log(`${pass
   // ---- someone else's event opens read-only.
   await day.locator(".sch-row", { hasText: "Someone else" }).locator(".sch-open").click();
   await page.waitForTimeout(200);
-  check("a read-only event offers no Edit or Delete", await sheet.locator(".ev-acts").count() === 0,
+  check("a read-only event offers no Edit or Remove", await sheet.locator(".ev-acts").count() === 0,
     "it offered to change someone else's event");
   await page.keyboard.press("Escape");
 
-  // ---- Delete asks first, then goes.
+  // ---- Remove goes on one tap, and the toast puts it back.
   await day.locator(".sch-row", { hasText: "Mix night" }).locator(".sch-open").click();
   await page.waitForTimeout(200);
-  await sheet.getByRole("button", { name: "Delete" }).click();
-  await page.waitForTimeout(150);
-  check("Delete asks before it deletes", await sheet.getByRole("button", { name: "Really delete?" }).count() === 1,
-    "it deleted on the first press");
   const before = writes.length;
-  await sheet.getByRole("button", { name: "Really delete?" }).click();
+  await sheet.getByRole("button", { name: "Remove" }).click();
   await page.waitForTimeout(400);
   w = writes.at(-1);
-  check("the second press deletes it", writes.length === before + 1 && w.action === "delete", w && JSON.stringify(w));
+  check("Remove deletes on the first tap", writes.length === before + 1 && w.action === "delete", w && JSON.stringify(w));
   check("the row is gone", await day.locator(".sch-row", { hasText: "Mix night" }).count() === 0, "the row is still listed");
+  check("Remove offers an undo", await page.locator(".toast-undo").count() === 1, "no undo offered");
+  await page.click(".toast-undo");
+  await page.waitForTimeout(500);
+  w = writes.at(-1);
+  check("undoing a Remove writes it back to its own calendar",
+    w.action === "create" && w.title === "Mix night" && w.calendarId === "primary", w && JSON.stringify(w));
+  check("the row is back", await day.locator(".sch-row", { hasText: "Mix night" }).count() === 1, "the event didn't come back");
 
   // ---- the header's + still opens an empty new event.
   await page.click(".sch-add");

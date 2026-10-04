@@ -380,7 +380,6 @@ body.focus .shell { display: grid; min-block-size: 100dvh; align-content: center
 .ev-time { margin: 0 0 6px; font-size: 15px; font-variant-numeric: tabular-nums; }
 .ev-acts { display: flex; gap: 8px; align-items: center; margin-block-start: 6px; padding-block-start: 12px; border-block-start: 1px solid var(--line); }
 .ev-acts .btn.danger { margin-inline-start: auto; color: var(--danger); }
-.ev-acts .btn.danger.arm { border-color: var(--danger); background: color-mix(in srgb, var(--danger) 10%, transparent); font-weight: 700; }
 
 .sch-nowline { display: flex; align-items: center; gap: 6px; margin-block: 2px; }
 .sch-nowline::after { content: ""; flex: 1; block-size: 2px; background: #ea4335; border-radius: 2px; }
