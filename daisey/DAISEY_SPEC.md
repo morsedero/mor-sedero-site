@@ -259,6 +259,11 @@ switching never moves the card. Tasks keeps the column-per-project board,
 scrolling sideways inside the pane. (An earlier version put all of it in one
 sideways slider; the card drifted off screen.)
 
+**Calendar sync.** One shared poll serves the card and the panel: once a
+minute while the tab is in front, and again whenever it comes back, so a
+change made in Google Calendar shows up within about a minute without being
+asked for.
+
 **Schedule panel.** Google Calendar's own day, read-only. One day fills the
 panel and the week slides sideways — swipe, or use ‹ › — up to seven days
 ahead, with "Back to today" to return. Each event shows its start and end,

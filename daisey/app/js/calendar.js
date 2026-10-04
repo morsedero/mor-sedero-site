@@ -1,45 +1,79 @@
 // Calendar read: the agenda from the start of today to a week ahead, via the
 // daisey-now-calendar function (which reuses old Daisey's Google token — no
-// separate calendar sign-in). Refetches every 10 min and when the tab comes
-// back; the window itself is worked out each render (engine.freeWindow), so
-// it counts down between fetches.
+// separate calendar sign-in). The free window itself is worked out at each
+// render (engine.freeWindow), so it counts down between the fetches.
 //
-// Every event the user would see is here, so the schedule panel can show the
+// Every event the user would see is here, so the Schedule panel can show the
 // day. `busy` marks the ones that should also stop Daisey picking a task —
 // an all-day "ILLUSTRATION WEEK" shouldn't blank the card.
+//
+// One fetch feeds everything: the Now card and the Schedule panel subscribe
+// to the same poller, so they can't disagree and can't double the calls.
 import { idToken } from "./firebase.js";
 
 const URL_ = "/.netlify/functions/daisey-now-calendar";
-const EVERY = 10 * 60000;
+// A change made in Google Calendar should land here without anyone thinking
+// about it: once a minute while the tab is in front, and again the moment it
+// comes back. (Instant would mean Google push channels and a webhook to
+// receive them — more machinery than a minute of lag is worth.)
+const EVERY = 60000;
+
+const subs = new Set();
+let state = { status: "loading", events: [] };
+let timer = null, loading = null;
+
+async function fetchAgenda(){
+  // From the start of today, so the panel can show what already happened, to
+  // the end of the seventh day ahead — as far as the panel can step.
+  const from = new Date(); from.setHours(0, 0, 0, 0);
+  const end = new Date(); end.setDate(end.getDate() + 8); end.setHours(0, 0, 0, 0);
+  const q = new URLSearchParams({ from: from.toISOString(), to: end.toISOString() });
+  const res = await fetch(`${URL_}?${q}`, { headers: { Authorization: `Bearer ${await idToken()}` } });
+  const body = await res.json().catch(() => ({}));
+  if (res.ok) return { status: "ok", events: body.events || [] };
+  return { status: ["not_connected", "needs_reauth"].includes(body.error) ? body.error : "error", events: [] };
+}
+
+function load(){
+  if (loading) return loading; // a tab switch mid-fetch shouldn't start a second one
+  loading = fetchAgenda()
+    .then(publish)
+    .catch((e) => {
+      console.error("[daisey] calendar", e);
+      // Offline: keep the last good events rather than forgetting the calendar.
+      if (state.status !== "ok") publish({ status: "error", events: [] });
+    })
+    .finally(() => { loading = null; });
+  return loading;
+}
+
+function publish(next){
+  state = next;
+  for (const cb of subs) cb(state);
+}
+
+const onVisible = () => { if (!document.hidden) load(); };
 
 // cb({ status, events }) — status: loading · ok · not_connected · needs_reauth · error.
 export function watchCalendar(cb){
-  let alive = true, last = { status: "loading", events: [] };
-  const send = (v) => { if (alive) { last = v; cb(v); } };
-
-  async function load(){
-    try {
-      // From the start of today, so the panel can show what already
-       // happened, to the end of the seventh day ahead — what the Schedule
-       // panel can step through.
-      const from = new Date(); from.setHours(0, 0, 0, 0);
-      const end = new Date(); end.setDate(end.getDate() + 8); end.setHours(0, 0, 0, 0);
-      const q = new URLSearchParams({ from: from.toISOString(), to: end.toISOString() });
-      const res = await fetch(`${URL_}?${q}`, { headers: { Authorization: `Bearer ${await idToken()}` } });
-      const body = await res.json().catch(() => ({}));
-      if (res.ok) send({ status: "ok", events: body.events || [] });
-      else send({ status: ["not_connected", "needs_reauth"].includes(body.error) ? body.error : "error", events: [] });
-    } catch (e) {
-      console.error("[daisey] calendar", e);
-      // Offline: keep the last good events rather than forgetting the calendar.
-      if (last.status !== "ok") send({ status: "error", events: [] });
-    }
+  subs.add(cb);
+  cb(state);
+  if (subs.size === 1) {
+    timer = setInterval(() => { if (!document.hidden) load(); }, EVERY);
+    document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener("focus", onVisible); // back from the calendar in another window
+    load();
+  } else if (state.status !== "loading") {
+    load(); // a late subscriber still gets fresh data, not just the last copy
   }
-
-  cb(last);
-  load();
-  const timer = setInterval(() => { if (!document.hidden) load(); }, EVERY);
-  const onVisible = () => { if (!document.hidden) load(); };
-  document.addEventListener("visibilitychange", onVisible);
-  return () => { alive = false; clearInterval(timer); document.removeEventListener("visibilitychange", onVisible); };
+  return () => {
+    subs.delete(cb);
+    if (subs.size === 0) {
+      clearInterval(timer);
+      timer = null;
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("focus", onVisible);
+      state = { status: "loading", events: [] }; // next sign-in starts clean
+    }
+  };
 }
