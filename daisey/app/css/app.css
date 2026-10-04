@@ -240,8 +240,8 @@ body.focus .shell { display: grid; min-block-size: 100dvh; align-content: center
 .pane { block-size: min(58dvh, 560px); overflow: hidden; }
 .pane > * { block-size: 100%; overflow-y: auto; }
 .pane > [hidden] { display: none; }
-/* Tasks keeps its own switcher pinned and scrolls only the tasks under it. */
-.pane > #tasksview { overflow: hidden; display: grid; grid-template-rows: auto minmax(0, 1fr); gap: 8px; }
+/* The task list does its own scrolling, inside its own card. */
+.pane > #tasksview { overflow: hidden; display: grid; grid-template-rows: minmax(0, 1fr); }
 
 /* Add task: floating button, bottom end corner. */
 .fab {
@@ -310,17 +310,7 @@ body.focus .shell { display: grid; min-block-size: 100dvh; align-content: center
 .sch-nowtime { flex: none; inline-size: 86px; font-size: 11px; font-weight: 700; color: #ea4335; font-variant-numeric: tabular-nums; }
 .sch-free { margin: 0; }
 
-/* Tasks: a switcher, then either one list grouped by when, or a column per
-   project. Both draw the same .tk-row. */
-.seg { display: inline-flex; padding: 3px; gap: 2px; border-radius: 999px; background: var(--bg); border: 1px solid var(--line); }
-.seg-btn {
-  font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; min-block-size: 30px;
-  padding-inline: 14px; border: 0; border-radius: 999px; background: none; color: var(--ink-2);
-}
-.seg-btn[aria-selected="true"] { background: var(--card); color: var(--ink); box-shadow: 0 1px 3px rgb(0 0 0 / .12); }
-.tk-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-
-/* List view: one vertical scroll, sections by when. */
+/* Tasks: one list, sections by when. */
 .tk-single {
   block-size: 100%; overflow-y: auto; overflow-x: hidden; display: grid; gap: 10px; align-content: start;
   background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 12px 14px;
@@ -345,29 +335,6 @@ body.focus .shell { display: grid; min-block-size: 100dvh; align-content: center
   background: var(--bg); border: 1px solid var(--line); color: var(--ink-2);
 }
 
-/* Projects view: columns, scroll sideways on a phone, dots to say so. */
-.tk-wrap { block-size: 100%; display: grid; grid-template-rows: minmax(0, 1fr) auto; gap: 6px; }
-.tk-board {
-  display: flex; gap: 12px; align-items: stretch; block-size: 100%;
-  overflow-x: auto; overflow-y: hidden; scroll-snap-type: x mandatory;
-}
-.tk-col {
-  flex: 0 0 min(300px, calc(100vw - 64px)); scroll-snap-align: start; overflow-y: auto;
-  background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 0 14px 14px;
-}
-.tk-dots { display: flex; gap: 6px; justify-content: center; }
-.tk-dot {
-  inline-size: 22px; block-size: 22px; padding: 0; border: 0; background: none; cursor: pointer;
-  display: grid; place-items: center;
-}
-.tk-dot::before { content: ""; inline-size: 6px; block-size: 6px; border-radius: 50%; background: var(--ink-2); opacity: .35; }
-.tk-dot[aria-selected="true"]::before { opacity: 1; background: var(--accent); inline-size: 8px; block-size: 8px; }
-/* The project name stays put while its own tasks scroll past it. */
-.tk-head {
-  position: sticky; inset-block-start: 0; z-index: 1; background: var(--card);
-  display: flex; align-items: baseline; justify-content: space-between; gap: 8px; padding-block: 12px 6px;
-}
-.tk-head h3 { margin: 0; font-size: 17px; }
 .tk-add {
   font: inherit; font-weight: 600; color: var(--ink-2); background: none; border: 0; cursor: pointer;
   padding-block: 10px; padding-inline: 0; text-align: start; inline-size: 100%;

@@ -1,18 +1,12 @@
-// The Tasks view: two ways to look at the same tasks, and a toggle between
-// them (Mor, 2026-10-04 — "both, toggled").
+// The Tasks view: one vertical scroll, grouped by WHEN — Overdue, Today,
+// This week, Later, Anytime, Waiting. The project is a chip on the row, and a
+// chip row at the top filters to one project.
 //
-//   List     — one vertical scroll, grouped by WHEN: Overdue, Today, This
-//              week, Later, Anytime, Waiting. The project is a chip on the
-//              row, and a chip row at the top filters to one project. This is
-//              the deciding view: the dimension that matters when you're
-//              choosing is time, not which project a thing belongs to.
-//   Projects — a column per project, the old Google-Tasks/Trello shape, for
-//              looking at one body of work whole. It gets what it was
-//              missing: a sticky project header and a row of dots, so you
-//              can see that a fourth column exists and jump to it.
-//
-// The chosen view is remembered in localStorage, so a reload lands back where
-// you were (the pane's tab already does this through the hash).
+// This is a deciding list, not a filing cabinet: the dimension that matters
+// while you're choosing is time, not which project a thing belongs to. The
+// project columns it replaced are gone outright (Mor, 2026-10-04, after
+// seeing both: "lose the projects tab, list should be default") — along with
+// the toggle, the remembered choice and the sideways scroll they needed.
 //
 // Tapping a row ANYWHERE opens the task sheet (addtask.js in edit mode) —
 // fields, Waiting on, Delete, "Do this now". There is no ⋯ menu any more and
@@ -25,10 +19,6 @@
 import { watchTasks, finishTask, restoreTask } from "./store.js";
 import { INBOX, notYet, localDate } from "./model.js";
 import { h, bdi, pieces, sizeText, flash } from "./ui.js";
-
-const VIEW_KEY = "daisey.tasksView";
-const readView = () => { try { return localStorage.getItem(VIEW_KEY) === "projects" ? "projects" : "list"; } catch { return "list"; } };
-const saveView = (v) => { try { localStorage.setItem(VIEW_KEY, v); } catch { /* private window */ } };
 
 const shortDate = (s) => new Date(`${s}T12:00`).toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" });
 const dayFrom = (n) => { const d = new Date(); d.setDate(d.getDate() + n); return localDate(d.getTime()); };
@@ -53,10 +43,8 @@ const SECTIONS = [
 
 export function mountTasks(root, uid, { onAdd, onOpen } = {}){
   let tasks = null, onCard = null;
-  let view = readView();
   let project = null; // the List view's project filter; null = all
-  let doneOpen = false; // the List view's Completed fold
-  const openDone = new Set(); // same, per column, in the Projects view
+  let doneOpen = false; // the Completed fold
   const fail = (e) => console.error("[daisey] tasks", e);
 
   // Completing is the one thing that happens without the sheet, so it is the
@@ -138,57 +126,14 @@ export function mountTasks(root, uid, { onAdd, onOpen } = {}){
         doneOpen, (o) => { doneOpen = o; }));
   }
 
-  function columns(open, done){
-    const byProject = new Map();
-    for (const t of [...open, ...done]) {
-      if (!byProject.has(t.project)) byProject.set(t.project, []);
-      byProject.get(t.project).push(t);
-    }
-    const names = [...byProject.keys()].sort((a, b) => (b === INBOX) - (a === INBOX) || a.localeCompare(b));
-    const cols = names.map((name) => {
-      const all = byProject.get(name);
-      const live = all.filter((t) => t.status !== "done").sort(order);
-      const over = all.filter((t) => t.status === "done").sort((a, b) => (b.doneAt || 0) - (a.doneAt || 0));
-      return h("section", { className: "tk-col", ariaLabel: name },
-        h("header", { className: "tk-head" },
-          h("h3", { dir: "auto", textContent: name }),
-          h("span", { className: "muted", textContent: String(live.length) })),
-        live.length ? h("ul", { className: "tk-list" }, ...live.map((t) => row(t)))
-          : h("p", { className: "muted tk-note", textContent: "All done here." }),
-        h("button", { type: "button", className: "tk-add", textContent: "+ Add a task", onclick: () => onAdd?.(name === INBOX ? "" : name) }),
-        over.length > 0 && fold(`Completed (${over.length})`, over.map(doneRow), openDone.has(name),
-          (o) => { o ? openDone.add(name) : openDone.delete(name); }));
-    });
-
-    // The dots say how many columns there are and which one you're on —
-    // sideways scroll with nothing beyond the edge is invisible otherwise.
-    const dots = h("div", { className: "tk-dots", role: "tablist", ariaLabel: "Projects" },
-      ...names.map((n, i) => h("button", { type: "button", className: "tk-dot", ariaLabel: n, ariaSelected: String(i === 0),
-        onclick: () => { const b = board.children[i]; b?.scrollIntoView({ behavior: "smooth", inline: "start", block: "nearest" }); } })));
-    const board = h("div", { className: "tk-board" }, ...cols);
-    const mark = () => {
-      const i = Math.round(Math.abs(board.scrollLeft) / (board.scrollWidth / Math.max(1, names.length)));
-      for (const [j, d] of [...dots.children].entries()) d.setAttribute("aria-selected", String(j === Math.min(i, names.length - 1)));
-    };
-    board.onscroll = mark;
-    return h("div", { className: "tk-wrap" }, board, names.length > 1 && dots);
-  }
-
   // ---------- frame ----------
 
-  const tabs = () => {
-    const seg = (v, label) => h("button", { type: "button", className: "seg-btn", role: "tab", ariaSelected: String(view === v),
-      textContent: label, onclick: () => { view = v; saveView(v); render(); } });
-    return h("div", { className: "seg", role: "tablist", ariaLabel: "How to arrange tasks" }, seg("list", "List"), seg("projects", "Projects"));
-  };
-
-  // Keeps the scroll position of whichever view is being redrawn.
+  // Keeps where you were scrolled through a redraw.
   function fill(body){
-    const old = root.querySelector(".tk-board, .tk-single");
-    const x = old?.scrollLeft || 0, y = old?.scrollTop || 0;
-    root.replaceChildren(h("div", { className: "tk-top" }, tabs()), body);
-    const next = root.querySelector(".tk-board, .tk-single");
-    if (next) { next.scrollLeft = x; next.scrollTop = y; }
+    const y = root.querySelector(".tk-single")?.scrollTop || 0;
+    root.replaceChildren(body);
+    const next = root.querySelector(".tk-single");
+    if (next) next.scrollTop = y;
   }
 
   function render(){
@@ -201,7 +146,7 @@ export function mountTasks(root, uid, { onAdd, onOpen } = {}){
     const open = tasks.filter((t) => t.status !== "done");
     const done = tasks.filter((t) => t.status === "done");
     if (project && !open.some((t) => t.project === project)) project = null; // the filtered project emptied out
-    fill(view === "projects" ? columns(open, done) : listView(open, done));
+    fill(listView(open, done));
   }
 
   const unsub = watchTasks(uid, (ts) => { tasks = ts; render(); }, fail);
