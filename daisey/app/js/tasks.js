@@ -48,7 +48,7 @@ export function mountTasks(root, uid, { onAdd, onOpen } = {}){
   let tasks = null, onCard = null;
   let project = null; // the List view's project filter; null = all
   let doneOpen = false; // the Completed fold
-  let reveal = false; // a chip was just picked: slide it fully into view once
+  let reveal = 0; // a chip was just picked: tries left to slide it fully into view
   const fail = (e) => console.error("[daisey] tasks", e);
 
   // Completing is the one thing that happens without the sheet, so it is the
@@ -125,7 +125,7 @@ export function mountTasks(root, uid, { onAdd, onOpen } = {}){
     // it has no height (.tk-filters:empty).
     if (names.length < 2) return h("div", { className: "tk-filters" });
     const chip = (name, label, count) => h("button", { type: "button", className: "chip", role: "radio",
-      ariaChecked: String(project === name), onclick: () => { project = name; reveal = true; render(); } },
+      ariaChecked: String(project === name), onclick: () => { project = name; reveal = 1; render(); } },
       bdi(label), h("span", { className: "chip-n", textContent: String(count) }));
 
     const row = h("div", { className: "tk-chips", role: "radiogroup", ariaLabel: "Filter by project" },
@@ -161,15 +161,27 @@ export function mountTasks(root, uid, { onAdd, onOpen } = {}){
     // scrollend arriving mid-animation can't re-decide on "nearest" and
     // leave the chip clipped again — which is what happened to the chip at
     // the start edge (Mor: "left still not working", after a slide).
-    let wanted = null;
+    let wanted = null, how = "smooth";
     function settle(){
       const rtl = getComputedStyle(row).direction === "rtl";
       const edge = (el) => { const r = el.getBoundingClientRect(); return rtl ? r.right : r.left; };
       const here = edge(row);
       const target = wanted?.isConnected ? wanted : null;
       wanted = null;
-      let shortest = target ? edge(target) - here : null;
-      if (!target) {
+      let shortest = null;
+      if (target) {
+        // Whichever side it hangs off, by the smaller move. The LAST chip
+        // can never put its start edge flush — the row runs out of scroll
+        // first — so for that one it's the far edge that has to line up.
+        const r = target.getBoundingClientRect(), b = row.getBoundingClientRect();
+        shortest = r.left < b.left ? r.left - b.left : r.right > b.right ? r.right - b.right : 0;
+      } else {
+        // Both ends are resting places of their own: at them the first or
+        // last chip is already flush, and "nearest chip" would drag the row
+        // back off the end a reveal had just taken it to.
+        const span = row.scrollWidth - row.clientWidth;
+        const at = Math.abs(row.scrollLeft);
+        if (at <= 1 || at >= span - 1) return;
         // null, not 0, for "none yet": a chip already flush measures 0, and 0
         // read as unset let the chip after it win and yank the row backwards.
         for (const c of row.children) {
@@ -177,10 +189,14 @@ export function mountTasks(root, uid, { onAdd, onOpen } = {}){
           if (shortest === null || Math.abs(d) < Math.abs(shortest)) shortest = d;
         }
       }
-      if (shortest && Math.abs(shortest) > 1) row.scrollBy({ left: shortest, behavior: "smooth" });
+      if (shortest && Math.abs(shortest) > 1) row.scrollBy({ left: shortest, behavior: how });
+      how = "smooth";
     }
     // Called by fill() with the chip just picked, if it isn't wholly in view.
-    row.showChip = (chip) => { wanted = chip; stopGlide(); settle(); };
+    // `behavior` is "auto" on a retry: a redraw replaces this whole row, so a
+    // smooth slide that keeps being interrupted never arrives — the retry
+    // jumps instead of sliding from nothing.
+    row.showChip = (chip, behavior = "smooth") => { wanted = chip; how = behavior; stopGlide(); settle(); };
 
     // speed is px per frame, carried over from the pointer's last movement.
     function fling(){
@@ -290,19 +306,22 @@ export function mountTasks(root, uid, { onAdd, onOpen } = {}){
     if (chips && x != null) chips.scrollLeft = x;
     // A chip you just picked shows its whole name (Mor): if it's clipped at
     // either edge, the row slides it flush with the start. Flush rather than
-    // merely visible, so the settle that follows has nothing left to move and
-    // can't clip it again.
+    // merely visible, so the settle that follows has nothing left to move.
     //
-    // Driven by the pick itself, not by the project CHANGING: picking "All"
-    // while already on All changes nothing, and that was the chip most often
-    // clipped off the start edge — the one case that looked broken.
+    // It stays pending until the chip really is in view, because a redraw
+    // lands in the middle of that slide more often than it looks: a Firestore
+    // snapshot, or the Now card changing which task it holds, redraws this
+    // view, and the scroll restore above then puts the row back where the
+    // chip was still clipped. A redraw now re-issues the slide instead of
+    // undoing it. Capped, so a chip that can't BE flush — the last one, with
+    // the row already scrolled to its end — doesn't ask forever.
     if (chips && reveal) {
-      reveal = false;
       const chip = chips.querySelector('.chip[aria-checked="true"]');
-      if (chip) {
-        const box = chips.getBoundingClientRect(), own = chip.getBoundingClientRect();
-        if (own.left < box.left - 1 || own.right > box.right + 1) chips.showChip?.(chip);
-      }
+      const box = chips.getBoundingClientRect();
+      const own = chip?.getBoundingClientRect();
+      const clipped = own && (own.left < box.left - 1 || own.right > box.right + 1);
+      if (!clipped || reveal > 4) reveal = 0;
+      else { chips.showChip?.(chip, reveal > 1 ? "auto" : "smooth"); reveal++; }
     }
   }
 
