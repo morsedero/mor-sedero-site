@@ -530,3 +530,8 @@ dialog.now { overflow-y: auto; overscroll-behavior: contain; }
 .ctx-line > .ctx-block { flex-basis: 100%; font-size: 13px; font-weight: 600; color: var(--ink); }
 .ctx-line > .ctx-block::after { content: none; }
 .sch-rename { flex: 1 1 160px; min-inline-size: 0; font: inherit; font-size: 16px; padding: 4px 10px; min-block-size: 32px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--ink); }
+
+/* A project name that leads to its tab in Tasks. */
+.now-proj { font: inherit; letter-spacing: inherit; text-transform: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; text-decoration: underline dotted; text-underline-offset: 3px; }
+.tk-tag.link { cursor: pointer; }
+.tk-tag.link:hover { border-color: var(--ink-2); }

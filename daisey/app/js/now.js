@@ -35,8 +35,9 @@ const CAL_NOTE = {
 
 // onCard(id | null) fires whenever the task on the card changes, so the task
 // list can set it aside while it's "physically" on the card.
-// onSweep() opens the old-dates sweep (sweep.js).
-export function mountNow(root, uid, { onCard, onSweep } = {}){
+// onSweep() opens the old-dates sweep (sweep.js). onProject(name) shows that
+// project's tab in Tasks.
+export function mountNow(root, uid, { onCard, onSweep, onProject } = {}){
   let tasks = null; // null until the first snapshot
   let settings = {}; // state/settings: when the sweep was last offered
   let momentDoc = {}; // state/moment: energy and place corrections
@@ -91,7 +92,11 @@ export function mountNow(root, uid, { onCard, onSweep } = {}){
     const why = main ? whySaid(s) : sentence(s.whyParts);
     return h("div", { className: "now-card" + (main ? " main" : "") },
       main && contextLine(),
-      h("div", { className: "now-meta" }, ...pieces(s.task.project, sizeText(s.task.size))),
+      h("div", { className: "now-meta" }, ...(main && s.task.project !== "Inbox"
+        // On the card the project name leads to its tab in Tasks.
+        ? [h("button", { type: "button", className: "now-proj", title: `Show ${s.task.project} in Tasks`,
+            onclick: () => onProject?.(s.task.project) }, bdi(s.task.project)), document.createTextNode(" · "), bdi(sizeText(s.task.size))]
+        : pieces(s.task.project, sizeText(s.task.size)))),
       h("div", { className: "now-title", dir: "auto", textContent: s.task.title }),
       s.task.nextStep && h("p", { className: "now-next" }, "Next: ", bdi(s.task.nextStep)),
       why && h("p", { className: "now-why" }, ...say(why)),

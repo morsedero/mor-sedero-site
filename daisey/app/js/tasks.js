@@ -54,6 +54,7 @@ export function mountTasks(root, uid, { onAdd, onOpen, onSweep } = {}){
   let doneOpen = false; // the Completed fold
   let somedayOpen = false; // the Someday fold
   let reveal = 0; // a chip was just picked: tries left to slide it fully into view
+  const showProject = (name) => { project = name; reveal = 1; render(); };
   const fail = (e) => console.error("[daisey] tasks", e);
 
   // Completing is the one thing that happens without the sheet, so it is the
@@ -86,7 +87,11 @@ export function mountTasks(root, uid, { onAdd, onOpen, onSweep } = {}){
         h("div", { className: "tk-title" }, bdi(t.title),
           isNow && h("span", { className: "tk-now", title: "On the Now card", textContent: "now" })),
         h("div", { className: "tk-meta" },
-          withProject && t.project !== INBOX && h("span", { className: "tk-tag" }, bdi(t.project)),
+          // The project tag leads to its tab (Mor, 2026-10-04): tap it and the
+          // list filters to that project. It sits inside the row's button, so
+          // it stops the click from also opening the task.
+          withProject && t.project !== INBOX && h("span", { className: "tk-tag link", title: `Show only ${t.project}`,
+            onclick: (e) => { e.stopPropagation(); showProject(t.project); } }, bdi(t.project)),
           h("span", { className: "muted" }, ...meta)),
         t.notes && h("div", { className: "muted tk-notes", dir: "auto", textContent: t.notes })));
   }
@@ -360,6 +365,8 @@ export function mountTasks(root, uid, { onAdd, onOpen, onSweep } = {}){
 
   return {
     setCurrent(id){ onCard = id; render(); },
+    // Filter to one project's tab (from the Now card's project name).
+    showProject,
     unmount(){ unsub(); root.replaceChildren(); },
   };
 }
