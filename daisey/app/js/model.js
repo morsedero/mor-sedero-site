@@ -488,6 +488,11 @@ export const startedTask = (task, { now = Date.now() } = {}) =>
 // Leaving focus mode: the real minutes always count, whether or not the
 // task is finished. `finished` completes it; otherwise it stays open and
 // the stop is recorded (two stops → Daisey offers to split it, session 10).
+// Cancel after real work: the minutes count, the stop doesn't — changing
+// your mind isn't a sign the task is too big.
+export const keptTime = (task, minutes, { now = Date.now() } = {}) =>
+  ({ spentMinutes: (task.spentMinutes || 0) + Math.max(0, Math.round(minutes)), touchedAt: now, workedAt: now });
+
 export function workedTask(task, minutes, { finished = false, now = Date.now() } = {}){
   const spent = (task.spentMinutes || 0) + Math.max(0, Math.round(minutes));
   return finished

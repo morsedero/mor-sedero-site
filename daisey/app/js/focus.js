@@ -4,9 +4,9 @@
 //
 // Pause and Cancel replaced Stop (Mor, 2026-10-05). Pause freezes the timer
 // and goes back to the main screen, where the card holds the paused task
-// with Resume until you come back to it. Cancel ends the run as if it hadn't
-// happened: no minutes booked, not counted as a stop. (Ending with the time
-// kept is Done → "More left".)
+// with Resume until you come back to it. Cancel ends the run without
+// counting a stop; a mis-tap (under 2 min) saves nothing, real work keeps
+// its minutes.
 //
 // Past the estimate it asks once, quietly: "Still on it? +15 min · Stuck".
 // No sound, no red — running over is normal. Stuck ends the run, keeps the
@@ -44,7 +44,7 @@ const pauseCancel = (what, onPause, onCancel) => h("div", { className: "focus-ro
   h("button", { className: "btn", type: "button", textContent: "Pause",
     ariaLabel: `Pause ${what} and go back to the main screen`, onclick: () => onPause() }),
   h("button", { className: "btn quiet", type: "button", textContent: "Cancel",
-    ariaLabel: `Cancel ${what}: no time is saved`, onclick: () => onCancel() }));
+    ariaLabel: `Cancel ${what}`, onclick: () => onCancel() }));
 export const targetMinutes = (run, task) => (task?.size || 0) + (run.extra || 0);
 export const isOver = (run, task, now = Date.now()) => elapsedMinutes(run, now) > targetMinutes(run, task);
 

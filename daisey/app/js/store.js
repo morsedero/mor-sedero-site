@@ -3,7 +3,7 @@
 // only moves documents. `tasks` arguments are the current list from
 // watchTasks, used as history for "similar past tasks" guesses.
 import * as fb from "./firebase.js";
-import { createTask, editTask, completeTask, startedTask, workedTask, skipTask, skipReason, migrateTask } from "./model.js";
+import { createTask, editTask, completeTask, startedTask, workedTask, keptTime, skipTask, skipReason, migrateTask } from "./model.js";
 
 const tasksCol = (uid) => fb.collection(fb.db, "users", uid, "tasks");
 const taskDoc = (uid, id) => fb.doc(fb.db, "users", uid, "tasks", id);
@@ -130,10 +130,13 @@ export function endBatch(uid, left, minutes){
   ]);
 }
 
-// Pause and Resume write the whole doc (focus.js paused/resumed); Cancel
-// drops it with nothing booked to the task.
+// Pause and Resume write the whole doc (focus.js paused/resumed). Cancel
+// drops it; `minutes` > 0 are kept on the task without counting a stop.
 export const saveRun = (uid, run) => fb.setDoc(runDoc(uid), run);
-export const cancelRun = (uid) => fb.deleteDoc(runDoc(uid));
+export const cancelRun = (uid, task = null, minutes = 0) => Promise.all([
+  fb.deleteDoc(runDoc(uid)),
+  task && minutes > 0 ? fb.updateDoc(taskDoc(uid, task.id), keptTime(task, minutes)) : null,
+]);
 
 export function extendRun(uid, run, minutes){
   return fb.setDoc(runDoc(uid), { ...run, extra: (run.extra || 0) + minutes });

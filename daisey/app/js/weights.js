@@ -71,6 +71,11 @@ export const SKIP_PENALTY = 8; // per skip of this task today
 // "not now" means something, short enough that it comes back the same day.
 export const LATER_MINUTES = 120;
 
+// Cancel in focus mode: under this many minutes it was a mis-tap and nothing
+// is saved; from here on the minutes were real work and are kept (never
+// counted as a stop either way). Mor, 2026-10-05.
+export const CANCEL_KEEP_MINUTES = 2;
+
 // Something else
 export const ALTERNATIVES = 3;
 export const VARIETY_WITHIN = 15; // points; prefer another area if it scores this close

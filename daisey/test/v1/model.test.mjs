@@ -299,3 +299,8 @@ test("migrate: a size the user set survives (any but the old flat 30)", () => {
 });
 
 function pick(g){ return { type: g.type, where: g.where, openHours: g.openHours, size: g.size, energy: g.energy }; }
+
+test("cancel after real work: minutes kept, no stop counted", () => {
+  const t = { spentMinutes: 10, stopsUnfinished: 1 };
+  assert.deepEqual(M.keptTime(t, 7.4, { now: 5 }), { spentMinutes: 17, touchedAt: 5, workedAt: 5 });
+});

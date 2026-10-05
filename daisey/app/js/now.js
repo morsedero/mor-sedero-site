@@ -15,7 +15,7 @@ import { energyNow, placeNow, workBase } from "./context.js";
 import { shouldOffer, sweepList, pickWeekDay } from "./triage.js";
 import { focusView, handoffView, elapsedMinutes, batchFocusView, batchName, sinceMark, paused, resumed } from "./focus.js";
 import { watchCalendar, deleteEvent } from "./calendar.js";
-import { LATER_MINUTES, DRAIN } from "./weights.js";
+import { LATER_MINUTES, DRAIN, CANCEL_KEEP_MINUTES } from "./weights.js";
 import { rank, freeWindow, whySaid, timeBucket, matchProject } from "./engine.js";
 import { localDate, skipSnapshot, shrunk, shrinkPatch, notYet, LABELS } from "./model.js";
 import { dayHours, isNight, nextMorning, dayEndAt, bookings, sameTitle, minText } from "./day.js";
@@ -221,12 +221,24 @@ export function mountNow(root, uid, { onCard, onSweep, onProject } = {}){
   }
 
   // Pause (Mor, 2026-10-05): the clock stops and the main screen comes back,
-  // with the paused task held on the card until Resume or Cancel. Cancel: the
-  // run never happened — nothing booked, not counted as a stop. A batch keeps
+  // with the paused task held on the card until Resume or Cancel. Cancel ends
+  // the run without counting a stop: under CANCEL_KEEP_MINUTES it was a
+  // mis-tap and nothing is saved, past it the minutes are kept. A batch keeps
   // the ones already ticked.
   const pause = () => { const doc = paused(run); run = doc; state.asking = false; render(); saveRun(uid, doc).catch(fail); };
   const resume = () => { const doc = resumed(run); run = doc; render(); saveRun(uid, doc).catch(fail); };
-  const cancel = () => { run = null; state.asking = false; render(); cancelRun(uid).catch(fail); };
+  const cancel = () => {
+    const prev = run;
+    run = null; state.asking = false; render();
+    if (prev.batch) { // the minutes since the last tick go to the ones left, as a batch ending does
+      const left = (tasks || []).filter((t) => prev.batch.includes(t.id) && !(prev.done || []).includes(t.id));
+      const m = sinceMark(prev);
+      (m >= CANCEL_KEEP_MINUTES && left.length ? endBatch(uid, left, m) : cancelRun(uid)).catch(fail);
+      return;
+    }
+    const m = elapsedMinutes(prev);
+    cancelRun(uid, tasks?.find((t) => t.id === prev.taskId) || null, m >= CANCEL_KEEP_MINUTES ? m : 0).catch(fail);
+  };
 
   // Pause mode: the card is the paused task, and nothing else is offered.
   function pausedCard(){
@@ -240,7 +252,7 @@ export function mountNow(root, uid, { onCard, onSweep, onProject } = {}){
         ariaLabel: `Resume ${title}`, onclick: resume }),
       h("div", { className: "now-actions" },
         h("button", { className: "btn quiet", type: "button", textContent: "Cancel",
-          ariaLabel: `Cancel ${title}: no time is saved`, onclick: cancel })));
+          ariaLabel: `Cancel ${title}`, onclick: cancel })));
   }
 
   function renderFocus(){

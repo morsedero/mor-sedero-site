@@ -178,7 +178,7 @@ const FAKES = {
   }
   if (tasksTab) { await page.click("#tabTasks"); await page.waitForTimeout(150); }
   if (args.includes("--text")) console.log(await page.innerText("body"));
-  if (args.includes("--json-dump")) console.log(JSON.stringify(await page.evaluate(() => window.__store.tasks.map(({ title, area, type, where, openHours, size, stakes, energy, due, dateKind, guessed }) => ({ title, area, type, where, openHours, size, stakes, energy, due, dateKind, guessed })))));
+  if (args.includes("--json-dump")) console.log(JSON.stringify(await page.evaluate(() => window.__store.tasks.map(({ title, area, type, where, openHours, size, stakes, energy, due, dateKind, guessed, spentMinutes, stopsUnfinished }) => ({ title, area, type, where, openHours, size, stakes, energy, due, dateKind, guessed, spentMinutes, stopsUnfinished })))));
   if (args.includes("--tasks-dump")) console.log(await page.evaluate(() => window.__store.tasks.map((t) => t.title + ": " + t.status + (t.skipCount ? " skips " + t.skipCount : "") + (t.source ? " [" + t.source.app + ":" + t.source.cardId + "]" : "")).join(" | ")));
   fs.mkdirSync(outDir, { recursive: true });
   const file = path.join(outDir, `${name}${tasksTab ? "-tasks" : ""}${cal ? "-cal" + cal.replace(/\W/g, "") : ""}${running ? "-run" + running.replace(/\W/g, "") : ""}${clicks.length ? "-" + clicks.join("").replace(/\W/g, "").slice(0, 24) : ""}${wide ? "-wide" : ""}${args.includes("--dark") ? "-dark" : ""}.png`);

@@ -1,6 +1,6 @@
 // Stand-in for app/js/store.js in the preview: same exports, tasks held in
 // memory instead of Firestore. Seeded from window.__FAKE (set by preview.js).
-import { createTask, editTask, completeTask, startedTask, workedTask, skipTask, skipReason } from "./model.js";
+import { createTask, editTask, completeTask, startedTask, workedTask, keptTime, skipTask, skipReason } from "./model.js";
 
 const seed = window.__FAKE || {};
 let n = 0;
@@ -27,7 +27,7 @@ export const startBatch = (uid, ts) => { const now = Date.now(); docs.now = { ta
 export const tickBatch = (uid, run, task, m) => { docs.now = { ...run, done: [...(run.done || []), task.id], mark: Date.now() }; patchTask(uid, task.id, workedTask(task, m, { finished: true })); return ok("now"); };
 export const endBatch = (uid, left, m) => { docs.now = null; left.forEach((t) => patchTask(uid, t.id, { spentMinutes: (t.spentMinutes || 0) + Math.round(m / left.length) })); return ok("now"); };
 export const saveRun = (uid, run) => { docs.now = run; return ok("now"); };
-export const cancelRun = () => { docs.now = null; return ok("now"); };
+export const cancelRun = (uid, task, m = 0) => { docs.now = null; if (task && m > 0) patchTask(uid, task.id, keptTime(task, m)); return ok("now"); };
 export const extendRun = (uid, run, m) => { docs.now = { ...run, extra: (run.extra || 0) + m }; return ok("now"); };
 export const endRun = (uid, task, minutes, o = {}) => { docs.now = null; if (task) patchTask(uid, task.id, workedTask(task, minutes, o)); return ok("now"); };
 export const addTask = (uid, input) => { tasks.push({ id: "t" + ++n, ...createTask(input, { history: tasks }) }); return ok("tasks"); };
