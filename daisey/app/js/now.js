@@ -13,7 +13,7 @@
 import { watchTasks, watchRun, watchSkips, saveSkips, startRun, extendRun, endRun, startBatch, tickBatch, endBatch, skipNow, blockTask, restoreTask, watchSettings, saveSettings, watchMoment, saveMoment, watchLearn, bumpLearn, addTask, saveRun, cancelRun } from "./store.js";
 import { energyNow, placeNow, workBase } from "./context.js";
 import { shouldOffer, sweepList, pickWeekDay } from "./triage.js";
-import { focusView, handoffView, celebrate, elapsedMinutes, targetMinutes, batchFocusView, batchName, sinceMark, paused, resumed } from "./focus.js";
+import { focusView, handoffView, elapsedMinutes, targetMinutes, batchFocusView, batchName, sinceMark, paused, resumed } from "./focus.js";
 import { watchCalendar, deleteEvent, logDone } from "./calendar.js";
 import { LATER_MINUTES, DRAIN, CANCEL_KEEP_MINUTES } from "./weights.js";
 import { rank, freeWindow, whySaid, timeBucket, matchProject } from "./engine.js";
@@ -21,9 +21,10 @@ import { localDate, skipSnapshot, shrunk, shrinkPatch, notYet, LABELS } from "./
 import { dayHours, isNight, nextMorning, dayEndAt, bookings, sameTitle, minText } from "./day.js";
 import { nextOffer, draftFrom } from "./caltask.js";
 import { h, icon, bdi, pieces, sizeText, dur, say } from "./ui.js";
+import { greeting, freeDur, areaClass, areaName, projectShown, doneToday, dirOf, stemDaisy, moonDaisy } from "./look.js";
 
-// Nothing sits above the card but the warnings below: the date and time are
-// in the top bar (main.js) and the day is in the Schedule panel.
+// Above the card: the greeting, the one free-time line, the place and energy
+// chips, and any warnings. The day itself is in the Today panel.
 const LATER_MS = LATER_MINUTES * 60000;
 const UNDO_MS = 5000;
 const SLIDE_MS = 140; // matches the card-out animation in app.css
@@ -37,8 +38,9 @@ const CAL_NOTE = {
 // onCard(id | null) fires whenever the task on the card changes, so the task
 // list can set it aside while it's "physically" on the card.
 // onSweep() opens the old-dates sweep (sweep.js). onProject(name) shows that
-// project's tab in Tasks.
-export function mountNow(root, uid, { onCard, onSweep, onProject } = {}){
+// project's tab in Tasks. name: the first name for the greeting. onDone(n):
+// how many tasks are done today, for the header's daisy.
+export function mountNow(root, uid, { onCard, onSweep, onProject, name = "", onDone } = {}){
   let tasks = null; // null until the first snapshot
   let settings = {}; // state/settings: when the sweep was last offered
   let momentDoc = {}; // state/moment: energy and place corrections
@@ -56,7 +58,8 @@ export function mountNow(root, uid, { onCard, onSweep, onProject } = {}){
   let nightFree = false;
   // The Someday pick (DAISEY_SPEC "Someday comes back"). open: Switch asked
   // for it; picked: ids moved to this week this round; all: show every one.
-  const sd = { open: false, picked: [], all: false };
+  // sel: the empty state's picks, not yet brought back.
+  const sd = { open: false, picked: [], all: false, sel: [] };
   let calAsk = null; // an event just made into a task: keep it or delete it?
   let toast = null; // { text, task, before } for 5 s after Later or Pending
   let slideIn = false; // one slide per step-aside, not one per snapshot
@@ -82,8 +85,11 @@ export function mountNow(root, uid, { onCard, onSweep, onProject } = {}){
       skipDoc = { date: localDate(), items };
       saveSkips(uid, skipDoc).catch(fail);
     },
-    clear(){
-      skipDoc = { date: localDate(), items: {} };
+    // Several at once, one write: "Show the 2 you put off".
+    drop(ids){
+      const items = { ...skipItems() };
+      for (const id of ids) delete items[id];
+      skipDoc = { date: localDate(), items };
       saveSkips(uid, skipDoc).catch(fail);
     },
     get size(){ return hidden().length; },
@@ -97,18 +103,41 @@ export function mountNow(root, uid, { onCard, onSweep, onProject } = {}){
   // Names in the why line (projects, people, events) are their own <bdi>.
   function taskCard(s, main, ...extra){
     const why = main ? whySaid(s) : sentence(s.whyParts);
-    return h("div", { className: "now-card" + (main ? " main" : "") },
-      main && contextLine(),
-      h("div", { className: "now-meta" }, ...(main && s.task.project !== "Inbox"
-        // On the card the project name leads to its tab in Tasks.
-        ? [h("button", { type: "button", className: "now-proj", title: `Show ${s.task.project} in Tasks`,
-            onclick: () => onProject?.(s.task.project) }, bdi(s.task.project)), document.createTextNode(" · "), bdi(sizeText(s.task.size))]
-        : pieces(s.task.project, sizeText(s.task.size)))),
-      h("div", { className: "now-title", dir: "auto", textContent: s.task.title }),
-      s.task.nextStep && h("p", { className: "now-next" }, "Next: ", bdi(s.task.nextStep)),
+    const t = s.task;
+    return h("div", { className: "now-card" + (main ? " main hero" : "") + areaClass(t) },
+      main ? heroTop(t, sizeText(t.size))
+        : h("div", { className: "now-meta" }, ...pieces(t.project, sizeText(t.size))),
+      h("div", { className: "now-title", dir: "auto", textContent: t.title }),
+      t.nextStep && h("p", { className: "now-next" }, "Next: ", bdi(t.nextStep)),
       why && h("p", { className: "now-why" }, ...say(why)),
       ...extra);
   }
+
+  // The hero's top row: area dot, "Area · project" in the area's colour, and
+  // on the far side the size (or whatever the card says there). On the card
+  // the project name leads to its tab in Tasks.
+  function heroTop(t, side){
+    const area = areaName(t);
+    const proj = projectShown(t) && h("button", { type: "button", className: "now-proj",
+      title: `Show ${t.project} in Tasks`, onclick: () => onProject?.(t.project) }, bdi(t.project));
+    return h("div", { className: "hero-top" },
+      h("span", { className: "hero-area" }, h("span", { className: "dot", ariaHidden: "true" }),
+        h("span", {}, area, area && proj ? " · " : "", proj || (area ? "" : "Inbox"))),
+      side && h("span", { className: "hero-side", textContent: side }));
+  }
+
+  // The card with up to two faint cards peeking out under it, one per real
+  // alternative, so the deck never promises tasks that aren't there. It
+  // breathes while nothing is asked of it (CSS; off under reduced motion).
+  const deck = (card, n, still) => h("div", { className: `deck d${Math.min(2, n)}${still ? " still" : ""}` },
+    n > 1 && h("div", { className: "deck-ghost g2", ariaHidden: "true" }),
+    n > 0 && h("div", { className: "deck-ghost g1", ariaHidden: "true" }),
+    card);
+  const asking = () => state.laterAsk || state.pendAsk || state.showAlts;
+
+  // The one loud button: amber, with a play icon.
+  const startButton = (text, aria, onclick) => h("button", { className: "btn primary start", type: "button", ariaLabel: aria, onclick },
+    icon("play"), h("span", { textContent: text }));
 
   // The engine's pieces as a plain sentence: capital first, full stop last.
   function sentence(parts){
@@ -130,31 +159,47 @@ export function mountNow(root, uid, { onCard, onSweep, onProject } = {}){
   const PLACES = [["home", "Home"], ["out", "Out"], ["anywhere", "Anywhere"]];
   const ENERGIES = [["low", "Low"], ["medium", "Medium"], ["high", "High"]];
 
-  // The card's context line: "45 min free · Home · Medium energy", and the
-  // block it's in if any. Place and energy are chips again (Mor, 2026-10-05):
-  // dashed while they're Daisey's guess; tapping one shows its three choices,
-  // and a choice is a correction that holds for 3 hours on every device.
-  function contextLine(){
-    const fw = calendarNow(), block = blockOf(fw), f = feel();
+  // Place and energy, as filled chips with an icon (Mor, 2026-10-05). A guess
+  // reads quieter than a correction; tapping one shows its three choices, and
+  // a choice is a correction that holds for 3 hours on every device.
+  const PLACE_ICON = { home: "home", out: "where", anywhere: "globe" };
+  function chipsRow(){
+    const f = feel();
     const chip = (kind, list, cur) => {
       const label = list.find(([v]) => v === cur.value)?.[1] || cur.value;
       return h("button", { type: "button", className: "ctx-chip" + (cur.guessed ? " guess" : ""),
-        textContent: kind === "energy" ? `${label} energy` : label, ariaExpanded: String(ctxOpen === kind),
+        ariaExpanded: String(ctxOpen === kind),
         title: cur.guessed ? "Daisey's guess. Tap to correct." : "Tap to change.",
-        onclick: () => { ctxOpen = ctxOpen === kind ? null : kind; render(); } });
+        onclick: () => { ctxOpen = ctxOpen === kind ? null : kind; render(); } },
+      icon(kind === "energy" ? "energy" : PLACE_ICON[cur.value] || "where"),
+      h("span", { textContent: kind === "energy" ? `${label} energy` : label }));
     };
     const opts = ctxOpen && (ctxOpen === "place" ? PLACES : ENERGIES);
     return h("div", { className: "ctx" },
-      h("div", { className: "ctx-line" },
-        fw && !fw.current && h("span", { textContent: `${dur(Math.min(fw.window, 180))}${fw.window >= 180 ? "+" : ""} free` }),
-        chip("place", PLACES, f.place), chip("energy", ENERGIES, f.energy),
-        block && (block.taskId
-          ? h("span", { className: "ctx-block", textContent: `Booked until ${clock(block.end)}` })
-          : h("span", { className: "ctx-block" }, "Working on ", bdi(block.project), ` until ${clock(block.end)}`))),
+      h("div", { className: "ctx-line" }, chip("place", PLACES, f.place), chip("energy", ENERGIES, f.energy)),
       opts && h("div", { className: "ctx-opts", role: "radiogroup", ariaLabel: ctxOpen === "place" ? "Where are you?" : "Energy" },
         ...opts.map(([v, text]) => h("button", { type: "button", className: "chip", role: "radio", textContent: text,
           ariaChecked: String(f[ctxOpen].value === v), onclick: () => correct(ctxOpen, v) }))));
   }
+
+  // The ONE free-time line (Mor, 2026-10-05: every other free-time number
+  // went): "4 h 44 free until מנטור at 17:00", or until the day's end. In a
+  // project block or a booked slot it says that instead; in a meeting the
+  // meeting card already says it all.
+  function freeLine(fw){
+    const block = blockOf(fw);
+    if (!fw || (fw.current && !block)) return null;
+    const line = (...kids) => h("p", { className: "freeline" }, ...kids);
+    if (block) return block.taskId ? line(`Booked until ${clock(block.end)}`) : line("Working on ", bdi(block.project), ` until ${clock(block.end)}`);
+    if (fw.window < 1) return null;
+    if (fw.next) return line(`${freeDur(fw.window)} free until `, bdi(fw.next.title), ` at ${clock(fw.next.start)}`);
+    if (nightFree) return line(`${freeDur(fw.window)} free`);
+    return line(`${freeDur(fw.window)} free until ${clock(dayEndAt(Date.now(), dayHours(settings)))}`);
+  }
+
+  // The top of the day screen: greeting, the free line, the chips.
+  const topOf = (fw) => h("div", { className: "now-top" },
+    h("h2", { className: "greeting", textContent: greeting(name) }), freeLine(fw), chipsRow());
 
   // A chip choice: the correction, and for energy one more point in the
   // pattern for this time of day (context.js energyNow).
@@ -180,7 +225,7 @@ export function mountNow(root, uid, { onCard, onSweep, onProject } = {}){
   function meetingCard(ev){
     const end = ev.end;
     const left = Math.max(0, Math.round((end - Date.now()) / 60000));
-    return h("div", { className: "now-card main meeting" },
+    return h("div", { className: "now-card main hero meeting" },
       h("div", { className: "now-meta", textContent: `Now · until ${clock(end)}` }),
       h("div", { className: "now-title", dir: "auto", textContent: ev.title }),
       h("p", { className: "now-why", textContent: left
@@ -192,7 +237,7 @@ export function mountNow(root, uid, { onCard, onSweep, onProject } = {}){
   }
 
   // Focus mode and the handoff own the whole screen (body.focus hides the
-  // tabs, the greeting and the + button).
+  // tabs, the greeting and the Tell bar).
   // A batch: a checklist in focus mode. The last tick ends it and hands off
   // like Done; Stop leaves the unticked ones open with their share of the time.
   // A finished task goes into Google Calendar's "Daisey log" as a lookback,
@@ -215,7 +260,7 @@ export function mountNow(root, uid, { onCard, onSweep, onProject } = {}){
         const done = [...(run.done || []), t.id];
         const last = list.every((x) => done.includes(x.id));
         if (last) {
-          handoff = { title: batchName(type, list.length), skip: prev.taskId };
+          handoff = { title: batchName(type, list.length), skip: prev.taskId, minutes: elapsedMinutes(prev), ids: [...prev.batch] };
           tickBatch(uid, prev, t, minutes).then(() => endBatch(uid, [], 0)).catch(fail);
           logFinished(`${batchName(type, list.length)}: ${list.map((x) => x.title).join(", ")}`, elapsedMinutes(prev), prev.taskId,
             list.reduce((s, x) => s + (x.size || 0), 0));
@@ -257,11 +302,11 @@ export function mountNow(root, uid, { onCard, onSweep, onProject } = {}){
   function pausedCard(alts){
     const task = (tasks || []).find((t) => t.id === run.taskId);
     const title = run.batch ? batchName(task?.type, run.batch.length) : task?.title || "That task is gone";
-    return h("div", { className: "now-card main paused" },
-      h("div", { className: "now-meta", textContent: `Paused · ${dur(Math.round(elapsedMinutes(run)))} so far` }),
+    return h("div", { className: "now-card main hero paused" + areaClass(task) },
+      task && !run.batch ? heroTop(task, `Paused · ${dur(Math.round(elapsedMinutes(run)))}`)
+        : h("div", { className: "now-meta", textContent: `Paused · ${dur(Math.round(elapsedMinutes(run)))} so far` }),
       h("div", { className: "now-title", dir: "auto", textContent: title }),
-      h("button", { className: "btn primary start", type: "button", textContent: "Resume",
-        ariaLabel: `Resume ${title}`, onclick: resume }),
+      startButton("Resume", `Resume ${title}`, resume),
       ...(run.batch || !task
         ? [h("div", { className: "now-actions" }, h("button", { className: "btn quiet", type: "button", textContent: run.batch ? "End batch" : "End",
           ariaLabel: run.batch ? "End the batch; the ones not ticked stay open" : "End this session", onclick: () => endSession() }))]
@@ -277,13 +322,22 @@ export function mountNow(root, uid, { onCard, onSweep, onProject } = {}){
       onDone: () => {
         if (!run || run.pausedAt) return; // the hold finished after the run moved on
         const minutes = elapsedMinutes(run);
-        handoff = { title: task ? task.title : "", skip: run.taskId };
+        handoff = { title: task ? task.title : "", skip: run.taskId, minutes, ids: [run.taskId] };
         endRun(uid, task, minutes, { finished: true }).catch(fail);
         if (task) logFinished(task.title, minutes, task.id, targetMinutes(run, task));
         run = null; render();
       },
       onExtend: (m) => { const prev = run; run = { ...run, extra: (run.extra || 0) + m }; render(); extendRun(uid, prev, m).catch(fail); },
       onPause: pause,
+      // Pending from focus mode: pause, and the card asks what it's waiting on.
+      onPending: () => { reset(); state.pendAsk = true; pause(); },
+      // A note while working: added to the task's notes as its own line.
+      onNote: (text) => {
+        if (!task) return;
+        const notes = [task.notes, text].filter(Boolean).join("\n");
+        task.notes = notes; // until the snapshot lands
+        restoreTask(uid, task.id, { notes, touchedAt: Date.now() }).catch(fail);
+      },
     });
   }
 
@@ -306,14 +360,12 @@ export function mountNow(root, uid, { onCard, onSweep, onProject } = {}){
     const list = r.ranked.filter((s) => b.ids.includes(s.task.id)).map((s) => s.task);
     const name = batchName(b.type, list.length);
     const office = r.moment.officeOpen && list.some((t) => t.openHours === "office");
-    return h("div", { className: "now-card main batch" },
-      contextLine(),
-      h("div", { className: "now-meta", textContent: `Batch · ~${dur(b.minutes)}` }),
+    return h("div", { className: "now-card main hero batch" + areaClass(list[0]) },
+      heroTop(list[0], `Batch · ~${dur(b.minutes)}`),
       h("div", { className: "now-title", textContent: name }),
       h("p", { className: "now-why", textContent: `${office ? "Offices are open: " : ""}${name}, ~${dur(b.minutes)}. Together?` }),
       h("ul", { className: "batch-preview" }, ...list.map((t) => h("li", {}, bdi(t.title), h("span", { className: "muted", textContent: ` · ${dur(t.size)}` })))),
-      h("button", { className: "btn primary start", type: "button", textContent: "Start all",
-        ariaLabel: `Start all ${list.length} as one checklist`, onclick: () => beginBatch(list) }),
+      startButton("Start all", `Start all ${list.length} as one checklist`, () => beginBatch(list)),
       h("div", { className: "now-actions" },
         h("button", { className: "btn quiet", type: "button", textContent: "Just one",
           ariaLabel: `Just one: show only ${list[0].title}`, onclick: () => { state.single = true; render(); } })));
@@ -482,7 +534,10 @@ export function mountNow(root, uid, { onCard, onSweep, onProject } = {}){
   // doesn't push work. It names the first pick for the morning — the engine
   // run for the start of the day, with its window, energy guess and booked
   // slots — and has no Start. "I'm free now" plans as if it were day.
-  function nightCard(hrs){
+  // The whole screen goes dark for it (.night on <html>), whatever the theme:
+  // a dimmed daisy under a moon, a few stars, tomorrow's first calendar block
+  // and then that first pick.
+  function nightView(hrs){
     const now = Date.now(), morning = nextMorning(now, hrs);
     const evs = cal.status === "ok" ? cal.events.filter((e) => e.busy !== false && !e.allDay) : [];
     const fw = cal.status === "ok" ? freeWindow(evs, morning, dayEndAt(morning, hrs)) : null;
@@ -496,13 +551,38 @@ export function mountNow(root, uid, { onCard, onSweep, onProject } = {}){
       booked: Object.fromEntries([...booked()].map(([id, b]) => [id, b.start])),
     });
     const p = r.pick;
-    return h("div", { className: "now-card main night" },
-      h("div", { className: "now-meta", textContent: `Night · your day starts at ${minText(hrs.start)}` }),
-      p ? h("p", { className: "now-night" }, "Late. Tomorrow first: ", h("strong", {}, bdi(p.task.title)),
-        ...(p.whyParts?.length ? [" — ", ...say(p.whyParts)] : []), ".")
-        : h("p", { className: "now-night", textContent: "Late. Nothing lined up for tomorrow yet." }),
-      h("button", { className: "btn quiet", type: "button", textContent: "I'm free now",
-        ariaLabel: "I'm free now: pick a task anyway", onclick: () => { nightFree = true; render(); } }));
+    // Before the day starts it's still "tonight" until 04:00; after that the
+    // morning's plan is today's, not tomorrow's.
+    const early = new Date(now).getHours() >= 4 && localDate(morning) === localDate(now);
+    const day = localDate(morning);
+    const first = evs.filter((e) => localDate(Date.parse(e.start)) === day)
+      .sort((a, b) => Date.parse(a.start) - Date.parse(b.start))[0];
+    const meta = p && [areaName(p.task) || projectShown(p.task), dur(p.task.size),
+      MARK[p.task.stakes] && `${MARK[p.task.stakes]}`].filter(Boolean).join(" · ");
+    const who = name ? `, ${name}` : "";
+    return [
+      h("div", { className: "stars", ariaHidden: "true" }, ...[0, 1, 2, 3].map(() => h("span"))),
+      h("div", { className: "night-hero" }, moonDaisy(),
+        h("h2", { className: "night-h", textContent: early ? `Early${who}.` : `Late${who}.` }),
+        h("p", { className: "night-p", textContent: early ? "Nothing needs you yet. Here's your day." : "Nothing needs you tonight. Here's tomorrow." })),
+      h("section", { className: "now-card main night", ariaLabel: early ? "First today" : "Tomorrow first" },
+        h("div", { className: "night-label", textContent: early ? "First today" : "Tomorrow first" }),
+        first && h("div", { className: "night-row" },
+          h("span", { className: "night-time", textContent: clock(Date.parse(first.start)) }),
+          h("div", { className: "night-ev", style: first.color ? `--ev:${first.color}` : "" },
+            h("span", { className: "night-ev-time", textContent: `${clock(Date.parse(first.start))}–${clock(Date.parse(first.end))}` }),
+            h("span", { className: "night-ev-title" }, bdi(first.title)))),
+        p ? h("div", { className: "night-row" },
+          h("span", { className: "night-time", textContent: first ? "After" : minText(hrs.start) }),
+          h("div", { className: "night-task" + areaClass(p.task) },
+            h("div", { className: "night-task-title", dir: "auto", textContent: p.task.title }),
+            meta && h("div", { className: "night-task-meta", textContent: meta })))
+          : h("p", { className: "night-none", textContent: "Nothing lined up yet." })),
+      h("div", { className: "night-foot" },
+        h("button", { className: "pill-btn", type: "button", textContent: "I'm free now, show me something",
+          ariaLabel: "I'm free now: pick a task anyway", onclick: () => { nightFree = true; render(); } }),
+        h("span", { className: "night-hours", textContent: `Day hours ${minText(hrs.start)}–${minText(hrs.end)}` })),
+    ];
   }
 
   // A booked task, when nothing else fits (DAISEY_SPEC "Booked tasks"): it
@@ -512,14 +592,12 @@ export function mountNow(root, uid, { onCard, onSweep, onProject } = {}){
   function bookedCard(b, r){
     const today = localDate(b.start) === localDate();
     const when = today ? clock(b.start) : `${new Date(b.start).toLocaleDateString([], { weekday: "short" })} ${clock(b.start)}`;
-    return h("div", { className: "now-card main booked" },
-      contextLine(),
-      h("div", { className: "now-meta", textContent: `Booked for ${when}` }),
+    return h("div", { className: "now-card main hero booked" + areaClass(b.task) },
+      heroTop(b.task, `Booked for ${when}`),
       h("div", { className: "now-title", dir: "auto", textContent: b.task.title }),
       h("p", { className: "now-why", textContent: "Nothing else fits right now, so this is next." }),
-      h("button", { className: "btn primary start", type: "button", textContent: "Start now",
-        ariaLabel: `Start ${b.task.title} now, before its slot`, onclick: () => begin(b.task) }),
-      ...cardActions(b.task, []), outLine(r), putOffButton());
+      startButton("Start now", `Start ${b.task.title} now, before its slot`, () => begin(b.task)),
+      ...cardActions(b.task, []), outLine(r), putOffButton(r));
   }
 
   // Why the open tasks can't come up now, counted: "Out right now: 3 put
@@ -536,8 +614,15 @@ export function mountNow(root, uid, { onCard, onSweep, onProject } = {}){
     const parts = Object.entries(n).map(([k, c]) => `${c} ${OUT_SAID[k]}`);
     return parts.length ? h("p", { className: "muted now-out", textContent: `Out right now: ${parts.join(" · ")}.` }) : null;
   }
-  const putOffButton = () => skips.size > 0 && h("button", { className: "btn quiet", type: "button", textContent: `Show the ${skips.size} you put off`,
-    ariaLabel: `Show the ${skips.size} tasks you put off today`, onclick: () => { skips.clear(); setToast(null); render(); } });
+  // Counts only what the engine is really holding back as put off. Pending,
+  // Tomorrow, This week and Someday also hide a task for a while (stepAside),
+  // but its status or date keeps it out anyway — counting those made the
+  // button promise tasks it couldn't bring back, and tapping it showed nothing.
+  function putOffButton(r){
+    const ids = r.out.filter((o) => o.reason === "skipped").map((o) => o.task.id);
+    return ids.length > 0 && h("button", { className: "btn quiet", type: "button", textContent: `Show the ${ids.length} you put off`,
+      ariaLabel: `Show the ${ids.length} tasks you put off today`, onclick: () => { skips.drop(ids); setToast(null); render(); } });
+  }
 
   // Someday comes back (DAISEY_SPEC): Sunday morning, or whenever fewer than
   // 3 tasks are active, a short pick — stakes first, a quiet mark on the ones
@@ -554,9 +639,62 @@ export function mountNow(root, uid, { onCard, onSweep, onProject } = {}){
     const active = (tasks || []).filter((t) => t.status === "ready" && !notYet(t)).length;
     return (d.getDay() === 0 && d.getHours() < 12) || active < 3;
   }
+  const somedaySorted = () => somedayTasks().sort((a, b) => (STAKES_FIRST[a.stakes] ?? 3) - (STAKES_FIRST[b.stakes] ?? 3)
+    || String(a.due || "~").localeCompare(String(b.due || "~")) || (a.createdAt || 0) - (b.createdAt || 0));
+
+  // The empty state when nothing is active — every open task is waiting,
+  // parked in Someday or dated later (Mor, 2026-10-05: "Nothing fits the next
+  // 3 h. Take the break." was wrong there; it isn't about time). Up to 3 from
+  // Someday, stakes first; tap to select, then bring them back in one go.
+  // "Just rest" closes it for the day, the same as the Someday ask's Not now.
+  const QUIET = new Set(["waiting", "someday", "notyet", "stale"]);
+  function restState(){
+    const list = somedaySorted().slice(0, 3);
+    const rested = settings.somedayAsked === localDate();
+    const offer = list.length > 0 && !rested;
+    sd.sel = sd.sel.filter((id) => list.some((t) => t.id === id));
+    const card = h("div", { className: "now-card main hero empty rest" },
+      stemDaisy(),
+      h("h2", { className: "rest-h", textContent: "Nothing active right now" }),
+      h("p", { className: "rest-p", textContent: offer ? "You have time. Want to bring 1–2 back from Someday?"
+        : rested ? "Rest it is. Everything else is waiting or set for later."
+        : "You have time. Everything else is waiting or set for later." }));
+    if (!offer) return [card];
+    const n = sd.sel.length;
+    const bring = () => {
+      const now = Date.now();
+      for (const id of sd.sel) restoreTask(uid, id, { status: "ready", notBefore: null, touchedAt: now }).catch(fail);
+      sd.sel = [];
+      render();
+    };
+    const rest = () => {
+      sd.sel = [];
+      settings = { ...settings, somedayAsked: localDate() };
+      render();
+      saveSettings(uid, { somedayAsked: localDate() }).catch(fail);
+    };
+    return [card,
+      h("h3", { className: "sd-head", textContent: "From Someday" }),
+      h("ul", { className: "sd-pick" }, ...list.map((t) => {
+        const on = sd.sel.includes(t.id);
+        const meta = [areaName(t) || projectShown(t), dur(t.size)].filter(Boolean).join(" · ");
+        return h("li", {}, h("button", { type: "button", className: "sd-row" + (on ? " on" : ""), dir: dirOf(t.title),
+          ariaPressed: String(on), ariaLabel: `Bring back ${t.title}${MARK[t.stakes] ? ` (${MARK[t.stakes]})` : ""}`,
+          onclick: () => { sd.sel = on ? sd.sel.filter((id) => id !== t.id) : [...sd.sel, t.id]; render(); } },
+        h("span", { className: "sd-text" },
+          h("span", { className: "sd-title", textContent: t.title }),
+          h("span", { className: "sd-meta", dir: "ltr" }, MARK[t.stakes] && h("span", { className: "tag", textContent: MARK[t.stakes] }),
+            h("span", { textContent: meta }))),
+        h("span", { className: "sd-tick", ariaHidden: "true" }, icon(on ? "check" : "plus"))));
+      })),
+      h("div", { className: "rest-actions" },
+        h("button", { className: "btn primary big", type: "button", disabled: !n, onclick: bring,
+          textContent: n ? `Bring ${n} back to this week` : "Pick 1–2 to bring back" }),
+        h("button", { className: "btn quiet", type: "button", textContent: "Just rest", onclick: rest }))];
+  }
+
   function somedayAsk(){
-    const list = somedayTasks().sort((a, b) => (STAKES_FIRST[a.stakes] ?? 3) - (STAKES_FIRST[b.stakes] ?? 3)
-      || String(a.due || "~").localeCompare(String(b.due || "~")) || (a.createdAt || 0) - (b.createdAt || 0));
+    const list = somedaySorted();
     const shownList = sd.all ? list : list.slice(0, 6);
     const close = () => {
       Object.assign(sd, { open: false, picked: [], all: false });
@@ -624,7 +762,7 @@ export function mountNow(root, uid, { onCard, onSweep, onProject } = {}){
     const card = { task };
     const someN = somedayTasks().length;
     return [
-      h("div", { className: "now-actions" },
+      h("div", { className: "now-actions trio" },
         action("later", "Later", `not now — choose when to see ${card.task.title} again`,
           { ariaExpanded: String(state.laterAsk), onclick: () => { state.laterAsk = !state.laterAsk; state.pendAsk = false; state.showAlts = false; render(); } }),
         // Never a dead end while Someday holds tasks (DAISEY_SPEC "Someday comes back").
@@ -657,22 +795,37 @@ export function mountNow(root, uid, { onCard, onSweep, onProject } = {}){
     ];
   }
 
+  // Done today, for the header's daisy: what the snapshot says, plus what was
+  // just finished and hasn't come back from Firestore yet.
+  function doneCount(){
+    const ids = new Set(doneToday(tasks || []).map((t) => t.id));
+    for (const id of handoff?.ids || []) ids.add(id);
+    return ids.size;
+  }
+  let reported = null;
+
   function render(){
     const live = !!run && !run.pausedAt; // a paused run is back on the main screen
     document.body.classList.toggle("focus", live || !!handoff);
+    const hrs = dayHours(settings);
+    if (!isNight(Date.now(), hrs)) nightFree = false;
+    const night = !live && !handoff && tasks != null && !run?.pausedAt && isNight(Date.now(), hrs) && !nightFree;
+    document.documentElement.classList.toggle("night", night);
+    const n = doneCount();
+    if (n !== reported) { reported = n; onDone?.(n); }
     if (live) { fill(renderFocus()); return; }
     if (handoff) {
       // The task just worked on isn't offered straight back.
       const m = momentInput();
       const r = rank(tasks || [], { ...m, sessionSkips: [...m.sessionSkips, handoff.skip] });
-      const cheer = !handoff.cheered; // confetti once, not on every re-render
+      const cheer = !handoff.cheered; // the petals once, not on every re-render
       handoff.cheered = true;
-      fill(handoffView(handoff.title, r.pick, {
+      fill(handoffView({ title: handoff.title, minutes: handoff.minutes || 0, count: n }, r.pick, {
         cheer,
         onStart: begin,
         onSkip: (task) => { if (task) skips.add(task.id); handoff = null; showing(null); render(); },
       }));
-      if (cheer) celebrate();
+      if (cheer) navigator.vibrate?.(15);
       return;
     }
     const busy = cal.status === "ok" // the event being ignored, before any override
@@ -692,19 +845,18 @@ export function mountNow(root, uid, { onCard, onSweep, onProject } = {}){
         h("button", { className: "linkish", type: "button", textContent: "Not today",
           onclick: () => { settings = { ...settings, sweepAnswered: localDate() }; render(); saveSettings(uid, { sweepAnswered: localDate() }).catch(fail); } })));
 
-    if (tasks == null) { fill(greet, h("p", { className: "muted", textContent: "Loading tasks…" })); return; }
+    const head = night ? [greet] : [topOf(fw), greet];
+    if (tasks == null) { fill(...head, h("p", { className: "muted", textContent: "Loading tasks…" })); return; }
     if (run?.pausedAt) {
       showing(run.taskId);
       const m = momentInput(fw);
       const pr = rank(tasks, { ...m, sessionSkips: [...m.sessionSkips, run.taskId] });
       const alts = [pr.pick, ...pr.alternatives].filter(Boolean).slice(0, 3);
-      fill(greet, pausedCard(alts), ...(run.batch ? [] : altsFor(alts)), toast && toastView());
+      fill(...head, pausedCard(alts), ...(run.batch ? [] : altsFor(alts)), toast && toastView());
       return;
     }
 
-    const hrs = dayHours(settings);
-    if (!isNight(Date.now(), hrs)) nightFree = false;
-    if (isNight(Date.now(), hrs) && !nightFree) { fill(greet, nightCard(hrs), toast && toastView()); return; }
+    if (night) { fill(...head, ...nightView(hrs), toast && toastView()); return; }
 
     const r = rank(tasks, momentInput(fw));
     const planned = blockOf(fw)?.taskId;
@@ -719,34 +871,38 @@ export function mountNow(root, uid, { onCard, onSweep, onProject } = {}){
     // Daisey had simply given up. "I'm free now" still overrides it.
     const block = blockOf(fw);
     if (!card && block) {
-      fill(greet, h("div", { className: "now-card main empty" }, contextLine(),
+      fill(...head, h("div", { className: "now-card main hero empty" },
         h("p", { className: "now-empty" }, "Nothing in ", bdi(block.project), " fits right now."),
         h("button", { className: "btn quiet", type: "button", textContent: "I'm free now",
           ariaLabel: `I'm free now: ignore the ${block.project} block and pick any task`,
           onclick: () => { freeFrom = block.start; render(); } })), tip);
       return;
     }
-    if (!card && fw?.current) { fill(greet, meetingCard(fw.current), tip); return; }
+    if (!card && fw?.current) { fill(...head, meetingCard(fw.current), tip); return; }
     const bk = !card && r.out.filter((o) => o.reason === "booked").map((o) => ({ task: o.task, ...booked().get(o.task.id) }))
       .filter((b) => b.start).sort((a, b) => a.start - b.start)[0];
-    if (bk) { fill(greet, bookedCard(bk, r), ...altsFor([]), tip); return; }
+    if (bk) { fill(...head, bookedCard(bk, r), ...altsFor([]), tip); return; }
+    // Nothing active at all: everything open is waiting, in Someday or dated
+    // later. Its own calm card, with Someday right there (restState).
+    if (!card && r.out.length && r.out.every((o) => QUIET.has(o.reason))) {
+      fill(...head, ...restState(), toast && toastView());
+      return;
+    }
     if (!card) {
-      fill(greet, h("div", { className: "now-card main empty" },
-        r.empty === "nofit" && contextLine(), // nothing fits: maybe you're not where Daisey thinks
+      fill(...head, h("div", { className: "now-card main hero empty" },
         h("p", { className: "now-empty", textContent: r.empty === "none"
           ? "No tasks yet. Add a few and Daisey will pick."
           : `Nothing fits the next ${dur(r.moment.window)}. Take the break.` }),
-        r.empty === "nofit" && outLine(r), putOffButton()), tip);
+        r.empty === "nofit" && outLine(r), putOffButton(r)), tip);
       return;
     }
 
-    if (card === r.pick && r.pick.batch && !state.chosen && !state.single) { fill(greet, batchCard(r, r.pick.batch), tip); return; }
+    if (card === r.pick && r.pick.batch && !state.chosen && !state.single) { fill(...head, batchCard(r, r.pick.batch), tip); return; }
     const alts = r.ranked.length > 1 ? [r.pick, ...r.alternatives].filter((s) => s !== card).slice(0, 3) : [];
     // Start is the one loud thing on the tab; the other two stay quiet under it.
-    fill(greet, taskCard(card, true,
-      h("button", { className: "btn primary start", type: "button", textContent: "Start",
-        ariaLabel: `Start: ${card.task.title}`, onclick: () => begin(card.task) }),
-      ...cardActions(card.task, alts)),
+    fill(...head, deck(taskCard(card, true,
+      startButton("Start", `Start: ${card.task.title}`, () => begin(card.task)),
+      ...cardActions(card.task, alts)), alts.length, asking()),
       ...altsFor(alts), tip);
     // One slide-in per step-aside: later snapshots must not replay it.
     if (slideIn) { slideIn = false; if (motionOK()) root.querySelector(".now-card.main")?.classList.add("in"); }
@@ -771,7 +927,13 @@ export function mountNow(root, uid, { onCard, onSweep, onProject } = {}){
         h("button", { className: "chip quiet", type: "button", textContent: "Drop", onclick: () => answer({ status: "dropped" }) })));
   }
 
-  const fill = (...kids) => { root.replaceChildren(...kids.filter(Boolean)); };
+  // Focus mode hands back the same node every second (focus.js); putting it
+  // back would blur the note field mid-word, so an unchanged screen is left be.
+  const fill = (...kids) => {
+    kids = kids.filter(Boolean);
+    if (kids.length === root.children.length && kids.every((k, i) => root.children[i] === k)) return;
+    root.replaceChildren(...kids);
+  };
   const fail = (e) => console.error("[daisey] now", e);
   const unsubs = [
     watchTasks(uid, (ts) => { tasks = ts; render(); }, fail),
@@ -806,6 +968,6 @@ export function mountNow(root, uid, { onCard, onSweep, onProject } = {}){
       state.showAlts = false;
       render();
     },
-    unmount(){ showing(null); clearTimeout(toastTimer); document.body.classList.remove("focus"); unsubs.forEach((u) => u()); clearInterval(tick); document.removeEventListener("visibilitychange", onVisible); root.replaceChildren(); root.hidden = true; },
+    unmount(){ showing(null); clearTimeout(toastTimer); document.body.classList.remove("focus"); document.documentElement.classList.remove("night"); unsubs.forEach((u) => u()); clearInterval(tick); document.removeEventListener("visibilitychange", onVisible); root.replaceChildren(); root.hidden = true; },
   };
 }

@@ -20,6 +20,7 @@ import { watchTasks, finishTask, restoreTask } from "./store.js";
 import { INBOX, notYet, localDate } from "./model.js";
 import { isOverdue, isRolled, sweepList } from "./triage.js";
 import { h, bdi, flash } from "./ui.js";
+import { dirOf } from "./look.js";
 
 const shortDate = (s) => new Date(`${s}T12:00`).toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" });
 const DRAG = 0.6; // how far the chip row moves per pixel of pointer — under 1 = heavier
@@ -88,7 +89,9 @@ export function mountTasks(root, uid, { onAdd, onOpen, onSweep } = {}){
     const isNow = t.id === onCard;
     const when = whenOf(t);
     const showProj = withProject && t.project !== INBOX;
-    return h("li", { className: "tk-row" + (t.status === "waiting" || notYet(t) ? " waiting" : "") + (isNow ? " is-now" : "") },
+    // The whole row follows its title's direction: a Hebrew task puts its
+    // circle on the right (dirOf, since dir=auto can't see into the <bdi>).
+    return h("li", { className: "tk-row" + (t.status === "waiting" || notYet(t) ? " waiting" : "") + (isNow ? " is-now" : ""), dir: dirOf(t.title) },
       circle(t, false),
       h("button", { type: "button", className: "tk-open", ariaLabel: `Open ${t.title}`, onclick: () => onOpen?.(t) },
         h("div", { className: "tk-title" }, bdi(t.title),
@@ -103,7 +106,7 @@ export function mountTasks(root, uid, { onAdd, onOpen, onSweep } = {}){
           when && h("span", { textContent: when }))));
   }
 
-  const doneRow = (t) => h("li", { className: "tk-row done" }, circle(t, true),
+  const doneRow = (t) => h("li", { className: "tk-row done", dir: dirOf(t.title) }, circle(t, true),
     h("button", { type: "button", className: "tk-open", ariaLabel: `Open ${t.title}`, onclick: () => onOpen?.(t) },
       h("div", { className: "tk-title", dir: "auto", textContent: t.title }),
       t.doneAt && h("div", { className: "muted tk-meta", textContent: `done ${new Date(t.doneAt).toLocaleDateString(undefined, { day: "numeric", month: "short" })}` })));
@@ -142,9 +145,19 @@ export function mountTasks(root, uid, { onAdd, onOpen, onSweep } = {}){
     // grid row, so the list below it stays in the row that can scroll. Empty,
     // it has no height (.tk-filters:empty).
     if (names.length < 2) return h("div", { className: "tk-filters" });
-    const chip = (name, label, count) => h("button", { type: "button", className: "chip", role: "radio",
-      ariaChecked: String(project === name), onclick: () => { project = name; reveal = 1; render(); } },
+    // Each project's dot is its tasks' most common area colour.
+    const areaOf = (name) => {
+      const n = {};
+      for (const t of open) if (t.project === name && t.area) n[t.area] = (n[t.area] || 0) + 1;
+      return Object.entries(n).sort((a, b) => b[1] - a[1])[0]?.[0];
+    };
+    const chip = (name, label, count) => {
+      const area = name != null && areaOf(name);
+      return h("button", { type: "button", className: "chip" + (area ? ` area-${area}` : ""), role: "radio",
+        ariaChecked: String(project === name), onclick: () => { project = name; reveal = 1; render(); } },
+      name != null && h("span", { className: "chip-dot", ariaHidden: "true" }),
       bdi(label), h("span", { className: "chip-n", textContent: String(count) }));
+    };
 
     const row = h("div", { className: "tk-chips", role: "radiogroup", ariaLabel: "Filter by project" },
       chip(null, "All", open.length),

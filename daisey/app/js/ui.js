@@ -69,13 +69,20 @@ const PATHS = {
   size: "M12 7.5V12l3 2M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0",
   stakes: "M12 4 2.5 20h19L12 4ZM12 10v4M12 16.8h.01",
   energy: "M13 3.5 5.5 14H10l-1 6.5L18 10h-4.5l1-6.5Z",
+  home: "M3 11l9-7 9 7M5 10v10h14V10",
+  globe: "M12 3a9 9 0 1 0 0 18 9 9 0 1 0 0-18M3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9s-1.3 6.4-3.8 9c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3",
+  check: "M5 12l5 5 9-10",
+  plus: "M12 5v14M5 12h14",
+  play: "M7 4.5v15l13-7.5z", // filled, not stroked (FILLED)
 };
+const FILLED = new Set(["play"]);
 
 export const icon = (name) => {
   const NS = "http://www.w3.org/2000/svg";
   const svg = document.createElementNS(NS, "svg");
-  for (const [k, v] of Object.entries({ viewBox: "0 0 24 24", "aria-hidden": "true", fill: "none",
-    stroke: "currentColor", "stroke-width": "1.8", "stroke-linecap": "round", "stroke-linejoin": "round" })) svg.setAttribute(k, v);
+  const filled = FILLED.has(name);
+  for (const [k, v] of Object.entries({ viewBox: "0 0 24 24", "aria-hidden": "true", fill: filled ? "currentColor" : "none",
+    stroke: filled ? "none" : "currentColor", "stroke-width": "1.8", "stroke-linecap": "round", "stroke-linejoin": "round" })) svg.setAttribute(k, v);
   const path = document.createElementNS(NS, "path");
   path.setAttribute("d", PATHS[name]);
   svg.append(path);

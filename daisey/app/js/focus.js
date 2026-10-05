@@ -1,6 +1,7 @@
-// Focus mode: the whole screen is the task you're on. Title, a running
-// timer, Done and Pause — nothing else (the tabs, the + button and the
-// greeting are hidden by body.focus).
+// Focus mode: the whole screen is the task you're on, calm and light (Mor,
+// 2026-10-05 redesign): an area-tinted card with the title and a ring timer,
+// a note field, "Hold to finish", then +15 min · Pause · Pending. Nothing
+// else (the tabs, the Tell bar and the greeting are hidden by body.focus).
 //
 // Two ways out (Mor, 2026-10-05, after Stop, then Pause + Cancel, then a
 // "Finished, or more left?" question all felt like too many). Done means
@@ -12,13 +13,15 @@
 // task with no way back). Holding fills the button over a second; letting go
 // early drains it again. See holdButton.
 //
-// Past the estimate it asks once, quietly: "Still on it? +15 min". No
+// +15 min is always there; past the estimate the ring just stays full. No
 // sound, no red — running over is normal.
 //
 // The run lives in Firestore (state/now), so a reload or the other device
 // shows the same timer still going; elapsed is always worked out from
 // startedAt rather than counted here.
 import { h, bdi, dur } from "./ui.js";
+import { LABELS } from "./model.js";
+import { daisy, areaClass, areaName, projectShown } from "./look.js";
 
 const BATCH_NOUN = { call: ["call", "calls"], admin: ["admin bit", "admin bits"], errand: ["errand", "errands"] };
 // "3 calls", "1 errand".
@@ -41,7 +44,7 @@ export function resumed(run, now = Date.now()){
   return { ...rest, startedAt: run.startedAt + gap, ...(run.mark != null ? { mark: run.mark + gap } : {}) };
 }
 
-const pauseButton = (what, onPause) => h("button", { className: "btn", type: "button", textContent: "Pause",
+const pauseButton = (what, onPause) => h("button", { className: "btn line", type: "button", textContent: "Pause",
   ariaLabel: `Pause ${what} and go back to the main screen`, onclick: () => onPause() });
 export const targetMinutes = (run, task) => (task?.size || 0) + (run.extra || 0);
 export const isOver = (run, task, now = Date.now()) => elapsedMinutes(run, now) > targetMinutes(run, task);
@@ -52,8 +55,8 @@ const clock = (min) => {
   return t >= 3600 ? `${Math.floor(t / 3600)}:${p2(Math.floor(t / 60) % 60)}:${p2(t % 60)}` : `${Math.floor(t / 60)}:${p2(t % 60)}`;
 };
 
-// Bits of colour thrown from (x, y): the sparkle when a hold completes, the
-// confetti when the handoff shows. On <body>, outside the root the timer
+// Bits of colour thrown from (x, y): the sparkle when a hold completes (the
+// handoff has its own drifting petals now). On <body>, outside the root the timer
 // re-renders every second, and gone after the animation. Nothing at all
 // under reduced motion.
 const COLOURS = ["var(--accent)", "#ff7aa2", "#6cc6ff", "#7ed957", "#b28dff"];
@@ -71,8 +74,6 @@ export function burst(x, y, n = 14, reach = 90){
   document.body.append(box);
   setTimeout(() => box.remove(), 1600);
 }
-// The handoff's confetti: one big burst from the upper middle of the screen.
-export const celebrate = () => burst(innerWidth / 2, innerHeight * 0.35, 60, Math.min(innerWidth, 640) * 0.45);
 
 // The hold-to-finish Done button. The timer re-renders the whole focus screen
 // every second, so a fresh button each render would reset a hold half-way:
@@ -90,11 +91,11 @@ function holdButton(key, aria, disabled, onDone){
     if (hadFocus) queueMicrotask(() => el.focus({ preventScroll: true })); // the re-render detached it
     return el;
   }
-  const sub = h("span", { className: "hold-sub", textContent: "press & hold" });
+  const sub = h("span", { className: "hold-sub" });
   const el = h("button", { className: "btn primary hold", type: "button", ariaLabel: aria, disabled,
     oncontextmenu: (e) => e.preventDefault() }, // a long press on a phone is not a menu
   h("span", { className: "hold-fill", ariaHidden: "true" }),
-  h("span", { className: "hold-label" }, h("span", { textContent: "Done" }), sub));
+  h("span", { className: "hold-label" }, h("span", { textContent: "Hold to finish" }), sub));
   const me = held = { key, el, onDone };
   let t0 = 0, raf = 0, done = false;
   const set = (p) => el.style.setProperty("--p", p);
@@ -125,7 +126,7 @@ function holdButton(key, aria, disabled, onDone){
     const quick = performance.now() - t0 < 300;
     cancelAnimationFrame(raf); listen(false); t0 = 0;
     el.classList.remove("holding"); set(0);
-    sub.textContent = quick ? "hold it a sec" : "press & hold";
+    sub.textContent = quick ? "hold it a sec" : "";
     if (quick){ el.classList.remove("nudge"); void el.offsetWidth; el.classList.add("nudge"); }
   }
   el.addEventListener("pointerdown", start);
@@ -133,66 +134,156 @@ function holdButton(key, aria, disabled, onDone){
   return el;
 }
 
+// The ring: a 220px circle, track in the area's border colour, amber
+// progress. Past the estimate it just stays full — running over is normal.
+const R = 96, C = 2 * Math.PI * R;
+function ringParts(){
+  const NS = "http://www.w3.org/2000/svg";
+  const svg = document.createElementNS(NS, "svg");
+  svg.setAttribute("viewBox", "0 0 220 220");
+  svg.setAttribute("aria-hidden", "true");
+  svg.setAttribute("class", "ring-svg");
+  const circle = (cls) => {
+    const c = document.createElementNS(NS, "circle");
+    for (const [k, v] of Object.entries({ cx: 110, cy: 110, r: R, class: cls })) c.setAttribute(k, v);
+    return c;
+  };
+  const track = circle("ring-track"), bar = circle("ring-bar");
+  bar.setAttribute("stroke-dasharray", C.toFixed(1));
+  bar.setAttribute("transform", "rotate(-90 110 110)");
+  svg.append(track, bar);
+  const time = h("span", { className: "ring-time", role: "timer" });
+  const of = h("span", { className: "ring-of", dir: "auto" });
+  return { el: h("div", { className: "ring" }, svg, h("div", { className: "ring-text" }, time, of)), bar, time, of };
+}
+function setRing(ring, mins, target){
+  const p = target > 0 ? Math.min(1, mins / target) : 0;
+  ring.bar.setAttribute("stroke-dashoffset", (C * (1 - p)).toFixed(1));
+  ring.time.textContent = clock(mins);
+  ring.time.ariaLabel = `${dur(Math.round(mins))} so far`;
+  ring.of.textContent = target > 0 ? `of ${dur(target)}` : "";
+}
+
+// The screen is built once per run and handed back every second with only
+// the clock, the ring and the handlers updated — a fresh screen each second
+// would wipe a half-typed note (now.js fill leaves an unchanged screen be).
+let screen = null; // { key, el, parts, cb }
+
 // run: the state/now doc. task: the task it names (may be missing if it was
 // deleted elsewhere — then Done is disabled).
-// Callers: onDone() · onExtend(minutes) · onPause().
-export function focusView(run, task, { onDone, onExtend, onPause }){
-  const mins = elapsedMinutes(run);
-  const over = task && isOver(run, task);
-
-  return h("div", { className: "focus" },
-    h("div", { className: "focus-title", dir: "auto", textContent: task?.title || "That task is gone" }),
-    h("div", { className: "focus-timer", role: "timer", ariaLabel: `${dur(Math.round(mins))} so far`, textContent: clock(mins) }),
-    task && h("div", { className: "focus-of", dir: "auto", textContent: `of ${dur(targetMinutes(run, task))}` }),
-    over && h("div", { className: "focus-over" },
-      h("p", { className: "focus-ask", textContent: "Still on it?" }),
-      h("div", { className: "focus-chips" },
-        h("button", { className: "chip", type: "button", textContent: "+15 min",
-          ariaLabel: "Still on it: give it 15 more minutes", onclick: () => onExtend(15) }))),
-    h("div", { className: "focus-actions" },
-      holdButton(`${run.taskId}@${run.startedAt}`, `Done: press and hold to finish ${task?.title || "this task"}`, !task, onDone),
-      pauseButton(task?.title || "this task", onPause)));
+// Callers: onDone() · onExtend(minutes) · onPause() · onPending() · onNote(text).
+export function focusView(run, task, cb){
+  const key = `${run.taskId}@${run.startedAt}`;
+  const mins = elapsedMinutes(run), target = task ? targetMinutes(run, task) : 0;
+  const what = task?.title || "this task";
+  if (screen?.key !== key) {
+    const ring = ringParts();
+    const title = h("div", { className: "focus-title", dir: "auto" });
+    const note = h("input", { className: "focus-note-in", id: "focusNote", dir: "auto", autocomplete: "off",
+      enterkeyhint: "done", placeholder: "Jot a note while you work…" });
+    const keep = () => {
+      const text = note.value.trim();
+      if (!text) return;
+      note.value = "";
+      note.placeholder = "Noted. Add another…";
+      screen?.cb.onNote?.(text);
+    };
+    note.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); keep(); } });
+    note.addEventListener("change", keep);
+    const quiet = (text, aria, fn) => h("button", { className: "btn line", type: "button", textContent: text, ariaLabel: aria, onclick: fn });
+    const hold = holdButton(key, `Hold to finish ${what}`, !task, () => screen?.cb.onDone());
+    const el = h("div", { className: "focus" + areaClass(task) },
+      h("div", { className: "focus-top" }, h("span", { className: "hero-area" }, h("span", { className: "dot", ariaHidden: "true" }),
+        [areaName(task), projectShown(task)].filter(Boolean).join(" · ") || "Focus")),
+      h("section", { className: "focus-card", ariaLabel: "Focus" }, title,
+        h("p", { className: "focus-hold", textContent: "I'll hold everything else." }), ring.el),
+      task && h("div", { className: "focus-note" }, focusIcon(), h("label", { className: "sr", htmlFor: "focusNote", textContent: "Note for this task" }), note),
+      h("div", { className: "focus-spacer" }),
+      hold,
+      h("div", { className: "focus-row" },
+        quiet("+15 min", `Give ${what} 15 more minutes`, () => screen?.cb.onExtend(15)),
+        quiet("Pause", `Pause ${what} and go back to the main screen`, () => screen?.cb.onPause()),
+        task && quiet("Pending", `${what} is blocked — pause and set it to Waiting`, () => screen?.cb.onPending?.())));
+    screen = { key, el, title, ring, hold };
+  }
+  screen.cb = cb;
+  screen.title.textContent = task?.title || "That task is gone";
+  setRing(screen.ring, mins, target);
+  holdButton(key, `Hold to finish ${what}`, !task, () => screen?.cb.onDone());
+  return screen.el;
 }
 
-// After Done: what Daisey would do next, offered the same way the card does.
-// cheer: the first render after finishing. The 🎉 pops in (the caller
-// throws the confetti); later re-renders of the same handoff stay still.
-export function handoffView(doneTitle, next, { onStart, onSkip, cheer }){
-  return h("div", { className: "focus" },
-    h("div", { className: "focus-cheer" + (cheer ? " pop" : ""), ariaHidden: "true", textContent: "🎉" }),
-    h("div", { className: "focus-done" + (cheer ? " pop" : "") }, "Done. ", bdi(doneTitle)),
-    next
-      ? h("div", { className: "now-card main" },
-        h("div", { className: "now-meta", dir: "auto", textContent: "Next" }),
-        h("div", { className: "now-title", dir: "auto", textContent: next.task.title }),
-        next.why && h("p", { className: "now-why", textContent: next.why }),
-        h("button", { className: "btn primary start", type: "button", textContent: "Start",
-          ariaLabel: `Start: ${next.task.title}`, onclick: () => onStart(next.task) }),
-        h("div", { className: "now-actions" },
-          h("button", { className: "btn quiet", type: "button", textContent: "Not now",
-            ariaLabel: `Not now: skip ${next.task.title}`, onclick: () => onSkip(next.task) })))
-      : h("div", { className: "focus-actions" },
-        h("p", { className: "focus-ask", textContent: "Nothing else fits right now. Take the break." }),
-        h("button", { className: "btn", type: "button", textContent: "Back", onclick: () => onSkip(null) })));
+// The pencil on the note field.
+function focusIcon(){
+  const NS = "http://www.w3.org/2000/svg";
+  const svg = document.createElementNS(NS, "svg");
+  for (const [k, v] of Object.entries({ viewBox: "0 0 24 24", width: 18, height: 18, fill: "none", stroke: "currentColor",
+    "stroke-width": 2, "stroke-linecap": "round", "stroke-linejoin": "round", "aria-hidden": "true" })) svg.setAttribute(k, v);
+  const p = document.createElementNS(NS, "path");
+  p.setAttribute("d", "M4 20h4L19 9l-4-4L4 16z");
+  svg.append(p);
+  return svg;
 }
 
-// A batch in focus mode: a checklist, one timer for the lot. Tick each as it
-// gets done; the last tick ends the batch. Pause goes back to the main
-// screen, where the batch can be resumed or ended (the unticked stay open).
-// tasks: the batch's tasks in order (missing ones already dropped).
-// Callers: onTick(task) · onPause().
+// After Done: the daisy pops in and drops six petals that drift off, "Done
+// in 13 min", the day's count, then what Daisey would do next in its own
+// area's colour. cheer: the first render after finishing — later re-renders
+// of the same handoff stay still.
+// done: { title, minutes, count }.
+const DRIFT = [[-130, -120, -30, 0], [120, -140, 40, .2], [-150, 40, 80, .4], [150, 30, -70, .1], [-60, -170, 10, .6], [70, 110, 150, .3]];
+export function handoffView(done, next, { onStart, onSkip, cheer }){
+  const n = done.count || 0;
+  const petals = cheer && h("div", { className: "drift", ariaHidden: "true" }, ...DRIFT.map(([dx, dy, r, d]) => {
+    const p = h("span", { className: "petal" });
+    p.style.cssText = `--dx:${dx}px;--dy:${dy}px;--r:${r}deg;animation-delay:${d}s`;
+    return p;
+  }));
+  const t = next?.task;
+  return h("div", { className: "focus handoff" },
+    h("div", { className: "done-hero" },
+      h("div", { className: "done-flower" }, daisy(Math.max(1, n), { size: 150, cls: "daisy big" + (cheer ? " pop" : "") }), petals),
+      h("h2", { className: "done-h" + (cheer ? " pop" : ""), textContent: `Done in ${dur(Math.max(1, Math.round(done.minutes || 0)))}` }),
+      h("p", { className: "done-p", textContent: n && n <= 8 ? `${n} done today. Your daisy grew a petal.` : `${n} done today.` }),
+      done.title && h("p", { className: "done-what" }, bdi(done.title))),
+    t
+      ? h("section", { className: "next-card" + areaClass(t), ariaLabel: "Next" },
+        h("div", { className: "next-top" },
+          h("span", { className: "next-label", textContent: "Next" }),
+          h("span", { className: "next-kind", textContent: [LABELS.type[t.type], dur(t.size)].filter(Boolean).join(" · ") })),
+        h("div", { className: "next-title", dir: "auto", textContent: t.title }),
+        next.why && h("p", { className: "next-why", textContent: next.why }),
+        h("div", { className: "next-btns" },
+          h("button", { className: "btn primary start", type: "button", textContent: "Start",
+            ariaLabel: `Start: ${t.title}`, onclick: () => onStart(t) }),
+          h("button", { className: "btn line", type: "button", textContent: "Not now",
+            ariaLabel: `Not now: skip ${t.title}`, onclick: () => onSkip(t) })))
+      : h("div", { className: "next-card none" },
+        h("p", { className: "next-why", textContent: "Nothing else fits right now. Take the break." }),
+        h("button", { className: "btn line", type: "button", textContent: "Back", onclick: () => onSkip(null) })));
+}
+
+// A batch in focus mode: the same card and ring, the checklist under it, one
+// timer for the lot. Tick each as it gets done; the last tick ends the batch.
+// Pause goes back to the main screen, where the batch can be resumed or ended
+// (the unticked stay open). tasks: the batch's tasks in order (missing ones
+// already dropped). Callers: onTick(task) · onPause().
 export function batchFocusView(run, tasks, type, { onTick, onPause }){
   const mins = elapsedMinutes(run), done = new Set(run.done || []);
   const total = tasks.reduce((s, t) => s + (t.size || 0), 0);
-  return h("div", { className: "focus" },
-    h("div", { className: "focus-title", textContent: batchName(type, tasks.length) + ", together" }),
-    h("div", { className: "focus-timer", role: "timer", ariaLabel: `${dur(Math.round(mins))} so far`, textContent: clock(mins) }),
-    h("div", { className: "focus-of", textContent: `of about ${dur(total)}` }),
+  const ring = ringParts();
+  setRing(ring, mins, total);
+  ring.of.textContent = `of about ${dur(total)}`;
+  return h("div", { className: "focus" + areaClass(tasks[0]) },
+    h("div", { className: "focus-top" }, h("span", { className: "hero-area" }, h("span", { className: "dot", ariaHidden: "true" }), "Batch")),
+    h("section", { className: "focus-card", ariaLabel: "Focus" },
+      h("div", { className: "focus-title", textContent: batchName(type, tasks.length) + ", together" }),
+      h("p", { className: "focus-hold", textContent: "I'll hold everything else." }), ring.el),
     h("ul", { className: "batch-list" }, ...tasks.map((t) => {
       const ticked = done.has(t.id);
       return h("li", {}, h("button", { type: "button", className: "batch-item" + (ticked ? " done" : ""), disabled: ticked,
         ariaLabel: ticked ? `Done: ${t.title}` : `Mark done: ${t.title}`, onclick: () => onTick(t) },
         h("span", { className: "tk-check" + (ticked ? " done" : ""), textContent: ticked ? "✓" : "" }), bdi(t.title)));
     })),
-    h("div", { className: "focus-actions" }, pauseButton("the batch", onPause)));
+    h("div", { className: "focus-spacer" }),
+    h("div", { className: "focus-row one" }, pauseButton("the batch", onPause)));
 }

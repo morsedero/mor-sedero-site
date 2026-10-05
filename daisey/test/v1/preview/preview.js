@@ -89,6 +89,14 @@ const SCENARIOS = {
       notes: "Waiting on the final mixes from Yuval." },
     { title: "Send invoice to Uri", project: "Admin", size: 5 },
   ] },
+  // Nothing active: only waiting and Someday (the calm empty state).
+  rest: { tasks: [
+    { title: "Waiting on Yuval", project: "Reprise", size: 30, over: { status: "waiting", waitingOn: "Yuval" } },
+    { title: "ביטוח לחיות", project: "סידורים", size: 15, over: { status: "someday", stakes: "money", area: "admin" } },
+    { title: "Send Sofi the photos", project: "Inbox", size: 15, over: { status: "someday", stakes: "someone" } },
+    { title: "לתלות מסך", project: "Home", size: 30, over: { status: "someday", area: "home" } },
+    { title: "Learn Wwise", project: "Inbox", size: 60, over: { status: "someday" } },
+  ] },
   waiting: { tasks: [
     { title: "Waiting on Yuval", project: "Reprise", size: 30, over: { status: "waiting", waitingOn: "Yuval" } },
     { title: "Big edit", project: "Reprise", size: 240 },
@@ -99,6 +107,7 @@ const args = process.argv.slice(2);
 const flag = (f) => { const i = args.indexOf(f); return i < 0 ? null : args.splice(i, 2)[1] ?? true; };
 const outDir = flag("--out") || path.join(require("os").tmpdir(), "daisey-preview");
 const clicks = [];
+const holdSel = flag("--hold"); // press and hold it for 1.5 s (Hold to finish)
 for (let c; (c = flag("--click"));) clicks.push(c);
 const wide = args.includes("--wide"), tasksTab = args.includes("--tasks");
 const name = args.find((a) => !a.startsWith("--")) || "en";
@@ -176,6 +185,9 @@ const FAKES = {
     if (eq > 0 && !sel.startsWith("[")) await page.fill(sel.slice(0, eq), sel.slice(eq + 1)); else await page.click(sel);
     await page.waitForTimeout(150);
   }
+  // --hold "sel": press and hold it for 1.5 s (Hold to finish).
+  if (holdSel) { const b = await page.locator(holdSel).boundingBox(); await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2);
+    await page.mouse.down(); await page.waitForTimeout(1500); await page.mouse.up(); await page.waitForTimeout(700); }
   if (tasksTab) { await page.click("#tabTasks"); await page.waitForTimeout(150); }
   if (args.includes("--text")) console.log(await page.innerText("body"));
   if (args.includes("--json-dump")) console.log(JSON.stringify(await page.evaluate(() => window.__store.tasks.map(({ title, area, type, where, openHours, size, stakes, energy, due, dateKind, guessed, spentMinutes, stopsUnfinished }) => ({ title, area, type, where, openHours, size, stakes, energy, due, dateKind, guessed, spentMinutes, stopsUnfinished })))));

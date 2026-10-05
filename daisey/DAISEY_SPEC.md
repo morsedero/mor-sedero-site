@@ -296,3 +296,52 @@ v1 is done when the Now card picks a task you actually start, most days, for one
 - **Chat model:** Gemini API. The key never sits in page code; a small server function (Netlify Function if the site is on Netlify) calls Gemini.
 - **Language:** Hebrew and English from day one: RTL layout, mixed-language task titles, chat and voice in both.
 - **Finished-task history:** used for learning only in v1; no history screen.
+
+## Visual design
+
+The Now screen redesign (Oct 5, 2026; references in `daisey/New Design/`). Calm, warm, light. One loud thing per screen: the amber button.
+
+**Tokens (light)** — `daisey/app/css/app.css` `:root`
+
+| Token | Value | Use |
+|---|---|---|
+| `--bg` | `#FBF8EF` | page |
+| `--card` | `#FFFDF6` | cards |
+| `--ink` | `#1F1D1A` | text |
+| `--ink-2` | `#6B665D` | quiet text |
+| `--line` | `#E6E0D2` | borders |
+| `--chip` | `#EFE9DA` | chip and segmented-control fill |
+| `--accent` | `#F5B301` with `--ink` text | Start, Hold to finish, Bring back: never decoration |
+| `--nowline` | `#C0392B` | the Today timeline's now line |
+
+**Dark** — bg `#141310`, card `#201E1A`, ink `#F3EEE3`, ink-2 `#A8A193`, line `#2E2B25`; area tints darkened, strong text lightened. Dark follows the phone (Auto) or the account menu's Light/Dark, and night mode is always dark whatever the theme.
+
+**Areas (tint / border / strong text)**
+
+| Area | Light | Dark |
+|---|---|---|
+| Admin | `#EAF1FC` / `#CFDDF5` / `#2F64C0` | `#18212F` / `#2F4A73` / `#8FB2EE` |
+| Work | `#EFEAFD` / `#DCD3FA` / `#5B47B8` | `#1F1B2E` / `#3A3163` / `#B9ABF5` |
+| Home | `#E7F4EA` / `#C9E6D1` / `#2F7A47` | `#16241A` / `#28482F` / `#8ED1A3` |
+| Social | `#FCEAF2` / `#F5CFE0` / `#B23A73` | `#2A1820` / `#55293D` / `#F09AC2` |
+| Job search | `#FFF4D6` / `#F5DFA0` / `#8A5A00` | `#2A2210` / `#574414` / `#F0C35A` |
+| Personal | `#E3F3F3` / `#C4E3E3` / `#24706F` | `#142625` / `#24504D` / `#7CC9C6` |
+
+A card takes its task's area with `.area-<key>`; inside it everything reads `--tint`, `--aline`, `--aink` and `--sub` (the area's quiet text). A task with no area keeps the plain card colours. Calendar events are tinted with the colour they have in Google Calendar.
+
+**Type** — Rubik 400/500/600/700 (Google Fonts; it covers Hebrew). Greeting 26/600, hero title 32/600, focus title 30/600, focus timer 46/600 tabular, body 15.
+
+**Shape** — radius: cards 24, buttons 16, chips 999. Every touch target is at least 44px (chips that look smaller get an invisible hit area).
+
+**Text direction** — every title is `dir="auto"`; a task row takes its title's direction as a whole, so a Hebrew row puts its checkbox on the right.
+
+**The daisy** — the header's daisy has one petal per task done today, up to 8, spread evenly. It never shows empty or "missing" petals.
+
+**Motion**
+
+- 150–250 ms for UI changes (card slide, chip, tab, selection).
+- Springs only for celebrations: the Done daisy's pop and its drifting petals (2.6 s).
+- Ambient motion is slow and small: the hero breathes 3px over 5 s (and stops while an ask is open), the empty-state daisy sways, the night stars twinkle.
+- Never in the way of a tap: nothing animates a button out from under a finger, and nothing waits on an animation to act.
+- All of it is off under `prefers-reduced-motion`.
+- Done vibrates once (15 ms) on phones.

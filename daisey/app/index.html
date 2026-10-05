@@ -15,14 +15,21 @@
 <link rel="apple-touch-icon" href="icons/daisey-180.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Daisey">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700&amp;display=swap">
 <link rel="stylesheet" href="css/app.css">
 <script type="module" src="js/main.js"></script>
 </head>
 <body>
 <main class="shell">
   <header class="topbar">
-    <h1 class="brand">Daisey</h1>
-    <p id="clock" class="clock" aria-label="Today's date and time"></p>
+    <!-- The daisy grows a petal per task done today (now.js paints it). -->
+    <div class="brandrow">
+      <span id="logo" class="logo"></span>
+      <h1 class="brand">Daisey</h1>
+      <span id="donePill" class="pill" hidden></span>
+    </div>
     <!-- Account: Google-style avatar, top end corner; tap for email + sign out. -->
     <div class="acct">
       <button id="avatar" class="avatar" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="acctMenu" hidden></button>
@@ -57,7 +64,7 @@
   <div id="board" hidden>
     <section id="nowcard" aria-label="Now" hidden></section>
     <nav class="panetabs" role="tablist" aria-label="Under the card">
-      <button id="tabSchedule" class="tab" role="tab" aria-controls="schedule" type="button">Schedule</button>
+      <button id="tabSchedule" class="tab" role="tab" aria-controls="schedule" type="button">Today</button>
       <button id="tabTasks" class="tab" role="tab" aria-controls="tasksview" type="button">Tasks</button>
     </nav>
     <div class="pane">
@@ -66,7 +73,14 @@
     </div>
   </div>
 
-  <button id="add" class="fab" type="button" aria-label="Add task" hidden>+</button>
+  <!-- Tell Daisey: for now Enter (or the mic) opens Add task with the text in it. -->
+  <form id="tell" class="tellbar" hidden>
+    <label for="tellInput" class="sr">Tell Daisey</label>
+    <input id="tellInput" dir="auto" autocomplete="off" enterkeyhint="go" placeholder="Tell Daisey…">
+    <button id="add" class="mic" type="button" aria-label="Add a task">
+      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>
+    </button>
+  </form>
   <dialog id="addtask" class="now" aria-labelledby="addTitle"></dialog>
   <dialog id="importdlg" class="now" aria-labelledby="importTitle"></dialog>
   <dialog id="eventdlg" class="now" aria-labelledby="evTitle"></dialog>

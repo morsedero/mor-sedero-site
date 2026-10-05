@@ -28,7 +28,8 @@ import { watchCalendar } from "./calendar.js";
 import { watchTasks, watchSettings } from "./store.js";
 import { capacity, dayHours, dayStartAt, dayEndAt } from "./day.js";
 import { localDate } from "./model.js";
-import { h, bdi, dur } from "./ui.js";
+import { h, bdi } from "./ui.js";
+import { freeDur } from "./look.js";
 
 const DAYS_AHEAD = 7; // as far as the days slide, and as far as the fetch reaches
 const clock = (iso) => new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
@@ -84,8 +85,8 @@ function dayRows(events, now, from, until = null){
 }
 
 // The panel suggests nothing: it is just the day (the pencil schedule was
-// dropped, 2026-10-05). On top of today: "2 h free today, 8 open.
-// Realistic: 3." with "Move the rest", which opens the sweep on the ones
+// dropped, 2026-10-05). On top of today: "8 open, about 3 fit today."
+// with "Move the rest", which opens the sweep on the ones
 // that don't fit. Free time is counted inside the day hours only (day.js) —
 // at 01:19 it said "18 h free today".
 // uid: the signed-in user. onSweep(ids) opens the sweep on those tasks.
@@ -99,27 +100,28 @@ export function mountSchedule(root, { onAdd, onOpen, uid, onSweep } = {}){
   let heading, back, prev, next;
   // ---------- rows ----------
 
+  // An event: its start in the time column, then a block tinted with the
+  // colour the user sees in Google Calendar — the time range at the start
+  // edge, the title at the end. As tall as its content, never its duration.
   function eventRow(r){
     const e = r.event;
     const time = e.allDay ? "all day" : e.end ? `${clock(e.start)}–${clock(e.end)}` : clock(e.start);
-    const inside = [
-      // The colour is the one the user sees in Google Calendar.
-      h("span", { className: "sch-dot", style: e.color ? `background:${e.color}` : "" }),
-      h("span", { className: "sch-time", textContent: time }),
-      h("span", { className: "sch-title" }, bdi(e.title),
-        r.running && h("span", { className: "sch-now", textContent: "now" })),
-    ];
     return h("li", { className: "sch-row" + (r.past ? " past" : "") + (r.running ? " running" : "") },
+      h("span", { className: "sch-time", textContent: e.allDay ? "" : clock(e.start) }),
       h("button", { className: "sch-open", type: "button", ariaLabel: `${e.title}, ${time} — open it`,
-        onclick: () => onOpen?.(e) }, ...inside));
+        style: e.color ? `--ev:${e.color}` : "", onclick: () => onOpen?.(e) },
+      h("span", { className: "sch-range", textContent: time }),
+      h("span", { className: "sch-title" }, r.running && h("span", { className: "sch-now", textContent: "now" }), bdi(e.title))));
   }
 
+  // The free time itself is in the gaps below and in the Now screen's one
+  // free line (Mor, 2026-10-05), so this only says how much is open.
   function capLine(now){
     if (!tasks) return null;
     const c = capacity(tasks, cal.events, now, dayHours(settings));
-    if (!c.free && !c.open) return null;
+    if (!c.open) return null;
     return h("p", { className: "sch-cap" },
-      c.open ? `${dur(c.free)} free today, ${c.open} open. Realistic: ${c.realistic}. ` : `${dur(c.free)} free today.`,
+      `${c.open} open, about ${c.realistic} fit today. `,
       c.rest.length > 0 && h("button", { className: "linkish", type: "button", textContent: "Move the rest",
         onclick: () => onSweep?.(c.rest.map((t) => t.id)) }));
   }
@@ -136,8 +138,10 @@ export function mountSchedule(root, { onAdd, onOpen, uid, onSweep } = {}){
       rows.length === 0
         ? h("p", { className: "muted sch-free", textContent: "Nothing on the calendar." })
         : h("ul", { className: "sch-list" }, ...rows.flatMap((r) => {
-          if (r.nowLine) return [h("li", { className: "sch-nowline" }, h("span", { className: "sch-nowtime", textContent: clock(now) }))];
-          if (r.gap) return [h("li", { className: "sch-gap", textContent: `${dur(r.minutes)} free` })];
+          if (r.nowLine) return [h("li", { className: "sch-nowline" }, h("span", { className: "sch-nowtime", textContent: clock(now) }),
+            h("span", { className: "sch-nowdot", ariaHidden: "true" }))];
+          if (r.gap) return [h("li", { className: "sch-gap" }, h("span", { className: "sch-time" }),
+            h("span", { className: "sch-gapbox", textContent: `${freeDur(r.minutes)} free` }))];
           return [eventRow(r)];
         })));
   }

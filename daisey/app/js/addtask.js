@@ -327,7 +327,8 @@ export function mountAddTask(dialog, uid, { onNow } = {}){
 
   return {
     // project: prefill ("" or Inbox = Inbox); omitted = keep the last one.
-    open(project){
+    // title: prefill (Tell Daisey's text); the guesses run on it as if typed.
+    open(project, title = ""){
       const keep = projectSel.value === NEW_PROJECT ? "" : projectSel.value;
       msg.textContent = "";
       editing = null;
@@ -342,6 +343,7 @@ export function mountAddTask(dialog, uid, { onNow } = {}){
       paint();
       if (!dialog.open) dialog.showModal();
       f.title.focus();
+      if (title) { f.title.value = title; f.title.dispatchEvent(new Event("input")); }
     },
     // The same popup, filled in: a wrong guess shouldn't be stuck forever.
     edit(task){

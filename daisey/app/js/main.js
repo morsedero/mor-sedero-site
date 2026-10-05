@@ -3,18 +3,17 @@ import { configured } from "./config.js";
 
 const $ = (s) => document.querySelector(s);
 
-// The top line carries the local date and time, beside the name and the
-// avatar. It ticks on the minute, not on a timer of its own frequency.
-const stamp = (d = new Date()) =>
-  `${d.toLocaleDateString([], { weekday: "short", day: "numeric", month: "short" })} · ${d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hourCycle: "h23" })}`;
-{
-  const el = () => document.getElementById("clock");
-  let shown = "";
-  const tick = () => { const s = stamp(); if (s !== shown && el()) { shown = s; el().textContent = s; } };
-  tick();
-  setInterval(() => { if (!document.hidden) tick(); }, 1000);
-  document.addEventListener("visibilitychange", tick);
+import { daisy } from "./look.js";
+
+// The header's daisy and "N done today" pill. now.js reports the count.
+function paintDone(n){
+  const logo = $("#logo");
+  logo.replaceChildren(daisy(n, { size: 30 }));
+  const pill = $("#donePill");
+  pill.hidden = !n;
+  pill.textContent = `${n} done today`;
 }
+paintDone(0);
 
 // Registering a worker is what makes "add to home screen" offer a real app
 // window; sw.js caches nothing on purpose.
@@ -103,7 +102,7 @@ async function boot(){
   document.addEventListener("keydown", (e) => { if (e.key === "Escape") setMenu(false); });
   $("#signout").onclick = () => { setMenu(false); fb.signOut(); };
 
-  const SIGNED_IN = ["#board", "#add"];
+  const SIGNED_IN = ["#board", "#tell"];
 
   // One pane under the card, two tabs. The hash remembers which (#tasks), so
   // a reload or the back button lands where you were.
@@ -176,10 +175,14 @@ async function boot(){
         m.tasks = mountTasks($("#tasksview"), user.uid,
           { onAdd: (project) => m.adder.open(project), onOpen: (task) => m.adder.edit(task), onSweep: () => m.sweep.open(),
           onProject: (name) => { location.hash = "tasks"; setPane("tasks"); m.tasks.showProject(name); $("#tasksview").scrollIntoView?.({ behavior: "smooth", block: "nearest" }); } });
-        m.now = mountNow($("#nowcard"), user.uid, { onCard: (id) => { onCard = id; m.tasks?.setCurrent(id); }, onSweep: () => m.sweep.open(),
+        m.now = mountNow($("#nowcard"), user.uid, { name: (user.displayName || "").trim().split(/\s+/)[0], onDone: paintDone, onCard: (id) => { onCard = id; m.tasks?.setCurrent(id); }, onSweep: () => m.sweep.open(),
           onProject: (name) => { location.hash = "tasks"; setPane("tasks"); m.tasks.showProject(name); $("#tasksview").scrollIntoView?.({ behavior: "smooth", block: "nearest" }); } });
         m.tasks.setCurrent(onCard);
-        $("#add").onclick = () => m.adder.open();
+        // Tell Daisey: the typed text goes into a new task's title.
+        const tell = $("#tellInput");
+        const told = () => { const text = tell.value.trim(); tell.value = ""; m.adder.open(undefined, text); };
+        $("#tell").onsubmit = (e) => { e.preventDefault(); told(); };
+        $("#add").onclick = told;
         for (const s of SIGNED_IN) $(s).hidden = false;
         setPane(paneFromHash());
       }).catch((e) => console.error("[daisey] boot views", e));
