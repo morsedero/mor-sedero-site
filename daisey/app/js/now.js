@@ -13,7 +13,7 @@
 import { watchTasks, watchRun, watchSkips, saveSkips, startRun, extendRun, endRun, startBatch, tickBatch, endBatch, skipNow, blockTask, restoreTask, watchSettings, saveSettings, watchMoment, saveMoment, watchLearn, bumpLearn, addTask, saveRun, cancelRun } from "./store.js";
 import { energyNow, placeNow, workBase } from "./context.js";
 import { shouldOffer, sweepList, pickWeekDay } from "./triage.js";
-import { focusView, handoffView, elapsedMinutes, batchFocusView, batchName, sinceMark, paused, resumed } from "./focus.js";
+import { focusView, handoffView, celebrate, elapsedMinutes, batchFocusView, batchName, sinceMark, paused, resumed } from "./focus.js";
 import { watchCalendar, deleteEvent } from "./calendar.js";
 import { LATER_MINUTES, DRAIN, CANCEL_KEEP_MINUTES } from "./weights.js";
 import { rank, freeWindow, whySaid, timeBucket, matchProject } from "./engine.js";
@@ -264,6 +264,7 @@ export function mountNow(root, uid, { onCard, onSweep, onProject } = {}){
     return focusView(run, task, {
       // Done is finished — no "or more left?" (Pause covers more left).
       onDone: () => {
+        if (!run || run.pausedAt) return; // the hold finished after the run moved on
         const minutes = elapsedMinutes(run);
         handoff = { title: task ? task.title : "", skip: run.taskId };
         endRun(uid, task, minutes, { finished: true }).catch(fail);
@@ -652,10 +653,14 @@ export function mountNow(root, uid, { onCard, onSweep, onProject } = {}){
       // The task just worked on isn't offered straight back.
       const m = momentInput();
       const r = rank(tasks || [], { ...m, sessionSkips: [...m.sessionSkips, handoff.skip] });
+      const cheer = !handoff.cheered; // confetti once, not on every re-render
+      handoff.cheered = true;
       fill(handoffView(handoff.title, r.pick, {
+        cheer,
         onStart: begin,
         onSkip: (task) => { if (task) skips.add(task.id); handoff = null; showing(null); render(); },
       }));
+      if (cheer) celebrate();
       return;
     }
     const busy = cal.status === "ok" // the event being ignored, before any override

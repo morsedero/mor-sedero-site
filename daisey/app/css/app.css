@@ -342,6 +342,39 @@ body.focus .shell { display: grid; min-block-size: 100dvh; align-content: center
 .focus-actions .btn { inline-size: 100%; }
 .focus-actions .btn.primary { min-block-size: 56px; font-size: 19px; font-weight: 700; }
 .focus-done { font-size: 20px; font-weight: 700; }
+/* Done is press-and-hold (focus.js holdButton): the yellow fills orange from
+   the start edge over 1 s, drains back if let go early. */
+.btn.hold { position: relative; overflow: hidden; isolation: isolate; touch-action: manipulation;
+  user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; transition: transform .15s ease; }
+.hold-fill { position: absolute; inset-block: 0; inset-inline-start: 0; z-index: -1;
+  inline-size: calc(var(--p, 0) * 100%); background: color-mix(in srgb, var(--accent), #e8590c 55%);
+  transition: inline-size .3s ease-out; }
+.btn.hold.holding .hold-fill { transition: none; }
+.hold-label { display: grid; line-height: 1.1; }
+.hold-sub { font-size: 12px; font-weight: 600; opacity: .75; }
+.focus-cheer { font-size: 44px; line-height: 1; }
+@media (prefers-reduced-motion: no-preference) {
+  .btn.hold.holding { transform: scale(.97); }
+  .btn.hold.holding .hold-label { animation: hold-jiggle .45s ease-in-out infinite; }
+  .btn.hold.held { animation: hold-pop .4s cubic-bezier(.3, 1.6, .5, 1); }
+  .btn.hold.nudge { animation: hold-nudge .4s ease; }
+  .focus-cheer.pop { animation: cheer-pop .7s cubic-bezier(.3, 1.6, .5, 1) both; }
+  .focus-done.pop { animation: guess-in .4s .15s ease-out both; }
+}
+@keyframes hold-jiggle { 25% { transform: rotate(-2.5deg); } 75% { transform: rotate(2.5deg); } }
+@keyframes hold-pop { 50% { transform: scale(1.06); } }
+@keyframes hold-nudge { 20% { transform: translateX(-5px); } 40% { transform: translateX(5px); } 60% { transform: translateX(-3px); } 80% { transform: translateX(2px); } }
+@keyframes cheer-pop { 0% { transform: scale(0) rotate(-30deg); } 70% { transform: scale(1.2) rotate(8deg); } 100% { transform: none; } }
+/* burst(): the sparkle and the confetti. Fixed to the viewport; x/y come
+   from client coordinates, hence left/top. */
+.burst { position: fixed; inset: 0; pointer-events: none; z-index: 100; overflow: hidden; }
+.burst i { position: absolute; inline-size: 8px; block-size: 11px; margin: -5px -4px; border-radius: 2px; opacity: 0;
+  animation: burst 1.3s cubic-bezier(.15, .7, .35, 1) forwards; }
+@keyframes burst {
+  0% { transform: translate(0, 0) rotate(0); opacity: 1; }
+  55% { transform: translate(var(--dx), var(--dy)) rotate(calc(var(--rot) * .6)); opacity: 1; }
+  100% { transform: translate(var(--dx), calc(var(--dy) + 140px)) rotate(var(--rot)); opacity: 0; }
+}
 .focus .now-card.main { inline-size: min(420px, 100%); text-align: start; }
 
 /* The Now card sits still at the top; under it one pane with two tabs. */
