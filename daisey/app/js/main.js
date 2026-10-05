@@ -111,21 +111,8 @@ async function boot(){
   const places = mountPlaces($("#placedlg"));
   $("#placesBtn").onclick = () => { setMenu(false); places.open(); };
 
-  const SIGNED_IN = ["#board", "#tell"];
+  const SIGNED_IN = ["#board", "#tasksview", "#tell"];
 
-  // One pane under the card, two tabs. The hash remembers which (#tasks), so
-  // a reload or the back button lands where you were.
-  const setPane = (pane) => {
-    for (const [tab, view] of [["tabSchedule", "schedule"], ["tabTasks", "tasksview"]]) {
-      const on = (pane === "tasks") === (tab === "tabTasks");
-      $("#" + tab).setAttribute("aria-selected", String(on));
-      $("#" + view).hidden = !on;
-    }
-  };
-  const paneFromHash = () => (location.hash === "#tasks" ? "tasks" : "schedule");
-  $("#tabSchedule").onclick = () => { history.replaceState(null, "", location.pathname + location.search); setPane("schedule"); };
-  $("#tabTasks").onclick = () => { location.hash = "tasks"; };
-  window.addEventListener("hashchange", () => { if (mounted) setPane(paneFromHash()); });
 
   fb.onUser((user) => {
     setMenu(false);
@@ -183,9 +170,9 @@ async function boot(){
         m.menu = { unmount(){ stopSettings(); start.onchange = end.onchange = logSwitch.onchange = null; } };
         m.tasks = mountTasks($("#tasksview"), user.uid,
           { onOpen: (task) => m.adder.edit(task), onSweep: () => m.sweep.open(),
-          onProject: (name) => { location.hash = "tasks"; setPane("tasks"); m.tasks.showProject(name); $("#tasksview").scrollIntoView?.({ behavior: "smooth", block: "nearest" }); } });
+          onProject: (name) => { m.tasks.showProject(name); $("#tasksview").scrollIntoView?.({ behavior: "smooth", block: "nearest" }); } });
         m.now = mountNow($("#nowcard"), user.uid, { onEdit: (task) => m.adder.edit(task), name: (user.displayName || "").trim().split(/\s+/)[0], onDone: paintDone, ctxSlot: $("#ctxSlot"), onCard: (id) => { onCard = id; m.tasks?.setCurrent(id); }, onSweep: () => m.sweep.open(),
-          onProject: (name) => { location.hash = "tasks"; setPane("tasks"); m.tasks.showProject(name); $("#tasksview").scrollIntoView?.({ behavior: "smooth", block: "nearest" }); } });
+          onProject: (name) => { m.tasks.showProject(name); $("#tasksview").scrollIntoView?.({ behavior: "smooth", block: "nearest" }); } });
         m.tasks.setCurrent(onCard);
         // + beside Tell Daisey: the one place to add by hand. Task opens the
         // task form; Event opens the event form on the day the Today panel is
@@ -202,7 +189,7 @@ async function boot(){
         };
         plus.onclick = (e) => { e.stopPropagation(); setPlus(plusMenu.hidden); };
         // On a project's tab in Tasks, a new task starts in that project.
-        const tabProject = () => (paneFromHash() === "tasks" && m.tasks.shownProject()) || undefined;
+        const tabProject = () => m.tasks.shownProject() || undefined;
         $("#plusTask").onclick = () => { setPlus(false); m.adder.open(tabProject()); };
         $("#plusEvent").onclick = () => { setPlus(false); m.event.open(m.schedule.day()); };
         document.addEventListener("click", (e) => { if (!plusMenu.hidden && !plusMenu.contains(e.target)) setPlus(false); });
@@ -213,7 +200,6 @@ async function boot(){
           m.tell = mountTell($("#tell"), $("#tellInput"), $("#mic"), user.uid, { openAdd: (project, title) => m.adder.open(project ?? tabProject(), title) });
         }).catch((e) => console.error("[daisey] tell", e));
         for (const s of SIGNED_IN) $(s).hidden = false;
-        setPane(paneFromHash());
       }).catch((e) => console.error("[daisey] boot views", e));
   });
 }

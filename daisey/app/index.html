@@ -62,18 +62,12 @@
        the page (Mor, 2026-10-05). -->
   <section id="status" class="card"><p class="muted">Loading…</p></section>
 
-  <!-- Signed in: the Now card stays put at the top; under it one pane that
-       switches between the day and the projects (Mor, 2026-10-04). -->
+  <!-- Signed in: the Now card top start, the day beside it, the tasks under
+       both — no tabs (Mor, 2026-10-05; was card + a Day/Tasks pane). -->
   <div id="board" hidden>
     <section id="nowcard" aria-label="Now" hidden></section>
-    <nav class="panetabs" role="tablist" aria-label="Under the card">
-      <button id="tabSchedule" class="tab" role="tab" aria-controls="schedule" type="button">Day</button>
-      <button id="tabTasks" class="tab" role="tab" aria-controls="tasksview" type="button">Tasks</button>
-    </nav>
-    <div class="pane">
-      <section id="schedule" class="sch" role="tabpanel" aria-labelledby="tabSchedule" hidden></section>
-      <div id="tasksview" role="tabpanel" aria-labelledby="tabTasks" hidden></div>
-    </div>
+    <section id="schedule" class="sch" aria-label="Day" hidden></section>
+    <div id="tasksview" aria-label="Tasks" hidden></div>
   </div>
 
   <!-- Tell Daisey (tell.js): type or speak; Daisey shows what it understood

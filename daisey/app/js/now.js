@@ -142,17 +142,12 @@ export function mountNow(root, uid, { onCard, onSweep, onProject, onEdit, name =
           title: "Edit task", onclick: () => onEdit(t) }, icon("edit"))));
   }
 
-  // The card, with the next piece peeking in from the far side like
-  // Tetris's NEXT (Mor, 2026-10-05): the engine's next real pick, so it never
-  // promises a task that isn't there. Tap it, or swipe the card away, and it
-  // slides in. The card breathes while nothing is asked of it (CSS; off
-  // under reduced motion).
+  // The card. Swipe it away and the engine's next real pick slides in. (The
+  // Tetris NEXT peek beside it gave its place to the day, Mor 2026-10-05.)
+  // The card breathes while nothing is asked of it (CSS; off under reduced
+  // motion).
   function deck(card, next, still){
-    const el = h("div", { className: `deck${still ? " still" : ""}` }, card,
-      next && h("button", { type: "button", className: "now-peek" + areaClass(next.task),
-        ariaLabel: `Next: ${next.task.title}. Put it on the card`, onclick: () => advance(next) },
-        h("span", { className: "peek-top" }, h("span", { className: "dot" }), sizeText(next.task.size)),
-        h("span", { className: "peek-title", dir: "auto", textContent: next.task.title })));
+    const el = h("div", { className: `deck${still ? " still" : ""}` }, card);
     if (next) {
       let x0 = null, y0 = 0;
       card.addEventListener("pointerdown", (e) => { x0 = e.target.closest("input, textarea") ? null : e.clientX; y0 = e.clientY; });
@@ -169,7 +164,7 @@ export function mountNow(root, uid, { onCard, onSweep, onProject, onEdit, name =
   function advance(next){
     const go = () => { reset(); state.chosen = next.task.id; slideIn = true; render(); };
     const el = root.querySelector(".now-card.main");
-    if (el && motionOK()) { el.classList.add("out"); root.querySelector(".now-peek")?.classList.add("pull"); setTimeout(go, SLIDE_MS); } else go();
+    if (el && motionOK()) { el.classList.add("out"); setTimeout(go, SLIDE_MS); } else go();
   }
   const asking = () => state.laterAsk || state.pendAsk || state.showAlts;
 
