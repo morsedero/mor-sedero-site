@@ -54,6 +54,9 @@ export function mountAddTask(dialog, uid, { onStart } = {}){
   // ---------- the pieces ----------
   const heading = h("h2", { id: "addTitle", className: "sr", textContent: "Task" });
   const grip = h("button", { className: "ts-grip", type: "button", ariaLabel: "Close", onclick: () => dialog.close() }, h("span", { ariaHidden: "true" }));
+  // A new task opens as a plain centred card, not a pull-up sheet (Mor,
+  // 2026-10-05), so it closes with an X rather than the grip.
+  const closeX = h("button", { className: "ts-x", type: "button", ariaLabel: "Close", onclick: () => dialog.close() }, icon("close"));
   const projectSel = h("select", { className: "ts-project", ariaLabel: "Project" });
   const projRow = h("div", { className: "ts-proj" }, h("span", { className: "dot", ariaHidden: "true" }), projectSel);
   const newProject = h("input", { className: "ts-input", dir: "auto", autocomplete: "off", placeholder: "Name the new project", ariaLabel: "New project name" });
@@ -113,7 +116,7 @@ export function mountAddTask(dialog, uid, { onStart } = {}){
   const del = h("button", { type: "button", className: "ts-del" });
   const msg = h("p", { className: "msg", role: "status" });
 
-  dialog.replaceChildren(heading, grip, projRow, newProject, title,
+  dialog.replaceChildren(heading, grip, closeX, projRow, newProject, title,
     h("div", { className: "ts-dates" }, start.box, due.box),
     detailsBtn, chipRow, pendBox, stateLine,
     h("h3", { className: "ts-h", textContent: "Steps" }), stepList,
@@ -357,6 +360,7 @@ export function mountAddTask(dialog, uid, { onStart } = {}){
       const keep = projectSel.value === NEW_PROJECT ? "" : projectSel.value;
       clear();
       editing = null;
+      dialog.classList.add("fresh");
       heading.textContent = "New task";
       showProject(project !== undefined ? project : keep);
       title.value = text;
@@ -370,6 +374,7 @@ export function mountAddTask(dialog, uid, { onStart } = {}){
     edit(task){
       clear();
       editing = task;
+      dialog.classList.remove("fresh");
       heading.textContent = task.title;
       showProject(task.project);
       title.value = task.title;

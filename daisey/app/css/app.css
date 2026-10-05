@@ -602,6 +602,13 @@ dialog.now { overflow-y: auto; overscroll-behavior: contain; }
 .hold-sub:empty { display: none; }
 .focus-row { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 8px; margin-block-start: 10px; }
 .focus-row .btn { padding-inline: 4px; white-space: nowrap; font-size: 15px; }
+.focus-row .btn.withicon { display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+.focus-row .btn.withicon svg { inline-size: 17px; block-size: 17px; flex: none; stroke-width: 2; }
+/* Pause/Resume and Stop: round icon buttons above Hold to finish. */
+.focus-ctl { display: flex; justify-content: center; gap: 18px; margin-block-end: 14px; }
+.btn.round { inline-size: 56px; block-size: 56px; min-block-size: 56px; padding: 0; border-radius: 50%;
+  display: inline-flex; align-items: center; justify-content: center; }
+.btn.round svg { inline-size: 22px; block-size: 22px; }
 .focus.paused .ring-bar { opacity: .45; }
 .focus.paused .ring-time { color: var(--sub); }
 .focus .batch-list { margin: 14px 0 0; inline-size: 100%; }
@@ -865,7 +872,9 @@ body:has(.screen:not([hidden])) { overflow: hidden; }
 .pj-chip { flex: none; display: inline-flex; align-items: center; gap: 6px; block-size: 34px; padding-inline: 12px; border: 0; border-radius: 999px; background: var(--tint); color: var(--aink); font: inherit; font-size: 13px; font-weight: 500; cursor: pointer; }
 .pj-chip .dot { inline-size: 7px; block-size: 7px; border-radius: 50%; background: currentColor; }
 .pj-chip[aria-selected="true"] { background: var(--aink); color: var(--card); font-weight: 600; }
-.pj-card { margin: 12px 20px 0; padding: 14px 16px; border-radius: 18px; background: var(--tint); border: 1px solid var(--aline); }
+/* Children of .screen keep its centring (margin-inline: auto): the 20px
+   gutter is a narrower width, not a side margin, or wide screens pin them left. */
+.pj-card { margin: 12px auto 0; inline-size: calc(100% - 40px); max-inline-size: 520px; padding: 14px 16px; border-radius: 18px; background: var(--tint); border: 1px solid var(--aline); }
 .pj-card-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .pj-name { margin: 0; min-inline-size: 0; font-size: 22px; font-weight: 600; overflow-wrap: anywhere; }
 .pj-area { flex: none; font-size: 12px; font-weight: 600; color: var(--aink); }
@@ -879,7 +888,7 @@ body:has(.screen:not([hidden])) { overflow: hidden; }
 .pj-dot.pending { border: 2px solid #8c8574; }
 .pj-dot.someday { border: 2px dashed #b8b09f; }
 .pj-dot.done { background: var(--green); }
-.pj-fold { display: flex; align-items: center; gap: 8px; inline-size: calc(100% - 40px); margin: 0 20px; min-block-size: 40px; padding: 0; border: 0; background: none; color: var(--ink); font: inherit; cursor: pointer; }
+.pj-fold { display: flex; align-items: center; gap: 8px; inline-size: calc(100% - 40px); max-inline-size: 520px; margin: 0 auto; min-block-size: 40px; padding: 0; border: 0; background: none; color: var(--ink); font: inherit; cursor: pointer; }
 .pj-sec + .pj-fold { margin-block-start: 16px; }
 .pj-list { display: grid; gap: 2px; padding: 0 20px 6px 38px; }
 :dir(rtl) .pj-list { padding: 0 38px 6px 20px; }
@@ -900,7 +909,7 @@ body:has(.screen:not([hidden])) { overflow: hidden; }
 .pj-meta { font-size: 12px; color: var(--ink-2); }
 .pj-who { flex: none; display: grid; place-items: center; inline-size: 30px; block-size: 30px; border-radius: 50%; background: var(--chip); color: var(--ink); font-size: 13px; font-weight: 600; }
 .pj-add { inline-size: 100%; min-block-size: 40px; margin-block-start: 8px; border: 1.5px dashed var(--bud); border-radius: 12px; background: transparent; color: var(--ink-2); font: inherit; font-size: 13px; cursor: pointer; }
-.pj-hint { display: flex; align-items: center; justify-content: center; gap: 10px; margin: 28px 0 0; color: #8c8574; font-size: 12px; }
+.pj-hint { display: flex; align-items: center; justify-content: center; gap: 10px; margin: 28px auto 0; color: #8c8574; font-size: 12px; }
 .pj-hint svg { inline-size: 16px; block-size: 16px; stroke-width: 2; }
 
 /* The task sheet: a bottom sheet. */
@@ -910,6 +919,15 @@ dialog.tsheet[open] { display: flex; flex-direction: column; }
 @keyframes sheet-up { from { transform: translateY(24px); } }
 .ts-grip { flex: none; display: block; inline-size: 100%; block-size: 22px; padding: 0; border: 0; background: none; cursor: pointer; }
 .ts-grip span { display: block; inline-size: 40px; block-size: 5px; margin: 0 auto; border-radius: 3px; background: var(--bud); }
+/* A new task: a centred card, no grip, an X in the corner. */
+.ts-x { display: none; }
+dialog.tsheet.fresh { inline-size: calc(100% - 32px); max-block-size: calc(100dvh - 32px); margin: auto; padding-block: 18px 20px; border-radius: 24px; box-shadow: 0 12px 32px rgb(0 0 0 / .12); }
+dialog.tsheet.fresh .ts-grip { display: none; }
+dialog.tsheet.fresh .ts-x { position: absolute; inset-block-start: 10px; inset-inline-end: 10px; z-index: 1; display: grid; place-items: center; inline-size: 36px; block-size: 36px; padding: 0; border: 0; border-radius: 50%; background: var(--chip); color: var(--ink); cursor: pointer; }
+.ts-x svg { inline-size: 16px; block-size: 16px; stroke-width: 2; }
+dialog.tsheet.fresh .ts-proj { padding-inline-end: 44px; }
+@media (prefers-reduced-motion: no-preference) { dialog.tsheet.fresh[open] { animation: card-in .18s ease-out; } }
+@keyframes card-in { from { opacity: 0; transform: scale(.97); } }
 .ts-proj { display: flex; align-items: center; gap: 6px; margin-block-start: 14px; color: var(--aink); }
 .ts-proj .dot { inline-size: 8px; block-size: 8px; flex: none; border-radius: 50%; background: currentColor; }
 .ts-project { min-inline-size: 0; max-inline-size: 100%; padding: 4px 0; border: 0; background: none; color: inherit; font: inherit; font-size: 13px; font-weight: 600; appearance: none; -webkit-appearance: none; cursor: pointer; text-overflow: ellipsis; }

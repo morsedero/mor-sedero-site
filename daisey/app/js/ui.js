@@ -76,6 +76,8 @@ const PATHS = {
   plus: "M12 5v14M5 12h14",
   edit: "M4 20h4L19 9l-4-4L4 16v4ZM13.5 6.5l4 4", // a pencil: the task's settings
   play: "M7 4.5v15l13-7.5z", // filled, not stroked (FILLED)
+  pause: "M7 5h3.5v14H7zM13.5 5H17v14h-3.5z", // filled
+  stop: "M8 6h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2z", // filled
   back: "M15 6l-6 6 6 6",
   chev: "M9 6l6 6-6 6",
   close: "M6 6l12 12M18 6L6 18",
@@ -84,7 +86,7 @@ const PATHS = {
   calendar: "M3.5 8a3 3 0 0 1 3-3h11a3 3 0 0 1 3 3v9a3 3 0 0 1-3 3h-11a3 3 0 0 1-3-3ZM3.5 10h17M8 3v4M16 3v4",
   someday: "M7 18a4.5 4.5 0 0 1-.6-9A6 6 0 0 1 18 9.5a4 4 0 0 1-1 8.5Z", // a cloud: parked
 };
-const FILLED = new Set(["play"]);
+const FILLED = new Set(["play", "pause", "stop"]);
 
 export const icon = (name) => {
   const NS = "http://www.w3.org/2000/svg";
