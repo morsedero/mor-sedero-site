@@ -81,6 +81,7 @@ export function mountTell(form, input, mic, uid, { openAdd }){
     const list = [...actions];
     const draw = () => {
       const cards = list.map((a, i) => card(a, () => { list.splice(i, 1); draw(); }));
+      const applicable = list.filter((a) => a.kind !== "project"); // a project card has its own button
       show(
         h("div", { className: "tell-head" },
           h("p", { className: "tell-reply", dir: "auto", textContent: reply || (list.length ? "Here's what I got:" : "Nothing to change.") }),
@@ -90,9 +91,9 @@ export function mountTell(form, input, mic, uid, { openAdd }){
           h("div", { className: "tell-choices" }, ...choices.map((c) => h("button", { className: "chip", type: "button", dir: "auto", textContent: c,
             onclick: () => ask(`${text}\n(${question} → ${c})`) })))),
         cards.length > 0 && h("ul", { className: "tell-cards" }, ...cards),
-        cards.length > 0 && h("div", { className: "tell-btns" },
-          h("button", { className: "btn primary start", type: "button", textContent: list.length > 1 ? `Apply all ${list.length}` : "Apply",
-            onclick: () => apply(list) }),
+        applicable.length > 0 && h("div", { className: "tell-btns" },
+          h("button", { className: "btn primary start", type: "button", textContent: applicable.length > 1 ? `Apply all ${applicable.length}` : "Apply",
+            onclick: () => apply(applicable) }),
           h("button", { className: "btn quiet", type: "button", textContent: "Cancel", onclick: close })));
     };
     draw();
@@ -119,13 +120,18 @@ export function mountTell(form, input, mic, uid, { openAdd }){
       if (a.energy) bits.push(ENERGY[a.energy]);
       if (a.place) bits.push(PLACE[a.place]);
     }
-    const LABEL = { add: "New task", update: "Change", waiting: "Waiting", drop: "Drop", moment: "Right now" };
-    const title = a.kind === "add" ? a.title : a.kind === "moment" ? null : t?.title;
+    const LABEL = { add: "New task", update: "Change", waiting: "Waiting", drop: "Drop", moment: "Right now", project: "New project" };
+    const title = a.kind === "add" ? a.title : a.kind === "project" ? a.project : a.kind === "moment" ? null : t?.title;
+    // A project lives through its tasks, so it starts with the first one:
+    // the task form, with the new project already chosen.
+    if (a.kind === "project") bits.push("starts with its first task");
     return h("li", { className: `tell-card k-${a.kind}` },
       h("div", { className: "tell-card-main" },
         h("span", { className: "tell-kind", textContent: LABEL[a.kind] }),
         title && h("span", { className: "tell-title", dir: "auto", textContent: title }),
         bits.length > 0 && h("span", { className: "tell-meta" }, ...bits.flatMap((b, i) => (i ? [" · ", bdi(b)] : [bdi(b)])))),
+      a.kind === "project" && h("button", { className: "btn primary small tell-first", type: "button", textContent: "Add first task",
+        onclick: () => { close(); input.value = ""; openAdd(a.project, ""); } }),
       a.kind === "add" && h("button", { className: "tell-edit", type: "button", textContent: "Edit",
         ariaLabel: `Edit ${a.title} in the full form`, onclick: () => { close(); openAdd(a.project, a.title); } }),
       h("button", { className: "tell-x", type: "button", ariaLabel: "Don't do this one", textContent: "✕", onclick: drop }));

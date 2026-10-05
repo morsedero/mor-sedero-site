@@ -917,7 +917,6 @@ dialog.now { overflow-y: auto; overscroll-behavior: contain; }
 .sch-nav { display: grid; grid-template-columns: 1fr auto auto auto 1fr; align-items: center; gap: 6px; }
 .sch-nav::before { content: ""; }
 .sch-nav .sch-head { flex: none; padding-inline: 4px; }
-.sch-nav .sch-add { justify-self: end; }
 @media (max-width: 420px) { .ev-grid .field input[type="date"]::-webkit-calendar-picker-indicator { display: none; } } /* a tap on the field opens the picker on phones anyway */
 
 /* Tell Daisey's answer: a sheet just above the bar, cards to confirm. */
@@ -954,3 +953,30 @@ body.focus .tell-panel { display: none; }
 
 /* Tasks: Waiting folds away like Someday. */
 .tk-waiting { margin-block-start: 4px; opacity: .85; }
+
+/* + beside Tell Daisey: Task or Event, by hand. */
+.plus-wrap { position: relative; flex: none; }
+.plus {
+  inline-size: 50px; block-size: 50px; display: grid; place-items: center; cursor: pointer;
+  border: 1px solid var(--line); border-radius: 50%; background: var(--card); color: var(--ink); box-shadow: 0 6px 18px rgb(0 0 0 / .06);
+  transition: transform .15s ease;
+}
+.plus[aria-expanded="true"] { transform: rotate(45deg); }
+@media (prefers-reduced-motion: reduce) { .plus { transition: none; } }
+.plus-menu {
+  position: absolute; inset-block-end: calc(100% + 8px); inset-inline-start: 0; z-index: 7; min-inline-size: 150px;
+  display: grid; gap: 2px; padding: 6px; border-radius: 16px; background: var(--card); border: 1px solid var(--line);
+  box-shadow: 0 12px 32px rgb(0 0 0 / .16);
+}
+@media (prefers-reduced-motion: no-preference) { .plus-menu:not([hidden]) { animation: guess-in .15s ease-out; } }
+.plus-menu button {
+  display: flex; align-items: center; gap: 10px; min-block-size: 44px; padding-inline: 12px; cursor: pointer;
+  border: none; border-radius: 10px; background: transparent; color: var(--ink); font: inherit; font-size: 15px; font-weight: 500; text-align: start;
+}
+.plus-menu button:hover:not(:disabled) { background: var(--chip); }
+.plus-menu button:disabled { opacity: .45; cursor: default; }
+.tell-first { flex: none; min-block-size: 36px; padding-inline: 12px; font-size: 13px; }
+
+/* The date and time, back under the greeting (Mor, 2026-10-05). */
+.greet-col { min-inline-size: 0; }
+.top-date { margin: 2px 0 0; font-size: 13px; color: var(--ink-2); font-variant-numeric: tabular-nums; white-space: nowrap; }

@@ -91,7 +91,7 @@ function dayRows(events, now, from, until = null){
 // at 01:19 it said "18 h free today".
 // uid: the signed-in user. onSweep(ids) opens the sweep on those tasks.
 // onOpen(event) hands a tapped calendar event to the sheet.
-export function mountSchedule(root, { onAdd, onOpen, uid, onSweep } = {}){
+export function mountSchedule(root, { onOpen, uid, onSweep } = {}){
   let cal = { status: "loading", events: [] };
   let tasks = null;
   let settings = {}; // state/settings: the day hours
@@ -174,10 +174,9 @@ export function mountSchedule(root, { onAdd, onOpen, uid, onSweep } = {}){
     back = h("button", { className: "btn quiet sch-today", type: "button", textContent: "Back to today",
       hidden: true, onclick: () => setOffset(0) });
 
-    // New events land on the day you're looking at, not on today.
-    const add = h("button", { className: "sch-add", type: "button", textContent: "+", ariaLabel: "New event",
-      title: "New event", hidden: cal.status !== "ok", onclick: () => onAdd?.(localDate(dayStart(Date.now(), offset))) });
-    const kids = [h("header", { className: "sch-nav" }, prev, heading, next, add)];
+    // New events come from the + beside Tell Daisey (main.js), which asks
+    // day() so they still land on the day you're looking at.
+    const kids = [h("header", { className: "sch-nav" }, prev, heading, next)];
     if (NOTE[cal.status]) {
       kids.push(h("p", { className: "muted sch-note" }, NOTE[cal.status],
         ["not_connected", "needs_reauth"].includes(cal.status)
@@ -211,6 +210,9 @@ export function mountSchedule(root, { onAdd, onOpen, uid, onSweep } = {}){
   render();
 
   return {
+    // The day the panel is showing, "YYYY-MM-DD", and whether events can be added at all.
+    day: () => localDate(dayStart(Date.now(), offset)),
+    canAdd: () => cal.status === "ok",
     unmount(){ unsubs.forEach((u) => u()); clearInterval(tick); document.removeEventListener("visibilitychange", onVisible); root.replaceChildren(); root.hidden = true; },
   };
 }

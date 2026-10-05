@@ -30,6 +30,8 @@ const UNDO_MS = 5000;
 const SLIDE_MS = 140; // matches the card-out animation in app.css
 const motionOK = () => !window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 const clock = (ms) => new Date(ms).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
+// "Mon 5 Oct · 14:03", under the greeting; the tick below keeps it current.
+const stamp = (ms = Date.now()) => `${new Date(ms).toLocaleDateString([], { weekday: "short", day: "numeric", month: "short" })} · ${clock(ms)}`;
 const CAL_NOTE = {
   not_connected: "Calendar not connected. Sign in to the old Daisey once to link it.",
   needs_reauth: "Calendar sign-in expired. Sign in to the old Daisey again to refresh it.",
@@ -211,7 +213,10 @@ export function mountNow(root, uid, { onCard, onSweep, onProject, name = "", onD
     ctxSlot?.replaceChildren(chipsRow());
     return h("div", { className: "now-top-wrap" },
       h("div", { className: "now-top" },
-        h("h2", { className: "greeting", textContent: greeting(name) }), freeLine(fw)),
+        h("div", { className: "greet-col" },
+          h("h2", { className: "greeting", textContent: greeting(name) }),
+          h("p", { className: "top-date", textContent: stamp() })),
+        freeLine(fw)),
       choicesRow());
   }
 
@@ -959,6 +964,8 @@ export function mountNow(root, uid, { onCard, onSweep, onProject, name = "", onD
     if (document.hidden) return;
     if (run && !run.pausedAt) { const c = Math.floor(elapsedMinutes(run) * 60); if (c !== lastClock) { lastClock = c; render(); } return; }
     if (windowMark(calendarNow()) !== lastWindow) render();
+    const date = root.querySelector(".top-date"), now = stamp();
+    if (date && date.textContent !== now) date.textContent = now;
   }, 1000);
   const onVisible = () => { if (!document.hidden) render(); };
   document.addEventListener("visibilitychange", onVisible);

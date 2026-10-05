@@ -30,7 +30,9 @@ const MODEL = process.env.GEMINI_MODEL || "gemini-3.5-flash-lite";
 const DAILY_CAP = 60;
 const MAX_TEXT = 800;
 const MAX_TASKS = 120;
-const KINDS = ["add", "update", "waiting", "drop", "moment"];
+// project: a new project. Projects only exist through their tasks, so the app
+// answers it by opening its first task, with the project already set.
+const KINDS = ["add", "update", "waiting", "drop", "moment", "project"];
 
 const reply = (statusCode, body) => ({
   statusCode,
@@ -46,7 +48,7 @@ const ACTION_FIELDS = {
   kind: str("What to do.", { enum: KINDS }),
   taskId: str("update/waiting/drop only: the exact id of an existing task from the list."),
   title: str("add: the new task's title in the user's own words. update: only when renaming."),
-  project: str("An existing project name when one clearly fits. Otherwise leave empty."),
+  project: str("An existing project when one clearly fits, or a new project the user names. Otherwise leave empty."),
   minutes: { type: "INTEGER", description: "How long the task takes, only if the user said (\"15 min\" → 15, \"2 hours\" → 120)." },
   dueDate: str("YYYY-MM-DD the task is due (\"by Thursday\", \"עד יום רביעי\"). Only if the user gave one."),
   dateKind: str("deadline only for a hard date with a cost if missed, else target.", { enum: ["deadline", "target"] }),
@@ -79,6 +81,7 @@ Kinds:
 - waiting: an existing task is blocked on someone or something.
 - drop: the user no longer wants an existing task.
 - moment: how the user is right now (energy, place). Changes no task.
+- project: the user wants a new project (put its name in project). If they also name tasks for it, add those too, each with that project.
 
 Rules:
 - Each value goes only in its own field. Dates go in dueDate or startDate as YYYY-MM-DD, never in waitingFor or title.
@@ -97,6 +100,10 @@ Message: push the mix review to next week
 {"reply":"Which mix review?","question":"Which mix review?","choices":["Mix review for Reprise","Mix review for Lunitales"],"actions":[]}
 Message: waiting on Yuval for the pre-attack cue
 {"reply":"Set it to waiting on Yuval?","actions":[{"kind":"waiting","taskId":"t3","waitingFor":"Yuval"}]}
+Message: add a project called Monster Punk
+{"reply":"New project Monster Punk?","actions":[{"kind":"project","project":"Monster Punk"}]}
+Message: new project חתונה: book the DJ, send invites
+{"reply":"פרויקט חדש חתונה, עם 2 משימות?","actions":[{"kind":"project","project":"חתונה"},{"kind":"add","title":"Book the DJ","project":"חתונה"},{"kind":"add","title":"Send invites","project":"חתונה"}]}
 Message: I'm wrecked and out
 {"reply":"Low energy, out. Got it?","actions":[{"kind":"moment","energy":"low","place":"out"}]}`;
 
@@ -131,6 +138,10 @@ function tidy(out, ids){
     if (kind === "waiting") {
       const on = clean(a.waitingFor ?? a.waitingOn, 80);
       if (on && !looksLikeDate(on)) x.waitingOn = on;
+    }
+    if (kind === "project") {
+      const name = clean(a.project, 60);
+      return name ? [{ kind, project: name }] : [];
     }
     if (kind === "moment") {
       if (["low", "medium", "high"].includes(a.energy)) x.energy = a.energy;

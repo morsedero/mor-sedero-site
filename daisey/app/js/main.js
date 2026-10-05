@@ -153,7 +153,7 @@ async function boot(){
         m.adder = mountAddTask($("#addtask"), user.uid, { onNow: (id) => m.now?.put(id) });
         // The Now card rides in the same scroller as the columns, first in line.
         m.event = mountAddEvent($("#eventdlg"));
-        m.schedule = mountSchedule($("#schedule"), { onAdd: (date, at) => m.event.open(date, at), onOpen: (ev) => m.event.view(ev), uid: user.uid, onSweep: (ids) => m.sweep.open(ids) });
+        m.schedule = mountSchedule($("#schedule"), { onOpen: (ev) => m.event.view(ev), uid: user.uid, onSweep: (ids) => m.sweep.open(ids) });
         m.importer = mountImport($("#importdlg"), user.uid);
         $("#importTrello").onclick = () => { setMenu(false); m.importer.open(); };
         // Always offered: a re-import only brings cards not already here.
@@ -183,6 +183,24 @@ async function boot(){
         m.now = mountNow($("#nowcard"), user.uid, { name: (user.displayName || "").trim().split(/\s+/)[0], onDone: paintDone, ctxSlot: $("#ctxSlot"), onCard: (id) => { onCard = id; m.tasks?.setCurrent(id); }, onSweep: () => m.sweep.open(),
           onProject: (name) => { location.hash = "tasks"; setPane("tasks"); m.tasks.showProject(name); $("#tasksview").scrollIntoView?.({ behavior: "smooth", block: "nearest" }); } });
         m.tasks.setCurrent(onCard);
+        // + beside Tell Daisey: the one place to add by hand. Task opens the
+        // task form; Event opens the event form on the day the Today panel is
+        // showing, and is off while the calendar isn't connected.
+        const plusMenu = $("#plusMenu"), plus = $("#plus");
+        const setPlus = (open) => {
+          plusMenu.hidden = !open;
+          plus.setAttribute("aria-expanded", String(open));
+          if (open) {
+            const ev = $("#plusEvent"), ok = m.schedule.canAdd();
+            ev.disabled = !ok;
+            ev.title = ok ? "" : "Connect the calendar first";
+          }
+        };
+        plus.onclick = (e) => { e.stopPropagation(); setPlus(plusMenu.hidden); };
+        $("#plusTask").onclick = () => { setPlus(false); m.adder.open(); };
+        $("#plusEvent").onclick = () => { setPlus(false); m.event.open(m.schedule.day()); };
+        document.addEventListener("click", (e) => { if (!plusMenu.hidden && !plusMenu.contains(e.target)) setPlus(false); });
+        document.addEventListener("keydown", (e) => { if (e.key === "Escape") setPlus(false); });
         // Tell Daisey: plain language in, confirm cards out (tell.js).
         import("./tell.js").then(({ mountTell }) => {
           if (mounted !== m) return; // signed out while it loaded
