@@ -541,11 +541,6 @@ html:has(dialog[open]), html:has(dialog[open]) body { overflow: hidden; }
 html:has(dialog[open]) :is(.pane > *, .sch-day, .sch-strip, .tk-single, .tk-chips) { overflow: hidden !important; }
 dialog.now { overflow-y: auto; overscroll-behavior: contain; }
 
-/* The card's context line: free time · place chip · energy chip. */
-.ctx { display: grid; gap: 6px; margin-block-end: 4px; }
-.ctx-line { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 12px; color: var(--ink-2); }
-.ctx-opts { display: flex; flex-wrap: wrap; gap: 6px; }
-.ctx-opts .chip { min-block-size: 32px; font-size: 13px; padding-inline: 11px; }
 
 /* Later → "When?": three choices under the card's actions. */
 .later-ask { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 5px; margin-block-start: 4px; font-size: 13px; }
@@ -613,9 +608,10 @@ dialog.now { overflow-y: auto; overscroll-behavior: contain; }
 .area-personal { --tint: var(--a-personal-tint); --aline: var(--a-personal-line); --aink: var(--a-personal-ink); }
 
 /* Header: the daisy, the name, the day's count, the avatar. */
-/* One short row: daisy + "Daisey" at the start; the place/energy chips and
-   the avatar at the end. */
-.topbar { gap: 8px; min-block-size: 40px; margin-block-end: 4px; }
+/* One row (Mor, 2026-10-05): the daisy, the greeting with the free line
+   under it, the clock tile, the avatar. "Daisey" shows only when the slot
+   is empty (night, loading) and stays for screen readers otherwise. */
+.topbar { gap: 10px; min-block-size: 48px; margin-block-end: 12px; }
 .brandrow { display: flex; align-items: center; gap: 7px; min-inline-size: 0; }
 .logo-wrap { position: relative; display: inline-flex; flex: none; }
 .logo { display: inline-flex; inline-size: 26px; block-size: 26px; }
@@ -625,9 +621,11 @@ dialog.now { overflow-y: auto; overscroll-behavior: contain; }
   font-size: 10px; font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums;
 }
 .brand { font-size: 19px; font-weight: 700; letter-spacing: -0.3px; min-inline-size: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.ctx-slot { margin-inline-start: auto; display: flex; min-inline-size: 0; }
+.ctx-slot { flex: 1; display: flex; align-items: center; gap: 10px; min-inline-size: 0; }
 .ctx-slot:empty { display: none; }
 .ctx-slot + .acct { margin-inline-start: 0; }
+.topbar:has(.ctx-slot:not(:empty)) .brand { position: absolute; inline-size: 1px; block-size: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+.ctx-slot .greet-col { flex: 1; }
 .acct { margin-inline-start: auto; }
 .avatar { inline-size: 34px; block-size: 34px; border: none; background: var(--ink); color: var(--bg); font-weight: 600; font-size: 14px; }
 .daisy-petals ellipse { fill: #fff; stroke: #e6dcc3; stroke-width: 1.2; }
@@ -635,26 +633,17 @@ dialog.now { overflow-y: auto; overscroll-behavior: contain; }
 :root.night .logo .daisy-petals ellipse { fill: #3a372f; stroke: #4a463c; }
 :root.night .logo .daisy-heart { fill: #b88a1a; }
 
-/* Under the header, one row: the greeting at the start, the free line at
-   the end (it wraps to a second line before the greeting does). */
-.now-top-wrap { display: grid; gap: 8px; margin-block: 4px 12px; }
-.now-top { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 12px; }
-.greeting { margin: 0; font-size: 18px; font-weight: 600; letter-spacing: -0.2px; line-height: 1.25; }
-.freeline { margin: 3px 0 0; font-size: 13px; line-height: 1.3; color: var(--ink-2); }
-.ctx-line { display: flex; gap: 5px; }
-.ctx-opts { justify-content: flex-end; }
-.ctx-opts .chip[aria-checked="true"] { background: var(--ink); color: var(--bg); }
-.ctx-chip, .tk-filters .chip, .tab { position: relative; }
-.ctx-chip::after, .tk-filters .chip::after, .tab::after { content: ""; position: absolute; inset: -5px 0; } /* 44px to the finger */
-.ctx-chip {
-  display: inline-flex; align-items: center; gap: 4px; block-size: 30px; padding-inline: 9px; cursor: pointer; white-space: nowrap;
-  border: none; border-radius: 999px; background: var(--chip); color: var(--ink); font: inherit; font-size: 12px; font-weight: 500;
-}
-.ctx-chip::after { inset: -7px 0; }
-.ctx-chip svg { inline-size: 14px; block-size: 14px; stroke-width: 2; }
-.ctx-chip.guess { color: var(--ink-2); } /* Daisey's guess reads quieter than your answer */
-.ctx-chip[aria-expanded="true"] { box-shadow: inset 0 0 0 1.5px var(--accent); }
-.ctx-opts .chip { min-block-size: 36px; font-size: 13px; padding-inline: 12px; border: none; background: var(--chip); }
+/* The greeting and the free line, in the header row. */
+.greeting { margin: 0; font-size: 17px; font-weight: 600; letter-spacing: -0.2px; line-height: 1.2; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.freeline { margin: 2px 0 0; font-size: 12px; line-height: 1.3; color: var(--ink-2); }
+.tk-filters .chip, .tab { position: relative; }
+.tk-filters .chip::after, .tab::after { content: ""; position: absolute; inset: -5px 0; } /* 44px to the finger */
+
+/* Switch's energy row: say why you're switching. */
+.energy-row { display: flex; flex-wrap: wrap; gap: 6px; }
+.energy-pick { display: inline-flex; align-items: center; gap: 6px; min-block-size: 36px; padding-inline: 12px; border: none; background: var(--chip); font-size: 13px; }
+.energy-pick svg { inline-size: 15px; block-size: 15px; }
+.energy-pick[aria-pressed="true"] { background: var(--ink); color: var(--bg); }
 
 /* The hero card. */
 /* minmax(0, 1fr): nothing inside (the Pending field, a long title) may make
@@ -980,11 +969,11 @@ body.focus .tell-panel { display: none; }
 /* The time and date as a clock tile at the top end (Mor, 2026-10-05). */
 .greet-col { min-inline-size: 0; }
 .clock-tile {
-  display: grid; justify-items: center; padding: 7px 14px 8px; border-radius: 16px; background: var(--chip);
+  flex: none; display: grid; justify-items: center; padding: 6px 11px 7px; border-radius: 14px; background: var(--chip);
   font-variant-numeric: tabular-nums; white-space: nowrap; line-height: 1;
 }
-.clock-time { font-size: 26px; font-weight: 600; letter-spacing: -0.5px; }
-.clock-date { margin-block-start: 4px; font-size: 11px; font-weight: 500; color: var(--ink-2); }
+.clock-time { font-size: 20px; font-weight: 600; letter-spacing: -0.4px; }
+.clock-date { margin-block-start: 3px; font-size: 10px; font-weight: 500; color: var(--ink-2); }
 
 /* The hero's reasons, as tags in the area's colour. */
 .why-tags { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0 0; padding: 0; list-style: none; }
@@ -993,8 +982,3 @@ body.focus .tell-panel { display: none; }
   background: color-mix(in srgb, var(--aink) 11%, transparent); color: var(--aink);
 }
 
-/* Energy chip: the bolt plus a three-bar meter for the level. */
-.meter { display: inline-flex; align-items: flex-end; gap: 2px; block-size: 12px; }
-.meter i { inline-size: 3px; border-radius: 1px; background: currentColor; opacity: .25; }
-.meter i:nth-child(1) { block-size: 5px; } .meter i:nth-child(2) { block-size: 8px; } .meter i:nth-child(3) { block-size: 12px; }
-.meter.m-low i:nth-child(1), .meter.m-medium i:nth-child(-n+2), .meter.m-high i { opacity: 1; }

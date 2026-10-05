@@ -12,6 +12,7 @@
 // the same timer.
 import { watchTasks, watchRun, watchSkips, saveSkips, startRun, extendRun, endRun, startBatch, tickBatch, endBatch, skipNow, blockTask, restoreTask, watchSettings, saveSettings, watchMoment, saveMoment, watchLearn, bumpLearn, addTask, saveRun, cancelRun } from "./store.js";
 import { energyNow, placeNow, workBase } from "./context.js";
+import { watchWhere } from "./where.js";
 import { shouldOffer, sweepList, pickWeekDay } from "./triage.js";
 import { focusView, handoffView, elapsedMinutes, targetMinutes, batchFocusView, batchName, sinceMark, paused, resumed } from "./focus.js";
 import { watchCalendar, deleteEvent, logDone } from "./calendar.js";
@@ -44,7 +45,7 @@ export function mountNow(root, uid, { onCard, onSweep, onProject, name = "", onD
   let settings = {}; // state/settings: when the sweep was last offered
   let momentDoc = {}; // state/moment: energy and place corrections
   let learnStats = {}; // state/learn: starts and skips per type and time of day
-  let ctxOpen = null; // "energy" | "place": the chip whose choices are showing
+  let located = null; // "home" | "out" from the phone's location (where.js), null = unknown
   let cal = { status: "loading", events: [] };
   let lastWindow, lastClock;
   let run = null; // the state/now doc while a task is running
@@ -162,41 +163,8 @@ export function mountNow(root, uid, { onCard, onSweep, onProject, name = "", onD
     const events = cal.status === "ok" ? cal.events : [];
     return {
       energy: energyNow({ correction: momentDoc.energy, history: momentDoc.history || [], events }),
-      place: placeNow({ correction: momentDoc.place, events }),
+      place: placeNow({ correction: momentDoc.place, located, events }),
     };
-  }
-
-  const PLACES = [["home", "Home"], ["out", "Out"], ["anywhere", "Anywhere"]];
-  const ENERGIES = [["low", "Low"], ["medium", "Medium"], ["high", "High"]];
-
-  // Place and energy, as filled chips with an icon (Mor, 2026-10-05). They
-  // sit in the header row, beside the avatar (ctxSlot), to keep the top
-  // short. A guess reads quieter than a correction; tapping one shows its
-  // three choices (choicesRow, under the greeting), and a choice is a
-  // correction that holds for 3 hours on every device.
-  const PLACE_ICON = { home: "home", out: "where", anywhere: "globe" };
-  function chipsRow(){
-    const f = feel();
-    const chip = (kind, list, cur) => {
-      const label = list.find(([v]) => v === cur.value)?.[1] || cur.value;
-      return h("button", { type: "button", className: "ctx-chip" + (cur.guessed ? " guess" : ""),
-        ariaExpanded: String(ctxOpen === kind), ariaLabel: kind === "energy" ? `${label} energy` : label,
-        title: cur.guessed ? "Daisey's guess. Tap to correct." : "Tap to change.",
-        onclick: () => { ctxOpen = ctxOpen === kind ? null : kind; render(); } },
-      // Icons only (Mor, 2026-10-05); the words stay in the label for screen
-      // readers. Energy adds a three-bar meter for its level.
-      icon(kind === "energy" ? "energy" : PLACE_ICON[cur.value] || "where"),
-      kind === "energy" && h("span", { className: `meter m-${cur.value}`, ariaHidden: "true" }, h("i"), h("i"), h("i")));
-    };
-    return h("div", { className: "ctx-line" }, chip("place", PLACES, f.place), chip("energy", ENERGIES, f.energy));
-  }
-  function choicesRow(){
-    const opts = ctxOpen && (ctxOpen === "place" ? PLACES : ENERGIES);
-    if (!opts) return null;
-    const f = feel();
-    return h("div", { className: "ctx-opts", role: "radiogroup", ariaLabel: ctxOpen === "place" ? "Where are you?" : "Energy" },
-      ...opts.map(([v, text]) => h("button", { type: "button", className: "chip", role: "radio", textContent: text,
-        ariaChecked: String(f[ctxOpen].value === v), onclick: () => correct(ctxOpen, v) })));
   }
 
   // The ONE free-time line (Mor, 2026-10-05: every other free-time number
@@ -214,21 +182,36 @@ export function mountNow(root, uid, { onCard, onSweep, onProject, name = "", onD
     return line(`${freeDur(fw.window)} free until ${clock(dayEndAt(Date.now(), dayHours(settings)))}`);
   }
 
-  // The top of the day screen (Mor, 2026-10-05): the header row carries the
-  // chips; under it the greeting and the free line at the start, and the
-  // time and date as a clock tile at the end.
+  // The top of the day screen, folded into the header row (Mor, 2026-10-05:
+  // "a lot of unused space in the middle"): the greeting with the free line
+  // under it, then the time and date as a clock tile. No place or energy
+  // chips any more: place comes from the phone's location (where.js), energy
+  // from the time of day and the calendar, corrected from Switch (energyRow).
   function topOf(fw){
-    ctxSlot?.replaceChildren(chipsRow());
     const now = Date.now();
-    return h("div", { className: "now-top-wrap" },
-      h("div", { className: "now-top" },
-        h("div", { className: "greet-col" },
-          h("h2", { className: "greeting", textContent: greeting(name) }),
-          freeLine(fw)),
-        h("div", { className: "clock-tile" },
-          h("span", { className: "clock-time", textContent: clock(now) }),
-          h("span", { className: "clock-date", textContent: dayText(now) }))),
-      choicesRow());
+    ctxSlot?.replaceChildren(
+      h("div", { className: "greet-col" },
+        h("h2", { className: "greeting", textContent: greeting(name) }),
+        freeLine(fw)),
+      h("div", { className: "clock-tile" },
+        h("span", { className: "clock-time", textContent: clock(now) }),
+        h("span", { className: "clock-date", textContent: dayText(now) })));
+    return null;
+  }
+
+  // Switch is where "not this one" happens, so it's where you say why:
+  // lighter or bigger. Same correction the energy chip made (3 hours, and
+  // one more point in the time-of-day pattern); tapping the one that's on
+  // goes back to medium. The card re-picks straight away.
+  function energyRow(){
+    const cur = feel().energy;
+    const on = (v) => !cur.guessed && cur.value === v;
+    const pick = (v, text, aria) => h("button", { type: "button", className: "chip energy-pick", ariaPressed: String(on(v)), ariaLabel: aria,
+      onclick: () => { state.showAlts = false; state.chosen = null; correct("energy", on(v) ? "medium" : v); } },
+      icon(v === "low" ? "lighter" : "energy"), h("span", { textContent: text }));
+    return h("div", { className: "energy-row" },
+      pick("low", "Something lighter", "I'm low on energy: show something lighter"),
+      pick("high", "Something bigger", "I've got energy: show something bigger"));
   }
 
   // A chip choice: the correction, and for energy one more point in the
@@ -241,7 +224,6 @@ export function mountNow(root, uid, { onCard, onSweep, onProject, name = "", onD
       fields.history = [...(momentDoc.history || []), { part: b.part, weekend: b.weekend, value }].slice(-100);
     }
     momentDoc = { ...momentDoc, ...fields };
-    ctxOpen = null;
     render();
     saveMoment(uid, fields).catch(fail);
   }
@@ -807,6 +789,7 @@ export function mountNow(root, uid, { onCard, onSweep, onProject, name = "", onD
   // Switch's list: the other tasks, or the way into Someday when there are none.
   function altsFor(alts){
     return [
+      state.showAlts && energyRow(),
       state.showAlts && !alts.length && h("div", { className: "now-alts", role: "group", ariaLabel: "Other tasks" },
         h("p", { className: "muted" }, "Nothing else is active. ",
           h("button", { className: "linkish", type: "button", textContent: "Pick from Someday?",
@@ -960,6 +943,7 @@ export function mountNow(root, uid, { onCard, onSweep, onProject, name = "", onD
   };
   const fail = (e) => console.error("[daisey] now", e);
   const unsubs = [
+    watchWhere((v) => { located = v; render(); }),
     watchTasks(uid, (ts) => { tasks = ts; render(); }, fail),
     watchCalendar((c) => { cal = c; render(); }),
     watchRun(uid, (r) => { run = r; if (r) handoff = null; render(); }, fail),
@@ -975,7 +959,7 @@ export function mountNow(root, uid, { onCard, onSweep, onProject, name = "", onD
     if (run && !run.pausedAt) { const c = Math.floor(elapsedMinutes(run) * 60); if (c !== lastClock) { lastClock = c; render(); } return; }
     if (windowMark(calendarNow()) !== lastWindow) render();
     for (const [sel, text] of [[".clock-time", clock(Date.now())], [".clock-date", dayText()]]) {
-      const el = root.querySelector(sel);
+      const el = ctxSlot?.querySelector(sel);
       if (el && el.textContent !== text) el.textContent = text;
     }
   }, 1000);

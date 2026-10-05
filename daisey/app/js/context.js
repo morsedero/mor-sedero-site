@@ -5,8 +5,9 @@
 // the average of your past corrections at this time of day (once there are
 // 5), else Medium — then one step lower if a long or draining calendar
 // event ended in the last hour.
-// Place: your correction in the last 3 hours; else Out while an event with
-// a location runs or just after it; else Home.
+// Place: your correction in the last 3 hours; else the phone's location
+// (where.js: Home near the saved home, Out when moving or away); else Out
+// while an event with a location runs or just after it; else Home.
 import * as W from "./weights.js";
 import { timeBucket } from "./engine.js";
 import { localDate } from "./model.js";
@@ -34,8 +35,9 @@ export function energyNow({ correction = null, history = [], events = [], now = 
   return { value: W.ENERGY_LEVELS[lvl], guessed: true, drained };
 }
 
-export function placeNow({ correction = null, events = [], now = Date.now() } = {}){
+export function placeNow({ correction = null, located = null, events = [], now = Date.now() } = {}){
   if (fresh(correction, now) && ["home", "out", "anywhere"].includes(correction.value)) return { value: correction.value, guessed: false };
+  if (located === "home" || located === "out") return { value: located, guessed: false, located: true };
   const out = events.some((e) => {
     if (e.allDay || !e.location) return false;
     const start = Date.parse(e.start), end = Date.parse(e.end);
