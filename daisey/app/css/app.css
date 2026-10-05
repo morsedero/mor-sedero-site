@@ -685,20 +685,29 @@ dialog.now { overflow-y: auto; overscroll-behavior: contain; }
 .now-card.main.batch .batch-preview { margin-block-start: 10px; color: var(--sub); }
 .now-out { margin: 10px 0 0; }
 
-/* The deck: up to two faint cards peeking out under the hero. */
-.deck { position: relative; inline-size: 100%; max-inline-size: 300px; margin-inline: auto; }
-.deck.d1 { padding-block-end: 8px; }
-.deck.d2 { padding-block-end: 16px; }
-.deck > .now-card { position: relative; }
-.deck-ghost { position: absolute; inset-block: 8px 0; inset-inline: 10px; border-radius: var(--radius); background: #f4eedf; border: 1px solid #e6decb; }
-.deck.d2 .deck-ghost.g1 { inset-block-end: 8px; }
-.deck-ghost.g2 { inset-block-start: 16px; inset-inline: 20px; background: #ede6d4; border: none; }
-:root[data-theme="dark"] .deck-ghost, :root.night .deck-ghost { background: #26231e; border-color: #2e2b25; }
-:root[data-theme="dark"] .deck-ghost.g2, :root.night .deck-ghost.g2 { background: #1c1a16; }
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) .deck-ghost { background: #26231e; border-color: #2e2b25; }
-  :root:not([data-theme="light"]) .deck-ghost.g2 { background: #1c1a16; }
+/* The deck: the hero on the start side, the next piece peeking in from the
+   far edge of the screen (Tetris's NEXT). The peek bleeds into the shell's
+   16px gutter, so it ends at the phone's edge, never past it. */
+.deck { position: relative; }
+.deck > .now-card { position: relative; max-inline-size: 300px; touch-action: pan-y; }
+.now-peek {
+  position: absolute; inset-block: 14px; inset-inline: min(310px, 100%) -16px; max-inline-size: 150px;
+  display: flex; flex-direction: column; align-items: flex-start; gap: 8px; overflow: hidden;
+  padding: 14px 12px; border: 1px solid var(--aline); border-inline-end: 0;
+  border-start-start-radius: var(--radius); border-end-start-radius: var(--radius);
+  background: var(--tint); color: var(--ink); font: inherit; text-align: start; cursor: pointer; opacity: .85;
 }
+.now-peek { -webkit-mask-image: linear-gradient(to right, #000 55%, transparent); mask-image: linear-gradient(to right, #000 55%, transparent); }
+:dir(rtl) .now-peek { -webkit-mask-image: linear-gradient(to left, #000 55%, transparent); mask-image: linear-gradient(to left, #000 55%, transparent); }
+.now-peek:hover { opacity: 1; }
+.peek-top { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; color: var(--aink); white-space: nowrap; }
+.peek-top .dot { inline-size: 8px; block-size: 8px; border-radius: 50%; background: currentColor; flex: none; }
+.peek-title { font-size: 16px; font-weight: 600; line-height: 1.2; inline-size: 240px; }
+@keyframes peek-pull { to { transform: translateX(-24px); opacity: 1; } }
+@keyframes peek-pull-rtl { to { transform: translateX(24px); opacity: 1; } }
+.now-peek.pull { animation: peek-pull .14s ease-in forwards; }
+:dir(rtl) .now-peek.pull { animation-name: peek-pull-rtl; }
+@media (prefers-reduced-motion: reduce) { .now-peek.pull { animation: none; } }
 @keyframes breathe { 50% { transform: translateY(-3px); } }
 @media (prefers-reduced-motion: no-preference) {
   .deck:not(.still) > .now-card.main:not(.in):not(.out):not(:focus-within) { animation: breathe 5s ease-in-out infinite; }

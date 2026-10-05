@@ -137,13 +137,35 @@ export function mountNow(root, uid, { onCard, onSweep, onProject, name = "", onD
       side && h("span", { className: "hero-side", textContent: side }));
   }
 
-  // The card with up to two faint cards peeking out under it, one per real
-  // alternative, so the deck never promises tasks that aren't there. It
-  // breathes while nothing is asked of it (CSS; off under reduced motion).
-  const deck = (card, n, still) => h("div", { className: `deck d${Math.min(2, n)}${still ? " still" : ""}` },
-    n > 1 && h("div", { className: "deck-ghost g2", ariaHidden: "true" }),
-    n > 0 && h("div", { className: "deck-ghost g1", ariaHidden: "true" }),
-    card);
+  // The card, with the next piece peeking in from the far side like
+  // Tetris's NEXT (Mor, 2026-10-05): the engine's next real pick, so it never
+  // promises a task that isn't there. Tap it, or swipe the card away, and it
+  // slides in. The card breathes while nothing is asked of it (CSS; off
+  // under reduced motion).
+  function deck(card, next, still){
+    const el = h("div", { className: `deck${still ? " still" : ""}` }, card,
+      next && h("button", { type: "button", className: "now-peek" + areaClass(next.task),
+        ariaLabel: `Next: ${next.task.title}. Put it on the card`, onclick: () => advance(next) },
+        h("span", { className: "peek-top" }, h("span", { className: "dot" }), sizeText(next.task.size)),
+        h("span", { className: "peek-title", dir: "auto", textContent: next.task.title })));
+    if (next) {
+      let x0 = null, y0 = 0;
+      card.addEventListener("pointerdown", (e) => { x0 = e.target.closest("input, textarea") ? null : e.clientX; y0 = e.clientY; });
+      card.addEventListener("pointerup", (e) => {
+        if (x0 === null) return;
+        const dx = (e.clientX - x0) * (getComputedStyle(card).direction === "rtl" ? -1 : 1), dy = e.clientY - y0;
+        x0 = null;
+        if (dx < -50 && Math.abs(dx) > 1.5 * Math.abs(dy)) advance(next);
+      });
+    }
+    return el;
+  }
+  // The next piece takes the card: this one slides out, that one slides in.
+  function advance(next){
+    const go = () => { reset(); state.chosen = next.task.id; slideIn = true; render(); };
+    const el = root.querySelector(".now-card.main");
+    if (el && motionOK()) { el.classList.add("out"); root.querySelector(".now-peek")?.classList.add("pull"); setTimeout(go, SLIDE_MS); } else go();
+  }
   const asking = () => state.laterAsk || state.pendAsk || state.showAlts;
 
   // The one loud button: amber, with a play icon.
@@ -941,10 +963,14 @@ export function mountNow(root, uid, { onCard, onSweep, onProject, name = "", onD
 
     if (card === r.pick && r.pick.batch && !state.chosen && !state.single) { fill(...head, batchCard(r, r.pick.batch), tip); return; }
     const alts = r.ranked.length > 1 ? [r.pick, ...r.alternatives].filter((s) => s !== card).slice(0, 3) : [];
+    // The next piece: the one after this card in the engine's order, round
+    // again at the end, so tapping through visits every alternative.
+    const order = [r.pick, ...r.alternatives].filter(Boolean);
+    const next = alts.length ? order[(order.indexOf(card) + 1) % order.length] ?? alts[0] : null;
     // Start is the one loud thing on the tab; the other two stay quiet under it.
     fill(...head, deck(taskCard(card, true,
       startButton("Start", `Start: ${card.task.title}`, () => begin(card.task)),
-      ...cardActions(card.task, alts)), alts.length, asking()),
+      ...cardActions(card.task, alts)), next !== card && next, asking()),
       ...altsFor(alts), tip);
     // One slide-in per step-aside: later snapshots must not replay it.
     if (slideIn) { slideIn = false; if (motionOK()) root.querySelector(".now-card.main")?.classList.add("in"); }
