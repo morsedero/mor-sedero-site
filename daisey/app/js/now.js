@@ -12,7 +12,7 @@
 // the same timer.
 import { watchTasks, watchRun, watchSkips, saveSkips, startRun, extendRun, endRun, startBatch, tickBatch, endBatch, skipNow, blockTask, restoreTask, watchSettings, saveSettings, watchMoment, saveMoment, watchLearn, bumpLearn, addTask, saveRun, cancelRun } from "./store.js";
 import { energyNow, placeNow, workBase } from "./context.js";
-import { watchWhere } from "./where.js";
+import { watchWhere, setRide } from "./where.js";
 import { shouldOffer, sweepList, pickWeekDay } from "./triage.js";
 import { focusView, handoffView, elapsedMinutes, targetMinutes, batchFocusView, batchName, sinceMark, paused, resumed } from "./focus.js";
 import { watchCalendar, deleteEvent, logDone } from "./calendar.js";
@@ -192,11 +192,40 @@ export function mountNow(root, uid, { onCard, onSweep, onProject, name = "", onD
     ctxSlot?.replaceChildren(
       h("div", { className: "greet-col" },
         h("h2", { className: "greeting", textContent: greeting(name) }),
-        freeLine(fw)),
+        moving(freeLine(fw))),
       h("div", { className: "clock-tile" },
         h("span", { className: "clock-time", textContent: clock(now) }),
         h("span", { className: "clock-date", textContent: dayText(now) })));
     return null;
+  }
+
+  // On the move, the free line says so first: "On the train · 2 h free …".
+  const MODE_WORD = { walk: "Walking", train: "On the train", bus: "On the bus", ride: "On the move" };
+  function moving(line){
+    const word = MODE_WORD[feel().place.value];
+    if (!word) return line;
+    if (!line) return h("p", { className: "freeline", textContent: word });
+    line.prepend(`${word} · `);
+    return line;
+  }
+
+  // A ride the phone can't name (speed says train, bus or car alike): ask
+  // once; the answer holds for the rest of the ride (where.js RIDE_MS).
+  function rideAsk(){
+    const pick = (mode, text) => h("button", { type: "button", className: "chip", textContent: text, onclick: () => setRide(mode) });
+    return h("div", { className: "ride-ask", role: "group", ariaLabel: "How are you travelling?" },
+      h("span", { className: "muted", textContent: "On a" }),
+      pick("train", "Train"), pick("bus", "Bus"), pick("car", "Driving"));
+  }
+
+  // Driving: no task at all, just this. "I'm a passenger" counts as a bus
+  // ride (sitting, phone in hand).
+  function drivingCard(){
+    return h("div", { className: "now-card main hero meeting" },
+      h("div", { className: "now-meta", textContent: "Driving" }),
+      h("div", { className: "now-title", textContent: "Eyes on the road" }),
+      h("p", { className: "now-why", textContent: "I'll have something ready when you stop." }),
+      h("button", { className: "btn quiet", type: "button", textContent: "I'm a passenger", onclick: () => setRide("bus") }));
   }
 
   // Switch is where "not this one" happens, so it's where you say why:
@@ -864,6 +893,8 @@ export function mountNow(root, uid, { onCard, onSweep, onProject, name = "", onD
     }
 
     if (night) { fill(...head, ...nightView(hrs), toast && toastView()); return; }
+    if (feel().place.value === "car") { showing(null); fill(...head, drivingCard(), toast && toastView()); return; }
+    if (located === "ride") head.push(rideAsk());
 
     const r = rank(tasks, momentInput(fw));
     const planned = blockOf(fw)?.taskId;

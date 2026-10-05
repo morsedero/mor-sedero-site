@@ -982,3 +982,7 @@ body.focus .tell-panel { display: none; }
   background: color-mix(in srgb, var(--aink) 11%, transparent); color: var(--aink);
 }
 
+
+/* "On a Train / Bus / Driving" — asked once per ride (now.js rideAsk). */
+.ride-ask { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-block-end: 10px; font-size: 13px; }
+.ride-ask .chip { min-block-size: 36px; padding-inline: 12px; border: none; background: var(--chip); font-size: 13px; }

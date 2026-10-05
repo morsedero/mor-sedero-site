@@ -31,8 +31,19 @@ export const OUT_AFTER_MINUTES = 30;
 export const SPLIT_MIN_WINDOW = 25; // a splittable task too big for the window still fits if the window is this long
 export const STALE_SKIPS = 5; // skipped this many times without a start → stop suggesting, ask in chat
 // Which task places can't happen where you are. Anywhere (as the moment)
-// filters nothing. (Mor approved, 2026-10-04.)
-export const PLACE_BLOCKS = { out: ["home", "computer"], home: [] };
+// filters nothing. (Mor approved, 2026-10-04.) The moving ones come from
+// the phone's location (where.js, 2026-10-05): walking takes calls and
+// errands; a train adds the laptop; a bus, or a ride not yet named, takes
+// calls and anywhere-tasks only; driving takes nothing (now.js shows the
+// driving card instead of a task).
+export const PLACES = ["home", "out", "anywhere", "walk", "ride", "train", "bus", "car"];
+export const PLACE_BLOCKS = {
+  out: ["home", "computer"], home: [],
+  walk: ["home", "computer"],
+  train: ["home", "out"],
+  bus: ["home", "out", "computer"], ride: ["home", "out", "computer"],
+  car: ["home", "out", "computer", "phone", "anywhere"],
+};
 
 // ---------- Gate 2 — what does leaving it cost? ----------
 export const DEADLINE = { today: 35, within2: 25, within7: 12 }; // past or today · ≤2 days · ≤7 days

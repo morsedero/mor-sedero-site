@@ -111,6 +111,7 @@ const widthFlag = flag("--width"); // phone width in CSS px (default 390)
 const evalJs = flag("--eval"); // run this in the page at the end and print what it returns
 const holdSel = flag("--hold");
 const chatFlag = flag("--chat"); // "off": Tell Daisey answers as if no Gemini key were set // press and hold it for 1.5 s (Hold to finish)
+const speedFlag = flag("--speed"); // fake GPS reporting this speed in m/s (where.js): 1.5 walk, 15 a ride
 for (let c; (c = flag("--click"));) clicks.push(c);
 const wide = args.includes("--wide"), tasksTab = args.includes("--tasks");
 const name = args.find((a) => !a.startsWith("--")) || "en";
@@ -160,6 +161,13 @@ const FAKES = {
   if (atFlag) { const [hh, mm] = atFlag.split(":").map(Number); const d = new Date(); d.setHours(hh, mm || 0, 0, 0); await page.clock.install({ time: d }); }
   // --ask-deadlines: settings as before the one-time deadline question.
   await page.addInitScript((s) => { window.__FAKE = s; }, args.includes("--ask-deadlines") ? { ...scenario, settings: {} } : scenario);
+  if (speedFlag) await page.addInitScript((v) => {
+    const fix = () => ({ coords: { latitude: 32.08, longitude: 34.78, accuracy: 10, speed: v }, timestamp: Date.now() });
+    Object.defineProperty(navigator, "geolocation", { value: {
+      watchPosition: (ok) => { setTimeout(() => ok(fix()), 10); setTimeout(() => ok(fix()), 30); return 1; },
+      clearWatch: () => {}, getCurrentPosition: (ok) => ok(fix()),
+    } });
+  }, Number(speedFlag));
   await page.route(ORIGIN + "/**", (route) => {
     const rel = new URL(route.request().url()).pathname.replace(/^\//, "") || "index.html";
     if (rel === ".netlify/functions/daisey-now-trello") {

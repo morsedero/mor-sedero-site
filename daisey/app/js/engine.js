@@ -72,7 +72,8 @@ export function matchProject(title, projects){
 //                   fits, but earns no window-fit points
 //   nextEvent       title of the next calendar event ("fits before teaching")
 //   energy          low · medium · high (the card's chip; default medium)
-//   place           home · out · anywhere (the card's chip; default anywhere)
+//   place           home · out · anywhere · walk · ride · train · bus · car
+//                   (where.js; default anywhere)
 //   blockProject    a calendar block named after a project: only its tasks
 //   lastProject     project last started or finished today
 //   recentProjects  projects worked on in the last 2 days
@@ -93,7 +94,7 @@ export function readMoment(input = {}){
     nextEvent: input.nextEvent || null,
     bucket: timeBucket(now),
     energy: W.ENERGY_LEVELS.includes(input.energy) ? input.energy : "medium",
-    place: ["home", "out", "anywhere"].includes(input.place) ? input.place : "anywhere",
+    place: W.PLACES.includes(input.place) ? input.place : "anywhere",
     officeOpen: officeOpen(now),
     officeLeft: officeMinutesLeft(now),
     blockProject: input.blockProject ? key(input.blockProject) : null,
