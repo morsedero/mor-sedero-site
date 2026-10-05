@@ -63,16 +63,17 @@ export function mountTell(form, input, mic, uid, { openAdd }){
       body = { error: "network" };
     }
     busy = false;
-    if (body.error === "not_configured") { close(); openAdd(undefined, text); return; } // no AI yet: the old path
+    if (body.error === "not_configured") { close(); input.value = ""; openAdd(undefined, text); return; } // no AI yet: the old path
     if (!res?.ok || body.error) {
       const code = body.error || "model";
       show(h("p", { className: "tell-reply", textContent: SAID[code] || SAID.model }),
         h("div", { className: "tell-btns" },
           code !== "daily_cap" && h("button", { className: "btn line", type: "button", textContent: "Try again", onclick: () => ask(text) }),
-          h("button", { className: "btn line", type: "button", textContent: "Add as a task", onclick: () => { close(); openAdd(undefined, text); } }),
+          h("button", { className: "btn line", type: "button", textContent: "Add as a task", onclick: () => { close(); input.value = ""; openAdd(undefined, text); } }),
           h("button", { className: "btn quiet", type: "button", textContent: "Close", onclick: close })));
       return;
     }
+    input.value = ""; // answered: the message lives on in the cards
     proposal(text, body);
   }
 
