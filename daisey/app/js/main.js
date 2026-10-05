@@ -3,18 +3,20 @@ import { configured } from "./config.js";
 
 const $ = (s) => document.querySelector(s);
 
-import { daisy } from "./look.js";
 import { mountPlaces } from "./places.js";
 
-// The header's daisy: one petal per task done today, no badge (round 2,
-// New Design/6); the count is its accessible name. now.js reports it.
+// The header's chips (round 3, New Design/6): green "✓ N" done today, and
+// amber Needs you with its count, only when there is something. now.js
+// reports both. The daisy itself is always the full five-petal logo.
 function paintDone(n){
-  $("#logo").replaceChildren(daisy(n, { size: 32 }));
-  const row = $("#brandrow");
-  row.ariaLabel = `Daisey. ${n === 1 ? "1 task" : `${n} tasks`} done today`;
-  row.title = n ? `${n} done today` : "";
+  $("#doneN").textContent = String(n);
+  $("#doneChip").ariaLabel = `${n === 1 ? "1 task" : `${n} tasks`} done today`;
 }
-paintDone(0);
+function paintNeeds(n){
+  $("#needsChip").hidden = !n;
+  $("#needsN").textContent = String(n);
+  $("#needsChip").ariaLabel = `Needs you: ${n} decision${n === 1 ? "" : "s"}`;
+}
 
 
 // Registering a worker is what makes "add to home screen" offer a real app
@@ -107,13 +109,14 @@ async function boot(){
   const places = mountPlaces($("#placedlg"));
   $("#placesBtn").onclick = () => { setMenu(false); places.open(); };
 
-  const SIGNED_IN = ["#board"];
+  const SIGNED_IN = ["#board", "#dock", "#doneChip"];
 
 
   fb.onUser((user) => {
     setMenu(false);
     if (mounted) { for (const m of Object.values(mounted)) m?.unmount(); mounted = null; }
     for (const s of SIGNED_IN) $(s).hidden = true;
+    paintNeeds(0);
     avatar.hidden = !user;
     if (!user) { show("signedout"); return; }
 
@@ -128,8 +131,8 @@ async function boot(){
     } else initial();
     show("signedin"); // no element of its own: just clears loading/sign-in views
 
-    Promise.all([import("./now.js"), import("./projects.js"), import("./addtask.js"), import("./needs.js"), import("./import-trello.js"), import("./addevent.js"), import("./store.js"), import("./deadlines.js"), import("./day.js"), import("./calendar.js")])
-      .then(([{ mountNow }, { mountProjects }, { mountAddTask }, { mountNeeds }, { mountImport }, { mountAddEvent }, { migrateTasks, watchSettings, saveSettings }, { mountDeadlines }, { dayHours, minText }, { watchCalendar }]) => {
+    Promise.all([import("./now.js"), import("./projects.js"), import("./addtask.js"), import("./needs.js"), import("./import-trello.js"), import("./addevent.js"), import("./store.js"), import("./deadlines.js"), import("./day.js"), import("./calendar.js"), import("./schedule.js"), import("./panel.js")])
+      .then(([{ mountNow }, { mountProjects }, { mountAddTask }, { mountNeeds }, { mountImport }, { mountAddEvent }, { migrateTasks, watchSettings, saveSettings }, { mountDeadlines }, { dayHours, minText }, { watchCalendar }, { mountSchedule }, { mountPanel }]) => {
         if (fb.currentUid() !== user.uid || mounted) return;
         const m = mounted = {};
         // Old tasks get the new fields first; then, once, which dates are real.
@@ -174,11 +177,14 @@ async function boot(){
         addEventListener("popstate", onPop);
         m.history = { unmount(){ removeEventListener("popstate", onPop); } };
         // Start from anywhere: back to home first, then focus mode.
-        const startTask = (id) => { m.projects?.closeSheet(); if (history.state?.daisey) history.back(); closeScreens(); m.now?.start(id); };
+        const startTask = (id) => { if (history.state?.daisey) history.back(); closeScreens(); m.now?.start(id); };
 
         m.adder = mountAddTask($("#addtask"), user.uid, { onStart: startTask });
         m.needs = mountNeeds($("#needsview"), user.uid, { onClose: () => screens.back() });
-        m.projects = mountProjects({ pull: $("#pull"), now: $("#pullNow"), handle: $("#pullHandle"), sum: $("#pullSum"), body: $("#pullBody"), view: $("#projectview") }, user.uid, {
+        // The home panel: Schedule and Projects, one page each.
+        m.panel = mountPanel({ panel: $("#panel"), tabs: [$("#tabSched"), $("#tabProj")], track: $("#panel .ptrack") });
+        m.schedule = mountSchedule($("#schedPage"), user.uid, { onEvent: (ev) => m.event.view(ev) });
+        m.projects = mountProjects({ grid: $("#projPage"), view: $("#projectview") }, user.uid, {
           onOpen: (task) => m.adder.edit(task),
           onAdd: (project) => m.adder.open(project),
           onNew: () => m.adder.newProject(),
@@ -186,13 +192,13 @@ async function boot(){
           onScreen: (name) => (name ? screens.open("project") : screens.back()),
         });
         m.now = mountNow($("#nowcard"), user.uid, {
-          name: (user.displayName || "").trim().split(/\s+/)[0], onDone: paintDone,
+          name: (user.displayName || "").trim().split(/\s+/)[0], onDone: paintDone, onNeedsCount: paintNeeds,
           onCard: (id) => m.projects?.setCurrent(id),
           onOpen: (task) => m.adder.edit(task),
           onProject: (name) => m.projects.openProject(name),
-          onNeeds: () => { m.needs.open(); screens.open("needs"); },
           onEvent: (ev) => m.event.view(ev),
         });
+        $("#needsChip").onclick = () => { m.needs.open(); screens.open("needs"); };
         // + in the Tell Daisey pill: a task (in the project on screen, if
         // any) or a calendar event.
         const plusMenu = $("#plusMenu"), plus = $("#plus");

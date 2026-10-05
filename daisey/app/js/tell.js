@@ -116,7 +116,7 @@ export function mountTell(form, input, mic, uid, { openAdd }){
       if (a.due) bits.push(`${a.dateKind === "deadline" ? "deadline" : "due"} → ${day(a.due)}`);
       if (a.notBefore) bits.push(`not before ${day(a.notBefore)}`);
     } else if (a.kind === "waiting") {
-      bits.push(a.waitingOn ? `waiting on ${a.waitingOn}` : "waiting");
+      bits.push(a.waitingOn ? `pending: waiting on ${a.waitingOn}` : "pending");
     } else if (a.kind === "moment") {
       if (a.energy) bits.push(ENERGY[a.energy]);
       if (a.place) bits.push(PLACE[a.place]);

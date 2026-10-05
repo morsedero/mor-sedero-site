@@ -326,7 +326,7 @@ textarea {
 @media (prefers-reduced-motion: reduce) { .now-card.main.in, .now-card.main.out { animation: none; } }
 
 /* Focus mode: the task fills the screen, nothing else on it. */
-body.focus .topbar, body.focus .pull, body.focus .now-greet { display: none; }
+body.focus .topbar, body.focus #panel, body.focus .dock, body.focus .now-greet { display: none; }
 body.focus #board { display: block; }
 body.focus .shell { padding-block: max(18px, env(safe-area-inset-top)) max(24px, env(safe-area-inset-bottom)); }
 /* "Hold to finish" (focus.js holdButton): a deeper amber fills from
@@ -406,7 +406,7 @@ body.focus .shell { padding-block: max(18px, env(safe-area-inset-top)) max(24px,
    The page and every scroller in it freeze while any dialog is open, and a
    scroll that reaches the popup's own edge doesn't chain to the page. */
 html:has(dialog[open]), html:has(dialog[open]) body { overflow: hidden; }
-html:has(dialog[open]) :is(#board > *, .screen, .pull-body) { overflow: hidden !important; }
+html:has(dialog[open]) :is(#board > *, .screen, .ppage) { overflow: hidden !important; }
 dialog.now { overflow-y: auto; overscroll-behavior: contain; }
 
 /* Later → "When?": three choices under the card's actions. */
@@ -775,15 +775,6 @@ button.now-title:focus-visible { outline: 2px solid var(--aink); outline-offset:
 .pend-check { display: flex; align-items: center; gap: 8px; margin-block-start: 6px; font-size: 13px; color: var(--ink-2); }
 .pend-check input { font: inherit; font-size: 15px; padding: 6px 8px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--ink); }
 
-/* After this. */
-.after-h { margin: 0; font-size: 12px; font-weight: 600; letter-spacing: .6px; text-transform: uppercase; color: var(--ink-2); }
-.after-list { display: grid; gap: 6px; margin-block-start: 8px; }
-.at-row { display: flex; align-items: center; gap: 12px; min-block-size: 24px; padding: 0; border: 0; background: none; color: var(--ink); font: inherit; font-size: 14px; text-align: start; }
-button.at-row { cursor: pointer; min-block-size: 32px; }
-.at-time { flex: none; inline-size: 74px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
-.at-title { display: inline-flex; align-items: center; gap: 6px; min-inline-size: 0; overflow-wrap: anywhere; }
-.at-title .dot { inline-size: 8px; block-size: 8px; flex: none; border-radius: 50%; background: var(--ink-2); }
-.after-note { margin: 8px 0 0; font-size: 13px; }
 
 /* The night divider: thin line, cream pill, a closed bud. Everywhere. */
 .night-div { display: flex; align-items: center; gap: 10px; margin-block: 2px; }
@@ -794,20 +785,8 @@ button.at-row { cursor: pointer; min-block-size: 32px; }
 .bud-heart { fill: var(--bud-heart); }
 .night-foot .night-div { align-self: stretch; }
 
-/* Needs you: N quick decisions. */
-.needs-row { display: flex; align-items: center; gap: 10px; inline-size: 100%; min-block-size: 48px; padding-inline: 14px; border: 1px solid var(--a-job-line); border-radius: 14px; background: var(--a-job-tint); color: var(--a-job-ink); font: inherit; cursor: pointer; text-align: start; }
-.needs-n { display: grid; place-items: center; inline-size: 22px; block-size: 22px; flex: none; border-radius: 50%; background: var(--accent); color: var(--on-accent); font-size: 12px; font-weight: 700; }
-.needs-text { flex: 1; font-size: 14px; font-weight: 500; }
-.needs-row svg { inline-size: 16px; block-size: 16px; flex: none; stroke-width: 2; }
-:dir(rtl) .needs-row svg, :dir(rtl) .pj-hint svg { transform: scaleX(-1); }
+:dir(rtl) .pj-hint svg { transform: scaleX(-1); }
 
-/* The pull-up sheet. Resting: handle, summary, the Tell Daisey pill. */
-.pull { position: fixed; z-index: 5; inset-inline: 0; inset-block-end: 0; display: flex; flex-direction: column; pointer-events: none; }
-.pull > * { pointer-events: auto; }
-.pull-sheet { margin-inline: auto; inline-size: 100%; max-inline-size: 560px; padding: 8px 16px max(18px, env(safe-area-inset-bottom)); background: var(--card); border-block-start: 1px solid var(--line); border-radius: 24px 24px 0 0; box-shadow: 0 -8px 24px rgb(0 0 0 / .06); }
-.pull-handle { display: block; inline-size: 100%; min-block-size: 40px; padding: 0; border: 0; background: none; color: var(--ink-2); font: inherit; cursor: pointer; touch-action: none; }
-.grip { display: block; inline-size: 40px; block-size: 5px; margin: 0 auto 8px; border-radius: 3px; background: var(--bud); }
-.pull-sum { display: flex; justify-content: center; gap: 6px; font-size: 13px; }
 .tellbar { display: flex; align-items: center; gap: 0; block-size: 52px; margin-block-start: 8px; padding-inline: 6px; border: 1px solid var(--line); border-radius: 999px; background: var(--bg); }
 .tellbar:focus-within { border-color: var(--accent); }
 .tellbar input { flex: 1; min-inline-size: 0; block-size: 40px; padding-inline: 10px; border: 0; background: transparent; color: var(--ink); font: inherit; font-size: 16px; outline: none; }
@@ -827,24 +806,6 @@ button.at-row { cursor: pointer; min-block-size: 32px; }
 .plus-menu button:disabled { opacity: .45; cursor: default; }
 .tell-panel { inset-block-end: calc(140px + env(safe-area-inset-bottom)); }
 
-/* Pulled up: the mini Now bar on top, the projects sheet under it. */
-.pull.open { inset-block-start: 0; background: color-mix(in srgb, var(--bg) 90%, var(--ink)); pointer-events: auto; }
-.pull.open .pull-sheet { flex: 1; min-block-size: 0; display: flex; flex-direction: column; padding-block-start: 8px; box-shadow: 0 -8px 24px rgb(0 0 0 / .08); border-block-start: 0; }
-.pull.open .pull-sum, .pull.open .tellbar { display: none; }
-.pull.open .pull-handle { min-block-size: 22px; }
-.pull.open .grip { margin-block-end: 0; }
-.pull:not(.dragging) { transition: transform .22s ease; }
-@media (prefers-reduced-motion: reduce) { .pull:not(.dragging) { transition: none; } }
-.pull-now { inline-size: 100%; max-inline-size: 560px; margin-inline: auto; padding: max(18px, env(safe-area-inset-top)) 20px 16px; }
-.pull-nowbar { display: flex; align-items: center; gap: 10px; min-block-size: 52px; padding-inline: 14px 8px; border-radius: 16px; background: var(--tint); border: 1px solid var(--aline); }
-.pull-nowbar .dot { inline-size: 8px; block-size: 8px; flex: none; border-radius: 50%; background: var(--aink); }
-.pull-nowtext { flex: 1; min-inline-size: 0; font-size: 15px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.pull-nowbar .btn.small { min-block-size: 38px; padding-inline: 14px; border: 0; border-radius: 12px; font-size: 14px; font-weight: 600; }
-.pull.open .pull-now[hidden] + .pull-sheet { margin-block-start: max(40px, env(safe-area-inset-top)); }
-.pull-body { flex: 1; min-block-size: 0; overflow-y: auto; overscroll-behavior: contain; padding-inline: 2px; padding-block-end: 20px; }
-.pull-head { display: flex; align-items: baseline; justify-content: space-between; margin-block-start: 6px; touch-action: none; }
-.pull-head h2 { margin: 0; font-size: 22px; font-weight: 600; }
-.pull-new { font-size: 13px; font-weight: 500; color: var(--a-work-ink); text-decoration: none; min-block-size: 32px; }
 .pgrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-block-start: 10px; }
 .pcard { display: grid; gap: 0; align-content: start; padding: 12px; border-radius: 16px; background: var(--tint); border: 1px solid var(--aline); color: var(--ink); font: inherit; text-align: start; cursor: pointer; }
 .pcard-top { display: flex; justify-content: space-between; align-items: center; gap: 6px; }
@@ -854,7 +815,7 @@ button.at-row { cursor: pointer; min-block-size: 32px; }
 .pbar { display: block; block-size: 4px; margin-block-start: 8px; border-radius: 2px; background: var(--aline); overflow: hidden; }
 .pbar > span { display: block; block-size: 100%; border-radius: inherit; background: var(--aink); }
 .pbar.big { flex: 1; block-size: 6px; margin: 0; border-radius: 3px; }
-:where(.pcard, .pj-card, .pj-chip, .pull-nowbar, .ts-proj, .ny-card) { --tint: var(--card); --aline: var(--line); --aink: var(--ink-2); }
+:where(.pcard, .pj-card, .pj-chip, .ts-proj, .ny-card) { --tint: var(--card); --aline: var(--line); --aink: var(--ink-2); }
 
 /* Full screens: a project, Needs you. */
 .screen { position: fixed; z-index: 20; inset: 0; overflow-y: auto; overscroll-behavior: contain; background: var(--bg); color: var(--ink); touch-action: pan-y; }
@@ -1022,3 +983,169 @@ dialog.tsheet .msg:empty { display: none; }
 .ny-end h2 { margin: 0; font-size: 28px; font-weight: 600; }
 .ny-end p { margin: 0 0 24px; font-size: 15px; color: var(--ink-2); }
 .ny-end .btn { min-inline-size: 200px; }
+
+/* ===== Layout round 3 (Mor, 2026-10-06; New Design/6-home-schedule-tab,
+   7-home-projects-tab) =====
+   A fixed split screen: header, the compact Now card, the panel filling the
+   rest, the Tell Daisey pill at the bottom. The shell is exactly the screen
+   and nothing scrolls but the panel's pages (and the card area when an ask
+   under the card makes it tall). */
+.shell {
+  block-size: 100dvh; display: flex; flex-direction: column; overflow: hidden;
+  padding: max(16px, env(safe-area-inset-top)) 16px 0;
+}
+.topbar { flex: none; block-size: 44px; min-block-size: 44px; padding-inline: 4px; gap: 8px; }
+.logo { inline-size: 30px; block-size: 30px; flex: none; }
+.brand { font-size: 21px; letter-spacing: -0.4px; }
+.daisy-petals ellipse { fill: #fff; stroke: #e0d5ba; }
+/* The logo stays a full white daisy at night too, just softer. */
+:root.night .logo .daisy-petals ellipse { fill: #e9e2d2; stroke: none; }
+:root.night .logo .daisy-heart { fill: var(--accent); }
+.hdr-end { display: flex; align-items: center; gap: 8px; margin-inline-start: auto; }
+.hdr-end .acct { margin-inline-start: 0; }
+.avatar { inline-size: 34px; block-size: 34px; font-size: 13px; }
+.hchip { position: relative; display: inline-flex; align-items: center; gap: 5px; block-size: 30px; padding-inline: 10px; border-radius: 999px; font: inherit; font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.hchip.needs { border: 1px solid var(--a-job-line); background: var(--a-job-tint); color: color-mix(in srgb, var(--a-job-ink) 80%, var(--ink)); cursor: pointer; }
+.hchip.needs::after { content: ""; position: absolute; inset: -7px -2px; } /* 44px to the finger */
+.hchip-dot { inline-size: 7px; block-size: 7px; border-radius: 50%; background: var(--accent); }
+.hchip.done { background: var(--a-home-tint); color: var(--a-home-ink); }
+#status { margin-block-start: 16px; }
+
+#board { flex: 1; min-block-size: 0; display: flex; flex-direction: column; gap: 0; }
+#nowcard {
+  flex: 0 1 auto; min-block-size: 0; overflow-y: auto; overscroll-behavior: contain;
+  display: flex; flex-direction: column; gap: 10px;
+  /* Room for the card's shadow inside the scroll box. */
+  margin-inline: -16px; padding: 10px 16px 12px;
+}
+#nowcard > * { flex: none; }
+.now-top:empty { display: none; }
+.now-top { margin: 0; }
+
+/* The compact Now card (~214px): area line, title, one-line why, one row. */
+.now-card.main { min-block-size: 214px; display: flex; flex-direction: column; gap: 0; padding: 16px 18px; border-radius: 22px; box-shadow: 0 10px 24px color-mix(in srgb, var(--aink) 12%, transparent); }
+.now-card.main .hero-top, .now-card.main .hero-area { font-size: 12px; }
+.now-card.main .hero-side { font-size: 12px; }
+.now-card.main .now-title, .now-card.main button.now-title {
+  margin-block-start: 8px; font-size: 26px; line-height: 1.15; letter-spacing: -0.3px;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.now-card.main .now-next, .now-card.main .now-why { margin: 4px 0 0; font-size: 14px; line-height: 1.35; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.now-row { display: flex; align-items: center; gap: 8px; margin-block-start: auto; padding-block-start: 12px; }
+.now-row .btn.start { flex: 1; inline-size: auto; margin: 0; min-block-size: 50px; border-radius: 14px; font-size: 17px; }
+.now-row .iconbtn {
+  flex: none; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px;
+  inline-size: 50px; min-inline-size: 50px; block-size: 50px; min-block-size: 50px; padding: 0; border: 0; border-radius: 14px;
+  background: color-mix(in srgb, var(--aline) 70%, var(--tint)); color: var(--sub); font-size: 10px; font-weight: 500;
+}
+.now-row .iconbtn svg { inline-size: 16px; block-size: 16px; stroke-width: 2; }
+.now-row .iconbtn:hover:not(:disabled), .now-row .iconbtn[aria-expanded="true"] { background: var(--aline); color: var(--ink); border-color: transparent; }
+.now-card.main .later-ask, .now-card.main .pend-ask, .now-card.main .now-out { margin-block-start: 10px; }
+.now-card.main.meeting, .now-card.main.empty, .now-card.main.rest, .now-card.main.night { min-block-size: 0; }
+.now-card.main.batch .btn.start { margin-block-start: auto; }
+
+/* The panel: a card with [Schedule | Projects], two page dots, two pages. */
+.panel {
+  flex: 1 1 0; min-block-size: 180px; display: flex; flex-direction: column; overflow: hidden;
+  padding: 12px 14px 0; border-radius: 22px; background: var(--card); border: 1px solid var(--line);
+}
+.seg { flex: none; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); padding: 3px; border-radius: 12px; background: var(--cream); }
+.seg-btn { block-size: 36px; border: 0; border-radius: 9px; background: transparent; color: var(--ink-2); font: inherit; font-size: 14px; font-weight: 500; cursor: pointer; }
+.seg-btn[aria-selected="true"] { background: var(--card); color: var(--ink); font-weight: 600; box-shadow: 0 1px 3px rgb(0 0 0 / .08); }
+.pdots { flex: none; display: flex; justify-content: center; gap: 5px; margin-block-start: 8px; }
+.pdots span { inline-size: 5px; block-size: 5px; border-radius: 3px; background: var(--bud); transition: inline-size .2s ease, background .2s ease; }
+.panel[data-page="schedule"] .pdots span:first-child, .panel[data-page="projects"] .pdots span:last-child { inline-size: 16px; background: var(--ink); }
+.ptrack-wrap { flex: 1; min-block-size: 0; overflow: hidden; margin-inline: -14px; touch-action: pan-y; }
+.ptrack { display: flex; block-size: 100%; transition: transform .22s ease; }
+.panel.dragging .ptrack { transition: none; }
+@media (prefers-reduced-motion: reduce) { .ptrack, .pdots span { transition: none; } }
+.ppage {
+  flex: 0 0 100%; min-inline-size: 0; block-size: 100%; overflow-y: auto; overscroll-behavior: contain;
+  padding: 12px 14px 24px;
+  /* The soft fade at the bottom edge. */
+  -webkit-mask-image: linear-gradient(#000 calc(100% - 36px), transparent);
+  mask-image: linear-gradient(#000 calc(100% - 36px), transparent);
+}
+
+/* Schedule: a label row per day, time once on the left, the thing on the right. */
+.sc-day + .sc-day { margin-block-start: 12px; }
+.sc-label { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.sc-name { font-size: 13px; font-weight: 600; color: color-mix(in srgb, var(--ink) 85%, var(--ink-2)); }
+.sc-date { font-size: 12px; color: var(--ink-2); }
+.sc-row { display: flex; align-items: center; gap: 12px; margin-block-start: 6px; }
+.sc-time { flex: none; inline-size: 88px; font-size: 13px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.sc-time.strong { color: color-mix(in srgb, var(--ink) 85%, var(--ink-2)); }
+.sc-free { flex: 1; min-inline-size: 0; display: flex; align-items: center; block-size: 36px; padding-inline: 12px; border: 1.5px dashed var(--bud); border-radius: 10px; font-size: 14px; color: var(--ink-2); }
+.sc-ev {
+  flex: 1; min-inline-size: 0; display: flex; align-items: center; min-block-size: 40px; padding: 6px 12px; border: 0; border-radius: 10px;
+  background: color-mix(in srgb, var(--ev, #8c8574) 16%, var(--card)); color: color-mix(in srgb, var(--ev, var(--ink-2)) 55%, var(--ink));
+  font: inherit; font-size: 15px; font-weight: 600; text-align: start; cursor: pointer; overflow-wrap: anywhere;
+}
+.sc-none { margin: 6px 0 0; font-size: 14px; color: var(--ink-2); }
+.sc-note { margin: 4px 0 0; font-size: 14px; color: var(--ink-2); }
+.sc-note a { color: inherit; }
+.ppage .night-div { margin-block: 12px; }
+
+/* Projects: summary + New, the grid, the Inbox row. */
+.pp-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.pp-sum { font-size: 13px; font-weight: 600; color: color-mix(in srgb, var(--ink) 85%, var(--ink-2)); }
+.pp-new { position: relative; padding: 0; border: 0; background: none; font: inherit; font-size: 13px; font-weight: 500; color: var(--a-work-ink); cursor: pointer; }
+.pp-new::after { content: ""; position: absolute; inset: -14px -10px; }
+.pp-empty { margin: 10px 0 0; }
+.pcard .pbar { margin-block-start: 10px; }
+.pp-inbox { display: flex; align-items: center; gap: 10px; inline-size: 100%; block-size: 44px; margin-block-start: 10px; padding-inline: 14px; border: 1px dashed var(--bud); border-radius: 14px; background: none; color: var(--ink); font: inherit; font-size: 14px; text-align: start; cursor: pointer; }
+.pp-inbox svg { inline-size: 14px; block-size: 14px; flex: none; color: var(--ink-2); stroke-width: 2; }
+.pp-inbox-t { flex: 1; }
+.pp-inbox-n { font-size: 12px; color: var(--ink-2); }
+
+/* Every project its own colour: the area colours, then extras. */
+.pc-admin { --tint: var(--a-admin-tint); --aline: var(--a-admin-line); --aink: var(--a-admin-ink); }
+.pc-work { --tint: var(--a-work-tint); --aline: var(--a-work-line); --aink: var(--a-work-ink); }
+.pc-home { --tint: var(--a-home-tint); --aline: var(--a-home-line); --aink: var(--a-home-ink); }
+.pc-social { --tint: var(--a-social-tint); --aline: var(--a-social-line); --aink: var(--a-social-ink); }
+.pc-job { --tint: var(--a-job-tint); --aline: var(--a-job-line); --aink: var(--a-job-ink); }
+.pc-personal { --tint: var(--a-personal-tint); --aline: var(--a-personal-line); --aink: var(--a-personal-ink); }
+:root {
+  --p-teal-tint: #e3f3f0; --p-teal-line: #c2e3dc; --p-teal-ink: #2f8f80;
+  --p-orange-tint: #fdede3; --p-orange-line: #f6d3bc; --p-orange-ink: #b4561f;
+  --p-slate-tint: #eceef2; --p-slate-line: #d3d7df; --p-slate-ink: #4a5568;
+  --p-brick-tint: #fbe9e7; --p-brick-line: #f3ccc6; --p-brick-ink: #b3402f;
+  --p-lime-tint: #eef5dd; --p-lime-line: #d6e6b3; --p-lime-ink: #5c7a1f;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --p-teal-tint: #13241f; --p-teal-line: #24504a; --p-teal-ink: #7fcfc2;
+  --p-orange-tint: #2b1c12; --p-orange-line: #5a3620; --p-orange-ink: #f2a877;
+  --p-slate-tint: #1d1f24; --p-slate-line: #373b45; --p-slate-ink: #b4bccb;
+  --p-brick-tint: #2b1715; --p-brick-line: #5a2d27; --p-brick-ink: #f29c8f;
+  --p-lime-tint: #1e2412; --p-lime-line: #3c4a20; --p-lime-ink: #b8d67a;
+} }
+:root[data-theme="dark"], :root.night {
+  --p-teal-tint: #13241f; --p-teal-line: #24504a; --p-teal-ink: #7fcfc2;
+  --p-orange-tint: #2b1c12; --p-orange-line: #5a3620; --p-orange-ink: #f2a877;
+  --p-slate-tint: #1d1f24; --p-slate-line: #373b45; --p-slate-ink: #b4bccb;
+  --p-brick-tint: #2b1715; --p-brick-line: #5a2d27; --p-brick-ink: #f29c8f;
+  --p-lime-tint: #1e2412; --p-lime-line: #3c4a20; --p-lime-ink: #b8d67a;
+}
+.pc-teal { --tint: var(--p-teal-tint); --aline: var(--p-teal-line); --aink: var(--p-teal-ink); }
+.pc-orange { --tint: var(--p-orange-tint); --aline: var(--p-orange-line); --aink: var(--p-orange-ink); }
+.pc-slate { --tint: var(--p-slate-tint); --aline: var(--p-slate-line); --aink: var(--p-slate-ink); }
+.pc-brick { --tint: var(--p-brick-tint); --aline: var(--p-brick-line); --aink: var(--p-brick-ink); }
+.pc-lime { --tint: var(--p-lime-tint); --aline: var(--p-lime-line); --aink: var(--p-lime-ink); }
+
+/* The Tell Daisey pill, fixed at the bottom, in the flow so nothing sits under it. */
+.dock { flex: none; padding: 16px 0 max(18px, env(safe-area-inset-bottom)); }
+.dock .tellbar { block-size: 54px; margin: 0; background: var(--card); box-shadow: 0 8px 24px rgb(0 0 0 / .08); }
+.dock .plus, .dock .mic { inline-size: 42px; block-size: 42px; }
+.tell-panel { inset-block-end: calc(92px + env(safe-area-inset-bottom)); }
+.toast { inset-block-end: calc(96px + env(safe-area-inset-bottom)); }
+
+/* Night (the panel steps aside) and focus: the card area takes the space. */
+:root.night #panel { display: none; }
+:root.night #nowcard, body.focus #nowcard { flex: 1 1 auto; }
+:root.night .night-foot { margin-block-start: auto; padding-block-start: 20px; }
+:root.night .night-hero { margin-block-start: 12px; }
+:root.night .now-card.main.night { margin-block-start: 20px; }
+.night-time { inline-size: 88px; font-variant-numeric: tabular-nums; }
+.night-ev { justify-content: flex-start; }
+.night-ev-title { text-align: start; }
+body.focus .shell { block-size: auto; min-block-size: 100dvh; overflow: visible; }

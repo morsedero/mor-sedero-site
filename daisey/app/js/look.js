@@ -61,7 +61,10 @@ export const doneToday = (tasks = [], now = Date.now()) =>
   tasks.filter((t) => t.status === "done" && t.doneAt && localDate(t.doneAt) === localDate(now));
 
 export function greeting(name, now = Date.now()){
+  // The real clock, whatever night mode says: after midnight it isn't
+  // morning yet, even with "I'm free now" on (Mor, 2026-10-06).
   const hr = new Date(now).getHours();
+  if (hr < 5) return `Up late${name ? `, ${name}` : ""}`;
   const part = hr < 12 ? "morning" : hr < 18 ? "afternoon" : "evening";
   return `Good ${part}${name ? `, ${name}` : ""}`;
 }

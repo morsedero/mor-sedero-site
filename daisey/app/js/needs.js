@@ -125,7 +125,7 @@ export function mountNeeds(root, uid, { onClose } = {}){
       return { tone: areaClass(t).trim() || "area-social", ico: "pending", q: "Still pending?",
         sub: t.waitingOn ? `Waiting on ${t.waitingOn}${since}.` : `Pending${since}.`,
         item: t.title, say: `If it's still stuck, I'll ask again ${weekday(dayAfter(PENDING_CHECK_DAYS))}.`,
-        yes: ["Yes, still waiting", () => { restoreTask(uid, t.id, { checkOn: dayAfter(PENDING_CHECK_DAYS), touchedAt: Date.now() }).catch(fail); next(); }],
+        yes: ["Yes, still pending", () => { restoreTask(uid, t.id, { checkOn: dayAfter(PENDING_CHECK_DAYS), touchedAt: Date.now() }).catch(fail); next(); }],
         no: ["No, it's ready", () => { restoreTask(uid, t.id, { status: "ready", waitingOn: null, checkOn: null, touchedAt: Date.now() }).catch(fail); next(); }] };
     }
     if (item.kind === "someday") {

@@ -1,12 +1,10 @@
-// Projects (layout round 2, Mor 2026-10-05; New Design/7 and 8). Two views
-// of the same thing, both one pull or one tap from home:
+// Projects (layout round 3, Mor 2026-10-06; New Design/7-home-projects-tab
+// and 8-project). Two views of the same thing:
 //
-// The pull-up sheet. Resting, it's a handle, "Projects · 4 projects · 14
-// tasks" and the Tell Daisey pill. Dragged up (or the handle tapped) it
-// covers the home screen: a mini Now bar on top ("Now: <task>" + Start),
-// then "Projects" + "+ New" and a 2-column grid of project cards in their
-// area colour — name, count, one status line, progress. No schedule here.
-// Drag down or tap the handle to close.
+// The Projects page of the home panel. "4 projects · 14 tasks" + "+ New",
+// a 2-column grid of project cards in their colour — name, count, one
+// status line, progress — and the Inbox row under it. (It was a pull-up
+// sheet until round 3.)
 //
 // The project screen. Back arrow + a row of project chips (the current one
 // filled in its colour); tap a chip, or swipe sideways anywhere that isn't a
@@ -15,8 +13,10 @@
 // and Someday and Done folded into a line each. Swipe a task right = done
 // (green reveal, Undo toast). Tap one = the task sheet.
 //
-// A project's colour is its tasks' most common area (the same rule the old
-// chips used). It replaces the Tasks list (tasks.js) and the Today panel.
+// Every project has its own colour (Mor, 2026-10-06): its tasks' most common
+// area when no other project has that one yet, else the next free colour in
+// PALETTE. Names are taken in order, so a colour doesn't move around as
+// counts change. Inbox has none.
 import { watchTasks, finishTask, restoreTask } from "./store.js";
 import { INBOX, notYet, durText, localDate } from "./model.js";
 import { isOverdue } from "./triage.js";
@@ -30,10 +30,25 @@ const motionOK = () => !window.matchMedia?.("(prefers-reduced-motion: reduce)").
 const isOpen = (t) => t.status !== "done" && t.status !== "dropped";
 const plural = (n, one, many = one + "s") => `${n} ${n === 1 ? one : many}`;
 
+// The area colours first, then extras (app.css .pc-<key>), most distinct first.
+const PALETTE = ["work", "admin", "teal", "social", "job", "home", "orange", "personal", "slate", "brick", "lime"];
+const hash = (s) => [...String(s)].reduce((a, c) => (a * 31 + c.codePointAt(0)) >>> 0, 7);
+export function colorize(ps){
+  const taken = new Set();
+  for (const p of [...ps].filter((p) => p.name !== INBOX).sort((a, b) => a.name.localeCompare(b.name))) {
+    let c = PALETTE.includes(p.area) && !taken.has(p.area) ? p.area : null;
+    for (let k = 0, i = hash(p.name); !c && k < PALETTE.length; k++) if (!taken.has(PALETTE[(i + k) % PALETTE.length])) c = PALETTE[(i + k) % PALETTE.length];
+    p.color = c || PALETTE[hash(p.name) % PALETTE.length];
+    taken.add(p.color);
+  }
+  return ps;
+}
+const colorClass = (p) => (p.color ? ` pc-${p.color}` : "");
+
 // The projects, with everything both views show about each.
 export function projectsOf(tasks = [], onCard = null){
   const names = [...new Set(tasks.filter(isOpen).map((t) => t.project || INBOX))];
-  return names.map((name) => {
+  return colorize(names.map((name) => {
     const all = tasks.filter((t) => (t.project || INBOX) === name && t.status !== "dropped");
     const open = all.filter(isOpen);
     const n = {};
@@ -47,7 +62,7 @@ export function projectsOf(tasks = [], onCard = null){
       someday: open.filter((t) => t.status === "someday"),
       done: all.filter((t) => t.status === "done").sort((a, b) => (b.doneAt || 0) - (a.doneAt || 0)),
     };
-  }).sort((a, b) => b.open.length - a.open.length || (a.name === INBOX) - (b.name === INBOX) || a.name.localeCompare(b.name));
+  }).sort((a, b) => b.open.length - a.open.length || (a.name === INBOX) - (b.name === INBOX) || a.name.localeCompare(b.name)));
 }
 
 // Next, most urgent first: the card's task, then what can start now, then
@@ -70,87 +85,36 @@ const progress = (p) => (p.all.length ? p.done.length / p.all.length : 0);
 const bar = (p, cls) => h("div", { className: cls, role: "img", ariaLabel: `${p.done.length} of ${p.all.length} done` },
   h("span", { style: `inline-size:${Math.round(progress(p) * 100)}%` }));
 
-// els: { pull, now, handle, sum, body, view }. onOpen(task): the task sheet.
-// onAdd(project): a new task there. onNew(): a new project. onStart(id).
+// els: { grid, view }. onOpen(task): the task sheet. onAdd(project): a new
+// task there. onNew(): a new project. onStart(id).
 export function mountProjects(els, uid, { onOpen, onAdd, onNew, onStart, onScreen } = {}){
   let tasks = null, onCard = null;
-  let sheetOpen = false;
   let shown = null; // the project on the project screen
   let fold = { someday: false, done: false };
   const fail = (e) => console.error("[daisey] projects", e);
   const list = () => projectsOf(tasks || [], onCard);
 
-  // ---------- the pull-up sheet ----------
-  function paintSheet(){
-    const ps = list();
-    const n = ps.reduce((s, p) => s + p.open.length, 0);
-    els.sum.replaceChildren(...["Projects", plural(ps.length, "project"), plural(n, "task")].flatMap((t, i) => (i ? [h("span", { ariaHidden: "true", textContent: "·" }), h("span", { textContent: t })] : [h("span", { textContent: t })])));
-    els.handle.ariaLabel = sheetOpen ? "Close projects" : `Pull up for projects: ${ps.length} projects, ${n} tasks`;
-    els.handle.ariaExpanded = String(sheetOpen);
-    els.pull.classList.toggle("open", sheetOpen);
-    els.body.hidden = !sheetOpen;
-    const cur = onCard && (tasks || []).find((t) => t.id === onCard);
-    els.now.hidden = !sheetOpen || !cur;
-    if (cur) els.now.replaceChildren(h("div", { className: "pull-nowbar" + (cur.area ? ` area-${cur.area}` : "") },
-      h("span", { className: "dot", ariaHidden: "true" }),
-      h("span", { className: "pull-nowtext" }, "Now: ", bdi(cur.title)),
-      h("button", { type: "button", className: "btn primary small", textContent: "Start", onclick: () => { setSheet(false); onStart?.(cur.id); } })));
-    if (!sheetOpen) return;
-    els.body.replaceChildren(
-      h("div", { className: "pull-head" }, h("h2", { textContent: "Projects" }),
-        h("button", { type: "button", className: "linkish pull-new", textContent: "+ New", onclick: () => onNew?.() })),
-      ps.length ? h("div", { className: "pgrid" }, ...ps.map((p) => h("button", { type: "button", className: "pcard" + (p.area ? ` area-${p.area}` : ""),
-        onclick: () => { setSheet(false); openProject(p.name); } },
+  // ---------- the Projects page ----------
+  function paintGrid(){
+    const all = list();
+    const inbox = all.find((p) => p.name === INBOX);
+    const ps = all.filter((p) => p !== inbox);
+    const n = all.reduce((s, p) => s + p.open.length, 0);
+    const y = els.grid.scrollTop;
+    els.grid.replaceChildren(
+      h("div", { className: "pp-head" }, h("span", { className: "pp-sum", textContent: `${plural(ps.length, "project")} · ${plural(n, "task")}` }),
+        h("button", { type: "button", className: "pp-new", textContent: "+ New", onclick: () => onNew?.() })),
+      ps.length ? h("div", { className: "pgrid" }, ...ps.map((p) => h("button", { type: "button", className: "pcard" + colorClass(p),
+        onclick: () => openProject(p.name) },
         h("span", { className: "pcard-top" }, h("span", { className: "pcard-name", dir: "auto", textContent: p.name }), h("span", { className: "pcard-n", textContent: String(p.open.length) })),
         h("span", { className: "pcard-status" }, ...statusLine(p)),
         bar(p, "pbar"))))
-        : h("p", { className: "muted", textContent: "No projects yet. Tell Daisey what's on your plate." }));
+        : !inbox && h("p", { className: "muted pp-empty", textContent: "No projects yet. Tell Daisey what's on your plate." }),
+      inbox ? h("button", { type: "button", className: "pp-inbox", onclick: () => openProject(INBOX) },
+        icon("inbox"), h("span", { className: "pp-inbox-t", textContent: "Inbox" }),
+        h("span", { className: "pp-inbox-n", textContent: `${inbox.open.length} · no project yet` })) : null);
+    els.grid.scrollTop = y;
   }
-  function setSheet(open){
-    sheetOpen = open;
-    els.pull.style.transform = "";
-    paintSheet();
-    document.body.classList.toggle("sheet-open", open);
-  }
-  els.handle.onclick = () => { if (!dragged) setSheet(!sheetOpen); };
-
-  // Drag: the sheet follows the finger; let go past a quarter of the way and
-  // it finishes the move, otherwise it settles back. A short tap is the
-  // handle's click.
-  let drag = null, dragged = false;
-  const sheet = els.pull.querySelector(".pull-sheet");
-  sheet.addEventListener("pointerdown", (e) => {
-    if (!e.target.closest(".pull-handle, .pull-head")) return;
-    drag = { y: e.clientY, id: e.pointerId, from: sheetOpen, span: 0 };
-    dragged = false;
-  });
-  sheet.addEventListener("pointermove", (e) => {
-    if (!drag) return;
-    const dy = e.clientY - drag.y;
-    if (!dragged) {
-      if (Math.abs(dy) < 8 || (drag.from ? dy < 0 : dy > 0)) return;
-      dragged = true;
-      try { sheet.setPointerCapture(drag.id); } catch { /* gone */ }
-      const rest = sheet.getBoundingClientRect().height;
-      if (!drag.from) { sheetOpen = true; paintSheet(); }
-      drag.span = Math.max(1, sheet.getBoundingClientRect().height - (drag.from ? 140 : rest));
-      els.pull.classList.add("dragging");
-    }
-    const off = drag.from ? Math.max(0, dy) : Math.max(0, drag.span + dy);
-    els.pull.style.transform = `translateY(${off}px)`;
-    drag.off = off;
-  });
-  const letGo = () => {
-    if (!drag) return;
-    const d = drag; drag = null;
-    els.pull.classList.remove("dragging");
-    if (!dragged) return;
-    setTimeout(() => { dragged = false; });
-    const moved = d.from ? d.off : d.span - d.off;
-    setSheet(d.from ? moved < d.span / 4 : moved > d.span / 4);
-  };
-  sheet.addEventListener("pointerup", letGo);
-  sheet.addEventListener("pointercancel", letGo);
 
   // ---------- the project screen ----------
   function complete(t){
@@ -230,7 +194,7 @@ export function mountProjects(els, uid, { onOpen, onAdd, onNew, onStart, onScree
     const y = els.view.scrollTop, x = els.view.querySelector(".pj-chips")?.scrollLeft;
     const chips = h("div", { className: "pj-chips", role: "tablist", ariaLabel: "Projects" },
       ...ps.map((q) => h("button", { type: "button", role: "tab", ariaSelected: String(q.name === p.name),
-        className: "pj-chip" + (q.area ? ` area-${q.area}` : ""), onclick: () => go(q.name) },
+        className: "pj-chip" + colorClass(q), onclick: () => go(q.name) },
       h("span", { className: "dot", ariaHidden: "true" }), bdi(q.name))));
     const next = p.next.map((t) => swipeCard(t, taskBtn(t, [
       h("span", { className: "pj-row" }, h("span", { className: "pj-title", dir: "auto", textContent: t.title }),
@@ -247,7 +211,7 @@ export function mountProjects(els, uid, { onOpen, onAdd, onNew, onStart, onScree
     els.view.replaceChildren(...[
       h("div", { className: "pj-top" },
         h("button", { type: "button", className: "pj-back", ariaLabel: "Back to home", onclick: () => onScreen?.(null) }, icon("back")), chips),
-      h("div", { className: "pj-card" + (p.area ? ` area-${p.area}` : "") },
+      h("div", { className: "pj-card" + colorClass(p) },
         h("div", { className: "pj-card-top" }, h("h2", { className: "pj-name", dir: "auto", textContent: p.name }),
           p.area && h("span", { className: "pj-area", textContent: areaName({ area: p.area }) })),
         h("div", { className: "pj-prog" }, bar(p, "pbar big"), h("span", { textContent: `${p.done.length} of ${p.all.length} done` }))),
@@ -303,18 +267,15 @@ export function mountProjects(els, uid, { onOpen, onAdd, onNew, onStart, onScree
   }
   function closeProject(){ shown = null; els.view.hidden = true; els.view.replaceChildren(); }
 
-  function render(){ paintSheet(); paintView(); }
+  function render(){ paintGrid(); paintView(); }
   const unsub = watchTasks(uid, (ts) => { tasks = ts; render(); }, fail);
-  els.pull.hidden = false;
   render();
 
   return {
     setCurrent(id){ onCard = id; render(); },
     openProject,
     closeProject,
-    closeSheet: () => { if (sheetOpen) setSheet(false); },
-    isSheetOpen: () => sheetOpen,
     shownProject: () => shown,
-    unmount(){ unsub(); closeProject(); setSheet(false); els.pull.hidden = true; els.body.replaceChildren(); els.now.replaceChildren(); },
+    unmount(){ unsub(); closeProject(); els.grid.replaceChildren(); },
   };
 }

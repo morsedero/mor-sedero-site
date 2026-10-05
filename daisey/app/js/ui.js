@@ -79,6 +79,7 @@ const PATHS = {
   pause: "M7 5h3.5v14H7zM13.5 5H17v14h-3.5z", // filled
   stop: "M8 6h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2z", // filled
   back: "M15 6l-6 6 6 6",
+  inbox: "M4 13l3-8h10l3 8v6H4zM4 13h5l1 2h4l1-2h5",
   chev: "M9 6l6 6-6 6",
   close: "M6 6l12 12M18 6L6 18",
   link: "M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1",

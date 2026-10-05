@@ -42,7 +42,7 @@ const check = (name, pass, got) => { results.push({ pass }); console.log(`${pass
   const page = await browser.newPage({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 1 });
   page.on("pageerror", (e) => console.error("pageerror:", e.message));
   page.on("console", (m) => { if (m.type() === "error") console.error("console:", m.text()); });
-  const d = new Date(); d.setHours(10, 30, 0, 0);
+  const d = new Date(); d.setHours(8, 30, 0, 0); // before both events: the panel lists only what is still ahead
   await page.clock.install({ time: d });
   await page.addInitScript((s) => { window.__FAKE = s; }, { tasks: [{ title: "Send invoice", project: "Admin", size: 5 }] });
   await page.route(ORIGIN + "/**", async (route) => {
@@ -67,19 +67,19 @@ const check = (name, pass, got) => { results.push({ pass }); console.log(`${pass
   });
   await page.goto(ORIGIN + "/");
   await page.waitForSelector(".now-card, .now-empty, .tk-empty");
-  await page.click("#tabSchedule");
-  await page.waitForSelector(".sch-row");
-  const day = page.locator(".sch-day").first();
+  await page.click("#tabSched");
+  await page.waitForSelector(".sc-row");
+  const day = page.locator(".sc-day").first();
   const sheet = page.locator("#eventdlg");
 
   // ---- the day is a list again, not a time grid.
-  check("the day is a list of rows", await day.locator(".sch-row").count() >= 2 && await day.locator(".sch-block").count() === 0,
-    `${await day.locator(".sch-row").count()} rows, ${await day.locator(".sch-block").count()} blocks`);
-  check("a free stretch is one line, not empty height", await day.locator(".sch-gap").count() > 0, "no gap line");
+  check("the day is a list of rows", await day.locator(".sc-row").count() >= 2 && await day.locator(".sch-block").count() === 0,
+    `${await day.locator(".sc-row").count()} rows, ${await day.locator(".sch-block").count()} blocks`);
+  check("a free stretch is one line, not empty height", await day.locator(".sc-free").count() > 0, "no gap line");
   check("nothing on a row is draggable", await day.locator(".sch-grip, .sch-edge").count() === 0, "a drag handle is still there");
 
   // ---- tap a row: its details, the way Google opens an event.
-  await day.locator(".sch-row", { hasText: "Studio session" }).locator(".sch-open").click();
+  await day.locator(".sc-row", { hasText: "Studio session" }).locator(".sc-ev").click();
   await page.waitForTimeout(200);
   check("tapping a row opens the sheet", await sheet.evaluate((el) => el.open), "the sheet didn't open");
   check("the details show the name and the time",
@@ -93,10 +93,11 @@ const check = (name, pass, got) => { results.push({ pass }); console.log(`${pass
   await sheet.getByText("Edit", { exact: true }).click();
   await page.waitForTimeout(150);
   const vals = await sheet.evaluate((el) => [...el.querySelectorAll("input,select")].map((i) => i.value));
-  check("Edit fills the form with the event's own values", vals.includes("16:00") && vals.includes("120"), JSON.stringify(vals));
+  // Start and end as hour + 5-minute pickers: 16 00, then 18 00.
+  check("Edit fills the form with the event's own values", vals.join(" ").includes("16 00 18 00"), JSON.stringify(vals));
 
   // ---- Save writes only what changed.
-  await sheet.locator('input[type="time"]').fill("17:00");
+  await sheet.getByRole("combobox", { name: "Hour" }).first().selectOption("17");
   await sheet.getByRole("button", { name: "Save" }).click();
   await page.waitForTimeout(400);
   let w = writes.at(-1);
@@ -115,7 +116,7 @@ const check = (name, pass, got) => { results.push({ pass }); console.log(`${pass
     w && `${hhmm(w.start)}–${hhmm(w.end)}`);
 
   // ---- renaming goes through the same Save.
-  await day.locator(".sch-row", { hasText: "Studio session" }).locator(".sch-open").click();
+  await day.locator(".sc-row", { hasText: "Studio session" }).locator(".sc-ev").click();
   await page.waitForTimeout(200);
   await sheet.getByText("Edit", { exact: true }).click();
   await page.waitForTimeout(150);
@@ -124,34 +125,34 @@ const check = (name, pass, got) => { results.push({ pass }); console.log(`${pass
   await page.waitForTimeout(400);
   w = writes.at(-1);
   check("saving a new name renames it", w && w.action === "rename" && w.title === "Mix night", w && JSON.stringify(w));
-  check("the row shows the new name", await day.locator(".sch-row", { hasText: "Mix night" }).count() === 1, "the list didn't catch up");
+  check("the row shows the new name", await day.locator(".sc-row", { hasText: "Mix night" }).count() === 1, "the list didn't catch up");
 
   // ---- someone else's event opens read-only.
-  await day.locator(".sch-row", { hasText: "Someone else" }).locator(".sch-open").click();
+  await day.locator(".sc-row", { hasText: "Someone else" }).locator(".sc-ev").click();
   await page.waitForTimeout(200);
   check("a read-only event offers no Edit or Remove", await sheet.locator(".ev-acts").count() === 0,
     "it offered to change someone else's event");
   await page.keyboard.press("Escape");
 
   // ---- Remove goes on one tap, and the toast puts it back.
-  await day.locator(".sch-row", { hasText: "Mix night" }).locator(".sch-open").click();
+  await day.locator(".sc-row", { hasText: "Mix night" }).locator(".sc-ev").click();
   await page.waitForTimeout(200);
   const before = writes.length;
   await sheet.getByRole("button", { name: "Remove" }).click();
   await page.waitForTimeout(400);
   w = writes.at(-1);
   check("Remove deletes on the first tap", writes.length === before + 1 && w.action === "delete", w && JSON.stringify(w));
-  check("the row is gone", await day.locator(".sch-row", { hasText: "Mix night" }).count() === 0, "the row is still listed");
+  check("the row is gone", await day.locator(".sc-row", { hasText: "Mix night" }).count() === 0, "the row is still listed");
   check("Remove offers an undo", await page.locator(".toast-undo").count() === 1, "no undo offered");
   await page.click(".toast-undo");
   await page.waitForTimeout(500);
   w = writes.at(-1);
   check("undoing a Remove writes it back to its own calendar",
     w.action === "create" && w.title === "Mix night" && w.calendarId === "primary", w && JSON.stringify(w));
-  check("the row is back", await day.locator(".sch-row", { hasText: "Mix night" }).count() === 1, "the event didn't come back");
+  check("the row is back", await day.locator(".sc-row", { hasText: "Mix night" }).count() === 1, "the event didn't come back");
 
-  // ---- the header's + still opens an empty new event.
-  await page.click(".sch-add");
+  // ---- the pill's + → Event still opens an empty new event.
+  await page.click("#plus"); await page.click("#plusEvent");
   await page.waitForTimeout(200);
   check("+ opens a new event with an empty name",
     await sheet.evaluate((el) => el.open) && (await sheet.locator('input[dir="auto"]').inputValue()) === "",
