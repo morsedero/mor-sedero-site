@@ -426,6 +426,22 @@ code — read those bullets as history, not current behavior. What's true now:
   the pulse is the one visible "something changed" cue for that direction.
   Both keyframes are gated behind `prefers-reduced-motion`.
 
+- **Where-you-are context (2026-10-05, direct user request).** The 📍 chip
+  in `.topbar-right` (`placeChip`/`placeSheet`) holds Home / a saved place /
+  Out / Walking / Train / Bus / Driving. On open it reads Geolocation
+  (`placeDetect`, ~10s of fixes → speed; near a saved place → that place;
+  riding asks train/bus/car once). Cards match by Trello label NAME
+  (`PLACE_TAGS`: Home, Out/Errand, Walk, Train, Bus, Car/Drive, Commute,
+  Phone, Hebrew aliases, or a saved place's name). Untagged = fits while
+  still, never while moving. Effects are deliberately small: `placeFitStrip`
+  under the hero offers a one-tap swap via `swapPool` (shared with
+  `swapPicker`, which also sorts fitting cards first). Never touches the plan
+  or the calendar. All state is per-device localStorage `daisey.place.v1`,
+  never the state card (home coordinates). The artifact sandbox has no
+  geolocation, so there it's by-hand only. Testing it needs a FAKE
+  `navigator.geolocation` via an init script: the harness's about:blank
+  origin is denied even with Playwright's `permissions:["geolocation"]`.
+
 **Canonical artifact URL — always update this one, never publish a new
 artifact for Daisey:**
 
