@@ -88,7 +88,7 @@ export function mountNow(root, uid, { onCard, onSweep, onProject } = {}){
     },
     get size(){ return hidden().length; },
   };
-  const reset = () => { state.chosen = null; state.showAlts = false; state.asking = false; state.laterAsk = false; state.pendAsk = false; state.pendText = ""; state.single = false; };
+  const reset = () => { state.chosen = null; state.showAlts = false; state.laterAsk = false; state.pendAsk = false; state.pendText = ""; state.single = false; };
   let shown;
   const showing = (id) => { if (id !== shown) { shown = id; onCard?.(id); } };
 
@@ -216,20 +216,21 @@ export function mountNow(root, uid, { onCard, onSweep, onProject } = {}){
         render();
       },
       onPause: pause,
-      onCancel: cancel,
     });
   }
 
   // Pause (Mor, 2026-10-05): the clock stops and the main screen comes back,
-  // with the paused task held on the card until Resume or Cancel. Cancel ends
-  // the run without counting a stop: under CANCEL_KEEP_MINUTES it was a
-  // mis-tap and nothing is saved, past it the minutes are kept. A batch keeps
-  // the ones already ticked.
-  const pause = () => { const doc = paused(run); run = doc; state.asking = false; render(); saveRun(uid, doc).catch(fail); };
+  // with the paused task held on the card. Resume carries on; the card's own
+  // Later · Switch · Pending end the session first (endSession). Ending keeps
+  // the minutes, except under CANCEL_KEEP_MINUTES (a mis-tap), and is never
+  // counted as a stop. A batch keeps the ones already ticked.
+  const pause = () => { const doc = paused(run); run = doc; render(); saveRun(uid, doc).catch(fail); };
   const resume = () => { const doc = resumed(run); run = doc; render(); saveRun(uid, doc).catch(fail); };
-  const cancel = () => {
+  const endSession = ({ quiet = false } = {}) => {
     const prev = run;
-    run = null; state.asking = false; render();
+    if (!prev) return;
+    run = null;
+    if (!quiet) render();
     if (prev.batch) { // the minutes since the last tick go to the ones left, as a batch ending does
       const left = (tasks || []).filter((t) => prev.batch.includes(t.id) && !(prev.done || []).includes(t.id));
       const m = sinceMark(prev);
@@ -240,19 +241,20 @@ export function mountNow(root, uid, { onCard, onSweep, onProject } = {}){
     cancelRun(uid, tasks?.find((t) => t.id === prev.taskId) || null, m >= CANCEL_KEEP_MINUTES ? m : 0).catch(fail);
   };
 
-  // Pause mode: the card is the paused task, and nothing else is offered.
-  function pausedCard(){
-    const byId = new Map((tasks || []).map((t) => [t.id, t]));
-    const task = byId.get(run.taskId);
+  // Pause mode: the card is the paused task, with Resume and the usual
+  // Later · Switch · Pending. A paused batch just has Resume or End batch.
+  function pausedCard(alts){
+    const task = (tasks || []).find((t) => t.id === run.taskId);
     const title = run.batch ? batchName(task?.type, run.batch.length) : task?.title || "That task is gone";
     return h("div", { className: "now-card main paused" },
       h("div", { className: "now-meta", textContent: `Paused · ${dur(Math.round(elapsedMinutes(run)))} so far` }),
       h("div", { className: "now-title", dir: "auto", textContent: title }),
       h("button", { className: "btn primary start", type: "button", textContent: "Resume",
         ariaLabel: `Resume ${title}`, onclick: resume }),
-      h("div", { className: "now-actions" },
-        h("button", { className: "btn quiet", type: "button", textContent: "Cancel",
-          ariaLabel: `Cancel ${title}`, onclick: cancel })));
+      ...(run.batch || !task
+        ? [h("div", { className: "now-actions" }, h("button", { className: "btn quiet", type: "button", textContent: run.batch ? "End batch" : "End",
+          ariaLabel: run.batch ? "End the batch; the ones not ticked stay open" : "End this session", onclick: () => endSession() }))]
+        : cardActions(task, alts)));
   }
 
   function renderFocus(){
@@ -260,26 +262,16 @@ export function mountNow(root, uid, { onCard, onSweep, onProject } = {}){
     const task = tasks?.find((t) => t.id === run.taskId) || null;
     showing(run.taskId);
     return focusView(run, task, {
-      onDone: (finished) => {
-        if (finished === undefined) { state.asking = true; render(); return; }
+      // Done is finished — no "or more left?" (Pause covers more left).
+      onDone: () => {
         const minutes = elapsedMinutes(run);
-        state.asking = false;
         handoff = { title: task ? task.title : "", skip: run.taskId };
-        endRun(uid, task, minutes, { finished }).catch(fail);
-        run = null; render();
-      },
-      // Stop keeps the task yours; Stuck also sets it Pending (Waiting).
-      onStop: ({ pending } = {}) => {
-        const minutes = elapsedMinutes(run);
-        state.asking = false;
-        endRun(uid, task, minutes, { finished: false })
-          .then(() => (pending && task ? blockTask(uid, task) : null)).catch(fail);
+        endRun(uid, task, minutes, { finished: true }).catch(fail);
         run = null; render();
       },
       onExtend: (m) => { const prev = run; run = { ...run, extra: (run.extra || 0) + m }; render(); extendRun(uid, prev, m).catch(fail); },
       onPause: pause,
-      onCancel: cancel,
-    }, state);
+    });
   }
 
   const begin = (task) => { bumpLearn(uid, task.type, timeBucket().part, "starts").catch(fail); handoff = null; reset(); run = { taskId: task.id, startedAt: Date.now(), extra: 0 }; render(); startRun(uid, task).catch(fail); };
@@ -317,6 +309,7 @@ export function mountNow(root, uid, { onCard, onSweep, onProject } = {}){
   // Later and Pending both move the card on: it slides out, the next slides
   // in, and for 5 seconds a toast offers Undo. Nothing waits on the write.
   function stepAside(task, { label, write }){
+    if (run?.pausedAt) endSession({ quiet: true }); // Later or Pending from the paused card
     const before = skipSnapshot(task);
     const go = () => {
       skips.add(task.id);
@@ -646,7 +639,7 @@ export function mountNow(root, uid, { onCard, onSweep, onProject } = {}){
             onclick: () => { sd.open = true; state.showAlts = false; render(); } }))),
       state.showAlts && alts.length > 0 && h("div", { className: "now-alts", role: "group", ariaLabel: "Other tasks" }, ...alts.map((s) => h("button", {
         type: "button", className: "now-alt", ariaLabel: `Put ${s.task.title} on the card instead${s.why ? ". " + s.why : ""}`,
-        onclick: () => { state.chosen = s.task.id; state.showAlts = false; render(); },
+        onclick: () => { if (run?.pausedAt) endSession({ quiet: true }); state.chosen = s.task.id; state.showAlts = false; render(); },
       }, taskCard(s, false)))),
     ];
   }
@@ -683,7 +676,14 @@ export function mountNow(root, uid, { onCard, onSweep, onProject } = {}){
           onclick: () => { settings = { ...settings, sweepAnswered: localDate() }; render(); saveSettings(uid, { sweepAnswered: localDate() }).catch(fail); } })));
 
     if (tasks == null) { fill(greet, h("p", { className: "muted", textContent: "Loading tasks…" })); return; }
-    if (run?.pausedAt) { showing(run.taskId); fill(greet, pausedCard(), toast && toastView()); return; }
+    if (run?.pausedAt) {
+      showing(run.taskId);
+      const m = momentInput(fw);
+      const pr = rank(tasks, { ...m, sessionSkips: [...m.sessionSkips, run.taskId] });
+      const alts = [pr.pick, ...pr.alternatives].filter(Boolean).slice(0, 3);
+      fill(greet, pausedCard(alts), ...(run.batch ? [] : altsFor(alts)), toast && toastView());
+      return;
+    }
 
     const hrs = dayHours(settings);
     if (!isNight(Date.now(), hrs)) nightFree = false;
@@ -741,19 +741,7 @@ export function mountNow(root, uid, { onCard, onSweep, onProject } = {}){
   // for asking, so it doesn't come back.
   const asked = new Set();
   function learnAsk(r){
-    // Stopped twice (the saved count, so it holds across a reload) and not yet
-    // answered: Daisey offers to make it smaller.
-    const sp = (tasks || []).find((t) => (t.stopsUnfinished || 0) >= 2 && t.status === "ready" && !asked.has("split:" + t.id));
-    if (sp) {
-      return h("div", { className: "learn-ask", role: "group", ariaLabel: "Make it smaller?" },
-        h("p", { className: "muted", textContent: "Stopped twice without finishing. Make it smaller?" }),
-        h("div", { className: "learn-title" }, bdi(sp.title)),
-        h("div", { className: "learn-row" },
-          h("button", { className: "chip", type: "button", textContent: `Shrink to ${dur(shrunk(sp.size))}`,
-            onclick: () => { asked.add("split:" + sp.id); restoreTask(uid, sp.id, shrinkPatch(sp)).catch(fail); render(); } }),
-          h("button", { className: "chip quiet", type: "button", textContent: "Not now",
-            onclick: () => { asked.add("split:" + sp.id); restoreTask(uid, sp.id, { stopsUnfinished: 0 }).catch(fail); render(); } })));
-    }
+    // (The "Stopped twice — make it smaller?" ask is gone, Mor 2026-10-05.)
     const st = r.stale.find((t) => !asked.has(t.id));
     if (!st) return null;
     const answer = (patch) => { asked.add(st.id); restoreTask(uid, st.id, { ...patch, touchedAt: Date.now() }).catch(fail); render(); };

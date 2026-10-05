@@ -44,7 +44,7 @@ Opening Daisey shows a single card. That card is the whole home screen.
 
 | Button | What happens | What Daisey learns |
 | --- | --- | --- |
-| Start | Card becomes a running timer with the task and a Done / Stop button. On Done, asks "Finished, or more left?" | This task fit this time and energy. Real duration vs estimate. |
+| Start | Card becomes a running timer with Done and Pause. Done means finished. Pause returns to the main screen with the task on the card: Resume, or Later · Switch · Pending, which end the session with its time kept. | This task fit this time and energy. Real duration vs estimate. |
 | Not now | Optional one-tap reason: too tired · no time · not in the mood · blocked. Card swaps to the next pick. Task stays hidden for this session only. | The reason adjusts that task's fit for similar moments. "Blocked" marks the task as waiting. |
 | Something else | Shows 2–3 alternatives with their why lines. Pick one to start. | The picked task beat the first choice in this context. |
 
@@ -183,7 +183,6 @@ Daisey guesses energy from three signals, shows the guess as a chip, and learns 
 | Not now · too tired | Energy was likely lower than guessed. Nudges the bucket down. |
 | Not now · no time | Size estimate or window was off. Nudges the size guess up. |
 | Something else, then pick | The picked task beat the first in this context. |
-| Stop without finishing, twice | Task may be too big. Daisey offers to split it. |
 
 **Calendar tags for draining events** are set once in settings (e.g. any event with "teaching" or "שיעור" in the title). Daisey suggests tags after seeing patterns, and you approve.
 

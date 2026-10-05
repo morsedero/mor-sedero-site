@@ -1,17 +1,15 @@
 // Focus mode: the whole screen is the task you're on. Title, a running
-// timer, Done, Pause and Cancel — nothing else (the tabs, the + button and
-// the greeting are hidden by body.focus).
+// timer, Done and Pause — nothing else (the tabs, the + button and the
+// greeting are hidden by body.focus).
 //
-// Pause and Cancel replaced Stop (Mor, 2026-10-05). Pause freezes the timer
-// and goes back to the main screen, where the card holds the paused task
-// with Resume until you come back to it. Cancel ends the run without
-// counting a stop; a mis-tap (under 2 min) saves nothing, real work keeps
-// its minutes.
+// Two ways out (Mor, 2026-10-05, after Stop, then Pause + Cancel, then a
+// "Finished, or more left?" question all felt like too many). Done means
+// finished. Pause freezes the timer and goes back to the main screen, where
+// the card holds the paused task: Resume, or the card's own Later · Switch ·
+// Pending, any of which ends the session with its time kept (now.js).
 //
-// Past the estimate it asks once, quietly: "Still on it? +15 min · Stuck".
-// No sound, no red — running over is normal. Stuck ends the run, keeps the
-// time, and sets the task to Pending, so Daisey stops offering it until
-// whatever is blocking clears.
+// Past the estimate it asks once, quietly: "Still on it? +15 min". No
+// sound, no red — running over is normal.
 //
 // The run lives in Firestore (state/now), so a reload or the other device
 // shows the same timer still going; elapsed is always worked out from
@@ -39,12 +37,8 @@ export function resumed(run, now = Date.now()){
   return { ...rest, startedAt: run.startedAt + gap, ...(run.mark != null ? { mark: run.mark + gap } : {}) };
 }
 
-// Pause and Cancel, side by side under Done.
-const pauseCancel = (what, onPause, onCancel) => h("div", { className: "focus-row" },
-  h("button", { className: "btn", type: "button", textContent: "Pause",
-    ariaLabel: `Pause ${what} and go back to the main screen`, onclick: () => onPause() }),
-  h("button", { className: "btn quiet", type: "button", textContent: "Cancel",
-    ariaLabel: `Cancel ${what}`, onclick: () => onCancel() }));
+const pauseButton = (what, onPause) => h("button", { className: "btn", type: "button", textContent: "Pause",
+  ariaLabel: `Pause ${what} and go back to the main screen`, onclick: () => onPause() });
 export const targetMinutes = (run, task) => (task?.size || 0) + (run.extra || 0);
 export const isOver = (run, task, now = Date.now()) => elapsedMinutes(run, now) > targetMinutes(run, task);
 
@@ -56,23 +50,10 @@ const clock = (min) => {
 
 // run: the state/now doc. task: the task it names (may be missing if it was
 // deleted elsewhere — then Done is disabled).
-// Callers: onDone(finished) · onStop({ pending }) (Stuck) · onExtend(minutes)
-// · onPause() · onCancel().
-export function focusView(run, task, { onDone, onStop, onExtend, onPause, onCancel }, state = {}){
+// Callers: onDone() · onExtend(minutes) · onPause().
+export function focusView(run, task, { onDone, onExtend, onPause }){
   const mins = elapsedMinutes(run);
   const over = task && isOver(run, task);
-
-  // "Done" asks the one question the spec wants: finished, or more left?
-  if (state.asking) {
-    return h("div", { className: "focus" },
-      h("div", { className: "focus-title", dir: "auto", textContent: task?.title || "That task is gone" }),
-      h("p", { className: "focus-ask", textContent: "Finished, or more left?" }),
-      h("div", { className: "focus-actions" },
-        h("button", { className: "btn primary", type: "button", textContent: "Finished",
-          ariaLabel: `Finished: ${task?.title || "this task"}`, onclick: () => onDone(true) }),
-        h("button", { className: "btn", type: "button", textContent: "More left",
-          ariaLabel: "More left: keep the task, save the time spent", onclick: () => onDone(false) })));
-  }
 
   return h("div", { className: "focus" },
     h("div", { className: "focus-title", dir: "auto", textContent: task?.title || "That task is gone" }),
@@ -82,13 +63,11 @@ export function focusView(run, task, { onDone, onStop, onExtend, onPause, onCanc
       h("p", { className: "focus-ask", textContent: "Still on it?" }),
       h("div", { className: "focus-chips" },
         h("button", { className: "chip", type: "button", textContent: "+15 min",
-          ariaLabel: "Still on it: give it 15 more minutes", onclick: () => onExtend(15) }),
-        h("button", { className: "chip", type: "button", textContent: "Stuck",
-          ariaLabel: "Stuck: stop and set this task to Pending", onclick: () => onStop({ pending: true }) }))),
+          ariaLabel: "Still on it: give it 15 more minutes", onclick: () => onExtend(15) }))),
     h("div", { className: "focus-actions" },
       h("button", { className: "btn primary", type: "button", textContent: "Done",
-        ariaLabel: `Done with ${task?.title || "this task"}`, onclick: () => onDone(), disabled: !task }),
-      pauseCancel(task?.title || "this task", onPause, onCancel)));
+        ariaLabel: `Done: ${task?.title || "this task"} is finished`, onclick: () => onDone(), disabled: !task }),
+      pauseButton(task?.title || "this task", onPause)));
 }
 
 // After Done: what Daisey would do next, offered the same way the card does.
@@ -111,11 +90,11 @@ export function handoffView(doneTitle, next, { onStart, onSkip }){
 }
 
 // A batch in focus mode: a checklist, one timer for the lot. Tick each as it
-// gets done; the last tick ends the batch. Cancel leaves the unticked ones
-// open with no time booked; the ticked ones stay done.
+// gets done; the last tick ends the batch. Pause goes back to the main
+// screen, where the batch can be resumed or ended (the unticked stay open).
 // tasks: the batch's tasks in order (missing ones already dropped).
-// Callers: onTick(task) · onPause() · onCancel().
-export function batchFocusView(run, tasks, type, { onTick, onPause, onCancel }){
+// Callers: onTick(task) · onPause().
+export function batchFocusView(run, tasks, type, { onTick, onPause }){
   const mins = elapsedMinutes(run), done = new Set(run.done || []);
   const total = tasks.reduce((s, t) => s + (t.size || 0), 0);
   return h("div", { className: "focus" },
@@ -128,5 +107,5 @@ export function batchFocusView(run, tasks, type, { onTick, onPause, onCancel }){
         ariaLabel: ticked ? `Done: ${t.title}` : `Mark done: ${t.title}`, onclick: () => onTick(t) },
         h("span", { className: "tk-check" + (ticked ? " done" : ""), textContent: ticked ? "✓" : "" }), bdi(t.title)));
     })),
-    h("div", { className: "focus-actions" }, pauseCancel("the batch", onPause, onCancel)));
+    h("div", { className: "focus-actions" }, pauseButton("the batch", onPause)));
 }
