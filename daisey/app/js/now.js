@@ -39,9 +39,8 @@ const CAL_NOTE = {
 // list can set it aside while it's "physically" on the card.
 // onSweep() opens the old-dates sweep (sweep.js). onProject(name) shows that
 // project's tab in Tasks. name: the first name for the greeting. onDone(n):
-// how many tasks are done today, for the header's daisy. onGreet(text): the
-// greeting the header shows in place of the name ("" = just "Daisey").
-export function mountNow(root, uid, { onCard, onSweep, onProject, name = "", onDone, onGreet } = {}){
+// how many tasks are done today, for the header's daisy.
+export function mountNow(root, uid, { onCard, onSweep, onProject, name = "", onDone } = {}){
   let tasks = null; // null until the first snapshot
   let settings = {}; // state/settings: when the sweep was last offered
   let momentDoc = {}; // state/moment: energy and place corrections
@@ -169,11 +168,12 @@ export function mountNow(root, uid, { onCard, onSweep, onProject, name = "", onD
     const chip = (kind, list, cur) => {
       const label = list.find(([v]) => v === cur.value)?.[1] || cur.value;
       return h("button", { type: "button", className: "ctx-chip" + (cur.guessed ? " guess" : ""),
-        ariaExpanded: String(ctxOpen === kind),
+        ariaExpanded: String(ctxOpen === kind), ariaLabel: kind === "energy" ? `${label} energy` : label,
         title: cur.guessed ? "Daisey's guess. Tap to correct." : "Tap to change.",
         onclick: () => { ctxOpen = ctxOpen === kind ? null : kind; render(); } },
       icon(kind === "energy" ? "energy" : PLACE_ICON[cur.value] || "where"),
-      h("span", { textContent: kind === "energy" ? `${label} energy` : label }));
+      // The bolt already says "energy"; the word stays in the label for screen readers.
+      h("span", { textContent: label }));
     };
     const opts = ctxOpen && (ctxOpen === "place" ? PLACES : ENERGIES);
     return h("div", { className: "ctx" },
@@ -198,9 +198,12 @@ export function mountNow(root, uid, { onCard, onSweep, onProject, name = "", onD
     return line(`${freeDur(fw.window)} free until ${clock(dayEndAt(Date.now(), dayHours(settings)))}`);
   }
 
-  // The top of the day screen, under the header (which carries the greeting:
-  // one section, not two — Mor, 2026-10-05): the free line, the chips.
-  const topOf = (fw) => h("div", { className: "now-top" }, freeLine(fw), chipsRow());
+  // The top of the day screen, under the "Daisey" header: one row, the
+  // greeting at the start and, anchored to the end, the free line over the
+  // chips (Mor, 2026-10-05).
+  const topOf = (fw) => h("div", { className: "now-top" },
+    h("h2", { className: "greeting", textContent: greeting(name) }),
+    h("div", { className: "now-ctx" }, freeLine(fw), chipsRow()));
 
   // A chip choice: the correction, and for energy one more point in the
   // pattern for this time of day (context.js energyNow).
@@ -796,7 +799,7 @@ export function mountNow(root, uid, { onCard, onSweep, onProject, name = "", onD
     for (const id of handoff?.ids || []) ids.add(id);
     return ids.size;
   }
-  let reported = null, greeted = null;
+  let reported = null;
 
   function render(){
     const live = !!run && !run.pausedAt; // a paused run is back on the main screen
@@ -807,8 +810,7 @@ export function mountNow(root, uid, { onCard, onSweep, onProject, name = "", onD
     document.documentElement.classList.toggle("night", night);
     const n = doneCount();
     if (n !== reported) { reported = n; onDone?.(n); }
-    const g = night || live || handoff ? "" : greeting(name); // night says its own "Late, Mor."
-    if (g !== greeted) { greeted = g; onGreet?.(g); }
+
     if (live) { fill(renderFocus()); return; }
     if (handoff) {
       // The task just worked on isn't offered straight back.

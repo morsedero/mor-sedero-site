@@ -617,9 +617,7 @@ dialog.now { overflow-y: auto; overscroll-behavior: contain; }
 .brandrow { display: flex; align-items: center; gap: 8px; min-inline-size: 0; }
 .logo { display: inline-flex; inline-size: 30px; block-size: 30px; flex: none; }
 .brand { font-size: 21px; font-weight: 700; letter-spacing: -0.3px; min-inline-size: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-/* By day the header's title is the greeting: one compact top, not a header
-   and then a greeting block under it (Mor, 2026-10-05: "too much"). */
-.brand.greet { font-size: 20px; font-weight: 600; letter-spacing: -0.3px; }
+
 .pill { font-size: 12px; font-weight: 500; color: var(--ink-2); background: var(--chip); border-radius: 999px; padding: 3px 9px; white-space: nowrap; }
 .avatar { border: none; background: var(--ink); color: var(--bg); font-weight: 600; font-size: 14px; }
 .daisy-petals ellipse { fill: #fff; stroke: #e6dcc3; stroke-width: 1.2; }
@@ -628,9 +626,19 @@ dialog.now { overflow-y: auto; overscroll-behavior: contain; }
 :root.night .logo .daisy-heart { fill: #b88a1a; }
 
 /* Greeting, the one free line, the chips. */
-.freeline { margin: 0 0 8px; font-size: 14px; color: var(--ink-2); }
-.ctx { display: grid; gap: 8px; margin-block-end: 12px; }
-.ctx-line { display: flex; flex-wrap: wrap; gap: 8px; }
+/* One row under the header: the greeting at the start, and the free line
+   over the chips anchored to the end. The greeting may take two lines
+   ("Good afternoon, / Mor") so the end column keeps its room. */
+.now-top { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 12px; margin-block: 6px 14px; }
+.greeting { margin: 0; font-size: 20px; font-weight: 600; letter-spacing: -0.3px; line-height: 1.2; }
+/* The chips set the end column's width; the free line wraps inside it
+   (contain: it has no width of its own to push the greeting with). */
+.now-ctx { display: grid; gap: 6px; text-align: end; }
+.freeline { margin: 0; font-size: 13px; line-height: 1.3; color: var(--ink-2); contain: inline-size; }
+.ctx { display: grid; gap: 6px; justify-items: end; }
+.ctx-opts .chip[aria-checked="true"] { background: var(--ink); color: var(--bg); }
+.ctx-line { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; }
+.ctx-opts { justify-content: flex-end; }
 .ctx-chip, .tk-filters .chip, .tab { position: relative; }
 .ctx-chip::after, .tk-filters .chip::after, .tab::after { content: ""; position: absolute; inset: -5px 0; } /* 44px to the finger */
 .ctx-chip {
@@ -887,3 +895,5 @@ dialog.now { overflow-y: auto; overscroll-behavior: contain; }
 /* The chip row is wider than the screen on purpose (it slides); without this
    it sets the width of every grid track above it and the page scrolls sideways. */
 #board > *, .pane, .pane > *, .tk-filters { min-inline-size: 0; }
+/* The open choices wrap inside the end column too, rather than widening it. */
+.now-ctx .ctx-opts { contain: inline-size; justify-self: stretch; }

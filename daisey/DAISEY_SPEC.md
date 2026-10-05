@@ -329,7 +329,7 @@ The Now screen redesign (Oct 5, 2026; references in `daisey/New Design/`). Calm,
 
 A card takes its task's area with `.area-<key>`; inside it everything reads `--tint`, `--aline`, `--aink` and `--sub` (the area's quiet text). A task with no area keeps the plain card colours. Calendar events are tinted with the colour they have in Google Calendar.
 
-**Type** — Rubik 400/500/600/700 (Google Fonts; it covers Hebrew). Greeting 20/600 (it is the header, by day: one compact top, not a header plus a greeting block), hero title 24/600, focus title 30/600, focus timer 46/600 tabular, body 14–15.
+**Type** — Rubik 400/500/600/700 (Google Fonts; it covers Hebrew). Header "Daisey" 21/700 with the daisy; under it one row: greeting 20/600 at the start, the free line (13) over the place/energy chips anchored to the end, hero title 24/600, focus title 30/600, focus timer 46/600 tabular, body 14–15.
 
 **Shape** — radius: cards 24, buttons 16, chips 999. Every touch target is at least 44px (chips that look smaller get an invisible hit area).
 
