@@ -56,8 +56,8 @@ export function weekDays(now = Date.now()){
 // Free minutes in a day's waking hours: minus busy calendar events, minus
 // what other open tasks dated that day already need.
 export function roomOn(day, { events = [], tasks = [], skip = null, now = Date.now() } = {}){
-  const start = new Date(day).setHours(W.ROOM_HOURS.start, 0, 0, 0);
-  const end = new Date(day).setHours(W.ROOM_HOURS.end, 0, 0, 0);
+  const start = new Date(day).setHours(0, W.DAY_HOURS.start, 0, 0);
+  const end = new Date(day).setHours(0, W.DAY_HOURS.end, 0, 0);
   let busy = 0;
   for (const e of events) {
     if (e.busy === false || e.allDay) continue;

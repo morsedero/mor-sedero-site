@@ -33,25 +33,23 @@
           <button class="theme-btn" type="button" role="radio" data-set-theme="light">Light</button>
           <button class="theme-btn" type="button" role="radio" data-set-theme="dark">Dark</button>
         </div>
-        <button id="importTrello" class="btn small" type="button">Import from Trello…</button>
+        <!-- Day hours: free time counts only inside them; outside is night mode. -->
+        <div class="dayhours" role="group" aria-label="Day hours">
+          <span class="muted">Day</span>
+          <input id="dayStart" type="time" aria-label="Day starts" value="08:00">
+          <span class="muted">–</span>
+          <input id="dayEnd" type="time" aria-label="Day ends" value="22:00">
+        </div>
+        <button id="importTrello" class="btn small" type="button" hidden>Import from Trello…</button>
         <button id="signout" class="btn small" type="button">Sign out</button>
       </div>
     </div>
   </header>
 
-  <section data-view="loading" class="card"><p class="muted">Loading…</p></section>
-
-  <section data-view="noconfig" class="card" hidden>
-    <p>Firebase isn't configured yet. Paste the web config into <code>js/config.js</code>.</p>
-  </section>
-
-  <section data-view="error" class="card" hidden><p id="err"></p></section>
-
-  <section data-view="signedout" class="card" hidden>
-    <p>Sign in to see your tasks.</p>
-    <button id="signin" class="btn primary">Sign in with Google</button>
-    <p id="signinMsg" class="msg" role="alert"></p>
-  </section>
+  <!-- Loading, signed out, or an error: main.js fills this one box, and
+       empties it once signed in, so no hidden copy of any of them sits in
+       the page (Mor, 2026-10-05). -->
+  <section id="status" class="card"><p class="muted">Loading…</p></section>
 
   <!-- Signed in: the Now card stays put at the top; under it one pane that
        switches between the day and the projects (Mor, 2026-10-04). -->
@@ -60,8 +58,6 @@
     <nav class="panetabs" role="tablist" aria-label="Under the card">
       <button id="tabSchedule" class="tab" role="tab" aria-controls="schedule" type="button">Schedule</button>
       <button id="tabTasks" class="tab" role="tab" aria-controls="tasksview" type="button">Tasks</button>
-      <!-- The next piece (now.js) is painted in here: the right end of this row. -->
-      <div id="upnext" class="upnext-slot"></div>
     </nav>
     <div class="pane">
       <section id="schedule" class="sch" role="tabpanel" aria-labelledby="tabSchedule" hidden></section>

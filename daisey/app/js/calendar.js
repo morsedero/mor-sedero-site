@@ -121,12 +121,3 @@ export function createEvent({ title, date, at, minutes, calendarId = "primary", 
   const end = new Date(start.getTime() + minutes * 60000);
   return write({ action: "create", calendarId, title, ...(taskId ? { taskId } : {}), start: start.toISOString(), end: end.toISOString() });
 }
-
-// Accepting a pencil suggestion: a block on the user's separate "Daisey"
-// calendar (made on first use), carrying the task's id so the card can put
-// that task up while the block runs. Only ever called from the user's tap.
-export function acceptBlock({ task, start, end, title }){
-  return write({ action: "create", calendarId: "daisey", title: title || task.title, taskId: task.id,
-    start: new Date(start).toISOString(), end: new Date(end).toISOString(),
-    timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone });
-}

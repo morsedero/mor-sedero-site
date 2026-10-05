@@ -10,15 +10,16 @@
 // alternatives, tap one to make it the card. Start → focus mode (focus.js):
 // the run lives in Firestore, so this tab, a reload and the phone all show
 // the same timer.
-import { watchTasks, watchRun, watchSkips, saveSkips, startRun, extendRun, endRun, startBatch, tickBatch, endBatch, skipNow, blockTask, restoreTask, watchSettings, saveSettings, watchMoment, saveMoment, watchLearn, bumpLearn, watchPencil, savePencil } from "./store.js";
+import { watchTasks, watchRun, watchSkips, saveSkips, startRun, extendRun, endRun, startBatch, tickBatch, endBatch, skipNow, blockTask, restoreTask, watchSettings, saveSettings, watchMoment, saveMoment, watchLearn, bumpLearn, addTask } from "./store.js";
 import { energyNow, placeNow, workBase } from "./context.js";
-import { sketch } from "./pencil.js";
 import { shouldOffer, sweepList, pickWeekDay } from "./triage.js";
 import { focusView, handoffView, elapsedMinutes, batchFocusView, batchName, sinceMark } from "./focus.js";
-import { watchCalendar } from "./calendar.js";
+import { watchCalendar, deleteEvent } from "./calendar.js";
 import { LATER_MINUTES, DRAIN } from "./weights.js";
 import { rank, freeWindow, whySaid, timeBucket, matchProject } from "./engine.js";
-import { localDate, skipSnapshot, shrunk, shrinkPatch } from "./model.js";
+import { localDate, skipSnapshot, shrunk, shrinkPatch, notYet, LABELS } from "./model.js";
+import { dayHours, isNight, nextMorning, dayEndAt, bookings, sameTitle, minText } from "./day.js";
+import { nextOffer, draftFrom } from "./caltask.js";
 import { h, icon, bdi, pieces, sizeText, dur, say } from "./ui.js";
 
 // Nothing sits above the card but the warnings below: the date and time are
@@ -37,12 +38,11 @@ const CAL_NOTE = {
 // list can set it aside while it's "physically" on the card.
 // onSweep() opens the old-dates sweep (sweep.js). onProject(name) shows that
 // project's tab in Tasks.
-export function mountNow(root, uid, { onCard, onSweep, onProject, nextHost } = {}){
+export function mountNow(root, uid, { onCard, onSweep, onProject } = {}){
   let tasks = null; // null until the first snapshot
   let settings = {}; // state/settings: when the sweep was last offered
   let momentDoc = {}; // state/moment: energy and place corrections
   let learnStats = {}; // state/learn: starts and skips per type and time of day
-  let pencilDoc = {}; // state/pencil: today's swapped-past and dismissed picks
   let ctxOpen = null; // "energy" | "place": the chip whose choices are showing
   let cal = { status: "loading", events: [] };
   let lastWindow, lastClock;
@@ -52,6 +52,12 @@ export function mountNow(root, uid, { onCard, onSweep, onProject, nextHost } = {
   // engine.freeWindow reports). Cleared on its own once that event is no
   // longer the one running.
   let freeFrom = null;
+  // "I'm free now" at night: plan as if it were day until the night is over.
+  let nightFree = false;
+  // The Someday pick (DAISEY_SPEC "Someday comes back"). open: Switch asked
+  // for it; picked: ids moved to this week this round; all: show every one.
+  const sd = { open: false, picked: [], all: false };
+  let calAsk = null; // an event just made into a task: keep it or delete it?
   let toast = null; // { text, task, before } for 5 s after Later or Pending
   let slideIn = false; // one slide per step-aside, not one per snapshot
   let toastTimer = null;
@@ -124,20 +130,45 @@ export function mountNow(root, uid, { onCard, onSweep, onProject, nextHost } = {
   const PLACES = [["home", "Home"], ["out", "Out"], ["anywhere", "Anywhere"]];
   const ENERGIES = [["low", "Low"], ["medium", "Medium"], ["high", "High"]];
 
-  // The card's context line: "45 min free · Home · energy medium (guess)".
-  // Place and energy are chips; tapping one shows its three choices, and a
-  // choice is a correction that holds for 3 hours on every device.
-  // The card's context line: free time, and the block it's in if any. Energy
-  // and place are still guessed (feel()) and still steer the engine; they just
-  // aren't on the card any more (Mor, 2026-10-04: behind the scenes).
+  // The card's context line: "45 min free · Home · Medium energy", and the
+  // block it's in if any. Place and energy are chips again (Mor, 2026-10-05):
+  // dashed while they're Daisey's guess; tapping one shows its three choices,
+  // and a choice is a correction that holds for 3 hours on every device.
   function contextLine(){
-    const fw = calendarNow(), block = blockOf(fw);
+    const fw = calendarNow(), block = blockOf(fw), f = feel();
+    const chip = (kind, list, cur) => {
+      const label = list.find(([v]) => v === cur.value)?.[1] || cur.value;
+      return h("button", { type: "button", className: "ctx-chip" + (cur.guessed ? " guess" : ""),
+        textContent: kind === "energy" ? `${label} energy` : label, ariaExpanded: String(ctxOpen === kind),
+        title: cur.guessed ? "Daisey's guess. Tap to correct." : "Tap to change.",
+        onclick: () => { ctxOpen = ctxOpen === kind ? null : kind; render(); } });
+    };
+    const opts = ctxOpen && (ctxOpen === "place" ? PLACES : ENERGIES);
     return h("div", { className: "ctx" },
       h("div", { className: "ctx-line" },
         fw && !fw.current && h("span", { textContent: `${dur(Math.min(fw.window, 180))}${fw.window >= 180 ? "+" : ""} free` }),
+        chip("place", PLACES, f.place), chip("energy", ENERGIES, f.energy),
         block && (block.taskId
-          ? h("span", { className: "ctx-block", textContent: `Planned until ${clock(block.end)}` })
-          : h("span", { className: "ctx-block" }, "Working on ", bdi(block.project), ` until ${clock(block.end)}`))));
+          ? h("span", { className: "ctx-block", textContent: `Booked until ${clock(block.end)}` })
+          : h("span", { className: "ctx-block" }, "Working on ", bdi(block.project), ` until ${clock(block.end)}`))),
+      opts && h("div", { className: "ctx-opts", role: "radiogroup", ariaLabel: ctxOpen === "place" ? "Where are you?" : "Energy" },
+        ...opts.map(([v, text]) => h("button", { type: "button", className: "chip", role: "radio", textContent: text,
+          ariaChecked: String(f[ctxOpen].value === v), onclick: () => correct(ctxOpen, v) }))));
+  }
+
+  // A chip choice: the correction, and for energy one more point in the
+  // pattern for this time of day (context.js energyNow).
+  function correct(kind, value){
+    const now = Date.now();
+    const fields = { [kind]: { value, at: now } };
+    if (kind === "energy") {
+      const b = timeBucket(now);
+      fields.history = [...(momentDoc.history || []), { part: b.part, weekend: b.weekend, value }].slice(-100);
+    }
+    momentDoc = { ...momentDoc, ...fields };
+    ctxOpen = null;
+    render();
+    saveMoment(uid, fields).catch(fail);
   }
 
   // The calendar's answer to "what now": the event that's running, when it
@@ -269,12 +300,18 @@ export function mountNow(root, uid, { onCard, onSweep, onProject, nextHost } = {
   // learn from; only "later today" counts toward the stale rule, since the
   // other two are a plan, not a refusal.
   //   today    off the card for LATER_MINUTES, back the same day
+  //   tomorrow not before tomorrow (Mor, 2026-10-05)
   //   week     not before the roomiest day this week (triage.pickWeekDay)
   //   someday  parked until moved back
   const declined = (task) => bumpLearn(uid, task.type, timeBucket().part, "skips");
   function later(task, when){
     if (when === "today") {
       stepAside(task, { label: `Later (${dur(LATER_MINUTES)}): `, write: () => Promise.all([skipNow(uid, task), declined(task)]) });
+    } else if (when === "tomorrow") {
+      const d = new Date(); d.setDate(d.getDate() + 1);
+      let day = localDate(d.getTime());
+      if (task.dateKind === "deadline" && task.due && task.due < day) day = task.due; // never hide it past its deadline
+      stepAside(task, { label: "Tomorrow: ", write: () => Promise.all([restoreTask(uid, task.id, { notBefore: day, touchedAt: Date.now() }), declined(task)]) });
     } else if (when === "week") {
       let day = pickWeekDay(task, { events: cal.status === "ok" ? cal.events : [], tasks: tasks || [] });
       if (task.dateKind === "deadline" && task.due && task.due < day) day = task.due; // never hide it past its deadline
@@ -337,11 +374,14 @@ export function mountNow(root, uid, { onCard, onSweep, onProject, nextHost } = {
   // and the skip penalty were both scoring zero until this was passed in.
   // The calendar as Daisey should read it now: an event you've overridden
   // doesn't count as busy.
+  // Free time ends with the day hours (DAISEY_SPEC "Day hours"); after "I'm
+  // free now" at night, only the next event bounds it.
   function calendarNow(){
     if (cal.status !== "ok") return null;
     const busy = cal.events.filter((e) => e.busy !== false && !e.allDay);
     const events = freeFrom ? busy.filter((e) => Date.parse(e.start) !== freeFrom) : busy;
-    const fw = freeWindow(events);
+    const now = Date.now(), hrs = dayHours(settings);
+    const fw = freeWindow(events, now, isNight(now, hrs) ? null : dayEndAt(now, hrs));
     // The override only ever applies to the event that was running; once it
     // ends, or another starts, the calendar speaks for itself again.
     if (freeFrom && !cal.events.some((e) => Date.parse(e.start) === freeFrom && Date.parse(e.end) > Date.now())) freeFrom = null;
@@ -355,9 +395,10 @@ export function mountNow(root, uid, { onCard, onSweep, onProject, nextHost } = {
   // keeps the meeting card.
   function blockOf(fw){
     if (!fw?.current) return null;
-    // A block accepted from the pencil schedule names its task: that task is
-    // the card while it runs (DAISEY_SPEC "Pencil schedule").
-    const planned = fw.current.taskId && (tasks || []).find((t) => t.id === fw.current.taskId && t.status !== "done" && t.status !== "dropped");
+    // A booked task's slot (an event Daisey made for it, or one titled like
+    // it): that task is the card while it runs (DAISEY_SPEC "Booked tasks").
+    const live = (tasks || []).filter((t) => t.status !== "done" && t.status !== "dropped");
+    const planned = (fw.current.taskId && live.find((t) => t.id === fw.current.taskId)) || live.find((t) => sameTitle(t.title, fw.current.title));
     if (planned) return { project: planned.project, taskId: planned.id, title: planned.title, start: fw.current.start, end: fw.current.end };
     // A lesson or rehearsal is the thing itself, not time set aside for a
     // project — even when a project shares its name ("Teaching").
@@ -371,9 +412,13 @@ export function mountNow(root, uid, { onCard, onSweep, onProject, nextHost } = {
   // What a re-render is worth watching for: normally the free window, but
   // inside a meeting the window stays 0 while the minutes left tick down, and
   // the card now states those minutes.
-  const windowMark = (fw) => (fw?.current
+  // The day/night flip is worth a render too, calendar or not.
+  const windowMark = (fw) => `${fw?.current
     ? `m${Math.ceil((fw.current.end - Date.now()) / 60000)}`
-    : fw?.window);
+    : fw?.window}|${isNight(Date.now(), dayHours(settings))}`;
+
+  // Booked tasks right now, id → { start, end, title } (day.js).
+  const booked = () => (cal.status === "ok" ? bookings(tasks || [], cal.events) : new Map());
 
   function momentInput(fw = calendarNow()){
     const now = Date.now();
@@ -389,50 +434,125 @@ export function mountNow(root, uid, { onCard, onSweep, onProject, nextHost } = {
       energy: f.energy.value,
       place: f.place.value,
       learnStats,
+      booked: Object.fromEntries([...booked()].map(([id, b]) => [id, b.start])),
     };
   }
 
-  // The next piece (Mor, 2026-10-05: "like the square showing the next piece
-  // in tetris"). One small dashed pill at the right end of the Schedule/Tasks
-  // row — not on the card, which is about one task, and not in the schedule
-  // list, where anything unbooked reads as booked. It names the task the
-  // engine would put up in the next free gap, and the time that gap starts.
-  // Tapping it is "not that one" — it shows the following pick for that gap
-  // and remembers the pass for today (state/pencil), the same store the
-  // Schedule panel used to write. Nothing here is booked and nothing is
-  // written to a calendar; it only says what's coming, so the card can be
-  // about one task without the day feeling hidden.
-  const todayPencil = () => (pencilDoc.date === localDate() ? pencilDoc : { date: localDate(), dismissed: [], swaps: {} });
-
-  function nextPiece(cardId){
-    if (!tasks || cal.status !== "ok") return null;
-    const now = Date.now();
-    const today = localDate(now);
-    const pd = todayPencil();
-    // Already on the Daisey calendar for today, or on the card right now.
-    const booked = cal.events.filter((e) => e.taskId && localDate(Date.parse(e.start)) === today).map((e) => e.taskId);
-    const pen = sketch(tasks, cal.events, { now, exclude: [...(pd.dismissed || []), ...booked, ...(cardId ? [cardId] : [])],
-      swaps: pd.swaps || {}, base: { ...workBase(tasks, now), learnStats }, moment: momentDoc });
-    return pen.find((p) => !p.isNow) || null; // the gap after this one, not this one
+  // Night mode (DAISEY_SPEC "Day hours"): outside the day hours the card
+  // doesn't push work. It names the first pick for the morning — the engine
+  // run for the start of the day, with its window, energy guess and booked
+  // slots — and has no Start. "I'm free now" plans as if it were day.
+  function nightCard(hrs){
+    const now = Date.now(), morning = nextMorning(now, hrs);
+    const evs = cal.status === "ok" ? cal.events.filter((e) => e.busy !== false && !e.allDay) : [];
+    const fw = cal.status === "ok" ? freeWindow(evs, morning, dayEndAt(morning, hrs)) : null;
+    const r = rank(tasks || [], {
+      now: morning,
+      ...(!fw ? { realWindow: false } : { window: fw.current ? 60 : fw.window, nextEvent: fw.next?.title ?? null }),
+      ...workBase(tasks || [], now),
+      energy: energyNow({ history: momentDoc.history || [], events: evs, now: morning }).value,
+      place: "home",
+      learnStats,
+      booked: Object.fromEntries([...booked()].map(([id, b]) => [id, b.start])),
+    });
+    const p = r.pick;
+    return h("div", { className: "now-card main night" },
+      h("div", { className: "now-meta", textContent: `Night · your day starts at ${minText(hrs.start)}` }),
+      p ? h("p", { className: "now-night" }, "Late. Tomorrow first: ", h("strong", {}, bdi(p.task.title)),
+        ...(p.whyParts?.length ? [" — ", ...say(p.whyParts)] : []), ".")
+        : h("p", { className: "now-night", textContent: "Late. Nothing lined up for tomorrow yet." }),
+      h("button", { className: "btn quiet", type: "button", textContent: "I'm free now",
+        ariaLabel: "I'm free now: pick a task anyway", onclick: () => { nightFree = true; render(); } }));
   }
 
-  function passNext(p){
-    const pd = { ...todayPencil() };
-    pd.swaps = { ...(pd.swaps || {}), [p.key]: [...((pd.swaps || {})[p.key] || []), p.task.id] };
-    pencilDoc = pd;
-    render();
-    savePencil(uid, pd).catch(fail);
+  // A booked task, when nothing else fits (DAISEY_SPEC "Booked tasks"): it
+  // says when its slot is, with no Start — the slot starting makes it the card.
+  function bookedCard(b){
+    const today = localDate(b.start) === localDate();
+    const when = today ? clock(b.start) : `${new Date(b.start).toLocaleDateString([], { weekday: "short" })} ${clock(b.start)}`;
+    return h("div", { className: "now-card main booked" },
+      contextLine(),
+      h("div", { className: "now-meta", textContent: `Booked for ${when}` }),
+      h("div", { className: "now-title", dir: "auto", textContent: b.task.title }),
+      h("p", { className: "now-why", textContent: "Nothing else fits now. It's up when its slot starts." }));
   }
 
-  function nextSquare(){
-    const p = nextPiece(shown);
-    if (!p) return null;
-    const title = p.task.title + (p.part ? " (part)" : "");
-    return h("button", { className: "upnext", type: "button", title: "Tap for a different one",
-      ariaLabel: `Next, at ${clock(p.gap.start)}: ${title}. Tap for a different one.`, onclick: () => passNext(p) },
-      h("span", { className: "upnext-label", textContent: "Next" }),
-      h("span", { className: "upnext-title", dir: "auto", textContent: title }),
-      h("span", { className: "upnext-when", textContent: clock(p.gap.start) }));
+  // Someday comes back (DAISEY_SPEC): Sunday morning, or whenever fewer than
+  // 3 tasks are active, a short pick — stakes first, a quiet mark on the ones
+  // that cost money or keep someone waiting. A pick moves the task back to
+  // ready for this week; two picks, Done or Not now close it for the day.
+  const somedayTasks = () => (tasks || []).filter((t) => t.status === "someday");
+  const STAKES_FIRST = { penalty: 0, money: 1, someone: 2, low: 3 };
+  const MARK = { penalty: "penalty if late", money: "costs money", someone: "someone's waiting" };
+  function somedayDue(){
+    if (!somedayTasks().length) return false;
+    if (sd.open) return true;
+    if (settings.somedayAsked === localDate()) return false;
+    const d = new Date();
+    const active = (tasks || []).filter((t) => t.status === "ready" && !notYet(t)).length;
+    return (d.getDay() === 0 && d.getHours() < 12) || active < 3;
+  }
+  function somedayAsk(){
+    const list = somedayTasks().sort((a, b) => (STAKES_FIRST[a.stakes] ?? 3) - (STAKES_FIRST[b.stakes] ?? 3)
+      || String(a.due || "~").localeCompare(String(b.due || "~")) || (a.createdAt || 0) - (b.createdAt || 0));
+    const shownList = sd.all ? list : list.slice(0, 6);
+    const close = () => {
+      Object.assign(sd, { open: false, picked: [], all: false });
+      settings = { ...settings, somedayAsked: localDate() };
+      render();
+      saveSettings(uid, { somedayAsked: localDate() }).catch(fail);
+    };
+    const pick = (t) => {
+      sd.picked.push(t.id);
+      restoreTask(uid, t.id, { status: "ready", notBefore: null, touchedAt: Date.now() }).catch(fail);
+      if (sd.picked.length >= 2) close(); else render();
+    };
+    return h("div", { className: "learn-ask someday-ask", role: "group", ariaLabel: "Pick from Someday" },
+      h("p", { className: "muted", textContent: sd.picked.length ? "One more, or that's the week?" : "Pick 1–2 from Someday for this week." }),
+      h("div", { className: "someday-list" }, ...shownList.map((t) => h("button", { type: "button", className: "someday-item",
+        ariaLabel: `Move ${t.title} to this week${MARK[t.stakes] ? ` (${MARK[t.stakes]})` : ""}`, onclick: () => pick(t) },
+        bdi(t.title), MARK[t.stakes] && h("span", { className: "someday-mark", textContent: MARK[t.stakes] })))),
+      h("div", { className: "learn-row" },
+        list.length > shownList.length && h("button", { className: "chip quiet", type: "button", textContent: `Show all ${list.length}`,
+          onclick: () => { sd.all = true; render(); } }),
+        h("button", { className: "chip quiet", type: "button", textContent: sd.picked.length ? "Done" : "Not now", onclick: close })));
+  }
+
+  // Calendar events that are really tasks (caltask.js): offered once each,
+  // with the guesses; ✓ adds the task and then asks about the event. Daisey
+  // never touches the event without that second tap.
+  const dayShort = (d) => new Date(`${d}T12:00`).toLocaleDateString(undefined, { day: "numeric", month: "short" });
+  function calOffer(){
+    if (calAsk) {
+      const ev = calAsk;
+      return h("div", { className: "learn-ask", role: "group", ariaLabel: "Keep the calendar event?" },
+        h("p", { className: "muted", textContent: "Added as a task. Keep the calendar event or delete it?" }),
+        h("div", { className: "learn-title" }, bdi(ev.title)),
+        h("div", { className: "learn-row" },
+          h("button", { className: "chip", type: "button", textContent: "Keep it", onclick: () => { calAsk = null; render(); } }),
+          ev.editable !== false && h("button", { className: "chip quiet", type: "button", textContent: "Delete event",
+            onclick: () => { calAsk = null; render(); deleteEvent(ev).catch(fail); } })));
+    }
+    if (cal.status !== "ok" || !tasks) return null;
+    const offered = settings.calOffered || [];
+    const ev = nextOffer(cal.events, tasks, offered);
+    if (!ev) return null;
+    const d = draftFrom(ev, tasks);
+    const asked = () => {
+      const ids = [...offered, ev.id].slice(-200);
+      settings = { ...settings, calOffered: ids };
+      saveSettings(uid, { calOffered: ids }).catch(fail);
+    };
+    const meta = [LABELS.type[d.guess.type], dur(d.guess.size), d.input.due && `deadline ${dayShort(d.input.due)}`,
+      d.guess.stakes !== "low" && LABELS.stakes[d.guess.stakes]].filter(Boolean).join(" · ");
+    return h("div", { className: "learn-ask cal-offer", role: "group", ariaLabel: "Make this calendar event a task?" },
+      h("p", { className: "muted", textContent: "From your calendar. Make this a task?", title: ev.title }),
+      h("div", { className: "learn-title" }, bdi(d.input.title)),
+      h("p", { className: "muted", textContent: meta }),
+      h("div", { className: "learn-row" },
+        h("button", { className: "chip", type: "button", textContent: "✓ Make it a task",
+          onclick: () => { asked(); calAsk = ev; render(); addTask(uid, d.input, tasks).catch(fail); } }),
+        h("button", { className: "chip quiet", type: "button", textContent: "Not a task", onclick: () => { asked(); render(); } })));
   }
 
   function render(){
@@ -467,12 +587,17 @@ export function mountNow(root, uid, { onCard, onSweep, onProject, nextHost } = {
 
     if (tasks == null) { fill(greet, h("p", { className: "muted", textContent: "Loading tasks…" })); return; }
 
+    const hrs = dayHours(settings);
+    if (!isNight(Date.now(), hrs)) nightFree = false;
+    if (isNight(Date.now(), hrs) && !nightFree) { fill(greet, nightCard(hrs), toast && toastView()); return; }
+
     const r = rank(tasks, momentInput(fw));
     const planned = blockOf(fw)?.taskId;
     const card = (state.chosen && r.ranked.find((s) => s.task.id === state.chosen))
       || (planned && r.ranked.find((s) => s.task.id === planned)) || r.pick;
     showing(card?.task.id ?? null);
-    const tip = (toast && toastView()) || learnAsk(r);
+    // One ask under the card at a time, the most asked-for first.
+    const tip = (toast && toastView()) || (sd.open && somedayAsk()) || calOffer() || learnAsk(r) || (somedayDue() && somedayAsk());
     // In a meeting, the meeting IS what's happening now, so the card says
     // which one and how much of it is left (Mor, 2026-10-04) instead of
     // "nothing to pick until it ends", which named nothing and read as if
@@ -487,6 +612,9 @@ export function mountNow(root, uid, { onCard, onSweep, onProject, nextHost } = {
       return;
     }
     if (!card && fw?.current) { fill(greet, meetingCard(fw.current), tip); return; }
+    const bk = !card && r.out.filter((o) => o.reason === "booked").map((o) => ({ task: o.task, ...booked().get(o.task.id) }))
+      .filter((b) => b.start).sort((a, b) => a.start - b.start)[0];
+    if (bk) { fill(greet, bookedCard(bk), tip); return; }
     if (!card) {
       fill(greet, h("div", { className: "now-card main empty" },
         r.empty === "nofit" && contextLine(), // nothing fits: maybe you're not where Daisey thinks
@@ -499,6 +627,7 @@ export function mountNow(root, uid, { onCard, onSweep, onProject, nextHost } = {
 
     if (card === r.pick && r.pick.batch && !state.chosen && !state.single) { fill(greet, batchCard(r, r.pick.batch), tip); return; }
     const alts = r.ranked.length > 1 ? [r.pick, ...r.alternatives].filter((s) => s !== card).slice(0, 3) : [];
+    const someN = somedayTasks().length;
     // Start is the one loud thing on the tab; the other two stay quiet under it.
     fill(greet, taskCard(card, true,
       h("button", { className: "btn primary start", type: "button", textContent: "Start",
@@ -506,17 +635,24 @@ export function mountNow(root, uid, { onCard, onSweep, onProject, nextHost } = {
       h("div", { className: "now-actions" },
         action("later", "Later", `not now — choose when to see ${card.task.title} again`,
           { ariaExpanded: String(state.laterAsk), onclick: () => { state.laterAsk = !state.laterAsk; state.pendAsk = false; state.showAlts = false; render(); } }),
-        action("switch", "Switch", state.showAlts ? "hide the other tasks" : `something else — ${alts.length} other tasks`,
-          { disabled: !alts.length, ariaExpanded: String(state.showAlts),
+        // Never a dead end while Someday holds tasks (DAISEY_SPEC "Someday comes back").
+        action("switch", "Switch", state.showAlts ? "hide the other tasks"
+          : alts.length ? `something else — ${alts.length} other tasks`
+          : someN ? "nothing else is active — pick from Someday" : "nothing else is active",
+          { disabled: !alts.length && !someN, ariaExpanded: String(state.showAlts),
             onclick: () => { state.showAlts = !state.showAlts; state.laterAsk = false; state.pendAsk = false; render(); } }),
         action("pending", "Pending", `${card.task.title} is blocked — set it to Waiting`,
           { ariaExpanded: String(state.pendAsk), onclick: () => { state.pendAsk = !state.pendAsk; state.laterAsk = false; state.showAlts = false; render(); } })),
       state.pendAsk && pendingAsk(card.task),
       state.laterAsk && h("div", { className: "later-ask", role: "group", ariaLabel: "When instead?" },
         h("span", { className: "muted", textContent: "When?" }),
-        ...[["today", "Later today"], ["week", "This week"], ["someday", "Someday"]].map(([w, text]) =>
+        ...[["today", "Later today"], ["tomorrow", "Tomorrow"], ["week", "This week"], ["someday", "Someday"]].map(([w, text]) =>
           h("button", { className: "chip", type: "button", textContent: text, onclick: () => later(card.task, w) })))),
-      state.showAlts && h("div", { className: "now-alts", role: "group", ariaLabel: "Other tasks" }, ...alts.map((s) => h("button", {
+      state.showAlts && !alts.length && h("div", { className: "now-alts", role: "group", ariaLabel: "Other tasks" },
+        h("p", { className: "muted" }, "Nothing else is active. ",
+          h("button", { className: "linkish", type: "button", textContent: "Pick from Someday?",
+            onclick: () => { sd.open = true; state.showAlts = false; render(); } }))),
+      state.showAlts && alts.length > 0 && h("div", { className: "now-alts", role: "group", ariaLabel: "Other tasks" }, ...alts.map((s) => h("button", {
         type: "button", className: "now-alt", ariaLabel: `Put ${s.task.title} on the card instead${s.why ? ". " + s.why : ""}`,
         onclick: () => { state.chosen = s.task.id; state.showAlts = false; render(); },
       }, taskCard(s, false)))), tip);
@@ -555,14 +691,7 @@ export function mountNow(root, uid, { onCard, onSweep, onProject, nextHost } = {
         h("button", { className: "chip quiet", type: "button", textContent: "Drop", onclick: () => answer({ status: "dropped" }) })));
   }
 
-  const fill = (...kids) => { root.replaceChildren(...kids.filter(Boolean)); paintNext(); };
-  // The pill lives outside this root, in the tab row, so every render paints
-  // it separately. Focus mode hides that row anyway; paint nothing into it.
-  function paintNext(){
-    if (!nextHost) return;
-    const sq = run || handoff ? null : nextSquare();
-    nextHost.replaceChildren(...(sq ? [sq] : []));
-  }
+  const fill = (...kids) => { root.replaceChildren(...kids.filter(Boolean)); };
   const fail = (e) => console.error("[daisey] now", e);
   const unsubs = [
     watchTasks(uid, (ts) => { tasks = ts; render(); }, fail),
@@ -572,14 +701,13 @@ export function mountNow(root, uid, { onCard, onSweep, onProject, nextHost } = {
     watchSettings(uid, (s) => { settings = s || {}; render(); }, fail),
     watchMoment(uid, (d) => { momentDoc = d || {}; render(); }, fail),
     watchLearn(uid, (d) => { learnStats = d || {}; render(); }, fail),
-    watchPencil(uid, (d) => { pencilDoc = d || {}; render(); }, fail),
   ];
   // The timer ticks every second while running; otherwise this only
   // re-renders when the free window's minute changes.
   const tick = setInterval(() => {
     if (document.hidden) return;
     if (run) { const c = Math.floor(elapsedMinutes(run) * 60); if (c !== lastClock) { lastClock = c; render(); } return; }
-    if (cal.status === "ok" && windowMark(calendarNow()) !== lastWindow) render();
+    if (windowMark(calendarNow()) !== lastWindow) render();
   }, 1000);
   const onVisible = () => { if (!document.hidden) render(); };
   document.addEventListener("visibilitychange", onVisible);
@@ -598,6 +726,6 @@ export function mountNow(root, uid, { onCard, onSweep, onProject, nextHost } = {
       state.showAlts = false;
       render();
     },
-    unmount(){ showing(null); nextHost?.replaceChildren(); clearTimeout(toastTimer); document.body.classList.remove("focus"); unsubs.forEach((u) => u()); clearInterval(tick); document.removeEventListener("visibilitychange", onVisible); root.replaceChildren(); root.hidden = true; },
+    unmount(){ showing(null); clearTimeout(toastTimer); document.body.classList.remove("focus"); unsubs.forEach((u) => u()); clearInterval(tick); document.removeEventListener("visibilitychange", onVisible); root.replaceChildren(); root.hidden = true; },
   };
 }

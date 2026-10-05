@@ -21,9 +21,24 @@ const stamp = (d = new Date()) =>
 if ("serviceWorker" in navigator) {
   addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch((e) => console.warn("[daisey] sw", e)));
 }
-const show = (id) => {
-  for (const el of document.querySelectorAll("[data-view]")) el.hidden = el.dataset.view !== id;
-};
+// One status box for everything before the board: it holds only what's true
+// now, and is emptied once signed in. (Four hidden sections used to sit in
+// the page for good — "Firebase isn't configured" and a second "Sign in with
+// Google" among them, read out by screen readers and page readers alike.)
+let onSignIn = () => {};
+function show(view, text = ""){
+  const box = $("#status");
+  if (view === "signedin") { box.hidden = true; box.replaceChildren(); return; }
+  box.hidden = false;
+  if (view === "signedout") {
+    const msg = Object.assign(document.createElement("p"), { className: "msg", role: "alert" });
+    const btn = Object.assign(document.createElement("button"), { className: "btn primary", type: "button", textContent: "Sign in with Google" });
+    btn.onclick = () => onSignIn(msg);
+    box.replaceChildren(Object.assign(document.createElement("p"), { textContent: "Sign in to see your tasks." }), btn, msg);
+    return;
+  }
+  box.replaceChildren(Object.assign(document.createElement("p"), { className: view === "loading" ? "muted" : "", textContent: text || "Loading…" }));
+}
 
 // Theme (Mor, 2026-10-04). Auto follows the phone; Light and Dark override it
 // and stay overridden. The choice is a data-theme attribute on <html> that
@@ -57,12 +72,11 @@ const show = (id) => {
 }
 
 if (!configured) {
-  show("noconfig");
+  show("error", "Daisey isn't set up on this site yet.");
 } else {
   boot().catch((e) => {
     console.error("[daisey] boot", e);
-    $("#err").textContent = "Couldn't load: " + (e.message || e);
-    show("error");
+    show("error", "Couldn't load: " + (e.message || e));
   });
 }
 
@@ -71,12 +85,12 @@ async function boot(){
   let mounted = null; // { now, tasks, adder } while signed in
   let onCard = null; // task id on the Now card, shared with the board
 
-  $("#signin").onclick = async () => {
-    $("#signinMsg").textContent = "";
+  onSignIn = async (msg) => {
+    msg.textContent = "";
     try { await fb.signIn(); }
     catch (e) {
       if (e.code === "auth/popup-closed-by-user" || e.code === "auth/cancelled-popup-request") return;
-      $("#signinMsg").textContent = e.code === "auth/popup-blocked"
+      msg.textContent = e.code === "auth/popup-blocked"
         ? "Popup was blocked. Allow popups for this site and try again."
         : "Sign-in failed: " + (e.code || e.message);
     }
@@ -123,8 +137,8 @@ async function boot(){
     } else initial();
     show("signedin"); // no element of its own: just clears loading/sign-in views
 
-    Promise.all([import("./now.js"), import("./tasks.js"), import("./addtask.js"), import("./schedule.js"), import("./import-trello.js"), import("./addevent.js"), import("./store.js"), import("./deadlines.js"), import("./sweep.js")])
-      .then(([{ mountNow }, { mountTasks }, { mountAddTask }, { mountSchedule }, { mountImport }, { mountAddEvent }, { migrateTasks }, { mountDeadlines }, { mountSweep }]) => {
+    Promise.all([import("./now.js"), import("./tasks.js"), import("./addtask.js"), import("./schedule.js"), import("./import-trello.js"), import("./addevent.js"), import("./store.js"), import("./deadlines.js"), import("./sweep.js"), import("./day.js")])
+      .then(([{ mountNow }, { mountTasks }, { mountAddTask }, { mountSchedule }, { mountImport }, { mountAddEvent }, { migrateTasks, watchSettings, saveSettings, watchTasks }, { mountDeadlines }, { mountSweep }, { dayHours, minText }]) => {
         if (fb.currentUid() !== user.uid || mounted) return;
         const m = mounted = {};
         // Old tasks get the new fields first; then, once, which dates are real.
@@ -138,10 +152,28 @@ async function boot(){
         m.schedule = mountSchedule($("#schedule"), { onAdd: (date, at) => m.event.open(date, at), onOpen: (ev) => m.event.view(ev), uid: user.uid, onSweep: (ids) => m.sweep.open(ids) });
         m.importer = mountImport($("#importdlg"), user.uid);
         $("#importTrello").onclick = () => { setMenu(false); m.importer.open(); };
+        // Import is for an empty start; once there are tasks it's out of the menu.
+        const fail = (e) => console.error("[daisey] menu", e);
+        const stopTasks = watchTasks(user.uid, (ts) => { $("#importTrello").hidden = ts.length > 0; }, fail);
+        // Day hours in the account menu (DAISEY_SPEC "Day hours"), saved on change.
+        const start = $("#dayStart"), end = $("#dayEnd");
+        const stopSettings = watchSettings(user.uid, (s) => {
+          const hrs = dayHours(s || {});
+          if (document.activeElement !== start) start.value = minText(hrs.start);
+          if (document.activeElement !== end) end.value = minText(hrs.end);
+        }, fail);
+        const saveHours = () => {
+          const hrs = dayHours({ dayStart: start.value, dayEnd: end.value });
+          // An end before the start isn't a day: the default comes back.
+          saveSettings(user.uid, { dayStart: minText(hrs.start), dayEnd: minText(hrs.end) }).catch(fail);
+        };
+        start.onchange = saveHours;
+        end.onchange = saveHours;
+        m.menu = { unmount(){ stopTasks(); stopSettings(); start.onchange = end.onchange = null; } };
         m.tasks = mountTasks($("#tasksview"), user.uid,
           { onAdd: (project) => m.adder.open(project), onOpen: (task) => m.adder.edit(task), onSweep: () => m.sweep.open(),
           onProject: (name) => { location.hash = "tasks"; setPane("tasks"); m.tasks.showProject(name); $("#tasksview").scrollIntoView?.({ behavior: "smooth", block: "nearest" }); } });
-        m.now = mountNow($("#nowcard"), user.uid, { nextHost: $("#upnext"), onCard: (id) => { onCard = id; m.tasks?.setCurrent(id); }, onSweep: () => m.sweep.open(),
+        m.now = mountNow($("#nowcard"), user.uid, { onCard: (id) => { onCard = id; m.tasks?.setCurrent(id); }, onSweep: () => m.sweep.open(),
           onProject: (name) => { location.hash = "tasks"; setPane("tasks"); m.tasks.showProject(name); $("#tasksview").scrollIntoView?.({ behavior: "smooth", block: "nearest" }); } });
         m.tasks.setCurrent(onCard);
         $("#add").onclick = () => m.adder.open();

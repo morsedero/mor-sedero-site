@@ -25,9 +25,8 @@
 // meeting in). Daisey still never schedules anything ITSELF; what it writes is
 // what the user typed.
 import { watchCalendar } from "./calendar.js";
-import { watchTasks } from "./store.js";
-import { capacity } from "./pencil.js";
-import { ROOM_HOURS } from "./weights.js";
+import { watchTasks, watchSettings } from "./store.js";
+import { capacity, dayHours, dayStartAt, dayEndAt } from "./day.js";
 import { localDate } from "./model.js";
 import { h, bdi, dur } from "./ui.js";
 
@@ -58,7 +57,13 @@ function dayRows(events, now, from, until = null){
   const rows = [];
   let cursor = from;
   let marked = from == null; // the now line belongs to today alone
-  const gapRow = (a, b) => { const gap = Math.round((b - a) / 60000); if (gap >= 15) rows.push({ gap, minutes: gap, start: a, end: b }); };
+  // No free time past the end of the day: an event at 23:00 doesn't make
+  // 22:00–23:00 a gap.
+  const gapRow = (a, b) => {
+    if (until != null) b = Math.min(b, until);
+    const gap = Math.round((b - a) / 60000);
+    if (gap >= 15) rows.push({ gap, minutes: gap, start: a, end: b });
+  };
   for (const e of events) {
     const start = Date.parse(e.start), end = Date.parse(e.end || e.start);
     const blocks = !e.allDay && e.busy !== false;
@@ -78,20 +83,17 @@ function dayRows(events, now, from, until = null){
   return rows;
 }
 
-// The panel suggests nothing. Daisey's next pick lives in one small square on
-// the Now card (now.js) — Mor, 2026-10-05: "way smaller, outside the schedule
-// list, bottom right of the main card, like the square showing the next piece
-// in tetris". A faded row inside a 15:00 slot read as something already
-// booked, and a full-width queue above the day was still the day's business;
-// the square is the whole suggestion, and this list is just the day.
-//
-// On top of today: "2 h free today, 8 open. Realistic: 3." with "Move the
-// rest", which opens the sweep on the ones that don't fit.
+// The panel suggests nothing: it is just the day (the pencil schedule was
+// dropped, 2026-10-05). On top of today: "2 h free today, 8 open.
+// Realistic: 3." with "Move the rest", which opens the sweep on the ones
+// that don't fit. Free time is counted inside the day hours only (day.js) —
+// at 01:19 it said "18 h free today".
 // uid: the signed-in user. onSweep(ids) opens the sweep on those tasks.
 // onOpen(event) hands a tapped calendar event to the sheet.
 export function mountSchedule(root, { onAdd, onOpen, uid, onSweep } = {}){
   let cal = { status: "loading", events: [] };
   let tasks = null;
+  let settings = {}; // state/settings: the day hours
   let offset = 0; // days from today
   let strip = null; // the sliding row of days
   let heading, back, prev, next;
@@ -114,7 +116,7 @@ export function mountSchedule(root, { onAdd, onOpen, uid, onSweep } = {}){
 
   function capLine(now){
     if (!tasks) return null;
-    const c = capacity(tasks, cal.events, now);
+    const c = capacity(tasks, cal.events, now, dayHours(settings));
     if (!c.free && !c.open) return null;
     return h("p", { className: "sch-cap" },
       c.open ? `${dur(c.free)} free today, ${c.open} open. Realistic: ${c.realistic}. ` : `${dur(c.free)} free today.`,
@@ -127,7 +129,8 @@ export function mountSchedule(root, { onAdd, onOpen, uid, onSweep } = {}){
     const today = n === 0;
     const events = cal.events.filter((e) => localDate(Date.parse(e.start)) === date)
       .sort((a, b) => (a.allDay === b.allDay ? Date.parse(a.start) - Date.parse(b.start) : a.allDay ? -1 : 1));
-    const rows = dayRows(events, now, today ? now : null, today ? new Date(now).setHours(ROOM_HOURS.end, 0, 0, 0) : null);
+    const hrs = dayHours(settings);
+    const rows = dayRows(events, now, today ? Math.max(now, dayStartAt(now, hrs)) : null, today ? dayEndAt(now, hrs) : null);
     return h("section", { className: "sch-day", ariaLabel: dayLabel(n, dayStart(now, n)) },
       today && capLine(now),
       rows.length === 0
@@ -194,7 +197,7 @@ export function mountSchedule(root, { onAdd, onOpen, uid, onSweep } = {}){
   const fail = (e) => console.error("[daisey] schedule", e);
   const unsubs = [
     watchCalendar((c) => { cal = c; render(); }),
-    ...(uid ? [watchTasks(uid, (ts) => { tasks = ts; render(); }, fail)] : []),
+    ...(uid ? [watchTasks(uid, (ts) => { tasks = ts; render(); }, fail), watchSettings(uid, (s) => { settings = s || {}; render(); }, fail)] : []),
   ];
   // Keep "now", the greying of finished events and the gaps honest.
   const tick = setInterval(() => { if (!document.hidden && cal.status === "ok") render(); }, 60000);

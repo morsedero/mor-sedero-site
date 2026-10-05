@@ -47,8 +47,10 @@ const CHIPS = ["area", "type", "where", "openHours", "size", "stakes", "energy"]
 const NAMES = { area: "Area", type: "Type", where: "Where", openHours: "Open hours", size: "Size", stakes: "Stakes", energy: "Energy" };
 const SIZE_OPTIONS = [5, 15, 30, 60, 90, 120, 180, 240];
 const NEW_PROJECT = "__new"; // the project list's "+ New project…" entry
-// The four shown on the collapsed line. The rest are one tap away.
-const SUMMARY = ["area", "where", "size", "energy"];
+// The ones shown on the collapsed line; open hours and stakes joined it
+// (Mor, 2026-10-05) since they decide when a task can come up and how hard
+// it pushes. Type is one tap away.
+const SUMMARY = ["area", "where", "openHours", "size", "stakes", "energy"];
 const SETTLE = 450; // ms of quiet typing before the guesses appear or change
 const MIN_CHARS = 3; // a title shorter than this isn't worth guessing from
 const valueText = (k, v) => (k === "size" ? durText(v) : LABELS[k][v] ?? "");

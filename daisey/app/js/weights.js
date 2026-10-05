@@ -57,6 +57,8 @@ export const MOMENTUM = {
   recent: 4, // project worked on in the last RECENT_DAYS
   recentDays: 2,
 };
+// The why line calls a task a "quick win" only up to this many minutes.
+export const QUICK_WIN_MAX = 15;
 export const BATCH = { bonus: 10, types: ["call", "admin", "errand"], min: 2, max: 5 };
 export const LEARNED_MIN = -10;
 export const LEARNED_MAX = 10;
@@ -85,10 +87,10 @@ export const WHY_OFFICE_POINTS = 9;
 // Overdue triage (DAISEY_SPEC "Overdue triage"). The sweep is offered when
 // MORE than this many deadlines, or targets, have passed — once a day.
 export const SWEEP = { deadlines: 3, targets: 5 };
-// "This week" in the sweep: the day with the most room, counted over these
-// waking hours, from tomorrow to the end of the week (Saturday, getDay 6).
+// "This week" in the sweep: the day with the most room, counted over the
+// day hours, from tomorrow to the end of the week (Saturday, getDay 6).
 export const WEEK_END_DAY = 6;
-export const ROOM_HOURS = { start: 9, end: 22 };
-
-// Pencil schedule: a free gap this long or more gets a suggestion.
-export const PENCIL_MIN = 20;
+// Day hours, minutes after midnight (DAISEY_SPEC "Day hours"): free time
+// counts only inside them, and outside them the card is in night mode. The
+// user can change them in the account menu (state/settings dayStart/dayEnd).
+export const DAY_HOURS = { start: 8 * 60, end: 22 * 60 };

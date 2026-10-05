@@ -146,13 +146,13 @@ test("not now: Undo puts back exactly what the skip touched", () => {
 
 test("focus mode: starting counts a start and clears the stale-skip count", () => {
   const t = { ...M.createTask({ title: "x" }, opts), starts: 1, skipsSinceStart: 3 };
-  assert.deepEqual(M.startedTask(t, opts), { starts: 2, skipsSinceStart: 0, touchedAt: NOW });
+  assert.deepEqual(M.startedTask(t, opts), { starts: 2, skipsSinceStart: 0, touchedAt: NOW, workedAt: NOW });
 });
 
 test("focus mode: real minutes always count; finishing completes, stopping is recorded", () => {
   const t = { ...M.createTask({ title: "x" }, opts), spentMinutes: 10, stopsUnfinished: 1 };
   const more = M.workedTask(t, 12.4, opts);
-  assert.deepEqual(more, { spentMinutes: 22, stopsUnfinished: 2, touchedAt: NOW });
+  assert.deepEqual(more, { spentMinutes: 22, stopsUnfinished: 2, touchedAt: NOW, workedAt: NOW });
   const done = M.workedTask(t, 12.6, { ...opts, finished: true });
   assert.equal(done.spentMinutes, 23);
   assert.equal(done.status, "done");
@@ -290,11 +290,11 @@ test("migrate: an old task gets every field, real guesses, Targets, and keeps to
   assert.deepEqual(M.migrateTask({ ...old, ...p }), {}); // once only
 });
 
-test("migrate: a size the user set survives", () => {
-  const old = { project: "Inbox", title: "call the bank", size: 30, guessed: [], canSplit: false, status: "ready" };
+test("migrate: a size the user set survives (any but the old flat 30)", () => {
+  const old = { project: "Inbox", title: "call the bank", size: 60, guessed: [], canSplit: false, status: "ready" };
   const p = M.migrateTask(old);
   assert.equal("size" in p, false);
-  assert.equal(p.energy, "medium"); // guessed from the user's 30
+  assert.equal(p.energy, "medium"); // guessed from the user's 60
   assert.equal(p.dateKind, null); // no date: no kind
 });
 

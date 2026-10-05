@@ -91,6 +91,9 @@ body {
 }
 .acct-menu p { margin: 0; overflow-wrap: anywhere; }
 /* Theme: Auto, Light, Dark — a segmented row in the account menu. */
+/* Day hours in the account menu: two time fields on one line. */
+.dayhours { display: flex; align-items: center; gap: 6px; font-size: 13px; }
+.dayhours input { font: inherit; font-size: 14px; padding: 4px 6px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--ink); }
 .theme { display: inline-flex; padding: 3px; gap: 2px; border-radius: 999px; background: var(--bg); border: 1px solid var(--line); }
 .theme-btn {
   font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; min-block-size: 30px;
@@ -616,22 +619,6 @@ dialog.now { overflow-y: auto; overscroll-behavior: contain; }
 }
 .tk-filters .chip:hover:not([aria-checked="true"]) { color: var(--ink); }
 
-/* The next piece: a small dashed pill at the right end of the tab row — the
-   Tetris preview of what Daisey would put up in the next free gap. Dashed
-   because nothing in it is booked; beside the tabs because the card is about
-   one task and the schedule list is about the day. Tapping it asks for a
-   different one. */
-.upnext-slot { margin-inline-start: auto; min-inline-size: 0; display: flex; }
-.upnext {
-  display: flex; align-items: baseline; gap: 5px; min-inline-size: 0; max-inline-size: 190px;
-  min-block-size: 36px; padding: 0 11px; border-radius: 999px;
-  border: 1px dashed var(--line); background: none; font: inherit; color: var(--ink-2); cursor: pointer;
-}
-.upnext:hover { border-color: var(--ink-2); color: var(--ink); }
-.upnext-label { flex: none; font-size: 9px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; opacity: .7; }
-.upnext-title { min-inline-size: 0; font-size: 12px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.upnext-when { flex: none; font-size: 11px; font-variant-numeric: tabular-nums; }
-
 /* Learning asks: one line under the card, the same weight as the offer. */
 .learn-ask { display: grid; gap: 6px; margin-block-start: 6px; padding: 10px 12px; border: 1px dashed var(--line); border-radius: 12px; }
 .learn-ask p { margin: 0; font-size: 13px; }
@@ -640,3 +627,15 @@ dialog.now { overflow-y: auto; overscroll-behavior: contain; }
 .learn-row .chip { min-block-size: 36px; font-size: 13px; padding-inline: 11px; }
 
 /* Task sheet: Daisey's guesses as one line; the chips open under it. */
+
+/* Night mode: one quiet sentence about the morning, no Start. */
+.now-night { margin: 2px 0 6px; font-size: 16px; line-height: 1.4; }
+.now-card.night { border-style: dashed; }
+
+/* Someday comes back: the pick list. A mark on the ones with stakes. */
+.someday-list { display: grid; gap: 4px; }
+.someday-item { font: inherit; font-size: 15px; display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; text-align: start;
+  min-block-size: 40px; padding: 6px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); color: var(--ink); cursor: pointer; }
+.someday-item:hover { border-color: var(--ink-2); }
+.someday-mark { font-size: 12px; color: var(--ink-2); }
+.someday-mark::before { content: "● "; color: var(--accent); font-size: 9px; vertical-align: 1px; }

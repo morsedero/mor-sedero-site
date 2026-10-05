@@ -126,7 +126,7 @@ export function endBatch(uid, left, minutes){
   const each = left.length ? Math.round(minutes / left.length) : 0;
   return Promise.all([
     fb.deleteDoc(runDoc(uid)),
-    ...left.map((t) => fb.updateDoc(taskDoc(uid, t.id), { spentMinutes: (t.spentMinutes || 0) + each, touchedAt: Date.now() })),
+    ...left.map((t) => fb.updateDoc(taskDoc(uid, t.id), { spentMinutes: (t.spentMinutes || 0) + each, touchedAt: Date.now(), workedAt: Date.now() })),
   ]);
 }
 
@@ -177,16 +177,4 @@ export function watchLearn(uid, cb, onError){
 // field: "starts" | "skips"
 export function bumpLearn(uid, type, part, field){
   return fb.setDoc(learnDoc(uid), { [`${type || "deep"}|${part}`]: { [field]: fb.increment(1) } }, { merge: true });
-}
-
-// Today's pencil answers, users/{uid}/state/pencil:
-// { date, dismissed: [ids], swaps: { "HH:MM": [ids] } } — a new day starts clean.
-const pencilDoc = (uid) => fb.doc(fb.db, "users", uid, "state", "pencil");
-
-export function watchPencil(uid, cb, onError){
-  return fb.onSnapshot(pencilDoc(uid), (snap) => cb(snap.exists() ? snap.data() : {}), onError);
-}
-
-export function savePencil(uid, state){
-  return fb.setDoc(pencilDoc(uid), state);
 }

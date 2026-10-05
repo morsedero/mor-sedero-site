@@ -62,6 +62,21 @@ const SCENARIOS = {
     { title: "Mix review", project: "חתונה", size: 90, over: ago(3) },
   ] },
   empty: { tasks: [] },
+  // Two active, three parked: the Someday pick shows under the card.
+  someday: { tasks: [
+    { title: "Send invoice to Uri", project: "Admin", size: 15 },
+    { title: "Mix review", project: "Reprise", size: 60 },
+    { title: "Learn Wwise", project: "Skills", size: 90, over: { status: "someday" } },
+    { title: "Renew the domain", project: "Admin", size: 15, stakes: "money", over: { status: "someday" } },
+    { title: "Send Sofi the photos", project: "Home", size: 15, stakes: "someone", over: { status: "someday" } },
+  ] },
+  // One task, nothing else active, Someday holds one: Switch offers it.
+  lonely: { tasks: [
+    { title: "Mix review", project: "Reprise", size: 60 },
+    { title: "Learn Wwise", project: "Skills", size: 90, over: { status: "someday" } },
+  ], settings: { deadlinesAsked: true, somedayAsked: new Date().toLocaleDateString("en-CA") } },
+  // A task with a calendar slot later today (use with --cal "120:Mix review").
+  booked: { tasks: [{ title: "Mix review", project: "Reprise", size: 60 }] },
   one: { tasks: [{ title: "Send invoice to Uri", project: "Admin", size: 5, due: day(0) }] },
   long: { tasks: [
     { title: "Follow up with the production company about the revised cue sheet and the delivery deadline", project: "Reprise Productions International", size: 90 },
@@ -111,7 +126,7 @@ const calReply = !cal ? { status: 404, body: { error: "not_connected" } }
       ];
     })().map((e, i) => ({ id: "e" + i, calendarId: "primary", editable: !e.allDay, ...e })) } }
   : (() => { const [m, title = "Teaching"] = cal.split(":"); const start = Date.now() + Number(m) * 60000;
-    return { status: 200, body: { events: [{ title, start: new Date(start).toISOString(), end: new Date(start + 3600000).toISOString() }] } }; })();
+    return { status: 200, body: { events: [{ id: "e0", calendarId: "primary", editable: true, title, start: new Date(start).toISOString(), end: new Date(start + 3600000).toISOString() }] } }; })();
 
 const FAKES = {
   "js/config.js": "export const configured = true;",

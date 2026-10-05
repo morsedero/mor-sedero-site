@@ -36,13 +36,16 @@ export function timeBucket(now = Date.now()){
 // The free window from the calendar's busy events ({ title, start, end },
 // ISO strings, sorted). In an event → 0 until it ends. Else minutes until
 // the next one (readMoment caps it). restOfDay: nothing else today.
-export function freeWindow(events, now = Date.now()){
+// `until` (ms): the end of the day hours — free time stops there too.
+export function freeWindow(events, now = Date.now(), until = null){
   const ev = events.map((e) => ({ ...e, title: e.title, start: Date.parse(e.start), end: Date.parse(e.end) }));
   const current = ev.find((e) => e.start <= now && now < e.end) || null;
   if (current) return { window: 0, current, next: null, restOfDay: false };
   const next = ev.find((e) => e.start > now) || null;
   const restOfDay = !next || localDate(next.start) !== localDate(now);
-  return { window: next ? Math.floor((next.start - now) / MIN) : W.WINDOW_CAP, current: null, next: restOfDay ? null : next, restOfDay };
+  let window = next ? Math.floor((next.start - now) / MIN) : W.WINDOW_CAP;
+  if (until != null) window = Math.max(0, Math.min(window, Math.floor((until - now) / MIN)));
+  return { window, current: null, next: restOfDay ? null : next, restOfDay };
 }
 
 // The project a calendar event is a block for: its title equals a project's
@@ -78,6 +81,7 @@ export function matchProject(title, projects){
 //   sessionSkips    ids hidden by Not now this session
 //   skipsToday      { id: count } — the skip penalty
 //   learnStats      { "type|bucket": { starts, skips } } — learned fit
+//   booked          { id: slot start ms } — booked tasks wait for their slot
 export function readMoment(input = {}){
   const now = input.now ?? Date.now();
   const w = Number(input.window);
@@ -100,6 +104,7 @@ export function readMoment(input = {}){
     sessionSkips: new Set(input.sessionSkips || []),
     skipsToday: input.skipsToday || {},
     learnStats: input.learnStats || {},
+    booked: input.booked || {},
   };
 }
 
@@ -116,6 +121,7 @@ export function filterOut(task, m){
   if (task.status === "someday") return "someday";
   if ((task.skipsSinceStart || 0) >= W.STALE_SKIPS) return "stale";
   if (notYet(task, m.now)) return "notyet";
+  if (m.booked[task.id] > m.now) return "booked";
   if (m.sessionSkips.has(task.id)) return "skipped";
   if (m.blockProject && key(task.project) !== m.blockProject) return "block";
   if ((W.PLACE_BLOCKS[m.place] || []).includes(task.where)) return "place";
@@ -299,7 +305,9 @@ const PHRASES = {
   office: (s, d) => [`offices close at ${d.close}`],
   area: (s, d) => [{ name: LABELS.area[d.area] || d.area }, d.done ? " is behind this week" : " hasn't moved this week"],
   batch: (s, d) => [`${d.ids.length} ${{ call: "calls", admin: "admin bits", errand: "errands" }[d.type]}, done together`],
-  window: (s, d) => d.fit === "small" ? [`${sizeWords(s.task.size)}, quick win`]
+  // A quick win is a small task, not just a small share of a long window.
+  window: (s, d) => d.fit === "small" && s.task.size <= W.QUICK_WIN_MAX ? [`${sizeWords(s.task.size)}, quick win`]
+    : d.fit === "small" ? [`fits your ${sizeWords(d.window)}`]
     : d.fit === "piece" ? [`a piece fits your ${sizeWords(d.window)}`]
     : d.nextEvent ? ["fits before ", { name: d.nextEvent }]
     : d.fit === "full" ? [`fills your free ${sizeWords(d.window)}`] : [`fits your ${sizeWords(d.window)}`],

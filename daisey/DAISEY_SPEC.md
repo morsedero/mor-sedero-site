@@ -161,6 +161,8 @@ Only real deadlines can be overdue. Target dates that pass roll forward quietly 
 
 **Weekly intents.** Optional, one per area, set in chat: "I want to send 3 CVs a week", "2 home tasks a week". They feed the Area balance factor so neglected parts of life get a turn. Progress is shown quietly, never as streaks or red numbers.
 
+**Someday comes back.** Someday is not a graveyard. Once a week (default Sunday morning, or whenever fewer than 3 tasks are active), Daisey shows a short card: "Pick 1–2 from Someday for this week", listing Someday tasks with stakes first. Tasks that cost money or affect someone get a gentle mark. Picked tasks move to This week.
+
 ## Energy guessing and learning
 
 Daisey guesses energy from three signals, shows the guess as a chip, and learns from every correction and every choice you make.
@@ -227,7 +229,6 @@ The calendar becomes context, not a plan to obey. Daisey reads it freely and wri
 
 | Situation | Daisey proposes | Default |
 | --- | --- | --- |
-| You tap the next-piece pill | Nothing — it shows a different pick for that gap | Local to today |
 | A task with a real deadline has no realistic window before it | "Block 90 min Wed 10:00 for mix review?" | Off until tapped |
 | You ask in chat to schedule something | The event, shown as a confirm card | Requires ✓ |
 | You finish a task | Logs it as a past event ("Done: boss SFX · 47 min") | Setting, off by default |
@@ -242,17 +243,15 @@ The calendar becomes context, not a plan to obey. Daisey reads it freely and wri
 
 **Meetings to set up (v2).** A task like "set a meeting with X" becomes: Daisey suggests 3 free slots from the calendar and drafts the message. You approve, then send it yourself.
 
-## Pencil schedule
+## Day hours, booked tasks and calendar tasks
 
-Daisey shows the day in ink, and one small square on the Now card saying what it would put up next. You can take it, replace it, or ignore it with no cost.
+Daisey only plans inside your waking day, never pushes a task that already has a time, and helps tasks that ended up in the calendar become real tasks.
 
-- **Ink** = calendar events: meetings, teaching, appointments, anything set by other people or the clock. Shown solid in the Schedule panel. The free stretches between them say only "1 h 30 min free" — the panel suggests nothing.
-- **The next piece** = a small dashed pill at the right end of the Schedule/Tasks row: the task Daisey would put up in the next free gap, and the time that gap starts. Mor's shape, 2026-10-05: "like the square showing the next piece in tetris", small, out of the schedule list and off the card. The pick is the Now engine run forward for that gap, using its length, office hours, place, and the energy guess after the event before it.
-- **Tapping the pill** means "not that one": it shows the following pick for that gap and remembers the pass for today. Nothing is written to a calendar.
-- **Live re-sketch.** Whenever a task is done, skipped or added, or the calendar changes, the pencil items are rebuilt. Nothing carries over as "missed".
-- **One pick per gap.** Gaps under 20 min get a batch of quick tasks or nothing.
-- **Morning capacity line**: "2 h free today, 8 open. Realistic: 3." with a "Move the rest" button that runs the sweep.
-- **The Now card is always the pick for the current gap.** Same engine, two views: the card for now, the pencil schedule for the rest of today.
+**Day hours.** Default 08:00–22:00, set once in settings. Free time is counted only inside them. Outside them, the card switches to night mode: "Late. Tomorrow first: <task> — <why>." with no Start button; "I'm free now" still overrides. The day's free-time line counts from now (or 08:00) to 22:00.
+
+**Booked tasks.** A task linked to a calendar event (created from Daisey, or matched by title) is not suggested before its slot. The card shows it as "Booked for 19:00" only when nothing else fits. When its slot starts, it becomes the card.
+
+**Calendar events that are really tasks.** When an event title reads like a task (a verb plus an object, or words like "לבטל", "להתקשר", "לשלם", "until the 20th"), Daisey offers once: "Make this a task? Cancel LinkedIn Premium · 10 min · deadline 20 Oct". On ✓ it creates the task with guessed fields and asks whether to keep or delete the event.
 
 ## v1 scope
 
@@ -260,23 +259,25 @@ v1 is done when the Now card picks a task you actually start, most days, for one
 
 **In v1 (build in this order):**
 
-- [ ] Google sign-in + Firebase storage, synced across phone and computer
-- [ ] Task data model (fields above, including type, where, open hours, stakes, date kind)
-- [ ] Now card UI with Start · Later · Switch · Pending, Hebrew and RTL ready
-- [ ] Running timer and Done flow
-- [ ] Google Calendar read: free window, current block, project focus, "I'm free now"
+- [x] Google sign-in + Firebase storage, synced across phone and computer
+- [x] Task data model (fields above, including type, where, open hours, stakes, date kind)
+- [x] Now card UI with Start · Later · Switch · Pending, Hebrew and RTL ready
+- [x] Running timer and Done flow
+- [x] Google Calendar read: free window, current block, project focus, "I'm free now"
+- [x] Day hours and night mode; booked tasks not suggested early
+- [x] Calendar events that look like tasks offered as tasks
 - [ ] Server function holding the Gemini key
 - [ ] Chat via Gemini: add task, brain dump, edit, with guessed chips on the confirm card
-- [ ] Three-gate Now engine with why line and batching
-- [ ] Overdue triage sweep and weekly intents
-- [ ] Pencil schedule in free gaps; accepting writes a Daisey-calendar block
-- [ ] Energy guess from time bucket + corrections; learning from start, skip, finish
+- [x] Three-gate Now engine with why line and batching
+- [ ] Overdue triage sweep, weekly Someday pick, weekly intents
+- [x] Energy guess from time bucket + corrections; learning from start, skip, finish
 - [ ] Voice input in chat (browser speech recognition, Hebrew + English)
 
 **Out of v1 (parked):**
 
 - Game layer, combos, streaks
-- Calendar writes other than accepted pencil blocks (auto-blocks, done logs)
+- Pencil schedule (suggestions placed in calendar gaps): dropped
+- Calendar writes other than deadline blocks and chat-requested events
 - Meeting scheduling with others (find slots, draft message)
 - Evening wrap and notifications when a gap opens
 - Multiple users, sharing, accounts for others

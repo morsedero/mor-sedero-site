@@ -24,7 +24,7 @@ export const INBOX = "Inbox";
 export const DEFAULT_SIZE = 30;
 export const SPLIT_FROM = 60; // "can split" defaults on from this size
 const SIMILAR = 0.5; // title word overlap that counts as "a similar past task"
-export const TASK_VERSION = 2; // tasks below this get migrateTask'd on load
+export const TASK_VERSION = 3; // tasks below this get migrateTask'd on load
 
 export const AREAS = ["work", "job", "home", "admin", "social", "personal"];
 export const TYPES = ["deep", "admin", "call", "errand", "home", "social"];
@@ -54,8 +54,8 @@ const SIZE_HINTS = [
   [90, ["compose", "produce", "research", "להלחין", "להפיק", "מחקר"]],
   [60, ["prep", "write", "mix", "design", "practice", "record", "edit", "build", "rehearse",
         "הכנה", "להכין", "לכתוב", "מיקס", "לעצב", "לתרגל", "להקליט", "לערוך", "לבנות", "חזרה"]],
-  [15, ["call", "email", "mail", "phone", "order", "send", "invoice", "schedule",
-        "להתקשר", "טלפון", "מייל", "שיחה", "לשלוח", "להזמין", "חשבונית", "לתאם"]],
+  [15, ["call", "email", "mail", "phone", "order", "send", "invoice", "schedule", "cancel", "register", "renew",
+        "להתקשר", "טלפון", "מייל", "שיחה", "לשלוח", "להזמין", "חשבונית", "לתאם", "לבטל", "להירשם", "לחדש"]],
   [5, ["text", "reply", "pay", "confirm", "remind", "whatsapp", "sms",
        "הודעה", "לענות", "לשלם", "לאשר", "תזכורת", "וואטסאפ"]],
 ];
@@ -199,8 +199,9 @@ const FAMILY_WORDS = ["mom", "mum", "dad", "grandma", "grandpa", "sister", "brot
   "אמא", "אבא", "סבתא", "סבא", "אחותי", "אחי", "חבר", "חברה"];
 const PENALTY_WORDS = ["submit", "deadline", "register", "registration", "apply", "application", "late fee",
   "הגשה", "להגיש", "הרשמה", "להירשם", "דדליין"];
-const MONEY_WORDS = ["pay", "bill", "fine", "rent", "tax", "taxes", "invoice", "refund", "renew",
-  "לשלם", "חשבון", "קנס", "שכירות", "ארנונה", "מסים", "חשבונית", "החזר", "לחדש"];
+// A subscription left running renews and charges, so cancelling one late costs.
+const MONEY_WORDS = ["pay", "bill", "fine", "rent", "tax", "taxes", "invoice", "refund", "renew", "subscription", "premium",
+  "מנוי", "פרמיום", "לשלם", "חשבון", "קנס", "שכירות", "ארנונה", "מסים", "חשבונית", "החזר", "לחדש"];
 const SOMEONE_WORDS = ["reply", "answer", "confirm", "get back", "send", "לענות", "לאשר", "לשלוח", "לחזור"];
 const JOB_WORDS = ["job", "cv", "resume", "interview", "portfolio", "linkedin", "cover letter", "recruiter", "apply",
   "application", "hiring", "משרה", "משרות", "קורות חיים", "ראיון", "תיק עבודות", "לינקדאין", "מכתב מקדים", "גיוס"];
@@ -430,6 +431,9 @@ export function editTask(task, changes, { now = Date.now(), history = [] } = {})
 export function migrateTask(task, history = []){
   if ((task.v || 0) >= TASK_VERSION) return {};
   const guessed = new Set(task.guessed || []);
+  // v3 (2026-10-05): a size still on the old flat 30 is the default, not a
+  // choice — guess it again from the title and type.
+  if ((task.v || 0) < 3 && toMinutes(task.size) === DEFAULT_SIZE) guessed.add("size");
   const keep = {};
   for (const k of GUESSABLE) {
     if (!guessed.has(k) && validField(k, task[k])) keep[k] = k === "size" ? toMinutes(task[k]) : task[k];
@@ -476,9 +480,10 @@ export const skipSnapshot = (task) => ({
 });
 
 // Focus mode. Starting clears the stale-skip count: a task you actually
-// start isn't one you keep refusing.
+// start isn't one you keep refusing. workedAt is real work only — not an
+// edit or a skip, which also move touchedAt — and is what momentum reads.
 export const startedTask = (task, { now = Date.now() } = {}) =>
-  ({ starts: (task.starts || 0) + 1, skipsSinceStart: 0, touchedAt: now });
+  ({ starts: (task.starts || 0) + 1, skipsSinceStart: 0, touchedAt: now, workedAt: now });
 
 // Leaving focus mode: the real minutes always count, whether or not the
 // task is finished. `finished` completes it; otherwise it stays open and
@@ -486,8 +491,8 @@ export const startedTask = (task, { now = Date.now() } = {}) =>
 export function workedTask(task, minutes, { finished = false, now = Date.now() } = {}){
   const spent = (task.spentMinutes || 0) + Math.max(0, Math.round(minutes));
   return finished
-    ? { ...completeTask(task, { now }), spentMinutes: spent }
-    : { spentMinutes: spent, stopsUnfinished: (task.stopsUnfinished || 0) + 1, touchedAt: now };
+    ? { ...completeTask(task, { now }), spentMinutes: spent, workedAt: now }
+    : { spentMinutes: spent, stopsUnfinished: (task.stopsUnfinished || 0) + 1, touchedAt: now, workedAt: now };
 }
 
 // Ready to be offered at all? engine.js filterOut adds window, skips and

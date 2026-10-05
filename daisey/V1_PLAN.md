@@ -424,6 +424,9 @@ Original proposals below, kept for the record.
 
 ### Step 6 — Pencil schedule
 
+**Dropped 2026-10-05** (DAISEY_SPEC "Out of v1"). Code removed; the free-gap and capacity
+math moved to `app/js/day.js`, bounded by the day hours. What follows is history.
+
 - Schedule tab, today: each free gap ≥ 20 min gets one faded suggestion from
   an engine run for that gap (its length, office hours then, place guess,
   energy guess after the event before it). A task penciled in an earlier gap

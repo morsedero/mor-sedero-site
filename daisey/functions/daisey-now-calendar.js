@@ -59,7 +59,7 @@ function shape(e, colors, cal) {
     // Where it happens: an event with a place means you are Out (the Now
     // card's place guess).
     location: e.location || null,
-    // A block the user accepted from Daisey's pencil schedule names its task.
+    // An event Daisey made for a task names it: that task is booked (day.js).
     taskId: e.extendedProperties?.private?.daiseyTask || null,
     // The colour the user sees in Google Calendar: the event's own if it has
     // one, otherwise the calendar's.
