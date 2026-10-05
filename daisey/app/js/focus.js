@@ -1,11 +1,17 @@
 // Focus mode: the whole screen is the task you're on. Title, a running
-// timer, Done and Stop — nothing else (the tabs, the + button and the
-// greeting are hidden by body.focus).
+// timer, Done, Pause and Cancel — nothing else (the tabs, the + button and
+// the greeting are hidden by body.focus).
+//
+// Pause and Cancel replaced Stop (Mor, 2026-10-05). Pause freezes the timer
+// and goes back to the main screen, where the card holds the paused task
+// with Resume until you come back to it. Cancel ends the run as if it hadn't
+// happened: no minutes booked, not counted as a stop. (Ending with the time
+// kept is Done → "More left".)
 //
 // Past the estimate it asks once, quietly: "Still on it? +15 min · Stuck".
-// No sound, no red — running over is normal. Stop means "pause, still
-// mine"; Stuck also sets the task to Pending, so Daisey stops offering it
-// until whatever is blocking clears.
+// No sound, no red — running over is normal. Stuck ends the run, keeps the
+// time, and sets the task to Pending, so Daisey stops offering it until
+// whatever is blocking clears.
 //
 // The run lives in Firestore (state/now), so a reload or the other device
 // shows the same timer still going; elapsed is always worked out from
@@ -17,9 +23,28 @@ const BATCH_NOUN = { call: ["call", "calls"], admin: ["admin bit", "admin bits"]
 export const batchName = (type, n) => `${n} ${(BATCH_NOUN[type] || ["task", "tasks"])[n === 1 ? 0 : 1]}`;
 
 // Minutes since the last tick (or the start): what the next tick books.
-export const sinceMark = (run, now = Date.now()) => Math.max(0, (now - (run.mark ?? run.startedAt)) / 60000);
+// A paused run's clock stands still at pausedAt.
+const upTo = (run, now) => run.pausedAt ?? now;
+export const sinceMark = (run, now = Date.now()) => Math.max(0, (upTo(run, now) - (run.mark ?? run.startedAt)) / 60000);
 
-export const elapsedMinutes = (run, now = Date.now()) => Math.max(0, (now - run.startedAt) / 60000);
+export const elapsedMinutes = (run, now = Date.now()) => Math.max(0, (upTo(run, now) - run.startedAt) / 60000);
+
+// Pausing and resuming the state/now doc. Resuming moves startedAt (and a
+// batch's mark) on by the length of the pause, so elapsed carries on from
+// where it stopped and nothing else has to know a pause happened.
+export const paused = (run, now = Date.now()) => ({ ...run, pausedAt: now });
+export function resumed(run, now = Date.now()){
+  const { pausedAt, ...rest } = run;
+  const gap = Math.max(0, now - (pausedAt ?? now));
+  return { ...rest, startedAt: run.startedAt + gap, ...(run.mark != null ? { mark: run.mark + gap } : {}) };
+}
+
+// Pause and Cancel, side by side under Done.
+const pauseCancel = (what, onPause, onCancel) => h("div", { className: "focus-row" },
+  h("button", { className: "btn", type: "button", textContent: "Pause",
+    ariaLabel: `Pause ${what} and go back to the main screen`, onclick: () => onPause() }),
+  h("button", { className: "btn quiet", type: "button", textContent: "Cancel",
+    ariaLabel: `Cancel ${what}: no time is saved`, onclick: () => onCancel() }));
 export const targetMinutes = (run, task) => (task?.size || 0) + (run.extra || 0);
 export const isOver = (run, task, now = Date.now()) => elapsedMinutes(run, now) > targetMinutes(run, task);
 
@@ -30,9 +55,10 @@ const clock = (min) => {
 };
 
 // run: the state/now doc. task: the task it names (may be missing if it was
-// deleted elsewhere — then only Stop is offered).
-// Callers: onDone(finished) · onStop({ pending }) · onExtend(minutes).
-export function focusView(run, task, { onDone, onStop, onExtend }, state = {}){
+// deleted elsewhere — then Done is disabled).
+// Callers: onDone(finished) · onStop({ pending }) (Stuck) · onExtend(minutes)
+// · onPause() · onCancel().
+export function focusView(run, task, { onDone, onStop, onExtend, onPause, onCancel }, state = {}){
   const mins = elapsedMinutes(run);
   const over = task && isOver(run, task);
 
@@ -62,8 +88,7 @@ export function focusView(run, task, { onDone, onStop, onExtend }, state = {}){
     h("div", { className: "focus-actions" },
       h("button", { className: "btn primary", type: "button", textContent: "Done",
         ariaLabel: `Done with ${task?.title || "this task"}`, onclick: () => onDone(), disabled: !task }),
-      h("button", { className: "btn quiet", type: "button", textContent: "Stop",
-        ariaLabel: "Stop without finishing; the time still counts and the task stays yours", onclick: () => onStop() })));
+      pauseCancel(task?.title || "this task", onPause, onCancel)));
 }
 
 // After Done: what Daisey would do next, offered the same way the card does.
@@ -86,10 +111,11 @@ export function handoffView(doneTitle, next, { onStart, onSkip }){
 }
 
 // A batch in focus mode: a checklist, one timer for the lot. Tick each as it
-// gets done; the last tick ends the batch. Stop leaves the unticked ones open.
+// gets done; the last tick ends the batch. Cancel leaves the unticked ones
+// open with no time booked; the ticked ones stay done.
 // tasks: the batch's tasks in order (missing ones already dropped).
-// Callers: onTick(task) · onStop().
-export function batchFocusView(run, tasks, type, { onTick, onStop }){
+// Callers: onTick(task) · onPause() · onCancel().
+export function batchFocusView(run, tasks, type, { onTick, onPause, onCancel }){
   const mins = elapsedMinutes(run), done = new Set(run.done || []);
   const total = tasks.reduce((s, t) => s + (t.size || 0), 0);
   return h("div", { className: "focus" },
@@ -102,7 +128,5 @@ export function batchFocusView(run, tasks, type, { onTick, onStop }){
         ariaLabel: ticked ? `Done: ${t.title}` : `Mark done: ${t.title}`, onclick: () => onTick(t) },
         h("span", { className: "tk-check" + (ticked ? " done" : ""), textContent: ticked ? "✓" : "" }), bdi(t.title)));
     })),
-    h("div", { className: "focus-actions" },
-      h("button", { className: "btn quiet", type: "button", textContent: "Stop",
-        ariaLabel: "Stop the batch; the ones not ticked stay open", onclick: () => onStop() })));
+    h("div", { className: "focus-actions" }, pauseCancel("the batch", onPause, onCancel)));
 }

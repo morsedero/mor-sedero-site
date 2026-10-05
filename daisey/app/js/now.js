@@ -10,10 +10,10 @@
 // alternatives, tap one to make it the card. Start → focus mode (focus.js):
 // the run lives in Firestore, so this tab, a reload and the phone all show
 // the same timer.
-import { watchTasks, watchRun, watchSkips, saveSkips, startRun, extendRun, endRun, startBatch, tickBatch, endBatch, skipNow, blockTask, restoreTask, watchSettings, saveSettings, watchMoment, saveMoment, watchLearn, bumpLearn, addTask } from "./store.js";
+import { watchTasks, watchRun, watchSkips, saveSkips, startRun, extendRun, endRun, startBatch, tickBatch, endBatch, skipNow, blockTask, restoreTask, watchSettings, saveSettings, watchMoment, saveMoment, watchLearn, bumpLearn, addTask, saveRun, cancelRun } from "./store.js";
 import { energyNow, placeNow, workBase } from "./context.js";
 import { shouldOffer, sweepList, pickWeekDay } from "./triage.js";
-import { focusView, handoffView, elapsedMinutes, batchFocusView, batchName, sinceMark } from "./focus.js";
+import { focusView, handoffView, elapsedMinutes, batchFocusView, batchName, sinceMark, paused, resumed } from "./focus.js";
 import { watchCalendar, deleteEvent } from "./calendar.js";
 import { LATER_MINUTES, DRAIN } from "./weights.js";
 import { rank, freeWindow, whySaid, timeBucket, matchProject } from "./engine.js";
@@ -215,12 +215,32 @@ export function mountNow(root, uid, { onCard, onSweep, onProject } = {}){
         }
         render();
       },
-      onStop: () => {
-        const left = list.filter((x) => !(run.done || []).includes(x.id));
-        endBatch(uid, left, sinceMark(run)).catch(fail);
-        run = null; render();
-      },
+      onPause: pause,
+      onCancel: cancel,
     });
+  }
+
+  // Pause (Mor, 2026-10-05): the clock stops and the main screen comes back,
+  // with the paused task held on the card until Resume or Cancel. Cancel: the
+  // run never happened — nothing booked, not counted as a stop. A batch keeps
+  // the ones already ticked.
+  const pause = () => { const doc = paused(run); run = doc; state.asking = false; render(); saveRun(uid, doc).catch(fail); };
+  const resume = () => { const doc = resumed(run); run = doc; render(); saveRun(uid, doc).catch(fail); };
+  const cancel = () => { run = null; state.asking = false; render(); cancelRun(uid).catch(fail); };
+
+  // Pause mode: the card is the paused task, and nothing else is offered.
+  function pausedCard(){
+    const byId = new Map((tasks || []).map((t) => [t.id, t]));
+    const task = byId.get(run.taskId);
+    const title = run.batch ? batchName(task?.type, run.batch.length) : task?.title || "That task is gone";
+    return h("div", { className: "now-card main paused" },
+      h("div", { className: "now-meta", textContent: `Paused · ${dur(Math.round(elapsedMinutes(run)))} so far` }),
+      h("div", { className: "now-title", dir: "auto", textContent: title }),
+      h("button", { className: "btn primary start", type: "button", textContent: "Resume",
+        ariaLabel: `Resume ${title}`, onclick: resume }),
+      h("div", { className: "now-actions" },
+        h("button", { className: "btn quiet", type: "button", textContent: "Cancel",
+          ariaLabel: `Cancel ${title}: no time is saved`, onclick: cancel })));
   }
 
   function renderFocus(){
@@ -245,6 +265,8 @@ export function mountNow(root, uid, { onCard, onSweep, onProject } = {}){
         run = null; render();
       },
       onExtend: (m) => { const prev = run; run = { ...run, extra: (run.extra || 0) + m }; render(); extendRun(uid, prev, m).catch(fail); },
+      onPause: pause,
+      onCancel: cancel,
     }, state);
   }
 
@@ -578,8 +600,9 @@ export function mountNow(root, uid, { onCard, onSweep, onProject } = {}){
   }
 
   function render(){
-    document.body.classList.toggle("focus", !!run || !!handoff);
-    if (run) { fill(renderFocus()); return; }
+    const live = !!run && !run.pausedAt; // a paused run is back on the main screen
+    document.body.classList.toggle("focus", live || !!handoff);
+    if (live) { fill(renderFocus()); return; }
     if (handoff) {
       // The task just worked on isn't offered straight back.
       const m = momentInput();
@@ -608,6 +631,7 @@ export function mountNow(root, uid, { onCard, onSweep, onProject } = {}){
           onclick: () => { settings = { ...settings, sweepAnswered: localDate() }; render(); saveSettings(uid, { sweepAnswered: localDate() }).catch(fail); } })));
 
     if (tasks == null) { fill(greet, h("p", { className: "muted", textContent: "Loading tasks…" })); return; }
+    if (run?.pausedAt) { showing(run.taskId); fill(greet, pausedCard(), toast && toastView()); return; }
 
     const hrs = dayHours(settings);
     if (!isNight(Date.now(), hrs)) nightFree = false;
@@ -728,7 +752,7 @@ export function mountNow(root, uid, { onCard, onSweep, onProject } = {}){
   // re-renders when the free window's minute changes.
   const tick = setInterval(() => {
     if (document.hidden) return;
-    if (run) { const c = Math.floor(elapsedMinutes(run) * 60); if (c !== lastClock) { lastClock = c; render(); } return; }
+    if (run && !run.pausedAt) { const c = Math.floor(elapsedMinutes(run) * 60); if (c !== lastClock) { lastClock = c; render(); } return; }
     if (windowMark(calendarNow()) !== lastWindow) render();
   }, 1000);
   const onVisible = () => { if (!document.hidden) render(); };

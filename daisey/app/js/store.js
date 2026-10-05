@@ -130,6 +130,11 @@ export function endBatch(uid, left, minutes){
   ]);
 }
 
+// Pause and Resume write the whole doc (focus.js paused/resumed); Cancel
+// drops it with nothing booked to the task.
+export const saveRun = (uid, run) => fb.setDoc(runDoc(uid), run);
+export const cancelRun = (uid) => fb.deleteDoc(runDoc(uid));
+
 export function extendRun(uid, run, minutes){
   return fb.setDoc(runDoc(uid), { ...run, extra: (run.extra || 0) + minutes });
 }

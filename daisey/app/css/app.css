@@ -340,6 +340,7 @@ body.focus .shell { display: grid; min-block-size: 100dvh; align-content: center
 .focus-chips { display: flex; gap: 8px; }
 .focus-actions { display: grid; gap: 10px; inline-size: min(320px, 100%); margin-block-start: 12px; }
 .focus-actions .btn { inline-size: 100%; }
+.focus-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .focus-actions .btn.primary { min-block-size: 56px; font-size: 19px; font-weight: 700; }
 .focus-done { font-size: 20px; font-weight: 700; }
 .focus .now-card.main { inline-size: min(420px, 100%); text-align: start; }

@@ -26,6 +26,8 @@ export const startRun = (uid, task) => { docs.now = { taskId: task.id, startedAt
 export const startBatch = (uid, ts) => { const now = Date.now(); docs.now = { taskId: ts[0].id, batch: ts.map((t) => t.id), done: [], mark: now, startedAt: now, extra: 0 }; ts.forEach((t) => patchTask(uid, t.id, startedTask(t))); return ok("now"); };
 export const tickBatch = (uid, run, task, m) => { docs.now = { ...run, done: [...(run.done || []), task.id], mark: Date.now() }; patchTask(uid, task.id, workedTask(task, m, { finished: true })); return ok("now"); };
 export const endBatch = (uid, left, m) => { docs.now = null; left.forEach((t) => patchTask(uid, t.id, { spentMinutes: (t.spentMinutes || 0) + Math.round(m / left.length) })); return ok("now"); };
+export const saveRun = (uid, run) => { docs.now = run; return ok("now"); };
+export const cancelRun = () => { docs.now = null; return ok("now"); };
 export const extendRun = (uid, run, m) => { docs.now = { ...run, extra: (run.extra || 0) + m }; return ok("now"); };
 export const endRun = (uid, task, minutes, o = {}) => { docs.now = null; if (task) patchTask(uid, task.id, workedTask(task, minutes, o)); return ok("now"); };
 export const addTask = (uid, input) => { tasks.push({ id: "t" + ++n, ...createTask(input, { history: tasks }) }); return ok("tasks"); };
