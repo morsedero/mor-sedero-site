@@ -40,7 +40,7 @@ const dayText = (ms = Date.now()) => new Date(ms).toLocaleDateString([], { weekd
 // project's tab in Tasks. name: the first name for the greeting. onDone(n):
 // how many tasks are done today, for the header's daisy. ctxSlot: the spot
 // in the header row where the place and energy chips go.
-export function mountNow(root, uid, { onCard, onSweep, onProject, name = "", onDone, ctxSlot } = {}){
+export function mountNow(root, uid, { onCard, onSweep, onProject, onEdit, name = "", onDone, ctxSlot } = {}){
   let tasks = null; // null until the first snapshot
   let settings = {}; // state/settings: when the sweep was last offered
   let momentDoc = {}; // state/moment: energy and place corrections
@@ -127,14 +127,19 @@ export function mountNow(root, uid, { onCard, onSweep, onProject, name = "", onD
   // The hero's top row: area dot, "Area · project" in the area's colour, and
   // on the far side the size (or whatever the card says there). On the card
   // the project name leads to its tab in Tasks.
-  function heroTop(t, side){
+  // The pencil opens the task's own settings, the same form as Tasks (Mor,
+  // 2026-10-05). Not on a batch: that card holds several tasks.
+  function heroTop(t, side, editable = true){
     const area = areaName(t);
     const proj = projectShown(t) && h("button", { type: "button", className: "now-proj",
       title: `Show ${t.project} in Tasks`, onclick: () => onProject?.(t.project) }, bdi(t.project));
     return h("div", { className: "hero-top" },
       h("span", { className: "hero-area" }, h("span", { className: "dot", ariaHidden: "true" }),
         h("span", {}, area, area && proj ? " · " : "", proj || (area ? "" : "Inbox"))),
-      side && h("span", { className: "hero-side", textContent: side }));
+      h("span", { className: "hero-end" },
+        side && h("span", { className: "hero-side", textContent: side }),
+        editable && onEdit && h("button", { type: "button", className: "hero-edit", ariaLabel: `Edit ${t.title}`,
+          title: "Edit task", onclick: () => onEdit(t) }, icon("edit"))));
   }
 
   // The card, with the next piece peeking in from the far side like
@@ -419,7 +424,7 @@ export function mountNow(root, uid, { onCard, onSweep, onProject, name = "", onD
     const name = batchName(b.type, list.length);
     const office = r.moment.officeOpen && list.some((t) => t.openHours === "office");
     return h("div", { className: "now-card main hero batch" + areaClass(list[0]) },
-      heroTop(list[0], `Batch · ~${dur(b.minutes)}`),
+      heroTop(list[0], `Batch · ~${dur(b.minutes)}`, false),
       h("div", { className: "now-title", textContent: name }),
       h("p", { className: "now-why", textContent: `${office ? "Offices are open: " : ""}${name}, ~${dur(b.minutes)}. Together?` }),
       h("ul", { className: "batch-preview" }, ...list.map((t) => h("li", {}, bdi(t.title), h("span", { className: "muted", textContent: ` · ${dur(t.size)}` })))),

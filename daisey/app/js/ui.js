@@ -74,6 +74,7 @@ const PATHS = {
   globe: "M12 3a9 9 0 1 0 0 18 9 9 0 1 0 0-18M3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9s-1.3 6.4-3.8 9c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3",
   check: "M5 12l5 5 9-10",
   plus: "M12 5v14M5 12h14",
+  edit: "M4 20h4L19 9l-4-4L4 16v4ZM13.5 6.5l4 4", // a pencil: the task's settings
   play: "M7 4.5v15l13-7.5z", // filled, not stroked (FILLED)
 };
 const FILLED = new Set(["play"]);
