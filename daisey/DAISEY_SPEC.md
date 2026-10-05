@@ -44,7 +44,7 @@ Opening Daisey shows a single card. That card is the whole home screen.
 
 | Button | What happens | What Daisey learns |
 | --- | --- | --- |
-| Start | Card becomes a running timer with Done and Pause. Done means finished, and is press-and-hold (1 s, the button fills) so a mis-tap can't end a task; finishing gets a confetti burst. Pause returns to the main screen with the task on the card: Resume, or Later · Switch · Pending, which end the session with its time kept. | This task fit this time and energy. Real duration vs estimate. |
+| Start | Card becomes a running timer with Done and Pause. Done means finished, and is press-and-hold (1 s, the button fills) so a mis-tap can't end a task; finishing gets a confetti burst. Pause freezes the timer in place and turns into Resume. Stop ends the session with its time kept and returns to the normal card. Pending stops and asks what it's waiting on. | This task fit this time and energy. Real duration vs estimate. |
 | Not now | Optional one-tap reason: too tired · no time · not in the mood · blocked. Card swaps to the next pick. Task stays hidden for this session only. | The reason adjusts that task's fit for similar moments. "Blocked" marks the task as waiting. |
 | Something else | Shows 2–3 alternatives with their why lines. Pick one to start. | The picked task beat the first choice in this context. |
 

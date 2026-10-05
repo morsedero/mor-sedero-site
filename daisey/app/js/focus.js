@@ -1,13 +1,12 @@
 // Focus mode: the whole screen is the task you're on, calm and light (Mor,
 // 2026-10-05 redesign): an area-tinted card with the title and a ring timer,
-// "Hold to finish", then +15 min · Pause · Pending. Nothing
+// "Hold to finish", then +15 min · Pause · Stop · Pending. Nothing
 // else (the tabs, the Tell bar and the greeting are hidden by body.focus).
 //
-// Two ways out (Mor, 2026-10-05, after Stop, then Pause + Cancel, then a
-// "Finished, or more left?" question all felt like too many). Done means
-// finished. Pause freezes the timer and goes back to the main screen, where
-// the card holds the paused task: Resume, or the card's own Later · Switch ·
-// Pending, any of which ends the session with its time kept (now.js).
+// Done means finished. Pause only freezes the timer, right here: the screen
+// stays, the button turns into Resume (Mor, 2026-10-05: the paused card on
+// the main screen had no way back to the normal one). Stop ends the session
+// with its time kept and goes back to the normal card (now.js).
 //
 // Done is a press-and-hold, not a tap (Mor, 2026-10-05: a mis-tap ended the
 // task with no way back). Holding fills the button over a second; letting go
@@ -44,8 +43,6 @@ export function resumed(run, now = Date.now()){
   return { ...rest, startedAt: run.startedAt + gap, ...(run.mark != null ? { mark: run.mark + gap } : {}) };
 }
 
-const pauseButton = (what, onPause) => h("button", { className: "btn line", type: "button", textContent: "Pause",
-  ariaLabel: `Pause ${what} and go back to the main screen`, onclick: () => onPause() });
 export const targetMinutes = (run, task) => (task?.size || 0) + (run.extra || 0);
 export const isOver = (run, task, now = Date.now()) => elapsedMinutes(run, now) > targetMinutes(run, task);
 
@@ -171,7 +168,7 @@ let screen = null; // { key, el, parts, cb }
 
 // run: the state/now doc. task: the task it names (may be missing if it was
 // deleted elsewhere — then Done is disabled).
-// Callers: onDone() · onExtend(minutes) · onPause() · onPending().
+// Callers: onDone() · onExtend(minutes) · onPause() · onResume() · onStop() · onPending().
 export function focusView(run, task, cb){
   const key = `${run.taskId}@${run.startedAt}`;
   const mins = elapsedMinutes(run), target = task ? targetMinutes(run, task) : 0;
@@ -190,11 +187,14 @@ export function focusView(run, task, cb){
       hold,
       h("div", { className: "focus-row" },
         quiet("+15 min", `Give ${what} 15 more minutes`, () => screen?.cb.onExtend(15)),
-        quiet("Pause", `Pause ${what} and go back to the main screen`, () => screen?.cb.onPause()),
-        task && quiet("Pending", `${what} is blocked — pause and set it to Waiting`, () => screen?.cb.onPending?.())));
+        h("button", { className: "btn line pause", type: "button", onclick: () => (screen?.paused ? screen.cb.onResume() : screen?.cb.onPause()) }),
+        quiet("Stop", `Stop ${what} for now; the time so far is kept`, () => screen?.cb.onStop()),
+        task && quiet("Pending", `${what} is blocked — stop and set it to Waiting`, () => screen?.cb.onPending?.())));
     screen = { key, el, title, ring, hold };
   }
   screen.cb = cb;
+  pauseState(screen.el, !!run.pausedAt, what);
+  screen.paused = !!run.pausedAt;
   screen.title.textContent = task?.title || "That task is gone";
   setRing(screen.ring, mins, target);
   holdButton(key, `Hold to finish ${what}`, !task, () => screen?.cb.onDone());
@@ -238,18 +238,27 @@ export function handoffView(done, next, { onStart, onSkip, cheer }){
         h("button", { className: "btn line", type: "button", textContent: "Back", onclick: () => onSkip(null) })));
 }
 
+// Pause ↔ Resume in place: the button's words, and the ring's line saying so.
+function pauseState(el, isPaused, what){
+  el.classList.toggle("paused", isPaused);
+  const b = el.querySelector(".btn.pause");
+  b.textContent = isPaused ? "Resume" : "Pause";
+  b.ariaLabel = isPaused ? `Resume ${what}` : `Pause ${what}; the timer stops until you resume`;
+  el.querySelector(".focus-hold").textContent = isPaused ? "Paused. The timer is waiting." : "I'll hold everything else.";
+}
+
 // A batch in focus mode: the same card and ring, the checklist under it, one
 // timer for the lot. Tick each as it gets done; the last tick ends the batch.
-// Pause goes back to the main screen, where the batch can be resumed or ended
-// (the unticked stay open). tasks: the batch's tasks in order (missing ones
-// already dropped). Callers: onTick(task) · onPause().
-export function batchFocusView(run, tasks, type, { onTick, onPause }){
+// Pause and Stop work as on one task; Stop ends the batch and the unticked
+// stay open. tasks: the batch's tasks in order (missing ones already
+// dropped). Callers: onTick(task) · onPause() · onResume() · onStop().
+export function batchFocusView(run, tasks, type, { onTick, onPause, onResume, onStop }){
   const mins = elapsedMinutes(run), done = new Set(run.done || []);
   const total = tasks.reduce((s, t) => s + (t.size || 0), 0);
   const ring = ringParts();
   setRing(ring, mins, total);
   ring.of.textContent = `of about ${dur(total)}`;
-  return h("div", { className: "focus" + areaClass(tasks[0]) },
+  const el = h("div", { className: "focus" + areaClass(tasks[0]) },
     h("div", { className: "focus-top" }, h("span", { className: "hero-area" }, h("span", { className: "dot", ariaHidden: "true" }), "Batch")),
     h("section", { className: "focus-card", ariaLabel: "Focus" },
       h("div", { className: "focus-title", textContent: batchName(type, tasks.length) + ", together" }),
@@ -261,5 +270,10 @@ export function batchFocusView(run, tasks, type, { onTick, onPause }){
         h("span", { className: "tk-check" + (ticked ? " done" : ""), textContent: ticked ? "✓" : "" }), bdi(t.title)));
     })),
     h("div", { className: "focus-spacer" }),
-    h("div", { className: "focus-row one" }, pauseButton("the batch", onPause)));
+    h("div", { className: "focus-row two" },
+      h("button", { className: "btn line pause", type: "button", onclick: () => (run.pausedAt ? onResume() : onPause()) }),
+      h("button", { className: "btn line", type: "button", textContent: "Stop",
+        ariaLabel: "Stop the batch; the ones not ticked stay open", onclick: () => onStop() })));
+  pauseState(el, !!run.pausedAt, "the batch");
+  return el;
 }

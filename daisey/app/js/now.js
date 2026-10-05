@@ -342,14 +342,16 @@ export function mountNow(root, uid, { onCard, onSweep, onProject, onEdit, name =
         render();
       },
       onPause: pause,
+      onResume: resume,
+      onStop: () => endSession(),
     });
   }
 
-  // Pause (Mor, 2026-10-05): the clock stops and the main screen comes back,
-  // with the paused task held on the card. Resume carries on; the card's own
-  // Later · Switch · Pending end the session first (endSession). Ending keeps
-  // the minutes, except under CANCEL_KEEP_MINUTES (a mis-tap), and is never
-  // counted as a stop. A batch keeps the ones already ticked.
+  // Pause (Mor, 2026-10-05): the clock stops and focus mode stays, with
+  // Resume where Pause was. Stop ends the session (endSession) and the normal
+  // card comes back. Ending keeps the minutes, except under
+  // CANCEL_KEEP_MINUTES (a mis-tap), and is never counted as a stop. A batch
+  // keeps the ones already ticked.
   const pause = () => { const doc = paused(run); run = doc; render(); saveRun(uid, doc).catch(fail); };
   const resume = () => { const doc = resumed(run); run = doc; render(); saveRun(uid, doc).catch(fail); };
   const endSession = ({ quiet = false } = {}) => {
@@ -367,22 +369,6 @@ export function mountNow(root, uid, { onCard, onSweep, onProject, onEdit, name =
     cancelRun(uid, tasks?.find((t) => t.id === prev.taskId) || null, m >= CANCEL_KEEP_MINUTES ? m : 0).catch(fail);
   };
 
-  // Pause mode: the card is the paused task, with Resume and the usual
-  // Later · Switch · Pending. A paused batch just has Resume or End batch.
-  function pausedCard(alts){
-    const task = (tasks || []).find((t) => t.id === run.taskId);
-    const title = run.batch ? batchName(task?.type, run.batch.length) : task?.title || "That task is gone";
-    return h("div", { className: "now-card main hero paused" + areaClass(task) },
-      task && !run.batch ? heroTop(task, `Paused · ${dur(Math.round(elapsedMinutes(run)))}`)
-        : h("div", { className: "now-meta", textContent: `Paused · ${dur(Math.round(elapsedMinutes(run)))} so far` }),
-      h("div", { className: "now-title", dir: "auto", textContent: title }),
-      startButton("Resume", `Resume ${title}`, resume),
-      ...(run.batch || !task
-        ? [h("div", { className: "now-actions" }, h("button", { className: "btn quiet", type: "button", textContent: run.batch ? "End batch" : "End",
-          ariaLabel: run.batch ? "End the batch; the ones not ticked stay open" : "End this session", onclick: () => endSession() }))]
-        : cardActions(task, alts)));
-  }
-
   function renderFocus(){
     if (run.batch) return renderBatch();
     const task = tasks?.find((t) => t.id === run.taskId) || null;
@@ -390,7 +376,7 @@ export function mountNow(root, uid, { onCard, onSweep, onProject, onEdit, name =
     return focusView(run, task, {
       // Done is finished — no "or more left?" (Pause covers more left).
       onDone: () => {
-        if (!run || run.pausedAt) return; // the hold finished after the run moved on
+        if (!run) return; // the hold finished after the run moved on
         const minutes = elapsedMinutes(run);
         handoff = { title: task ? task.title : "", skip: run.taskId, minutes, ids: [run.taskId] };
         endRun(uid, task, minutes, { finished: true }).catch(fail);
@@ -399,8 +385,11 @@ export function mountNow(root, uid, { onCard, onSweep, onProject, onEdit, name =
       },
       onExtend: (m) => { const prev = run; run = { ...run, extra: (run.extra || 0) + m }; render(); extendRun(uid, prev, m).catch(fail); },
       onPause: pause,
-      // Pending from focus mode: pause, and the card asks what it's waiting on.
-      onPending: () => { reset(); state.pendAsk = true; pause(); },
+      onResume: resume,
+      onStop: () => endSession(),
+      // Pending from focus mode: stop, and the card, back on this task, asks
+      // what it's waiting on.
+      onPending: () => { const id = run.taskId; endSession({ quiet: true }); reset(); state.chosen = id; state.pendAsk = true; render(); },
     });
   }
 
@@ -437,7 +426,6 @@ export function mountNow(root, uid, { onCard, onSweep, onProject, onEdit, name =
   // Later and Pending both move the card on: it slides out, the next slides
   // in, and for 5 seconds a toast offers Undo. Nothing waits on the write.
   function stepAside(task, { label, write }){
-    if (run?.pausedAt) endSession({ quiet: true }); // Later or Pending from the paused card
     const before = skipSnapshot(task);
     const go = () => {
       skips.add(task.id);
@@ -855,7 +843,7 @@ export function mountNow(root, uid, { onCard, onSweep, onProject, onEdit, name =
             onclick: () => { sd.open = true; state.showAlts = false; render(); } }))),
       state.showAlts && alts.length > 0 && h("div", { className: "now-alts", role: "group", ariaLabel: "Other tasks" }, ...alts.map((s) => h("button", {
         type: "button", className: "now-alt", ariaLabel: `Put ${s.task.title} on the card instead${s.why ? ". " + s.why : ""}`,
-        onclick: () => { if (run?.pausedAt) endSession({ quiet: true }); state.chosen = s.task.id; state.showAlts = false; render(); },
+        onclick: () => { state.chosen = s.task.id; state.showAlts = false; render(); },
       }, taskCard(s, false)))),
     ];
   }
@@ -870,12 +858,12 @@ export function mountNow(root, uid, { onCard, onSweep, onProject, onEdit, name =
   let reported = null;
 
   function render(){
-    const live = !!run && !run.pausedAt; // a paused run is back on the main screen
+    const live = !!run; // paused or not, a run is focus mode
     document.body.classList.toggle("focus", live || !!handoff);
     ctxSlot?.replaceChildren(); // topOf fills it on the day screens only
     const hrs = dayHours(settings);
     if (!isNight(Date.now(), hrs)) nightFree = false;
-    const night = !live && !handoff && tasks != null && !run?.pausedAt && isNight(Date.now(), hrs) && !nightFree;
+    const night = !live && !handoff && tasks != null && isNight(Date.now(), hrs) && !nightFree;
     document.documentElement.classList.toggle("night", night);
     const n = doneCount();
     if (n !== reported) { reported = n; onDone?.(n); }
@@ -913,14 +901,6 @@ export function mountNow(root, uid, { onCard, onSweep, onProject, onEdit, name =
 
     const head = night ? [greet] : [topOf(fw), greet];
     if (tasks == null) { fill(...head, h("p", { className: "muted", textContent: "Loading tasks…" })); return; }
-    if (run?.pausedAt) {
-      showing(run.taskId);
-      const m = momentInput(fw);
-      const pr = rank(tasks, { ...m, sessionSkips: [...m.sessionSkips, run.taskId] });
-      const alts = [pr.pick, ...pr.alternatives].filter(Boolean).slice(0, 3);
-      fill(...head, pausedCard(alts), ...(run.batch ? [] : altsFor(alts)), toast && toastView());
-      return;
-    }
 
     if (night) { fill(...head, ...nightView(hrs), toast && toastView()); return; }
     if (located === "ride") head.push(rideAsk());
