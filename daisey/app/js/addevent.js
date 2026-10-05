@@ -10,11 +10,11 @@
 // a plain list: nothing is dragged, so nothing has to be grabbed.
 //
 // Four fields, because that is the whole of a meeting as Daisey needs it:
-// what, which day, what time, how long. No guests, no description, no
-// recurrence, no calendar picker — those are Google Calendar's job, and the
-// event lands there to be opened if any of them are wanted. Length instead of
-// an end time: "45 min" is one choice rather than two, and it is how Daisey
-// says duration everywhere else (durText).
+// what, which day, from, to. No guests, no description, no recurrence, no
+// calendar picker — those are Google Calendar's job, and the event lands
+// there to be opened if any of them are wanted. From–to rather than a length
+// (Mor, 2026-10-05): To starts an hour after From, and moving From carries
+// To along with it, as Google does, so a one-hour event is still one choice.
 //
 // Delete is one tap called Remove, undone from the toast (Mor, 2026-10-05:
 // "a 1 click remove", instead of a delete and a check after).
@@ -23,10 +23,9 @@
 // rounded up to the next quarter hour, so adding something to Thursday from
 // Thursday's page needs the title and nothing else.
 import { createEvent, retime, renameEvent, deleteEvent } from "./calendar.js";
-import { durText, localDate } from "./model.js";
+import { localDate } from "./model.js";
 import { h, bdi, flash } from "./ui.js";
 
-const LENGTHS = [15, 30, 45, 60, 90, 120, 180];
 const DEFAULT_LENGTH = 60;
 const MIN = 60000;
 const pad = (n) => String(n).padStart(2, "0");
@@ -91,15 +90,15 @@ export function mountAddEvent(dialog){
     title: h("input", { dir: "auto", required: true, autocomplete: "off" }),
     date: h("input", { type: "date", required: true }),
     at: timePick(),
-    minutes: h("select", {}, ...LENGTHS.map((v) => h("option", { value: String(v), textContent: durText(v) }))),
+    to: timePick(),
   };
   const msg = h("p", { className: "msg", role: "alert" });
   const submit = h("button", { className: "btn primary", type: "submit", textContent: "Add to calendar" });
   const form = h("form", { className: "form-grid ev-grid" },
     field("Event", f.title, true),
     field("Day", f.date),
-    field("Starts", f.at),
-    field("Length", f.minutes),
+    field("From", f.at),
+    field("To", f.to),
     submit);
   const note = h("p", { className: "muted ev-note", textContent: "Goes in your main Google calendar. Guests, repeats and the rest are a tap away in Google Calendar." });
   const heading = h("h2", { id: "evTitle", textContent: "New event" });
@@ -108,17 +107,16 @@ export function mountAddEvent(dialog){
 
   const working = (on, label) => { busy = on; submit.disabled = on; submit.textContent = on ? "Saving…" : label; };
 
-  // A length the event already has but the list doesn't offer (an hour and a
-  // half of someone else's meeting) is added rather than silently rounded.
-  function setLength(mins){
-    if (!LENGTHS.includes(mins)) {
-      const extra = f.minutes.querySelector(".odd") || h("option", { className: "odd" });
-      extra.value = String(mins);
-      extra.textContent = durText(mins);
-      if (!extra.isConnected) f.minutes.append(extra);
-    }
-    f.minutes.value = String(mins);
-  }
+  // From and To as minutes after midnight, and the length between them. A
+  // new From keeps the length; a new To sets it. Nothing runs past midnight.
+  const toMin = (s) => { const [a, b] = s.split(":").map(Number); return a * 60 + b; };
+  const minText = (m) => `${pad(Math.floor(m / 60))}:${pad(m % 60)}`;
+  let length = DEFAULT_LENGTH;
+  const setTimes = (at, mins) => { length = mins; f.at.value = at; f.to.value = minText(Math.min(toMin(at) + mins, 23 * 60 + 55)); };
+  f.at.addEventListener("change", () => setTimes(f.at.value, length));
+  f.to.addEventListener("change", () => { length = toMin(f.to.value) - toMin(f.at.value); });
+  // The length the form says, or null when To isn't after From.
+  const formLength = () => { const m = toMin(f.to.value) - toMin(f.at.value); return m > 0 ? m : null; };
 
   // Google's event details: what it is, when it is, and the two things you can
   // do to it. Read-only events (someone else's calendar) show no buttons —
@@ -174,8 +172,8 @@ export function mountAddEvent(dialog){
       const start = Date.parse(ev.start), end = Date.parse(ev.end);
       f.title.value = ev.title;
       f.date.value = localDate(start);
-      f.at.value = hhmm(start);
-      setLength(Math.max(5, Math.round((end - start) / MIN)));
+      setTimes(hhmm(start), Math.max(5, Math.round((end - start) / MIN)));
+      f.to.value = hhmm(end); // the event's own end, unclamped
     }
     setTimeout(() => f.title.focus());
   }
@@ -184,8 +182,10 @@ export function mountAddEvent(dialog){
     ev.preventDefault();
     if (busy) return;
     const target = editing;
-    working(true);
     msg.textContent = "";
+    const mins = formLength();
+    if (!mins) { msg.textContent = "It has to end after it starts."; return; }
+    working(true);
     try {
       if (target) {
         // What Google's Save does: whatever changed, in one go. Title and
@@ -194,7 +194,7 @@ export function mountAddEvent(dialog){
         const [y, m, d] = f.date.value.split("-").map(Number);
         const [hh, mm] = f.at.value.split(":").map(Number);
         const start = new Date(y, m - 1, d, hh, mm, 0, 0).getTime();
-        const end = start + Number(f.minutes.value) * MIN;
+        const end = start + mins * MIN;
         const title = f.title.value.trim();
         if (title && title !== was.title) await renameEvent(target, title);
         if (start !== was.start || end !== was.end) await retime(target, start, end);
@@ -208,7 +208,7 @@ export function mountAddEvent(dialog){
       } else {
         // Unlike a task, this one waits: the calendar is somebody else's
         // database, and "it's in" has to mean Google said so.
-        await createEvent({ title: f.title.value, date: f.date.value, at: f.at.value, minutes: Number(f.minutes.value) });
+        await createEvent({ title: f.title.value, date: f.date.value, at: f.at.value, minutes: mins });
         dialog.close();
       }
     } catch (e) {
@@ -229,8 +229,7 @@ export function mountAddEvent(dialog){
       editing = null;
       form.reset();
       f.date.value = date || localDate();
-      f.at.value = at || nextQuarter();
-      f.minutes.value = String(DEFAULT_LENGTH);
+      setTimes(at || nextQuarter(), DEFAULT_LENGTH);
       showForm(null);
       if (!dialog.open) dialog.showModal();
     },

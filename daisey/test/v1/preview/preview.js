@@ -108,6 +108,7 @@ const flag = (f) => { const i = args.indexOf(f); return i < 0 ? null : args.spli
 const outDir = flag("--out") || path.join(require("os").tmpdir(), "daisey-preview");
 const clicks = [];
 const widthFlag = flag("--width"); // phone width in CSS px (default 390)
+const evalJs = flag("--eval"); // run this in the page at the end and print what it returns
 const holdSel = flag("--hold"); // press and hold it for 1.5 s (Hold to finish)
 for (let c; (c = flag("--click"));) clicks.push(c);
 const wide = args.includes("--wide"), tasksTab = args.includes("--tasks");
@@ -190,6 +191,7 @@ const FAKES = {
   if (holdSel) { const b = await page.locator(holdSel).boundingBox(); await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2);
     await page.mouse.down(); await page.waitForTimeout(1500); await page.mouse.up(); await page.waitForTimeout(700); }
   if (tasksTab) { await page.click("#tabTasks"); await page.waitForTimeout(150); }
+  if (evalJs) console.log("eval:", JSON.stringify(await page.evaluate(evalJs)));
   if (args.includes("--text")) console.log(await page.innerText("body"));
   if (args.includes("--json-dump")) console.log(JSON.stringify(await page.evaluate(() => window.__store.tasks.map(({ title, area, type, where, openHours, size, stakes, energy, due, dateKind, guessed, spentMinutes, stopsUnfinished }) => ({ title, area, type, where, openHours, size, stakes, energy, due, dateKind, guessed, spentMinutes, stopsUnfinished })))));
   if (args.includes("--tasks-dump")) console.log(await page.evaluate(() => window.__store.tasks.map((t) => t.title + ": " + t.status + (t.skipCount ? " skips " + t.skipCount : "") + (t.source ? " [" + t.source.app + ":" + t.source.cardId + "]" : "")).join(" | ")));
