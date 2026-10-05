@@ -613,37 +613,42 @@ dialog.now { overflow-y: auto; overscroll-behavior: contain; }
 .area-personal { --tint: var(--a-personal-tint); --aline: var(--a-personal-line); --aink: var(--a-personal-ink); }
 
 /* Header: the daisy, the name, the day's count, the avatar. */
-.topbar { justify-content: space-between; min-block-size: 44px; margin-block-end: 6px; }
-.brandrow { display: flex; align-items: center; gap: 8px; min-inline-size: 0; }
-.logo { display: inline-flex; inline-size: 30px; block-size: 30px; flex: none; }
-.brand { font-size: 21px; font-weight: 700; letter-spacing: -0.3px; min-inline-size: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-
-.pill { font-size: 12px; font-weight: 500; color: var(--ink-2); background: var(--chip); border-radius: 999px; padding: 3px 9px; white-space: nowrap; }
-.avatar { border: none; background: var(--ink); color: var(--bg); font-weight: 600; font-size: 14px; }
+/* One short row: daisy + "Daisey" at the start; the place/energy chips and
+   the avatar at the end. */
+.topbar { gap: 8px; min-block-size: 40px; margin-block-end: 4px; }
+.brandrow { display: flex; align-items: center; gap: 7px; min-inline-size: 0; }
+.logo-wrap { position: relative; display: inline-flex; flex: none; }
+.logo { display: inline-flex; inline-size: 26px; block-size: 26px; }
+.badge {
+  position: absolute; inset-block-start: -5px; inset-inline-end: -7px; min-inline-size: 16px; block-size: 16px; padding-inline: 4px;
+  display: grid; place-items: center; border-radius: 999px; background: var(--ink); color: var(--bg);
+  font-size: 10px; font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums;
+}
+.brand { font-size: 19px; font-weight: 700; letter-spacing: -0.3px; min-inline-size: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ctx-slot { margin-inline-start: auto; display: flex; min-inline-size: 0; }
+.ctx-slot:empty { display: none; }
+.ctx-slot + .acct { margin-inline-start: 0; }
+.acct { margin-inline-start: auto; }
+.avatar { inline-size: 34px; block-size: 34px; border: none; background: var(--ink); color: var(--bg); font-weight: 600; font-size: 14px; }
 .daisy-petals ellipse { fill: #fff; stroke: #e6dcc3; stroke-width: 1.2; }
 .daisy-heart { fill: var(--accent); }
 :root.night .logo .daisy-petals ellipse { fill: #3a372f; stroke: #4a463c; }
 :root.night .logo .daisy-heart { fill: #b88a1a; }
 
-/* Greeting, the one free line, the chips. */
-/* One row under the header: the greeting at the start, and the free line
-   over the chips anchored to the end. The greeting may take two lines
-   ("Good afternoon, / Mor") so the end column keeps its room. */
-.now-top { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 12px; margin-block: 6px 14px; }
-.greeting { margin: 0; font-size: 20px; font-weight: 600; letter-spacing: -0.3px; line-height: 1.2; }
-/* The chips set the end column's width; the free line wraps inside it
-   (contain: it has no width of its own to push the greeting with). */
-.now-ctx { display: grid; gap: 6px; text-align: end; }
-.freeline { margin: 0; font-size: 13px; line-height: 1.3; color: var(--ink-2); contain: inline-size; }
-.ctx { display: grid; gap: 6px; justify-items: end; }
-.ctx-opts .chip[aria-checked="true"] { background: var(--ink); color: var(--bg); }
-.ctx-line { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; }
+/* Under the header, one row: the greeting at the start, the free line at
+   the end (it wraps to a second line before the greeting does). */
+.now-top-wrap { display: grid; gap: 8px; margin-block: 4px 12px; }
+.now-top { display: grid; grid-template-columns: minmax(0, auto) minmax(42%, 1fr); align-items: center; gap: 12px; }
+.greeting { margin: 0; font-size: 18px; font-weight: 600; letter-spacing: -0.2px; line-height: 1.25; }
+.freeline { margin: 0; font-size: 13px; line-height: 1.3; color: var(--ink-2); text-align: end; }
+.ctx-line { display: flex; gap: 5px; }
 .ctx-opts { justify-content: flex-end; }
+.ctx-opts .chip[aria-checked="true"] { background: var(--ink); color: var(--bg); }
 .ctx-chip, .tk-filters .chip, .tab { position: relative; }
 .ctx-chip::after, .tk-filters .chip::after, .tab::after { content: ""; position: absolute; inset: -5px 0; } /* 44px to the finger */
 .ctx-chip {
-  display: inline-flex; align-items: center; gap: 5px; block-size: 30px; padding-inline: 11px; cursor: pointer;
-  border: none; border-radius: 999px; background: var(--chip); color: var(--ink); font: inherit; font-size: 12.5px; font-weight: 500;
+  display: inline-flex; align-items: center; gap: 4px; block-size: 30px; padding-inline: 9px; cursor: pointer; white-space: nowrap;
+  border: none; border-radius: 999px; background: var(--chip); color: var(--ink); font: inherit; font-size: 12px; font-weight: 500;
 }
 .ctx-chip::after { inset: -7px 0; }
 .ctx-chip svg { inline-size: 14px; block-size: 14px; stroke-width: 2; }
@@ -895,5 +900,5 @@ dialog.now { overflow-y: auto; overscroll-behavior: contain; }
 /* The chip row is wider than the screen on purpose (it slides); without this
    it sets the width of every grid track above it and the page scrolls sideways. */
 #board > *, .pane, .pane > *, .tk-filters { min-inline-size: 0; }
-/* The open choices wrap inside the end column too, rather than widening it. */
-.now-ctx .ctx-opts { contain: inline-size; justify-self: stretch; }
+/* The event name wraps as one piece ("שיעור גיטרה" never splits across lines). */
+.freeline bdi { display: inline-block; }

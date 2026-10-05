@@ -329,13 +329,13 @@ The Now screen redesign (Oct 5, 2026; references in `daisey/New Design/`). Calm,
 
 A card takes its task's area with `.area-<key>`; inside it everything reads `--tint`, `--aline`, `--aink` and `--sub` (the area's quiet text). A task with no area keeps the plain card colours. Calendar events are tinted with the colour they have in Google Calendar.
 
-**Type** — Rubik 400/500/600/700 (Google Fonts; it covers Hebrew). Header "Daisey" 21/700 with the daisy; under it one row: greeting 20/600 at the start, the free line (13) over the place/energy chips anchored to the end, hero title 24/600, focus title 30/600, focus timer 46/600 tabular, body 14–15.
+**Type** — Rubik 400/500/600/700 (Google Fonts; it covers Hebrew). The top is two short rows: daisy (with a done-today badge) + "Daisey" 19/700, then the place/energy chips and the avatar at the end; under it the greeting 18/600 at the start and the free line (13) at the end, hero title 24/600, focus title 30/600, focus timer 46/600 tabular, body 14–15.
 
 **Shape** — radius: cards 24, buttons 16, chips 999. Every touch target is at least 44px (chips that look smaller get an invisible hit area).
 
 **Text direction** — every title is `dir="auto"`; a task row takes its title's direction as a whole, so a Hebrew row puts its checkbox on the right.
 
-**The daisy** — the header's daisy has one petal per task done today, up to 8, spread evenly. It never shows empty or "missing" petals.
+**The daisy** — the header's daisy has one petal per task done today, up to 8, spread evenly, and a small badge with the count. It never shows empty or "missing" petals.
 
 **Motion**
 

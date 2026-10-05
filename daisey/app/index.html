@@ -26,10 +26,11 @@
   <header class="topbar">
     <!-- The daisy grows a petal per task done today (now.js paints it). -->
     <div class="brandrow">
-      <span id="logo" class="logo"></span>
+      <span class="logo-wrap"><span id="logo" class="logo"></span><span id="doneBadge" class="badge" role="img" hidden></span></span>
       <h1 class="brand">Daisey</h1>
-      <span id="donePill" class="pill" hidden></span>
     </div>
+    <!-- Place and energy chips (now.js), beside the avatar. -->
+    <div id="ctxSlot" class="ctx-slot"></div>
     <!-- Account: Google-style avatar, top end corner; tap for email + sign out. -->
     <div class="acct">
       <button id="avatar" class="avatar" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="acctMenu" hidden></button>

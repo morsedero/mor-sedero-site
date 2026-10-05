@@ -5,13 +5,17 @@ const $ = (s) => document.querySelector(s);
 
 import { daisy } from "./look.js";
 
-// The header's daisy and "N done today" pill. now.js reports the count.
+// The header's daisy, with today's count as a small badge on it (it was a
+// "N done today" pill; the badge keeps the header to one short row).
+// now.js reports the count.
 function paintDone(n){
   const logo = $("#logo");
-  logo.replaceChildren(daisy(n, { size: 30 }));
-  const pill = $("#donePill");
-  pill.hidden = !n;
-  pill.textContent = `${n} done today`;
+  logo.replaceChildren(daisy(n, { size: 26 }));
+  const badge = $("#doneBadge");
+  badge.hidden = !n;
+  badge.textContent = String(n);
+  logo.parentElement.title = n ? `${n} done today` : "";
+  badge.ariaLabel = `${n} done today`;
 }
 paintDone(0);
 
@@ -176,7 +180,7 @@ async function boot(){
         m.tasks = mountTasks($("#tasksview"), user.uid,
           { onAdd: (project) => m.adder.open(project), onOpen: (task) => m.adder.edit(task), onSweep: () => m.sweep.open(),
           onProject: (name) => { location.hash = "tasks"; setPane("tasks"); m.tasks.showProject(name); $("#tasksview").scrollIntoView?.({ behavior: "smooth", block: "nearest" }); } });
-        m.now = mountNow($("#nowcard"), user.uid, { name: (user.displayName || "").trim().split(/\s+/)[0], onDone: paintDone, onCard: (id) => { onCard = id; m.tasks?.setCurrent(id); }, onSweep: () => m.sweep.open(),
+        m.now = mountNow($("#nowcard"), user.uid, { name: (user.displayName || "").trim().split(/\s+/)[0], onDone: paintDone, ctxSlot: $("#ctxSlot"), onCard: (id) => { onCard = id; m.tasks?.setCurrent(id); }, onSweep: () => m.sweep.open(),
           onProject: (name) => { location.hash = "tasks"; setPane("tasks"); m.tasks.showProject(name); $("#tasksview").scrollIntoView?.({ behavior: "smooth", block: "nearest" }); } });
         m.tasks.setCurrent(onCard);
         // Tell Daisey: the typed text goes into a new task's title.

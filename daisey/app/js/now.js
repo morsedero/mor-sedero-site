@@ -39,8 +39,9 @@ const CAL_NOTE = {
 // list can set it aside while it's "physically" on the card.
 // onSweep() opens the old-dates sweep (sweep.js). onProject(name) shows that
 // project's tab in Tasks. name: the first name for the greeting. onDone(n):
-// how many tasks are done today, for the header's daisy.
-export function mountNow(root, uid, { onCard, onSweep, onProject, name = "", onDone } = {}){
+// how many tasks are done today, for the header's daisy. ctxSlot: the spot
+// in the header row where the place and energy chips go.
+export function mountNow(root, uid, { onCard, onSweep, onProject, name = "", onDone, ctxSlot } = {}){
   let tasks = null; // null until the first snapshot
   let settings = {}; // state/settings: when the sweep was last offered
   let momentDoc = {}; // state/moment: energy and place corrections
@@ -159,9 +160,11 @@ export function mountNow(root, uid, { onCard, onSweep, onProject, name = "", onD
   const PLACES = [["home", "Home"], ["out", "Out"], ["anywhere", "Anywhere"]];
   const ENERGIES = [["low", "Low"], ["medium", "Medium"], ["high", "High"]];
 
-  // Place and energy, as filled chips with an icon (Mor, 2026-10-05). A guess
-  // reads quieter than a correction; tapping one shows its three choices, and
-  // a choice is a correction that holds for 3 hours on every device.
+  // Place and energy, as filled chips with an icon (Mor, 2026-10-05). They
+  // sit in the header row, beside the avatar (ctxSlot), to keep the top
+  // short. A guess reads quieter than a correction; tapping one shows its
+  // three choices (choicesRow, under the greeting), and a choice is a
+  // correction that holds for 3 hours on every device.
   const PLACE_ICON = { home: "home", out: "where", anywhere: "globe" };
   function chipsRow(){
     const f = feel();
@@ -175,12 +178,15 @@ export function mountNow(root, uid, { onCard, onSweep, onProject, name = "", onD
       // The bolt already says "energy"; the word stays in the label for screen readers.
       h("span", { textContent: label }));
     };
+    return h("div", { className: "ctx-line" }, chip("place", PLACES, f.place), chip("energy", ENERGIES, f.energy));
+  }
+  function choicesRow(){
     const opts = ctxOpen && (ctxOpen === "place" ? PLACES : ENERGIES);
-    return h("div", { className: "ctx" },
-      h("div", { className: "ctx-line" }, chip("place", PLACES, f.place), chip("energy", ENERGIES, f.energy)),
-      opts && h("div", { className: "ctx-opts", role: "radiogroup", ariaLabel: ctxOpen === "place" ? "Where are you?" : "Energy" },
-        ...opts.map(([v, text]) => h("button", { type: "button", className: "chip", role: "radio", textContent: text,
-          ariaChecked: String(f[ctxOpen].value === v), onclick: () => correct(ctxOpen, v) }))));
+    if (!opts) return null;
+    const f = feel();
+    return h("div", { className: "ctx-opts", role: "radiogroup", ariaLabel: ctxOpen === "place" ? "Where are you?" : "Energy" },
+      ...opts.map(([v, text]) => h("button", { type: "button", className: "chip", role: "radio", textContent: text,
+        ariaChecked: String(f[ctxOpen].value === v), onclick: () => correct(ctxOpen, v) })));
   }
 
   // The ONE free-time line (Mor, 2026-10-05: every other free-time number
@@ -198,12 +204,16 @@ export function mountNow(root, uid, { onCard, onSweep, onProject, name = "", onD
     return line(`${freeDur(fw.window)} free until ${clock(dayEndAt(Date.now(), dayHours(settings)))}`);
   }
 
-  // The top of the day screen, under the "Daisey" header: one row, the
-  // greeting at the start and, anchored to the end, the free line over the
-  // chips (Mor, 2026-10-05).
-  const topOf = (fw) => h("div", { className: "now-top" },
-    h("h2", { className: "greeting", textContent: greeting(name) }),
-    h("div", { className: "now-ctx" }, freeLine(fw), chipsRow()));
+  // The top of the day screen, trimmed to two rows (Mor, 2026-10-05: "still
+  // takes up a lot of space"): the header row carries the chips; under it the
+  // greeting at the start and the free line anchored to the end.
+  function topOf(fw){
+    ctxSlot?.replaceChildren(chipsRow());
+    return h("div", { className: "now-top-wrap" },
+      h("div", { className: "now-top" },
+        h("h2", { className: "greeting", textContent: greeting(name) }), freeLine(fw)),
+      choicesRow());
+  }
 
   // A chip choice: the correction, and for energy one more point in the
   // pattern for this time of day (context.js energyNow).
@@ -804,6 +814,7 @@ export function mountNow(root, uid, { onCard, onSweep, onProject, name = "", onD
   function render(){
     const live = !!run && !run.pausedAt; // a paused run is back on the main screen
     document.body.classList.toggle("focus", live || !!handoff);
+    ctxSlot?.replaceChildren(); // topOf fills it on the day screens only
     const hrs = dayHours(settings);
     if (!isNight(Date.now(), hrs)) nightFree = false;
     const night = !live && !handoff && tasks != null && !run?.pausedAt && isNight(Date.now(), hrs) && !nightFree;
@@ -966,6 +977,6 @@ export function mountNow(root, uid, { onCard, onSweep, onProject, name = "", onD
       state.showAlts = false;
       render();
     },
-    unmount(){ showing(null); clearTimeout(toastTimer); document.body.classList.remove("focus"); document.documentElement.classList.remove("night"); unsubs.forEach((u) => u()); clearInterval(tick); document.removeEventListener("visibilitychange", onVisible); root.replaceChildren(); root.hidden = true; },
+    unmount(){ showing(null); ctxSlot?.replaceChildren(); clearTimeout(toastTimer); document.body.classList.remove("focus"); document.documentElement.classList.remove("night"); unsubs.forEach((u) => u()); clearInterval(tick); document.removeEventListener("visibilitychange", onVisible); root.replaceChildren(); root.hidden = true; },
   };
 }
