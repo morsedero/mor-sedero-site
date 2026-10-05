@@ -100,9 +100,9 @@ function holdButton(key, aria, disabled, onDone){
   const set = (p) => el.style.setProperty("--p", p);
   const listen = (on) => ["pointerup", "pointercancel", "keyup", "blur"].forEach((t) => (on ? addEventListener : removeEventListener)(t, stop));
   const step = (now) => {
-    const p = Math.min(1, (now - t0) / HOLD_MS);
+    const t = Math.min(1, (now - t0) / HOLD_MS), p = t * t * t; // ease-in: creeps, then rushes to full
     set(p);
-    if (p < 1){ raf = requestAnimationFrame(step); return; }
+    if (t < 1){ raf = requestAnimationFrame(step); return; }
     done = true; listen(false);
     el.classList.remove("holding"); el.classList.add("held");
     sub.textContent = "nice!";

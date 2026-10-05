@@ -138,7 +138,7 @@ async function boot(){
     show("signedin"); // no element of its own: just clears loading/sign-in views
 
     Promise.all([import("./now.js"), import("./tasks.js"), import("./addtask.js"), import("./schedule.js"), import("./import-trello.js"), import("./addevent.js"), import("./store.js"), import("./deadlines.js"), import("./sweep.js"), import("./day.js")])
-      .then(([{ mountNow }, { mountTasks }, { mountAddTask }, { mountSchedule }, { mountImport }, { mountAddEvent }, { migrateTasks, watchSettings, saveSettings, watchTasks }, { mountDeadlines }, { mountSweep }, { dayHours, minText }]) => {
+      .then(([{ mountNow }, { mountTasks }, { mountAddTask }, { mountSchedule }, { mountImport }, { mountAddEvent }, { migrateTasks, watchSettings, saveSettings }, { mountDeadlines }, { mountSweep }, { dayHours, minText }]) => {
         if (fb.currentUid() !== user.uid || mounted) return;
         const m = mounted = {};
         // Old tasks get the new fields first; then, once, which dates are real.
@@ -152,9 +152,8 @@ async function boot(){
         m.schedule = mountSchedule($("#schedule"), { onAdd: (date, at) => m.event.open(date, at), onOpen: (ev) => m.event.view(ev), uid: user.uid, onSweep: (ids) => m.sweep.open(ids) });
         m.importer = mountImport($("#importdlg"), user.uid);
         $("#importTrello").onclick = () => { setMenu(false); m.importer.open(); };
-        // Import is for an empty start; once there are tasks it's out of the menu.
+        // Always offered: a re-import only brings cards not already here.
         const fail = (e) => console.error("[daisey] menu", e);
-        const stopTasks = watchTasks(user.uid, (ts) => { $("#importTrello").hidden = ts.length > 0; }, fail);
         // Day hours in the account menu (DAISEY_SPEC "Day hours"), saved on change.
         const start = $("#dayStart"), end = $("#dayEnd");
         const stopSettings = watchSettings(user.uid, (s) => {
@@ -169,7 +168,7 @@ async function boot(){
         };
         start.onchange = saveHours;
         end.onchange = saveHours;
-        m.menu = { unmount(){ stopTasks(); stopSettings(); start.onchange = end.onchange = null; } };
+        m.menu = { unmount(){ stopSettings(); start.onchange = end.onchange = null; } };
         m.tasks = mountTasks($("#tasksview"), user.uid,
           { onAdd: (project) => m.adder.open(project), onOpen: (task) => m.adder.edit(task), onSweep: () => m.sweep.open(),
           onProject: (name) => { location.hash = "tasks"; setPane("tasks"); m.tasks.showProject(name); $("#tasksview").scrollIntoView?.({ behavior: "smooth", block: "nearest" }); } });
