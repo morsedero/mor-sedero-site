@@ -49,7 +49,7 @@ const SECTIONS = [
   ["waiting", "Waiting"],
 ];
 
-export function mountTasks(root, uid, { onAdd, onOpen, onSweep } = {}){
+export function mountTasks(root, uid, { onOpen, onSweep } = {}){
   let tasks = null, onCard = null;
   let project = null; // the List view's project filter; null = all
   let doneOpen = false; // the Completed fold
@@ -331,7 +331,6 @@ export function mountTasks(root, uid, { onAdd, onOpen, onSweep } = {}){
         : h("p", { className: "muted tk-note", textContent: project ? "Nothing open in this project." : "Nothing open. All done." }),
       waiting.length > 0 && h("div", { className: "tk-waiting" }, fold(`Waiting (${waiting.length})`,
         waiting.map((t) => row(t, { withProject: !project })), waitingOpen, (o) => { waitingOpen = o; })),
-      h("button", { type: "button", className: "tk-add", textContent: "+ Add a task", onclick: () => onAdd?.(project ?? undefined) }),
       groups.get("someday").length > 0 && h("div", { className: "tk-someday" }, fold(`Someday (${groups.get("someday").length})`,
         groups.get("someday").sort(order).map((t) => row(t, { withProject: !project })), somedayOpen, (o) => { somedayOpen = o; })),
       done.length > 0 && fold(`Completed (${done.length})`, done.sort((a, b) => (b.doneAt || 0) - (a.doneAt || 0)).slice(0, 50).map(doneRow),
@@ -374,8 +373,9 @@ export function mountTasks(root, uid, { onAdd, onOpen, onSweep } = {}){
   function render(){
     if (tasks == null) { root.replaceChildren(h("p", { className: "muted", textContent: "Loading tasks…" })); return; }
     if (!tasks.length) {
-      root.replaceChildren(h("div", { className: "tk-empty card" }, h("p", { textContent: "No tasks yet." }),
-        h("button", { className: "btn primary", type: "button", textContent: "+ Add task", onclick: () => onAdd?.() })));
+      // No add button here or under the list: Tell Daisey, at the bottom of
+      // every screen, is the one way in (Mor, 2026-10-05).
+      root.replaceChildren(h("div", { className: "tk-empty card" }, h("p", { textContent: "No tasks yet. Tell Daisey what's on your plate, below." })));
       return;
     }
     // Dropped tasks are kept for learning and shown nowhere.
