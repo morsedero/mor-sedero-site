@@ -103,11 +103,11 @@ export function mountAddTask(dialog, uid, { onNow } = {}){
   const guesses = h("div", { className: "guesses" }, sumLine, gbox);
 
   const newField = field("Name the new project", f.newProject);
-  newField.hidden = true;
-  // The two dates share a row; under them, whether the date is real.
+  // The two dates share a row, start first, then due (Mor, 2026-10-05: the
+  // order you live them in); under them, whether the due date is real.
   const kindRow = h("div", { className: "kind", role: "radiogroup", ariaLabel: "What kind of date" });
   const dateBox = h("div", { className: "sheet-stack" },
-    h("div", { className: "sheet-row" }, field("Date (optional)", f.due), field("Start date (optional)", f.notBefore)),
+    h("div", { className: "sheet-row" }, field("Start date (optional)", f.notBefore), field("Due date (optional)", f.due)),
     kindRow);
   // Waiting only exists for a task that already exists: you don't add one
   // already blocked (model.js's note on Waiting). One press to park it; the
