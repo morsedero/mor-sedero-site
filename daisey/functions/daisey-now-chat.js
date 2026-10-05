@@ -4,12 +4,19 @@
 //
 // POST { text, today, weekday, tasks: [{ id, title, project, due, status }],
 //        projects: [name] } with "Authorization: Bearer <Firebase ID token>".
-// Returns { reply, actions: [...], question?, choices? } — see SCHEMA.
+// Returns { reply, actions: [...], question?, choices? } — see tidy().
 //
 // The model is Gemini Flash-Lite through the plain generateContent REST call
-// (Mor, 2026-10-05: cheapest that handles Hebrew and English well enough to
-// turn a sentence into a task). The key is GEMINI_API_KEY in Netlify's
-// environment and never reaches the page; GEMINI_MODEL overrides the model.
+// (Mor, 2026-10-05: cheapest that handles Hebrew and English). 3.5 beat 3.1
+// on the same messages (faster, and fewer fields filled in the wrong place).
+// The key is GEMINI_API_KEY in Netlify's environment and never reaches the
+// page; GEMINI_MODEL overrides the model.
+//
+// Small models put values in the wrong field when the schema is one flat
+// list of optional fields ("Thursday" ended up in waitingOn). Two things
+// fixed most of it: worked examples in the prompt, and field names that say
+// exactly what they hold. tidy() then drops whatever is still out of place,
+// and one retry covers a busy model or an answer that ran away.
 //
 // Each user gets DAILY_CAP messages a day (Netlify Blobs, chat:<uid>:<date>),
 // so one runaway tab can't run up the bill.
@@ -19,10 +26,11 @@
 const { verifyIdToken } = require("./_daisey-lib/firebase-auth");
 // Blobs is required where it is used, so the tests can load tidy() without it.
 
-const MODEL = process.env.GEMINI_MODEL || "gemini-3.1-flash-lite";
+const MODEL = process.env.GEMINI_MODEL || "gemini-3.5-flash-lite";
 const DAILY_CAP = 60;
 const MAX_TEXT = 800;
 const MAX_TASKS = 120;
+const KINDS = ["add", "update", "waiting", "drop", "moment"];
 
 const reply = (statusCode, body) => ({
   statusCode,
@@ -33,77 +41,111 @@ const fail = (statusCode, code) => reply(statusCode, { error: code });
 
 // One flat action shape (the schema subset generateContent accepts has no
 // oneOf): `kind` says which of the other fields matter.
+const str = (description, extra = {}) => ({ type: "STRING", description, ...extra });
+const ACTION_FIELDS = {
+  kind: str("What to do.", { enum: KINDS }),
+  taskId: str("update/waiting/drop only: the exact id of an existing task from the list."),
+  title: str("add: the new task's title in the user's own words. update: only when renaming."),
+  project: str("An existing project name when one clearly fits. Otherwise leave empty."),
+  minutes: { type: "INTEGER", description: "How long the task takes, only if the user said (\"15 min\" → 15, \"2 hours\" → 120)." },
+  dueDate: str("YYYY-MM-DD the task is due (\"by Thursday\", \"עד יום רביעי\"). Only if the user gave one."),
+  dateKind: str("deadline only for a hard date with a cost if missed, else target.", { enum: ["deadline", "target"] }),
+  startDate: str("YYYY-MM-DD before which the task shouldn't come up (\"next week\", \"after Sunday\")."),
+  waitingFor: str("waiting only: the person or thing it waits on, never a date."),
+  energy: str("moment only: the user's energy right now.", { enum: ["low", "medium", "high"] }),
+  place: str("moment only: where the user is right now.", { enum: ["home", "out", "anywhere"] }),
+};
 const SCHEMA = {
   type: "OBJECT",
   properties: {
-    reply: { type: "STRING", description: "One short, friendly line saying what you understood. Same language as the user." },
+    reply: str("One short line in the language of the MESSAGE, saying what you suggest (it isn't done yet: \"Add 3 tasks?\", not \"Added\")."),
+    question: str("Only when it's unclear which task they mean: one short question. Otherwise empty."),
+    choices: { type: "ARRAY", items: { type: "STRING" }, description: "With a question: 2-4 short answers, usually the matching task titles." },
     actions: {
       type: "ARRAY",
-      items: {
-        type: "OBJECT",
-        properties: {
-          kind: { type: "STRING", enum: ["add", "update", "waiting", "drop", "moment"] },
-          taskId: { type: "STRING", description: "For update, waiting and drop: the id of an existing task from the list. Never invent one." },
-          title: { type: "STRING", description: "add: the task title, in the user's language and words. update: a new title only if they asked to rename." },
-          project: { type: "STRING", description: "An existing project name when one clearly fits, else omit." },
-          size: { type: "INTEGER", description: "Minutes, only if the user said how long." },
-          due: { type: "STRING", description: "YYYY-MM-DD, only if the user gave a date or deadline." },
-          dateKind: { type: "STRING", enum: ["deadline", "target"], description: "deadline only for a hard date with a cost if missed." },
-          notBefore: { type: "STRING", description: "YYYY-MM-DD: don't show the task before this day (\"next week\", \"after Sunday\")." },
-          waitingOn: { type: "STRING", description: "waiting: who or what it waits on." },
-          energy: { type: "STRING", enum: ["low", "medium", "high"], description: "moment: the user's energy right now." },
-          place: { type: "STRING", enum: ["home", "out", "anywhere"], description: "moment: where the user is right now." },
-        },
-        required: ["kind"],
-      },
+      items: { type: "OBJECT", properties: ACTION_FIELDS, required: ["kind"], propertyOrdering: Object.keys(ACTION_FIELDS) },
     },
-    question: { type: "STRING", description: "Only when you can't tell what they mean (two tasks match, say): one short question." },
-    choices: { type: "ARRAY", items: { type: "STRING" }, description: "2-4 short answers to the question, as buttons." },
   },
   required: ["reply", "actions"],
+  propertyOrdering: ["reply", "question", "choices", "actions"],
 };
 
-const SYSTEM = `You turn one message from the user of Daisey, a day-planning app, into proposed changes to their task list.
-The user writes in Hebrew or English, often mixed. Keep task titles in the user's own language and wording; don't translate or embellish.
-Actions:
-- add: a new task. A message listing several things ("lesson prep, invoices, call Uri") is several add actions.
-- update: change an existing task's date, start date, title, project or size ("push the mix review to next week" → update with notBefore or due).
-- waiting: an existing task is blocked on someone or something ("waiting on Yuval for the cue").
+const SYSTEM = `You turn one message from the user of Daisey, a day-planning app, into proposed changes to their task list. The app shows them as cards and the user confirms.
+The user writes in Hebrew or English, often mixed. Keep task titles in the user's own words and language; never translate them.
+
+Kinds:
+- add: a new task. A list of several things is several add actions.
+- update: change an existing task's dueDate, startDate, title, project or minutes.
+- waiting: an existing task is blocked on someone or something.
 - drop: the user no longer wants an existing task.
-- moment: the user describes how they are right now ("I'm wrecked", "I'm out"): set energy and/or place.
-Match existing tasks by meaning against the provided list and use their exact id. If two tasks could match, return no action for it and ask a question with choices instead.
-Resolve relative dates ("Thursday", "next week", "tomorrow") from today's date. "Next week" with no day means notBefore = the coming Sunday.
-Only fill fields the user actually said or clearly implied. Never invent sizes or dates.
-If the message asks nothing actionable, return no actions and a short helpful reply.
-The reply is one short line, plain, friendly, no praise.`;
+- moment: how the user is right now (energy, place). Changes no task.
+
+Rules:
+- Each value goes only in its own field. Dates go in dueDate or startDate as YYYY-MM-DD, never in waitingFor or title.
+- Work out dates from today's date given below. "Next week" with no day means startDate = the coming Sunday.
+- Only use an existing task when the message clearly refers to it. A new thing that only shares a word with an existing task is an add.
+- If more than one existing task could be the one they mean, return NO action for it; ask a question and give the candidate titles as choices.
+- Fill only what the user said. Never invent minutes, dates or projects.
+- The reply is in the language of the user's message, short and plain, and says what you suggest.
+
+Examples (today is Monday 2026-10-05; tasks: t1 "Mix review for Reprise", t4 "Mix review for Lunitales", t2 "ביטוח לחיות", t3 "Pre-attack cue"):
+Message: lesson prep for Thursday, invoices, call Uri 15 min
+{"reply":"Add 3 tasks?","actions":[{"kind":"add","title":"Lesson prep","dueDate":"2026-10-08"},{"kind":"add","title":"Invoices"},{"kind":"add","title":"Call Uri","minutes":15}]}
+Message: להתקשר לביטוח לאומי עד יום רביעי
+{"reply":"להוסיף משימה ליום רביעי?","actions":[{"kind":"add","title":"להתקשר לביטוח לאומי","dueDate":"2026-10-07"}]}
+Message: push the mix review to next week
+{"reply":"Which mix review?","question":"Which mix review?","choices":["Mix review for Reprise","Mix review for Lunitales"],"actions":[]}
+Message: waiting on Yuval for the pre-attack cue
+{"reply":"Set it to waiting on Yuval?","actions":[{"kind":"waiting","taskId":"t3","waitingFor":"Yuval"}]}
+Message: I'm wrecked and out
+{"reply":"Low energy, out. Got it?","actions":[{"kind":"moment","energy":"low","place":"out"}]}`;
 
 const clean = (s, n = 200) => String(s ?? "").replace(/\s+/g, " ").trim().slice(0, n);
 const isDay = (s) => /^\d{4}-\d{2}-\d{2}$/.test(String(s || ""));
+// Something that reads as a date, not a person ("Thursday", "2026-10-08", "יום רביעי").
+const looksLikeDate = (s) => /^\d{4}-\d{2}-\d{2}$|\b(mon|tue|wed|thu|fri|sat|sun)[a-z]*\b|tomorrow|today|next week|יום|מחר|שבוע/i.test(String(s || ""));
 
-// Only what the app can use: known kinds, ids that exist, sane values.
+// Only what the app can use: known kinds, ids that exist, values in the
+// fields they belong to. Returns the app's own field names (size, due,
+// notBefore, waitingOn) whatever the model's schema calls them.
 function tidy(out, ids){
-  const actions = (Array.isArray(out.actions) ? out.actions : []).slice(0, 12).flatMap((a) => {
+  const actions = (Array.isArray(out?.actions) ? out.actions : []).slice(0, 12).flatMap((a) => {
     const kind = a?.kind;
-    if (!["add", "update", "waiting", "drop", "moment"].includes(kind)) return [];
-    if (kind !== "add" && kind !== "moment" && !ids.has(a.taskId)) return [];
-    if (kind === "add" && !clean(a.title)) return [];
+    if (!KINDS.includes(kind)) return [];
+    const onTask = kind === "update" || kind === "waiting" || kind === "drop";
+    if (onTask && !ids.has(a.taskId)) return [];
     const x = { kind };
-    if (a.taskId && kind !== "add" && kind !== "moment") x.taskId = a.taskId;
-    for (const k of ["title", "project", "waitingOn"]) if (clean(a[k])) x[k] = clean(a[k]);
-    if (Number.isFinite(a.size) && a.size > 0 && a.size <= 24 * 60) x.size = Math.round(a.size);
-    for (const k of ["due", "notBefore"]) if (isDay(a[k])) x[k] = a[k];
-    if (x.due && ["deadline", "target"].includes(a.dateKind)) x.dateKind = a.dateKind;
-    if (["low", "medium", "high"].includes(a.energy)) x.energy = a.energy;
-    if (["home", "out", "anywhere"].includes(a.place)) x.place = a.place;
-    if (kind === "moment" && !x.energy && !x.place) return [];
+    if (onTask) x.taskId = a.taskId;
+    if (kind === "add" || kind === "update") {
+      if (clean(a.title)) x.title = clean(a.title);
+      if (clean(a.project)) x.project = clean(a.project, 60);
+      const size = a.minutes ?? a.size;
+      if (Number.isFinite(size) && size > 0 && size <= 24 * 60) x.size = Math.round(size);
+      const due = a.dueDate ?? a.due, start = a.startDate ?? a.notBefore;
+      if (isDay(due)) x.due = due;
+      if (isDay(start)) x.notBefore = start;
+      if (x.due && ["deadline", "target"].includes(a.dateKind)) x.dateKind = a.dateKind;
+    }
+    if (kind === "add" && !x.title) return [];
+    if (kind === "update" && Object.keys(x).length <= 2) return []; // nothing to change
+    if (kind === "waiting") {
+      const on = clean(a.waitingFor ?? a.waitingOn, 80);
+      if (on && !looksLikeDate(on)) x.waitingOn = on;
+    }
+    if (kind === "moment") {
+      if (["low", "medium", "high"].includes(a.energy)) x.energy = a.energy;
+      if (["home", "out", "anywhere"].includes(a.place)) x.place = a.place;
+      if (!x.energy && !x.place) return [];
+    }
     return [x];
   });
-  const choices = Array.isArray(out.choices) ? out.choices.map((c) => clean(c, 80)).filter(Boolean).slice(0, 4) : [];
-  return { reply: clean(out.reply, 240), actions, ...(clean(out.question) && choices.length ? { question: clean(out.question, 200), choices } : {}) };
+  const choices = Array.isArray(out?.choices) ? out.choices.map((c) => clean(c, 80)).filter(Boolean).slice(0, 4) : [];
+  const question = clean(out?.question, 200);
+  return { reply: clean(out?.reply, 240), actions, ...(question && choices.length ? { question, choices } : {}) };
 }
 
-// The day's count for this user; null when Blobs can't be reached (the cap
-// then doesn't block — better a message too many than a dead feature).
+// The day's count for this user; true when it's allowed. If Blobs can't be
+// reached the cap doesn't block — better a message too many than a dead feature.
 async function bump(uid, day){
   try {
     const { openStore } = require("./_daisey-lib/blobs");
@@ -116,6 +158,37 @@ async function bump(uid, day){
   } catch (e) {
     console.warn("[daisey-now-chat] cap store", e.message);
     return true;
+  }
+}
+
+// One call to Gemini; the parsed JSON, or null (busy, error, or an answer
+// that isn't JSON — usually one that ran away and hit the token limit).
+async function ask(key, prompt){
+  let res;
+  try {
+    res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(MODEL)}:generateContent`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-goog-api-key": key },
+      body: JSON.stringify({
+        systemInstruction: { parts: [{ text: SYSTEM }] },
+        contents: [{ role: "user", parts: [{ text: prompt }] }],
+        generationConfig: { responseMimeType: "application/json", responseSchema: SCHEMA, temperature: 0.1, maxOutputTokens: 1500 },
+      }),
+    });
+  } catch (e) {
+    console.error("[daisey-now-chat] fetch", e.message);
+    return null;
+  }
+  if (!res.ok) {
+    console.error("[daisey-now-chat] gemini", res.status, (await res.text()).slice(0, 300));
+    return null;
+  }
+  try {
+    const data = await res.json();
+    return JSON.parse(data.candidates?.[0]?.content?.parts?.map((p) => p.text || "").join("") || "{}");
+  } catch (e) {
+    console.error("[daisey-now-chat] parse", e.message);
+    return null;
   }
 }
 
@@ -141,35 +214,11 @@ exports.handler = async (event) => {
     .map((t) => ({ id: clean(t.id, 60), title: clean(t.title, 120), project: clean(t.project, 60), due: isDay(t.due) ? t.due : undefined, status: clean(t.status, 12) }))
     .filter((t) => t.id && t.title);
   const projects = (Array.isArray(body.projects) ? body.projects : []).map((p) => clean(p, 60)).filter(Boolean).slice(0, 60);
-  const context = `Today: ${body.today} (${clean(body.weekday, 12)}).\nProjects: ${JSON.stringify(projects)}\nOpen tasks: ${JSON.stringify(tasks)}`;
+  const prompt = `Today: ${clean(body.weekday, 12)} ${body.today}.\nProjects: ${JSON.stringify(projects)}\nTasks: ${JSON.stringify(tasks)}\n\nMessage: ${text}`;
 
-  let res;
-  try {
-    res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(MODEL)}:generateContent`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "x-goog-api-key": key },
-      body: JSON.stringify({
-        systemInstruction: { parts: [{ text: SYSTEM }] },
-        contents: [{ role: "user", parts: [{ text: `${context}\n\nMessage: ${text}` }] }],
-        generationConfig: { responseMimeType: "application/json", responseSchema: SCHEMA, temperature: 0.2, maxOutputTokens: 1200 },
-      }),
-    });
-  } catch (e) {
-    console.error("[daisey-now-chat] fetch", e.message);
-    return fail(502, "model");
-  }
-  if (!res.ok) {
-    console.error("[daisey-now-chat] gemini", res.status, (await res.text()).slice(0, 400));
-    return fail(502, "model");
-  }
-  try {
-    const data = await res.json();
-    const raw = data.candidates?.[0]?.content?.parts?.map((p) => p.text || "").join("") || "{}";
-    return reply(200, tidy(JSON.parse(raw), new Set(tasks.map((t) => t.id))));
-  } catch (e) {
-    console.error("[daisey-now-chat] parse", e.message);
-    return fail(502, "model");
-  }
+  const out = (await ask(key, prompt)) || (await ask(key, prompt)); // one retry
+  if (!out) return fail(502, "model");
+  return reply(200, tidy(out, new Set(tasks.map((t) => t.id))));
 };
 
 exports.tidy = tidy; // for the tests
