@@ -107,6 +107,7 @@ const args = process.argv.slice(2);
 const flag = (f) => { const i = args.indexOf(f); return i < 0 ? null : args.splice(i, 2)[1] ?? true; };
 const outDir = flag("--out") || path.join(require("os").tmpdir(), "daisey-preview");
 const clicks = [];
+const widthFlag = flag("--width"); // phone width in CSS px (default 390)
 const holdSel = flag("--hold"); // press and hold it for 1.5 s (Hold to finish)
 for (let c; (c = flag("--click"));) clicks.push(c);
 const wide = args.includes("--wide"), tasksTab = args.includes("--tasks");
@@ -148,7 +149,7 @@ const FAKES = {
 
 (async () => {
   const browser = await chromium.launch();
-  const page = await browser.newPage({ viewport: wide ? { width: 1200, height: 900 } : { width: 390, height: 844 }, deviceScaleFactor: 2,
+  const page = await browser.newPage({ viewport: wide ? { width: 1200, height: 900 } : { width: Number(widthFlag) || 390, height: 844 }, deviceScaleFactor: 2,
     colorScheme: args.includes("--dark") ? "dark" : "light" });
   page.on("pageerror", (e) => console.error("pageerror:", e.message));
   page.on("console", (m) => { if (m.type() === "error") console.error("console:", m.text()); });
@@ -182,7 +183,7 @@ const FAKES = {
   for (const sel of clicks) {
     // "sel=text" types into a field instead of clicking it.
     const eq = sel.indexOf("=");
-    if (eq > 0 && !sel.startsWith("[")) await page.fill(sel.slice(0, eq), sel.slice(eq + 1)); else await page.click(sel);
+    if (eq > 0 && !sel.startsWith("[")) await page.fill(sel.slice(0, eq), sel.slice(eq + 1)); else await page.click(sel, { force: true }); // force: the hero breathes, so it is never "stable"
     await page.waitForTimeout(150);
   }
   // --hold "sel": press and hold it for 1.5 s (Hold to finish).
@@ -194,6 +195,9 @@ const FAKES = {
   if (args.includes("--tasks-dump")) console.log(await page.evaluate(() => window.__store.tasks.map((t) => t.title + ": " + t.status + (t.skipCount ? " skips " + t.skipCount : "") + (t.source ? " [" + t.source.app + ":" + t.source.cardId + "]" : "")).join(" | ")));
   fs.mkdirSync(outDir, { recursive: true });
   const file = path.join(outDir, `${name}${tasksTab ? "-tasks" : ""}${cal ? "-cal" + cal.replace(/\W/g, "") : ""}${running ? "-run" + running.replace(/\W/g, "") : ""}${clicks.length ? "-" + clicks.join("").replace(/\W/g, "").slice(0, 24) : ""}${wide ? "-wide" : ""}${args.includes("--dark") ? "-dark" : ""}.png`);
+  // A page wider than the phone scrolls sideways: say so.
+  const over = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+  if (over > 0) console.log(`OVERFLOW: page is ${over}px wider than the screen`);
   await page.screenshot({ path: file, fullPage: true });
   console.log(file);
   await browser.close();

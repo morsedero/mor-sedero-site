@@ -14,6 +14,12 @@ function paintDone(n){
   pill.textContent = `${n} done today`;
 }
 paintDone(0);
+// The header's title: the greeting by day, "Daisey" when there's none.
+function paintGreet(text){
+  const brand = $(".brand");
+  brand.textContent = text || "Daisey";
+  brand.classList.toggle("greet", !!text);
+}
 
 // Registering a worker is what makes "add to home screen" offer a real app
 // window; sw.js caches nothing on purpose.
@@ -175,7 +181,7 @@ async function boot(){
         m.tasks = mountTasks($("#tasksview"), user.uid,
           { onAdd: (project) => m.adder.open(project), onOpen: (task) => m.adder.edit(task), onSweep: () => m.sweep.open(),
           onProject: (name) => { location.hash = "tasks"; setPane("tasks"); m.tasks.showProject(name); $("#tasksview").scrollIntoView?.({ behavior: "smooth", block: "nearest" }); } });
-        m.now = mountNow($("#nowcard"), user.uid, { name: (user.displayName || "").trim().split(/\s+/)[0], onDone: paintDone, onCard: (id) => { onCard = id; m.tasks?.setCurrent(id); }, onSweep: () => m.sweep.open(),
+        m.now = mountNow($("#nowcard"), user.uid, { name: (user.displayName || "").trim().split(/\s+/)[0], onDone: paintDone, onGreet: paintGreet, onCard: (id) => { onCard = id; m.tasks?.setCurrent(id); }, onSweep: () => m.sweep.open(),
           onProject: (name) => { location.hash = "tasks"; setPane("tasks"); m.tasks.showProject(name); $("#tasksview").scrollIntoView?.({ behavior: "smooth", block: "nearest" }); } });
         m.tasks.setCurrent(onCard);
         // Tell Daisey: the typed text goes into a new task's title.

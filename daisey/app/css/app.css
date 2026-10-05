@@ -555,7 +555,10 @@ dialog.now { overflow-y: auto; overscroll-behavior: contain; }
 .pend-ask { display: grid; gap: 4px; margin-block-start: 4px; }
 .pend-ask label { font-size: 13px; font-weight: 600; color: var(--ink-2); }
 .pend-row { display: flex; gap: 6px; }
-.pend-row input { flex: 1; min-inline-size: 0; font: inherit; font-size: 16px; padding: 6px 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--ink); }
+.pend-row .btn { flex: none; }
+/* inline-size 0 + flex 1: the field takes what's left, never its own
+   default width — that default pushed the page wider than a 360px phone. */
+.pend-row input { flex: 1; inline-size: 0; min-inline-size: 0; font: inherit; font-size: 16px; padding: 6px 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--ink); }
 /* A project name that leads to its tab in Tasks. */
 .now-proj { font: inherit; letter-spacing: inherit; text-transform: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; text-decoration: underline dotted; text-underline-offset: 3px; }
 .tk-proj.link { cursor: pointer; text-decoration: underline; text-decoration-color: var(--line); text-underline-offset: 3px; }
@@ -613,7 +616,10 @@ dialog.now { overflow-y: auto; overscroll-behavior: contain; }
 .topbar { justify-content: space-between; min-block-size: 44px; margin-block-end: 6px; }
 .brandrow { display: flex; align-items: center; gap: 8px; min-inline-size: 0; }
 .logo { display: inline-flex; inline-size: 30px; block-size: 30px; flex: none; }
-.brand { font-size: 21px; font-weight: 700; letter-spacing: -0.3px; }
+.brand { font-size: 21px; font-weight: 700; letter-spacing: -0.3px; min-inline-size: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* By day the header's title is the greeting: one compact top, not a header
+   and then a greeting block under it (Mor, 2026-10-05: "too much"). */
+.brand.greet { font-size: 20px; font-weight: 600; letter-spacing: -0.3px; }
 .pill { font-size: 12px; font-weight: 500; color: var(--ink-2); background: var(--chip); border-radius: 999px; padding: 3px 9px; white-space: nowrap; }
 .avatar { border: none; background: var(--ink); color: var(--bg); font-weight: 600; font-size: 14px; }
 .daisy-petals ellipse { fill: #fff; stroke: #e6dcc3; stroke-width: 1.2; }
@@ -622,24 +628,27 @@ dialog.now { overflow-y: auto; overscroll-behavior: contain; }
 :root.night .logo .daisy-heart { fill: #b88a1a; }
 
 /* Greeting, the one free line, the chips. */
-.greeting { margin: 10px 0 4px; font-size: 26px; font-weight: 600; letter-spacing: -0.4px; line-height: 1.2; }
-.freeline { margin: 0 0 12px; font-size: 15px; color: var(--ink-2); }
-.ctx { display: grid; gap: 8px; margin-block-end: 18px; }
+.freeline { margin: 0 0 8px; font-size: 14px; color: var(--ink-2); }
+.ctx { display: grid; gap: 8px; margin-block-end: 12px; }
 .ctx-line { display: flex; flex-wrap: wrap; gap: 8px; }
 .ctx-chip, .tk-filters .chip, .tab { position: relative; }
 .ctx-chip::after, .tk-filters .chip::after, .tab::after { content: ""; position: absolute; inset: -5px 0; } /* 44px to the finger */
 .ctx-chip {
-  display: inline-flex; align-items: center; gap: 6px; block-size: 34px; padding-inline: 12px; cursor: pointer;
-  border: none; border-radius: 999px; background: var(--chip); color: var(--ink); font: inherit; font-size: 13px; font-weight: 500;
+  display: inline-flex; align-items: center; gap: 5px; block-size: 30px; padding-inline: 11px; cursor: pointer;
+  border: none; border-radius: 999px; background: var(--chip); color: var(--ink); font: inherit; font-size: 12.5px; font-weight: 500;
 }
-.ctx-chip svg { inline-size: 15px; block-size: 15px; stroke-width: 2; }
+.ctx-chip::after { inset: -7px 0; }
+.ctx-chip svg { inline-size: 14px; block-size: 14px; stroke-width: 2; }
 .ctx-chip.guess { color: var(--ink-2); } /* Daisey's guess reads quieter than your answer */
 .ctx-chip[aria-expanded="true"] { box-shadow: inset 0 0 0 1.5px var(--accent); }
 .ctx-opts .chip { min-block-size: 36px; font-size: 13px; padding-inline: 12px; border: none; background: var(--chip); }
 
 /* The hero card. */
+/* minmax(0, 1fr): nothing inside (the Pending field, a long title) may make
+   the card wider than the phone. */
+.now-card { grid-template-columns: minmax(0, 1fr); }
 .now-card.main {
-  position: relative; gap: 0; padding: 20px; border-radius: var(--radius);
+  position: relative; gap: 0; padding: 16px 18px; border-radius: var(--radius);
   background: var(--tint); border: 1px solid var(--aline); color: var(--ink);
   box-shadow: 0 12px 28px color-mix(in srgb, var(--aink) 14%, transparent);
 }
@@ -649,17 +658,17 @@ dialog.now { overflow-y: auto; overscroll-behavior: contain; }
 .hero-side { font-weight: 500; color: var(--sub); white-space: nowrap; }
 .now-proj { color: inherit; font-weight: inherit; text-decoration: none; min-block-size: 32px; }
 .now-proj:hover { text-decoration: underline; text-underline-offset: 3px; }
-.now-card.main .now-title { margin-block-start: 16px; font-size: 32px; font-weight: 600; line-height: 1.15; letter-spacing: -0.3px; overflow-wrap: anywhere; }
-.now-card.main .now-next { margin-block-start: 8px; color: var(--sub); }
-.now-card.main .now-why { margin: 10px 0 0; font-size: 15px; line-height: 1.4; color: var(--sub); }
+.now-card.main .now-title { margin-block-start: 10px; font-size: 24px; font-weight: 600; line-height: 1.2; letter-spacing: -0.2px; overflow-wrap: anywhere; }
+.now-card.main .now-next { margin-block-start: 6px; font-size: 14px; color: var(--sub); }
+.now-card.main .now-why { margin: 6px 0 0; font-size: 14px; line-height: 1.4; color: var(--sub); }
 .now-card.main .now-meta { font-size: 13px; font-weight: 600; text-transform: none; letter-spacing: 0; color: var(--aink); }
 .btn.start {
   display: flex; align-items: center; justify-content: center; gap: 10px; inline-size: 100%;
-  margin-block-start: 18px; min-block-size: 56px; border: none; border-radius: var(--r-btn);
-  font-size: 18px; font-weight: 600; box-shadow: 0 6px 14px rgb(245 179 1 / .35);
+  margin-block-start: 14px; min-block-size: 48px; border: none; border-radius: var(--r-btn);
+  font-size: 17px; font-weight: 600; box-shadow: 0 5px 12px rgb(245 179 1 / .3);
 }
-.btn.start svg { inline-size: 18px; block-size: 18px; }
-.now-actions.trio { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; margin-block-start: 8px; }
+.btn.start svg { inline-size: 16px; block-size: 16px; }
+.now-actions.trio { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; margin-block-start: 4px; }
 .trio .iconbtn {
   display: flex; align-items: center; justify-content: center; gap: 6px; min-inline-size: 0; min-block-size: 44px;
   border: none; border-radius: 12px; font-size: 14px; font-weight: 500; color: var(--sub);
@@ -676,12 +685,12 @@ dialog.now { overflow-y: auto; overscroll-behavior: contain; }
 
 /* The deck: up to two faint cards peeking out under the hero. */
 .deck { position: relative; }
-.deck.d1 { padding-block-end: 11px; }
-.deck.d2 { padding-block-end: 22px; }
+.deck.d1 { padding-block-end: 8px; }
+.deck.d2 { padding-block-end: 16px; }
 .deck > .now-card { position: relative; }
-.deck-ghost { position: absolute; inset-block: 11px 0; inset-inline: 11px; border-radius: var(--radius); background: #f4eedf; border: 1px solid #e6decb; }
-.deck.d2 .deck-ghost.g1 { inset-block-end: 11px; }
-.deck-ghost.g2 { inset-block-start: 22px; inset-inline: 22px; background: #ede6d4; border: none; }
+.deck-ghost { position: absolute; inset-block: 8px 0; inset-inline: 10px; border-radius: var(--radius); background: #f4eedf; border: 1px solid #e6decb; }
+.deck.d2 .deck-ghost.g1 { inset-block-end: 8px; }
+.deck-ghost.g2 { inset-block-start: 16px; inset-inline: 20px; background: #ede6d4; border: none; }
 :root[data-theme="dark"] .deck-ghost, :root.night .deck-ghost { background: #26231e; border-color: #2e2b25; }
 :root[data-theme="dark"] .deck-ghost.g2, :root.night .deck-ghost.g2 { background: #1c1a16; }
 @media (prefers-color-scheme: dark) {
@@ -745,13 +754,6 @@ dialog.now { overflow-y: auto; overscroll-behavior: contain; }
 .ring-text { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
 .ring-time { font-size: 46px; font-weight: 600; letter-spacing: -0.8px; font-variant-numeric: tabular-nums; }
 .ring-of { margin-block-start: 2px; font-size: 14px; color: var(--ink-2); }
-.focus-note {
-  margin-block-start: 16px; display: flex; align-items: center; gap: 10px; padding-inline: 14px;
-  background: var(--card); border: 1px solid var(--line); border-radius: 16px; color: var(--ink-2);
-}
-.focus-note:focus-within { border-color: var(--accent); }
-.focus-note svg { flex: none; }
-.focus-note-in { flex: 1; min-inline-size: 0; min-block-size: 48px; border: 0; outline: none; background: transparent; font: inherit; font-size: 16px; color: var(--ink); }
 .focus-spacer { flex: 1; min-block-size: 20px; }
 .btn.hold { inline-size: 100%; min-block-size: 58px; border: none; border-radius: var(--r-btn); font-size: 18px; font-weight: 600; box-shadow: 0 6px 14px rgb(245 179 1 / .3); }
 .hold-sub:empty { display: none; }

@@ -1,6 +1,6 @@
 // Focus mode: the whole screen is the task you're on, calm and light (Mor,
 // 2026-10-05 redesign): an area-tinted card with the title and a ring timer,
-// a note field, "Hold to finish", then +15 min · Pause · Pending. Nothing
+// "Hold to finish", then +15 min · Pause · Pending. Nothing
 // else (the tabs, the Tell bar and the greeting are hidden by body.focus).
 //
 // Two ways out (Mor, 2026-10-05, after Stop, then Pause + Cancel, then a
@@ -165,13 +165,13 @@ function setRing(ring, mins, target){
 }
 
 // The screen is built once per run and handed back every second with only
-// the clock, the ring and the handlers updated — a fresh screen each second
-// would wipe a half-typed note (now.js fill leaves an unchanged screen be).
+// the clock, the ring and the handlers updated (now.js fill leaves an
+// unchanged screen be), so nothing on it is rebuilt under a finger.
 let screen = null; // { key, el, parts, cb }
 
 // run: the state/now doc. task: the task it names (may be missing if it was
 // deleted elsewhere — then Done is disabled).
-// Callers: onDone() · onExtend(minutes) · onPause() · onPending() · onNote(text).
+// Callers: onDone() · onExtend(minutes) · onPause() · onPending().
 export function focusView(run, task, cb){
   const key = `${run.taskId}@${run.startedAt}`;
   const mins = elapsedMinutes(run), target = task ? targetMinutes(run, task) : 0;
@@ -179,17 +179,6 @@ export function focusView(run, task, cb){
   if (screen?.key !== key) {
     const ring = ringParts();
     const title = h("div", { className: "focus-title", dir: "auto" });
-    const note = h("input", { className: "focus-note-in", id: "focusNote", dir: "auto", autocomplete: "off",
-      enterkeyhint: "done", placeholder: "Jot a note while you work…" });
-    const keep = () => {
-      const text = note.value.trim();
-      if (!text) return;
-      note.value = "";
-      note.placeholder = "Noted. Add another…";
-      screen?.cb.onNote?.(text);
-    };
-    note.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); keep(); } });
-    note.addEventListener("change", keep);
     const quiet = (text, aria, fn) => h("button", { className: "btn line", type: "button", textContent: text, ariaLabel: aria, onclick: fn });
     const hold = holdButton(key, `Hold to finish ${what}`, !task, () => screen?.cb.onDone());
     const el = h("div", { className: "focus" + areaClass(task) },
@@ -197,7 +186,6 @@ export function focusView(run, task, cb){
         [areaName(task), projectShown(task)].filter(Boolean).join(" · ") || "Focus")),
       h("section", { className: "focus-card", ariaLabel: "Focus" }, title,
         h("p", { className: "focus-hold", textContent: "I'll hold everything else." }), ring.el),
-      task && h("div", { className: "focus-note" }, focusIcon(), h("label", { className: "sr", htmlFor: "focusNote", textContent: "Note for this task" }), note),
       h("div", { className: "focus-spacer" }),
       hold,
       h("div", { className: "focus-row" },
@@ -211,18 +199,6 @@ export function focusView(run, task, cb){
   setRing(screen.ring, mins, target);
   holdButton(key, `Hold to finish ${what}`, !task, () => screen?.cb.onDone());
   return screen.el;
-}
-
-// The pencil on the note field.
-function focusIcon(){
-  const NS = "http://www.w3.org/2000/svg";
-  const svg = document.createElementNS(NS, "svg");
-  for (const [k, v] of Object.entries({ viewBox: "0 0 24 24", width: 18, height: 18, fill: "none", stroke: "currentColor",
-    "stroke-width": 2, "stroke-linecap": "round", "stroke-linejoin": "round", "aria-hidden": "true" })) svg.setAttribute(k, v);
-  const p = document.createElementNS(NS, "path");
-  p.setAttribute("d", "M4 20h4L19 9l-4-4L4 16z");
-  svg.append(p);
-  return svg;
 }
 
 // After Done: the daisy pops in and drops six petals that drift off, "Done

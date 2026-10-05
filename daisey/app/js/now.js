@@ -39,8 +39,9 @@ const CAL_NOTE = {
 // list can set it aside while it's "physically" on the card.
 // onSweep() opens the old-dates sweep (sweep.js). onProject(name) shows that
 // project's tab in Tasks. name: the first name for the greeting. onDone(n):
-// how many tasks are done today, for the header's daisy.
-export function mountNow(root, uid, { onCard, onSweep, onProject, name = "", onDone } = {}){
+// how many tasks are done today, for the header's daisy. onGreet(text): the
+// greeting the header shows in place of the name ("" = just "Daisey").
+export function mountNow(root, uid, { onCard, onSweep, onProject, name = "", onDone, onGreet } = {}){
   let tasks = null; // null until the first snapshot
   let settings = {}; // state/settings: when the sweep was last offered
   let momentDoc = {}; // state/moment: energy and place corrections
@@ -197,9 +198,9 @@ export function mountNow(root, uid, { onCard, onSweep, onProject, name = "", onD
     return line(`${freeDur(fw.window)} free until ${clock(dayEndAt(Date.now(), dayHours(settings)))}`);
   }
 
-  // The top of the day screen: greeting, the free line, the chips.
-  const topOf = (fw) => h("div", { className: "now-top" },
-    h("h2", { className: "greeting", textContent: greeting(name) }), freeLine(fw), chipsRow());
+  // The top of the day screen, under the header (which carries the greeting:
+  // one section, not two — Mor, 2026-10-05): the free line, the chips.
+  const topOf = (fw) => h("div", { className: "now-top" }, freeLine(fw), chipsRow());
 
   // A chip choice: the correction, and for energy one more point in the
   // pattern for this time of day (context.js energyNow).
@@ -331,13 +332,6 @@ export function mountNow(root, uid, { onCard, onSweep, onProject, name = "", onD
       onPause: pause,
       // Pending from focus mode: pause, and the card asks what it's waiting on.
       onPending: () => { reset(); state.pendAsk = true; pause(); },
-      // A note while working: added to the task's notes as its own line.
-      onNote: (text) => {
-        if (!task) return;
-        const notes = [task.notes, text].filter(Boolean).join("\n");
-        task.notes = notes; // until the snapshot lands
-        restoreTask(uid, task.id, { notes, touchedAt: Date.now() }).catch(fail);
-      },
     });
   }
 
@@ -802,7 +796,7 @@ export function mountNow(root, uid, { onCard, onSweep, onProject, name = "", onD
     for (const id of handoff?.ids || []) ids.add(id);
     return ids.size;
   }
-  let reported = null;
+  let reported = null, greeted = null;
 
   function render(){
     const live = !!run && !run.pausedAt; // a paused run is back on the main screen
@@ -813,6 +807,8 @@ export function mountNow(root, uid, { onCard, onSweep, onProject, name = "", onD
     document.documentElement.classList.toggle("night", night);
     const n = doneCount();
     if (n !== reported) { reported = n; onDone?.(n); }
+    const g = night || live || handoff ? "" : greeting(name); // night says its own "Late, Mor."
+    if (g !== greeted) { greeted = g; onGreet?.(g); }
     if (live) { fill(renderFocus()); return; }
     if (handoff) {
       // The task just worked on isn't offered straight back.
@@ -927,8 +923,8 @@ export function mountNow(root, uid, { onCard, onSweep, onProject, name = "", onD
         h("button", { className: "chip quiet", type: "button", textContent: "Drop", onclick: () => answer({ status: "dropped" }) })));
   }
 
-  // Focus mode hands back the same node every second (focus.js); putting it
-  // back would blur the note field mid-word, so an unchanged screen is left be.
+  // Focus mode hands back the same node every second (focus.js); an
+  // unchanged screen is left be rather than taken out and put back.
   const fill = (...kids) => {
     kids = kids.filter(Boolean);
     if (kids.length === root.children.length && kids.every((k, i) => root.children[i] === k)) return;
