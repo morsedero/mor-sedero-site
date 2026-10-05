@@ -4,8 +4,7 @@ import { configured } from "./config.js";
 const $ = (s) => document.querySelector(s);
 
 import { daisy } from "./look.js";
-import { setHomeHere } from "./where.js";
-import { flash } from "./ui.js";
+import { mountPlaces } from "./places.js";
 
 // The header's daisy, with today's count as a small badge on it (it was a
 // "N done today" pill; the badge keeps the header to one short row).
@@ -108,11 +107,9 @@ async function boot(){
   document.addEventListener("click", (e) => { if (!menu.hidden && !menu.contains(e.target)) setMenu(false); });
   document.addEventListener("keydown", (e) => { if (e.key === "Escape") setMenu(false); });
   $("#signout").onclick = () => { setMenu(false); fb.signOut(); };
-  // Saves where you are now as home, for where.js (this device only).
-  $("#homeHere").onclick = async () => {
-    setMenu(false);
-    flash(await setHomeHere() ? "Saved this spot as home" : "Couldn't get your location. Allow it for this site and try again.");
-  };
+  // Where you are, by hand, and saved places (this device only).
+  const places = mountPlaces($("#placedlg"));
+  $("#placesBtn").onclick = () => { setMenu(false); places.open(); };
 
   const SIGNED_IN = ["#board", "#tell"];
 

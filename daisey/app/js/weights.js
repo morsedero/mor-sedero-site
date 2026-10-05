@@ -36,9 +36,10 @@ export const STALE_SKIPS = 5; // skipped this many times without a start → sto
 // errands; a train adds the laptop; a bus, or a ride not yet named, takes
 // calls and anywhere-tasks only; driving takes nothing (now.js shows the
 // driving card instead of a task).
-export const PLACES = ["home", "out", "anywhere", "walk", "ride", "train", "bus", "car"];
+export const PLACES = ["home", "out", "anywhere", "walk", "ride", "train", "bus", "car", "spot"];
 export const PLACE_BLOCKS = {
   out: ["home", "computer"], home: [],
+  spot: ["home"], // a saved place that isn't home: settled, so the laptop is fine
   walk: ["home", "computer"],
   train: ["home", "out"],
   bus: ["home", "out", "computer"], ride: ["home", "out", "computer"],
@@ -70,6 +71,8 @@ export const MOMENTUM = {
 };
 // The why line calls a task a "quick win" only up to this many minutes.
 export const QUICK_WIN_MAX = 15;
+// A task naming the saved place you're at (engine spot()).
+export const SPOT_POINTS = 10;
 export const BATCH = { bonus: 10, types: ["call", "admin", "errand"], min: 2, max: 5 };
 export const LEARNED_MIN = -10;
 export const LEARNED_MAX = 10;

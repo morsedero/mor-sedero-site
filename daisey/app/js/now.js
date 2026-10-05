@@ -202,7 +202,8 @@ export function mountNow(root, uid, { onCard, onSweep, onProject, name = "", onD
   // On the move, the free line says so first: "On the train · 2 h free …".
   const MODE_WORD = { walk: "Walking", train: "On the train", bus: "On the bus", ride: "On the move" };
   function moving(line){
-    const word = MODE_WORD[feel().place.value];
+    const p = feel().place;
+    const word = p.value === "spot" ? `At ${p.spot}` : MODE_WORD[p.value];
     if (!word) return line;
     if (!line) return h("p", { className: "freeline", textContent: word });
     line.prepend(`${word} · `);
@@ -559,6 +560,7 @@ export function mountNow(root, uid, { onCard, onSweep, onProject, name = "", onD
       skipsToday: skipCounts(),
       energy: f.energy.value,
       place: f.place.value,
+      spot: f.place.spot,
       learnStats,
       booked: Object.fromEntries([...booked()].map(([id, b]) => [id, b.start])),
     };

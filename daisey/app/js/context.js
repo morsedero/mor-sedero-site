@@ -6,7 +6,7 @@
 // 5), else Medium — then one step lower if a long or draining calendar
 // event ended in the last hour.
 // Place: your correction in the last 3 hours; else the phone's location
-// (where.js: home, out, walk, ride, train, bus, car); else Out
+// (where.js: home, out, walk, ride, train, bus, car, spot:<name>); else Out
 // while an event with a location runs or just after it; else Home.
 import * as W from "./weights.js";
 import { timeBucket } from "./engine.js";
@@ -37,7 +37,8 @@ export function energyNow({ correction = null, history = [], events = [], now = 
 
 export function placeNow({ correction = null, located = null, events = [], now = Date.now() } = {}){
   if (fresh(correction, now) && ["home", "out", "anywhere"].includes(correction.value)) return { value: correction.value, guessed: false };
-  if (W.PLACES.includes(located) && located !== "anywhere") return { value: located, guessed: false, located: true };
+  if (String(located).startsWith("spot:")) return { value: "spot", spot: located.slice(5), guessed: false, located: true };
+  if (W.PLACES.includes(located) && !["anywhere", "spot"].includes(located)) return { value: located, guessed: false, located: true };
   const out = events.some((e) => {
     if (e.allDay || !e.location) return false;
     const start = Date.parse(e.start), end = Date.parse(e.end);

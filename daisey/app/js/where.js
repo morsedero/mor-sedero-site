@@ -1,27 +1,43 @@
 // Where you are, from the phone's location (Mor, 2026-10-05: the place chip
-// went; Daisey works it out). Read when the app opens and again when it
-// comes back after REDETECT_MS — a web page gets no background location.
-// Fixes over ~10s give a speed, same rules as the old Daisey's placeClassify
-// (2026-10-05): under ~10 km/h is walking, faster is a ride. Speed can't
-// tell a train from a bus from a car, so a ride asks once (now.js rideAsk)
-// and keeps the answer for RIDE_MS. Standing still near the saved home →
-// Home; still and away from it → Out. Still with no home saved, or no
-// location at all (denied, unsupported) → null, and the calendar's guess
-// stands (context.js placeNow).
-// Places: home · out · walk · ride (not answered yet) · train · bus · car.
+// went; Daisey works it out). Ported from the old Daisey's where-you-are
+// (placeClassify / placeSheet), which had landed there by mistake.
+// Read when the app opens, then every REDETECT_MS while it's on screen — a
+// web page gets no background location.
+// Fixes over ~10s give a speed: under ~10 km/h is walking, faster is a
+// ride. Speed can't tell a train from a bus from a car, so a ride asks once
+// (now.js rideAsk) and keeps the answer for RIDE_MS. Standing still near a
+// saved place → that place (Home → "home", any other → "spot:<name>");
+// still and away from all of them → Out. Still with no Home saved and no
+// place near, or no location at all (denied, unsupported) → null, and the
+// calendar's guess stands (context.js placeNow).
+// Picked by hand in the Places sheet (places.js): that holds MANUAL_MS,
+// over whatever the location says.
+// Places: home · out · walk · ride (not answered yet) · train · bus · car ·
+// spot:<name>.
 // Per-device localStorage only, never Firestore: home's coordinates don't
-// belong in the cloud. Home is set from the account menu ("Home is here").
+// belong in the cloud.
 const KEY = "daisey.where.v1";
-const NEAR_M = 150;          // within this of home (or the fix's accuracy, if worse) = home
+const NEAR_M = 150;          // within this of a place (or the fix's accuracy, if worse, up to 400) = there
 const STILL_MPS = 0.7;       // under this you're standing still
 const WALK_MPS = 2.8;        // under this (~10 km/h) you're walking; over it, riding
 const RIDE_MS = 2 * 3600000; // a train / bus / car answer holds for the rest of the ride
+const MANUAL_MS = 45 * 60000; // a hand-picked place outranks the location this long
 export const RIDES = ["train", "bus", "car"];
 const WINDOW_MS = 10000;     // how long to collect fixes for a speed
 const REDETECT_MS = 5 * 60000;
 
-const load = () => { try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch { return {}; } };
+// { places: [{ name, lat, lng }], last: fix, ride: { mode, at }, manual: { value, at } }.
+// The first version kept one `home`; it becomes the place called Home.
+function load(){
+  let d = {};
+  try { d = JSON.parse(localStorage.getItem(KEY)) || {}; } catch { /* nothing saved */ }
+  if (d.home && !d.places) { d.places = [{ name: "Home", ...d.home }]; delete d.home; }
+  d.places ||= [];
+  return d;
+}
 const save = (d) => { try { localStorage.setItem(KEY, JSON.stringify(d)); } catch { /* per-tab only */ } };
+const isHome = (name) => name.trim().toLowerCase() === "home";
+const placeOf = (p) => (isHome(p.name) ? "home" : `spot:${p.name}`);
 
 // Metres between two { lat, lng }.
 function dist(a, b){
@@ -32,7 +48,7 @@ function dist(a, b){
 }
 
 // The fixes → a place (above) or null. Exported for the tests.
-export function placeFrom(fixes, home, ride = null, now = Date.now()){
+export function placeFrom(fixes, places = [], ride = null, now = Date.now()){
   if (!fixes.length) return null;
   const last = fixes.at(-1), first = fixes[0];
   const speeds = fixes.map((f) => f.speed).filter((v) => v != null && !Number.isNaN(v)).sort((a, b) => a - b);
@@ -45,15 +61,18 @@ export function placeFrom(fixes, home, ride = null, now = Date.now()){
   v ??= 0;
   if (v >= WALK_MPS) return ride && now - ride.at < RIDE_MS ? ride.mode : "ride";
   if (v >= STILL_MPS) return "walk";
-  if (!home) return null;
-  return dist(last, home) <= Math.max(NEAR_M, last.acc || 0) ? "home" : "out";
+  const reach = Math.max(NEAR_M, Math.min(last.acc || 0, 400));
+  const near = places.map((p) => ({ p, d: dist(last, p) })).filter((x) => x.d <= reach).sort((a, b) => a.d - b.d)[0];
+  if (near) return placeOf(near.p);
+  return places.some((p) => isHome(p.name)) ? "out" : null;
 }
 
 let current = null, lastRun = 0, running = null;
 const listeners = new Set();
 const tell = (v) => { if (v !== current) { current = v; listeners.forEach((f) => f(v)); } };
+const manualNow = (d = load()) => (d.manual && Date.now() - d.manual.at < MANUAL_MS ? d.manual.value : null);
 
-// Collects fixes for WINDOW_MS (or until one reports its own speed).
+// Collects fixes for WINDOW_MS (or until two report their own speed).
 function fixes(){
   const geo = navigator.geolocation;
   if (!geo) return Promise.resolve([]);
@@ -72,9 +91,12 @@ function fixes(){
 async function detect(){
   if (running) return running;
   lastRun = Date.now();
+  const manual = manualNow();
+  if (manual) { tell(manual); return; }
   running = fixes().then((fs) => {
     if (fs.length) save({ ...load(), last: fs.at(-1) });
-    tell(placeFrom(fs, load().home, load().ride));
+    const d = load();
+    tell(manualNow(d) || placeFrom(fs, d.places, d.ride));
   }).finally(() => { running = null; });
   return running;
 }
@@ -91,6 +113,10 @@ export function watchWhere(onChange){
   return () => { listeners.delete(onChange); clearInterval(timer); document.removeEventListener("visibilitychange", again); };
 }
 
+export const whereNow = () => current;
+export const savedPlaces = () => load().places.map((p) => p.name);
+export const pickedByHand = () => !!manualNow();
+
 // The answer to "train, bus or driving?" (or "I'm a passenger" = bus).
 export function setRide(mode){
   if (!RIDES.includes(mode)) return;
@@ -98,15 +124,39 @@ export function setRide(mode){
   tell(mode);
 }
 
-// "Home is here": saves the latest fix (a fresh one if there's none from the
-// last minute) as home. Resolves true when saved, false with no location.
-export async function setHomeHere(){
+// A place picked by hand, for MANUAL_MS; null goes back to the location.
+export function setManual(value){
+  const d = load();
+  if (value) {
+    save({ ...d, manual: { value, at: Date.now() }, ...(RIDES.includes(value) ? { ride: { mode: value, at: Date.now() } } : {}) });
+    tell(value);
+  } else {
+    delete d.manual;
+    save(d);
+    lastRun = 0;
+    detect();
+  }
+}
+
+// Saves where you are now under `name` (Home, Studio, …), replacing a place
+// of the same name; a fresh fix if there's none from the last minute.
+// Resolves true when saved, false with no location.
+export async function saveSpot(name){
+  name = String(name || "").trim();
+  if (!name) return false;
   let fix = load().last;
-  if (!fix || Date.now() - fix.t > 60000) { await detect(); fix = load().last; }
-  if (!fix) return false;
-  save({ ...load(), home: { lat: fix.lat, lng: fix.lng } });
-  tell("home");
+  if (!fix || Date.now() - fix.t > 60000) { await fixes().then((fs) => fs.length && save({ ...load(), last: fs.at(-1) })); fix = load().last; }
+  if (!fix || Date.now() - fix.t > 60000) return false;
+  const d = load();
+  const places = d.places.filter((p) => p.name.toLowerCase() !== name.toLowerCase()).concat({ name, lat: fix.lat, lng: fix.lng });
+  save({ ...d, places });
+  tell(placeOf({ name }));
   return true;
 }
 
-export const hasHome = () => !!load().home;
+export function removeSpot(name){
+  const d = load();
+  save({ ...d, places: d.places.filter((p) => p.name !== name) });
+  lastRun = 0;
+  detect();
+}

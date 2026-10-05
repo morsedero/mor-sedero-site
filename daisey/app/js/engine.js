@@ -14,7 +14,7 @@ import { officeOpen, officeMinutesLeft } from "./holidays.js";
 const MIN = 60000;
 const DAY = 86400000;
 // Every scoring factor, in why-line tie order (earlier wins a tie).
-const FACTORS = ["deadline", "stakes", "office", "batch", "area", "target", "window", "energy", "momentum", "neglect", "learned"];
+const FACTORS = ["deadline", "stakes", "office", "batch", "spot", "area", "target", "window", "energy", "momentum", "neglect", "learned"];
 const DAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
@@ -73,6 +73,7 @@ export function matchProject(title, projects){
 //   nextEvent       title of the next calendar event ("fits before teaching")
 //   energy          low · medium · high (the card's chip; default medium)
 //   place           home · out · anywhere · walk · ride · train · bus · car
+//                   · spot (a saved place other than Home; `spot` names it)
 //                   (where.js; default anywhere)
 //   blockProject    a calendar block named after a project: only its tasks
 //   lastProject     project last started or finished today
@@ -98,6 +99,7 @@ export function readMoment(input = {}){
     officeOpen: officeOpen(now),
     officeLeft: officeMinutesLeft(now),
     blockProject: input.blockProject ? key(input.blockProject) : null,
+    spot: W.PLACES.includes(input.place) && input.place === "spot" && input.spot ? String(input.spot) : null,
     lastProject: input.lastProject || null,
     recentProjects: (input.recentProjects || []).map(key),
     areaDone: input.areaDone || {},
@@ -242,6 +244,14 @@ function batch(task, batches){
 }
 
 // How often tasks of this type were started vs skipped at this time of day.
+// At a saved place (Studio, Gym…): a task that names it, in its project or
+// title, belongs there. Same idea as the old Daisey's place labels.
+function spot(task, m){
+  const s = key(m.spot);
+  if (!s || !(key(task.project).includes(s) || key(task.title).includes(s))) return { points: 0, detail: null };
+  return { points: W.SPOT_POINTS, detail: { name: m.spot } };
+}
+
 function learned(task, m){
   const s = m.learnStats[`${task.type}|${m.bucket.part}`];
   if (!s) return { points: 0, detail: null };
@@ -263,7 +273,7 @@ export function scoreTask(task, m, ctx = { batches: new Map(), areas: [] }){
   const f = {
     deadline: deadline(task, m), target: target(task, m), stakes: stakes(task), area: areaBalance(task, m, ctx.areas), neglect: neglect(task, m),
     energy: energyFit(task, m), window: windowFit(task, m), momentum: momentum(task, m), batch: batch(task, ctx.batches), learned: learned(task, m),
-    office: office(task, m),
+    office: office(task, m), spot: spot(task, m),
   };
   const parts = Object.fromEntries(FACTORS.map((k) => [k, f[k].points]));
   const details = Object.fromEntries(FACTORS.map((k) => [k, f[k].detail]));
@@ -317,6 +327,7 @@ const PHRASES = {
     : d.step === 0 && d.energy === "high" ? ["good use of high energy"] : null,
   momentum: (s, d) => d.kind === "today" ? ["keeps ", { name: s.task.project }, " going"] : ["back to ", { name: s.task.project }],
   neglect: (s, d) => [`untouched for ${d.days} days`],
+  spot: (s, d) => ["you're at ", { name: d.name }],
   learned: (s, d) => s.parts.learned > 0 ? [`you usually do these in the ${d.bucket}`] : null,
 };
 

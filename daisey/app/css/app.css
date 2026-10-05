@@ -986,3 +986,12 @@ body.focus .tell-panel { display: none; }
 /* "On a Train / Bus / Driving" — asked once per ride (now.js rideAsk). */
 .ride-ask { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-block-end: 10px; font-size: 13px; }
 .ride-ask .chip { min-block-size: 36px; padding-inline: 12px; border: none; background: var(--chip); font-size: 13px; }
+
+/* The Places sheet (places.js). */
+.pl-opts { display: flex; flex-wrap: wrap; gap: 6px; margin-block: 4px 8px; }
+.pl-opts .chip { min-block-size: 38px; padding-inline: 13px; border: none; background: var(--chip); font-size: 14px; }
+.pl-opts .chip[aria-checked="true"] { background: var(--ink); color: var(--bg); }
+.pl-h { margin: 18px 0 8px; font-size: 14px; font-weight: 600; }
+.pl-save { display: grid; grid-template-columns: 1fr auto; gap: 6px 8px; align-items: end; margin-block-start: 10px; }
+.pl-list { list-style: none; margin: 14px 0 0; padding: 0; display: grid; gap: 8px; }
+.pl-list li { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
