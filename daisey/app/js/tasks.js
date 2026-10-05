@@ -19,10 +19,11 @@
 import { watchTasks, finishTask, restoreTask } from "./store.js";
 import { INBOX, notYet, localDate } from "./model.js";
 import { isOverdue, isRolled, sweepList } from "./triage.js";
-import { h, bdi, flash } from "./ui.js";
+import { h, bdi, flash, icon } from "./ui.js";
 import { dirOf } from "./look.js";
 
 const shortDate = (s) => new Date(`${s}T12:00`).toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" });
+const weekday = (s) => new Date(`${s}T12:00`).toLocaleDateString(undefined, { weekday: "short" });
 const DRAG = 0.6; // how far the chip row moves per pixel of pointer — under 1 = heavier
 const FLING_DECAY = 0.93; // what's left of the glide's speed each frame after release
 const FLING_STOP = 0.4; // px a frame, below which the glide is over and the row settles
@@ -76,19 +77,24 @@ export function mountTasks(root, uid, { onOpen, onSweep } = {}){
 
   // The one line under a title: when it matters, in words, and nothing else.
   // Size and notes are on the sheet, not here (Mor, 2026-10-04: "so dense").
-  function whenOf(t){
+  // The section heading already says part of it (Mor, 2026-10-05): under
+  // Today a target for today says nothing but its time, and This week says
+  // the weekday, not the date.
+  function whenOf(t, section){
     if (t.status === "waiting") return t.waitingOn ? `waiting on ${t.waitingOn}` : "waiting";
     if (notYet(t)) return `not before ${shortDate(t.notBefore)}`;
     if (!t.due) return "";
     if (isRolled(t)) return `moved from ${shortDate(t.due)}`;
-    return `${t.dateKind === "deadline" ? "due" : "by"} ${shortDate(t.due)}${t.dueTime ? " " + t.dueTime : ""}`;
+    const kind = t.dateKind === "deadline" ? "due" : "by", time = t.dueTime ? " " + t.dueTime : "";
+    if (section === "today" && t.due === localDate()) return kind === "due" ? `due${time || " today"}` : time.trim();
+    return `${kind} ${section === "week" ? weekday(t.due) : shortDate(t.due)}${time}`;
   }
 
   // One row shape for both views. `withProject` only in the List view, where
   // the column header isn't there to say it.
-  function row(t, { withProject } = {}){
+  function row(t, { withProject, section } = {}){
     const isNow = t.id === onCard;
-    const when = whenOf(t);
+    const when = whenOf(t, section);
     const showProj = withProject && t.project !== INBOX;
     // The whole row follows its title's direction: a Hebrew task puts its
     // circle on the right (dirOf, since dir=auto can't see into the <bdi>).
@@ -96,7 +102,8 @@ export function mountTasks(root, uid, { onOpen, onSweep } = {}){
       circle(t, false),
       h("button", { type: "button", className: "tk-open", ariaLabel: `Open ${t.title}`, onclick: () => onOpen?.(t) },
         h("div", { className: "tk-title" }, bdi(t.title),
-          isNow && h("span", { className: "tk-now", title: "On the Now card", textContent: "now" })),
+          // On the card: the Start button's play mark, not a word.
+          isNow && h("span", { className: "tk-now", role: "img", ariaLabel: "On the Now card", title: "On the Now card" }, icon("play"))),
         (showProj || when) && h("div", { className: "tk-meta" },
           // The project leads to its tab (Mor, 2026-10-04): tap it and the
           // list filters to that project. It sits inside the row's button, so
@@ -323,7 +330,7 @@ export function mountTasks(root, uid, { onOpen, onSweep } = {}){
         h("h3", { className: "tk-sec-h" }, h("span", { textContent: label }),
           k === sortAt && h("button", { className: "linkish tk-sort", type: "button", textContent: "Sort old dates", onclick: () => onSweep?.() }),
           h("span", { className: "muted", textContent: String(items.length) })),
-        h("ul", { className: "tk-list" }, ...items.map((t) => row(t, { withProject: !project }))));
+        h("ul", { className: "tk-list" }, ...items.map((t) => row(t, { withProject: !project, section: k }))));
     });
 
     return h("div", { className: "tk-single" },

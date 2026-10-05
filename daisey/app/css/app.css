@@ -471,10 +471,10 @@ body.focus .shell { padding-block: max(18px, env(safe-area-inset-top)) max(24px,
    used to hang past the end of the panel. */
 .tk-row.is-now { background: color-mix(in srgb, var(--accent) 12%, transparent); border-radius: 10px; padding-inline: 8px; margin-inline: -8px; }
 .tk-now {
-  margin-inline-start: 6px; padding: 1px 7px; border-radius: 999px; vertical-align: 1px;
-  font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em;
+  display: inline-grid; place-items: center; margin-inline-start: 6px; inline-size: 18px; block-size: 18px; border-radius: 50%; vertical-align: -2px;
   background: var(--accent); color: var(--ink);
 }
+.tk-now svg { inline-size: 9px; block-size: 9px; margin-inline-start: 1px; }
 .tk-check {
   flex: none; inline-size: 22px; block-size: 22px; margin-block-start: 1px; border-radius: 50%; cursor: pointer;
   border: 2px solid var(--ink-2); background: var(--surface); color: var(--card); font-size: 13px; font-weight: 800; line-height: 1; padding: 0;
@@ -638,9 +638,9 @@ dialog.now { overflow-y: auto; overscroll-behavior: contain; }
 /* Under the header, one row: the greeting at the start, the free line at
    the end (it wraps to a second line before the greeting does). */
 .now-top-wrap { display: grid; gap: 8px; margin-block: 4px 12px; }
-.now-top { display: grid; grid-template-columns: minmax(0, auto) minmax(42%, 1fr); align-items: center; gap: 12px; }
+.now-top { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 12px; }
 .greeting { margin: 0; font-size: 18px; font-weight: 600; letter-spacing: -0.2px; line-height: 1.25; }
-.freeline { margin: 0; font-size: 13px; line-height: 1.3; color: var(--ink-2); text-align: end; }
+.freeline { margin: 3px 0 0; font-size: 13px; line-height: 1.3; color: var(--ink-2); }
 .ctx-line { display: flex; gap: 5px; }
 .ctx-opts { justify-content: flex-end; }
 .ctx-opts .chip[aria-checked="true"] { background: var(--ink); color: var(--bg); }
@@ -977,6 +977,24 @@ body.focus .tell-panel { display: none; }
 .plus-menu button:disabled { opacity: .45; cursor: default; }
 .tell-first { flex: none; min-block-size: 36px; padding-inline: 12px; font-size: 13px; }
 
-/* The date and time, back under the greeting (Mor, 2026-10-05). */
+/* The time and date as a clock tile at the top end (Mor, 2026-10-05). */
 .greet-col { min-inline-size: 0; }
-.top-date { margin: 2px 0 0; font-size: 13px; color: var(--ink-2); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.clock-tile {
+  display: grid; justify-items: center; padding: 7px 14px 8px; border-radius: 16px; background: var(--chip);
+  font-variant-numeric: tabular-nums; white-space: nowrap; line-height: 1;
+}
+.clock-time { font-size: 26px; font-weight: 600; letter-spacing: -0.5px; }
+.clock-date { margin-block-start: 4px; font-size: 11px; font-weight: 500; color: var(--ink-2); }
+
+/* The hero's reasons, as tags in the area's colour. */
+.why-tags { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0 0; padding: 0; list-style: none; }
+.why-tag {
+  padding: 4px 10px; border-radius: 999px; font-size: 13px; font-weight: 500; line-height: 1.3;
+  background: color-mix(in srgb, var(--aink) 11%, transparent); color: var(--aink);
+}
+
+/* Energy chip: the bolt plus a three-bar meter for the level. */
+.meter { display: inline-flex; align-items: flex-end; gap: 2px; block-size: 12px; }
+.meter i { inline-size: 3px; border-radius: 1px; background: currentColor; opacity: .25; }
+.meter i:nth-child(1) { block-size: 5px; } .meter i:nth-child(2) { block-size: 8px; } .meter i:nth-child(3) { block-size: 12px; }
+.meter.m-low i:nth-child(1), .meter.m-medium i:nth-child(-n+2), .meter.m-high i { opacity: 1; }

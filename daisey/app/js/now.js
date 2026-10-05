@@ -16,7 +16,7 @@ import { shouldOffer, sweepList, pickWeekDay } from "./triage.js";
 import { focusView, handoffView, elapsedMinutes, targetMinutes, batchFocusView, batchName, sinceMark, paused, resumed } from "./focus.js";
 import { watchCalendar, deleteEvent, logDone } from "./calendar.js";
 import { LATER_MINUTES, DRAIN, CANCEL_KEEP_MINUTES } from "./weights.js";
-import { rank, freeWindow, whySaid, timeBucket, matchProject } from "./engine.js";
+import { rank, freeWindow, timeBucket, matchProject } from "./engine.js";
 import { localDate, skipSnapshot, shrunk, shrinkPatch, notYet, LABELS } from "./model.js";
 import { dayHours, isNight, nextMorning, dayEndAt, bookings, sameTitle, minText } from "./day.js";
 import { nextOffer, draftFrom } from "./caltask.js";
@@ -30,12 +30,8 @@ const UNDO_MS = 5000;
 const SLIDE_MS = 140; // matches the card-out animation in app.css
 const motionOK = () => !window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 const clock = (ms) => new Date(ms).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
-// "Mon 5 Oct · 14:03", under the greeting; the tick below keeps it current.
-const stamp = (ms = Date.now()) => `${new Date(ms).toLocaleDateString([], { weekday: "short", day: "numeric", month: "short" })} · ${clock(ms)}`;
-const CAL_NOTE = {
-  not_connected: "Calendar not connected. Sign in to the old Daisey once to link it.",
-  needs_reauth: "Calendar sign-in expired. Sign in to the old Daisey again to refresh it.",
-};
+// "Mon 5 Oct", under the time in the clock tile; the tick below keeps both current.
+const dayText = (ms = Date.now()) => new Date(ms).toLocaleDateString([], { weekday: "short", day: "numeric", month: "short" });
 
 // onCard(id | null) fires whenever the task on the card changes, so the task
 // list can set it aside while it's "physically" on the card.
@@ -105,15 +101,26 @@ export function mountNow(root, uid, { onCard, onSweep, onProject, name = "", onD
   // alternatives keep the plain why line, so only one voice is speaking.
   // Names in the why line (projects, people, events) are their own <bdi>.
   function taskCard(s, main, ...extra){
-    const why = main ? whySaid(s) : sentence(s.whyParts);
+    const why = !main && sentence(s.whyParts);
     const t = s.task;
     return h("div", { className: "now-card" + (main ? " main hero" : "") + areaClass(t) },
       main ? heroTop(t, sizeText(t.size))
         : h("div", { className: "now-meta" }, ...pieces(t.project, sizeText(t.size))),
       h("div", { className: "now-title", dir: "auto", textContent: t.title }),
       t.nextStep && h("p", { className: "now-next" }, "Next: ", bdi(t.nextStep)),
-      why && h("p", { className: "now-why" }, ...say(why)),
+      main ? reasonTags(s.whyParts) : why && h("p", { className: "now-why" }, ...say(why)),
       ...extra);
+  }
+
+  // The card's reasons as soft tags in the area's colour, one per reason
+  // (Mor, 2026-10-05: "I'd do this now: …" read as a paragraph; tags read
+  // at a glance). Nothing to say → no tags.
+  function reasonTags(parts){
+    const groups = [[]];
+    for (const p of parts || []) p === ", " ? groups.push([]) : groups.at(-1).push(p);
+    const tags = groups.filter((g) => g.length).map(([first, ...rest]) => h("li", { className: "why-tag" },
+      ...say([typeof first === "string" ? first[0].toUpperCase() + first.slice(1) : first, ...rest])));
+    return tags.length ? h("ul", { className: "why-tags", ariaLabel: "Why this one" }, ...tags) : null;
   }
 
   // The hero's top row: area dot, "Area · project" in the area's colour, and
@@ -176,9 +183,10 @@ export function mountNow(root, uid, { onCard, onSweep, onProject, name = "", onD
         ariaExpanded: String(ctxOpen === kind), ariaLabel: kind === "energy" ? `${label} energy` : label,
         title: cur.guessed ? "Daisey's guess. Tap to correct." : "Tap to change.",
         onclick: () => { ctxOpen = ctxOpen === kind ? null : kind; render(); } },
+      // Icons only (Mor, 2026-10-05); the words stay in the label for screen
+      // readers. Energy adds a three-bar meter for its level.
       icon(kind === "energy" ? "energy" : PLACE_ICON[cur.value] || "where"),
-      // The bolt already says "energy"; the word stays in the label for screen readers.
-      h("span", { textContent: label }));
+      kind === "energy" && h("span", { className: `meter m-${cur.value}`, ariaHidden: "true" }, h("i"), h("i"), h("i")));
     };
     return h("div", { className: "ctx-line" }, chip("place", PLACES, f.place), chip("energy", ENERGIES, f.energy));
   }
@@ -206,17 +214,20 @@ export function mountNow(root, uid, { onCard, onSweep, onProject, name = "", onD
     return line(`${freeDur(fw.window)} free until ${clock(dayEndAt(Date.now(), dayHours(settings)))}`);
   }
 
-  // The top of the day screen, trimmed to two rows (Mor, 2026-10-05: "still
-  // takes up a lot of space"): the header row carries the chips; under it the
-  // greeting at the start and the free line anchored to the end.
+  // The top of the day screen (Mor, 2026-10-05): the header row carries the
+  // chips; under it the greeting and the free line at the start, and the
+  // time and date as a clock tile at the end.
   function topOf(fw){
     ctxSlot?.replaceChildren(chipsRow());
+    const now = Date.now();
     return h("div", { className: "now-top-wrap" },
       h("div", { className: "now-top" },
         h("div", { className: "greet-col" },
           h("h2", { className: "greeting", textContent: greeting(name) }),
-          h("p", { className: "top-date", textContent: stamp() })),
-        freeLine(fw)),
+          freeLine(fw)),
+        h("div", { className: "clock-tile" },
+          h("span", { className: "clock-time", textContent: clock(now) }),
+          h("span", { className: "clock-date", textContent: dayText(now) }))),
       choicesRow());
   }
 
@@ -851,7 +862,6 @@ export function mountNow(root, uid, { onCard, onSweep, onProject, name = "", onD
       freeFrom && busy && h("p", { className: "muted" }, "Ignoring ", bdi(busy.title), " ",
         h("button", { className: "linkish", type: "button", textContent: "put it back",
           ariaLabel: `Stop ignoring ${busy.title}`, onclick: () => { freeFrom = null; render(); } })),
-      CAL_NOTE[cal.status] && h("p", { className: "muted" }, CAL_NOTE[cal.status] + " ", h("a", { href: "/daisey/", textContent: "Open old Daisey" })),
       // Too many passed dates: one quiet line, at most once a day.
       tasks && shouldOffer(tasks, Date.now(), settings) && h("p", { className: "muted offer" },
         `${sweepList(tasks).length} old dates are piling up.`,
@@ -964,8 +974,10 @@ export function mountNow(root, uid, { onCard, onSweep, onProject, name = "", onD
     if (document.hidden) return;
     if (run && !run.pausedAt) { const c = Math.floor(elapsedMinutes(run) * 60); if (c !== lastClock) { lastClock = c; render(); } return; }
     if (windowMark(calendarNow()) !== lastWindow) render();
-    const date = root.querySelector(".top-date"), now = stamp();
-    if (date && date.textContent !== now) date.textContent = now;
+    for (const [sel, text] of [[".clock-time", clock(Date.now())], [".clock-date", dayText()]]) {
+      const el = root.querySelector(sel);
+      if (el && el.textContent !== text) el.textContent = text;
+    }
   }, 1000);
   const onVisible = () => { if (!document.hidden) render(); };
   document.addEventListener("visibilitychange", onVisible);
