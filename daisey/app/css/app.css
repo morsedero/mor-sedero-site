@@ -913,20 +913,13 @@ body:has(.screen:not([hidden])) { overflow: hidden; }
 .pj-hint svg { inline-size: 16px; block-size: 16px; stroke-width: 2; }
 
 /* The task sheet: a bottom sheet. */
-dialog.tsheet { inline-size: 100%; max-inline-size: 560px; max-block-size: calc(100dvh - 40px); margin: auto auto 0; padding: 8px 20px max(20px, env(safe-area-inset-bottom)); border-radius: 24px 24px 0 0; box-shadow: 0 -8px 24px rgb(0 0 0 / .08); }
+dialog.tsheet { inline-size: calc(100% - 32px); max-inline-size: 560px; max-block-size: calc(100dvh - 32px); margin: auto; padding: 18px 20px 20px; border-radius: 24px; box-shadow: 0 12px 32px rgb(0 0 0 / .12); }
 dialog.tsheet[open] { display: flex; flex-direction: column; }
-@media (prefers-reduced-motion: no-preference) { dialog.tsheet[open] { animation: sheet-up .22s ease-out; } }
-@keyframes sheet-up { from { transform: translateY(24px); } }
-.ts-grip { flex: none; display: block; inline-size: 100%; block-size: 22px; padding: 0; border: 0; background: none; cursor: pointer; }
-.ts-grip span { display: block; inline-size: 40px; block-size: 5px; margin: 0 auto; border-radius: 3px; background: var(--bud); }
-/* A new task: a centred card, no grip, an X in the corner. */
-.ts-x { display: none; }
-dialog.tsheet.fresh { inline-size: calc(100% - 32px); max-block-size: calc(100dvh - 32px); margin: auto; padding-block: 18px 20px; border-radius: 24px; box-shadow: 0 12px 32px rgb(0 0 0 / .12); }
-dialog.tsheet.fresh .ts-grip { display: none; }
-dialog.tsheet.fresh .ts-x { position: absolute; inset-block-start: 10px; inset-inline-end: 10px; z-index: 1; display: grid; place-items: center; inline-size: 36px; block-size: 36px; padding: 0; border: 0; border-radius: 50%; background: var(--chip); color: var(--ink); cursor: pointer; }
+@media (prefers-reduced-motion: no-preference) { dialog.tsheet[open] { animation: card-in .18s ease-out; } }
+/* The task card: centred, an X in the corner. */
+.ts-x { position: absolute; inset-block-start: 10px; inset-inline-end: 10px; z-index: 1; display: grid; place-items: center; inline-size: 36px; block-size: 36px; padding: 0; border: 0; border-radius: 50%; background: var(--chip); color: var(--ink); cursor: pointer; }
 .ts-x svg { inline-size: 16px; block-size: 16px; stroke-width: 2; }
-dialog.tsheet.fresh .ts-proj { padding-inline-end: 44px; }
-@media (prefers-reduced-motion: no-preference) { dialog.tsheet.fresh[open] { animation: card-in .18s ease-out; } }
+dialog.tsheet .ts-proj { padding-inline-end: 44px; }
 @keyframes card-in { from { opacity: 0; transform: scale(.97); } }
 .ts-proj { display: flex; align-items: center; gap: 6px; margin-block-start: 14px; color: var(--aink); }
 .ts-proj .dot { inline-size: 8px; block-size: 8px; flex: none; border-radius: 50%; background: currentColor; }
@@ -971,6 +964,9 @@ dialog.tsheet.fresh .ts-proj { padding-inline-end: 44px; }
 .ts-step-t { flex: 1; min-inline-size: 0; padding: 6px 0; border: 0; border-block-end: 1px solid transparent; background: none; color: var(--ink); font: inherit; font-size: 15px; font-weight: 500; }
 .ts-step-t:focus { outline: none; border-block-end-color: var(--line); }
 .ts-step.done .ts-step-t { font-weight: 400; color: #8c8574; text-decoration: line-through; }
+.ts-step-x { flex: none; display: grid; place-items: center; inline-size: 32px; block-size: 32px; padding: 0; border: 0; border-radius: 50%; background: none; color: var(--ink-2); cursor: pointer; opacity: .6; }
+.ts-step-x:hover, .ts-step-x:focus-visible { opacity: 1; background: var(--chip); }
+.ts-step-x svg { inline-size: 14px; block-size: 14px; stroke-width: 2; }
 .ts-next { flex: none; padding: 2px 8px; border-radius: 999px; background: var(--a-job-tint); color: var(--a-job-ink); font-size: 11px; font-weight: 600; }
 .ts-add { min-block-size: 38px; padding-block: 0; padding-inline: 30px 0; border: 0; background: none; color: var(--ink-2); font: inherit; font-size: 14px; cursor: pointer; }
 .ts-links { display: flex; flex-wrap: wrap; gap: 6px; }
