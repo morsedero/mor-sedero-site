@@ -55,13 +55,42 @@ const field = (label, input, wide) => {
   return h("div", { className: "field" + (wide ? " wide" : "") }, h("label", { htmlFor: input.id, textContent: label }), input);
 };
 
+// The start time as two pickers, hour and minute, with only :00, :05 … :55
+// on offer (Mor, 2026-10-05: the phone's own time picker listed every
+// minute and then refused most of them). It reads and writes "HH:MM" like
+// the time input it replaced. An event already at an odd minute keeps it:
+// that one minute is added to the list, so opening it moves nothing.
+function timePick(){
+  const pad = (n) => String(n).padStart(2, "0");
+  const opt = (v) => h("option", { value: pad(v), textContent: pad(v) });
+  const hour = h("select", { ariaLabel: "Hour" }, ...Array.from({ length: 24 }, (_, i) => opt(i)));
+  const minute = h("select", { ariaLabel: "Minutes" }, ...Array.from({ length: 12 }, (_, i) => opt(i * 5)));
+  const wrap = h("div", { className: "timepick" }, hour, h("span", { ariaHidden: "true", textContent: ":" }), minute);
+  Object.defineProperty(wrap, "id", { get: () => hour.id, set: (v) => { hour.id = v; } }); // the label points at the hour
+  Object.defineProperty(wrap, "value", {
+    get: () => `${hour.value}:${minute.value}`,
+    set: (v) => {
+      const [hh, mm] = String(v || "").split(":");
+      hour.value = pad(Number(hh) || 0);
+      for (const o of [...minute.options]) if (o.dataset.odd) o.remove();
+      const m = pad(Number(mm) || 0);
+      if (![...minute.options].some((o) => o.value === m)) {
+        const o = opt(Number(m)); o.dataset.odd = "1";
+        minute.insertBefore(o, [...minute.options].find((x) => x.value > m) || null);
+      }
+      minute.value = m;
+    },
+  });
+  return wrap;
+}
+
 export function mountAddEvent(dialog){
   let busy = false;
   let editing = null; // the event being looked at or edited, or null when adding
   const f = {
     title: h("input", { dir: "auto", required: true, autocomplete: "off" }),
     date: h("input", { type: "date", required: true }),
-    at: h("input", { type: "time", required: true, step: 300 }),
+    at: timePick(),
     minutes: h("select", {}, ...LENGTHS.map((v) => h("option", { value: String(v), textContent: durText(v) }))),
   };
   const msg = h("p", { className: "msg", role: "alert" });

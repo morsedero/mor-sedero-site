@@ -902,3 +902,6 @@ dialog.now { overflow-y: auto; overscroll-behavior: contain; }
 #board > *, .pane, .pane > *, .tk-filters { min-inline-size: 0; }
 /* The event name wraps as one piece ("שיעור גיטרה" never splits across lines). */
 .freeline bdi { display: inline-block; }
+/* The event form's start time: hour and 5-minute pickers side by side. */
+.timepick { display: flex; align-items: center; gap: 6px; min-inline-size: 0; }
+.timepick select { flex: 1; min-inline-size: 0; font: inherit; font-size: 16px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--ink); font-variant-numeric: tabular-nums; }
