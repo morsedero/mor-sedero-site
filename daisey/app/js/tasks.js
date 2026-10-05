@@ -399,6 +399,8 @@ export function mountTasks(root, uid, { onOpen, onSweep } = {}){
     setCurrent(id){ onCard = id; render(); },
     // Filter to one project's tab (from the Now card's project name).
     showProject,
+    // The project tab picked right now (null = all), so + Task can start there.
+    shownProject: () => project,
     unmount(){ unsub(); root.replaceChildren(); },
   };
 }

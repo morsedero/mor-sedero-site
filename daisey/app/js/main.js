@@ -201,14 +201,16 @@ async function boot(){
           }
         };
         plus.onclick = (e) => { e.stopPropagation(); setPlus(plusMenu.hidden); };
-        $("#plusTask").onclick = () => { setPlus(false); m.adder.open(); };
+        // On a project's tab in Tasks, a new task starts in that project.
+        const tabProject = () => (paneFromHash() === "tasks" && m.tasks.shownProject()) || undefined;
+        $("#plusTask").onclick = () => { setPlus(false); m.adder.open(tabProject()); };
         $("#plusEvent").onclick = () => { setPlus(false); m.event.open(m.schedule.day()); };
         document.addEventListener("click", (e) => { if (!plusMenu.hidden && !plusMenu.contains(e.target)) setPlus(false); });
         document.addEventListener("keydown", (e) => { if (e.key === "Escape") setPlus(false); });
         // Tell Daisey: plain language in, confirm cards out (tell.js).
         import("./tell.js").then(({ mountTell }) => {
           if (mounted !== m) return; // signed out while it loaded
-          m.tell = mountTell($("#tell"), $("#tellInput"), $("#mic"), user.uid, { openAdd: (project, title) => m.adder.open(project, title) });
+          m.tell = mountTell($("#tell"), $("#tellInput"), $("#mic"), user.uid, { openAdd: (project, title) => m.adder.open(project ?? tabProject(), title) });
         }).catch((e) => console.error("[daisey] tell", e));
         for (const s of SIGNED_IN) $(s).hidden = false;
         setPane(paneFromHash());
