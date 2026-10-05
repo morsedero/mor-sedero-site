@@ -93,11 +93,11 @@ const check = (name, pass, got) => { results.push({ pass }); console.log(`${pass
   await sheet.getByText("Edit", { exact: true }).click();
   await page.waitForTimeout(150);
   const vals = await sheet.evaluate((el) => [...el.querySelectorAll("input,select")].map((i) => i.value));
-  // Start and end as hour + 5-minute pickers: 16 00, then 18 00.
-  check("Edit fills the form with the event's own values", vals.join(" ").includes("16 00 18 00"), JSON.stringify(vals));
+  // Start and end as one quarter-hour picker each: 16:00, then 18:00.
+  check("Edit fills the form with the event's own values", vals.join(" ").includes("16:00 18:00"), JSON.stringify(vals));
 
   // ---- Save writes only what changed.
-  await sheet.getByRole("combobox", { name: "Hour" }).first().selectOption("17");
+  await sheet.getByRole("combobox", { name: "From" }).selectOption("17:00");
   await sheet.getByRole("button", { name: "Save" }).click();
   await page.waitForTimeout(400);
   let w = writes.at(-1);

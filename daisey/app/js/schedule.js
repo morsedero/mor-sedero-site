@@ -2,8 +2,8 @@
 // Design/6-home-schedule-tab). The days ahead as a list, not a grid: a label
 // row per day ("Tonight · Mon 5 Oct", "Tomorrow · Tue 6 Oct", then the
 // weekday), and under it one row per thing — its start–end time ONCE in the
-// left column, then a tinted block with only the event's name, or a dashed
-// "Free" box for a gap inside the day hours. The night divider sits between
+// left column, then a tinted block with only the event's name, or a quiet
+// "2 h free" line for a gap inside the day hours. The night divider sits between
 // today and tomorrow. A day with nothing on it says "Nothing scheduled".
 //
 // Labels follow the real clock: after midnight the coming day is "Today"
@@ -11,7 +11,7 @@
 import { watchCalendar } from "./calendar.js";
 import { watchSettings } from "./store.js";
 import { dayHours, minText } from "./day.js";
-import { localDate } from "./model.js";
+import { localDate, durText } from "./model.js";
 import { h, bdi, nightDivider } from "./ui.js";
 
 const DAYS = 7; // today and six more: calendar.js fetches a week ahead
@@ -89,8 +89,10 @@ export function mountSchedule(el, uid, { onEvent } = {}){
 
   function row(x){
     const time = x.allDay ? "All day" : `${clock(x.start)}–${clock(x.end)}`;
-    if (x.kind === "free") return h("div", { className: "sc-row" },
-      h("span", { className: "sc-time", textContent: time }), h("span", { className: "sc-free", textContent: "Free" }));
+    // Free time is quiet (Mor, 2026-10-06: the dashed boxes read as slots to
+    // fill): no box, no times, just how long, on a hairline.
+    if (x.kind === "free") return h("div", { className: "sc-row sc-gap", ariaLabel: `Free ${time}` },
+      h("span", { className: "sc-free", textContent: `${durText((x.end - x.start) / 60000)} free` }));
     return h("div", { className: "sc-row" }, h("span", { className: "sc-time strong", textContent: time }),
       h("button", { type: "button", className: "sc-ev", style: x.ev.color ? `--ev:${x.ev.color}` : "",
         ariaLabel: `${x.ev.title}, ${time}`, onclick: () => onEvent?.(x.ev) }, bdi(x.ev.title)));

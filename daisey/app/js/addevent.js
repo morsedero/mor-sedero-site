@@ -54,33 +54,42 @@ const field = (label, input, wide) => {
   return h("div", { className: "field" + (wide ? " wide" : "") }, h("label", { htmlFor: input.id, textContent: label }), input);
 };
 
-// The start time as two pickers, hour and minute, with only :00, :05 … :55
-// on offer (Mor, 2026-10-05: the phone's own time picker listed every
-// minute and then refused most of them). It reads and writes "HH:MM" like
-// the time input it replaced. An event already at an odd minute keeps it:
-// that one minute is added to the list, so opening it moves nothing.
-function timePick(){
-  const pad = (n) => String(n).padStart(2, "0");
-  const opt = (v) => h("option", { value: pad(v), textContent: pad(v) });
-  const hour = h("select", { ariaLabel: "Hour" }, ...Array.from({ length: 24 }, (_, i) => opt(i)));
-  const minute = h("select", { ariaLabel: "Minutes" }, ...Array.from({ length: 12 }, (_, i) => opt(i * 5)));
-  const wrap = h("div", { className: "timepick" }, hour, h("span", { ariaHidden: "true", textContent: ":" }), minute);
-  Object.defineProperty(wrap, "id", { get: () => hour.id, set: (v) => { hour.id = v; } }); // the label points at the hour
-  Object.defineProperty(wrap, "value", {
-    get: () => `${hour.value}:${minute.value}`,
+// A time as ONE picker, "09:00", "09:15" … "23:45" (Mor, 2026-10-06: an hour
+// box and a minute box were fiddly to edit; before that, 2026-10-05, the
+// phone's own time picker listed every minute and refused most of them).
+// Quarter hours keep the list short enough to flick through. It reads and
+// writes "HH:MM" like a time input. An event already at an odd minute keeps
+// it: that one time is added to the list, so opening it moves nothing.
+// relabel(from) is for To: each later time gets its length beside it,
+// "11:15 · 1h 15m", the way Google lists end times.
+const STEP = 15;
+const hm = (m) => `${pad(Math.floor(m / 60))}:${pad(m % 60)}`;
+const lenText = (m) => (m < 60 ? `${m}m` : `${Math.floor(m / 60)}h${m % 60 ? ` ${m % 60}m` : ""}`);
+function timePick(label){
+  const opt = (m) => h("option", { value: hm(m), textContent: hm(m) });
+  const sel = h("select", { className: "timepick", ariaLabel: label }, ...Array.from({ length: 24 * 60 / STEP }, (_, i) => opt(i * STEP)));
+  const base = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, "value");
+  Object.defineProperty(sel, "value", {
+    get: () => base.get.call(sel),
     set: (v) => {
-      const [hh, mm] = String(v || "").split(":");
-      hour.value = pad(Number(hh) || 0);
-      for (const o of [...minute.options]) if (o.dataset.odd) o.remove();
-      const m = pad(Number(mm) || 0);
-      if (![...minute.options].some((o) => o.value === m)) {
-        const o = opt(Number(m)); o.dataset.odd = "1";
-        minute.insertBefore(o, [...minute.options].find((x) => x.value > m) || null);
+      const [hh, mm] = String(v || "").split(":").map(Number);
+      const t = hm((hh || 0) * 60 + (mm || 0));
+      for (const o of [...sel.options]) if (o.dataset.odd && o.value !== t) o.remove();
+      if (![...sel.options].some((o) => o.value === t)) {
+        const o = opt((hh || 0) * 60 + (mm || 0)); o.dataset.odd = "1";
+        sel.insertBefore(o, [...sel.options].find((x) => x.value > t) || null);
       }
-      minute.value = m;
+      base.set.call(sel, t);
     },
   });
-  return wrap;
+  sel.relabel = (from) => {
+    const [a, b] = from.split(":").map(Number), f = a * 60 + b;
+    for (const o of sel.options) {
+      const [x, y] = o.value.split(":").map(Number), d = x * 60 + y - f;
+      o.textContent = d > 0 ? `${o.value} · ${lenText(d)}` : o.value;
+    }
+  };
+  return sel;
 }
 
 export function mountAddEvent(dialog){
@@ -89,14 +98,14 @@ export function mountAddEvent(dialog){
   const f = {
     title: h("input", { dir: "auto", required: true, autocomplete: "off" }),
     date: h("input", { type: "date", required: true }),
-    at: timePick(),
-    to: timePick(),
+    at: timePick("From"),
+    to: timePick("To"),
   };
   const msg = h("p", { className: "msg", role: "alert" });
   const submit = h("button", { className: "btn primary", type: "submit", textContent: "Add to calendar" });
   const form = h("form", { className: "form-grid ev-grid" },
     field("Event", f.title, true),
-    field("Day", f.date),
+    field("Day", f.date, true),
     field("From", f.at),
     field("To", f.to),
     submit);
@@ -112,7 +121,7 @@ export function mountAddEvent(dialog){
   const toMin = (s) => { const [a, b] = s.split(":").map(Number); return a * 60 + b; };
   const minText = (m) => `${pad(Math.floor(m / 60))}:${pad(m % 60)}`;
   let length = DEFAULT_LENGTH;
-  const setTimes = (at, mins) => { length = mins; f.at.value = at; f.to.value = minText(Math.min(toMin(at) + mins, 23 * 60 + 55)); };
+  const setTimes = (at, mins) => { length = mins; f.at.value = at; f.to.value = minText(Math.min(toMin(at) + mins, 23 * 60 + 45)); f.to.relabel(f.at.value); };
   f.at.addEventListener("change", () => setTimes(f.at.value, length));
   f.to.addEventListener("change", () => { length = toMin(f.to.value) - toMin(f.at.value); });
   // The length the form says, or null when To isn't after From.
@@ -174,6 +183,7 @@ export function mountAddEvent(dialog){
       f.date.value = localDate(start);
       setTimes(hhmm(start), Math.max(5, Math.round((end - start) / MIN)));
       f.to.value = hhmm(end); // the event's own end, unclamped
+      f.to.relabel(f.at.value);
     }
     setTimeout(() => f.title.focus());
   }

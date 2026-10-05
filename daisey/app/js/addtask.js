@@ -26,6 +26,7 @@
 import { watchTasks, addTask, updateTask, removeTask } from "./store.js";
 import { durText, guessFields, validField, CHOICES, LABELS, INBOX, localDate } from "./model.js";
 import { h, flash, icon, bdi } from "./ui.js";
+import { projectsOf } from "./projects.js";
 
 const CHIPS = ["area", "type", "where", "openHours", "size", "stakes", "energy"];
 const NAMES = { area: "Area", type: "Type", where: "Where", openHours: "Open hours", size: "Size", stakes: "Stakes", energy: "Energy" };
@@ -119,7 +120,7 @@ export function mountAddTask(dialog, uid, { onStart } = {}){
     h("div", { className: "ts-dates" }, start.box, due.box),
     detailsBtn, chipRow, pendBox, stateLine,
     h("h3", { className: "ts-h", textContent: "Steps" }), stepList,
-    h("h3", { className: "ts-h", textContent: "Links & notes" }), linkRow, notes,
+    h("h3", { className: "ts-h", textContent: "Links & notes" }), h("div", { className: "ts-group" }, linkRow, notes),
     h("div", { className: "ts-grow" }), worked, startBtn, del, msg);
 
   // ---------- saving ----------
@@ -148,12 +149,22 @@ export function mountAddTask(dialog, uid, { onStart } = {}){
   }
 
   // ---------- project ----------
+  // The sheet wears its project's colour, the same one as on the Projects
+  // page (Mor, 2026-10-06: "design and colors in add task are really off").
+  // A new project or Inbox falls back to the guessed area's colour, or none.
+  let colors = {};
+  const paintArea = () => {
+    const c = colors[projectSel.value];
+    dialog.className = dialog.className.split(" ").filter((k) => !/^(pc|area)-/.test(k)).join(" ")
+      + (c ? ` pc-${c}` : vals.area ? ` area-${vals.area}` : "");
+  };
   function showProject(name){
     const v = !name || name === INBOX ? "" : name;
     if (v !== NEW_PROJECT && ![...projectSel.options].some((o) => o.value === v))
       projectSel.insertBefore(h("option", { value: v, textContent: v }), projectSel.lastElementChild);
     projectSel.value = v;
     newProject.hidden = v !== NEW_PROJECT;
+    paintArea();
   }
   function fillProjects(names){
     const cur = projectSel.value;
@@ -165,11 +176,11 @@ export function mountAddTask(dialog, uid, { onStart } = {}){
   fillProjects([]);
   projectSel.addEventListener("change", () => {
     newProject.hidden = projectSel.value !== NEW_PROJECT;
+    paintArea();
     if (!newProject.hidden) { newProject.focus(); return; }
     if (editing) save({ project: projectOf() }); else reguess();
   });
   newProject.addEventListener("change", () => { if (editing && newProject.value.trim()) save({ project: newProject.value.trim() }); else reguess(); });
-  const paintArea = () => { projRow.className = "ts-proj" + (vals.area ? ` area-${vals.area}` : ""); };
 
   // ---------- title ----------
   const fit = () => { title.style.blockSize = "auto"; title.style.blockSize = `${title.scrollHeight}px`; };
@@ -342,6 +353,7 @@ export function mountAddTask(dialog, uid, { onStart } = {}){
 
   const unsub = watchTasks(uid, (ts) => {
     tasks = ts;
+    colors = Object.fromEntries(projectsOf(ts).map((p) => [p.name, p.color]).filter(([, c]) => c));
     fillProjects([...new Set(ts.map((t) => t.project))].filter((p) => p && p !== INBOX).sort((a, b) => a.localeCompare(b)));
     if (editing) {
       const fresh = ts.find((t) => t.id === editing.id);

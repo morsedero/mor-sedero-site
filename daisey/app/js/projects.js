@@ -85,6 +85,19 @@ const progress = (p) => (p.all.length ? p.done.length / p.all.length : 0);
 const bar = (p, cls) => h("div", { className: cls, role: "img", ariaLabel: `${p.done.length} of ${p.all.length} done` },
   h("span", { style: `inline-size:${Math.round(progress(p) * 100)}%` }));
 
+// The project card's three numbers: what's open, how long it adds up to,
+// and the nearest date (Mor, 2026-10-06: the screen "feels empty and dull").
+function stats(p){
+  const live = [...p.next, ...p.pending];
+  const mins = live.reduce((s, t) => s + (t.size || 30), 0);
+  const dated = live.filter((t) => t.due).sort((a, b) => String(a.due).localeCompare(String(b.due)))[0];
+  return [
+    [String(live.length), live.length === 1 ? "task open" : "tasks open"],
+    [mins ? durText(mins).replace(" min", "m").replace(" h", "h") : "—", "of work"],
+    dated ? [shortDay(dated.due).replace(/^\w+,?\s*/, ""), isOverdue(dated) ? "was due" : dated.dateKind === "deadline" ? "deadline" : "next date"] : ["—", "no dates"],
+  ];
+}
+
 // els: { grid, view }. onOpen(task): the task sheet. onAdd(project): a new
 // task there. onNew(): a new project. onStart(id).
 export function mountProjects(els, uid, { onOpen, onAdd, onNew, onStart, onScreen } = {}){
@@ -101,7 +114,7 @@ export function mountProjects(els, uid, { onOpen, onAdd, onNew, onStart, onScree
     const ps = all.filter((p) => p !== inbox);
     const n = all.reduce((s, p) => s + p.open.length, 0);
     const y = els.grid.scrollTop;
-    els.grid.replaceChildren(
+    els.grid.replaceChildren(...[
       h("div", { className: "pp-head" }, h("span", { className: "pp-sum", textContent: `${plural(ps.length, "project")} · ${plural(n, "task")}` }),
         h("button", { type: "button", className: "pp-new", textContent: "+ New", onclick: () => onNew?.() })),
       ps.length ? h("div", { className: "pgrid" }, ...ps.map((p) => h("button", { type: "button", className: "pcard" + colorClass(p),
@@ -112,7 +125,7 @@ export function mountProjects(els, uid, { onOpen, onAdd, onNew, onStart, onScree
         : !inbox && h("p", { className: "muted pp-empty", textContent: "No projects yet. Tell Daisey what's on your plate." }),
       inbox ? h("button", { type: "button", className: "pp-inbox", onclick: () => openProject(INBOX) },
         icon("inbox"), h("span", { className: "pp-inbox-t", textContent: "Inbox" }),
-        h("span", { className: "pp-inbox-n", textContent: `${inbox.open.length} · no project yet` })) : null);
+        h("span", { className: "pp-inbox-n", textContent: `${inbox.open.length} · no project yet` })) : null].filter(Boolean));
     els.grid.scrollTop = y;
   }
 
@@ -126,7 +139,10 @@ export function mountProjects(els, uid, { onOpen, onAdd, onNew, onStart, onScree
   // A task card that swipes right to finish.
   function swipeCard(t, card){
     const reveal = h("span", { className: "pj-reveal", ariaHidden: "true" }, icon("check"), h("span", { textContent: "Done" }));
-    const wrap = h("div", { className: "pj-swipe" }, reveal, card);
+    // The tick does what the swipe does, for whoever doesn't know to swipe.
+    const tick = h("button", { type: "button", className: "pj-tick", ariaLabel: `Done: ${t.title}`,
+      onclick: () => { tick.classList.add("on"); setTimeout(() => complete(t), motionOK() ? 220 : 0); } }, icon("check"));
+    const wrap = h("div", { className: "pj-swipe" }, reveal, card, tick);
     let s = null, moved = false;
     card.addEventListener("pointerdown", (e) => { s = { x: e.clientX, y: e.clientY, id: e.pointerId, dx: 0 }; moved = false; });
     card.addEventListener("pointermove", (e) => {
@@ -211,9 +227,11 @@ export function mountProjects(els, uid, { onOpen, onAdd, onNew, onStart, onScree
     els.view.replaceChildren(...[
       h("div", { className: "pj-top" },
         h("button", { type: "button", className: "pj-back", ariaLabel: "Back to home", onclick: () => onScreen?.(null) }, icon("back")), chips),
-      h("div", { className: "pj-card" + colorClass(p) },
+      h("div", { className: "pj-card" },
         h("div", { className: "pj-card-top" }, h("h2", { className: "pj-name", dir: "auto", textContent: p.name }),
           p.area && h("span", { className: "pj-area", textContent: areaName({ area: p.area }) })),
+        h("div", { className: "pj-stats" }, ...stats(p).map(([v, l]) => h("div", { className: "pj-stat" },
+          h("span", { className: "pj-stat-v", textContent: v }), h("span", { className: "pj-stat-l", textContent: l })))),
         h("div", { className: "pj-prog" }, bar(p, "pbar big"), h("span", { textContent: `${p.done.length} of ${p.all.length} done` }))),
       section("next", "Next", p.next.length, ...next,
         h("button", { type: "button", className: "pj-add", textContent: "+ Add a task", onclick: () => onAdd?.(p.name === INBOX ? "" : p.name) })),
@@ -221,6 +239,7 @@ export function mountProjects(els, uid, { onOpen, onAdd, onNew, onStart, onScree
       ...foldRow("someday", "someday", "Someday", p.someday, quietRow),
       ...foldRow("done", "done", "Done", p.done, quietRow),
       ps.length > 1 && h("p", { className: "pj-hint" }, icon("back"), "Swipe for the next project", icon("chev"))].filter(Boolean));
+    els.view.className = "screen" + colorClass(p);
     els.view.scrollTop = y;
     const row = els.view.querySelector(".pj-chips");
     if (x != null) row.scrollLeft = x;

@@ -687,16 +687,14 @@ dialog.now { overflow-y: auto; overscroll-behavior: contain; }
 /* The event name wraps as one piece ("שיעור גיטרה" never splits across lines). */
 .freeline bdi { display: inline-block; }
 .freeline .free-now { font-weight: 600; color: var(--ink); text-underline-offset: 2px; padding-block: 4px; }
-/* The event form's start time: hour and 5-minute pickers side by side. */
-.timepick { display: flex; align-items: center; gap: 6px; min-inline-size: 0; }
-.timepick select { flex: 1; min-inline-size: 0; font: inherit; font-size: 16px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--ink); font-variant-numeric: tabular-nums; }
+/* The event form's From and To: one quarter-hour picker each. */
+.timepick { inline-size: 100%; min-inline-size: 0; font: inherit; font-size: 16px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--ink); font-variant-numeric: tabular-nums; }
 
-/* The event form: Day, From and To on one row (Mor, 2026-10-05). The time
-   pickers drop their arrows to fit; tapping one still opens the list. */
-.ev-grid { grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr) minmax(0, 1fr); gap: 12px 8px; }
-.ev-grid .field input[type="date"] { padding-inline: 6px; font-size: 15px; }
-.ev-grid .timepick { gap: 2px; }
-.ev-grid .timepick select { appearance: none; -webkit-appearance: none; padding: 8px 2px; text-align: center; text-align-last: center; font-size: 15px; }
+/* The event form: Day on its own row, From and To side by side under it
+   (Mor, 2026-10-06), so To has room for its length ("11:15 · 1h"). */
+.ev-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px 10px; }
+.ev-grid .field input[type="date"] { padding-inline: 10px; font-size: 16px; }
+.ev-grid .timepick { appearance: none; -webkit-appearance: none; min-block-size: 44px; padding: 8px 4px; text-align: center; text-align-last: center; font-size: 16px; font-weight: 600; cursor: pointer; }
 
 @media (max-width: 420px) { .ev-grid .field input[type="date"]::-webkit-calendar-picker-indicator { display: none; } } /* a tap on the field opens the picker on phones anyway */
 
@@ -815,7 +813,7 @@ button.now-title:focus-visible { outline: 2px solid var(--aink); outline-offset:
 .pbar { display: block; block-size: 4px; margin-block-start: 8px; border-radius: 2px; background: var(--aline); overflow: hidden; }
 .pbar > span { display: block; block-size: 100%; border-radius: inherit; background: var(--aink); }
 .pbar.big { flex: 1; block-size: 6px; margin: 0; border-radius: 3px; }
-:where(.pcard, .pj-card, .pj-chip, .ts-proj, .ny-card) { --tint: var(--card); --aline: var(--line); --aink: var(--ink-2); }
+:where(.pcard, #projectview, .pj-chip, dialog.tsheet, .ny-card) { --tint: var(--card); --aline: var(--line); --aink: var(--ink-2); }
 
 /* Full screens: a project, Needs you. */
 .screen { position: fixed; z-index: 20; inset: 0; overflow-y: auto; overscroll-behavior: contain; background: var(--bg); color: var(--ink); touch-action: pan-y; }
@@ -823,7 +821,9 @@ button.now-title:focus-visible { outline: 2px solid var(--aink); outline-offset:
 body:has(.screen:not([hidden])) { overflow: hidden; }
 
 /* The project screen. */
-#projectview { padding-block-end: max(24px, env(safe-area-inset-bottom)); }
+/* The project screen wears its colour: a wash down from the top, a white
+   card on it with the numbers, white task rows (restyled 2026-10-06). */
+#projectview { padding-block-end: max(24px, env(safe-area-inset-bottom)); background: linear-gradient(180deg, var(--tint) 0, var(--tint) 120px, var(--bg) 360px) no-repeat, var(--bg); }
 .pj-top { display: flex; align-items: center; gap: 4px; padding: max(16px, env(safe-area-inset-top)) 0 0 12px; }
 .pj-back { flex: none; inline-size: 40px; block-size: 40px; display: grid; place-items: center; border: 0; border-radius: 12px; background: none; color: var(--ink); cursor: pointer; }
 .pj-back svg { inline-size: 20px; block-size: 20px; stroke-width: 2; }
@@ -835,17 +835,21 @@ body:has(.screen:not([hidden])) { overflow: hidden; }
 .pj-chip[aria-selected="true"] { background: var(--aink); color: var(--card); font-weight: 600; }
 /* Children of .screen keep its centring (margin-inline: auto): the 20px
    gutter is a narrower width, not a side margin, or wide screens pin them left. */
-.pj-card { margin: 12px auto 0; inline-size: calc(100% - 40px); max-inline-size: 520px; padding: 14px 16px; border-radius: 18px; background: var(--tint); border: 1px solid var(--aline); }
+.pj-card { margin: 14px auto 0; inline-size: calc(100% - 40px); max-inline-size: 520px; padding: 18px 18px 16px; border-radius: 22px; background: var(--surface); border: 1px solid var(--aline); box-shadow: 0 6px 20px color-mix(in srgb, var(--aink) 12%, transparent); }
+.pj-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-block-start: 14px; }
+.pj-stat { display: grid; gap: 2px; padding: 10px 12px; border-radius: 14px; background: var(--tint); }
+.pj-stat-v { font-size: 18px; font-weight: 700; color: var(--aink); font-variant-numeric: tabular-nums; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pj-stat-l { font-size: 11px; color: color-mix(in srgb, var(--aink) 45%, var(--ink-2)); }
 .pj-card-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-.pj-name { margin: 0; min-inline-size: 0; font-size: 22px; font-weight: 600; overflow-wrap: anywhere; }
-.pj-area { flex: none; font-size: 12px; font-weight: 600; color: var(--aink); }
-.pj-prog { display: flex; align-items: center; gap: 10px; margin-block-start: 10px; font-size: 12px; color: color-mix(in srgb, var(--aink) 45%, var(--ink)); }
+.pj-name { margin: 0; min-inline-size: 0; font-size: 26px; font-weight: 700; letter-spacing: -0.3px; line-height: 1.15; overflow-wrap: anywhere; }
+.pj-area { flex: none; padding: 3px 10px; border-radius: 999px; background: var(--tint); font-size: 12px; font-weight: 600; color: var(--aink); }
+.pj-prog { display: flex; align-items: center; gap: 10px; margin-block-start: 14px; font-size: 12px; color: color-mix(in srgb, var(--aink) 45%, var(--ink)); }
 .pj-sec { padding-inline: 20px; }
 .pj-h { display: flex; align-items: center; gap: 8px; margin: 18px 0 0; }
 .pj-h-t { flex: 1; font-size: 15px; font-weight: 600; text-align: start; }
 .pj-n { font-size: 13px; color: var(--ink-2); }
 .pj-dot { inline-size: 10px; block-size: 10px; flex: none; border-radius: 50%; }
-.pj-dot.next { background: var(--accent); }
+.pj-dot.next { background: var(--aink); }
 .pj-dot.pending { border: 2px solid #8c8574; }
 .pj-dot.someday { border: 2px dashed #b8b09f; }
 .pj-dot.done { background: var(--green); }
@@ -855,11 +859,12 @@ body:has(.screen:not([hidden])) { overflow: hidden; }
 :dir(rtl) .pj-list { padding: 0 38px 6px 20px; }
 .pj-quiet { min-block-size: 40px; padding: 0; border: 0; background: none; color: var(--ink); font: inherit; font-size: 15px; text-align: start; cursor: pointer; overflow-wrap: anywhere; }
 .pj-quiet.done { color: var(--ink-2); text-decoration: line-through; }
-.pj-swipe { position: relative; margin-block-start: 8px; border-radius: 14px; background: var(--green); overflow: hidden; }
+.pj-swipe { position: relative; margin-block-start: 8px; border-radius: 14px; overflow: hidden; }
+.pj-swipe.swiping { background: var(--green); }
 .pj-reveal { position: absolute; inset-block: 0; inset-inline-start: 16px; display: flex; align-items: center; gap: 6px; color: #fff; font-size: 13px; font-weight: 600; opacity: .55; }
 .pj-swipe.armed .pj-reveal { opacity: 1; }
 .pj-reveal svg { inline-size: 16px; block-size: 16px; stroke-width: 2.5; }
-.pj-task { position: relative; display: grid; gap: 4px; inline-size: 100%; padding: 12px 14px; border: 1px solid var(--line); border-radius: 14px; background: var(--card); color: var(--ink); font: inherit; text-align: start; cursor: pointer; touch-action: pan-y; user-select: none; }
+.pj-task { position: relative; display: grid; gap: 4px; inline-size: 100%; padding: 12px 14px 12px 50px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); color: var(--ink); font: inherit; text-align: start; cursor: pointer; touch-action: pan-y; user-select: none; }
 .pj-swipe:not(.swiping) .pj-task { transition: transform .18s ease; }
 @media (prefers-reduced-motion: reduce) { .pj-swipe:not(.swiping) .pj-task { transition: none; } }
 .pj-task.later { color: var(--ink-2); }
@@ -869,33 +874,44 @@ body:has(.screen:not([hidden])) { overflow: hidden; }
 .pj-now { flex: none; padding: 3px 8px; border-radius: 999px; background: var(--a-job-tint); color: var(--a-job-ink); font-size: 11px; font-weight: 600; }
 .pj-meta { font-size: 12px; color: var(--ink-2); }
 .pj-who { flex: none; display: grid; place-items: center; inline-size: 30px; block-size: 30px; border-radius: 50%; background: var(--chip); color: var(--ink); font-size: 13px; font-weight: 600; }
-.pj-add { inline-size: 100%; min-block-size: 40px; margin-block-start: 8px; border: 1.5px dashed var(--bud); border-radius: 12px; background: transparent; color: var(--ink-2); font: inherit; font-size: 13px; cursor: pointer; }
+.pj-add { inline-size: 100%; min-block-size: 46px; margin-block-start: 8px; padding-inline: 16px; border: 1px solid var(--aline); border-radius: 14px; background: color-mix(in srgb, var(--tint) 60%, var(--surface)); color: var(--aink); font: inherit; font-size: 14px; font-weight: 600; text-align: start; cursor: pointer; }
+.pj-tick { position: absolute; z-index: 1; inset-block-start: 50%; inset-inline-start: 12px; translate: 0 -50%; display: grid; place-items: center; inline-size: 26px; block-size: 26px; padding: 0; border: 2px solid var(--aline); border-radius: 50%; background: var(--surface); color: transparent; cursor: pointer; transition: background .15s, color .15s, border-color .15s; }
+.pj-tick::after { content: ""; position: absolute; inset: -9px; }
+.pj-tick svg { inline-size: 14px; block-size: 14px; stroke-width: 3; }
+.pj-tick:hover { border-color: var(--aink); color: var(--aink); }
+.pj-tick.on { border-color: var(--green); background: var(--green); color: #fff; }
+.pj-swipe.swiping .pj-tick { opacity: 0; }
 .pj-hint { display: flex; align-items: center; justify-content: center; gap: 10px; margin: 28px auto 0; color: #8c8574; font-size: 12px; }
 .pj-hint svg { inline-size: 16px; block-size: 16px; stroke-width: 2; }
 
 /* The task sheet: a bottom sheet. */
-dialog.tsheet { inline-size: calc(100% - 32px); max-inline-size: 560px; max-block-size: calc(100dvh - 32px); margin: auto; padding: 18px 20px 20px; border-radius: 24px; box-shadow: 0 12px 32px rgb(0 0 0 / .12); }
+/* The task sheet (restyled 2026-10-06): paper, washed at the top in the
+   project's colour, fields grouped on white cards like the app's other
+   surfaces. One surface colour for every field; the project colour only on
+   the wash, the project pill and the small accents. */
+dialog.tsheet { inline-size: calc(100% - 32px); max-inline-size: 560px; max-block-size: calc(100dvh - 32px); margin: auto; padding: 18px 20px 20px; border: 1px solid var(--aline); border-radius: 24px; box-shadow: 0 12px 32px rgb(0 0 0 / .12);
+  background: linear-gradient(180deg, var(--tint) 0, var(--tint) 90px, var(--bg) 240px); }
 dialog.tsheet[open] { display: flex; flex-direction: column; }
 @media (prefers-reduced-motion: no-preference) { dialog.tsheet[open] { animation: card-in .18s ease-out; } }
 /* The task card: centred, an X in the corner. */
-.ts-x { position: absolute; inset-block-start: 10px; inset-inline-end: 10px; z-index: 1; display: grid; place-items: center; inline-size: 36px; block-size: 36px; padding: 0; border: 0; border-radius: 50%; background: var(--chip); color: var(--ink); cursor: pointer; }
+.ts-x { position: absolute; inset-block-start: 12px; inset-inline-end: 12px; z-index: 1; display: grid; place-items: center; inline-size: 34px; block-size: 34px; padding: 0; border: 1px solid var(--aline); border-radius: 50%; background: var(--surface); color: var(--ink-2); cursor: pointer; }
 .ts-x svg { inline-size: 16px; block-size: 16px; stroke-width: 2; }
 dialog.tsheet .ts-proj { padding-inline-end: 44px; }
 @keyframes card-in { from { opacity: 0; transform: scale(.97); } }
-.ts-proj { display: flex; align-items: center; gap: 6px; margin-block-start: 14px; color: var(--aink); }
+.ts-proj { display: inline-flex; align-self: flex-start; align-items: center; gap: 6px; max-inline-size: calc(100% - 44px); margin-block-start: 4px; padding: 2px 12px 2px 10px; border: 1px solid var(--aline); border-radius: 999px; background: var(--surface); color: var(--aink); }
 .ts-proj .dot { inline-size: 8px; block-size: 8px; flex: none; border-radius: 50%; background: currentColor; }
-.ts-project { min-inline-size: 0; max-inline-size: 100%; padding: 4px 0; border: 0; background: none; color: inherit; font: inherit; font-size: 13px; font-weight: 600; appearance: none; -webkit-appearance: none; cursor: pointer; text-overflow: ellipsis; }
+.ts-project { field-sizing: content; min-inline-size: 0; max-inline-size: 100%; padding: 4px 0; border: 0; background: none; color: inherit; font: inherit; font-size: 13px; font-weight: 600; appearance: none; -webkit-appearance: none; cursor: pointer; text-overflow: ellipsis; }
 .ts-project option { color: var(--ink); background: var(--card); }
 .ts-input { inline-size: 100%; min-inline-size: 0; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--bg); color: var(--ink); font: inherit; font-size: 16px; }
 .ts-proj + .ts-input { margin-block-start: 6px; }
 .ts-title { flex: none; margin-block-start: 6px; padding: 0; border: 0; background: none; color: var(--ink); font: inherit; font-size: 26px; font-weight: 600; letter-spacing: -0.3px; line-height: 1.2; resize: none; overflow: hidden; }
 .ts-title:focus { outline: none; }
-.ts-title::placeholder { color: var(--bud); }
+.ts-title::placeholder { color: var(--ink-2); opacity: .45; }
 .ts-dates { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-block-start: 14px; }
-.ts-date { position: relative; display: flex; flex-direction: column; align-items: flex-start; gap: 2px; min-inline-size: 0; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--card); }
-.ts-date:focus-within { border-color: var(--accent); }
+.ts-date { position: relative; display: flex; flex-direction: column; align-items: flex-start; gap: 2px; min-inline-size: 0; padding: 10px 12px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); }
+.ts-date:focus-within { border-color: var(--aink); }
 .ts-date-l { font-size: 12px; color: var(--ink-2); }
-.ts-date-v { font-size: 15px; font-weight: 500; color: #8c8574; }
+.ts-date-v { font-size: 15px; font-weight: 500; color: var(--ink-2); }
 .ts-date.set .ts-date-v { font-weight: 600; color: var(--ink); }
 .ts-date-in { position: absolute; inset: 0; z-index: 1; inline-size: 100%; block-size: 100%; opacity: 0; cursor: pointer; border: 0; padding: 0; }
 .ts-date-in::-webkit-calendar-picker-indicator { position: absolute; inset: 0; inline-size: 100%; block-size: 100%; opacity: 0; cursor: pointer; }
@@ -906,7 +922,8 @@ dialog.tsheet .ts-proj { padding-inline-end: 44px; }
 .ts-kind.target { background: var(--chip); color: var(--ink-2); }
 :root[data-theme="dark"] .ts-kind.deadline, :root.night .ts-kind.deadline { background: #2a2210; color: #f0c35a; }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .ts-kind.deadline { background: #2a2210; color: #f0c35a; } }
-.ts-details { flex: none; display: flex; align-items: center; gap: 8px; inline-size: 100%; min-block-size: 44px; margin-block-start: 8px; padding-inline: 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--bg); color: var(--ink-2); font: inherit; font-size: 14px; cursor: pointer; }
+.ts-details { flex: none; display: flex; align-items: center; gap: 8px; inline-size: 100%; min-block-size: 46px; margin-block-start: 8px; padding-inline: 12px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); color: var(--ink); font: inherit; font-size: 14px; cursor: pointer; }
+.ts-details > svg { color: var(--aink); }
 .ts-details svg { inline-size: 16px; block-size: 16px; flex: none; stroke-width: 2; }
 .ts-details-t { flex: 1; text-align: start; }
 .ts-details[aria-expanded="true"] > svg:last-child { transform: rotate(90deg); }
@@ -915,34 +932,38 @@ dialog.tsheet .ts-proj { padding-inline-end: 44px; }
 .ts-pend { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-block-start: 8px; }
 .ts-pend label { display: grid; gap: 4px; font-size: 12px; color: var(--ink-2); }
 .ts-state { margin: 10px 0 0; font-size: 13px; color: var(--ink-2); }
-.ts-h { margin: 20px 0 8px; font-size: 13px; font-weight: 600; letter-spacing: .5px; text-transform: uppercase; color: var(--ink-2); }
-.ts-steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
-.ts-step { display: flex; align-items: center; gap: 10px; min-block-size: 38px; }
-.ts-check { position: relative; flex: none; display: grid; place-items: center; inline-size: 20px; block-size: 20px; padding: 0; border: 2px solid #b8b09f; border-radius: 6px; background: none; color: #fff; cursor: pointer; }
+.ts-h { margin: 18px 4px 6px; font-size: 13px; font-weight: 600; color: var(--ink-2); }
+.ts-steps, .ts-group { margin: 0; padding: 4px 12px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); }
+.ts-steps { list-style: none; display: grid; }
+.ts-steps > li + li { border-block-start: 1px solid var(--line); }
+.ts-step { display: flex; align-items: center; gap: 10px; min-block-size: 42px; }
+.ts-check { position: relative; flex: none; display: grid; place-items: center; inline-size: 20px; block-size: 20px; padding: 0; border: 2px solid color-mix(in srgb, var(--ink-2) 55%, transparent); border-radius: 6px; background: none; color: #fff; cursor: pointer; }
 .ts-check::after { content: ""; position: absolute; inset: -12px; }
 .ts-check[aria-pressed="true"] { border: 0; background: var(--green); }
 .ts-check svg { inline-size: 12px; block-size: 12px; stroke-width: 3; }
 .ts-step-t { flex: 1; min-inline-size: 0; padding: 6px 0; border: 0; border-block-end: 1px solid transparent; background: none; color: var(--ink); font: inherit; font-size: 15px; font-weight: 500; }
 .ts-step-t:focus { outline: none; border-block-end-color: var(--line); }
-.ts-step.done .ts-step-t { font-weight: 400; color: #8c8574; text-decoration: line-through; }
+.ts-step.done .ts-step-t { font-weight: 400; color: var(--ink-2); text-decoration: line-through; }
 .ts-step-x { flex: none; display: grid; place-items: center; inline-size: 32px; block-size: 32px; padding: 0; border: 0; border-radius: 50%; background: none; color: var(--ink-2); cursor: pointer; opacity: .6; }
 .ts-step-x:hover, .ts-step-x:focus-visible { opacity: 1; background: var(--chip); }
 .ts-step-x svg { inline-size: 14px; block-size: 14px; stroke-width: 2; }
-.ts-next { flex: none; padding: 2px 8px; border-radius: 999px; background: var(--a-job-tint); color: var(--a-job-ink); font-size: 11px; font-weight: 600; }
-.ts-add { min-block-size: 38px; padding-block: 0; padding-inline: 30px 0; border: 0; background: none; color: var(--ink-2); font: inherit; font-size: 14px; cursor: pointer; }
+.ts-next { flex: none; padding: 2px 8px; border-radius: 999px; background: var(--tint); color: var(--aink); font-size: 11px; font-weight: 600; }
+.ts-add { inline-size: 100%; min-block-size: 42px; padding: 0; border: 0; background: none; color: var(--aink); font: inherit; font-size: 14px; font-weight: 500; text-align: start; cursor: pointer; }
 .ts-links { display: flex; flex-wrap: wrap; gap: 6px; }
-.ts-link { display: inline-flex; align-items: center; block-size: 32px; padding-inline: 12px 2px; border-radius: 10px; background: var(--cream); color: var(--ink); font-size: 13px; max-inline-size: 100%; }
+.ts-link { display: inline-flex; align-items: center; block-size: 32px; padding-inline: 12px 2px; border-radius: 10px; background: var(--tint); color: var(--ink); font-size: 13px; max-inline-size: 100%; }
 .ts-link a { display: inline-flex; align-items: center; gap: 6px; min-inline-size: 0; color: inherit; text-decoration: none; overflow: hidden; }
 .ts-link a bdi { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ts-link svg { inline-size: 14px; block-size: 14px; flex: none; }
 .ts-link-x { inline-size: 28px; block-size: 28px; display: grid; place-items: center; border: 0; background: none; color: var(--ink-2); cursor: pointer; }
 .ts-link-x svg { inline-size: 12px; block-size: 12px; }
-.ts-link-new { block-size: 32px; padding-inline: 12px; border: 1px dashed var(--bud); border-radius: 10px; background: transparent; color: var(--ink-2); font: inherit; font-size: 13px; cursor: pointer; }
+.ts-links { padding-block: 6px; }
+.ts-link-new { block-size: 32px; padding: 0; border: 0; background: none; color: var(--aink); font: inherit; font-size: 14px; font-weight: 500; cursor: pointer; }
 .ts-link-add { display: flex; gap: 6px; inline-size: 100%; }
 .ts-link-add .ts-input { padding-block: 6px; }
-.ts-notes { flex: none; margin-block-start: 8px; min-block-size: 56px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--bg); color: var(--ink); font: inherit; font-size: 14px; resize: vertical; }
+.ts-notes { display: block; flex: none; inline-size: 100%; min-block-size: 64px; margin: 0; padding: 10px 0 8px; border: 0; border-block-start: 1px solid var(--line); border-radius: 0; background: none; color: var(--ink); font: inherit; font-size: 14px; resize: none; }
+.ts-notes:focus { outline: none; }
 .ts-grow { flex: 1; min-block-size: 16px; }
-.ts-worked { margin: 0 0 10px; text-align: center; font-size: 12px; color: #8c8574; }
+.ts-worked { margin: 0 0 10px; text-align: center; font-size: 12px; color: var(--ink-2); }
 .ts-start { flex: none; min-block-size: 56px; margin: 0; font-size: 17px; }
 .ts-del { flex: none; align-self: center; min-block-size: 40px; margin-block-start: 6px; padding-inline: 14px; border: 0; border-radius: 10px; background: none; color: var(--ink-2); font: inherit; font-size: 13px; cursor: pointer; }
 .ts-del.arm { color: var(--danger); background: color-mix(in srgb, var(--danger) 10%, transparent); font-weight: 600; }
@@ -1032,7 +1053,7 @@ dialog.tsheet .msg:empty { display: none; }
 }
 .now-card.main .now-next, .now-card.main .now-why { margin: 4px 0 0; font-size: 14px; line-height: 1.35; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .now-row { display: flex; align-items: center; gap: 8px; margin-block-start: auto; padding-block-start: 12px; }
-.now-row .btn.start { flex: 1; inline-size: auto; margin: 0; min-block-size: 50px; border-radius: 14px; font-size: 17px; }
+.now-row .btn.start, .now-card.main .now-row .btn.start { flex: 1; inline-size: auto; margin: 0; min-block-size: 50px; block-size: 50px; border-radius: 14px; font-size: 17px; }
 .now-row .iconbtn {
   flex: none; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px;
   inline-size: 50px; min-inline-size: 50px; block-size: 50px; min-block-size: 50px; padding: 0; border: 0; border-radius: 14px;
@@ -1075,7 +1096,9 @@ dialog.tsheet .msg:empty { display: none; }
 .sc-row { display: flex; align-items: center; gap: 12px; margin-block-start: 6px; }
 .sc-time { flex: none; inline-size: 88px; font-size: 13px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
 .sc-time.strong { color: color-mix(in srgb, var(--ink) 85%, var(--ink-2)); }
-.sc-free { flex: 1; min-inline-size: 0; display: flex; align-items: center; block-size: 36px; padding-inline: 12px; border: 1.5px dashed var(--bud); border-radius: 10px; font-size: 14px; color: var(--ink-2); }
+.sc-gap { margin-block: 2px; padding-inline-start: 100px; }
+.sc-free { flex: 1; min-inline-size: 0; display: flex; align-items: center; gap: 8px; block-size: 22px; font-size: 12px; color: var(--ink-2); opacity: .8; }
+.sc-free::after { content: ""; flex: 1; border-block-start: 1.5px dotted currentColor; opacity: .35; }
 .sc-ev {
   flex: 1; min-inline-size: 0; display: flex; align-items: center; min-block-size: 40px; padding: 6px 12px; border: 0; border-radius: 10px;
   background: color-mix(in srgb, var(--ev, #8c8574) 16%, var(--card)); color: color-mix(in srgb, var(--ev, var(--ink-2)) 55%, var(--ink));
