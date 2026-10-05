@@ -90,6 +90,8 @@ body {
   background: var(--card); border: 1px solid var(--line); border-radius: 14px; box-shadow: 0 10px 30px rgba(0,0,0,.15);
 }
 .acct-menu p { margin: 0; overflow-wrap: anywhere; }
+.menu-check { display: flex; gap: 8px; align-items: center; font-size: 14px; cursor: pointer; }
+.menu-check input { inline-size: 18px; block-size: 18px; flex: none; accent-color: var(--accent); }
 /* Theme: Auto, Light, Dark — a segmented row in the account menu. */
 /* Day hours in the account menu: two time fields on one line. */
 .dayhours { display: flex; align-items: center; gap: 6px; font-size: 13px; }

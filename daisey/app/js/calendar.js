@@ -90,7 +90,7 @@ async function write(body){
   });
   const out = await res.json().catch(() => ({}));
   if (!res.ok) throw Object.assign(new Error(out.error || `http ${res.status}`), { code: out.error });
-  await load(body.calendarId === "daisey"); // a new "Daisey" calendar isn't in a cached list yet
+  await load(body.calendarId.startsWith("daisey")); // a new Daisey calendar isn't in a cached list yet
   return out;
 }
 
@@ -105,6 +105,16 @@ export const deleteEvent = (ev) => write({ action: "delete", calendarId: ev.cale
 
 // A new title; times, guests and description stay as they are.
 export const renameEvent = (ev, title) => write({ action: "rename", calendarId: ev.calendarId, eventId: ev.id, title });
+
+// A finished task, into the "Daisey log" calendar (made on first use): the
+// time actually spent, ending now, marked free so it never blocks a pick.
+// A lookback in Google Calendar; the write function has the why.
+export function logDone({ title, minutes, taskId, note }){
+  const end = Date.now(), start = end - minutes * 60000;
+  return write({ action: "create", calendarId: "daisey-log", title: `✓ ${title}`, taskId, note,
+    timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    start: new Date(start).toISOString(), end: new Date(end).toISOString() });
+}
 
 // An event the user typed: a day ("YYYY-MM-DD"), a start ("HH:MM") and a
 // length in minutes, read in the browser's own zone. It goes in the main

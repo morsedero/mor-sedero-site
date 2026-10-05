@@ -240,6 +240,8 @@ The calendar becomes context, not a plan to obey. Daisey reads it freely and wri
 
 **Calendar used:** writes go to a separate "Daisey" calendar, so they're easy to hide or delete without touching other events.
 
+**Done log:** every task finished with Done (and every finished batch) is written to a second calendar, "Daisey log", as the time actually spent, ending at Done. Marked free, so it never blocks anything; untick the calendar in Google Calendar to hide the lookback. On by default (Mor said yes, 2026-10-05), switch in the account menu: "Log finished tasks in Google Calendar". The one write that happens without a tap at that moment.
+
 **Meetings to set up (v2).** A task like "set a meeting with X" becomes: Daisey suggests 3 free slots from the calendar and drafts the message. You approve, then send it yourself.
 
 ## Day hours, booked tasks and calendar tasks

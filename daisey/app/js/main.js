@@ -156,11 +156,15 @@ async function boot(){
         const fail = (e) => console.error("[daisey] menu", e);
         // Day hours in the account menu (DAISEY_SPEC "Day hours"), saved on change.
         const start = $("#dayStart"), end = $("#dayEnd");
+        // Finished tasks into the "Daisey log" calendar (now.js logFinished): on unless switched off.
+        const logSwitch = $("#logDone");
         const stopSettings = watchSettings(user.uid, (s) => {
           const hrs = dayHours(s || {});
           if (document.activeElement !== start) start.value = minText(hrs.start);
           if (document.activeElement !== end) end.value = minText(hrs.end);
+          logSwitch.checked = s?.logDone !== false;
         }, fail);
+        logSwitch.onchange = () => saveSettings(user.uid, { logDone: logSwitch.checked }).catch(fail);
         const saveHours = () => {
           const hrs = dayHours({ dayStart: start.value, dayEnd: end.value });
           // An end before the start isn't a day: the default comes back.
@@ -168,7 +172,7 @@ async function boot(){
         };
         start.onchange = saveHours;
         end.onchange = saveHours;
-        m.menu = { unmount(){ stopSettings(); start.onchange = end.onchange = null; } };
+        m.menu = { unmount(){ stopSettings(); start.onchange = end.onchange = logSwitch.onchange = null; } };
         m.tasks = mountTasks($("#tasksview"), user.uid,
           { onAdd: (project) => m.adder.open(project), onOpen: (task) => m.adder.edit(task), onSweep: () => m.sweep.open(),
           onProject: (name) => { location.hash = "tasks"; setPane("tasks"); m.tasks.showProject(name); $("#tasksview").scrollIntoView?.({ behavior: "smooth", block: "nearest" }); } });

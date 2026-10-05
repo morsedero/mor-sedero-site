@@ -13,8 +13,8 @@
 import { watchTasks, watchRun, watchSkips, saveSkips, startRun, extendRun, endRun, startBatch, tickBatch, endBatch, skipNow, blockTask, restoreTask, watchSettings, saveSettings, watchMoment, saveMoment, watchLearn, bumpLearn, addTask, saveRun, cancelRun } from "./store.js";
 import { energyNow, placeNow, workBase } from "./context.js";
 import { shouldOffer, sweepList, pickWeekDay } from "./triage.js";
-import { focusView, handoffView, celebrate, elapsedMinutes, batchFocusView, batchName, sinceMark, paused, resumed } from "./focus.js";
-import { watchCalendar, deleteEvent } from "./calendar.js";
+import { focusView, handoffView, celebrate, elapsedMinutes, targetMinutes, batchFocusView, batchName, sinceMark, paused, resumed } from "./focus.js";
+import { watchCalendar, deleteEvent, logDone } from "./calendar.js";
 import { LATER_MINUTES, DRAIN, CANCEL_KEEP_MINUTES } from "./weights.js";
 import { rank, freeWindow, whySaid, timeBucket, matchProject } from "./engine.js";
 import { localDate, skipSnapshot, shrunk, shrinkPatch, notYet, LABELS } from "./model.js";
@@ -195,6 +195,15 @@ export function mountNow(root, uid, { onCard, onSweep, onProject } = {}){
   // tabs, the greeting and the + button).
   // A batch: a checklist in focus mode. The last tick ends it and hands off
   // like Done; Stop leaves the unticked ones open with their share of the time.
+  // A finished task goes into Google Calendar's "Daisey log" as a lookback,
+  // unless turned off in the account menu. Under a minute isn't worth a
+  // block. A failure is only logged: the task is done either way.
+  const logFinished = (title, minutes, taskId, planned) => {
+    if (settings.logDone === false || minutes < 1) return;
+    const note = `Done with Daisey: ${dur(Math.round(minutes))}${planned ? ` (planned ${dur(planned)})` : ""}.`;
+    logDone({ title, minutes, taskId, note }).catch((e) => console.error("[daisey] log to calendar", e));
+  };
+
   function renderBatch(){
     const byId = new Map((tasks || []).map((t) => [t.id, t]));
     const list = run.batch.map((id) => byId.get(id)).filter(Boolean);
@@ -208,6 +217,8 @@ export function mountNow(root, uid, { onCard, onSweep, onProject } = {}){
         if (last) {
           handoff = { title: batchName(type, list.length), skip: prev.taskId };
           tickBatch(uid, prev, t, minutes).then(() => endBatch(uid, [], 0)).catch(fail);
+          logFinished(`${batchName(type, list.length)}: ${list.map((x) => x.title).join(", ")}`, elapsedMinutes(prev), prev.taskId,
+            list.reduce((s, x) => s + (x.size || 0), 0));
           run = null;
         } else {
           run = { ...run, done, mark: Date.now() };
@@ -268,6 +279,7 @@ export function mountNow(root, uid, { onCard, onSweep, onProject } = {}){
         const minutes = elapsedMinutes(run);
         handoff = { title: task ? task.title : "", skip: run.taskId };
         endRun(uid, task, minutes, { finished: true }).catch(fail);
+        if (task) logFinished(task.title, minutes, task.id, targetMinutes(run, task));
         run = null; render();
       },
       onExtend: (m) => { const prev = run; run = { ...run, extra: (run.extra || 0) + m }; render(); extendRun(uid, prev, m).catch(fail); },
