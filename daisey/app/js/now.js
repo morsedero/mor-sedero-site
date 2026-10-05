@@ -513,7 +513,7 @@ export function mountNow(root, uid, { onCard, onSweep, onProject } = {}){
       h("p", { className: "now-why", textContent: "Nothing else fits right now, so this is next." }),
       h("button", { className: "btn primary start", type: "button", textContent: "Start now",
         ariaLabel: `Start ${b.task.title} now, before its slot`, onclick: () => begin(b.task) }),
-      outLine(r), putOffButton());
+      ...cardActions(b.task, []), outLine(r), putOffButton());
   }
 
   // Why the open tasks can't come up now, counted: "Out right now: 3 put
@@ -611,6 +611,46 @@ export function mountNow(root, uid, { onCard, onSweep, onProject } = {}){
         h("button", { className: "chip quiet", type: "button", textContent: "Not a task", onclick: () => { asked(); render(); } })));
   }
 
+  // Later · Switch · Pending and what each opens, for any card that holds
+  // one task — the pick, or a booked task shown early (Mor, 2026-10-05: a
+  // booked card with only "Start now" left nowhere to go).
+  function cardActions(task, alts){
+    const card = { task };
+    const someN = somedayTasks().length;
+    return [
+      h("div", { className: "now-actions" },
+        action("later", "Later", `not now — choose when to see ${card.task.title} again`,
+          { ariaExpanded: String(state.laterAsk), onclick: () => { state.laterAsk = !state.laterAsk; state.pendAsk = false; state.showAlts = false; render(); } }),
+        // Never a dead end while Someday holds tasks (DAISEY_SPEC "Someday comes back").
+        action("switch", "Switch", state.showAlts ? "hide the other tasks"
+          : alts.length ? `something else — ${alts.length} other tasks`
+          : someN ? "nothing else is active — pick from Someday" : "nothing else is active",
+          { disabled: !alts.length && !someN, ariaExpanded: String(state.showAlts),
+            onclick: () => { state.showAlts = !state.showAlts; state.laterAsk = false; state.pendAsk = false; render(); } }),
+        action("pending", "Pending", `${card.task.title} is blocked — set it to Waiting`,
+          { ariaExpanded: String(state.pendAsk), onclick: () => { state.pendAsk = !state.pendAsk; state.laterAsk = false; state.showAlts = false; render(); } })),
+      state.pendAsk && pendingAsk(card.task),
+      state.laterAsk && h("div", { className: "later-ask", role: "group", ariaLabel: "When instead?" },
+        h("span", { className: "muted", textContent: "When?" }),
+        ...[["today", "Later today"], ["tomorrow", "Tomorrow"], ["week", "This week"], ["someday", "Someday"]].map(([w, text]) =>
+          h("button", { className: "chip", type: "button", textContent: text, onclick: () => later(card.task, w) }))),
+    ];
+  }
+
+  // Switch's list: the other tasks, or the way into Someday when there are none.
+  function altsFor(alts){
+    return [
+      state.showAlts && !alts.length && h("div", { className: "now-alts", role: "group", ariaLabel: "Other tasks" },
+        h("p", { className: "muted" }, "Nothing else is active. ",
+          h("button", { className: "linkish", type: "button", textContent: "Pick from Someday?",
+            onclick: () => { sd.open = true; state.showAlts = false; render(); } }))),
+      state.showAlts && alts.length > 0 && h("div", { className: "now-alts", role: "group", ariaLabel: "Other tasks" }, ...alts.map((s) => h("button", {
+        type: "button", className: "now-alt", ariaLabel: `Put ${s.task.title} on the card instead${s.why ? ". " + s.why : ""}`,
+        onclick: () => { state.chosen = s.task.id; state.showAlts = false; render(); },
+      }, taskCard(s, false)))),
+    ];
+  }
+
   function render(){
     const live = !!run && !run.pausedAt; // a paused run is back on the main screen
     document.body.classList.toggle("focus", live || !!handoff);
@@ -672,7 +712,7 @@ export function mountNow(root, uid, { onCard, onSweep, onProject } = {}){
     if (!card && fw?.current) { fill(greet, meetingCard(fw.current), tip); return; }
     const bk = !card && r.out.filter((o) => o.reason === "booked").map((o) => ({ task: o.task, ...booked().get(o.task.id) }))
       .filter((b) => b.start).sort((a, b) => a.start - b.start)[0];
-    if (bk) { fill(greet, bookedCard(bk, r), tip); return; }
+    if (bk) { fill(greet, bookedCard(bk, r), ...altsFor([]), tip); return; }
     if (!card) {
       fill(greet, h("div", { className: "now-card main empty" },
         r.empty === "nofit" && contextLine(), // nothing fits: maybe you're not where Daisey thinks
@@ -685,35 +725,12 @@ export function mountNow(root, uid, { onCard, onSweep, onProject } = {}){
 
     if (card === r.pick && r.pick.batch && !state.chosen && !state.single) { fill(greet, batchCard(r, r.pick.batch), tip); return; }
     const alts = r.ranked.length > 1 ? [r.pick, ...r.alternatives].filter((s) => s !== card).slice(0, 3) : [];
-    const someN = somedayTasks().length;
     // Start is the one loud thing on the tab; the other two stay quiet under it.
     fill(greet, taskCard(card, true,
       h("button", { className: "btn primary start", type: "button", textContent: "Start",
         ariaLabel: `Start: ${card.task.title}`, onclick: () => begin(card.task) }),
-      h("div", { className: "now-actions" },
-        action("later", "Later", `not now — choose when to see ${card.task.title} again`,
-          { ariaExpanded: String(state.laterAsk), onclick: () => { state.laterAsk = !state.laterAsk; state.pendAsk = false; state.showAlts = false; render(); } }),
-        // Never a dead end while Someday holds tasks (DAISEY_SPEC "Someday comes back").
-        action("switch", "Switch", state.showAlts ? "hide the other tasks"
-          : alts.length ? `something else — ${alts.length} other tasks`
-          : someN ? "nothing else is active — pick from Someday" : "nothing else is active",
-          { disabled: !alts.length && !someN, ariaExpanded: String(state.showAlts),
-            onclick: () => { state.showAlts = !state.showAlts; state.laterAsk = false; state.pendAsk = false; render(); } }),
-        action("pending", "Pending", `${card.task.title} is blocked — set it to Waiting`,
-          { ariaExpanded: String(state.pendAsk), onclick: () => { state.pendAsk = !state.pendAsk; state.laterAsk = false; state.showAlts = false; render(); } })),
-      state.pendAsk && pendingAsk(card.task),
-      state.laterAsk && h("div", { className: "later-ask", role: "group", ariaLabel: "When instead?" },
-        h("span", { className: "muted", textContent: "When?" }),
-        ...[["today", "Later today"], ["tomorrow", "Tomorrow"], ["week", "This week"], ["someday", "Someday"]].map(([w, text]) =>
-          h("button", { className: "chip", type: "button", textContent: text, onclick: () => later(card.task, w) })))),
-      state.showAlts && !alts.length && h("div", { className: "now-alts", role: "group", ariaLabel: "Other tasks" },
-        h("p", { className: "muted" }, "Nothing else is active. ",
-          h("button", { className: "linkish", type: "button", textContent: "Pick from Someday?",
-            onclick: () => { sd.open = true; state.showAlts = false; render(); } }))),
-      state.showAlts && alts.length > 0 && h("div", { className: "now-alts", role: "group", ariaLabel: "Other tasks" }, ...alts.map((s) => h("button", {
-        type: "button", className: "now-alt", ariaLabel: `Put ${s.task.title} on the card instead${s.why ? ". " + s.why : ""}`,
-        onclick: () => { state.chosen = s.task.id; state.showAlts = false; render(); },
-      }, taskCard(s, false)))), tip);
+      ...cardActions(card.task, alts)),
+      ...altsFor(alts), tip);
     // One slide-in per step-aside: later snapshots must not replay it.
     if (slideIn) { slideIn = false; if (motionOK()) root.querySelector(".now-card.main")?.classList.add("in"); }
   }
