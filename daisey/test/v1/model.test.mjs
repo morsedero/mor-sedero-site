@@ -304,3 +304,43 @@ test("cancel after real work: minutes kept, no stop counted", () => {
   const t = { spentMinutes: 10, stopsUnfinished: 1 };
   assert.deepEqual(M.keptTime(t, 7.4, { now: 5 }), { spentMinutes: 17, touchedAt: 5, workedAt: 5 });
 });
+
+// ---------- layout round 2 (2026-10-05): steps, links, Pending's check date ----------
+
+test("steps: the first unticked one is the next step; blanks drop out", () => {
+  const t = M.createTask({ title: "Mix the trailer", steps: [{ text: "Bounce", done: true }, { text: "  ", done: false }, { text: "Layer  impacts" }] }, opts);
+  assert.deepEqual(t.steps, [{ text: "Bounce", done: true }, { text: "Layer impacts", done: false }]);
+  assert.equal(t.nextStep, "Layer impacts");
+  const p = M.editTask(t, { steps: [{ text: "Bounce", done: true }, { text: "Layer impacts", done: true }] }, opts);
+  assert.equal(p.nextStep, null); // all ticked: nothing next
+  assert.equal(M.editTask(t, { steps: [] }, opts).steps, null);
+});
+
+test("links: a bare address gets https, the label is the file or the site", () => {
+  const t = M.createTask({ title: "x", links: [{ url: "drive.google.com/file/d/1/cue-sheet.pdf" }, { url: "https://www.example.com/a/b" }, { url: "" }] }, opts);
+  assert.deepEqual(t.links, [
+    { url: "https://drive.google.com/file/d/1/cue-sheet.pdf", label: "cue-sheet.pdf" },
+    { url: "https://www.example.com/a/b", label: "example.com" },
+  ]);
+  assert.equal(M.createTask({ title: "y" }, opts).links, null);
+});
+
+test("pending: a check date three days on; leaving Pending clears it", () => {
+  const t = M.createTask({ title: "x" }, opts);
+  const day3 = M.dayAfter(M.PENDING_CHECK_DAYS, NOW);
+  assert.equal(M.skipReason(t, "blocked", opts).checkOn, day3);
+  const waiting = { ...t, status: "waiting", checkOn: day3 };
+  assert.equal(M.editTask(t, { status: "waiting" }, opts).checkOn, day3);
+  assert.equal(M.editTask(waiting, { checkOn: "2026-10-20" }, opts).checkOn, "2026-10-20");
+  assert.equal(M.editTask(waiting, { status: "ready" }, opts).checkOn, null);
+});
+
+test("migrate v4: a next step becomes step 1; a pending task gets a check date", () => {
+  const old = { ...M.createTask({ title: "x" }, opts), v: 3, nextStep: "Call Yuval", status: "waiting", touchedAt: NOW };
+  delete old.steps; delete old.links; delete old.checkOn;
+  const p = M.migrateTask(old);
+  assert.deepEqual(p.steps, [{ text: "Call Yuval", done: false }]);
+  assert.equal(p.links, null);
+  assert.equal(p.checkOn, M.dayAfter(M.PENDING_CHECK_DAYS, NOW));
+  assert.deepEqual(M.migrateTask({ ...old, ...p }), {});
+});

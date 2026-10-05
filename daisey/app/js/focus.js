@@ -189,7 +189,7 @@ export function focusView(run, task, cb){
         quiet("+15 min", `Give ${what} 15 more minutes`, () => screen?.cb.onExtend(15)),
         h("button", { className: "btn line pause", type: "button", onclick: () => (screen?.paused ? screen.cb.onResume() : screen?.cb.onPause()) }),
         quiet("Stop", `Stop ${what} for now; the time so far is kept`, () => screen?.cb.onStop()),
-        task && quiet("Pending", `${what} is blocked — stop and set it to Waiting`, () => screen?.cb.onPending?.())));
+        task && quiet("Pending", `${what} is blocked — stop and set it to Pending`, () => screen?.cb.onPending?.())));
     screen = { key, el, title, ring, hold };
   }
   screen.cb = cb;

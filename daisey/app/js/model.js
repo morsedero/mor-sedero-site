@@ -14,6 +14,10 @@
 //   migrated dates are Targets until the user says otherwise.
 // - No repeating tasks.
 // - Waiting is set by acting on an existing task, never when adding one.
+//   The UI calls it Pending (Mor, 2026-10-05); the status stays "waiting".
+// - Steps (2026-10-05, layout round 2): a checklist on the task. The first
+//   unticked one is written to nextStep, so the engine and the Now card read
+//   the same field they always did.
 
 export const SIZES = [5, 15, 30, 60, 90]; // guess buckets; 90 reads as "90+"
 // someday: parked, never on the card until moved back. dropped: let go in the
@@ -24,7 +28,10 @@ export const INBOX = "Inbox";
 export const DEFAULT_SIZE = 30;
 export const SPLIT_FROM = 60; // "can split" defaults on from this size
 const SIMILAR = 0.5; // title word overlap that counts as "a similar past task"
-export const TASK_VERSION = 3; // tasks below this get migrateTask'd on load
+export const TASK_VERSION = 4; // tasks below this get migrateTask'd on load
+// Pending asks "still pending?" this many days after it was set (Mor,
+// 2026-10-05: 3 days, editable in the Pending ask).
+export const PENDING_CHECK_DAYS = 3;
 
 export const AREAS = ["work", "job", "home", "admin", "social", "personal"];
 export const TYPES = ["deep", "admin", "call", "errand", "home", "social"];
@@ -84,6 +91,39 @@ export function toDate(v){
   if (typeof v !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(v)) return null;
   const [y, m, d] = v.split("-").map(Number);
   return new Date(Date.UTC(y, m - 1, d)).toISOString().slice(0, 10) === v ? v : null; // rejects 2026-02-30
+}
+
+// The day `days` after `ms`, as "YYYY-MM-DD".
+export const dayAfter = (days, ms = Date.now()) => { const d = new Date(ms); d.setDate(d.getDate() + days); return localDate(d.getTime()); };
+
+// Steps: [{ text, done }], blanks dropped. null when there are none.
+export function toSteps(v){
+  if (!Array.isArray(v)) return null;
+  const out = v.map((s) => ({ text: text(s?.text), done: !!s?.done })).filter((s) => s.text);
+  return out.length ? out : null;
+}
+// The step the Now card shows: the first one not ticked.
+export const nextOpenStep = (steps) => (steps || []).find((s) => !s.done)?.text || null;
+
+// Links: [{ url, label }]. A bare "drive.google.com/…" gets its https://.
+export function toLinks(v){
+  if (!Array.isArray(v)) return null;
+  const out = v.map((l) => {
+    let url = String(l?.url || "").trim();
+    if (!url) return null;
+    if (!/^[a-z][a-z0-9+.-]*:/i.test(url)) url = "https://" + url;
+    return { url, label: text(l?.label) || linkLabel(url) };
+  }).filter(Boolean);
+  return out.length ? out : null;
+}
+// What a link chip says: the file name if the URL ends in one, else the site.
+export function linkLabel(url){
+  try {
+    const u = new URL(url);
+    const last = decodeURIComponent(u.pathname.split("/").filter(Boolean).at(-1) || "");
+    if (/\.[a-z0-9]{2,5}$/i.test(last)) return last;
+    return u.hostname.replace(/^www\./, "");
+  } catch { return url; }
 }
 
 export const toTime = (v) => (typeof v === "string" && /^([01]\d|2[0-3]):[0-5]\d$/.test(v) ? v : null);
@@ -343,9 +383,13 @@ export function createTask(input, { now = Date.now(), history = [] } = {}){
     notBefore: toDate(input.notBefore),
     status: "ready",
     waitingOn: null,
+    checkOn: null, // Pending: the day Daisey asks "still pending?"
     // The one thing to do next, for a big task or a goal: what the card
-    // shows under the title so a 90-minute lump has a way in.
-    nextStep: text(input.nextStep) || null,
+    // shows under the title so a 90-minute lump has a way in. With steps,
+    // it is the first unticked step.
+    steps: toSteps(input.steps),
+    nextStep: nextOpenStep(toSteps(input.steps)) || text(input.nextStep) || null,
+    links: toLinks(input.links),
     canSplit: v.canSplit,
     notes: notesText(input.notes) || null,
     // Where it came from, when it wasn't typed here: { app, cardId, boardId }.
@@ -406,15 +450,24 @@ export function editTask(task, changes, { now = Date.now(), history = [] } = {})
   else if (has("dateKind") && DATE_KINDS.includes(changes.dateKind)) set("dateKind", changes.dateKind);
   else if (!DATE_KINDS.includes(task.dateKind)) set("dateKind", "target");
   if (has("nextStep")) set("nextStep", text(changes.nextStep) || null);
+  if (has("steps")) {
+    const steps = toSteps(changes.steps);
+    set("steps", steps);
+    set("nextStep", nextOpenStep(steps));
+  }
+  if (has("links")) set("links", toLinks(changes.links));
 
   if (has("waitingOn")) set("waitingOn", text(changes.waitingOn) || null);
+  if (has("checkOn")) set("checkOn", toDate(changes.checkOn));
   if (has("status") && STATUS.includes(changes.status)) {
     set("status", changes.status);
     if (changes.status !== "waiting" && !has("waitingOn")) set("waitingOn", null);
+    if (changes.status !== "waiting") set("checkOn", null);
     if (changes.status !== "done") set("doneAt", null); // reopened
   } else if (has("waitingOn") && get("waitingOn") && get("status") === "ready") {
     set("status", "waiting");
   }
+  if (get("status") === "waiting" && !get("checkOn")) set("checkOn", dayAfter(PENDING_CHECK_DAYS, now));
   if (has("notes")) set("notes", notesText(changes.notes) || null);
 
   const order = GUESSABLE.filter((k) => guessed.has(k));
@@ -446,6 +499,12 @@ export function migrateTask(task, history = []){
   const kind = task.due ? (DATE_KINDS.includes(task.dateKind) ? task.dateKind : "target") : null;
   if (task.dateKind !== kind) patch.dateKind = kind;
   if (task.nextStep === undefined) patch.nextStep = null;
+  // v4 (2026-10-05): steps, links, and Pending's check date. A next step
+  // already written becomes step 1; a task already pending is asked about
+  // three days after it was last touched.
+  if (task.steps === undefined) patch.steps = task.nextStep ? [{ text: task.nextStep, done: false }] : null;
+  if (task.links === undefined) patch.links = null;
+  if (task.checkOn === undefined) patch.checkOn = task.status === "waiting" ? dayAfter(PENDING_CHECK_DAYS, task.touchedAt || Date.now()) : null;
   const order = GUESSABLE.filter((k) => guessed.has(k));
   if (!same(order, task.guessed || [])) patch.guessed = order;
   patch.v = TASK_VERSION;
@@ -466,7 +525,7 @@ export function skipReason(task, reason, { now = Date.now() } = {}){
   if (!SKIP_REASONS.includes(reason)) return {};
   const counts = { ...Object.fromEntries(SKIP_REASONS.map((r) => [r, 0])), ...(task.skipReasons || {}) };
   const patch = { skipReasons: { ...counts, [reason]: counts[reason] + 1 }, touchedAt: now };
-  if (reason === "blocked") patch.status = "waiting";
+  if (reason === "blocked") { patch.status = "waiting"; patch.checkOn = dayAfter(PENDING_CHECK_DAYS, now); }
   return patch;
 }
 
@@ -477,6 +536,7 @@ export const skipSnapshot = (task) => ({
   skipReasons: task.skipReasons || {}, status: task.status, touchedAt: task.touchedAt ?? null,
   notBefore: task.notBefore ?? null, // Later → This week sets it
   waitingOn: task.waitingOn ?? null, // Pending's reason
+  checkOn: task.checkOn ?? null, // …and when to ask again
 });
 
 // Focus mode. Starting clears the stale-skip count: a task you actually

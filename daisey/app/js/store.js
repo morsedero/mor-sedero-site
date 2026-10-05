@@ -3,7 +3,7 @@
 // only moves documents. `tasks` arguments are the current list from
 // watchTasks, used as history for "similar past tasks" guesses.
 import * as fb from "./firebase.js";
-import { createTask, editTask, completeTask, startedTask, workedTask, keptTime, skipTask, skipReason, migrateTask } from "./model.js";
+import { createTask, editTask, completeTask, startedTask, workedTask, keptTime, skipTask, skipReason, migrateTask, toDate } from "./model.js";
 
 const tasksCol = (uid) => fb.collection(fb.db, "users", uid, "tasks");
 const taskDoc = (uid, id) => fb.doc(fb.db, "users", uid, "tasks", id);
@@ -61,9 +61,11 @@ export function skipNow(uid, task){
 
 // Pending: the card's third action. Counts as a skip and sets it Waiting.
 // `waitingOn`: the reason the user typed ("Yuval sends the stems"), if any.
-export function blockTask(uid, task, waitingOn = ""){
+// `checkOn`: when to ask "still pending?" (default: PENDING_CHECK_DAYS on).
+export function blockTask(uid, task, waitingOn = "", checkOn = ""){
   const why = String(waitingOn || "").trim();
-  return fb.updateDoc(taskDoc(uid, task.id), { ...skipTask(task), ...skipReason(task, "blocked"), ...(why ? { waitingOn: why } : {}) });
+  return fb.updateDoc(taskDoc(uid, task.id), { ...skipTask(task), ...skipReason(task, "blocked"), ...(why ? { waitingOn: why } : {}),
+    ...(toDate(checkOn) ? { checkOn } : {}) });
 }
 
 export function restoreTask(uid, id, fields){

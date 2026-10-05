@@ -1,0 +1,206 @@
+// Needs you (Mor, 2026-10-05; daisey/New Design/10-needs-you): the small
+// decisions Daisey can't make alone, one at a time on a screen of their own,
+// instead of asks stacked under the Now card. The home screen only says how
+// many there are ("Needs you: 3 quick decisions").
+//
+// Sources, in this order:
+//   cal      a calendar event that reads like a task (caltask.js) — it was
+//            the "Make this a task?" ask under the card
+//   pending  a Pending task past its check date (model checkOn): "Still
+//            pending?"
+//   someday  the weekly Someday pick (Sunday morning, or fewer than 3
+//            active) — it was the pick under the card
+//   sweep    an old date (triage.js) — it was the "Old dates" sheet
+//            (Mor, 2026-10-05: folded in here)
+//
+// "Ask me later" hides one for the rest of the day (settings.needsLater).
+// The list is fixed when the screen opens, so answering one never reshuffles
+// the dots.
+import { watchTasks, watchSettings, saveSettings, restoreTask, addTask } from "./store.js";
+import { watchCalendar, deleteEvent } from "./calendar.js";
+import { nextOffer, draftFrom } from "./caltask.js";
+import { sweepList, isOverdue, shouldOffer, pickWeekDay, answer, answerSnapshot } from "./triage.js";
+import { localDate, dayAfter, PENDING_CHECK_DAYS, notYet } from "./model.js";
+import { h, icon, dur } from "./ui.js";
+import { areaClass } from "./look.js";
+
+const STAKES_FIRST = { penalty: 0, money: 1, someone: 2, low: 3 };
+const MARK = { penalty: "There's a penalty if it's late.", money: "It costs money to leave it.", someone: "Someone's waiting on it." };
+const shortDay = (s) => new Date(`${s}T12:00`).toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" });
+const weekday = (s) => new Date(`${s}T12:00`).toLocaleDateString(undefined, { weekday: "short" });
+// "10-minute", "2-hour", "1 h 30 min" — for "I'd make it a 10-minute task".
+const sizeWords = (m) => (m < 60 ? `${m}-minute` : m % 60 ? dur(m) : `${m / 60}-hour`);
+const clock = (ms) => new Date(ms).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
+
+// The Someday pick's rule (DAISEY_SPEC "Someday comes back"): Sunday
+// morning, or whenever fewer than 3 tasks are active, at most once a day.
+export function somedayDue(tasks = [], settings = {}, now = Date.now()){
+  if (!tasks.some((t) => t.status === "someday")) return false;
+  if (settings.somedayAsked === localDate(now)) return false;
+  const d = new Date(now);
+  const active = tasks.filter((t) => t.status === "ready" && !notYet(t, now)).length;
+  return (d.getDay() === 0 && d.getHours() < 12) || active < 3;
+}
+const somedayTop = (tasks) => tasks.filter((t) => t.status === "someday")
+  .sort((a, b) => (STAKES_FIRST[a.stakes] ?? 3) - (STAKES_FIRST[b.stakes] ?? 3) || (a.createdAt || 0) - (b.createdAt || 0))[0];
+
+// Everything waiting on an answer right now, as { key, kind, … }. PURE apart
+// from reading the clock: now.js calls it for the count on the home screen.
+export function collectNeeds({ tasks = [], events = [], calOk = false, settings = {}, now = Date.now() } = {}){
+  const later = settings.needsLater?.date === localDate(now) ? new Set(settings.needsLater.keys || []) : new Set();
+  const out = [];
+  const add = (item) => { if (!later.has(item.key)) out.push(item); };
+  if (calOk) {
+    const offered = [...(settings.calOffered || [])];
+    for (let i = 0; i < 5; i++) {
+      const ev = nextOffer(events, tasks, offered);
+      if (!ev) break;
+      offered.push(ev.id);
+      add({ key: `cal:${ev.id}`, kind: "cal", ev });
+    }
+  }
+  const today = localDate(now);
+  tasks.filter((t) => t.status === "waiting" && t.checkOn && t.checkOn <= today)
+    .sort((a, b) => a.checkOn.localeCompare(b.checkOn))
+    .forEach((t) => add({ key: `pend:${t.id}`, kind: "pending", id: t.id }));
+  if (somedayDue(tasks, settings, now)) { const t = somedayTop(tasks); if (t) add({ key: "someday", kind: "someday", id: t.id }); }
+  // Passed deadlines always; passed targets only once they pile up (the
+  // sweep's old threshold) — a target that slipped sits quietly under today.
+  const targets = shouldOffer(tasks, now, {});
+  sweepList(tasks, now).filter((t) => isOverdue(t, now) || targets)
+    .forEach((t) => add({ key: `sweep:${t.id}`, kind: "sweep", id: t.id }));
+  return out;
+}
+
+// onClose(): back to home.
+export function mountNeeds(root, uid, { onClose } = {}){
+  let tasks = [], settings = {}, cal = { status: "loading", events: [] };
+  let list = [], i = 0, follow = null; // follow: the "keep the event?" step after making one a task
+  const fail = (e) => console.error("[daisey] needs", e);
+  const find = (id) => tasks.find((t) => t.id === id);
+
+  const next = () => { follow = null; i++; paint(); };
+  const later = (key) => {
+    const today = localDate();
+    const keys = settings.needsLater?.date === today ? [...(settings.needsLater.keys || [])] : [];
+    const needsLater = { date: today, keys: [...new Set([...keys, key])] };
+    settings = { ...settings, needsLater };
+    saveSettings(uid, { needsLater }).catch(fail);
+    next();
+  };
+  const markOffered = (ev) => {
+    const calOffered = [...(settings.calOffered || []), ev.id].slice(-200);
+    settings = { ...settings, calOffered };
+    saveSettings(uid, { calOffered }).catch(fail);
+  };
+  const somedayDone = () => {
+    settings = { ...settings, somedayAsked: localDate() };
+    saveSettings(uid, { somedayAsked: localDate() }).catch(fail);
+  };
+  const sweep = (t, kind) => {
+    const now = Date.now();
+    const week = kind === "week" ? pickWeekDay(t, { events: cal.events || [], tasks, now }) : null;
+    restoreTask(uid, t.id, { ...answerSnapshot(t), ...answer(kind, t, { now, week }) }).catch(fail);
+    next();
+  };
+
+  // One question: what each source asks and what each answer does.
+  // tone: the card's tint (an area class), ico: its icon.
+  function question(item){
+    if (item.kind === "cal") {
+      const ev = item.ev, d = draftFrom(ev, tasks);
+      const start = Date.parse(ev.start), end = Date.parse(ev.end);
+      const when = ev.allDay ? shortDay(String(ev.start).slice(0, 10))
+        : `${new Date(start).toLocaleDateString(undefined, { weekday: "long" })}, ${clock(start)}–${clock(end)}`;
+      const due = d.input.due ? `, due ${new Date(`${d.input.due}T12:00`).toLocaleDateString(undefined, { day: "numeric", month: "short" })}` : "";
+      return { tone: "area-admin", ico: "calendar", q: "Is this a task?", sub: `It's in your calendar on ${when}.`,
+        item: ev.title, say: `I'd make it a ${sizeWords(d.guess.size)} task${due}.`,
+        yes: ["Yes, make it a task", () => { markOffered(ev); addTask(uid, d.input, tasks).catch(fail); follow = ev; paint(); }],
+        no: ["No, it's an event", () => { markOffered(ev); next(); }] };
+    }
+    const t = find(item.id);
+    if (!t) return null; // deleted since: skip it
+    if (item.kind === "pending") {
+      const since = t.touchedAt ? ` since ${new Date(t.touchedAt).toLocaleDateString(undefined, { day: "numeric", month: "short" })}` : "";
+      return { tone: areaClass(t).trim() || "area-social", ico: "pending", q: "Still pending?",
+        sub: t.waitingOn ? `Waiting on ${t.waitingOn}${since}.` : `Pending${since}.`,
+        item: t.title, say: `If it's still stuck, I'll ask again ${weekday(dayAfter(PENDING_CHECK_DAYS))}.`,
+        yes: ["Yes, still waiting", () => { restoreTask(uid, t.id, { checkOn: dayAfter(PENDING_CHECK_DAYS), touchedAt: Date.now() }).catch(fail); next(); }],
+        no: ["No, it's ready", () => { restoreTask(uid, t.id, { status: "ready", waitingOn: null, checkOn: null, touchedAt: Date.now() }).catch(fail); next(); }] };
+    }
+    if (item.kind === "someday") {
+      return { tone: "area-home", ico: "someday", q: "Bring one back?", sub: "From Someday, for this week.",
+        item: t.title, say: MARK[t.stakes] || `It's ${dur(t.size)}, and the week has room.`,
+        yes: ["Bring it back", () => { somedayDone(); restoreTask(uid, t.id, { status: "ready", notBefore: null, touchedAt: Date.now() }).catch(fail); next(); }],
+        no: ["Leave it in Someday", () => { somedayDone(); next(); }] };
+    }
+    // sweep
+    const week = pickWeekDay(t, { events: cal.events || [], tasks });
+    return { tone: "area-job", ico: "later", q: "Still doing this?",
+      sub: `${t.dateKind === "deadline" ? "The deadline was" : "It was planned for"} ${shortDay(t.due)}.`,
+      item: t.title, say: `I'd move it to ${weekday(week)}, the roomiest day this week.`,
+      yes: ["Do it today", () => sweep(t, "today")],
+      no: [`Move to ${weekday(week)}`, () => sweep(t, "week")],
+      more: [["Someday", () => sweep(t, "someday")], ["Let it go", () => sweep(t, "drop")]] };
+  }
+
+  const big = (text, cls, onclick) => h("button", { className: `btn ${cls}`, type: "button", textContent: text, onclick });
+
+  function paint(){
+    // Skip anything that went away while the screen was open.
+    while (i < list.length && !follow && !question(list[i])) i++;
+    const top = h("div", { className: "ny-top" },
+      h("button", { className: "ny-x", type: "button", ariaLabel: "Close", onclick: () => onClose?.() }, icon("close")),
+      list.length > 1 && i < list.length && h("div", { className: "ny-dots", role: "img", ariaLabel: `Question ${i + 1} of ${list.length}` },
+        ...list.map((_, k) => h("span", { className: k === i ? "on" : k < i ? "past" : "" }))),
+      h("span", { className: "ny-pad", ariaHidden: "true" }));
+    if (i >= list.length) {
+      root.replaceChildren(top, h("div", { className: "ny-end" },
+        h("h2", { textContent: "That's everything." }),
+        h("p", { textContent: "Nothing else needs you." }),
+        big("Back to now", "line big", () => onClose?.())));
+      return;
+    }
+    let q;
+    if (follow) {
+      const ev = follow;
+      q = { tone: "area-admin", ico: "calendar", q: "Keep the event?", sub: "Added as a task.", item: ev.title,
+        say: "The task is in your list either way.",
+        yes: ["Keep it in the calendar", () => next()],
+        no: ev.editable !== false && ["Delete the event", () => { deleteEvent(ev).catch(fail); next(); }], noLater: true };
+    } else q = question(list[i]);
+    const left = list.length - i - 1;
+    const card = h("section", { className: `ny-card ${q.tone}`, ariaLabel: "Question" },
+      h("span", { className: "ny-ico" }, icon(q.ico)),
+      h("h2", { className: "ny-q", textContent: q.q }),
+      h("p", { className: "ny-sub", textContent: q.sub }),
+      h("div", { className: "ny-item", dir: "auto", textContent: q.item }),
+      h("p", { className: "ny-say", textContent: q.say }));
+    root.replaceChildren(top,
+      h("div", { className: "ny-stack" + (left > 1 ? " two" : left ? " one" : "") }, card),
+      h("div", { className: "ny-spacer" }),
+      h("div", { className: "ny-btns" },
+        big(q.yes[0], "primary big", q.yes[1]),
+        q.no && big(q.no[0], "line big", q.no[1]),
+        q.more && h("div", { className: "ny-more" }, ...q.more.map(([text, go]) => big(text, "quiet", go))),
+        !q.noLater && big("Ask me later", "quiet", () => later(list[i].key))));
+  }
+
+  const unsubs = [
+    watchTasks(uid, (ts) => { tasks = ts; }, fail),
+    watchSettings(uid, (s) => { settings = s || {}; }, fail),
+    watchCalendar((c) => { cal = c; }),
+  ];
+
+  return {
+    open(){
+      list = collectNeeds({ tasks, events: cal.events || [], calOk: cal.status === "ok", settings });
+      i = 0; follow = null;
+      paint();
+      root.hidden = false;
+      root.querySelector(".btn.primary, .btn")?.focus({ preventScroll: true });
+    },
+    close(){ root.hidden = true; root.replaceChildren(); },
+    unmount(){ unsubs.forEach((u) => u()); root.replaceChildren(); root.hidden = true; },
+  };
+}

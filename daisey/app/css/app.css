@@ -16,7 +16,6 @@
   --shadow: 0 10px 30px rgb(0 0 0 / .15);
   --radius: 24px; /* cards */
   --r-btn: 16px;
-  --sch-gut: 44px; /* the Today timeline's time column */
   /* Areas: tint / border / strong text. */
   --a-admin-tint: #eaf1fc; --a-admin-line: #cfddf5; --a-admin-ink: #2f64c0;
   --a-work-tint: #efeafd; --a-work-line: #dcd3fa; --a-work-ink: #5b47b8;
@@ -78,8 +77,6 @@ body {
 
 .brand { font-size: 22px; font-weight: 800; letter-spacing: -0.02em; margin: 0; }
 .topbar { display: flex; align-items: center; gap: 12px; margin-block-end: 16px; min-block-size: 40px; }
-.clock { margin: 0 auto 0 0; font-size: 13px; color: var(--ink-2); font-variant-numeric: tabular-nums; white-space: nowrap; }
-:dir(rtl) .clock { margin: 0 0 0 auto; }
 .acct { position: relative; }
 .avatar {
   inline-size: 36px; block-size: 36px; padding: 0; border-radius: 50%; overflow: hidden; cursor: pointer;
@@ -234,7 +231,6 @@ textarea {
 .dl-date { flex: none; font-size: 13px; }
 .btn.small { min-block-size: 32px; padding-block: 4px; padding-inline: 12px; font-size: 14px; }
 
-
 /* The Now popup. */
 .now {
   inline-size: min(480px, calc(100vw - 32px)); max-block-size: calc(100dvh - 32px);
@@ -330,9 +326,8 @@ textarea {
 @media (prefers-reduced-motion: reduce) { .now-card.main.in, .now-card.main.out { animation: none; } }
 
 /* Focus mode: the task fills the screen, nothing else on it. */
-body.focus .topbar, body.focus .tellbar, body.focus .now-greet { display: none; }
+body.focus .topbar, body.focus .pull, body.focus .now-greet { display: none; }
 body.focus #board { display: block; }
-body.focus #schedule, body.focus #tasksview { display: none; }
 body.focus .shell { padding-block: max(18px, env(safe-area-inset-top)) max(24px, env(safe-area-inset-bottom)); }
 /* "Hold to finish" (focus.js holdButton): a deeper amber fills from
    the start edge over 1 s, drains back if let go early. */
@@ -361,39 +356,12 @@ body.focus .shell { padding-block: max(18px, env(safe-area-inset-top)) max(24px,
   55% { transform: translate(var(--dx), var(--dy)) rotate(calc(var(--rot) * .6)); opacity: 1; }
   100% { transform: translate(var(--dx), calc(var(--dy) + 140px)) rotate(var(--rot)); opacity: 0; }
 }
-/* The Now card sits still at the top; under it one pane with two tabs. */
+/* One column at every width (Mor, 2026-10-05: never two under 600 px). */
 .shell { max-inline-size: 560px; }
 #board { display: grid; gap: 12px; }
-#nowcard { display: grid; gap: 10px; }
+#board > * { min-inline-size: 0; }
+#nowcard { display: grid; gap: 14px; }
 
-.shell { padding-block-end: 96px; } /* room so the FAB never covers the last row */
-
-/* Schedule: the calendar's own panel, between the card and the projects. */
-.sch {
-  display: grid; grid-template-rows: auto 1fr auto; gap: 8px; padding: 14px;
-  background: var(--card); border: 1px solid var(--line); border-radius: var(--radius);
-}
-/* One day fills the panel; the week slides sideways under the header. */
-.sch-strip { display: flex; overflow-x: auto; overflow-y: hidden; scroll-snap-type: x mandatory; scrollbar-width: none; }
-.sch-strip::-webkit-scrollbar { display: none; }
-.sch-day { flex: 0 0 100%; scroll-snap-align: start; overflow-y: auto; }
-.sch-nav {
-  position: sticky; inset-block-start: -14px; z-index: 1; background: var(--card);
-  display: flex; align-items: center; gap: 4px; padding-block: 2px;
-}
-/* The two arrows and + New event: one round button, three uses. */
-.sch-step, .sch-add {
-  flex: none; font: inherit; font-size: 20px; line-height: 1; cursor: pointer;
-  inline-size: 34px; block-size: 34px; border-radius: 50%; border: 1px solid var(--line);
-  background: var(--surface); color: var(--ink);
-}
-.sch-step:disabled { opacity: .35; cursor: default; }
-.sch-nav .sch-head { flex: 1; margin: 0; font-size: 17px; text-align: center; } /* the arrows and + sit either side */
-.sch-nav::before { content: ""; flex: none; inline-size: 38px; } /* balances the + so the day name sits centred */
-:dir(rtl) .sch-step { transform: scaleX(-1); }
-.sch-today { justify-self: start; min-block-size: 34px; padding-inline: 10px; font-size: 13px; }
-.sch-note { margin: 0; font-size: 13px; }
-.sch-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
 /* Import from Trello. */
 .imp-lists { display: grid; gap: 6px; margin-block: 10px; max-block-size: 48dvh; overflow-y: auto; }
 .imp-list { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
@@ -401,15 +369,6 @@ body.focus .shell { padding-block: max(18px, env(safe-area-inset-top)) max(24px,
 .imp-list input { inline-size: 18px; block-size: 18px; }
 .imp-board { inline-size: 100%; text-align: start; }
 .imp-actions { display: flex; gap: 8px; justify-content: flex-end; }
-
-/* Tapping an event opens its actions; dragging it is the CSS below. */
-.sch-open { display: flex; flex: 1; min-inline-size: 0; gap: 8px; align-items: baseline; text-align: start; font: inherit; color: inherit; text-align: start; background: none; border: 0; padding: 0; cursor: pointer; }
-/* An open row makes room for its two edge bars: tapping an event is what
-   reveals them, so an invisible full-width strip can never swallow the tap
-   that opens the row or the double-tap that renames it. A mouse gets them on
-   hover too, where the ns-resize cursor says what they are. */
-.sch-row:hover .sch-title { text-decoration: underline; text-decoration-color: var(--line); text-underline-offset: 3px; }
-.sch-problem { margin: 0; font-size: 13px; color: var(--danger); }
 
 /* The event sheet (addevent.js): Google's details-then-edit, in one dialog. */
 .ev-detail { display: grid; gap: 4px; }
@@ -419,82 +378,14 @@ body.focus .shell { padding-block: max(18px, env(safe-area-inset-top)) max(24px,
 .ev-acts { display: flex; gap: 8px; align-items: center; margin-block-start: 6px; padding-block-start: 12px; border-block-start: 1px solid var(--line); }
 .ev-acts .btn.danger { margin-inline-start: auto; color: var(--danger); }
 
-.sch-free { margin: 0; }
+.chip-n { font-size: 11px; font-weight: 700; opacity: .65; } /* Waiting is there to be seen, not acted on */
 
-/* Tasks: one list, sections by when. */
-.tk-single {
-  block-size: 100%; overflow-y: auto; overflow-x: hidden; display: grid; gap: 10px; align-content: start;
-  background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 12px 14px;
-}
-/* The chips scroll sideways to the card's own edge, so a half-cut chip says
-   there are more of them. */
-/* Above the scroller, beside the pane's own tabs — a control, not a row.
-   Inside it, it scrolled away with the tasks and was simply missing from any
-   list long enough to scroll. */
-/* One row the chips slide along: a finger scrolls it, a mouse drags it. */
-.tk-filters { display: flex; align-items: center; margin-block-end: 8px; }
-.tk-chips {
-  flex: 1; min-inline-size: 0; display: flex; gap: 6px; padding-block: 1px;
-  overflow-x: auto; scrollbar-width: none; cursor: grab;
-  /* No scroll-snap here on purpose: tasks.js settles the row itself when it
-     comes to rest. CSS snap re-aligned to the chip it last remembered the
-     moment the property came back, which undid that settling. */
-}
-.tk-chips::-webkit-scrollbar { display: none; }
-.tk-chips.dragging { cursor: grabbing; user-select: none; }
-.tk-chips > .chip { flex: none; }
-.tk-filters:empty { margin: 0; padding: 0; } /* one project: no bar, and no gap where it would be */
-.tk-filters::-webkit-scrollbar { display: none; }
-/* Grid children default to min-content width; without this the chip row's
-   own width pushes the whole list past the card's end padding. */
-.tk-single > *, .tk-sec, .tk-list, .tk-row, .tk-open, .tk-meta { min-inline-size: 0; }
-.tk-filters .chip { flex: none; min-block-size: 32px; font-size: 13px; padding-inline: 12px; gap: 6px; display: inline-flex; align-items: center; }
-.chip-n { font-size: 11px; font-weight: 700; opacity: .65; }
-.tk-secs { display: grid; gap: 14px; }
-.tk-sec-h {
-  display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin: 0 0 4px;
-  font-size: 14px; font-weight: 600; color: var(--ink-2);
-}
-.tk-sec.quiet { opacity: .72; } /* Waiting is there to be seen, not acted on */
-/* The project on a row: plain text that filters the list when tapped. */
-.tk-proj { font-weight: 600; color: var(--ink-2); }
-
-.tk-add {
-  font: inherit; font-weight: 600; color: var(--ink-2); background: none; border: 0; cursor: pointer;
-  padding-block: 10px; padding-inline: 0; text-align: start; inline-size: 100%;
-}
-.tk-list { list-style: none; margin: 0; padding: 0; }
-.tk-row { position: relative; display: flex; gap: 12px; align-items: flex-start; padding-block: 11px; }
-.tk-row.waiting .tk-title { color: var(--ink-2); }
-/* .is-now, not .now: `.now` is the dialog class (line 122), and a row wearing
-   it picked up the dialog's 480px width and 20px padding — which is why rows
-   used to hang past the end of the panel. */
-.tk-row.is-now { background: color-mix(in srgb, var(--accent) 12%, transparent); border-radius: 10px; padding-inline: 8px; margin-inline: -8px; }
-.tk-now {
-  display: inline-grid; place-items: center; margin-inline-start: 6px; inline-size: 18px; block-size: 18px; border-radius: 50%; vertical-align: -2px;
-  background: var(--accent); color: var(--ink);
-}
-.tk-now svg { inline-size: 9px; block-size: 9px; margin-inline-start: 1px; }
 .tk-check {
   flex: none; inline-size: 22px; block-size: 22px; margin-block-start: 1px; border-radius: 50%; cursor: pointer;
   border: 2px solid var(--ink-2); background: var(--surface); color: var(--card); font-size: 13px; font-weight: 800; line-height: 1; padding: 0;
 }
 .tk-check:hover { border-color: var(--ink); }
 .tk-check.done { background: var(--ink); border-color: var(--ink); }
-/* The whole row is the way into the task sheet, so it's one button — no ⋯
-   menu, and nothing here falls back to prompt() or confirm(). */
-.tk-open {
-  flex: 1; min-inline-size: 0; display: grid; gap: 2px; justify-items: start; text-align: start;
-  font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; border-radius: 8px;
-}
-.tk-open:hover .tk-title { text-decoration: underline; text-decoration-color: var(--line); text-underline-offset: 3px; }
-.tk-title { font-weight: 500; font-size: 15px; overflow-wrap: anywhere; }
-.tk-row.done .tk-title { font-weight: 400; color: var(--ink-2); text-decoration: line-through; }
-.tk-meta { font-size: 13px; color: var(--ink-2); overflow-wrap: anywhere; }
-.tk-note { margin: 4px 0; font-size: 13px; }
-.tk-done { margin-block-start: 4px; }
-.tk-done summary { cursor: pointer; font-weight: 600; color: var(--ink-2); padding-block: 8px; font-size: 14px; }
-.tk-empty { display: grid; gap: 12px; justify-items: start; }
 
 /* The task sheet's own actions, under the fields (addtask.js in edit mode). */
 .sheet-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-block-start: 12px; padding-block-start: 12px; border-block-start: 1px solid var(--line); }
@@ -509,38 +400,14 @@ body.focus .shell { padding-block: max(18px, env(safe-area-inset-top)) max(24px,
 .ev-grid > :nth-child(-n+2):not(.wide) { grid-column: auto; }
 .ev-note { font-size: 13px; margin-block: 10px 0; }
 
-/* The sweep: one old date at a time. */
-.sw-bar { display: flex; align-items: center; gap: 8px; margin-block-end: 8px; }
-.sw-count { margin: 0; flex: 1; text-align: center; }
-.sw-nav { font: inherit; font-size: 24px; line-height: 1; inline-size: 44px; block-size: 44px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); cursor: pointer; }
-.sw-nav:disabled { opacity: .3; cursor: default; }
-.sw-task { touch-action: pan-y; user-select: none; }
-.sw-task.answered { opacity: .75; }
-.sw-said { margin: 6px 0 0; font-size: 14px; font-weight: 600; }
-@media (prefers-reduced-motion: no-preference) {
-  .sw-task.in-next { animation: sw-in-next .18s ease-out; }
-  .sw-task.in-prev { animation: sw-in-prev .18s ease-out; }
-}
-@keyframes sw-in-next { from { transform: translateX(24px); opacity: 0; } }
-@keyframes sw-in-prev { from { transform: translateX(-24px); opacity: 0; } }
-.sw-task { display: grid; gap: 4px; padding: 14px; border-radius: 14px; border: 1px solid var(--line); background: var(--surface); margin-block-end: 14px; }
-.sw-answers { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-.sw-last { margin-block: 12px 0; }
-.sw-done { font-size: 18px; font-weight: 700; }
 .btn.danger { color: var(--danger); }
-.offer { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; }
-/* Someday: folded at the bottom of the list, out of the way. */
-.tk-someday { margin-block-start: 8px; }
-.tk-rolled { color: var(--ink-2); }
-.tk-sort { margin-inline-start: auto; margin-inline-end: 10px; font-size: 13px; font-weight: 600; letter-spacing: 0; text-transform: none; color: var(--ink); }
 
 /* A popup owns the screen: nothing behind it scrolls (Mor, 2026-10-04).
    The page and every scroller in it freeze while any dialog is open, and a
    scroll that reaches the popup's own edge doesn't chain to the page. */
 html:has(dialog[open]), html:has(dialog[open]) body { overflow: hidden; }
-html:has(dialog[open]) :is(#board > *, .sch-day, .sch-strip, .tk-single, .tk-chips) { overflow: hidden !important; }
+html:has(dialog[open]) :is(#board > *, .screen, .pull-body) { overflow: hidden !important; }
 dialog.now { overflow-y: auto; overscroll-behavior: contain; }
-
 
 /* Later → "When?": three choices under the card's actions. */
 .later-ask { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 5px; margin-block-start: 4px; font-size: 13px; }
@@ -556,8 +423,6 @@ dialog.now { overflow-y: auto; overscroll-behavior: contain; }
 .pend-row input { flex: 1; inline-size: 0; min-inline-size: 0; font: inherit; font-size: 16px; padding: 6px 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--ink); }
 /* A project name that leads to its tab in Tasks. */
 .now-proj { font: inherit; letter-spacing: inherit; text-transform: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; text-decoration: underline dotted; text-underline-offset: 3px; }
-.tk-proj.link { cursor: pointer; text-decoration: underline; text-decoration-color: var(--line); text-underline-offset: 3px; }
-.tk-proj.link:hover { color: var(--ink); }
 
 /* Batches: the offer on the card, and the checklist in focus mode. */
 .batch-preview { list-style: none; margin: 4px 0 6px; padding: 0; display: grid; gap: 2px; font-size: 15px; }
@@ -613,19 +478,8 @@ dialog.now { overflow-y: auto; overscroll-behavior: contain; }
    is empty (night, loading) and stays for screen readers otherwise. */
 .topbar { gap: 10px; min-block-size: 48px; margin-block-end: 12px; }
 .brandrow { display: flex; align-items: center; gap: 7px; min-inline-size: 0; }
-.logo-wrap { position: relative; display: inline-flex; flex: none; }
 .logo { display: inline-flex; inline-size: 26px; block-size: 26px; }
-.badge {
-  position: absolute; inset-block-start: -5px; inset-inline-end: -7px; min-inline-size: 16px; block-size: 16px; padding-inline: 4px;
-  display: grid; place-items: center; border-radius: 999px; background: var(--ink); color: var(--bg);
-  font-size: 10px; font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums;
-}
 .brand { font-size: 19px; font-weight: 700; letter-spacing: -0.3px; min-inline-size: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.ctx-slot { flex: 1; display: flex; align-items: center; gap: 10px; min-inline-size: 0; }
-.ctx-slot:empty { display: none; }
-.ctx-slot + .acct { margin-inline-start: 0; }
-.topbar:has(.ctx-slot:not(:empty)) .brand { position: absolute; inline-size: 1px; block-size: 1px; overflow: hidden; clip: rect(0 0 0 0); }
-.ctx-slot .greet-col { flex: 1; }
 .acct { margin-inline-start: auto; }
 .avatar { inline-size: 34px; block-size: 34px; border: none; background: var(--ink); color: var(--bg); font-weight: 600; font-size: 14px; }
 .daisy-petals ellipse { fill: #fff; stroke: #e6dcc3; stroke-width: 1.2; }
@@ -635,9 +489,7 @@ dialog.now { overflow-y: auto; overscroll-behavior: contain; }
 
 /* The greeting and the free line, in the header row. */
 .greeting { margin: 0; font-size: 17px; font-weight: 600; letter-spacing: -0.2px; line-height: 1.2; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.freeline { margin: 2px 0 0; font-size: 12px; line-height: 1.3; color: var(--ink-2); }
-.tk-filters .chip { position: relative; }
-.tk-filters .chip::after { content: ""; position: absolute; inset: -5px 0; } /* 44px to the finger */
+.freeline { margin: 2px 0 0; font-size: 12px; line-height: 1.3; color: var(--ink-2); } /* 44px to the finger */
 
 /* Switch's energy row: say why you're switching. */
 .energy-row { display: flex; flex-wrap: wrap; gap: 6px; }
@@ -658,13 +510,6 @@ dialog.now { overflow-y: auto; overscroll-behavior: contain; }
 .hero-area { display: inline-flex; align-items: center; gap: 6px; min-inline-size: 0; font-size: 13px; font-weight: 600; color: var(--aink); }
 .hero-area .dot { inline-size: 8px; block-size: 8px; border-radius: 50%; background: currentColor; flex: none; }
 .hero-side { font-weight: 500; color: var(--sub); white-space: nowrap; }
-.hero-end { display: inline-flex; align-items: center; gap: 2px; flex: none; }
-.hero-edit {
-  display: grid; place-items: center; inline-size: 32px; block-size: 32px; margin-inline-end: -8px;
-  padding: 0; border: 0; border-radius: 50%; background: none; color: var(--sub); cursor: pointer;
-}
-.hero-edit svg { inline-size: 16px; block-size: 16px; }
-.hero-edit:hover { background: color-mix(in srgb, var(--aink) 9%, transparent); color: var(--ink); }
 .now-proj { color: inherit; font-weight: inherit; text-decoration: none; min-block-size: 32px; }
 .now-proj:hover { text-decoration: underline; text-underline-offset: 3px; }
 .now-card.main .now-title { margin-block-start: 10px; font-size: 24px; font-weight: 600; line-height: 1.2; letter-spacing: -0.2px; overflow-wrap: anywhere; }
@@ -827,84 +672,11 @@ dialog.now { overflow-y: auto; overscroll-behavior: contain; }
 .night-none { margin: 0; color: var(--ink-2); }
 .night-foot { display: flex; flex-direction: column; align-items: center; gap: 6px; margin-block-start: 24px; }
 .pill-btn { min-block-size: 44px; padding-inline: 18px; border: 1px solid var(--line); border-radius: 999px; background: transparent; color: var(--ink); font: inherit; font-size: 14px; font-weight: 500; cursor: pointer; }
-.night-hours { font-size: 12px; color: var(--ink-2); }
 
-/* The board: card top start, the day beside it, the tasks under both
-   (Mor, 2026-10-05). The page itself scrolls. */
-#board { grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); align-items: start; column-gap: 10px; row-gap: 16px; }
-#board > [hidden] { display: none; }
-#tasksview, #board:has(> #nowcard[hidden]) #schedule { grid-column: 1 / -1; }
-/* Beside the card the day is a narrow column: no time gutter, each event's
-   time over its title, smaller steps. */
-#board .sch-nav { gap: 2px; }
-#board .sch-nav::before { content: none; }
-#board .sch-step { inline-size: 28px; block-size: 28px; font-size: 17px; }
-#board .sch-nav .sch-head { font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-#board .sch-cap, #board .sch-note { font-size: 12px; }
-#board .sch-row > .sch-time, #board .sch-gap > .sch-time { display: none; }
-#board .sch-open { flex-direction: column; align-items: flex-start; justify-content: center; gap: 2px; min-block-size: 40px; padding: 7px 10px; }
-#board .sch-range { font-size: 11px; }
-#board .sch-title { font-size: 13px; text-align: start; overflow-wrap: break-word; }
-#board .sch-gapbox { min-block-size: 30px; padding-inline: 10px; font-size: 12px; }
-#board .sch-nowtime { inline-size: auto; font-size: 11px; }
-#board .sch-nowdot { margin-inline-end: 0; }
-/* The card's quiet trio, icon over word, so three fit the narrower card. */
-#board .trio .iconbtn { flex-direction: column; gap: 2px; font-size: 12px; min-block-size: 48px; }
-#board .now-card.main .now-title { font-size: 21px; }
-#board .now-card.main { padding-inline: 14px; }
-.sch { display: grid; gap: 10px; padding: 0; background: none; border: none; }
-.sch-nav { position: static; background: none; }
-.sch-strip { align-items: flex-start; }
-.sch-day { overflow: visible; }
-.sch-cap { margin: 0 0 8px; font-size: 13px; color: var(--ink-2); }
-
-/* The Today timeline: the now line, dashed free gaps, tinted events. */
-.sch-list { gap: 6px; }
-.sch-row { display: flex; gap: 10px; align-items: flex-start; }
-.sch-time { flex: none; inline-size: var(--sch-gut); padding-block-start: 10px; font-size: 12px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
-.sch-open {
-  flex: 1; min-inline-size: 0; display: flex; align-items: center; justify-content: space-between; gap: 10px;
-  min-block-size: 44px; padding: 8px 12px; border-radius: 12px; background: color-mix(in srgb, var(--ev, var(--ink-2)) 16%, var(--card));
-}
-.sch-range { flex: none; font-size: 12px; color: color-mix(in srgb, var(--ev, var(--ink-2)) 70%, var(--ink)); font-variant-numeric: tabular-nums; }
-.sch-title { min-inline-size: 0; font-size: 15px; font-weight: 600; text-align: end; color: color-mix(in srgb, var(--ev, var(--ink)) 40%, var(--ink)); overflow-wrap: anywhere; }
-.sch-row.past { opacity: .45; }
-.sch-row.running .sch-open { box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--ev, var(--ink-2)) 70%, var(--card)); }
-.sch-row.running { font-weight: inherit; }
-.sch-now { margin-inline: 0 6px; }
-.sch-gap { display: flex; gap: 10px; }
-.sch-gap .sch-time { padding: 0; }
-.sch-gapbox { flex: 1; display: flex; align-items: center; min-block-size: 40px; padding-inline: 12px; border: 1.5px dashed color-mix(in srgb, var(--ink-2) 35%, var(--line)); border-radius: 12px; font-size: 13px; color: var(--ink-2); }
-.sch-nowline { display: flex; align-items: center; gap: 10px; }
-.sch-nowline::after { content: ""; flex: 1; block-size: 2px; border-radius: 2px; background: var(--nowline); }
-.sch-nowtime { flex: none; inline-size: var(--sch-gut); font-size: 12px; font-weight: 600; color: var(--nowline); font-variant-numeric: tabular-nums; }
-.sch-nowdot { flex: none; inline-size: 8px; block-size: 8px; border-radius: 50%; background: var(--nowline); margin-inline-end: -10px; }
-
-/* Tasks: project chips with their area's dot, and the list in the page. */
-.tk-single { block-size: auto; overflow: visible; }
-.tk-filters { margin-block-end: 10px; }
-.tk-chips { gap: 8px; padding-block: 5px; align-items: center; }
-.tk-filters .chip { min-block-size: 34px; border: none; border-radius: 999px; background: var(--chip); color: var(--ink); font-size: 13px; font-weight: 500; padding-inline: 12px; }
-.tk-filters .chip[aria-checked="true"] { background: var(--ink); color: var(--bg); }
 .chip-dot { inline-size: 8px; block-size: 8px; flex: none; border-radius: 50%; background: var(--aink, var(--ink-2)); }
 
-/* Tell Daisey: the bar at the bottom, where the + used to float. */
-.tellbar {
-  position: fixed; z-index: 5; inset-inline: 0; inset-block-end: 0; margin-inline: auto; max-inline-size: 560px;
-  display: flex; gap: 8px; align-items: center; padding: 14px 16px max(16px, env(safe-area-inset-bottom));
-  background: linear-gradient(to top, var(--bg) 65%, transparent);
-}
-.tellbar input {
-  flex: 1; min-inline-size: 0; block-size: 50px; padding-inline: 18px; border: 1px solid var(--line); border-radius: 999px;
-  background: var(--card); color: var(--ink); font: inherit; font-size: 16px; box-shadow: 0 6px 18px rgb(0 0 0 / .06);
-}
-.tellbar input:focus { outline: none; border-color: var(--accent); }
-.mic { inline-size: 50px; block-size: 50px; flex: none; display: grid; place-items: center; border: none; border-radius: 50%; background: var(--ink); color: var(--bg); cursor: pointer; }
-.toast { inset-block-end: calc(80px + env(safe-area-inset-bottom)); }
-.shell { padding-block-end: 100px; }
-/* The chip row is wider than the screen on purpose (it slides); without this
-   it sets the width of every grid track above it and the page scrolls sideways. */
-#board > *, .tk-filters { min-inline-size: 0; }
+.toast { inset-block-end: calc(150px + env(safe-area-inset-bottom)); }
+
 /* The event name wraps as one piece ("שיעור גיטרה" never splits across lines). */
 .freeline bdi { display: inline-block; }
 .freeline .free-now { font-weight: 600; color: var(--ink); text-underline-offset: 2px; padding-block: 4px; }
@@ -919,10 +691,6 @@ dialog.now { overflow-y: auto; overscroll-behavior: contain; }
 .ev-grid .timepick { gap: 2px; }
 .ev-grid .timepick select { appearance: none; -webkit-appearance: none; padding: 8px 2px; text-align: center; text-align-last: center; font-size: 15px; }
 
-/* The Today header: the arrows hug the day name; + sits at the end. */
-.sch-nav { display: grid; grid-template-columns: 1fr auto auto auto 1fr; align-items: center; gap: 6px; }
-.sch-nav::before { content: ""; }
-.sch-nav .sch-head { flex: none; padding-inline: 4px; }
 @media (max-width: 420px) { .ev-grid .field input[type="date"]::-webkit-calendar-picker-indicator { display: none; } } /* a tap on the field opens the picker on phones anyway */
 
 /* Tell Daisey's answer: a sheet just above the bar, cards to confirm. */
@@ -952,53 +720,8 @@ body.focus .tell-panel { display: none; }
 .tell-ask p { margin: 0; font-size: 14px; }
 .tell-choices { display: flex; flex-wrap: wrap; gap: 6px; }
 .tell-choices .chip { min-block-size: 36px; font-size: 13px; border: none; background: var(--chip); }
-/* The mic while it listens: a soft amber ring, no motion under reduced motion. */
-.mic.listening { background: var(--accent); color: var(--on-accent); }
+
 @keyframes listen { 50% { box-shadow: 0 0 0 8px rgb(245 179 1 / .25); } }
-@media (prefers-reduced-motion: no-preference) { .mic.listening { animation: listen 1.2s ease-in-out infinite; } }
-
-/* Tasks: Waiting folds away like Someday. */
-.tk-waiting { margin-block-start: 4px; opacity: .85; }
-
-/* + beside Tell Daisey: Task or Event, by hand. */
-.plus-wrap { position: relative; flex: none; }
-.plus {
-  inline-size: 50px; block-size: 50px; display: grid; place-items: center; cursor: pointer;
-  border: 1px solid var(--line); border-radius: 50%; background: var(--card); color: var(--ink); box-shadow: 0 6px 18px rgb(0 0 0 / .06);
-  transition: transform .15s ease;
-}
-.plus[aria-expanded="true"] { transform: rotate(45deg); }
-@media (prefers-reduced-motion: reduce) { .plus { transition: none; } }
-.plus-menu {
-  position: absolute; inset-block-end: calc(100% + 8px); inset-inline-start: 0; z-index: 7; min-inline-size: 150px;
-  display: grid; gap: 2px; padding: 6px; border-radius: 16px; background: var(--card); border: 1px solid var(--line);
-  box-shadow: 0 12px 32px rgb(0 0 0 / .16);
-}
-@media (prefers-reduced-motion: no-preference) { .plus-menu:not([hidden]) { animation: guess-in .15s ease-out; } }
-.plus-menu button {
-  display: flex; align-items: center; gap: 10px; min-block-size: 44px; padding-inline: 12px; cursor: pointer;
-  border: none; border-radius: 10px; background: transparent; color: var(--ink); font: inherit; font-size: 15px; font-weight: 500; text-align: start;
-}
-.plus-menu button:hover:not(:disabled) { background: var(--chip); }
-.plus-menu button:disabled { opacity: .45; cursor: default; }
-.tell-first { flex: none; min-block-size: 36px; padding-inline: 12px; font-size: 13px; }
-
-/* The time and date as a clock tile at the top end (Mor, 2026-10-05). */
-.greet-col { min-inline-size: 0; }
-.clock-tile {
-  flex: none; display: grid; justify-items: center; padding: 6px 11px 7px; border-radius: 14px; background: var(--chip);
-  font-variant-numeric: tabular-nums; white-space: nowrap; line-height: 1;
-}
-.clock-time { font-size: 20px; font-weight: 600; letter-spacing: -0.4px; }
-.clock-date { margin-block-start: 3px; font-size: 10px; font-weight: 500; color: var(--ink-2); }
-
-/* The hero's reasons, as tags in the area's colour. */
-.why-tags { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0 0; padding: 0; list-style: none; }
-.why-tag {
-  padding: 3px 8px; border-radius: 999px; font-size: 12px; font-weight: 500; line-height: 1.3;
-  background: color-mix(in srgb, var(--aink) 11%, transparent); color: var(--aink);
-}
-
 
 /* "On a Train / Bus / Driving" — asked once per ride (now.js rideAsk). */
 .ride-ask { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-block-end: 10px; font-size: 13px; }
@@ -1012,3 +735,276 @@ body.focus .tell-panel { display: none; }
 .pl-save { display: grid; grid-template-columns: 1fr auto; gap: 6px 8px; align-items: end; margin-block-start: 10px; }
 .pl-list { list-style: none; margin: 14px 0 0; padding: 0; display: grid; gap: 8px; }
 .pl-list li { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+
+/* ===== Layout round 2 (Mor, 2026-10-05; daisey/New Design/6–10) =====
+   A calm home with everything one pull away. Sizes and colours follow the
+   approved mockups; DAISEY_SPEC "Visual design" lists them. */
+:root { --cream: #f1ece0; --bud: #cfc4a8; --bud-heart: #e0b23c; --green: #2f7a47; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --cream: #2a2721; --bud: #4a463c; --bud-heart: #b88a1a; --green: #3f9b5f; } }
+:root[data-theme="dark"], :root.night { --cream: #2a2721; --bud: #4a463c; --bud-heart: #b88a1a; --green: #3f9b5f; }
+
+/* Header: daisy + "Daisey" at the start, avatar at the end. */
+.topbar { min-block-size: 44px; margin-block-end: 0; }
+.brandrow { gap: 8px; }
+.logo { inline-size: 32px; block-size: 32px; }
+.brand { font-size: 22px; font-weight: 700; letter-spacing: -0.4px; }
+.avatar { inline-size: 36px; block-size: 36px; }
+.shell { padding-block-start: max(18px, env(safe-area-inset-top)); padding-inline: 20px; padding-block-end: calc(150px + env(safe-area-inset-bottom)); }
+.now-top { display: grid; gap: 2px; margin-block-start: 10px; }
+.greeting { font-size: 22px; font-weight: 600; letter-spacing: -0.3px; white-space: normal; }
+.freeline { font-size: 13px; }
+
+/* The Now card. */
+.now-card.main { padding: 20px; box-shadow: 0 12px 28px color-mix(in srgb, var(--aink) 12%, transparent); }
+.hero-area { flex: 1; }
+.hero-where { min-inline-size: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.now-card.main .now-title { margin-block-start: 14px; font-size: 32px; font-weight: 600; letter-spacing: -0.3px; line-height: 1.15; }
+button.now-title { display: block; inline-size: 100%; padding: 0; border: 0; background: none; color: inherit; font: inherit; text-align: start; cursor: pointer; }
+.now-card.main button.now-title { font-size: 32px; font-weight: 600; }
+button.now-title:focus-visible { outline: 2px solid var(--aink); outline-offset: 4px; border-radius: 6px; }
+.now-card.main .now-why { margin-block-start: 8px; font-size: 15px; line-height: 1.4; }
+.now-card.main .btn.start { margin-block-start: 18px; min-block-size: 56px; font-size: 18px; box-shadow: 0 6px 14px rgb(245 179 1 / .35); }
+.now-actions.trio { margin-block-start: 6px; }
+.pend-check { display: flex; align-items: center; gap: 8px; margin-block-start: 6px; font-size: 13px; color: var(--ink-2); }
+.pend-check input { font: inherit; font-size: 15px; padding: 6px 8px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--ink); }
+
+/* After this. */
+.after-h { margin: 0; font-size: 12px; font-weight: 600; letter-spacing: .6px; text-transform: uppercase; color: var(--ink-2); }
+.after-list { display: grid; gap: 6px; margin-block-start: 8px; }
+.at-row { display: flex; align-items: center; gap: 12px; min-block-size: 24px; padding: 0; border: 0; background: none; color: var(--ink); font: inherit; font-size: 14px; text-align: start; }
+button.at-row { cursor: pointer; min-block-size: 32px; }
+.at-time { flex: none; inline-size: 74px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.at-title { display: inline-flex; align-items: center; gap: 6px; min-inline-size: 0; overflow-wrap: anywhere; }
+.at-title .dot { inline-size: 8px; block-size: 8px; flex: none; border-radius: 50%; background: var(--ink-2); }
+.after-note { margin: 8px 0 0; font-size: 13px; }
+
+/* The night divider: thin line, cream pill, a closed bud. Everywhere. */
+.night-div { display: flex; align-items: center; gap: 10px; margin-block: 2px; }
+.night-div::before, .night-div::after { content: ""; flex: 1; block-size: 1px; background: var(--line); }
+.night-pill { display: inline-flex; align-items: center; gap: 6px; block-size: 26px; padding-inline: 12px; border-radius: 999px; background: var(--cream); color: var(--ink-2); font-size: 12px; font-weight: 500; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.bud-petals ellipse { fill: #fff; stroke: var(--bud); stroke-width: 1; }
+:root.night .bud-petals ellipse { fill: #3a372f; }
+.bud-heart { fill: var(--bud-heart); }
+.night-foot .night-div { align-self: stretch; }
+
+/* Needs you: N quick decisions. */
+.needs-row { display: flex; align-items: center; gap: 10px; inline-size: 100%; min-block-size: 48px; padding-inline: 14px; border: 1px solid var(--a-job-line); border-radius: 14px; background: var(--a-job-tint); color: var(--a-job-ink); font: inherit; cursor: pointer; text-align: start; }
+.needs-n { display: grid; place-items: center; inline-size: 22px; block-size: 22px; flex: none; border-radius: 50%; background: var(--accent); color: var(--on-accent); font-size: 12px; font-weight: 700; }
+.needs-text { flex: 1; font-size: 14px; font-weight: 500; }
+.needs-row svg { inline-size: 16px; block-size: 16px; flex: none; stroke-width: 2; }
+:dir(rtl) .needs-row svg, :dir(rtl) .pj-hint svg { transform: scaleX(-1); }
+
+/* The pull-up sheet. Resting: handle, summary, the Tell Daisey pill. */
+.pull { position: fixed; z-index: 5; inset-inline: 0; inset-block-end: 0; display: flex; flex-direction: column; pointer-events: none; }
+.pull > * { pointer-events: auto; }
+.pull-sheet { margin-inline: auto; inline-size: 100%; max-inline-size: 560px; padding: 8px 16px max(18px, env(safe-area-inset-bottom)); background: var(--card); border-block-start: 1px solid var(--line); border-radius: 24px 24px 0 0; box-shadow: 0 -8px 24px rgb(0 0 0 / .06); }
+.pull-handle { display: block; inline-size: 100%; min-block-size: 40px; padding: 0; border: 0; background: none; color: var(--ink-2); font: inherit; cursor: pointer; touch-action: none; }
+.grip { display: block; inline-size: 40px; block-size: 5px; margin: 0 auto 8px; border-radius: 3px; background: var(--bud); }
+.pull-sum { display: flex; justify-content: center; gap: 6px; font-size: 13px; }
+.tellbar { display: flex; align-items: center; gap: 0; block-size: 52px; margin-block-start: 8px; padding-inline: 6px; border: 1px solid var(--line); border-radius: 999px; background: var(--bg); }
+.tellbar:focus-within { border-color: var(--accent); }
+.tellbar input { flex: 1; min-inline-size: 0; block-size: 40px; padding-inline: 10px; border: 0; background: transparent; color: var(--ink); font: inherit; font-size: 16px; outline: none; }
+.plus-wrap { position: relative; flex: none; }
+.plus, .mic { inline-size: 40px; block-size: 40px; flex: none; display: grid; place-items: center; border: 0; border-radius: 50%; cursor: pointer; }
+.plus { background: var(--chip); color: var(--ink); transition: transform .15s ease; }
+.plus svg, .mic svg { inline-size: 18px; block-size: 18px; }
+.plus[aria-expanded="true"] { transform: rotate(45deg); }
+.mic { background: var(--ink); color: var(--bg); }
+.mic.listening { background: var(--accent); color: var(--on-accent); }
+@media (prefers-reduced-motion: no-preference) { .mic.listening { animation: listen 1.2s ease-in-out infinite; } }
+@media (prefers-reduced-motion: reduce) { .plus { transition: none; } }
+.plus-menu { position: absolute; inset-block-end: calc(100% + 10px); inset-inline-start: -6px; z-index: 7; min-inline-size: 160px; display: grid; gap: 2px; padding: 6px; border-radius: 16px; background: var(--card); border: 1px solid var(--line); box-shadow: 0 12px 32px rgb(0 0 0 / .16); }
+@media (prefers-reduced-motion: no-preference) { .plus-menu:not([hidden]) { animation: guess-in .15s ease-out; } }
+.plus-menu button { display: flex; align-items: center; gap: 10px; min-block-size: 44px; padding-inline: 12px; cursor: pointer; border: none; border-radius: 10px; background: transparent; color: var(--ink); font: inherit; font-size: 15px; font-weight: 500; text-align: start; }
+.plus-menu button:hover:not(:disabled) { background: var(--chip); }
+.plus-menu button:disabled { opacity: .45; cursor: default; }
+.tell-panel { inset-block-end: calc(140px + env(safe-area-inset-bottom)); }
+
+/* Pulled up: the mini Now bar on top, the projects sheet under it. */
+.pull.open { inset-block-start: 0; background: color-mix(in srgb, var(--bg) 90%, var(--ink)); pointer-events: auto; }
+.pull.open .pull-sheet { flex: 1; min-block-size: 0; display: flex; flex-direction: column; padding-block-start: 8px; box-shadow: 0 -8px 24px rgb(0 0 0 / .08); border-block-start: 0; }
+.pull.open .pull-sum, .pull.open .tellbar { display: none; }
+.pull.open .pull-handle { min-block-size: 22px; }
+.pull.open .grip { margin-block-end: 0; }
+.pull:not(.dragging) { transition: transform .22s ease; }
+@media (prefers-reduced-motion: reduce) { .pull:not(.dragging) { transition: none; } }
+.pull-now { inline-size: 100%; max-inline-size: 560px; margin-inline: auto; padding: max(18px, env(safe-area-inset-top)) 20px 16px; }
+.pull-nowbar { display: flex; align-items: center; gap: 10px; min-block-size: 52px; padding-inline: 14px 8px; border-radius: 16px; background: var(--tint); border: 1px solid var(--aline); }
+.pull-nowbar .dot { inline-size: 8px; block-size: 8px; flex: none; border-radius: 50%; background: var(--aink); }
+.pull-nowtext { flex: 1; min-inline-size: 0; font-size: 15px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pull-nowbar .btn.small { min-block-size: 38px; padding-inline: 14px; border: 0; border-radius: 12px; font-size: 14px; font-weight: 600; }
+.pull.open .pull-now[hidden] + .pull-sheet { margin-block-start: max(40px, env(safe-area-inset-top)); }
+.pull-body { flex: 1; min-block-size: 0; overflow-y: auto; overscroll-behavior: contain; padding-inline: 2px; padding-block-end: 20px; }
+.pull-head { display: flex; align-items: baseline; justify-content: space-between; margin-block-start: 6px; touch-action: none; }
+.pull-head h2 { margin: 0; font-size: 22px; font-weight: 600; }
+.pull-new { font-size: 13px; font-weight: 500; color: var(--a-work-ink); text-decoration: none; min-block-size: 32px; }
+.pgrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-block-start: 10px; }
+.pcard { display: grid; gap: 0; align-content: start; padding: 12px; border-radius: 16px; background: var(--tint); border: 1px solid var(--aline); color: var(--ink); font: inherit; text-align: start; cursor: pointer; }
+.pcard-top { display: flex; justify-content: space-between; align-items: center; gap: 6px; }
+.pcard-name { min-inline-size: 0; font-size: 15px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pcard-n { flex: none; font-size: 12px; color: var(--aink); }
+.pcard-status { margin-block-start: 6px; font-size: 12px; color: color-mix(in srgb, var(--aink) 45%, var(--ink)); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pbar { display: block; block-size: 4px; margin-block-start: 8px; border-radius: 2px; background: var(--aline); overflow: hidden; }
+.pbar > span { display: block; block-size: 100%; border-radius: inherit; background: var(--aink); }
+.pbar.big { flex: 1; block-size: 6px; margin: 0; border-radius: 3px; }
+:where(.pcard, .pj-card, .pj-chip, .pull-nowbar, .ts-proj, .ny-card) { --tint: var(--card); --aline: var(--line); --aink: var(--ink-2); }
+
+/* Full screens: a project, Needs you. */
+.screen { position: fixed; z-index: 20; inset: 0; overflow-y: auto; overscroll-behavior: contain; background: var(--bg); color: var(--ink); touch-action: pan-y; }
+.screen > * { max-inline-size: 560px; margin-inline: auto; }
+body:has(.screen:not([hidden])) { overflow: hidden; }
+
+/* The project screen. */
+#projectview { padding-block-end: max(24px, env(safe-area-inset-bottom)); }
+.pj-top { display: flex; align-items: center; gap: 4px; padding: max(16px, env(safe-area-inset-top)) 0 0 12px; }
+.pj-back { flex: none; inline-size: 40px; block-size: 40px; display: grid; place-items: center; border: 0; border-radius: 12px; background: none; color: var(--ink); cursor: pointer; }
+.pj-back svg { inline-size: 20px; block-size: 20px; stroke-width: 2; }
+:dir(rtl) .pj-back svg { transform: scaleX(-1); }
+.pj-chips { display: flex; gap: 6px; min-inline-size: 0; overflow-x: auto; padding-block: 5px; padding-inline-end: 20px; scrollbar-width: none; touch-action: pan-x; }
+.pj-chips::-webkit-scrollbar { display: none; }
+.pj-chip { flex: none; display: inline-flex; align-items: center; gap: 6px; block-size: 34px; padding-inline: 12px; border: 0; border-radius: 999px; background: var(--tint); color: var(--aink); font: inherit; font-size: 13px; font-weight: 500; cursor: pointer; }
+.pj-chip .dot { inline-size: 7px; block-size: 7px; border-radius: 50%; background: currentColor; }
+.pj-chip[aria-selected="true"] { background: var(--aink); color: var(--card); font-weight: 600; }
+.pj-card { margin: 12px 20px 0; padding: 14px 16px; border-radius: 18px; background: var(--tint); border: 1px solid var(--aline); }
+.pj-card-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.pj-name { margin: 0; min-inline-size: 0; font-size: 22px; font-weight: 600; overflow-wrap: anywhere; }
+.pj-area { flex: none; font-size: 12px; font-weight: 600; color: var(--aink); }
+.pj-prog { display: flex; align-items: center; gap: 10px; margin-block-start: 10px; font-size: 12px; color: color-mix(in srgb, var(--aink) 45%, var(--ink)); }
+.pj-sec { padding-inline: 20px; }
+.pj-h { display: flex; align-items: center; gap: 8px; margin: 18px 0 0; }
+.pj-h-t { flex: 1; font-size: 15px; font-weight: 600; text-align: start; }
+.pj-n { font-size: 13px; color: var(--ink-2); }
+.pj-dot { inline-size: 10px; block-size: 10px; flex: none; border-radius: 50%; }
+.pj-dot.next { background: var(--accent); }
+.pj-dot.pending { border: 2px solid #8c8574; }
+.pj-dot.someday { border: 2px dashed #b8b09f; }
+.pj-dot.done { background: var(--green); }
+.pj-fold { display: flex; align-items: center; gap: 8px; inline-size: calc(100% - 40px); margin: 0 20px; min-block-size: 40px; padding: 0; border: 0; background: none; color: var(--ink); font: inherit; cursor: pointer; }
+.pj-sec + .pj-fold { margin-block-start: 16px; }
+.pj-list { display: grid; gap: 2px; padding: 0 20px 6px 38px; }
+:dir(rtl) .pj-list { padding: 0 38px 6px 20px; }
+.pj-quiet { min-block-size: 40px; padding: 0; border: 0; background: none; color: var(--ink); font: inherit; font-size: 15px; text-align: start; cursor: pointer; overflow-wrap: anywhere; }
+.pj-quiet.done { color: var(--ink-2); text-decoration: line-through; }
+.pj-swipe { position: relative; margin-block-start: 8px; border-radius: 14px; background: var(--green); overflow: hidden; }
+.pj-reveal { position: absolute; inset-block: 0; inset-inline-start: 16px; display: flex; align-items: center; gap: 6px; color: #fff; font-size: 13px; font-weight: 600; opacity: .55; }
+.pj-swipe.armed .pj-reveal { opacity: 1; }
+.pj-reveal svg { inline-size: 16px; block-size: 16px; stroke-width: 2.5; }
+.pj-task { position: relative; display: grid; gap: 4px; inline-size: 100%; padding: 12px 14px; border: 1px solid var(--line); border-radius: 14px; background: var(--card); color: var(--ink); font: inherit; text-align: start; cursor: pointer; touch-action: pan-y; user-select: none; }
+.pj-swipe:not(.swiping) .pj-task { transition: transform .18s ease; }
+@media (prefers-reduced-motion: reduce) { .pj-swipe:not(.swiping) .pj-task { transition: none; } }
+.pj-task.later { color: var(--ink-2); }
+.pj-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.pj-col { display: grid; gap: 4px; min-inline-size: 0; }
+.pj-title { min-inline-size: 0; font-size: 15px; font-weight: 600; overflow-wrap: anywhere; }
+.pj-now { flex: none; padding: 3px 8px; border-radius: 999px; background: var(--a-job-tint); color: var(--a-job-ink); font-size: 11px; font-weight: 600; }
+.pj-meta { font-size: 12px; color: var(--ink-2); }
+.pj-who { flex: none; display: grid; place-items: center; inline-size: 30px; block-size: 30px; border-radius: 50%; background: var(--chip); color: var(--ink); font-size: 13px; font-weight: 600; }
+.pj-add { inline-size: 100%; min-block-size: 40px; margin-block-start: 8px; border: 1.5px dashed var(--bud); border-radius: 12px; background: transparent; color: var(--ink-2); font: inherit; font-size: 13px; cursor: pointer; }
+.pj-hint { display: flex; align-items: center; justify-content: center; gap: 10px; margin: 28px 0 0; color: #8c8574; font-size: 12px; }
+.pj-hint svg { inline-size: 16px; block-size: 16px; stroke-width: 2; }
+
+/* The task sheet: a bottom sheet. */
+dialog.tsheet { inline-size: 100%; max-inline-size: 560px; max-block-size: calc(100dvh - 40px); margin: auto auto 0; padding: 8px 20px max(20px, env(safe-area-inset-bottom)); border-radius: 24px 24px 0 0; box-shadow: 0 -8px 24px rgb(0 0 0 / .08); }
+dialog.tsheet[open] { display: flex; flex-direction: column; }
+@media (prefers-reduced-motion: no-preference) { dialog.tsheet[open] { animation: sheet-up .22s ease-out; } }
+@keyframes sheet-up { from { transform: translateY(24px); } }
+.ts-grip { flex: none; display: block; inline-size: 100%; block-size: 22px; padding: 0; border: 0; background: none; cursor: pointer; }
+.ts-grip span { display: block; inline-size: 40px; block-size: 5px; margin: 0 auto; border-radius: 3px; background: var(--bud); }
+.ts-proj { display: flex; align-items: center; gap: 6px; margin-block-start: 14px; color: var(--aink); }
+.ts-proj .dot { inline-size: 8px; block-size: 8px; flex: none; border-radius: 50%; background: currentColor; }
+.ts-project { min-inline-size: 0; max-inline-size: 100%; padding: 4px 0; border: 0; background: none; color: inherit; font: inherit; font-size: 13px; font-weight: 600; appearance: none; -webkit-appearance: none; cursor: pointer; text-overflow: ellipsis; }
+.ts-project option { color: var(--ink); background: var(--card); }
+.ts-input { inline-size: 100%; min-inline-size: 0; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--bg); color: var(--ink); font: inherit; font-size: 16px; }
+.ts-proj + .ts-input { margin-block-start: 6px; }
+.ts-title { flex: none; margin-block-start: 6px; padding: 0; border: 0; background: none; color: var(--ink); font: inherit; font-size: 26px; font-weight: 600; letter-spacing: -0.3px; line-height: 1.2; resize: none; overflow: hidden; }
+.ts-title:focus { outline: none; }
+.ts-title::placeholder { color: var(--bud); }
+.ts-dates { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-block-start: 14px; }
+.ts-date { position: relative; display: flex; flex-direction: column; align-items: flex-start; gap: 2px; min-inline-size: 0; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--card); }
+.ts-date:focus-within { border-color: var(--accent); }
+.ts-date-l { font-size: 12px; color: var(--ink-2); }
+.ts-date-v { font-size: 15px; font-weight: 500; color: #8c8574; }
+.ts-date.set .ts-date-v { font-weight: 600; color: var(--ink); }
+.ts-date-in { position: absolute; inset: 0; z-index: 1; inline-size: 100%; block-size: 100%; opacity: 0; cursor: pointer; border: 0; padding: 0; }
+.ts-date-in::-webkit-calendar-picker-indicator { position: absolute; inset: 0; inline-size: 100%; block-size: 100%; opacity: 0; cursor: pointer; }
+.ts-date-x { position: absolute; z-index: 2; inset-block-start: 4px; inset-inline-end: 4px; inline-size: 32px; block-size: 32px; display: grid; place-items: center; border: 0; border-radius: 50%; background: none; color: var(--ink-2); cursor: pointer; }
+.ts-date-x svg { inline-size: 14px; block-size: 14px; }
+.ts-kind { position: relative; z-index: 2; margin-block-start: 2px; padding: 1px 7px; border: 0; border-radius: 999px; font: inherit; font-size: 11px; font-weight: 600; cursor: pointer; }
+.ts-kind.deadline { background: #fff1cc; color: #8a4b00; }
+.ts-kind.target { background: var(--chip); color: var(--ink-2); }
+:root[data-theme="dark"] .ts-kind.deadline, :root.night .ts-kind.deadline { background: #2a2210; color: #f0c35a; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .ts-kind.deadline { background: #2a2210; color: #f0c35a; } }
+.ts-details { flex: none; display: flex; align-items: center; gap: 8px; inline-size: 100%; min-block-size: 44px; margin-block-start: 8px; padding-inline: 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--bg); color: var(--ink-2); font: inherit; font-size: 14px; cursor: pointer; }
+.ts-details svg { inline-size: 16px; block-size: 16px; flex: none; stroke-width: 2; }
+.ts-details-t { flex: 1; text-align: start; }
+.ts-details[aria-expanded="true"] > svg:last-child { transform: rotate(90deg); }
+:dir(rtl) .ts-details[aria-expanded="false"] > svg:last-child { transform: scaleX(-1); }
+.ts-chips { margin-block-start: 8px; }
+.ts-pend { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-block-start: 8px; }
+.ts-pend label { display: grid; gap: 4px; font-size: 12px; color: var(--ink-2); }
+.ts-state { margin: 10px 0 0; font-size: 13px; color: var(--ink-2); }
+.ts-h { margin: 20px 0 8px; font-size: 13px; font-weight: 600; letter-spacing: .5px; text-transform: uppercase; color: var(--ink-2); }
+.ts-steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.ts-step { display: flex; align-items: center; gap: 10px; min-block-size: 38px; }
+.ts-check { position: relative; flex: none; display: grid; place-items: center; inline-size: 20px; block-size: 20px; padding: 0; border: 2px solid #b8b09f; border-radius: 6px; background: none; color: #fff; cursor: pointer; }
+.ts-check::after { content: ""; position: absolute; inset: -12px; }
+.ts-check[aria-pressed="true"] { border: 0; background: var(--green); }
+.ts-check svg { inline-size: 12px; block-size: 12px; stroke-width: 3; }
+.ts-step-t { flex: 1; min-inline-size: 0; padding: 6px 0; border: 0; border-block-end: 1px solid transparent; background: none; color: var(--ink); font: inherit; font-size: 15px; font-weight: 500; }
+.ts-step-t:focus { outline: none; border-block-end-color: var(--line); }
+.ts-step.done .ts-step-t { font-weight: 400; color: #8c8574; text-decoration: line-through; }
+.ts-next { flex: none; padding: 2px 8px; border-radius: 999px; background: var(--a-job-tint); color: var(--a-job-ink); font-size: 11px; font-weight: 600; }
+.ts-add { min-block-size: 38px; padding-block: 0; padding-inline: 30px 0; border: 0; background: none; color: var(--ink-2); font: inherit; font-size: 14px; cursor: pointer; }
+.ts-links { display: flex; flex-wrap: wrap; gap: 6px; }
+.ts-link { display: inline-flex; align-items: center; block-size: 32px; padding-inline: 12px 2px; border-radius: 10px; background: var(--cream); color: var(--ink); font-size: 13px; max-inline-size: 100%; }
+.ts-link a { display: inline-flex; align-items: center; gap: 6px; min-inline-size: 0; color: inherit; text-decoration: none; overflow: hidden; }
+.ts-link a bdi { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ts-link svg { inline-size: 14px; block-size: 14px; flex: none; }
+.ts-link-x { inline-size: 28px; block-size: 28px; display: grid; place-items: center; border: 0; background: none; color: var(--ink-2); cursor: pointer; }
+.ts-link-x svg { inline-size: 12px; block-size: 12px; }
+.ts-link-new { block-size: 32px; padding-inline: 12px; border: 1px dashed var(--bud); border-radius: 10px; background: transparent; color: var(--ink-2); font: inherit; font-size: 13px; cursor: pointer; }
+.ts-link-add { display: flex; gap: 6px; inline-size: 100%; }
+.ts-link-add .ts-input { padding-block: 6px; }
+.ts-notes { flex: none; margin-block-start: 8px; min-block-size: 56px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--bg); color: var(--ink); font: inherit; font-size: 14px; resize: vertical; }
+.ts-grow { flex: 1; min-block-size: 16px; }
+.ts-worked { margin: 0 0 10px; text-align: center; font-size: 12px; color: #8c8574; }
+.ts-start { flex: none; min-block-size: 56px; margin: 0; font-size: 17px; }
+.ts-del { flex: none; align-self: center; min-block-size: 40px; margin-block-start: 6px; padding-inline: 14px; border: 0; border-radius: 10px; background: none; color: var(--ink-2); font: inherit; font-size: 13px; cursor: pointer; }
+.ts-del.arm { color: var(--danger); background: color-mix(in srgb, var(--danger) 10%, transparent); font-weight: 600; }
+dialog.tsheet .msg:empty { display: none; }
+
+/* Needs you: one decision at a time. */
+#needsview { display: flex; flex-direction: column; padding: max(18px, env(safe-area-inset-top)) 20px max(24px, env(safe-area-inset-bottom)); }
+#needsview[hidden] { display: none; }
+#needsview > * { inline-size: 100%; }
+.ny-top { display: flex; align-items: center; justify-content: space-between; min-block-size: 44px; }
+.ny-x { inline-size: 44px; block-size: 44px; display: grid; place-items: center; border: 0; border-radius: 12px; background: none; color: var(--ink); cursor: pointer; }
+.ny-x svg { inline-size: 20px; block-size: 20px; stroke-width: 2; }
+.ny-pad { inline-size: 44px; }
+.ny-dots { display: flex; gap: 6px; }
+.ny-dots span { inline-size: 6px; block-size: 6px; border-radius: 3px; background: #cfc7b4; }
+.ny-dots span.past { background: color-mix(in srgb, var(--ink) 45%, transparent); }
+.ny-dots span.on { inline-size: 22px; background: var(--ink); }
+.ny-stack { position: relative; isolation: isolate; margin-block-start: 40px; }
+.ny-stack.one::before, .ny-stack.two::before, .ny-stack.two::after { content: ""; position: absolute; z-index: -1; border-radius: 28px; }
+.ny-stack.one::before, .ny-stack.two::before { inset: 10px 10px -10px; background: color-mix(in srgb, var(--bg) 70%, var(--line)); }
+.ny-stack.two::after { inset: 20px 20px -20px; z-index: -2; background: var(--line); }
+.ny-card { position: relative; display: flex; flex-direction: column; align-items: center; padding: 26px 22px; border-radius: 28px; background: var(--tint); border: 1px solid var(--aline); text-align: center; }
+@media (prefers-reduced-motion: no-preference) { .ny-card { animation: ny-rise .35s ease-out both; } }
+@keyframes ny-rise { from { transform: translateY(10px); opacity: 0; } }
+.ny-ico { display: grid; place-items: center; inline-size: 56px; block-size: 56px; border-radius: 18px; background: var(--card); color: var(--aink); }
+.ny-ico svg { inline-size: 26px; block-size: 26px; stroke-width: 2; }
+.ny-q { margin: 18px 0 0; font-size: 28px; font-weight: 600; letter-spacing: -0.4px; }
+.ny-sub { margin: 8px 0 0; font-size: 15px; color: color-mix(in srgb, var(--aink) 45%, var(--ink)); }
+.ny-item { margin-block-start: 18px; inline-size: 100%; padding: 14px; border-radius: 16px; background: var(--card); font-size: 17px; font-weight: 600; line-height: 1.35; overflow-wrap: anywhere; }
+.ny-say { margin: 14px 0 0; font-size: 14px; color: color-mix(in srgb, var(--aink) 70%, var(--ink)); }
+.ny-spacer { flex: 1; min-block-size: 24px; }
+.ny-btns { display: grid; gap: 8px; }
+.ny-btns .btn.primary.big { min-block-size: 58px; }
+.ny-btns .btn.line.big { min-block-size: 52px; font-size: 16px; }
+.ny-btns .btn.quiet { min-block-size: 44px; font-size: 14px; }
+.ny-more { display: flex; justify-content: center; gap: 8px; }
+.ny-end { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 6px; text-align: center; }
+.ny-end h2 { margin: 0; font-size: 28px; font-weight: 600; }
+.ny-end p { margin: 0 0 24px; font-size: 15px; color: var(--ink-2); }
+.ny-end .btn { min-inline-size: 200px; }

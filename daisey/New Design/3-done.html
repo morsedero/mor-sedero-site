@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Daisey — Done and next</title>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+@keyframes drift{0%{transform:translate(0,0) rotate(var(--r));opacity:0}15%{opacity:1}100%{transform:translate(var(--dx),var(--dy)) rotate(calc(var(--r) + 120deg));opacity:0}}
+@keyframes popin{0%{transform:scale(.6)}60%{transform:scale(1.08)}100%{transform:scale(1)}}
+.petal{position:absolute;left:187px;top:190px;width:14px;height:26px;border-radius:50%;background:#FFFFFF;border:1px solid #E6DCC3;animation:drift 2.6s ease-out infinite}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; position: relative; overflow: hidden; background: #FBF8EF; color: #1F1D1A; font-family: Rubik, system-ui, sans-serif; padding: 22px 20px;">
+
+  <span class="petal" style="--dx: -130px; --dy: -120px; --r: -30deg;"></span>
+  <span class="petal" style="--dx: 120px; --dy: -140px; --r: 40deg; animation-delay: .2s;"></span>
+  <span class="petal" style="--dx: -150px; --dy: 40px; --r: 80deg; animation-delay: .4s;"></span>
+  <span class="petal" style="--dx: 150px; --dy: 30px; --r: -70deg; animation-delay: .1s;"></span>
+  <span class="petal" style="--dx: -60px; --dy: -170px; --r: 10deg; animation-delay: .6s;"></span>
+  <span class="petal" style="--dx: 70px; --dy: 110px; --r: 150deg; animation-delay: .3s;"></span>
+
+  <div style="display: flex; flex-direction: column; align-items: center; margin-top: 70px;">
+    <svg width="150" height="150" viewBox="0 0 40 40" aria-hidden="true" style="animation: popin .7s cubic-bezier(.3,1.6,.5,1) both;">
+      <g fill="#FFFFFF" stroke="#E6DCC3" stroke-width="0.6">
+        <ellipse cx="20" cy="9" rx="4.6" ry="8" transform="rotate(0 20 20)"></ellipse>
+        <ellipse cx="20" cy="9" rx="4.6" ry="8" transform="rotate(72 20 20)"></ellipse>
+        <ellipse cx="20" cy="9" rx="4.6" ry="8" transform="rotate(144 20 20)"></ellipse>
+        <ellipse cx="20" cy="9" rx="4.6" ry="8" transform="rotate(216 20 20)"></ellipse>
+      </g>
+      <circle cx="20" cy="20" r="6.5" fill="#F5B301"></circle>
+    </svg>
+    <h1 style="margin: 22px 0 6px; font-size: 30px; font-weight: 600; letter-spacing: -0.4px;">Done in 13 min</h1>
+    <p style="margin: 0; font-size: 15px; color: #6B665D;">4 done today. Your daisy grew a petal.</p>
+  </div>
+
+  <section aria-label="Next" style="position: absolute; left: 20px; right: 20px; bottom: 28px; box-sizing: border-box; border-radius: 24px; background: #EAF1FC; border: 1px solid #CFDDF5; padding: 20px; display: flex; flex-direction: column; gap: 10px;">
+    <div style="display: flex; align-items: center; justify-content: space-between;">
+      <span style="font-size: 12px; font-weight: 600; letter-spacing: 0.6px; text-transform: uppercase; color: #44597F;">Next</span>
+      <span style="font-size: 13px; color: #44597F;">Call · 15 min</span>
+    </div>
+    <div dir="rtl" style="font-size: 24px; font-weight: 600;">להתקשר לביטוח לאומי</div>
+    <p style="margin: 0; font-size: 14px; line-height: 1.4; color: #3A4A66;">Still on admin mode, and offices are open until 16:00.</p>
+    <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 8px; margin-top: 4px;">
+      <button style="height: 52px; border: none; border-radius: 14px; background: #F5B301; color: #1F1D1A; font-family: inherit; font-size: 17px; font-weight: 600;">Start</button>
+      <button style="height: 52px; border: 1px solid #CFDDF5; border-radius: 14px; background: #FFFFFF; color: #3A4A66; font-family: inherit; font-size: 15px; font-weight: 500;">Not now</button>
+    </div>
+  </section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

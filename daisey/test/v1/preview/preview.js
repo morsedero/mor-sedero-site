@@ -62,6 +62,16 @@ const SCENARIOS = {
     { title: "Mix review", project: "חתונה", size: 90, over: ago(3) },
   ] },
   empty: { tasks: [] },
+  // Layout round 2: steps and links on the card's task, a Pending task past
+  // its check date and a Someday one (Needs you), a done one (progress).
+  round2: { tasks: [
+    { title: "Sfx deep work", project: "monster punk", size: 60, area: "work", due: day(4), dateKind: "deadline",
+      steps: [{ text: "Bounce the stems", done: true }, { text: "Layer the impacts", done: false }, { text: "Send to Yuval", done: false }],
+      links: [{ url: "https://drive.google.com/file/d/x/cue-sheet.pdf" }], over: { starts: 2, spentMinutes: 100 } },
+    { title: "Pre-attack cue", project: "monster punk", size: 30, area: "work", over: { status: "waiting", waitingOn: "Yuval", checkOn: day(-1) } },
+    { title: "Boss intro sting", project: "monster punk", size: 30, area: "work", over: { status: "done", doneAt: Date.now() - 864e5 } },
+    { title: "ביטוח לחיות", project: "סידורים", size: 15, area: "admin", over: { status: "someday", stakes: "money" } },
+  ] },
   // Two active, three parked: the Someday pick shows under the card.
   someday: { tasks: [
     { title: "Send invoice to Uri", project: "Admin", size: 15 },
@@ -206,7 +216,7 @@ const FAKES = {
     // "sel=text" types into a field instead of clicking it.
     const eq = sel.indexOf("=");
     if (eq > 0 && !sel.startsWith("[")) await page.fill(sel.slice(0, eq), sel.slice(eq + 1)); else await page.click(sel, { force: true }); // force: the hero breathes, so it is never "stable"
-    await page.waitForTimeout(150);
+    await page.waitForTimeout(450); // past the sheet and card animations
   }
   // --hold "sel": press and hold it for 1.5 s (Hold to finish).
   if (holdSel) { const b = await page.locator(holdSel).boundingBox(); await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2);

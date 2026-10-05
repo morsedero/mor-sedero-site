@@ -1,383 +1,393 @@
-// The task popup. Title first; everything else is optional (Mor, 2026-10-04).
-// Daisey guesses area, type, where, open hours, size, stakes and energy from
-// the title (model.guessFields).
+// The task sheet (layout round 2, Mor 2026-10-05; New Design/9-task): one
+// task, opened by tapping its title anywhere — the Now card, a project
+// screen — and the same sheet, empty, for a new task.
 //
-// The guesses stay OUT OF THE WAY while you type (Mor, 2026-10-05: they used
-// to open roughly, re-laying the form out on every keystroke). Two things fix
-// that: they wait for the typing to stop (SETTLE ms of quiet, and at least
-// MIN_CHARS characters) and then fade in, and what fades in is ONE QUIET LINE
-// — an icon and a value for the four that matter, no field names. Tapping the
-// line opens the full set of chips, where a dashed chip is a guess, a solid
-// one is yours. Each chip drops its own little MENU over the form (Mor,
-// 2026-10-05: a shared row of options below the chips pushed everything down
-// every time one was tapped), and "Daisey guesses" at the foot of the menu
-// hands the field back. The line never disappears again once it is up,
-// because vanishing is its own jump.
+// Top to bottom: the project (dot + name, a list with "+ New project…"),
+// the title (26px, edited in place), two date boxes side by side — Start
+// (not before) FIRST, then Due with its Deadline/Target tag — one collapsed
+// "Details: size, energy, place" row over Daisey's guessed chips, Steps,
+// Links & notes, "Worked N sessions · Xh so far", and the amber Start.
 //
-// Every field is shown, with room between them (Mor, 2026-10-04: "no need for
-// More, just show everything, not dense"). Add closes the popup; so does
-// saving an edit.
+// An open task saves as you go: every change is written when it's made (a
+// typed field when you leave it, or when the sheet closes). There is no Save
+// button and no status switcher (Mor: "No status switcher inside the task") —
+// Later / Switch / Pending live on the Now card. Start brings a parked or
+// pending task back into play (now.js start). Delete is the quiet line under
+// Start, two presses.
 //
-// The order is the order you think in (Mor, 2026-10-05): the project sits in
-// the heading row, not in the stack, because it is context rather than a
-// question; then Task, then Description; the two dates share a row. "First
-// step" is gone — a step is a task of its own.
+// Steps: the first unticked one is the task's next step (model.js writes it
+// to nextStep), so the Now card's "Next:" line follows the checklist.
+// Links are URLs; a file is a link to it (Drive, Dropbox) — there is no file
+// storage behind Daisey.
 //
-// The project is a list: Inbox, the projects already there, and "+ New
-// project…", which asks for the name.
-//
-// In edit mode it is the task SHEET (Mor, 2026-10-04): tapping a row in the
-// Tasks view lands here, so everything you can do to one task is in one
-// place. That is why waiting is handled here rather than as an action, and why
-// Delete is a two-press button instead of a confirm() dialog.
-//
-// Waiting is one press, not a blank box (Mor, 2026-10-05): PENDING is a
-// toggle, and it sits in the action row beside "Do this now" and Someday,
-// because parking a task is that kind of act. Turning it on reveals "Waiting
-// on" for who or what. The name is optional — pending with nobody named is
-// still pending. Turning it off hands the task back to ready and forgets the
-// name.
+// The guessed chips are the same as before: each drops its own menu over the
+// sheet, "Daisey guesses" hands a field back, dashed = a guess, solid = yours.
+// While typing a new task's title they catch up only once typing stops.
 import { watchTasks, addTask, updateTask, removeTask } from "./store.js";
-import { durText, guessFields, validField, CHOICES, LABELS, INBOX } from "./model.js";
-import { h, flash, icon } from "./ui.js";
+import { durText, guessFields, validField, CHOICES, LABELS, INBOX, localDate } from "./model.js";
+import { h, flash, icon, bdi } from "./ui.js";
 
-// The guessed fields shown as chips, in order. canSplit stays a quiet
-// default with no chip of its own.
 const CHIPS = ["area", "type", "where", "openHours", "size", "stakes", "energy"];
 const NAMES = { area: "Area", type: "Type", where: "Where", openHours: "Open hours", size: "Size", stakes: "Stakes", energy: "Energy" };
 const SIZE_OPTIONS = [5, 15, 30, 60, 90, 120, 180, 240];
 const NEW_PROJECT = "__new"; // the project list's "+ New project…" entry
-// The ones shown on the collapsed line; open hours and stakes joined it
-// (Mor, 2026-10-05) since they decide when a task can come up and how hard
-// it pushes. Type is one tap away.
-const SUMMARY = ["area", "where", "openHours", "size", "stakes", "energy"];
-const SETTLE = 450; // ms of quiet typing before the guesses appear or change
-const MIN_CHARS = 3; // a title shorter than this isn't worth guessing from
+const SETTLE = 450; // ms of quiet typing before a new task's guesses catch up
+const MIN_CHARS = 3;
 const valueText = (k, v) => (k === "size" ? durText(v) : LABELS[k][v] ?? "");
-// On a chip the icon already says which field it is, so "Low energy" is just
-// "Low" and "Office hours" is just "Office".
 const shortText = (k, v) => valueText(k, v).replace(/ (energy|stakes|hours)$/, "");
 const optionsOf = (k) => (k === "size" ? SIZE_OPTIONS : CHOICES[k]);
+const boxDate = (s) => new Date(`${s}T12:00`).toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" });
+// "1 h 40", "25 min": the worked line is short on purpose.
+const workedText = (m) => (m < 60 ? `${m} min` : `${Math.floor(m / 60)} h${m % 60 ? ` ${m % 60}` : ""}`);
 
-let n = 0;
-const field = (label, input) => {
-  input.id ||= `add-f${++n}`;
-  return h("div", { className: "field" }, h("label", { htmlFor: input.id, textContent: label }), input);
-};
-
-// onNow(id) puts the task on the Now card (now.js), so the sheet can answer
-// "do this one next" without hunting for it through Switch.
-export function mountAddTask(dialog, uid, { onNow } = {}){
+// onStart(id): close the sheet and start the task (now.js start).
+export function mountAddTask(dialog, uid, { onStart } = {}){
   let tasks = [];
-  let editing = null; // the task being edited, or null when adding
-  let vals = {}; // what each chip shows
-  let mine = new Set(); // chips the user picked
-  let startMine = new Set(); // …as they were when the sheet opened (edit)
-  let openChip = null; // the chip whose picker is showing
-  let pending = false; // the Pending toggle: the task is waiting on something
-  let shown = false; // the guess line is up (and stays up)
-  let expanded = false; // the full chip set is open
-  let settle = 0; // the "typing stopped" timer
-  let kind = "target"; // the date's kind
-  const projectSel = h("select", { className: "head-project", ariaLabel: "Project" });
-  const f = {
-    title: h("input", { id: "addName", dir: "auto", required: true, autocomplete: "off" }),
-    newProject: h("input", { dir: "auto", autocomplete: "off", placeholder: "e.g. Website redesign" }),
-    due: h("input", { id: "addDue", type: "date" }),
-    notBefore: h("input", { type: "date" }),
-    waitingOn: h("input", { dir: "auto", autocomplete: "off", placeholder: "who or what?" }),
-    notes: h("textarea", { dir: "auto", rows: 3 }),
+  let editing = null; // the open task (kept fresh from the snapshot), or null for a new one
+  let vals = {}, mine = new Set(), openChip = null;
+  let detailsOpen = false;
+  let steps = [], links = [];
+  let kind = "target";
+  let settle = 0, armed = false;
+  const fail = (e) => console.error("[daisey] task", e);
+
+  // ---------- the pieces ----------
+  const heading = h("h2", { id: "addTitle", className: "sr", textContent: "Task" });
+  const grip = h("button", { className: "ts-grip", type: "button", ariaLabel: "Close", onclick: () => dialog.close() }, h("span", { ariaHidden: "true" }));
+  const projectSel = h("select", { className: "ts-project", ariaLabel: "Project" });
+  const projRow = h("div", { className: "ts-proj" }, h("span", { className: "dot", ariaHidden: "true" }), projectSel);
+  const newProject = h("input", { className: "ts-input", dir: "auto", autocomplete: "off", placeholder: "Name the new project", ariaLabel: "New project name" });
+  const title = h("textarea", { className: "ts-title", dir: "auto", rows: 1, placeholder: "What's the task?", ariaLabel: "Task", required: true });
+
+  // A date box: the label, what's set (or "Any time"), and a native date
+  // input laid over the whole box, so a tap anywhere opens the picker.
+  function dateBox(label, empty){
+    const input = h("input", { type: "date", className: "ts-date-in", ariaLabel: label });
+    input.addEventListener("click", () => { try { input.showPicker(); } catch { /* opened natively */ } });
+    const value = h("span", { className: "ts-date-v" });
+    const clear = h("button", { type: "button", className: "ts-date-x", ariaLabel: `Clear ${label}`, onclick: (e) => { e.preventDefault(); input.value = ""; input.dispatchEvent(new Event("change")); } }, icon("close"));
+    const tag = h("button", { type: "button", className: "ts-kind", hidden: true });
+    const box = h("div", { className: "ts-date" }, h("span", { className: "ts-date-l", textContent: label }), value, tag, clear, input);
+    const paint = () => {
+      value.textContent = input.value ? boxDate(input.value) : empty;
+      box.classList.toggle("set", !!input.value);
+      clear.hidden = !input.value;
+    };
+    return { input, box, tag, paint };
+  }
+  const start = dateBox("Start (not before)", "Any time");
+  const due = dateBox("Due", "No date");
+  due.tag.onclick = (e) => {
+    e.preventDefault();
+    kind = kind === "deadline" ? "target" : "deadline";
+    paintDates();
+    if (editing) save({ dateKind: kind });
   };
-  const msg = h("p", { className: "muted", role: "status" });
+  function paintDates(){
+    start.paint(); due.paint();
+    due.tag.hidden = !due.input.value;
+    due.tag.textContent = kind === "deadline" ? "Deadline" : "Target";
+    due.tag.className = "ts-kind " + kind;
+    due.tag.ariaLabel = `${kind === "deadline" ? "Deadline (real)" : "Target (wish)"}: tap to change`;
+  }
 
-  const chipRow = h("div", { className: "gchips", role: "group", ariaLabel: "Daisey's guesses — tap one to change it" });
-  const gbox = h("div", { className: "gbox" },
-    h("p", { className: "guess-cap muted", textContent: "Daisey's guesses — tap one to change it" }), chipRow);
-  // The collapsed line: icons and values, no field names, and a word that says
-  // it opens.
-  const sumVals = h("span", { className: "gsum-vals" });
-  const sumLine = h("button", { type: "button", className: "gsum",
-    onclick: () => { expanded = !expanded; if (!expanded) openChip = null; paint(); } },
-    h("span", { className: "gsum-k", textContent: "Daisey" }), sumVals,
-    h("span", { className: "gsum-more", ariaHidden: "true", textContent: "Change" }));
-  const guesses = h("div", { className: "guesses" }, sumLine, gbox);
+  // Details: collapsed by default; opens Daisey's guessed chips.
+  const detailsBtn = h("button", { type: "button", className: "ts-details", ariaExpanded: "false",
+    onclick: () => { detailsOpen = !detailsOpen; openChip = null; paintChips(); } },
+  icon("details"), h("span", { className: "ts-details-t", textContent: "Details: size, energy, place" }), icon("chev"));
+  const chipRow = h("div", { className: "gchips ts-chips", role: "group", ariaLabel: "Daisey's guesses — tap one to change it" });
 
-  const newField = field("Name the new project", f.newProject);
-  // The two dates share a row, start first, then due (Mor, 2026-10-05: the
-  // order you live them in); under them, whether the due date is real.
-  const kindRow = h("div", { className: "kind", role: "radiogroup", ariaLabel: "What kind of date" });
-  const dateBox = h("div", { className: "sheet-stack" },
-    h("div", { className: "sheet-row" }, field("Start date (optional)", f.notBefore), field("Due date (optional)", f.due)),
-    kindRow);
-  // Waiting only exists for a task that already exists: you don't add one
-  // already blocked (model.js's note on Waiting). One press to park it; the
-  // name of who or what only appears once it is parked.
-  const waitField = field("Waiting on", f.waitingOn);
-  // Save sits on the bottom line with Delete, outside the form, so the two
-  // ends of the sheet are one row (Mor, 2026-10-05). It still submits the
-  // form: that is what the form= attribute is for.
-  const submit = h("button", { className: "btn primary", type: "submit", textContent: "Add" });
-  submit.setAttribute("form", "addTaskForm");
-  const form = h("form", { id: "addTaskForm", className: "sheet-form" },
-    newField,
-    field("Task", f.title),
-    guesses,
-    field("Description (optional)", f.notes),
-    dateBox,
-    waitField);
-  const heading = h("h2", { id: "addTitle", dir: "auto", textContent: "Add task" });
+  // Pending's details, on a pending task: data, not a switch.
+  const waitingOn = h("input", { className: "ts-input", dir: "auto", autocomplete: "off", placeholder: "who or what?" });
+  const checkOn = h("input", { className: "ts-input", type: "date" });
+  const pendBox = h("div", { className: "ts-pend" },
+    h("label", {}, h("span", { textContent: "Waiting on" }), waitingOn),
+    h("label", {}, h("span", { textContent: "Ask me again" }), checkOn));
+  const stateLine = h("p", { className: "ts-state" });
 
-  // Other tasks teach the guesses ("similar past tasks", the project's own
-  // areas); the one being edited must not teach itself.
+  const stepList = h("ul", { className: "ts-steps" });
+  const linkRow = h("div", { className: "ts-links" });
+  const notes = h("textarea", { className: "ts-notes", dir: "auto", rows: 2, placeholder: "Notes…", ariaLabel: "Notes" });
+  const worked = h("p", { className: "ts-worked" });
+  const startBtn = h("button", { type: "button", className: "btn primary start ts-start" });
+  const del = h("button", { type: "button", className: "ts-del" });
+  const msg = h("p", { className: "msg", role: "status" });
+
+  dialog.replaceChildren(heading, grip, projRow, newProject, title,
+    h("div", { className: "ts-dates" }, start.box, due.box),
+    detailsBtn, chipRow, pendBox, stateLine,
+    h("h3", { className: "ts-h", textContent: "Steps" }), stepList,
+    h("h3", { className: "ts-h", textContent: "Links & notes" }), linkRow, notes,
+    h("div", { className: "ts-grow" }), worked, startBtn, del, msg);
+
+  // ---------- saving ----------
+  // Other tasks teach the guesses; the open one must not teach itself.
   const history = () => (editing ? tasks.filter((t) => t.id !== editing.id) : tasks);
-  // What the project field means: the list's pick, or the name typed for a new one.
-  const projectOf = () => (projectSel.value === NEW_PROJECT ? f.newProject.value.trim() : projectSel.value) || INBOX;
+  const projectOf = () => (projectSel.value === NEW_PROJECT ? newProject.value.trim() : projectSel.value) || INBOX;
+  function save(changes){
+    if (!editing) return;
+    const was = editing;
+    try { updateTask(uid, was, changes, tasks).catch((e) => { fail(e); flash("Couldn't save ", was.title); }); }
+    catch (e) { msg.textContent = e.message || String(e); }
+  }
+  // Typed fields save when you leave them, and on close (flush).
+  function flush(){
+    if (!editing) return;
+    const c = {};
+    const t = title.value.trim();
+    if (t && t !== editing.title) c.title = t;
+    if ((notes.value.trim() || null) !== (editing.notes || null)) c.notes = notes.value;
+    if (editing.status === "waiting" && (waitingOn.value.trim() || null) !== (editing.waitingOn || null)) c.waitingOn = waitingOn.value;
+    if (projectSel.value === NEW_PROJECT && newProject.value.trim() && newProject.value.trim() !== editing.project) c.project = newProject.value.trim();
+    // A step typed but not left yet.
+    const clean = (list) => JSON.stringify((list || []).filter((x) => x.text.trim()).map((x) => ({ text: x.text.trim().replace(/\s+/g, " "), done: !!x.done })));
+    if (clean(steps) !== clean(editing.steps)) c.steps = steps;
+    if (Object.keys(c).length) save(c);
+  }
 
-  // Selects a project, adding it to the list if it isn't there yet (a task
-  // being edited may name one that no other task uses).
+  // ---------- project ----------
   function showProject(name){
     const v = !name || name === INBOX ? "" : name;
     if (v !== NEW_PROJECT && ![...projectSel.options].some((o) => o.value === v))
       projectSel.insertBefore(h("option", { value: v, textContent: v }), projectSel.lastElementChild);
     projectSel.value = v;
-    newField.hidden = v !== NEW_PROJECT;
+    newProject.hidden = v !== NEW_PROJECT;
   }
-
   function fillProjects(names){
     const cur = projectSel.value;
-    projectSel.replaceChildren(
-      h("option", { value: "", textContent: INBOX }),
+    projectSel.replaceChildren(h("option", { value: "", textContent: INBOX }),
       ...names.map((p) => h("option", { value: p, textContent: p })),
       h("option", { value: NEW_PROJECT, textContent: "+ New project…" }));
     showProject(cur);
   }
   fillProjects([]);
+  projectSel.addEventListener("change", () => {
+    newProject.hidden = projectSel.value !== NEW_PROJECT;
+    if (!newProject.hidden) { newProject.focus(); return; }
+    if (editing) save({ project: projectOf() }); else reguess();
+  });
+  newProject.addEventListener("change", () => { if (editing && newProject.value.trim()) save({ project: newProject.value.trim() }); else reguess(); });
+  const paintArea = () => { projRow.className = "ts-proj" + (vals.area ? ` area-${vals.area}` : ""); };
 
+  // ---------- title ----------
+  const fit = () => { title.style.blockSize = "auto"; title.style.blockSize = `${title.scrollHeight}px`; };
+  title.addEventListener("input", () => {
+    fit();
+    if (editing) return;
+    clearTimeout(settle);
+    settle = setTimeout(() => { if (title.value.trim().length >= MIN_CHARS) reguess(); }, SETTLE);
+  });
+  title.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); title.blur(); } });
+  title.addEventListener("change", () => { if (editing && title.value.trim() && title.value.trim() !== editing.title) save({ title: title.value }); });
+
+  // ---------- dates ----------
+  start.input.addEventListener("change", () => { paintDates(); if (editing) save({ notBefore: start.input.value }); });
+  due.input.addEventListener("change", () => { paintDates(); if (editing) save({ due: due.input.value, dateKind: kind }); });
+
+  // ---------- chips ----------
   function reguess(){
-    const title = f.title.value.trim();
-    if (title) {
+    const t = title.value.trim();
+    if (t) {
       const given = Object.fromEntries([...mine].map((k) => [k, vals[k]]));
-      const g = guessFields(title, projectOf(), given, history());
+      const g = guessFields(t, projectOf(), given, history());
       for (const k of CHIPS) if (!mine.has(k)) vals[k] = g[k];
     }
-    paint();
+    paintChips();
   }
-
   function pick(k, v){
     if (v === null) mine.delete(k); else { mine.add(k); vals[k] = v; }
     openChip = null;
-    reguess(); // a picked type re-steers where, hours, size and energy
+    if (editing) save({ [k]: v === null ? "" : v });
+    reguess();
   }
-
-  // Typing never moves the form: the guesses only catch up once you stop.
-  function later(){
-    clearTimeout(settle);
-    settle = setTimeout(() => {
-      const len = f.title.value.trim().length;
-      if (len >= MIN_CHARS) shown = true;
-      else if (!len) { shown = false; expanded = false; } // cleared the title: start over
-      reguess();
-    }, SETTLE);
-  }
-
-  // One chip's menu, floated over the form rather than pushing it down.
   const menuFor = (k) => h("div", { className: "gmenu", role: "listbox", ariaLabel: NAMES[k] },
     ...optionsOf(k).map((v) => h("button", { type: "button", role: "option", className: "gopt",
-      ariaSelected: String(mine.has(k) && vals[k] === v), onclick: () => pick(k, v) },
-    h("bdi", { textContent: valueText(k, v) }))),
+      ariaSelected: String(mine.has(k) && vals[k] === v), onclick: () => pick(k, v) }, h("bdi", { textContent: valueText(k, v) }))),
     h("button", { type: "button", role: "option", className: "gopt quiet", ariaSelected: String(!mine.has(k)),
       textContent: "Daisey guesses", onclick: () => pick(k, null) }));
-
-  function paint(){
-    guesses.hidden = !shown;
-    sumLine.ariaExpanded = String(expanded);
-    sumLine.ariaLabel = `Daisey's guesses: ${CHIPS.map((k) => `${NAMES[k]} ${valueText(k, vals[k])}`).join(", ")}. Change them`;
-    sumVals.replaceChildren(...SUMMARY.map((k) =>
-      h("span", { className: "gsum-v" + (mine.has(k) ? " mine" : "") }, icon(k), h("bdi", { textContent: shortText(k, vals[k]) }))));
-    gbox.hidden = !expanded;
-    chipRow.replaceChildren(...CHIPS.map((k) => {
+  function paintChips(){
+    paintArea();
+    detailsBtn.ariaExpanded = String(detailsOpen);
+    chipRow.hidden = !detailsOpen;
+    if (!detailsOpen) return;
+    chipRow.replaceChildren(...CHIPS.filter((k) => vals[k] != null).map((k) => {
       const own = mine.has(k);
-      const chip = h("button", { type: "button", className: "gchip" + (own ? " mine" : ""),
-        ariaHasPopup: "listbox", ariaExpanded: String(openChip === k),
+      const chip = h("button", { type: "button", className: "gchip" + (own ? " mine" : ""), ariaHasPopup: "listbox", ariaExpanded: String(openChip === k),
         ariaLabel: `${NAMES[k]}: ${valueText(k, vals[k])}, ${own ? "yours" : "Daisey's guess"}. Change`,
-        onclick: () => { openChip = openChip === k ? null : k; paint(); } },
+        onclick: () => { openChip = openChip === k ? null : k; paintChips(); } },
       icon(k), h("bdi", { textContent: shortText(k, vals[k]) }));
       return h("div", { className: "gchip-wrap" }, chip, openChip === k ? menuFor(k) : null);
     }));
-    // A menu on a chip near the edge hangs the other way instead of off it.
     const menu = openChip && chipRow.querySelector(".gmenu");
-    if (menu && menu.getBoundingClientRect().right > dialog.getBoundingClientRect().right - 8)
-      menu.classList.add("end");
-    kindRow.hidden = !f.due.value;
-    kindRow.replaceChildren(...[["target", "Target (wish)"], ["deadline", "Deadline (real)"]].map(([v, text]) =>
-      h("button", { type: "button", className: "chip", role: "radio", ariaChecked: String(kind === v), textContent: text,
-        onclick: () => { kind = v; paint(); } })));
+    if (menu && menu.getBoundingClientRect().right > dialog.getBoundingClientRect().right - 8) menu.classList.add("end");
   }
 
-  f.title.addEventListener("input", later);
-  projectSel.addEventListener("change", () => {
-    newField.hidden = projectSel.value !== NEW_PROJECT;
-    if (!newField.hidden) f.newProject.focus();
-    reguess();
-  });
-  f.newProject.addEventListener("input", later);
-  f.due.addEventListener("input", paint);
+  // ---------- steps ----------
+  const saveSteps = () => { if (editing) save({ steps }); };
+  function paintSteps(focus = -1){
+    const firstOpen = steps.findIndex((s) => !s.done && s.text.trim());
+    stepList.replaceChildren(...steps.map((s, k) => {
+      const input = h("input", { className: "ts-step-t", dir: "auto", value: s.text, ariaLabel: `Step ${k + 1}`, placeholder: "A step" });
+      input.addEventListener("input", () => { s.text = input.value; });
+      input.addEventListener("change", () => { if (!s.text.trim()) { steps.splice(k, 1); paintSteps(); } saveSteps(); });
+      input.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") { e.preventDefault(); steps.splice(k + 1, 0, { text: "", done: false }); paintSteps(k + 1); }
+        if (e.key === "Backspace" && !input.value) { e.preventDefault(); steps.splice(k, 1); paintSteps(Math.max(0, k - 1)); saveSteps(); }
+      });
+      return h("li", { className: "ts-step" + (s.done ? " done" : "") },
+        h("button", { type: "button", className: "ts-check", ariaPressed: String(s.done), ariaLabel: `${s.done ? "Untick" : "Tick"} step ${k + 1}`,
+          onclick: () => { s.done = !s.done; paintSteps(); saveSteps(); } }, s.done ? icon("check") : null),
+        input,
+        k === firstOpen && h("span", { className: "ts-next", textContent: "next step" }));
+    }), h("li", {}, h("button", { type: "button", className: "ts-add", textContent: "+ Add step",
+      onclick: () => { steps.push({ text: "", done: false }); paintSteps(steps.length - 1); } })));
+    if (focus >= 0) stepList.querySelectorAll(".ts-step-t")[focus]?.focus();
+  }
 
-  // The sheet's own actions, under the fields and only when editing.
-  let armed = false; // Delete pressed once; the next press does it
-  const doNow = h("button", { className: "btn", type: "button", textContent: "Do this now",
-    onclick: () => { if (editing) { onNow?.(editing.id); dialog.close(); } } });
-  // Someday parks a task off the card; the same button brings it back.
-  const someday = h("button", { className: "btn", type: "button", onclick: () => {
-    if (!editing) return;
-    const back = editing.status === "someday";
-    updateTask(uid, editing, { status: back ? "ready" : "someday" }, tasks).catch((e) => console.error("[daisey] someday", e));
-    flash(back ? "Back from Someday: " : "Someday: ", editing.title);
-    dialog.close();
-  } });
-  const del = h("button", { className: "btn quiet danger", type: "button", textContent: "Delete" });
+  // ---------- links ----------
+  let adding = false;
+  function paintLinks(){
+    const url = h("input", { className: "ts-input", type: "url", inputMode: "url", placeholder: "Paste a link", ariaLabel: "Link" });
+    const addIt = () => {
+      if (url.value.trim()) { links.push({ url: url.value.trim() }); if (editing) save({ links }); }
+      adding = false; paintLinks();
+    };
+    url.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); addIt(); } if (e.key === "Escape") { e.stopPropagation(); adding = false; paintLinks(); } });
+    linkRow.replaceChildren(
+      ...links.map((l, k) => h("span", { className: "ts-link" },
+        h("a", { href: /^[a-z][a-z0-9+.-]*:/i.test(l.url) ? l.url : `https://${l.url}`, target: "_blank", rel: "noopener" }, icon("link"), bdi(l.label || l.url)),
+        h("button", { type: "button", className: "ts-link-x", ariaLabel: `Remove ${l.label || l.url}`,
+          onclick: () => { links.splice(k, 1); if (editing) save({ links }); paintLinks(); } }, icon("close")))),
+      adding ? h("span", { className: "ts-link-add" }, url, h("button", { type: "button", className: "btn small", textContent: "Add", onclick: addIt }))
+        : h("button", { type: "button", className: "ts-link-new", textContent: "+ Link or file", onclick: () => { adding = true; paintLinks(); linkRow.querySelector("input")?.focus(); } }));
+  }
+  notes.addEventListener("change", () => { if (editing) save({ notes: notes.value }); });
+  waitingOn.addEventListener("change", () => save({ waitingOn: waitingOn.value }));
+  checkOn.addEventListener("change", () => { if (checkOn.value) save({ checkOn: checkOn.value }); });
+
+  // ---------- the foot ----------
+  function paintFoot(){
+    const t = editing;
+    const n = t?.starts || 0, m = Math.round(t?.spentMinutes || 0);
+    worked.hidden = !t || (!n && !m);
+    worked.textContent = `Worked ${n} session${n === 1 ? "" : "s"} · ${workedText(m)} so far`;
+    pendBox.hidden = t?.status !== "waiting";
+    const done = t?.status === "done";
+    stateLine.hidden = !(t && (done || t.status === "someday"));
+    stateLine.replaceChildren(...(done
+      ? [`Done ${t.doneAt ? new Date(t.doneAt).toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" }) : ""}. `,
+        h("button", { type: "button", className: "linkish", textContent: "Reopen", onclick: () => save({ status: "ready" }) })]
+      : ["In Someday. Start brings it back."]));
+    startBtn.hidden = done;
+    startBtn.replaceChildren(icon(t ? "play" : "plus"), h("span", { textContent: t ? "Start" : "Add task" }));
+    del.hidden = !t;
+  }
+  startBtn.onclick = () => {
+    if (editing) { flush(); const id = editing.id; dialog.close(); onStart?.(id); return; }
+    add();
+  };
   del.onclick = () => {
     if (!editing) return;
     if (!armed) { armed = true; del.textContent = "Really delete?"; del.classList.add("arm"); return; }
     const gone = editing;
+    editing = null;
     dialog.close();
-    removeTask(uid, gone.id).catch((e) => { console.error("[daisey] delete", e); flash("Couldn't delete ", gone.title); });
+    removeTask(uid, gone.id).catch((e) => { fail(e); flash("Couldn't delete ", gone.title); });
     flash("Deleted ", gone.title);
   };
-  const pendBtn = h("button", { className: "btn pend", type: "button" }, icon("pending"),
-    h("span", { textContent: "Pending" }));
-  pendBtn.onclick = () => {
-    pending = !pending;
-    if (!pending) f.waitingOn.value = "";
-    paintPend();
-    if (pending) f.waitingOn.focus();
-  };
-  function paintPend(){
-    pendBtn.ariaPressed = String(pending);
-    waitField.hidden = !pending;
-  }
-  const actions = h("div", { className: "sheet-actions" }, doNow, pendBtn, someday);
-  // Delete at one end, Add/Save at the other.
-  const bottom = h("div", { className: "sheet-bottom" }, del, submit);
-  const disarm = () => { armed = false; del.textContent = "Delete"; del.classList.remove("arm"); };
+  const disarm = () => { armed = false; del.textContent = "Delete task"; del.classList.remove("arm"); };
 
-  form.onsubmit = (ev) => {
-    ev.preventDefault();
-    if (projectSel.value === NEW_PROJECT && !f.newProject.value.trim()) {
-      msg.textContent = "Name the new project, or pick one from the list.";
-      f.newProject.focus();
-      return;
-    }
+  function add(){
+    if (projectSel.value === NEW_PROJECT && !newProject.value.trim()) { msg.textContent = "Name the new project, or pick one from the list."; newProject.focus(); return; }
+    if (!title.value.trim()) { msg.textContent = "Give it a name first."; title.focus(); return; }
+    const input = { title: title.value, project: projectOf() };
+    if (start.input.value) input.notBefore = start.input.value;
+    if (due.input.value) { input.due = due.input.value; input.dateKind = kind; }
+    if (notes.value.trim()) input.notes = notes.value;
+    if (steps.some((s) => s.text.trim())) input.steps = steps;
+    if (links.length) input.links = links;
+    for (const k of mine) input[k] = vals[k];
     try {
-      if (editing) {
-        // Blank due clears it. A chip handed back goes back to a guess.
-        const changes = { title: f.title.value, project: projectOf(), due: f.due.value, dateKind: kind,
-          notBefore: f.notBefore.value, notes: f.notes.value,
-          waitingOn: pending ? f.waitingOn.value : "" };
-        for (const k of CHIPS) {
-          if (mine.has(k) && (!startMine.has(k) || vals[k] !== editing[k])) changes[k] = vals[k];
-          else if (!mine.has(k) && startMine.has(k)) changes[k] = "";
-        }
-        // The toggle, not the text, decides: pending with nobody named is
-        // still pending, and turning it off hands the task back. Done and Someday are
-        // left alone — the circle in the list is what reopens one.
-        if (editing.status === "ready" || editing.status === "waiting")
-          changes.status = pending ? "waiting" : "ready";
-        updateTask(uid, editing, changes, tasks).catch((e) => { console.error("[daisey] edit", e); flash("Couldn't save ", editing.title); });
-        dialog.close();
-        return;
-      }
-      const input = { title: f.title.value, project: projectOf() };
-      for (const k of ["due", "notBefore", "notes"]) if (f[k].value.trim()) input[k] = f[k].value;
-      if (input.due) input.dateKind = kind;
-      for (const k of mine) input[k] = vals[k];
       // Resolves on server ack, which never comes offline; the list already
-      // shows the task locally, so don't wait.
-      addTask(uid, input, tasks).catch((e) => { console.error("[daisey] add", e); flash("Couldn't add ", input.title); });
+      // has it locally, so don't wait.
+      addTask(uid, input, tasks).catch((e) => { fail(e); flash("Couldn't add ", input.title); });
       flash("Added ", input.title);
       dialog.close();
     } catch (e) { msg.textContent = e.message || String(e); }
-  };
-
-  function clear(){
-    form.reset();
-    clearTimeout(settle);
-    vals = {}; mine = new Set(); startMine = new Set(); openChip = null;
-    shown = false; expanded = false; pending = false; kind = "target";
   }
 
-  const close = h("button", { className: "now-x", type: "button", ariaLabel: "Close", textContent: "✕", onclick: () => dialog.close() });
-  // The heading row carries the project: the task's context, not a question.
-  dialog.replaceChildren(h("div", { className: "now-head sheet-head" }, heading, projectSel, close),
-    form, actions, bottom, msg);
+  // ---------- open / close ----------
+  function clear(){
+    clearTimeout(settle);
+    vals = {}; mine = new Set(); openChip = null; detailsOpen = false;
+    steps = []; links = []; adding = false; kind = "target";
+    title.value = ""; notes.value = ""; newProject.value = ""; waitingOn.value = ""; checkOn.value = "";
+    start.input.value = ""; due.input.value = "";
+    msg.textContent = "";
+    disarm();
+  }
+  function paintAll(){ paintDates(); paintChips(); paintSteps(); paintLinks(); paintFoot(); }
+  const show = () => { if (!dialog.open) dialog.showModal(); requestAnimationFrame(fit); };
+
+  dialog.addEventListener("close", () => { flush(); editing = null; });
   dialog.addEventListener("click", (e) => {
     if (e.target === dialog) { dialog.close(); return; }
-    // A tap anywhere else puts an open guess menu away.
-    if (openChip && !e.target.closest(".gchip-wrap")) { openChip = null; paint(); }
+    if (openChip && !e.target.closest(".gchip-wrap")) { openChip = null; paintChips(); }
   });
-  // Escape closes the menu first; a second one closes the sheet.
-  dialog.addEventListener("keydown", (e) => {
-    if (e.key === "Escape" && openChip) { e.preventDefault(); openChip = null; paint(); }
-  });
+  dialog.addEventListener("keydown", (e) => { if (e.key === "Escape" && openChip) { e.preventDefault(); openChip = null; paintChips(); } });
 
   const unsub = watchTasks(uid, (ts) => {
     tasks = ts;
-    fillProjects([...new Set(ts.map((t) => t.project))].filter((p) => p !== INBOX).sort((a, b) => a.localeCompare(b)));
-  }, (e) => console.error("[daisey] add", e));
+    fillProjects([...new Set(ts.map((t) => t.project))].filter((p) => p && p !== INBOX).sort((a, b) => a.localeCompare(b)));
+    if (editing) {
+      const fresh = ts.find((t) => t.id === editing.id);
+      if (!fresh) { editing = null; if (dialog.open) dialog.close(); return; }
+      editing = fresh;
+      // What isn't typed into follows the saved task: guesses re-guessed on a
+      // title change, the worked line, the state.
+      for (const k of CHIPS) if (validField(k, fresh[k])) vals[k] = fresh[k];
+      if (dialog.open) { paintChips(); paintFoot(); }
+    }
+  }, fail);
 
   return {
-    // project: prefill ("" or Inbox = Inbox); omitted = keep the last one.
-    // title: prefill (Tell Daisey's text); the guesses run on it as if typed.
-    open(project, title = ""){
+    // project: prefill (""/Inbox = Inbox, "__new" = a new project);
+    // omitted = keep the last one. title: prefill (Tell Daisey's text).
+    open(project, text = ""){
       const keep = projectSel.value === NEW_PROJECT ? "" : projectSel.value;
-      msg.textContent = "";
-      editing = null;
-      disarm();
       clear();
+      editing = null;
+      heading.textContent = "New task";
       showProject(project !== undefined ? project : keep);
-      heading.textContent = "Add task";
-      submit.textContent = "Add";
-      waitField.hidden = true;
-      actions.hidden = true;
-      del.hidden = true; // nothing to delete yet
-      paint();
-      if (!dialog.open) dialog.showModal();
-      f.title.focus();
-      if (title) { f.title.value = title; f.title.dispatchEvent(new Event("input")); }
+      title.value = text;
+      if (text) reguess();
+      paintAll();
+      show();
+      (project === NEW_PROJECT ? newProject : title).focus();
     },
-    // The same popup, filled in: a wrong guess shouldn't be stuck forever.
+    newProject(){ this.open(NEW_PROJECT); },
+    // The sheet for one task.
     edit(task){
-      msg.textContent = "";
       clear();
       editing = task;
-      disarm();
-      heading.textContent = task.title.length > 28 ? "Task" : task.title;
-      submit.textContent = "Save";
-      pendBtn.hidden = task.status === "done" || task.status === "someday";
-      actions.hidden = false;
-      del.hidden = false;
-      doNow.hidden = task.status === "done" || task.status === "someday";
-      someday.hidden = task.status === "done";
-      someday.textContent = task.status === "someday" ? "Back from Someday" : "Someday";
-      pending = task.status === "waiting";
-      f.waitingOn.value = pending ? task.waitingOn || "" : "";
-      paintPend();
-      if (pendBtn.hidden) waitField.hidden = true;
+      heading.textContent = task.title;
       showProject(task.project);
-      f.title.value = task.title;
-      f.due.value = task.due || "";
+      title.value = task.title;
+      start.input.value = task.notBefore || "";
+      due.input.value = task.due || "";
       kind = task.dateKind === "deadline" ? "deadline" : "target";
-      f.notBefore.value = task.notBefore || "";
-      f.notes.value = task.notes || "";
+      notes.value = task.notes || "";
+      waitingOn.value = task.waitingOn || "";
+      checkOn.value = task.checkOn || "";
+      checkOn.min = localDate();
+      steps = (task.steps || []).map((s) => ({ ...s }));
+      if (!steps.length && task.nextStep) steps = [{ text: task.nextStep, done: false }];
+      links = (task.links || []).map((l) => ({ ...l }));
       const guessed = new Set(task.guessed || []);
       for (const k of CHIPS) if (validField(k, task[k])) { vals[k] = task[k]; if (!guessed.has(k)) mine.add(k); }
-      startMine = new Set(mine);
-      // Show the stored guesses as they are; only an old task missing a
-      // field gets fresh ones. Typing a new title re-guesses, as saving will.
-      shown = true; // the title is already written; nothing is about to jump
-      if (CHIPS.some((k) => !(k in vals))) reguess(); else paint();
-      if (!dialog.open) dialog.showModal();
-      f.title.focus();
+      if (CHIPS.some((k) => !(k in vals))) reguess();
+      paintAll();
+      show();
     },
     unmount(){ clearTimeout(settle); unsub(); if (dialog.open) dialog.close(); dialog.replaceChildren(); },
   };

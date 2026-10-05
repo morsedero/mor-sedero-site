@@ -6,17 +6,13 @@ const $ = (s) => document.querySelector(s);
 import { daisy } from "./look.js";
 import { mountPlaces } from "./places.js";
 
-// The header's daisy, with today's count as a small badge on it (it was a
-// "N done today" pill; the badge keeps the header to one short row).
-// now.js reports the count.
+// The header's daisy: one petal per task done today, no badge (round 2,
+// New Design/6); the count is its accessible name. now.js reports it.
 function paintDone(n){
-  const logo = $("#logo");
-  logo.replaceChildren(daisy(n, { size: 26 }));
-  const badge = $("#doneBadge");
-  badge.hidden = !n;
-  badge.textContent = String(n);
-  logo.parentElement.title = n ? `${n} done today` : "";
-  badge.ariaLabel = `${n} done today`;
+  $("#logo").replaceChildren(daisy(n, { size: 32 }));
+  const row = $("#brandrow");
+  row.ariaLabel = `Daisey. ${n === 1 ? "1 task" : `${n} tasks`} done today`;
+  row.title = n ? `${n} done today` : "";
 }
 paintDone(0);
 
@@ -111,7 +107,7 @@ async function boot(){
   const places = mountPlaces($("#placedlg"));
   $("#placesBtn").onclick = () => { setMenu(false); places.open(); };
 
-  const SIGNED_IN = ["#board", "#tasksview", "#tell"];
+  const SIGNED_IN = ["#board"];
 
 
   fb.onUser((user) => {
@@ -132,22 +128,17 @@ async function boot(){
     } else initial();
     show("signedin"); // no element of its own: just clears loading/sign-in views
 
-    Promise.all([import("./now.js"), import("./tasks.js"), import("./addtask.js"), import("./schedule.js"), import("./import-trello.js"), import("./addevent.js"), import("./store.js"), import("./deadlines.js"), import("./sweep.js"), import("./day.js")])
-      .then(([{ mountNow }, { mountTasks }, { mountAddTask }, { mountSchedule }, { mountImport }, { mountAddEvent }, { migrateTasks, watchSettings, saveSettings }, { mountDeadlines }, { mountSweep }, { dayHours, minText }]) => {
+    Promise.all([import("./now.js"), import("./projects.js"), import("./addtask.js"), import("./needs.js"), import("./import-trello.js"), import("./addevent.js"), import("./store.js"), import("./deadlines.js"), import("./day.js"), import("./calendar.js")])
+      .then(([{ mountNow }, { mountProjects }, { mountAddTask }, { mountNeeds }, { mountImport }, { mountAddEvent }, { migrateTasks, watchSettings, saveSettings }, { mountDeadlines }, { dayHours, minText }, { watchCalendar }]) => {
         if (fb.currentUid() !== user.uid || mounted) return;
         const m = mounted = {};
         // Old tasks get the new fields first; then, once, which dates are real.
         const stopMigrate = migrateTasks(user.uid);
         m.migrate = { unmount: stopMigrate };
         m.deadlines = mountDeadlines($("#deadlinedlg"), user.uid);
-        m.sweep = mountSweep($("#sweepdlg"), user.uid);
-        m.adder = mountAddTask($("#addtask"), user.uid, { onNow: (id) => m.now?.put(id) });
-        // The Now card rides in the same scroller as the columns, first in line.
         m.event = mountAddEvent($("#eventdlg"));
-        m.schedule = mountSchedule($("#schedule"), { onOpen: (ev) => m.event.view(ev), uid: user.uid, onSweep: (ids) => m.sweep.open(ids) });
         m.importer = mountImport($("#importdlg"), user.uid);
         $("#importTrello").onclick = () => { setMenu(false); m.importer.open(); };
-        // Always offered: a re-import only brings cards not already here.
         const fail = (e) => console.error("[daisey] menu", e);
         // Day hours in the account menu (DAISEY_SPEC "Day hours"), saved on change.
         const start = $("#dayStart"), end = $("#dayEnd");
@@ -167,31 +158,57 @@ async function boot(){
         };
         start.onchange = saveHours;
         end.onchange = saveHours;
-        m.menu = { unmount(){ stopSettings(); start.onchange = end.onchange = logSwitch.onchange = null; } };
-        m.tasks = mountTasks($("#tasksview"), user.uid,
-          { onOpen: (task) => m.adder.edit(task), onSweep: () => m.sweep.open(),
-          onProject: (name) => { m.tasks.showProject(name); $("#tasksview").scrollIntoView?.({ behavior: "smooth", block: "nearest" }); } });
-        m.now = mountNow($("#nowcard"), user.uid, { onEdit: (task) => m.adder.edit(task), name: (user.displayName || "").trim().split(/\s+/)[0], onDone: paintDone, ctxSlot: $("#ctxSlot"), onCard: (id) => { onCard = id; m.tasks?.setCurrent(id); }, onSweep: () => m.sweep.open(),
-          onProject: (name) => { m.tasks.showProject(name); $("#tasksview").scrollIntoView?.({ behavior: "smooth", block: "nearest" }); } });
-        m.tasks.setCurrent(onCard);
-        // + beside Tell Daisey: the one place to add by hand. Task opens the
-        // task form; Event opens the event form on the day the Today panel is
-        // showing, and is off while the calendar isn't connected.
+        // + → Event is off while the calendar isn't connected.
+        let calOk = false;
+        const stopCal = watchCalendar((c) => { calOk = c.status === "ok"; });
+        m.menu = { unmount(){ stopSettings(); stopCal(); start.onchange = end.onchange = logSwitch.onchange = null; } };
+
+        // Full screens (a project, Needs you) sit on the history stack, so the
+        // phone's Back closes them like a page.
+        const screens = {
+          open(kind){ if (history.state?.daisey !== kind) history.pushState({ daisey: kind }, ""); },
+          back(){ if (history.state?.daisey) history.back(); else closeScreens(); },
+        };
+        const closeScreens = () => { m.projects?.closeProject(); m.needs?.close(); };
+        const onPop = () => { if (!history.state?.daisey) closeScreens(); else if (history.state.daisey !== "needs") m.needs?.close(); };
+        addEventListener("popstate", onPop);
+        m.history = { unmount(){ removeEventListener("popstate", onPop); } };
+        // Start from anywhere: back to home first, then focus mode.
+        const startTask = (id) => { m.projects?.closeSheet(); if (history.state?.daisey) history.back(); closeScreens(); m.now?.start(id); };
+
+        m.adder = mountAddTask($("#addtask"), user.uid, { onStart: startTask });
+        m.needs = mountNeeds($("#needsview"), user.uid, { onClose: () => screens.back() });
+        m.projects = mountProjects({ pull: $("#pull"), now: $("#pullNow"), handle: $("#pullHandle"), sum: $("#pullSum"), body: $("#pullBody"), view: $("#projectview") }, user.uid, {
+          onOpen: (task) => m.adder.edit(task),
+          onAdd: (project) => m.adder.open(project),
+          onNew: () => m.adder.newProject(),
+          onStart: startTask,
+          onScreen: (name) => (name ? screens.open("project") : screens.back()),
+        });
+        m.now = mountNow($("#nowcard"), user.uid, {
+          name: (user.displayName || "").trim().split(/\s+/)[0], onDone: paintDone,
+          onCard: (id) => m.projects?.setCurrent(id),
+          onOpen: (task) => m.adder.edit(task),
+          onProject: (name) => m.projects.openProject(name),
+          onNeeds: () => { m.needs.open(); screens.open("needs"); },
+          onEvent: (ev) => m.event.view(ev),
+        });
+        // + in the Tell Daisey pill: a task (in the project on screen, if
+        // any) or a calendar event.
         const plusMenu = $("#plusMenu"), plus = $("#plus");
         const setPlus = (open) => {
           plusMenu.hidden = !open;
           plus.setAttribute("aria-expanded", String(open));
           if (open) {
-            const ev = $("#plusEvent"), ok = m.schedule.canAdd();
-            ev.disabled = !ok;
-            ev.title = ok ? "" : "Connect the calendar first";
+            const ev = $("#plusEvent");
+            ev.disabled = !calOk;
+            ev.title = calOk ? "" : "Connect the calendar first";
           }
         };
         plus.onclick = (e) => { e.stopPropagation(); setPlus(plusMenu.hidden); };
-        // On a project's tab in Tasks, a new task starts in that project.
-        const tabProject = () => m.tasks.shownProject() || undefined;
+        const tabProject = () => m.projects.shownProject() || undefined;
         $("#plusTask").onclick = () => { setPlus(false); m.adder.open(tabProject()); };
-        $("#plusEvent").onclick = () => { setPlus(false); m.event.open(m.schedule.day()); };
+        $("#plusEvent").onclick = () => { setPlus(false); m.event.open(); };
         document.addEventListener("click", (e) => { if (!plusMenu.hidden && !plusMenu.contains(e.target)) setPlus(false); });
         document.addEventListener("keydown", (e) => { if (e.key === "Escape") setPlus(false); });
         // Tell Daisey: plain language in, confirm cards out (tell.js).

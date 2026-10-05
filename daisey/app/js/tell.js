@@ -121,7 +121,7 @@ export function mountTell(form, input, mic, uid, { openAdd }){
       if (a.energy) bits.push(ENERGY[a.energy]);
       if (a.place) bits.push(PLACE[a.place]);
     }
-    const LABEL = { add: "New task", update: "Change", waiting: "Waiting", drop: "Drop", moment: "Right now", project: "New project" };
+    const LABEL = { add: "New task", update: "Change", waiting: "Pending", drop: "Drop", moment: "Right now", project: "New project" };
     const title = a.kind === "add" ? a.title : a.kind === "project" ? a.project : a.kind === "moment" ? null : t?.title;
     // A project lives through its tasks, so it starts with the first one:
     // the task form, with the new project already chosen.

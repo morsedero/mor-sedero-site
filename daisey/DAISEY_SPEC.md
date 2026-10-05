@@ -72,9 +72,12 @@ Only the title is required. Gemini guesses the rest from the title (area, type, 
 | Stakes | No | Low · Costs money · Affects someone · Deadline penalty | Guessed; else Low |
 | Date | No | Date, optional time | None |
 | Date kind | No | Deadline (real) · Target (wish) | Target |
-| Status | Auto | Ready · Waiting · Done | Ready |
+| Status | Auto | Ready · Pending (stored as `waiting`) · Someday · Done | Ready |
 | Waiting on | No | Free text ("Yuval confirms") | — |
-| Next step | Auto | Short text | Asked once for 90+ min tasks and goals |
+| Check again | Auto | Date: when Needs you asks "Still pending?" | 3 days after it went Pending |
+| Steps | No | Checklist of short steps | None |
+| Next step | Auto | The first unticked step | Asked once for 90+ min tasks and goals |
+| Links | No | URLs; a file is a link to it (Drive, Dropbox) | None |
 | Can split | No | Yes / No | Yes for 60+ min tasks |
 | Notes | No | Free text | — |
 
@@ -274,7 +277,8 @@ v1 is done when the Now card picks a task you actually start, most days, for one
 - [ ] Server function holding the Gemini key
 - [ ] Chat via Gemini: add task, brain dump, edit, with guessed chips on the confirm card
 - [x] Three-gate Now engine with why line and batching
-- [ ] Overdue triage sweep, weekly Someday pick, weekly intents
+- [x] Overdue triage sweep and weekly Someday pick (both in Needs you, Oct 5, 2026)
+- [ ] Weekly intents
 - [x] Energy guess from time bucket + corrections; learning from start, skip, finish
 - [ ] Voice input in chat (browser speech recognition, Hebrew + English)
 
@@ -305,6 +309,53 @@ v1 is done when the Now card picks a task you actually start, most days, for one
 
 The Now screen redesign (Oct 5, 2026; references in `daisey/New Design/`). Calm, warm, light. One loud thing per screen: the amber button.
 
+### Layout (round 2, Oct 5, 2026: mockups 6–10)
+
+A calm phone screen with everything one pull away. One column at every width; never two columns under 600 px (the project grid and the two date boxes are tiles inside one column, not page columns). In the UI, Waiting is called **Pending** everywhere; the stored status stays `waiting`.
+
+**Home** (`now.js`, mockup 6)
+- Header: the daisy (one petal per task done today, no badge) + "Daisey" 22/700 at the start, the avatar at the end. No clock, no free-time line, no place or energy chips (place: Places… in the account menu; energy: Switch).
+- "Good evening, Mor" 22/600. Inside a project block or booked slot, one quiet line under it with "I'm free now".
+- The Now card, full width: area dot + "Area · project" on one line (the project opens its project screen), size at the end. The title is the button that opens the task sheet (no pencil). Why = one plain sentence. Start, then Later · Switch · Pending. Pending asks what it waits on and when to ask again (default +3 days).
+- **After this**: the next one or two things (calendar events, and "Wind down" 35 min before the day ends), with the night divider between today and tomorrow when the day ends before them. An event opens its details.
+- **Needs you: N quick decisions**: an amber row, only when N > 0.
+- At the bottom the resting pull-up sheet: handle, "Projects · N projects · N tasks", and one pill [ + | Tell Daisey… | mic ]. + opens New task / New event. No floating button.
+
+**Night divider** (`ui.js nightDivider`, used everywhere today meets tomorrow): a thin line with a centred cream pill (`#F1ECDF`, ink-2 text, 12px) "Night · 23:45 – 08:00" and a small closed daisy bud. The hours are the day hours from settings.
+
+**Pull-up = projects only** (`projects.js`, mockup 7)
+- Drag the sheet up (or tap the handle): a mini Now bar on top ("Now: <task>" + Start), then "Projects" + "+ New" and a 2-column grid of project cards in their area colour: name, open count, one status line ("Next: …" or "3 pending · 6 someday"), progress bar (done / all). No schedule.
+- Drag down or tap the handle to close. A project's colour is its tasks' most common area.
+
+**Project screen** (`projects.js`, mockup 8)
+- Back arrow + horizontal project chips (the current one filled in its colour). Tap a chip to switch; swipe left/right anywhere that isn't a task for the next/previous project. Phone Back closes it.
+- Project card: name 22, area tag, progress bar "X of Y done".
+- One list by urgency: **Next** (cards with size, "n of m steps", date; NOW on the card's task), "+ Add a task"; **Pending** (who or what it waits on, with an initial); **Someday** and **Done** folded into one line each with a count.
+- Swipe a task right = done (green reveal, Undo toast). Tap = the task sheet.
+
+**Task sheet** (`addtask.js`, mockup 9), opened by tapping a task's title anywhere; the same sheet, empty, is New task.
+- Project dot + name, title 26 (edited in place).
+- Two date boxes side by side: Start (not before) first, then Due with a Deadline/Target tag (tap to switch).
+- One collapsed row "Details: size, energy, place" that opens Daisey's guessed chips. Hidden by default.
+- Steps: a checklist; the first unticked step has a "next step" tag and is the Now card's "Next:" line. "+ Add step".
+- Links & notes: link chips + "+ Link or file", a notes field.
+- "Worked N sessions · Xh so far", the amber Start at the bottom, Delete as a quiet line under it.
+- No status switcher and no Save button: every change saves as it's made. A pending task shows its "Waiting on" and "Ask me again" fields.
+
+**Needs you** (`needs.js`, mockup 10)
+- Full screen, one decision at a time, progress dots at the top, close X (phone Back closes it too).
+- A big card in a soft tint with an icon, a plain question, the item, and Daisey's suggestion in one line. Big buttons: the primary answer (amber), the secondary answer, "Ask me later" (hides it for the rest of the day).
+- Sources, in order: calendar events that read like tasks ("Is this a task?" → then "Keep the event?"), Pending tasks past their check date ("Still pending?"), the weekly Someday pick ("Bring one back?"), and old dates ("Still doing this?": today · this week · Someday · let it go — this replaced the Old dates sheet).
+- After the last one: "That's everything. Nothing else needs you."
+
+Built (Oct 5, 2026):
+- [x] Pending everywhere in the UI; one column under 600 px
+- [x] Home
+- [x] Pull-up projects sheet
+- [x] Project screen
+- [x] Task sheet
+- [x] Needs you
+
 **Tokens (light)** — `daisey/app/css/app.css` `:root`
 
 | Token | Value | Use |
@@ -333,13 +384,13 @@ The Now screen redesign (Oct 5, 2026; references in `daisey/New Design/`). Calm,
 
 A card takes its task's area with `.area-<key>`; inside it everything reads `--tint`, `--aline`, `--aink` and `--sub` (the area's quiet text). A task with no area keeps the plain card colours. Calendar events are tinted with the colour they have in Google Calendar.
 
-**Type** — Rubik 400/500/600/700 (Google Fonts; it covers Hebrew). The top is two short rows: daisy (with a done-today badge) + "Daisey" 19/700, then the place/energy chips and the avatar at the end; under it the greeting 18/600 at the start and the free line (13) at the end, hero title 24/600, focus title 30/600, focus timer 46/600 tabular, body 14–15.
+**Type** — Rubik 400/500/600/700 (Google Fonts; it covers Hebrew). Header "Daisey" 22/700, greeting 22/600, hero title 32/600, task-sheet title 26/600, project name 22/600, Needs you question 28/600, focus title 30/600, focus timer 46/600 tabular, body 14–15, small labels 12–13.
 
 **Shape** — radius: cards 24, buttons 16, chips 999. Every touch target is at least 44px (chips that look smaller get an invisible hit area).
 
 **Text direction** — every title is `dir="auto"`; a task row takes its title's direction as a whole, so a Hebrew row puts its checkbox on the right.
 
-**The daisy** — the header's daisy has one petal per task done today, up to 8, spread evenly, and a small badge with the count. It never shows empty or "missing" petals.
+**The daisy** — the header's daisy has one petal per task done today, up to 8, spread evenly; the count is its accessible name, not a badge. It never shows empty or "missing" petals.
 
 **Motion**
 

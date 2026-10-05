@@ -76,6 +76,13 @@ const PATHS = {
   plus: "M12 5v14M5 12h14",
   edit: "M4 20h4L19 9l-4-4L4 16v4ZM13.5 6.5l4 4", // a pencil: the task's settings
   play: "M7 4.5v15l13-7.5z", // filled, not stroked (FILLED)
+  back: "M15 6l-6 6 6 6",
+  chev: "M9 6l6 6-6 6",
+  close: "M6 6l12 12M18 6L6 18",
+  link: "M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1",
+  details: "M4 7h10M18 7h2M4 17h4M12 17h8M14 7a2 2 0 1 0 4 0 2 2 0 1 0-4 0M8 17a2 2 0 1 0 4 0 2 2 0 1 0-4 0",
+  calendar: "M3.5 8a3 3 0 0 1 3-3h11a3 3 0 0 1 3 3v9a3 3 0 0 1-3 3h-11a3 3 0 0 1-3-3ZM3.5 10h17M8 3v4M16 3v4",
+  someday: "M7 18a4.5 4.5 0 0 1-.6-9A6 6 0 0 1 18 9.5a4 4 0 0 1-1 8.5Z", // a cloud: parked
 };
 const FILLED = new Set(["play"]);
 
@@ -90,3 +97,19 @@ export const icon = (name) => {
   svg.append(path);
   return svg;
 };
+
+// The night divider (DAISEY_SPEC "Visual design"): a thin line with a cream
+// pill in the middle, "Night · 22:00 – 08:00", and a closed daisy bud. Used
+// wherever today meets tomorrow. from/to: "HH:MM".
+export function nightDivider(from, to){
+  const NS = "http://www.w3.org/2000/svg";
+  const el = (tag, attrs) => { const e = document.createElementNS(NS, tag); for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v); return e; };
+  const bud = el("svg", { viewBox: "0 0 24 24", width: 14, height: 14, "aria-hidden": "true", class: "bud" });
+  const g = el("g", { class: "bud-petals" });
+  g.append(el("ellipse", { cx: 9.5, cy: 9, rx: 2.4, ry: 6, transform: "rotate(-14 12 17)" }),
+    el("ellipse", { cx: 12, cy: 8, rx: 2.4, ry: 6.5 }),
+    el("ellipse", { cx: 14.5, cy: 9, rx: 2.4, ry: 6, transform: "rotate(14 12 17)" }));
+  bud.append(g, el("circle", { cx: 12, cy: 17, r: 3, class: "bud-heart" }));
+  return h("div", { className: "night-div", role: "separator", ariaLabel: `Night, ${from} to ${to}` },
+    h("span", { className: "night-pill" }, bud, h("span", { textContent: `Night · ${from} – ${to}` })));
+}
