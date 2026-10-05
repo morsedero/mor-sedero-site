@@ -650,7 +650,7 @@ dialog.now { overflow-y: auto; overscroll-behavior: contain; }
    the card wider than the phone. */
 .now-card { grid-template-columns: minmax(0, 1fr); }
 .now-card.main {
-  position: relative; gap: 0; padding: 16px 18px; border-radius: var(--radius);
+  position: relative; gap: 0; padding: 16px 18px 8px; border-radius: var(--radius);
   background: var(--tint); border: 1px solid var(--aline); color: var(--ink);
   box-shadow: 0 12px 28px color-mix(in srgb, var(--aink) 14%, transparent);
 }
@@ -672,10 +672,10 @@ dialog.now { overflow-y: auto; overscroll-behavior: contain; }
 .btn.start svg { inline-size: 16px; block-size: 16px; }
 .now-actions.trio { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; margin-block-start: 4px; }
 .trio .iconbtn {
-  display: flex; align-items: center; justify-content: center; gap: 6px; min-inline-size: 0; min-block-size: 44px;
+  display: flex; align-items: center; justify-content: center; gap: 5px; min-inline-size: 0; min-block-size: 44px;
   border: none; border-radius: 12px; font-size: 14px; font-weight: 500; color: var(--sub);
 }
-.trio .iconbtn svg { inline-size: 16px; block-size: 16px; stroke-width: 2; }
+.trio .iconbtn svg { inline-size: 16px; block-size: 16px; flex: none; stroke-width: 2; }
 .trio .iconbtn:hover:not(:disabled), .trio .iconbtn[aria-expanded="true"] { background: color-mix(in srgb, var(--aink) 9%, transparent); border-color: transparent; color: var(--ink); }
 .now-card.main .later-ask, .now-card.main .pend-ask { margin-block-start: 8px; }
 .now-card.main .btn.quiet { color: var(--sub); }
@@ -686,7 +686,7 @@ dialog.now { overflow-y: auto; overscroll-behavior: contain; }
 .now-out { margin: 10px 0 0; }
 
 /* The deck: up to two faint cards peeking out under the hero. */
-.deck { position: relative; }
+.deck { position: relative; inline-size: 100%; max-inline-size: 300px; margin-inline: auto; }
 .deck.d1 { padding-block-end: 8px; }
 .deck.d2 { padding-block-end: 16px; }
 .deck > .now-card { position: relative; }
@@ -978,7 +978,7 @@ body.focus .tell-panel { display: none; }
 /* The hero's reasons, as tags in the area's colour. */
 .why-tags { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0 0; padding: 0; list-style: none; }
 .why-tag {
-  padding: 4px 10px; border-radius: 999px; font-size: 13px; font-weight: 500; line-height: 1.3;
+  padding: 3px 8px; border-radius: 999px; font-size: 12px; font-weight: 500; line-height: 1.3;
   background: color-mix(in srgb, var(--aink) 11%, transparent); color: var(--aink);
 }
 
