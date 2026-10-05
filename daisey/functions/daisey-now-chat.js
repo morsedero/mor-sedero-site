@@ -193,6 +193,8 @@ async function ask(key, prompt){
 }
 
 exports.handler = async (event) => {
+  // GET: is it set up? Says only whether a key is present, never the key.
+  if (event.httpMethod === "GET") return reply(200, { configured: !!process.env.GEMINI_API_KEY, model: MODEL });
   if (event.httpMethod !== "POST") return fail(405, "method");
   let claims;
   try {
