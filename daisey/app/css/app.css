@@ -919,3 +919,38 @@ dialog.now { overflow-y: auto; overscroll-behavior: contain; }
 .sch-nav .sch-head { flex: none; padding-inline: 4px; }
 .sch-nav .sch-add { justify-self: end; }
 @media (max-width: 420px) { .ev-grid .field input[type="date"]::-webkit-calendar-picker-indicator { display: none; } } /* a tap on the field opens the picker on phones anyway */
+
+/* Tell Daisey's answer: a sheet just above the bar, cards to confirm. */
+.tell-panel {
+  position: fixed; z-index: 6; inset-inline: 0; inset-block-end: calc(76px + env(safe-area-inset-bottom)); margin-inline: auto;
+  inline-size: min(528px, calc(100vw - 24px)); max-block-size: 60dvh; overflow-y: auto; overscroll-behavior: contain;
+  display: grid; gap: 10px; padding: 14px; border-radius: var(--radius); background: var(--card); border: 1px solid var(--line);
+  box-shadow: 0 12px 36px rgb(0 0 0 / .16);
+}
+@media (prefers-reduced-motion: no-preference) { .tell-panel:not([hidden]) { animation: guess-in .2s ease-out; } }
+body.focus .tell-panel { display: none; }
+.tell-head { display: flex; align-items: flex-start; gap: 8px; }
+.tell-reply { flex: 1; margin: 0; font-size: 15px; line-height: 1.35; }
+.tell-thinking { margin: 0; color: var(--ink-2); font-size: 14px; }
+.tell-x { flex: none; inline-size: 36px; block-size: 36px; border: none; border-radius: 50%; background: transparent; color: var(--ink-2); font: inherit; font-size: 15px; cursor: pointer; }
+.tell-x:hover { background: var(--chip); }
+.tell-cards { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.tell-card { display: flex; align-items: center; gap: 6px; padding: 10px 6px 10px 12px; border-radius: 14px; background: var(--chip); }
+.tell-card-main { flex: 1; min-inline-size: 0; display: grid; gap: 2px; }
+.tell-kind { font-size: 11px; font-weight: 600; letter-spacing: .5px; text-transform: uppercase; color: var(--ink-2); }
+.tell-title { font-size: 15px; font-weight: 600; overflow-wrap: anywhere; }
+.tell-meta { font-size: 13px; color: var(--ink-2); overflow-wrap: anywhere; }
+.tell-edit { flex: none; min-block-size: 36px; padding-inline: 10px; border: none; border-radius: 10px; background: transparent; color: var(--ink); font: inherit; font-size: 13px; font-weight: 500; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+.tell-btns { display: grid; grid-template-columns: 2fr 1fr; gap: 8px; }
+.tell-btns .btn.start { margin: 0; min-block-size: 48px; font-size: 16px; }
+.tell-ask { display: grid; gap: 6px; }
+.tell-ask p { margin: 0; font-size: 14px; }
+.tell-choices { display: flex; flex-wrap: wrap; gap: 6px; }
+.tell-choices .chip { min-block-size: 36px; font-size: 13px; border: none; background: var(--chip); }
+/* The mic while it listens: a soft amber ring, no motion under reduced motion. */
+.mic.listening { background: var(--accent); color: var(--on-accent); }
+@keyframes listen { 50% { box-shadow: 0 0 0 8px rgb(245 179 1 / .25); } }
+@media (prefers-reduced-motion: no-preference) { .mic.listening { animation: listen 1.2s ease-in-out infinite; } }
+
+/* Tasks: Waiting folds away like Someday. */
+.tk-waiting { margin-block-start: 4px; opacity: .85; }

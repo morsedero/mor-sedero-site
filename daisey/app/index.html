@@ -74,11 +74,12 @@
     </div>
   </div>
 
-  <!-- Tell Daisey: for now Enter (or the mic) opens Add task with the text in it. -->
+  <!-- Tell Daisey (tell.js): type or speak; Daisey shows what it understood
+       as cards and changes nothing until you tap Apply. -->
   <form id="tell" class="tellbar" hidden>
     <label for="tellInput" class="sr">Tell Daisey</label>
     <input id="tellInput" dir="auto" autocomplete="off" enterkeyhint="go" placeholder="Tell Daisey…">
-    <button id="add" class="mic" type="button" aria-label="Add a task">
+    <button id="mic" class="mic" type="button" aria-label="Speak to Daisey">
       <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>
     </button>
   </form>

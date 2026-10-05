@@ -109,7 +109,8 @@ const outDir = flag("--out") || path.join(require("os").tmpdir(), "daisey-previe
 const clicks = [];
 const widthFlag = flag("--width"); // phone width in CSS px (default 390)
 const evalJs = flag("--eval"); // run this in the page at the end and print what it returns
-const holdSel = flag("--hold"); // press and hold it for 1.5 s (Hold to finish)
+const holdSel = flag("--hold");
+const chatFlag = flag("--chat"); // "off": Tell Daisey answers as if no Gemini key were set // press and hold it for 1.5 s (Hold to finish)
 for (let c; (c = flag("--click"));) clicks.push(c);
 const wide = args.includes("--wide"), tasksTab = args.includes("--tasks");
 const name = args.find((a) => !a.startsWith("--")) || "en";
@@ -170,6 +171,18 @@ const FAKES = {
                     { id: "c2", name: "Pre-attack cue", listId: "l1", listName: "Doing", due: null, url: "https://trello.com/c/c2" },
                     { id: "c3", name: "Old idea", listId: "l2", listName: "Backlog", due: null, url: "https://trello.com/c/c3" }] };
       return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(body) });
+    }
+    // Tell Daisey: a canned stand-in for Gemini. "wrecked" → a moment;
+    // "waiting on X" → the first task waits on X; anything else → one new
+    // task per comma. --chat off answers as if no key were set.
+    if (rel === ".netlify/functions/daisey-now-chat") {
+      if (chatFlag === "off") return route.fulfill({ status: 503, contentType: "application/json", body: '{"error":"not_configured"}' });
+      const { text = "", tasks = [] } = JSON.parse(route.request().postData() || "{}");
+      const wait = /waiting on (\S+)/i.exec(text);
+      const actions = /wreck|tired/i.test(text) ? [{ kind: "moment", energy: "low" }]
+        : wait && tasks[0] ? [{ kind: "waiting", taskId: tasks[0].id, waitingOn: wait[1] }]
+        : text.split(",").map((s) => s.trim()).filter(Boolean).map((title) => ({ kind: "add", title, size: 30 }));
+      return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ reply: "Got it.", actions }) });
     }
     if (rel === ".netlify/functions/daisey-now-calendar-write") return route.fulfill({ status: 200, contentType: "application/json", body: '{"ok":true}' });
     if (rel === ".netlify/functions/daisey-now-calendar") return route.fulfill({ status: calReply.status, contentType: "application/json", body: JSON.stringify(calReply.body) });

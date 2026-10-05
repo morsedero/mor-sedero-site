@@ -183,11 +183,11 @@ async function boot(){
         m.now = mountNow($("#nowcard"), user.uid, { name: (user.displayName || "").trim().split(/\s+/)[0], onDone: paintDone, ctxSlot: $("#ctxSlot"), onCard: (id) => { onCard = id; m.tasks?.setCurrent(id); }, onSweep: () => m.sweep.open(),
           onProject: (name) => { location.hash = "tasks"; setPane("tasks"); m.tasks.showProject(name); $("#tasksview").scrollIntoView?.({ behavior: "smooth", block: "nearest" }); } });
         m.tasks.setCurrent(onCard);
-        // Tell Daisey: the typed text goes into a new task's title.
-        const tell = $("#tellInput");
-        const told = () => { const text = tell.value.trim(); tell.value = ""; m.adder.open(undefined, text); };
-        $("#tell").onsubmit = (e) => { e.preventDefault(); told(); };
-        $("#add").onclick = told;
+        // Tell Daisey: plain language in, confirm cards out (tell.js).
+        import("./tell.js").then(({ mountTell }) => {
+          if (mounted !== m) return; // signed out while it loaded
+          m.tell = mountTell($("#tell"), $("#tellInput"), $("#mic"), user.uid, { openAdd: (project, title) => m.adder.open(project, title) });
+        }).catch((e) => console.error("[daisey] tell", e));
         for (const s of SIGNED_IN) $(s).hidden = false;
         setPane(paneFromHash());
       }).catch((e) => console.error("[daisey] boot views", e));

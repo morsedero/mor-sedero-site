@@ -54,6 +54,7 @@ export function mountTasks(root, uid, { onAdd, onOpen, onSweep } = {}){
   let project = null; // the List view's project filter; null = all
   let doneOpen = false; // the Completed fold
   let somedayOpen = false; // the Someday fold
+  let waitingOpen = false; // the Waiting fold (Mor, 2026-10-05: collapsible, closed by default)
   let reveal = 0; // a chip was just picked: tries left to slide it fully into view
   const showProject = (name) => { project = name; reveal = 1; render(); };
   const fail = (e) => console.error("[daisey] tasks", e);
@@ -314,7 +315,9 @@ export function mountTasks(root, uid, { onAdd, onOpen, onSweep } = {}){
     // when the Now tab offers it: on the Overdue heading, or on Today's when
     // only passed targets are left.
     const sortAt = !sweepList(open).length ? null : groups.get("overdue").length ? "overdue" : "today";
-    const sections = SECTIONS.filter(([k]) => groups.get(k).length).map(([k, label]) => {
+    // Waiting folds like Someday: it's there to be seen, not acted on.
+    const waiting = groups.get("waiting").sort(order);
+    const sections = SECTIONS.filter(([k]) => k !== "waiting" && groups.get(k).length).map(([k, label]) => {
       const items = groups.get(k).sort(order);
       return h("section", { className: "tk-sec" + (k === "waiting" ? " quiet" : ""), ariaLabel: label },
         h("h3", { className: "tk-sec-h" }, h("span", { textContent: label }),
@@ -326,6 +329,8 @@ export function mountTasks(root, uid, { onAdd, onOpen, onSweep } = {}){
     return h("div", { className: "tk-single" },
       sections.length ? h("div", { className: "tk-secs" }, ...sections)
         : h("p", { className: "muted tk-note", textContent: project ? "Nothing open in this project." : "Nothing open. All done." }),
+      waiting.length > 0 && h("div", { className: "tk-waiting" }, fold(`Waiting (${waiting.length})`,
+        waiting.map((t) => row(t, { withProject: !project })), waitingOpen, (o) => { waitingOpen = o; })),
       h("button", { type: "button", className: "tk-add", textContent: "+ Add a task", onclick: () => onAdd?.(project ?? undefined) }),
       groups.get("someday").length > 0 && h("div", { className: "tk-someday" }, fold(`Someday (${groups.get("someday").length})`,
         groups.get("someday").sort(order).map((t) => row(t, { withProject: !project })), somedayOpen, (o) => { somedayOpen = o; })),
