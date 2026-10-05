@@ -76,7 +76,8 @@ const SCENARIOS = {
     { title: "Learn Wwise", project: "Skills", size: 90, over: { status: "someday" } },
   ], settings: { deadlinesAsked: true, somedayAsked: new Date().toLocaleDateString("en-CA") } },
   // A task with a calendar slot later today (use with --cal "120:Mix review").
-  booked: { tasks: [{ title: "Mix review", project: "Reprise", size: 60 }] },
+  booked: { tasks: [{ title: "Mix review", project: "Reprise", size: 60 },
+    { title: "Call the bank", project: "Admin", size: 15, type: "call", openHours: "office" }] },
   one: { tasks: [{ title: "Send invoice to Uri", project: "Admin", size: 5, due: day(0) }] },
   long: { tasks: [
     { title: "Follow up with the production company about the revised cue sheet and the delivery deadline", project: "Reprise Productions International", size: 90 },

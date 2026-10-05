@@ -467,15 +467,37 @@ export function mountNow(root, uid, { onCard, onSweep, onProject } = {}){
 
   // A booked task, when nothing else fits (DAISEY_SPEC "Booked tasks"): it
   // says when its slot is, with no Start — the slot starting makes it the card.
-  function bookedCard(b){
+  // Mor, 2026-10-05: with no Start it read as "stuck, nothing to offer", so
+  // it can be started early, and it says why the rest are out.
+  function bookedCard(b, r){
     const today = localDate(b.start) === localDate();
     const when = today ? clock(b.start) : `${new Date(b.start).toLocaleDateString([], { weekday: "short" })} ${clock(b.start)}`;
     return h("div", { className: "now-card main booked" },
       contextLine(),
       h("div", { className: "now-meta", textContent: `Booked for ${when}` }),
       h("div", { className: "now-title", dir: "auto", textContent: b.task.title }),
-      h("p", { className: "now-why", textContent: "Nothing else fits now. It's up when its slot starts." }));
+      h("p", { className: "now-why", textContent: "Nothing else fits right now, so this is next." }),
+      h("button", { className: "btn primary start", type: "button", textContent: "Start now",
+        ariaLabel: `Start ${b.task.title} now, before its slot`, onclick: () => begin(b.task) }),
+      outLine(r), putOffButton());
   }
+
+  // Why the open tasks can't come up now, counted: "Out right now: 3 put
+  // off today · 2 need offices open." Parked, waiting and future-dated tasks
+  // aren't news, so they aren't counted.
+  const OUT_SAID = {
+    skipped: "put off today", office: "need offices open", place: "can't be done where you are", energy: "need more energy",
+    size: "too long for the time you have", evening: "are for the evening", block: "belong to another project", booked: "booked later",
+  };
+  function outLine(r){
+    const n = {};
+    for (const o of r.out) if (OUT_SAID[o.reason]) n[o.reason] = (n[o.reason] || 0) + 1;
+    delete n.booked; // the card itself is the booked one
+    const parts = Object.entries(n).map(([k, c]) => `${c} ${OUT_SAID[k]}`);
+    return parts.length ? h("p", { className: "muted now-out", textContent: `Out right now: ${parts.join(" · ")}.` }) : null;
+  }
+  const putOffButton = () => skips.size > 0 && h("button", { className: "btn quiet", type: "button", textContent: `Show the ${skips.size} you put off`,
+    ariaLabel: `Show the ${skips.size} tasks you put off today`, onclick: () => { skips.clear(); setToast(null); render(); } });
 
   // Someday comes back (DAISEY_SPEC): Sunday morning, or whenever fewer than
   // 3 tasks are active, a short pick — stakes first, a quiet mark on the ones
@@ -614,14 +636,14 @@ export function mountNow(root, uid, { onCard, onSweep, onProject } = {}){
     if (!card && fw?.current) { fill(greet, meetingCard(fw.current), tip); return; }
     const bk = !card && r.out.filter((o) => o.reason === "booked").map((o) => ({ task: o.task, ...booked().get(o.task.id) }))
       .filter((b) => b.start).sort((a, b) => a.start - b.start)[0];
-    if (bk) { fill(greet, bookedCard(bk), tip); return; }
+    if (bk) { fill(greet, bookedCard(bk, r), tip); return; }
     if (!card) {
       fill(greet, h("div", { className: "now-card main empty" },
         r.empty === "nofit" && contextLine(), // nothing fits: maybe you're not where Daisey thinks
         h("p", { className: "now-empty", textContent: r.empty === "none"
           ? "No tasks yet. Add a few and Daisey will pick."
           : `Nothing fits the next ${dur(r.moment.window)}. Take the break.` }),
-        skips.size > 0 && h("button", { className: "btn quiet", type: "button", textContent: `Show the ${skips.size} you put off`, ariaLabel: `Show the ${skips.size} tasks you put off today`, onclick: () => { skips.clear(); setToast(null); render(); } })), tip);
+        r.empty === "nofit" && outLine(r), putOffButton()), tip);
       return;
     }
 
