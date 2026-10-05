@@ -214,12 +214,25 @@ export function mountNow(root, uid, { onCard, onSweep, onProject, onEdit, name =
   // under it, then the time and date as a clock tile. No place or energy
   // chips any more: place comes from the phone's location (where.js), energy
   // from the time of day and the calendar, corrected from Switch (energyRow).
+  // Inside a calendar event, "I'm free now" is always one tap away (Mor,
+  // 2026-10-05): on the header line, unless the card shows its own (fill).
+  function freeNow(ev){
+    return h("button", { className: "linkish free-now", type: "button", textContent: "I'm free now",
+      ariaLabel: `I'm free now: ignore ${ev.title} and pick any task`, onclick: () => { freeFrom = ev.start; render(); } });
+  }
+  function withFreeNow(line, fw){
+    if (!fw?.current) return line;
+    if (!line) return h("p", { className: "freeline" }, freeNow(fw.current));
+    line.append(" · ", freeNow(fw.current));
+    return line;
+  }
+
   function topOf(fw){
     const now = Date.now();
     ctxSlot?.replaceChildren(
       h("div", { className: "greet-col" },
         h("h2", { className: "greeting", textContent: greeting(name) }),
-        moving(freeLine(fw))),
+        withFreeNow(moving(freeLine(fw)), fw)),
       h("div", { className: "clock-tile" },
         h("span", { className: "clock-time", textContent: clock(now) }),
         h("span", { className: "clock-date", textContent: dayText(now) })));
@@ -301,7 +314,7 @@ export function mountNow(root, uid, { onCard, onSweep, onProject, onEdit, name =
       h("p", { className: "now-why", textContent: left
         ? `${dur(left)} left. Daisey picks a task again when it ends.`
         : "Just about done." }),
-      h("button", { className: "btn quiet", type: "button", textContent: "I'm free now",
+      h("button", { className: "btn quiet free-now", type: "button", textContent: "I'm free now",
         ariaLabel: `I'm free now: ignore ${ev.title} and pick a task anyway`,
         onclick: () => { freeFrom = ev.start; render(); } }));
   }
@@ -922,7 +935,7 @@ export function mountNow(root, uid, { onCard, onSweep, onProject, onEdit, name =
     if (!card && block) {
       fill(...head, h("div", { className: "now-card main hero empty" },
         h("p", { className: "now-empty" }, "Nothing in ", bdi(block.project), " fits right now."),
-        h("button", { className: "btn quiet", type: "button", textContent: "I'm free now",
+        h("button", { className: "btn quiet free-now", type: "button", textContent: "I'm free now",
           ariaLabel: `I'm free now: ignore the ${block.project} block and pick any task`,
           onclick: () => { freeFrom = block.start; render(); } })), tip);
       return;
@@ -984,6 +997,11 @@ export function mountNow(root, uid, { onCard, onSweep, onProject, onEdit, name =
   // unchanged screen is left be rather than taken out and put back.
   const fill = (...kids) => {
     kids = kids.filter(Boolean);
+    // One "I'm free now" at a time: the card's own wins over the header's.
+    if (kids.some((k) => k.querySelector?.(".free-now"))) {
+      const top = ctxSlot?.querySelector(".free-now");
+      if (top) { const p = top.parentNode; top.previousSibling?.textContent === " · " && top.previousSibling.remove(); top.remove(); if (!p.textContent.trim()) p.remove(); }
+    }
     if (kids.length === root.children.length && kids.every((k, i) => root.children[i] === k)) return;
     root.replaceChildren(...kids);
   };
