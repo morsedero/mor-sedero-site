@@ -45,7 +45,7 @@ test("placeNow: location beats the calendar; a fresh correction beats location",
   assert.equal(placeNow({ correction: { value: "out", at: now }, located: "home", now }).value, "out");
 });
 
-test("place blocks: walking takes calls and errands; a bus no laptop; driving nothing", () => {
+test("place blocks: walking takes calls and errands; a bus no laptop; driving only calls", () => {
   const m = (place) => ({ place, now: Date.now(), booked: {}, sessionSkips: new Set(), officeOpen: true, energy: "medium" });
   const t = (where) => ({ id: where, title: where, status: "open", where, size: 0 });
   const ok = (place, where) => filterOut(t(where), m(place)) !== "place";
@@ -54,6 +54,10 @@ test("place blocks: walking takes calls and errands; a bus no laptop; driving no
   assert.ok(ok("bus", "phone") && !ok("bus", "computer") && !ok("ride", "computer"));
   assert.ok(W.PLACES.every((p) => p === "car" || ok(p, "anywhere")));
   assert.ok(["anywhere", "phone", "computer", "home", "out"].every((w) => !ok("car", w)));
+  // Hands-free calls are the exception; a text (phone, but not a call) isn't.
+  const drive = (type) => filterOut({ ...t("phone"), type }, m("car"));
+  assert.equal(drive("call"), null);
+  assert.equal(drive("admin"), "place");
 });
 
 test("where: still near a saved place that isn't Home → spot:<name>; no Home + nowhere known → unknown", () => {

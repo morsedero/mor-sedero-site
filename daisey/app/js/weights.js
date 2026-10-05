@@ -34,8 +34,10 @@ export const STALE_SKIPS = 5; // skipped this many times without a start → sto
 // filters nothing. (Mor approved, 2026-10-04.) The moving ones come from
 // the phone's location (where.js, 2026-10-05): walking takes calls and
 // errands; a train adds the laptop; a bus, or a ride not yet named, takes
-// calls and anywhere-tasks only; driving takes nothing (now.js shows the
-// driving card instead of a task).
+// calls and anywhere-tasks only; driving takes hands-free calls only
+// (DRIVING_TYPES, Mor 2026-10-05; texting stays out), else now.js shows the
+// driving card.
+export const DRIVING_TYPES = ["call"];
 export const PLACES = ["home", "out", "anywhere", "walk", "ride", "train", "bus", "car", "spot"];
 export const PLACE_BLOCKS = {
   out: ["home", "computer"], home: [],

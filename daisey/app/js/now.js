@@ -219,7 +219,8 @@ export function mountNow(root, uid, { onCard, onSweep, onProject, name = "", onD
       pick("train", "Train"), pick("bus", "Bus"), pick("car", "Driving"));
   }
 
-  // Driving: no task at all, just this. "I'm a passenger" counts as a bus
+  // Driving and no call to make (hands-free calls are the one thing that
+  // fits, Mor 2026-10-05): just this. "I'm a passenger" counts as a bus
   // ride (sitting, phone in hand).
   function drivingCard(){
     return h("div", { className: "now-card main hero meeting" },
@@ -895,7 +896,6 @@ export function mountNow(root, uid, { onCard, onSweep, onProject, name = "", onD
     }
 
     if (night) { fill(...head, ...nightView(hrs), toast && toastView()); return; }
-    if (feel().place.value === "car") { showing(null); fill(...head, drivingCard(), toast && toastView()); return; }
     if (located === "ride") head.push(rideAsk());
 
     const r = rank(tasks, momentInput(fw));
@@ -909,6 +909,8 @@ export function mountNow(root, uid, { onCard, onSweep, onProject, name = "", onD
     // which one and how much of it is left (Mor, 2026-10-04) instead of
     // "nothing to pick until it ends", which named nothing and read as if
     // Daisey had simply given up. "I'm free now" still overrides it.
+    // Driving with no call to make: the driving card, not "nothing fits".
+    if (!card && feel().place.value === "car") { fill(...head, drivingCard(), toast && toastView()); return; }
     const block = blockOf(fw);
     if (!card && block) {
       fill(...head, h("div", { className: "now-card main hero empty" },

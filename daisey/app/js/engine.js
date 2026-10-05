@@ -127,7 +127,7 @@ export function filterOut(task, m){
   if (m.booked[task.id] > m.now) return "booked";
   if (m.sessionSkips.has(task.id)) return "skipped";
   if (m.blockProject && key(task.project) !== m.blockProject) return "block";
-  if ((W.PLACE_BLOCKS[m.place] || []).includes(task.where)) return "place";
+  if ((W.PLACE_BLOCKS[m.place] || []).includes(task.where) && !(m.place === "car" && W.DRIVING_TYPES.includes(task.type))) return "place";
   if (task.openHours === "office" && !m.officeOpen) return "office";
   if (task.openHours === "evening" && new Date(m.now).getHours() < W.EVENING_FROM) return "evening";
   if (task.energy === "high" && m.energy === "low") return "energy";
