@@ -159,6 +159,15 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
     name.focus();
   }
 
+  // Only an empty one: a project with tasks is those tasks.
+  function deleteProject(name){
+    made = made.filter((n) => n !== name);
+    saveProjectNames(uid, made).catch(fail);
+    onScreen?.(null);
+    render();
+    flash("Deleted: ", name, { undo: () => { if (!made.includes(name)) { made = [...made, name]; saveProjectNames(uid, made).catch(fail); render(); } } });
+  }
+
   // ---------- the project screen ----------
   function complete(t){
     const before = { status: t.status || "ready", doneAt: t.doneAt ?? null, skipsSinceStart: t.skipsSinceStart ?? 0 };
@@ -268,6 +277,7 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
       p.pending.length > 0 && section("pending", "Pending", p.pending.length, ...pending),
       ...foldRow("someday", "someday", "Someday", p.someday, quietRow),
       ...foldRow("done", "done", "Done", p.done, quietRow),
+      !p.all.length && made.includes(p.name) && h("button", { type: "button", className: "pj-del", textContent: "Delete project", onclick: () => deleteProject(p.name) }),
       ps.length > 1 && h("p", { className: "pj-hint" }, icon("back"), "Swipe for the next project", icon("chev"))].filter(Boolean));
     els.view.className = "screen" + colorClass(p);
     els.view.scrollTop = y;

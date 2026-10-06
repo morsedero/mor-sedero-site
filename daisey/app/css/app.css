@@ -878,6 +878,7 @@ body:has(.screen:not([hidden])) { overflow: hidden; }
 .pj-now { flex: none; padding: 3px 8px; border-radius: 999px; background: var(--a-job-tint); color: var(--a-job-ink); font-size: 11px; font-weight: 600; }
 .pj-meta { font-size: 12px; color: var(--ink-2); }
 .pj-who { flex: none; display: grid; place-items: center; inline-size: 30px; block-size: 30px; border-radius: 50%; background: var(--chip); color: var(--ink); font-size: 13px; font-weight: 600; }
+.pj-del { display: block; margin: 28px auto 0; min-block-size: 44px; padding-inline: 18px; border: 0; border-radius: 12px; background: none; color: var(--danger); font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; }
 .pj-add { inline-size: 100%; min-block-size: 46px; margin-block-start: 8px; padding-inline: 16px; border: 1px solid var(--aline); border-radius: 14px; background: color-mix(in srgb, var(--tint) 60%, var(--surface)); color: var(--aink); font: inherit; font-size: 14px; font-weight: 600; text-align: start; cursor: pointer; }
 .pj-tick { position: absolute; z-index: 1; inset-block-start: 50%; inset-inline-start: 12px; translate: 0 -50%; display: grid; place-items: center; inline-size: 26px; block-size: 26px; padding: 0; border: 2px solid var(--aline); border-radius: 50%; background: var(--surface); color: transparent; cursor: pointer; transition: background .15s, color .15s, border-color .15s; }
 .pj-tick::after { content: ""; position: absolute; inset: -9px; }
