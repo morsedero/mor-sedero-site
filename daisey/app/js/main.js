@@ -2,6 +2,8 @@
 import { configured } from "./config.js";
 
 const $ = (s) => document.querySelector(s);
+const GUEST_KEY = "daisey_guest_mode";
+const guestMode = () => { try { return localStorage.getItem(GUEST_KEY) === "1"; } catch { return false; } };
 
 import { mountPlaces } from "./places.js";
 import { flash } from "./ui.js";
@@ -63,6 +65,24 @@ function show(view, text = ""){
   box.replaceChildren(Object.assign(document.createElement("p"), { className: view === "loading" ? "muted" : "", textContent: text || "Loading…" }));
 }
 
+function renderGuestMode(){
+  const board = $("#board");
+  const avatar = $("#avatar");
+  const who = $("#who");
+  $("#status").hidden = true;
+  board.hidden = false;
+  board.replaceChildren(
+    Object.assign(document.createElement("div"), {
+      className: "card",
+      innerHTML: "<p><strong>Guest mode</strong></p><p>You're browsing locally without Google sign-in. Sign in with Google to sync tasks and settings.</p>",
+    }),
+  );
+  avatar.hidden = false;
+  avatar.textContent = "G";
+  who.textContent = "Guest";
+}
+
+
 
 // Theme (Mor, 2026-10-04). Auto follows the phone; Light and Dark override it
 // and stay overridden. The choice is a data-theme attribute on <html> that
@@ -121,8 +141,10 @@ async function boot(){
   };
   onGuest = async (msg) => {
     msg.textContent = "";
-    try { await fb.signInGuest(); }
-    catch (e) {
+    try {
+      await fb.signInGuest();
+      location.reload();
+    } catch (e) {
       msg.textContent = e?.message || "Guest sign-in failed.";
     }
   };
@@ -132,7 +154,11 @@ async function boot(){
   avatar.onclick = (e) => { e.stopPropagation(); setMenu(menu.hidden); };
   document.addEventListener("click", (e) => { if (!menu.hidden && !menu.contains(e.target)) setMenu(false); });
   document.addEventListener("keydown", (e) => { if (e.key === "Escape") setMenu(false); });
-  $("#signout").onclick = () => { setMenu(false); fb.signOut(); };
+  $("#signout").onclick = () => {
+    setMenu(false);
+    try { localStorage.removeItem(GUEST_KEY); } catch { /* private window */ }
+    fb.signOut().finally(() => location.reload());
+  };
   // Where you are, by hand, and saved places (this device only).
   const places = mountPlaces($("#placedlg"));
   // Settings: the avatar menu's one door to everything else (Mor, 2026-10-06).
@@ -145,6 +171,10 @@ async function boot(){
 
   const SIGNED_IN = ["#board", "#dock"];
 
+  if (guestMode()) {
+    renderGuestMode();
+    return;
+  }
 
   fb.onUser((user) => {
     setMenu(false);

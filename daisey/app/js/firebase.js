@@ -31,7 +31,9 @@ export async function signIn(){
 }
 
 export async function signInGuest(){
-  await auth.signInAnonymously(a);
+  try { localStorage.setItem("daisey_guest_mode", "1"); }
+  catch { /* private window */ }
+  return;
 }
 
 export function signOut(){ return auth.signOut(a); }
