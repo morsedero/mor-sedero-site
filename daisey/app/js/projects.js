@@ -45,11 +45,13 @@ export function colorize(ps){
 }
 const colorClass = (p) => (p.color ? ` pc-${p.color}` : "");
 
-// The projects, with everything both views show about each. `made`: names
-// made with "+ New"; each shows, empty, until it has a task of its own.
+// The projects, with everything both views show about each. `made`: the
+// saved project names (state/projects) — every project, not just "+ New"
+// ones, so a project outlives its last task and goes only by Delete project
+// (Mor, 2026-10-06: deleting the last task took the project with it).
 export function projectsOf(tasks = [], onCard = null, made = []){
   const names = [...new Set([...tasks.filter(isOpen).map((t) => t.project || INBOX),
-    ...made.filter((n) => !tasks.some((t) => t.project === n && t.status !== "dropped"))])];
+    ...made.filter((n) => n && n !== INBOX)])];
   return colorize(names.map((name) => {
     const all = tasks.filter((t) => (t.project || INBOX) === name && t.status !== "dropped");
     const open = all.filter(isOpen);
@@ -327,10 +329,22 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
   }
   function closeProject(){ shown = null; els.view.hidden = true; els.view.replaceChildren(); }
 
+  // Every project a task names gets saved, so it stays when its tasks go.
+  // Only once both have loaded: saving before the names arrive would
+  // overwrite them.
+  let namesIn = false;
+  function keepNames(){
+    if (!tasks || !namesIn) return;
+    const add = [...new Set(tasks.filter((t) => t.status !== "dropped").map((t) => t.project))].filter((n) => n && n !== INBOX && !made.includes(n));
+    if (!add.length) return;
+    made = [...made, ...add];
+    saveProjectNames(uid, made).catch(fail);
+  }
+
   function render(){ paintGrid(); paintView(); }
   const unsubs = [
-    watchTasks(uid, (ts) => { tasks = ts; render(); }, fail),
-    watchProjectNames(uid, (ns) => { made = ns; render(); }, fail),
+    watchTasks(uid, (ts) => { tasks = ts; keepNames(); render(); }, fail),
+    watchProjectNames(uid, (ns) => { made = ns; namesIn = true; keepNames(); render(); }, fail),
   ];
   render();
 
