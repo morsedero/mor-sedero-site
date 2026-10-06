@@ -1,25 +1,22 @@
 // The Schedule page of the home panel (layout round 3, Mor 2026-10-06; New
-// Design/6-home-schedule-tab). The days ahead as a list, not a grid: a label
-// row per day ("Tonight · Mon 5 Oct", "Tomorrow · Tue 6 Oct", then the
-// weekday), and under it one row per thing — its start–end time ONCE in the
-// left column, then a tinted block with only the event's name, or a quiet
-// "2 h free" line for a gap inside the day hours. The night divider sits between
-// today and tomorrow. A day with nothing on it says "Nothing scheduled".
+// Design/6-home-schedule-tab). One day as a list, not a grid: a label row
+// ("Today · Tue 6 Oct", "Tomorrow", then the weekday), and under it one row
+// per thing — its start–end time ONCE in the left column, then a tinted block
+// with only the event's name, or a quiet "2 h free" line for a gap inside the
+// day hours. A day with nothing on it says "Nothing scheduled".
 //
 // Labels follow the real clock: after midnight the coming day is "Today"
 // (with the night divider above it), never "Tomorrow".
 //
 // Editable from here (Mor, 2026-10-06): an event opens its details (Edit,
 // Remove); a free gap or an empty day opens a new event right there. An event
-// happening now is marked Now. A week ahead, as far as calendar.js fetches;
-// a run of empty days folds into one line instead of a "Nothing scheduled"
-// per day.
+// happening now is marked Now.
 //
-// Detail drops off with distance (Mor, 2026-10-06: the week read as crowded).
-// Today is the only day with free-time rows. Tomorrow shows its events only.
-// From the day after, each day is one summary line ("3 events · from 10:00",
-// or a single event's name and time); tap it to open that day's events, and
-// tap Less to fold it again. Which days are open lasts only as long as the tab.
+// One day at a time (Mor, 2026-10-06: the whole week stacked vertically was
+// crowded and confusing). A strip of the 7 days calendar.js fetches sits on
+// top — weekday, date, a dot when there's something on — and the picked day
+// shows below in full. It opens on today, or on tomorrow once today's hours
+// are over and nothing's left. The pick lasts only as long as the tab.
 import { watchCalendar } from "./calendar.js";
 import { watchSettings } from "./store.js";
 import { dayHours, minText } from "./day.js";
@@ -70,7 +67,7 @@ export function dayRows(events, date, hrs, from = 0){
 export function mountSchedule(el, uid, { onEvent, onNew } = {}){
   let cal = { status: "loading", events: [] };
   let settings = {};
-  const opened = new Set(); // "YYYY-MM-DD" of the later days tapped open
+  let picked = null; // "YYYY-MM-DD" tapped in the day strip; null = today (tomorrow once tonight is empty)
   const fail = (e) => console.error("[daisey] schedule", e);
 
   function render(){
@@ -85,58 +82,37 @@ export function mountSchedule(el, uid, { onEvent, onNew } = {}){
     const close = atMin(today, hrs.end), open = atMin(today, hrs.start);
     const early = now < open; // after midnight, before the day starts
     const late = now >= close;
-    const kids = [];
-    if (early) kids.push(nightDivider(minText(hrs.end), minText(hrs.start)));
+    const days = Array.from({ length: DAYS }, (_, i) => {
+      const date = new Date(today); date.setDate(date.getDate() + i);
+      const rows = dayRows(cal.events, date, hrs, i === 0 ? now : 0);
+      return { i, date, ymd: localDate(date.getTime()), rows, events: rows.filter((x) => x.kind === "event").length };
+    });
+    // Past the day's end with nothing left tonight, the strip opens on tomorrow.
+    const auto = late && !days[0].events ? 1 : 0;
+    if (!days.some((d) => d.ymd === picked)) picked = null; // the picked day has slid out of the week
+    const day = days.find((d) => d.ymd === picked) || days[auto];
     const nameOf = (i, date) => (i === 0 ? (late || today.getHours() >= 18 ? "Tonight" : "Today")
       : i === 1 ? "Tomorrow" : date.toLocaleDateString("en-GB", { weekday: "long" }));
-    const label = (name, date) => h("div", { className: "sc-label" }, h("span", { className: "sc-name", textContent: name }), h("span", { className: "sc-date", textContent: date }));
-    const none = (date, text) => h("button", { type: "button", className: "sc-none", onclick: () => onNew?.(localDate(date.getTime())) },
-      h("span", { textContent: text }), h("span", { className: "sc-add", ariaHidden: "true", textContent: "+ Add" }));
-    let empty = []; // a run of empty days after tomorrow, shown as one line
-    const flush = () => {
-      if (!empty.length) return;
-      const [a, b] = [empty[0], empty.at(-1)];
-      kids.push(empty.length === 1
-        ? h("section", { className: "sc-day", ariaLabel: `${a.name}, ${short(a.date)}` }, label(a.name, short(a.date)), none(a.date, "Nothing scheduled"))
-        : h("section", { className: "sc-day", ariaLabel: `${a.name} to ${b.name}: nothing scheduled` },
-          label(`${a.name.slice(0, 3)} – ${b.name.slice(0, 3)}`, `${a.date.getDate()}–${short(b.date).replace(/^\w+\s/, "")}`),
-          none(a.date, `Nothing scheduled for ${empty.length} days`)));
-      empty = [];
-    };
-    for (let i = 0; i < DAYS; i++) {
-      const date = new Date(today); date.setDate(date.getDate() + i);
-      const rows = dayRows(cal.events, date, hrs, i === 0 ? now : 0).filter((x) => i === 0 || x.kind !== "free");
-      // Past the day's end with nothing left tonight: go straight to tomorrow.
-      if (i === 0 && late && !rows.length) { kids.push(nightDivider(minText(hrs.end), minText(hrs.start))); continue; }
-      const name = nameOf(i, date);
-      if (i >= 2 && !rows.length) { empty.push({ name, date }); continue; }
-      flush();
-      const ymd = localDate(date.getTime());
-      if (i >= 2 && !opened.has(ymd)) {
-        kids.push(h("section", { className: "sc-day", ariaLabel: `${name}, ${short(date)}` }, label(name, short(date)),
-          h("button", { type: "button", className: "sc-sum", ariaExpanded: "false", onclick: () => { opened.add(ymd); render(); } },
-            h("span", { className: "sc-sum-text" }, ...[summary(rows)].flat()), h("span", { className: "sc-chev", ariaHidden: "true", textContent: "›" }))));
-        continue;
-      }
-      const lbl = label(name, short(date));
-      if (i >= 2) lbl.lastChild.append(" · ", h("button", { type: "button", className: "sc-less", ariaExpanded: "true", textContent: "Less",
-        onclick: () => { opened.delete(ymd); render(); } }));
-      kids.push(h("section", { className: "sc-day", ariaLabel: `${name}, ${short(date)}` }, lbl,
-        ...(rows.length ? rows.map((x) => row(x, now)) : [none(date, "Nothing scheduled")])));
-      if (i === 0) kids.push(nightDivider(minText(hrs.end), minText(hrs.start)));
-    }
-    flush();
+    const name = nameOf(day.i, day.date);
+
+    const strip = h("div", { className: "sc-strip", role: "tablist", ariaLabel: "Day" }, ...days.map((d) => h("button", {
+      type: "button", className: "sc-chip", role: "tab", ariaSelected: String(d === day),
+      ariaLabel: `${nameOf(d.i, d.date)}, ${short(d.date)}: ${d.events ? `${d.events} event${d.events > 1 ? "s" : ""}` : "nothing scheduled"}`,
+      onclick: () => { picked = d.i === auto ? null : d.ymd; el.scrollTop = 0; render(); },
+    }, h("span", { className: "sc-chip-wd", textContent: d.i === 0 ? "Today" : d.date.toLocaleDateString("en-GB", { weekday: "short" }) }),
+      h("span", { className: "sc-chip-n", textContent: d.date.getDate() }),
+      h("span", { className: "sc-chip-dot" + (d.events ? " on" : ""), ariaHidden: "true" }))));
+
+    const kids = [strip];
+    if (day.i === 0 && early) kids.push(nightDivider(minText(hrs.end), minText(hrs.start)));
+    const label = h("div", { className: "sc-label" }, h("span", { className: "sc-name", textContent: name }), h("span", { className: "sc-date", textContent: short(day.date) }));
+    const none = h("button", { type: "button", className: "sc-none", onclick: () => onNew?.(day.ymd) },
+      h("span", { textContent: "Nothing scheduled" }), h("span", { className: "sc-add", ariaHidden: "true", textContent: "+ Add" }));
+    kids.push(h("section", { className: "sc-day", ariaLabel: `${name}, ${short(day.date)}` }, label,
+      ...(day.rows.length ? day.rows.map((x) => row(x, now)) : [none])));
     const y = el.scrollTop;
     el.replaceChildren(...kids);
     el.scrollTop = y;
-  }
-
-  // A folded day in one line: a lone event by name and time, else a count and
-  // the first start.
-  function summary(rows){
-    const timed = rows.filter((x) => !x.allDay);
-    if (rows.length === 1) return [bdi(rows[0].ev.title), ` · ${timed.length ? clock(timed[0].start) : "All day"}`];
-    return `${rows.length} events${timed.length ? ` · from ${clock(Math.min(...timed.map((x) => x.start)))}` : ""}`;
   }
 
   function row(x, now){

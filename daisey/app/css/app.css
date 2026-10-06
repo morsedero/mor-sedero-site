@@ -1111,10 +1111,16 @@ dialog.tsheet .msg:empty { display: none; }
 @media (hover: none) { .sc-add { opacity: .7; } }
 .sc-row.sc-on .sc-ev { box-shadow: 0 0 0 2px color-mix(in srgb, var(--ev, var(--ink-2)) 70%, var(--card)); }
 .sc-time .sc-nowtag { display: block; inline-size: fit-content; margin-block-start: 3px; padding: 1px 7px; border-radius: 999px; background: var(--accent); color: var(--on-accent); font-size: 11px; font-weight: 700; }
-.sc-sum { display: flex; align-items: center; justify-content: space-between; gap: 8px; inline-size: 100%; margin: 4px 0 0; padding: 4px 0; border: 0; background: none; font: inherit; font-size: 14px; color: color-mix(in srgb, var(--ink) 85%, var(--ink-2)); text-align: start; cursor: pointer; }
-.sc-sum-text { min-inline-size: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.sc-chev { flex: none; font-size: 16px; color: var(--ink-2); }
-.sc-less { padding: 0; border: 0; background: none; font: inherit; font-size: 12px; font-weight: 600; color: var(--ink-2); cursor: pointer; }
+/* The day strip: 7 equal columns, never a horizontal scroll (that would fight
+   the panel's own swipe). Sticks to the top while the day scrolls under it. */
+.sc-strip { position: sticky; inset-block-start: -12px; z-index: 1; display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; margin: -12px -14px 12px; padding: 12px 14px 8px; background: var(--card); border-block-end: 1px solid var(--line); }
+.sc-chip { display: flex; flex-direction: column; align-items: center; gap: 1px; min-inline-size: 0; padding: 5px 0 4px; border: 0; border-radius: 10px; background: none; font: inherit; color: var(--ink-2); cursor: pointer; }
+.sc-chip-wd { font-size: 11px; max-inline-size: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sc-chip-n { font-size: 15px; font-weight: 600; color: color-mix(in srgb, var(--ink) 85%, var(--ink-2)); font-variant-numeric: tabular-nums; }
+.sc-chip-dot { inline-size: 4px; block-size: 4px; border-radius: 2px; }
+.sc-chip-dot.on { background: currentColor; }
+.sc-chip[aria-selected="true"] { background: var(--ink); color: var(--card); }
+.sc-chip[aria-selected="true"] .sc-chip-n { color: var(--card); }
 .sc-note { margin: 4px 0 0; font-size: 14px; color: var(--ink-2); }
 .sc-note a { color: inherit; }
 .ppage .night-div { margin-block: 12px; }
