@@ -140,8 +140,8 @@ async function boot(){
     } else initial();
     show("signedin"); // no element of its own: just clears loading/sign-in views
 
-    Promise.all([import("./now.js"), import("./projects.js"), import("./addtask.js"), import("./needs.js"), import("./import-trello.js"), import("./addevent.js"), import("./store.js"), import("./deadlines.js"), import("./day.js"), import("./calendar.js"), import("./schedule.js"), import("./panel.js")])
-      .then(([{ mountNow }, { mountProjects }, { mountAddTask }, { mountNeeds }, { mountImport }, { mountAddEvent }, { migrateTasks, watchSettings, saveSettings }, { mountDeadlines }, { dayHours, minText }, { watchCalendar }, { mountSchedule }, { mountPanel }]) => {
+    Promise.all([import("./now.js"), import("./projects.js"), import("./addtask.js"), import("./needs.js"), import("./import-trello.js"), import("./addevent.js"), import("./store.js"), import("./deadlines.js"), import("./day.js"), import("./calendar.js"), import("./schedule.js"), import("./panel.js"), import("./push.js")])
+      .then(([{ mountNow }, { mountProjects }, { mountAddTask }, { mountNeeds }, { mountImport }, { mountAddEvent }, { migrateTasks, watchSettings, saveSettings, watchTasks }, { mountDeadlines }, { dayHours, minText }, { watchCalendar }, { mountSchedule }, { mountPanel }, push]) => {
         if (fb.currentUid() !== user.uid || mounted) return;
         const m = mounted = {};
         // Old tasks get the new fields first; then, once, which dates are real.
@@ -156,11 +156,42 @@ async function boot(){
         const start = $("#dayStart"), end = $("#dayEnd");
         // Finished tasks into the "Daisey log" calendar (now.js logFinished): on unless switched off.
         const logSwitch = $("#logDone");
+        // The morning brief (push.js): this device's switch, a test button,
+        // and — while it's on anywhere — the task snapshot the server counts.
+        const pushSwitch = $("#pushBrief"), pushNote = $("#pushNote"), pushTest = $("#pushTest");
+        let briefOn = false, briefTasks = null, hours = dayHours({});
+        const note = (t) => { pushNote.textContent = t || ""; pushNote.hidden = !t; };
+        const paintPush = () => push.deviceOn().catch(() => false).then((on) => { pushSwitch.checked = on; pushTest.hidden = !on; });
+        if (!push.pushSupported()) { pushSwitch.disabled = true; note("This browser can't show notifications."); } else paintPush();
+        pushSwitch.onchange = async () => {
+          pushSwitch.disabled = true; note("");
+          try {
+            if (pushSwitch.checked) {
+              await push.enablePush(hours);
+              saveSettings(user.uid, { morningBrief: true }).catch(fail);
+              note(`On. It comes at ${minText(hours.start)}, when your day starts.`);
+            } else await push.disablePush();
+          } catch (e) {
+            note({ denied: "Notifications are blocked for this site in the browser settings.", not_configured: "Not set up on the server yet.",
+              unsupported: "This browser can't show notifications." }[e.code] || "Couldn't change it. Try again.");
+          }
+          pushSwitch.disabled = false; paintPush();
+        };
+        pushTest.onclick = async () => {
+          pushTest.disabled = true;
+          try { const r = await push.sendTest(); note(r.sent ? "Sent. Check your notifications." : "It didn't arrive. Switch it off and on again."); }
+          catch (e) { note("Couldn't send it."); }
+          pushTest.disabled = false;
+        };
+        const stopBriefTasks = watchTasks(user.uid, (ts) => { briefTasks = ts; if (briefOn) push.syncSnapshot(ts, hours); }, fail);
         const stopSettings = watchSettings(user.uid, (s) => {
           const hrs = dayHours(s || {});
           if (document.activeElement !== start) start.value = minText(hrs.start);
           if (document.activeElement !== end) end.value = minText(hrs.end);
           logSwitch.checked = s?.logDone !== false;
+          hours = hrs;
+          briefOn = !!s?.morningBrief;
+          if (briefOn && briefTasks) push.syncSnapshot(briefTasks, hours);
         }, fail);
         logSwitch.onchange = () => saveSettings(user.uid, { logDone: logSwitch.checked }).catch(fail);
         const saveHours = () => {
@@ -173,7 +204,7 @@ async function boot(){
         // + → Event is off while the calendar isn't connected.
         let calOk = false;
         const stopCal = watchCalendar((c) => { calOk = c.status === "ok"; });
-        m.menu = { unmount(){ stopSettings(); stopCal(); start.onchange = end.onchange = logSwitch.onchange = null; } };
+        m.menu = { unmount(){ stopSettings(); stopCal(); stopBriefTasks(); start.onchange = end.onchange = logSwitch.onchange = pushSwitch.onchange = pushTest.onclick = null; } };
 
         // Full screens (a project, Needs you) sit on the history stack, so the
         // phone's Back closes them like a page.

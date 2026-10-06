@@ -251,6 +251,13 @@ The calendar becomes context, not a plan to obey. Daisey reads it freely and wri
 
 **Meetings to set up (v2).** A task like "set a meeting with X" becomes: Daisey suggests 3 free slots from the calendar and drafts the message. You approve, then send it yourself.
 
+## Morning brief
+
+One notification at the start of the day hours (Mor, Oct 6, 2026; Android, app notification): "Good morning. 9 h 55 min free today. 4 open, about 3 fit. Deadline today: Pay arnona. First: Teaching at 10:00." Switched on per device in the account menu ("Morning brief on this device", with "Send the brief now" to test).
+
+- **Open**: ready tasks dated today or earlier (a passed target rolls to today), not held by a start date. **Fit**: how many of those the free time holds, deadlines first, then smallest, by time still to do. **Free**: the rest of the day hours between busy calendar events; left out when the calendar can't be read.
+- **How it works**: Web Push. `functions/daisey-now-morning.js` runs every 15 minutes and sends once a day, in the first 90 minutes after the user's day start, in their own time zone. The server can't read Firestore, so while the brief is on the app sends `daisey-now-push` a snapshot of its dated, ready tasks (titles, dates, sizes) whenever they change; the calendar is read live. Keys: `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` in Netlify's environment.
+
 ## Day hours, booked tasks and calendar tasks
 
 Daisey only plans inside your waking day, never pushes a task that already has a time, and helps tasks that ended up in the calendar become real tasks.
@@ -288,7 +295,7 @@ v1 is done when the Now card picks a task you actually start, most days, for one
 - Pencil schedule (suggestions placed in calendar gaps): dropped
 - Calendar writes other than deadline blocks and chat-requested events
 - Meeting scheduling with others (find slots, draft message)
-- Evening wrap and notifications when a gap opens
+- Evening wrap and notifications when a gap opens (the **morning brief** is built, below)
 - Multiple users, sharing, accounts for others
 - Wearables or sleep data
 

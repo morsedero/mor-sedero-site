@@ -65,6 +65,10 @@
             <input id="dayEnd" type="time" aria-label="Day ends" value="22:00">
           </div>
           <label class="menu-check"><input id="logDone" type="checkbox" checked> Log finished tasks in Google Calendar</label>
+          <!-- Morning brief: a notification at the start of the day (push.js). -->
+          <label class="menu-check"><input id="pushBrief" type="checkbox"> Morning brief on this device</label>
+          <p id="pushNote" class="menu-note" hidden></p>
+          <button id="pushTest" class="btn small" type="button" hidden>Send the brief now</button>
           <!-- Where you are: picked by hand, and saved places (places.js). -->
           <button id="placesBtn" class="btn small" type="button">Places…</button>
           <button id="importTrello" class="btn small" type="button">Import from Trello…</button>

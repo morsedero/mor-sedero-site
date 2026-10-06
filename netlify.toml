@@ -18,3 +18,7 @@
 # for what it does and why. Every 30 min.
 [functions."audio-sync"]
   schedule = "*/30 * * * *"
+
+# Daisey v1 morning brief: checks every 15 min who is at the start of their day.
+[functions."daisey-now-morning"]
+  schedule = "*/15 * * * *"
