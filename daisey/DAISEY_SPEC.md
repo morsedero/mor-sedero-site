@@ -72,7 +72,7 @@ Only the title is required. Gemini guesses the rest from the title (area, type, 
 | Stakes | No | Low · Costs money · Affects someone · Deadline penalty | Guessed; else Low |
 | Date | No | Date, optional time | None |
 | Date kind | No | Deadline (real) · Target (wish) | Target |
-| Status | Auto | Ready · Pending (stored as `waiting`) · Someday · Done | Ready |
+| Status | Auto | Ready · Pending (stored as `waiting`) · Not now (stored as `someday`) · Done | Ready |
 | Waiting on | No | Free text ("Yuval confirms") | — |
 | Check again | Auto | Date: when Needs you asks "Still pending?" | 3 days after it went Pending |
 | Steps | No | Checklist of short steps | None |
@@ -320,7 +320,7 @@ A fixed split screen: nothing pulls up, nothing scrolls but the panel's pages. O
 - Inside a project block or a booked slot, one quiet line above the card: "Working on X until 14:00 · I'm free now".
 - The panel fills the rest down to the pill: a rounded card (radius 22) with a segmented control **[Schedule | Projects]** and two small page dots under it. Tap a tab or swipe sideways inside the panel to switch; the track follows the finger. The last tab is remembered on the device (`localStorage daisey.panel`).
 - **Schedule** (`schedule.js`): a label row per day ("Tonight · Tue 6 Oct" after 18:00 or past the day's end, else "Today"; "Tomorrow · Wed 7 Oct"; then the weekday), seven days. Each row: start–end ONCE in an 88px left column, then a block tinted with the event's Google colour holding only its name (tap = its details), or a dashed "Free" box for a gap of 15 min+ inside the day hours. All-day events say "All day". Past events drop off. The night divider sits between today and tomorrow; a day with nothing on it says "Nothing scheduled". Soft fade at the bottom edge. Labels follow the real clock: after midnight the coming day is "Today" with the night divider above it.
-- **Projects** (`projects.js`): "N projects · N tasks" + "+ New", a 2-column grid of project cards (name, open count, one status line: "Next: …" or "3 pending · 6 someday", progress bar done / all), then the **Inbox** row (dashed: "Inbox · N · no project yet"), only when it has tasks.
+- **Projects** (`projects.js`): "N projects · N tasks" + "+ New", a 2-column grid of project cards (name, open count, one status line: "Next: …" or "3 pending · 6 not now", progress bar done / all), then the **Inbox** row (dashed: "Inbox · N · no project yet"), only when it has tasks.
 - **Every project has its own colour**: its tasks' most common area when no other project has it yet, else the next free colour (`.pc-<key>`: the six area colours, then teal, orange, slate, brick, lime). Taken in name order, so colours don't move as counts change. The grid card, the project screen's chip and its card use it.
 - At the bottom, in the flow (nothing ever sits under it): one pill [ + | Tell Daisey… | mic ], 54px. + opens New task / New event.
 
@@ -333,7 +333,8 @@ A fixed split screen: nothing pulls up, nothing scrolls but the panel's pages. O
 **Project screen** (`projects.js`, mockup 8)
 - Back arrow + horizontal project chips (the current one filled in its colour). Tap a chip to switch; swipe left/right anywhere that isn't a task for the next/previous project. Phone Back closes it.
 - Project card: name 22, area tag, progress bar "X of Y done".
-- One list by urgency: **Next** (cards with size, "n of m steps", date; NOW on the card's task), "+ Add a task"; **Pending** (who or what it waits on, with an initial); **Someday** and **Done** folded into one line each with a count.
+- Under the project card's progress bar, two toggles: **"X of Y done"** and **"Not now · N"** (only when it has tasks). Each opens its drawer inside the card, one at a time: done tasks with a filled tick that reopens the task (Undo toast); Not now tasks with "Off your plate. Daisey offers one back on Sunday." and a **Bring back** button each. (Mor, 2026-10-06: Done couldn't be undone from the project, and four status sections read as messy.)
+- Below the card, **one list, no section headers**, in the order Daisey hands tasks out: ready tasks by urgency (size, "n of m steps", date; NOW on the card's task), then Pending tasks, dashed and quieter ("Waiting on Yuval · I'll ask you Thu", with an initial), then "+ Add a task".
 - Swipe a task right = done (green reveal, Undo toast). Tap = the task sheet.
 
 **Task sheet** (`addtask.js`, mockup 9), opened by tapping a task's title anywhere; the same sheet, empty, is New task.

@@ -72,6 +72,17 @@ const SCENARIOS = {
     { title: "Boss intro sting", project: "monster punk", size: 30, area: "work", over: { status: "done", doneAt: Date.now() - 864e5 } },
     { title: "ביטוח לחיות", project: "סידורים", size: 15, area: "admin", over: { status: "someday", stakes: "money" } },
   ] },
+  // One project with every kind: ready, Pending, done, Not now (the
+  // project screen's one list + its Done / Not now drawers).
+  project: { tasks: [
+    { title: "Boss smashes", project: "Monster Punk", size: 180, area: "work", due: day(3), dateKind: "deadline",
+      steps: [{ text: "Bounce", done: true }, { text: "Layer", done: false }] },
+    { title: "Combat SFX pass", project: "Monster Punk", size: 30, area: "work" },
+    { title: "Pre-attack cue notes", project: "Monster Punk", size: 15, area: "work", over: { status: "waiting", waitingOn: "Yuval", checkOn: day(2) } },
+    { title: "Unicycle enemy batch", project: "Monster Punk", size: 60, area: "work", over: { status: "done", doneAt: Date.now() - 864e5 } },
+    { title: "Fix boost-bus leak", project: "Monster Punk", size: 30, area: "work", over: { status: "done", doneAt: Date.now() - 2 * 864e5 } },
+    { title: "Alt menu music", project: "Monster Punk", size: 90, area: "work", over: { status: "someday" } },
+  ], settings: { deadlinesAsked: true, somedayAsked: new Date().toLocaleDateString("en-CA") } },
   // Two active, three parked: the Someday pick shows under the card.
   someday: { tasks: [
     { title: "Send invoice to Uri", project: "Admin", size: 15 },

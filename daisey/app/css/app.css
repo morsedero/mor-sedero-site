@@ -848,18 +848,29 @@ body:has(.screen:not([hidden])) { overflow: hidden; }
 .pj-name { margin: 0; min-inline-size: 0; font-size: 26px; font-weight: 700; letter-spacing: -0.3px; line-height: 1.15; overflow-wrap: anywhere; }
 .pj-prog { display: flex; align-items: center; gap: 10px; margin-block-start: 14px; font-size: 12px; color: color-mix(in srgb, var(--aink) 45%, var(--ink)); }
 .pj-sec { padding-inline: 20px; }
-.pj-h { display: flex; align-items: center; gap: 8px; margin: 18px 0 0; }
-.pj-h-t { flex: 1; font-size: 15px; font-weight: 600; text-align: start; }
-.pj-n { font-size: 13px; color: var(--ink-2); }
-.pj-dot { inline-size: 10px; block-size: 10px; flex: none; border-radius: 50%; }
-.pj-dot.next { background: var(--aink); }
-.pj-dot.pending { border: 2px solid #8c8574; }
-.pj-dot.someday { border: 2px dashed #b8b09f; }
-.pj-dot.done { background: var(--green); }
-.pj-fold { display: flex; align-items: center; gap: 8px; inline-size: calc(100% - 40px); max-inline-size: 520px; margin: 0 auto; min-block-size: 40px; padding: 0; border: 0; background: none; color: var(--ink); font: inherit; cursor: pointer; }
-.pj-sec + .pj-fold { margin-block-start: 16px; }
-.pj-list { display: grid; gap: 2px; padding: 0 20px 6px 38px; }
-:dir(rtl) .pj-list { padding: 0 38px 6px 20px; }
+.pj-one { max-inline-size: 560px; margin: 10px auto 0; }
+/* Done / Not now: toggles under the bar, each opening a drawer in the card. */
+.pj-tgs { display: flex; flex-wrap: wrap; gap: 8px; margin-block-start: 12px; }
+.pj-tg { display: inline-flex; align-items: center; gap: 6px; min-block-size: 34px; padding-inline: 12px; border: 1px solid var(--line); border-radius: 999px; background: var(--card); color: var(--ink-2); font: inherit; font-size: 13px; font-weight: 500; cursor: pointer; }
+.pj-tg[aria-expanded="true"] { background: var(--ink); border-color: var(--ink); color: var(--card); }
+.pj-car { font-size: 10px; transition: transform .15s; }
+:dir(rtl) .pj-car { transform: scaleX(-1); }
+.pj-tg[aria-expanded="true"] .pj-car { transform: rotate(90deg); }
+.pj-ok { display: grid; place-items: center; inline-size: 16px; block-size: 16px; border-radius: 50%; background: var(--green); color: #fff; }
+.pj-ok svg { inline-size: 10px; block-size: 10px; stroke-width: 3.5; }
+.pj-tg[aria-expanded="true"] .pj-ok { background: var(--card); color: var(--ink); }
+.pj-zz { inline-size: 14px; block-size: 14px; border: 2px dashed currentColor; border-radius: 50%; }
+.pj-drawer { display: grid; gap: 2px; margin-block-start: 10px; padding-block-start: 6px; border-block-start: 1px solid var(--line); }
+.pj-hint { margin: 4px 0; font-size: 12px; color: var(--ink-2); }
+.pj-drow { display: flex; align-items: center; gap: 12px; }
+.pj-drow .pj-quiet { flex: 1; min-inline-size: 0; }
+.pj-bring { flex: none; min-block-size: 32px; padding-inline: 12px; border: 1px solid var(--aline); border-radius: 999px; background: var(--tint); color: var(--aink); font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }
+/* Pending sits in the one list, dashed and quieter. */
+.pj-swipe.wait .pj-task { background: transparent; border-style: dashed; }
+.pj-swipe.wait.swiping .pj-task { background: var(--surface); }
+.pj-swipe:not(.swiping) .pj-reveal { visibility: hidden; } /* a see-through card would show it */
+.pj-swipe.wait .pj-title { color: var(--ink-2); font-weight: 500; }
+.pj-swipe.wait .pj-tick { border-style: dashed; }
 .pj-quiet { min-block-size: 40px; padding: 0; border: 0; background: none; color: var(--ink); font: inherit; font-size: 15px; text-align: start; cursor: pointer; overflow-wrap: anywhere; }
 .pj-quiet.done { color: var(--ink-2); text-decoration: line-through; }
 .pj-swipe { position: relative; margin-block-start: 8px; border-radius: 14px; overflow: hidden; }
@@ -886,6 +897,8 @@ body:has(.screen:not([hidden])) { overflow: hidden; }
 .pj-tick svg { inline-size: 14px; block-size: 14px; stroke-width: 3; }
 .pj-tick:hover { border-color: var(--aink); color: var(--aink); }
 .pj-tick.on { border-color: var(--green); background: var(--green); color: #fff; }
+.pj-drow .pj-tick { position: relative; inset: auto; translate: none; flex: none; }
+.pj-drow .pj-tick.on:hover { background: var(--surface); color: var(--green); }
 .pj-swipe.swiping .pj-tick { opacity: 0; }
 
 /* The task sheet, built like the event sheet (Mor, 2026-10-06: "make it

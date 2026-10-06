@@ -417,7 +417,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
       const label = new Date(`${day}T12:00`).toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" });
       stepAside(task, { label: `This week (${label}): `, write: () => Promise.all([restoreTask(uid, task.id, { notBefore: day, touchedAt: Date.now() }), declined(task)]) });
     } else if (when === "someday") {
-      stepAside(task, { label: "Someday: ", write: () => Promise.all([restoreTask(uid, task.id, { status: "someday", touchedAt: Date.now() }), declined(task)]) });
+      stepAside(task, { label: "Not now: ", write: () => Promise.all([restoreTask(uid, task.id, { status: "someday", touchedAt: Date.now() }), declined(task)]) });
     }
   }
   // Pending asks what it's waiting on (Mor, 2026-10-04); the reason is
@@ -680,7 +680,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
     const card = h("div", { className: "now-card main hero empty rest" },
       stemDaisy(),
       h("h2", { className: "rest-h", textContent: "Nothing active right now" }),
-      h("p", { className: "rest-p", textContent: offer ? "You have time. Want to bring 1–2 back from Someday?"
+      h("p", { className: "rest-p", textContent: offer ? "You have time. Want to bring 1–2 back from Not now?"
         : rested ? "Rest it is. Everything else is waiting or set for later."
         : "You have time. Everything else is waiting or set for later." }));
     if (!offer) return [card];
@@ -698,7 +698,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
       saveSettings(uid, { somedayAsked: localDate() }).catch(fail);
     };
     return [card,
-      h("h3", { className: "sd-head", textContent: "From Someday" }),
+      h("h3", { className: "sd-head", textContent: "From Not now" }),
       h("ul", { className: "sd-pick" }, ...list.map((t) => {
         const on = sd.sel.includes(t.id);
         const meta = [areaName(t) || projectShown(t), dur(t.size)].filter(Boolean).join(" · ");
@@ -731,8 +731,8 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
       restoreTask(uid, t.id, { status: "ready", notBefore: null, touchedAt: Date.now() }).catch(fail);
       if (sd.picked.length >= 2) close(); else render();
     };
-    return h("div", { className: "learn-ask someday-ask", role: "group", ariaLabel: "Pick from Someday" },
-      h("p", { className: "muted", textContent: sd.picked.length ? "One more, or that's the week?" : "Pick 1–2 from Someday for this week." }),
+    return h("div", { className: "learn-ask someday-ask", role: "group", ariaLabel: "Pick from Not now" },
+      h("p", { className: "muted", textContent: sd.picked.length ? "One more, or that's the week?" : "Pick 1–2 from Not now for this week." }),
       h("div", { className: "someday-list" }, ...shownList.map((t) => h("button", { type: "button", className: "someday-item",
         ariaLabel: `Move ${t.title} to this week${MARK[t.stakes] ? ` (${MARK[t.stakes]})` : ""}`, onclick: () => pick(t) },
         bdi(t.title), MARK[t.stakes] && h("span", { className: "someday-mark", textContent: MARK[t.stakes] })))),
@@ -757,7 +757,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
         // Never a dead end while Someday holds tasks (DAISEY_SPEC "Someday comes back").
         action("switch", "Switch", state.showAlts ? "hide the other tasks"
           : alts.length ? `something else — ${alts.length} other tasks`
-          : someN ? "nothing else is active — pick from Someday" : "nothing else is active",
+          : someN ? "nothing else is active — pick from Not now" : "nothing else is active",
           { disabled: !alts.length && !someN, ariaExpanded: String(state.showAlts),
             onclick: () => { state.showAlts = !state.showAlts; state.laterAsk = false; state.pendAsk = false; render(); } }),
         action("pending", "Pending", `${card.task.title} is blocked — set it to Pending`,
@@ -766,7 +766,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
       state.pendAsk && pendingAsk(card.task),
       state.laterAsk && h("div", { className: "later-ask", role: "group", ariaLabel: "When instead?" },
         h("span", { className: "muted", textContent: "When?" }),
-        ...[["today", "Later today"], ["tomorrow", "Tomorrow"], ["week", "This week"], ["someday", "Someday"]].map(([w, text]) =>
+        ...[["today", "Later today"], ["tomorrow", "Tomorrow"], ["week", "This week"], ["someday", "Not now"]].map(([w, text]) =>
           h("button", { className: "chip", type: "button", textContent: text, onclick: () => later(card.task, w) }))),
     ];
   }
@@ -777,7 +777,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
       state.showAlts && energyRow(),
       state.showAlts && !alts.length && h("div", { className: "now-alts", role: "group", ariaLabel: "Other tasks" },
         h("p", { className: "muted" }, "Nothing else is active. ",
-          h("button", { className: "linkish", type: "button", textContent: "Pick from Someday?",
+          h("button", { className: "linkish", type: "button", textContent: "Pick from Not now?",
             onclick: () => { sd.open = true; state.showAlts = false; render(); } }))),
       state.showAlts && alts.length > 0 && h("div", { className: "now-alts", role: "group", ariaLabel: "Other tasks" }, ...alts.map((s) => h("button", {
         type: "button", className: "now-alt", ariaLabel: `Put ${s.task.title} on the card instead${s.why ? ". " + s.why : ""}`,

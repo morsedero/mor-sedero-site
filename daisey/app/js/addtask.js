@@ -300,7 +300,7 @@ export function mountAddTask(dialog, uid, { onStart } = {}){
     stateLine.replaceChildren(...(done
       ? [`Done ${t.doneAt ? new Date(t.doneAt).toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" }) : ""}. `,
         h("button", { type: "button", className: "linkish", textContent: "Reopen", onclick: () => save({ status: "ready" }) })]
-      : ["In Someday. Start brings it back."]));
+      : ["In Not now. Start brings it back."]));
     startBtn.hidden = done;
     startBtn.replaceChildren(icon(t ? "play" : "plus"), h("span", { textContent: t ? "Start" : "Add task" }));
     del.hidden = !t;

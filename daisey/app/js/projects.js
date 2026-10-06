@@ -8,10 +8,14 @@
 //
 // The project screen. Back arrow + a row of project chips (the current one
 // filled in its colour); tap a chip, or swipe sideways anywhere that isn't a
-// task, for the next/previous project. A project card (name, area, "X of Y
-// done"), then one list by urgency: Next, Pending (with what it waits on),
-// and Someday and Done folded into a line each. Swipe a task right = done
-// (green reveal, Undo toast). Tap one = the task sheet.
+// task, for the next/previous project. A project card (name, nearest date,
+// progress), and under its bar two toggles, "X of Y done" and "Not now · N",
+// each opening its drawer in the card: done tasks with a ticked tick that
+// reopens, Not now (status someday) with Bring back. Below the card, one
+// list in the order Daisey hands tasks out: ready first, then Pending,
+// dashed, with what it waits on — no section headers (Mor, 2026-10-06; New
+// Design/11-project-one-list). Swipe a task right = done (green reveal,
+// Undo toast). Tap one = the task sheet.
 //
 // Every project has its own colour (Mor, 2026-10-06): its tasks' most common
 // area when no other project has that one yet, else the next free colour in
@@ -82,7 +86,7 @@ const urgency = (onCard) => (a, b) => (b.id === onCard) - (a.id === onCard)
 function statusLine(p){
   const now = p.next.find((t) => !notYet(t));
   if (now) return ["Next: ", bdi(now.title)];
-  const parts = [p.pending.length && `${p.pending.length} pending`, p.next.length && `${p.next.length} later`, p.someday.length && `${p.someday.length} someday`].filter(Boolean);
+  const parts = [p.pending.length && `${p.pending.length} pending`, p.next.length && `${p.next.length} later`, p.someday.length && `${p.someday.length} not now`].filter(Boolean);
   return [parts.join(" · ") || "All done"];
 }
 const progress = (p) => (p.all.length ? p.done.length / p.all.length : 0);
@@ -102,7 +106,7 @@ function nearestDate(p){
 export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {}){
   let tasks = null, onCard = null, made = [];
   let shown = null; // the project on the project screen
-  let fold = { someday: false, done: false };
+  let drawer = null; // the open drawer in the project card: "done", "someday" or null
   const fail = (e) => console.error("[daisey] projects", e);
   const list = () => projectsOf(tasks || [], onCard, made);
 
@@ -179,7 +183,7 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
     // The tick does what the swipe does, for whoever doesn't know to swipe.
     const tick = h("button", { type: "button", className: "pj-tick", ariaLabel: `Done: ${t.title}`,
       onclick: () => { tick.classList.add("on"); setTimeout(() => complete(t), motionOK() ? 220 : 0); } }, icon("check"));
-    const wrap = h("div", { className: "pj-swipe" }, reveal, card, tick);
+    const wrap = h("div", { className: "pj-swipe" + (t.status === "waiting" ? " wait" : "") }, reveal, card, tick);
     let s = null, moved = false;
     card.addEventListener("pointerdown", (e) => { s = { x: e.clientX, y: e.clientY, id: e.pointerId, dx: 0 }; moved = false; });
     card.addEventListener("pointermove", (e) => {
@@ -225,15 +229,25 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
   const taskBtn = (t, kids) => h("button", { type: "button", className: "pj-task" + (notYet(t) ? " later" : ""), dir: dirOf(t.title),
     ariaLabel: `Open ${t.title}`, onclick: () => onOpen?.(t) }, ...kids);
 
-  const section = (dot, label, n, ...kids) => h("section", { className: "pj-sec", ariaLabel: label },
-    h("h3", { className: "pj-h" }, h("span", { className: `pj-dot ${dot}`, ariaHidden: "true" }), h("span", { className: "pj-h-t", textContent: label }), h("span", { className: "pj-n", textContent: String(n) })),
-    ...kids);
-  const foldRow = (key, dot, label, items, row) => [
-    h("button", { type: "button", className: "pj-fold", ariaExpanded: String(fold[key]), onclick: () => { fold[key] = !fold[key]; paintView(); } },
-      h("span", { className: `pj-dot ${dot}`, ariaHidden: "true" }), h("span", { className: "pj-h-t", textContent: label }),
-      h("span", { className: "pj-n", textContent: `${items.length} ${fold[key] ? "▾" : "▸"}` })),
-    fold[key] && items.length > 0 && h("div", { className: "pj-list" }, ...items.slice(0, 50).map(row)),
-  ];
+  // A done task's tick reopens it; Bring back takes one out of Not now.
+  // restoreTask writes as-is, so doneAt has to be cleared by hand.
+  function reopen(t){
+    const before = { status: "done", doneAt: t.doneAt ?? Date.now() };
+    restoreTask(uid, t.id, { status: "ready", doneAt: null, touchedAt: Date.now() }).catch(fail);
+    flash("Reopened: ", t.title, { undo: () => restoreTask(uid, t.id, before).catch(fail) });
+  }
+  function bringBack(t){
+    restoreTask(uid, t.id, { status: "ready", notBefore: null, touchedAt: Date.now() }).catch(fail);
+    flash("Back on the list: ", t.title, { undo: () => restoreTask(uid, t.id, { status: "someday", notBefore: t.notBefore ?? null }).catch(fail) });
+  }
+  const toggle = (key, ...kids) => h("button", { type: "button", className: "pj-tg", ariaExpanded: String(drawer === key),
+    onclick: () => { drawer = drawer === key ? null : key; paintView(); } }, ...kids, h("span", { className: "pj-car", ariaHidden: "true", textContent: "▸" }));
+  const doneRow = (t) => h("div", { className: "pj-drow", dir: dirOf(t.title) },
+    h("button", { type: "button", className: "pj-tick on", ariaLabel: `Reopen: ${t.title}`, onclick: () => reopen(t) }, icon("check")),
+    h("button", { type: "button", className: "pj-quiet done", onclick: () => onOpen?.(t) }, bdi(t.title)));
+  const notNowRow = (t) => h("div", { className: "pj-drow", dir: dirOf(t.title) },
+    h("button", { type: "button", className: "pj-quiet", onclick: () => onOpen?.(t) }, bdi(t.title)),
+    h("button", { type: "button", className: "pj-bring", textContent: "Bring back", onclick: () => bringBack(t) }));
 
   function paintView(){
     if (shown == null) return;
@@ -257,23 +271,28 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
       h("span", { className: "pj-row" },
         h("span", { className: "pj-col" }, h("span", { className: "pj-title", dir: "auto", textContent: t.title }),
           h("span", { className: "pj-meta", dir: "ltr" }, ...(t.waitingOn ? ["Waiting on ", bdi(t.waitingOn)] : ["Pending"]),
-            t.checkOn ? (t.checkOn <= localDate() ? " · check now" : ` · ask ${shortDay(t.checkOn)}`) : "")),
+            t.checkOn ? (t.checkOn <= localDate() ? " · check now" : ` · I'll ask you ${shortDay(t.checkOn)}`) : "")),
         t.waitingOn && h("span", { className: "pj-who", ariaHidden: "true", textContent: [...t.waitingOn.trim()][0]?.toUpperCase() || "" }))])));
     const due = nearestDate(p);
-    const quietRow = (t) => h("button", { type: "button", className: "pj-quiet" + (t.status === "done" ? " done" : ""), dir: dirOf(t.title),
-      onclick: () => onOpen?.(t) }, bdi(t.title));
+    if (drawer === "someday" && !p.someday.length) drawer = null;
+    const drawerEl = drawer === "done" ? h("div", { className: "pj-drawer" },
+      ...(p.done.length ? p.done.slice(0, 50).map(doneRow) : [h("p", { className: "pj-hint", textContent: "Nothing done yet." })]))
+      : drawer === "someday" ? h("div", { className: "pj-drawer" },
+        h("p", { className: "pj-hint", textContent: "Off your plate. Daisey offers one back on Sunday." }), ...p.someday.slice(0, 50).map(notNowRow))
+      : null;
     els.view.replaceChildren(...[
       h("div", { className: "pj-top" },
         h("button", { type: "button", className: "pj-back", ariaLabel: "Back to home", onclick: () => onScreen?.(null) }, icon("back")), chips),
       h("div", { className: "pj-card" },
         h("div", { className: "pj-card-top" }, h("h2", { className: "pj-name", dir: "auto", textContent: p.name }),
           due && h("div", { className: "pj-due" }, h("span", { className: "pj-due-v", textContent: due[0] }), h("span", { className: "pj-due-l", textContent: due[1] }))),
-        h("div", { className: "pj-prog" }, bar(p, "pbar big"), h("span", { textContent: `${p.done.length} of ${p.all.length} done` }))),
-      section("next", "Next", p.next.length, ...next,
+        h("div", { className: "pj-prog" }, bar(p, "pbar big")),
+        p.all.length > 0 && h("div", { className: "pj-tgs" },
+          toggle("done", h("span", { className: "pj-ok", ariaHidden: "true" }, icon("check")), `${p.done.length} of ${p.all.length} done`),
+          p.someday.length > 0 && toggle("someday", h("span", { className: "pj-zz", ariaHidden: "true" }), `Not now · ${p.someday.length}`)),
+        drawerEl),
+      h("section", { className: "pj-sec pj-one", ariaLabel: "Tasks" }, ...next, ...pending,
         h("button", { type: "button", className: "pj-add", textContent: "+ Add a task", onclick: () => onAdd?.(p.name === INBOX ? "" : p.name) })),
-      p.pending.length > 0 && section("pending", "Pending", p.pending.length, ...pending),
-      ...foldRow("someday", "someday", "Someday", p.someday, quietRow),
-      ...foldRow("done", "done", "Done", p.done, quietRow),
       !p.all.length && made.includes(p.name) && h("button", { type: "button", className: "pj-del", textContent: "Delete project", onclick: () => deleteProject(p.name) })].filter(Boolean));
     els.view.className = "screen" + colorClass(p);
     els.view.scrollTop = y;
@@ -287,7 +306,7 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
   }
   function go(name){
     if (name === shown) return;
-    shown = name; fold = { someday: false, done: false };
+    shown = name; drawer = null;
     els.view.scrollTop = 0;
     paintView();
   }
@@ -314,7 +333,7 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
   els.view.addEventListener("pointercancel", () => { page = null; });
 
   function openProject(name){
-    shown = name; fold = { someday: false, done: false };
+    shown = name; drawer = null;
     els.view.hidden = false;
     els.view.scrollTop = 0;
     paintView();

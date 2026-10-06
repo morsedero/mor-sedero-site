@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Daisey — Project, one list</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700&display=swap">
+<style>
+/* Mock: project screen as one list. Done + Not now live in the top card as
+   toggles; Pending sits inline, dimmed. Tokens copied from app/css/app.css. */
+:root {
+  --bg: #fbf8ef; --card: #fffdf6; --ink: #1f1d1a; --ink-2: #6f6a60; --line: #e6e0d2; --chip: #efe9da;
+  --surface: #fff; --green: #2f9e5b; --accent: #f5b301;
+  --tint: #efeafd; --aline: #dcd3fa; --aink: #5b47b8;
+  --job-tint: #fff4d6; --job-ink: #8a5a00;
+}
+* { box-sizing: border-box; }
+body { margin: 0; min-height: 100vh; display: grid; place-items: start center; background: #d9d3c4; font-family: Rubik, system-ui, sans-serif; color: var(--ink); }
+.phone { position: relative; width: 390px; min-height: 844px; margin: 24px 0; background: var(--bg); border-radius: 36px; overflow: hidden; box-shadow: 0 20px 60px rgb(0 0 0 / .18); padding-bottom: 40px; }
+button { font: inherit; color: inherit; cursor: pointer; }
+
+.top { display: flex; align-items: center; gap: 4px; padding: 16px 0 0 12px; }
+.back { flex: none; width: 40px; height: 40px; display: grid; place-items: center; border: 0; border-radius: 12px; background: none; }
+.chips { display: flex; gap: 6px; overflow-x: auto; padding: 5px 20px 5px 0; scrollbar-width: none; }
+.chip { flex: none; display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 12px; border: 0; border-radius: 999px; background: var(--chip); color: var(--ink-2); font-size: 13px; font-weight: 500; }
+.chip .dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+.chip.on { background: var(--aink); color: var(--card); font-weight: 600; }
+
+.card { margin: 14px 20px 0; padding: 18px 18px 14px; border-radius: 22px; background: var(--surface); border: 1px solid var(--aline); box-shadow: 0 6px 20px color-mix(in srgb, var(--aink) 12%, transparent); }
+.card-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.name { margin: 0; font-size: 26px; font-weight: 700; letter-spacing: -.3px; }
+.due { display: grid; gap: 2px; padding: 8px 12px; border-radius: 14px; background: var(--tint); }
+.due b { font-size: 18px; color: var(--aink); }
+.due span { font-size: 11px; color: var(--ink-2); }
+.bar { height: 8px; margin-top: 16px; border-radius: 4px; background: var(--tint); overflow: hidden; }
+.bar i { display: block; height: 100%; border-radius: 4px; background: var(--aink); transition: width .25s; }
+
+.toggles { display: flex; gap: 8px; margin-top: 12px; }
+.tg { display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 12px; border: 1px solid var(--line); border-radius: 999px; background: var(--card); font-size: 13px; font-weight: 500; color: var(--ink-2); }
+.tg .car { font-size: 10px; transition: transform .15s; }
+.tg[aria-expanded="true"] { background: var(--ink); border-color: var(--ink); color: var(--card); }
+.tg[aria-expanded="true"] .car { transform: rotate(90deg); }
+.tg .ok { width: 16px; height: 16px; border-radius: 50%; display: grid; place-items: center; background: var(--green); color: #fff; font-size: 10px; }
+.tg[aria-expanded="true"] .ok { background: var(--card); color: var(--ink); }
+.tg .zz { width: 14px; height: 14px; border-radius: 50%; border: 2px dashed currentColor; }
+
+.drawer { display: grid; gap: 2px; margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--line); }
+.drawer[hidden] { display: none; }
+.hint { margin: 0 0 6px; font-size: 12px; color: var(--ink-2); }
+.drow { display: flex; align-items: center; gap: 12px; min-height: 42px; }
+.drow .t { flex: 1; font-size: 15px; }
+.drow.done .t { color: var(--ink-2); text-decoration: line-through; }
+.bring { flex: none; height: 30px; padding: 0 12px; border: 1px solid var(--aline); border-radius: 999px; background: var(--tint); color: var(--aink); font-size: 12px; font-weight: 600; }
+
+.list { display: grid; gap: 8px; margin: 18px 20px 0; }
+.task { position: relative; display: grid; gap: 4px; width: 100%; padding: 12px 14px 12px 50px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); text-align: start; animation: in .2s ease; }
+@keyframes in { from { opacity: 0; transform: translateY(4px); } }
+.task.wait { background: transparent; border-style: dashed; }
+.task.wait .title { color: var(--ink-2); font-weight: 500; }
+.row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.title { font-size: 15px; font-weight: 600; }
+.now { flex: none; padding: 3px 8px; border-radius: 999px; background: var(--job-tint); color: var(--job-ink); font-size: 11px; font-weight: 600; }
+.meta { font-size: 12px; color: var(--ink-2); }
+.who { flex: none; display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; background: var(--chip); font-size: 13px; font-weight: 600; }
+.tick { position: absolute; left: 12px; top: 50%; translate: 0 -50%; width: 26px; height: 26px; display: grid; place-items: center; padding: 0; border: 2px solid var(--aline); border-radius: 50%; background: var(--surface); color: transparent; font-size: 13px; font-weight: 700; }
+.tick:hover { border-color: var(--aink); color: var(--aink); }
+.drow .tick { position: static; translate: none; flex: none; }
+.tick.on { border-color: var(--green); background: var(--green); color: #fff; }
+.tick.on:hover { background: var(--surface); color: var(--green); }
+.wait .tick { border-style: dashed; }
+.add { width: 100%; min-height: 46px; padding: 0 16px; border: 1px solid var(--aline); border-radius: 14px; background: color-mix(in srgb, var(--tint) 60%, var(--surface)); color: var(--aink); font-size: 14px; font-weight: 600; text-align: start; }
+
+.toast { position: absolute; left: 20px; right: 20px; bottom: 20px; display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border-radius: 14px; background: var(--ink); color: var(--card); font-size: 14px; opacity: 0; translate: 0 10px; transition: .2s; pointer-events: none; }
+.toast.show { opacity: 1; translate: 0 0; pointer-events: auto; }
+.toast button { border: 0; background: none; color: var(--accent); font-weight: 600; }
+.note { width: 390px; margin: 0 0 30px; font-size: 13px; color: #5c574c; line-height: 1.5; }
+</style>
+</head>
+<body>
+<div>
+<div class="phone">
+  <div class="top">
+    <button class="back" aria-label="Back">←</button>
+    <div class="chips">
+      <button class="chip on"><span class="dot"></span>Monster Punk</button>
+      <button class="chip"><span class="dot"></span>Job hunt</button>
+      <button class="chip"><span class="dot"></span>Home</button>
+      <button class="chip"><span class="dot"></span>Inbox</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-top">
+      <h2 class="name">Monster Punk</h2>
+      <div class="due"><b>Oct 20</b><span>deadline · 14d</span></div>
+    </div>
+    <div class="bar"><i id="bar"></i></div>
+    <div class="toggles">
+      <button class="tg" id="tgDone" aria-expanded="false"><span class="ok">✓</span><span id="lblDone"></span><span class="car">▶</span></button>
+      <button class="tg" id="tgNot" aria-expanded="false"><span class="zz"></span><span id="lblNot"></span><span class="car">▶</span></button>
+    </div>
+    <div class="drawer" id="drDone" hidden></div>
+    <div class="drawer" id="drNot" hidden></div>
+  </div>
+
+  <div class="list" id="list"></div>
+  <div class="toast" id="toast"><span id="toastMsg"></span><button id="undo">Undo</button></div>
+</div>
+<p class="note">Mock. Tap a tick to finish; open “done” and tap a green tick to reopen. “Not now” → Bring back. Order = the order Daisey will hand tasks to you; pending sits dashed at the end.</p>
+</div>
+
+<script>
+const T = [
+  { id: 1, title: "Boss smashes + green fire", s: "open", meta: "Session · 1 of 3 steps · today", now: true },
+  { id: 2, title: "Implement approved combat SFX", s: "open", meta: "Quick · Thu" },
+  { id: 3, title: "FMOD combat mix pass", s: "open", meta: "Work day · by Oct 14" },
+  { id: 4, title: "Mine shot chain", s: "open", meta: "Session" },
+  { id: 5, title: "Pre-attack cue notes", s: "wait", who: "Yuval", ask: "Thu" },
+  { id: 6, title: "Music license reply", s: "wait", who: "Composer", ask: "Mon" },
+  { id: 7, title: "Unicycle enemy batch", s: "done" },
+  { id: 8, title: "Player + weapon cues", s: "done" },
+  { id: 9, title: "Fix boost-bus leak", s: "done" },
+  { id: 10, title: "Boss mine-shot chain", s: "done" },
+  { id: 11, title: "Alt menu music", s: "not" },
+  { id: 12, title: "Trailer stingers", s: "not" },
+];
+const $ = (id) => document.getElementById(id);
+const el = (tag, cls, txt) => { const e = document.createElement(tag); if (cls) e.className = cls; if (txt != null) e.textContent = txt; return e; };
+let open = null, undoFn = null, timer;
+
+function toast(msg, undo) {
+  $("toastMsg").textContent = msg; undoFn = undo; $("toast").classList.add("show");
+  clearTimeout(timer); timer = setTimeout(() => $("toast").classList.remove("show"), 3500);
+}
+function set(t, s, msg) {
+  const before = t.s; t.s = s; paint();
+  toast(msg + t.title, () => { t.s = before; paint(); $("toast").classList.remove("show"); });
+}
+$("undo").onclick = () => undoFn?.();
+
+function paint() {
+  const done = T.filter((t) => t.s === "done"), not = T.filter((t) => t.s === "not");
+  $("bar").style.width = (done.length / T.length * 100) + "%";
+  $("lblDone").textContent = `${done.length} of ${T.length} done`;
+  $("lblNot").textContent = `Not now · ${not.length}`;
+  $("tgNot").hidden = !not.length && open !== "not";
+  $("tgDone").setAttribute("aria-expanded", open === "done");
+  $("tgNot").setAttribute("aria-expanded", open === "not");
+  $("drDone").hidden = open !== "done"; $("drNot").hidden = open !== "not";
+
+  $("drDone").replaceChildren(...(done.length ? done.map((t) => {
+    const r = el("div", "drow done"), k = el("button", "tick on", "✓");
+    k.title = "Reopen"; k.onclick = () => set(t, "open", "Reopened: ");
+    r.append(k, el("span", "t", t.title)); return r;
+  }) : [el("p", "hint", "Nothing done yet.")]));
+
+  $("drNot").replaceChildren(el("p", "hint", "Off your plate. Daisey offers one back on Sunday."), ...not.map((t) => {
+    const r = el("div", "drow"), b = el("button", "bring", "Bring back");
+    b.onclick = () => set(t, "open", "Back on the list: ");
+    r.append(el("span", "t", t.title), b); return r;
+  }));
+
+  const rows = [...T.filter((t) => t.s === "open"), ...T.filter((t) => t.s === "wait")].map((t) => {
+    const c = el("div", "task" + (t.s === "wait" ? " wait" : "")), k = el("button", "tick", "✓");
+    k.onclick = () => set(t, "done", "Done: ");
+    const row = el("div", "row"), col = el("div");
+    col.append(el("div", "title", t.title));
+    if (t.s === "wait") col.append(el("div", "meta", `⏳ Waiting on ${t.who} · I'll ask you ${t.ask}`));
+    else col.append(el("div", "meta", t.meta));
+    row.append(col);
+    if (t.now) row.append(el("span", "now", "NOW"));
+    if (t.who) row.append(el("span", "who", t.who[0]));
+    c.append(k, row); return c;
+  });
+  const add = el("button", "add", "+ Add a task");
+  $("list").replaceChildren(...rows, add);
+}
+$("tgDone").onclick = () => { open = open === "done" ? null : "done"; paint(); };
+$("tgNot").onclick = () => { open = open === "not" ? null : "not"; paint(); };
+paint();
+</script>
+</body>
+</html>

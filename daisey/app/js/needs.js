@@ -129,10 +129,10 @@ export function mountNeeds(root, uid, { onClose } = {}){
         no: ["No, it's ready", () => { restoreTask(uid, t.id, { status: "ready", waitingOn: null, checkOn: null, touchedAt: Date.now() }).catch(fail); next(); }] };
     }
     if (item.kind === "someday") {
-      return { tone: "area-home", ico: "someday", q: "Bring one back?", sub: "From Someday, for this week.",
+      return { tone: "area-home", ico: "someday", q: "Bring one back?", sub: "From Not now, for this week.",
         item: t.title, say: MARK[t.stakes] || `It's ${dur(t.size)}, and the week has room.`,
         yes: ["Bring it back", () => { somedayDone(); restoreTask(uid, t.id, { status: "ready", notBefore: null, touchedAt: Date.now() }).catch(fail); next(); }],
-        no: ["Leave it in Someday", () => { somedayDone(); next(); }] };
+        no: ["Leave it there", () => { somedayDone(); next(); }] };
     }
     // sweep
     const week = pickWeekDay(t, { events: cal.events || [], tasks });
@@ -141,7 +141,7 @@ export function mountNeeds(root, uid, { onClose } = {}){
       item: t.title, say: `I'd move it to ${weekday(week)}, the roomiest day this week.`,
       yes: ["Do it today", () => sweep(t, "today")],
       no: [`Move to ${weekday(week)}`, () => sweep(t, "week")],
-      more: [["Someday", () => sweep(t, "someday")], ["Let it go", () => sweep(t, "drop")]] };
+      more: [["Not now", () => sweep(t, "someday")], ["Let it go", () => sweep(t, "drop")]] };
   }
 
   const big = (text, cls, onclick) => h("button", { className: `btn ${cls}`, type: "button", textContent: text, onclick });
