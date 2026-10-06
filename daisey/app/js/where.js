@@ -25,6 +25,12 @@ const MANUAL_MS = 45 * 60000; // a hand-picked place outranks the location this 
 export const RIDES = ["train", "bus", "car"];
 const WINDOW_MS = 10000;     // how long to collect fixes for a speed
 const REDETECT_MS = 5 * 60000;
+// Fixes vaguer than this don't count toward a speed. Opening the app, the
+// first fix is often a Wi-Fi guess tens of metres off, and the jump to the
+// GPS fix a second later read as a ride (Mor, 2026-10-06: sitting at home,
+// Daisey asked "On a train, bus or driving?" and held back every home task).
+const SPEED_ACC_M = 50;
+const SPEED_SPAN_MS = 5000;  // a distance over less time than this is noise
 
 // { places: [{ name, lat, lng }], last: fix, ride: { mode, at }, manual: { value, at } }.
 // The first version kept one `home`; it becomes the place called Home.
@@ -50,13 +56,15 @@ function dist(a, b){
 // The fixes → a place (above) or null. Exported for the tests.
 export function placeFrom(fixes, places = [], ride = null, now = Date.now()){
   if (!fixes.length) return null;
-  const last = fixes.at(-1), first = fixes[0];
-  const speeds = fixes.map((f) => f.speed).filter((v) => v != null && !Number.isNaN(v)).sort((a, b) => a - b);
-  let v = speeds.length ? speeds[Math.floor(speeds.length / 2)] : null;
-  if (v == null && last.t > first.t) {
-    const d = dist(first, last);
-    // A move smaller than the fixes' own error is noise, not travel.
-    v = d > Math.max(first.acc, last.acc) ? d / ((last.t - first.t) / 1000) : 0;
+  const last = fixes.at(-1);
+  const good = fixes.filter((f) => (f.acc || 0) <= SPEED_ACC_M);
+  // The lower median: one fast reading among slow ones isn't a ride.
+  const speeds = good.map((f) => f.speed).filter((v) => v != null && !Number.isNaN(v)).sort((a, b) => a - b);
+  let v = speeds.length ? speeds[Math.floor((speeds.length - 1) / 2)] : null;
+  const [a, b] = [good[0], good.at(-1)];
+  if (v == null && good.length >= 2 && b.t - a.t >= SPEED_SPAN_MS) {
+    // Only the part of the move the two fixes' errors can't explain is travel.
+    v = Math.max(0, dist(a, b) - (a.acc || 0) - (b.acc || 0)) / ((b.t - a.t) / 1000);
   }
   v ??= 0;
   if (v >= WALK_MPS) return ride && now - ride.at < RIDE_MS ? ride.mode : "ride";
@@ -72,7 +80,7 @@ const listeners = new Set();
 const tell = (v) => { if (v !== current) { current = v; listeners.forEach((f) => f(v)); } };
 const manualNow = (d = load()) => (d.manual && Date.now() - d.manual.at < MANUAL_MS ? d.manual.value : null);
 
-// Collects fixes for WINDOW_MS (or until two report their own speed).
+// Collects fixes for WINDOW_MS (or until three report their own speed).
 function fixes(){
   const geo = navigator.geolocation;
   if (!geo) return Promise.resolve([]);
@@ -82,7 +90,7 @@ function fixes(){
     const id = geo.watchPosition((p) => {
       const c = p.coords;
       got.push({ lat: c.latitude, lng: c.longitude, acc: c.accuracy || 0, speed: c.speed ?? null, t: p.timestamp || Date.now() });
-      if (c.speed != null && !Number.isNaN(c.speed) && got.length >= 2) done();
+      if (got.filter((f) => f.speed != null && !Number.isNaN(f.speed)).length >= 3) done();
     }, () => done(), { enableHighAccuracy: true, maximumAge: 30000, timeout: WINDOW_MS });
     const timer = setTimeout(done, WINDOW_MS);
   });
@@ -122,6 +130,14 @@ export function setRide(mode){
   if (!RIDES.includes(mode)) return;
   save({ ...load(), ride: { mode, at: Date.now() } });
   tell(mode);
+}
+
+// "Not moving", from the ride question: wherever the last fix is when still
+// (Home, a saved spot, Out), for MANUAL_MS. With nothing known, "anywhere",
+// and the calendar's guess stands (context.js placeNow).
+export function setStill(){
+  const d = load();
+  setManual((d.last && placeFrom([{ ...d.last, speed: 0 }], d.places)) || "anywhere");
 }
 
 // A place picked by hand, for MANUAL_MS; null goes back to the location.

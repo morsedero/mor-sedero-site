@@ -19,6 +19,15 @@ function paintNeeds(n){
 }
 
 
+// The home screen is exactly the window's height (app.css .shell). 100dvh
+// alone ran ~50px past the bottom in the installed app on Mor's Android
+// phone (2026-10-06), pushing Tell Daisey off-screen; innerHeight is what's
+// really there.
+const fitHeight = () => document.documentElement.style.setProperty("--app-h", `${innerHeight}px`);
+fitHeight();
+addEventListener("resize", fitHeight);
+visualViewport?.addEventListener("resize", fitHeight);
+
 // Registering a worker is what makes "add to home screen" offer a real app
 // window; sw.js caches nothing on purpose.
 if ("serviceWorker" in navigator) {

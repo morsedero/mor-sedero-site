@@ -1012,7 +1012,7 @@ dialog.tsheet .msg:empty { display: none; }
    and nothing scrolls but the panel's pages (and the card area when an ask
    under the card makes it tall). */
 .shell {
-  block-size: 100dvh; display: flex; flex-direction: column; overflow: hidden;
+  block-size: var(--app-h, 100dvh); display: flex; flex-direction: column; overflow: hidden; /* --app-h: main.js fitHeight */
   padding: max(16px, env(safe-area-inset-top)) 16px 0;
 }
 .topbar { flex: none; block-size: 44px; min-block-size: 44px; padding-inline: 4px; gap: 8px; }

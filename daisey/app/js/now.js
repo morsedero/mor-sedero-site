@@ -14,7 +14,7 @@
 // the same timer.
 import { watchTasks, watchRun, watchSkips, saveSkips, startRun, extendRun, endRun, startBatch, tickBatch, endBatch, skipNow, blockTask, restoreTask, watchSettings, saveSettings, watchMoment, saveMoment, watchLearn, bumpLearn, saveRun, cancelRun } from "./store.js";
 import { energyNow, placeNow, workBase } from "./context.js";
-import { watchWhere, setRide } from "./where.js";
+import { watchWhere, setRide, setStill } from "./where.js";
 import { pickWeekDay } from "./triage.js";
 import { focusView, handoffView, elapsedMinutes, targetMinutes, batchFocusView, batchName, sinceMark, paused, resumed } from "./focus.js";
 import { watchCalendar, logDone } from "./calendar.js";
@@ -193,11 +193,13 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
 
   // A ride the phone can't name (speed says train, bus or car alike): ask
   // once; the answer holds for the rest of the ride (where.js RIDE_MS).
+  // "Not moving" is for when the phone got it wrong.
   function rideAsk(){
     const pick = (mode, text) => h("button", { type: "button", className: "chip", textContent: text, onclick: () => setRide(mode) });
     return h("div", { className: "ride-ask", role: "group", ariaLabel: "How are you travelling?" },
       h("span", { className: "muted", textContent: "On a" }),
-      pick("train", "Train"), pick("bus", "Bus"), pick("car", "Driving"));
+      pick("train", "Train"), pick("bus", "Bus"), pick("car", "Driving"),
+      h("button", { type: "button", className: "chip", textContent: "Not moving", onclick: () => setStill() }));
   }
 
   // Driving and no call to make (hands-free calls are the one thing that

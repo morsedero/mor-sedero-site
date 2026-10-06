@@ -118,6 +118,7 @@ const flag = (f) => { const i = args.indexOf(f); return i < 0 ? null : args.spli
 const outDir = flag("--out") || path.join(require("os").tmpdir(), "daisey-preview");
 const clicks = [];
 const widthFlag = flag("--width"); // phone width in CSS px (default 390)
+const heightFlag = flag("--height"); // phone height in CSS px (default 844)
 const evalJs = flag("--eval"); // run this in the page at the end and print what it returns
 const holdSel = flag("--hold");
 const chatFlag = flag("--chat"); // "off": Tell Daisey answers as if no Gemini key were set // press and hold it for 1.5 s (Hold to finish)
@@ -162,7 +163,7 @@ const FAKES = {
 
 (async () => {
   const browser = await chromium.launch();
-  const page = await browser.newPage({ viewport: wide ? { width: 1200, height: 900 } : { width: Number(widthFlag) || 390, height: 844 }, deviceScaleFactor: 2,
+  const page = await browser.newPage({ viewport: wide ? { width: 1200, height: 900 } : { width: Number(widthFlag) || 390, height: Number(heightFlag) || 844 }, deviceScaleFactor: 2,
     colorScheme: args.includes("--dark") ? "dark" : "light" });
   page.on("pageerror", (e) => console.error("pageerror:", e.message));
   page.on("console", (m) => { if (m.type() === "error") console.error("console:", m.text()); });
@@ -174,7 +175,7 @@ const FAKES = {
   if (speedFlag) await page.addInitScript((v) => {
     const fix = () => ({ coords: { latitude: 32.08, longitude: 34.78, accuracy: 10, speed: v }, timestamp: Date.now() });
     Object.defineProperty(navigator, "geolocation", { value: {
-      watchPosition: (ok) => { setTimeout(() => ok(fix()), 10); setTimeout(() => ok(fix()), 30); return 1; },
+      watchPosition: (ok) => { setTimeout(() => ok(fix()), 10); setTimeout(() => ok(fix()), 30); setTimeout(() => ok(fix()), 50); return 1; },
       clearWatch: () => {}, getCurrentPosition: (ok) => ok(fix()),
     } });
   }, Number(speedFlag));
