@@ -154,7 +154,7 @@ async function boot(){
   const SIGNED_IN = ["#board", "#dock"];
 
   const mountUser = (user) => {
-    const isGuest = user.uid === GUEST_UID;
+    const isGuest = user?.uid === GUEST_UID;
     setMenu(false);
     if (mounted) { for (const m of Object.values(mounted)) m?.unmount(); mounted = null; }
     for (const s of SIGNED_IN) $(s).hidden = true;
