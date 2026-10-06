@@ -101,9 +101,10 @@ export function watchRun(uid, cb, onError){
   return fb.onSnapshot(runDoc(uid), (snap) => cb(snap.exists() ? snap.data() : null), onError);
 }
 
-export function startRun(uid, task){
+// mode: "inline" (the dashboard stays) or "focus" (Deep Focus, the whole screen).
+export function startRun(uid, task, mode = "inline"){
   return Promise.all([
-    fb.setDoc(runDoc(uid), { taskId: task.id, startedAt: Date.now(), extra: 0 }),
+    fb.setDoc(runDoc(uid), { taskId: task.id, startedAt: Date.now(), extra: 0, mode }),
     fb.updateDoc(taskDoc(uid, task.id), startedTask(task)),
   ]);
 }

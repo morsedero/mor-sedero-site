@@ -66,3 +66,10 @@ test("tookOptions: half the plan to twice it, 5-min steps, never past the clock 
   assert.deepEqual(F.tookOptions(15, 40), [10, 15, 25, 30]);
   assert.deepEqual(F.tookOptions(60, 70), [30, 60]);
 });
+
+test("Deep Focus tells you when you were away, plainly", async () => {
+  const { awayText } = await import("../../app/js/deep.js");
+  assert.equal(awayText({ count: 0, ms: 0 }), "");
+  assert.equal(awayText({ count: 2, ms: 6 * 60000 }), "Away 2× · 6 min");
+  assert.equal(awayText({ count: 1, ms: 5000 }), "Away 1× · 1 min");
+});

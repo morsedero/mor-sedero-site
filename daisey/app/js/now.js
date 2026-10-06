@@ -13,11 +13,12 @@
 // the run lives in Firestore, so this tab, a reload and the phone all show
 // the same timer.
 import { overruled, eventKey } from "./reality.js";
-import { addTask, watchTasks, watchRun, watchSkips, saveSkips, startRun, extendRun, endRun, startBatch, tickBatch, endBatch, skipNow, blockTask, restoreTask, watchSettings, saveSettings, watchMoment, saveMoment, watchLearn, bumpLearn, saveRun, cancelRun } from "./store.js";
+import * as deep from "./deep.js";
+import { addTask, watchTasks, watchRun, watchSkips, saveSkips, startRun, extendRun, endRun, startBatch, tickBatch, endBatch, skipNow, blockTask, restoreTask, finishTask, watchSettings, saveSettings, watchMoment, saveMoment, watchLearn, bumpLearn, saveRun, cancelRun } from "./store.js";
 import { energyNow, placeNow, workBase } from "./context.js";
 import { watchWhere, setRide, setStill, saveSpot, setManual } from "./where.js";
 import { pickWeekDay } from "./triage.js";
-import { focusView, handoffView, elapsedMinutes, targetMinutes, batchFocusView, batchName, sinceMark, paused, resumed, runCap, bookedMinutes } from "./focus.js";
+import { focusView, handoffView, elapsedMinutes, targetMinutes, batchFocusView, batchName, sinceMark, paused, resumed, runCap, bookedMinutes, holdButton, stillOnMinutes } from "./focus.js";
 import { watchCalendar, logDone } from "./calendar.js";
 import { LATER_MINUTES, DRAIN, CANCEL_KEEP_MINUTES } from "./weights.js";
 import { rank, freeWindow, timeBucket, matchProject, dueAt } from "./engine.js";
@@ -65,7 +66,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onFree
   let toastTimer = null;
   // laterAsk: Later was tapped and the card is asking "when?"
   // pendAsk: Pending was tapped and the card asks what it's waiting on.
-  const state = { chosen: null, showAlts: false, asking: false, laterAsk: false, pendAsk: false };
+  const state = { chosen: null, showAlts: false, asking: false, laterAsk: false, pendAsk: false, notNow: false };
   // { date, items: { id: { count, until } } } — today's Laters, from Firestore.
   let skipDoc = null;
   const skipItems = () => (skipDoc?.date === localDate() ? skipDoc.items || {} : {});
@@ -93,7 +94,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onFree
     },
     get size(){ return hidden().length; },
   };
-  const reset = () => { state.chosen = null; state.showAlts = false; state.laterAsk = false; state.pendAsk = false; state.pendText = ""; state.pendCheck = ""; state.single = false; };
+  const reset = () => { state.chosen = null; state.showAlts = false; state.laterAsk = false; state.pendAsk = false; state.notNow = false; state.pendText = ""; state.pendCheck = ""; state.single = false; };
   let shown;
   const showing = (id) => { if (id !== shown) { shown = id; onCard?.(id); } };
 
@@ -332,16 +333,25 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onFree
     cancelRun(uid, task, m >= CANCEL_KEEP_MINUTES ? m : 0).catch(fail);
   };
 
+  // Done on a running task, from Deep Focus or the dashboard card.
+  const finishRun = (task, minutes, end) => {
+    if (!run) return; // the hold finished after the run moved on
+    handoff = { title: task ? task.title : "", skip: run.taskId, minutes, ids: [run.taskId] };
+    endRun(uid, task, minutes, { finished: true }).catch(fail);
+    if (task) logFinished(task.title, minutes, task.id, targetMinutes(run, task), end);
+    run = null; render();
+  };
+  // Deep Focus is the whole screen (master spec s.20): a run in "focus" mode, a
+  // batch, or one from before modes existed. "inline" keeps the dashboard.
+  const focusing = () => !!run && (!!run.batch || run.mode == null || run.mode === "focus");
+  const runKey = () => `${run.taskId}@${run.startedAt}`;
+  // Into Deep Focus on a task that's already running (or out of it, to the dashboard).
+  const setMode = (mode) => { const doc = { ...run, mode }; run = doc; if (mode === "focus") deep.enter(runKey()); render(); saveRun(uid, doc).catch(fail); };
+
   function renderFocus(){
     if (run.batch) return renderBatch();
     const task = tasks?.find((t) => t.id === run.taskId) || null;
-    const finish = (minutes, end) => {
-      if (!run) return; // the hold finished after the run moved on
-      handoff = { title: task ? task.title : "", skip: run.taskId, minutes, ids: [run.taskId] };
-      endRun(uid, task, minutes, { finished: true }).catch(fail);
-      if (task) logFinished(task.title, minutes, task.id, targetMinutes(run, task), end);
-      run = null; render();
-    };
+    const finish = (minutes, end) => finishRun(task, minutes, end);
     showing(run.taskId);
     return focusView(run, task, {
       // Done is finished — no "or more left?" (Pause covers more left).
@@ -353,19 +363,28 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onFree
       onPause: pause,
       onResume: resume,
       onStop: () => endSession(),
+      onBack: () => setMode("inline"),
       // Pending from focus mode: stop, and the card, back on this task, asks
       // what it's waiting on.
       onPending: () => { const id = run.taskId; endSession({ quiet: true }); reset(); state.chosen = id; state.pendAsk = true; render(); },
     });
   }
 
-  const begin = (task) => { bumpLearn(uid, task.type, timeBucket().part, "starts").catch(fail); handoff = null; reset(); run = { taskId: task.id, startedAt: Date.now(), extra: 0 }; render(); startRun(uid, task).catch(fail); };
+  // mode "inline": Start, the dashboard stays. "focus": Deep Focus, the whole
+  // screen (call it from a tap: full screen needs one, deep.js).
+  const begin = (task, mode = "inline") => {
+    bumpLearn(uid, task.type, timeBucket().part, "starts").catch(fail); handoff = null; reset();
+    run = { taskId: task.id, startedAt: Date.now(), extra: 0, mode };
+    if (mode === "focus") deep.enter(runKey());
+    render(); startRun(uid, task, mode).catch(fail);
+  };
 
   const beginBatch = (list) => {
     bumpLearn(uid, list[0].type, timeBucket().part, "starts").catch(fail);
     handoff = null; reset();
     const now = Date.now();
     run = { taskId: list[0].id, batch: list.map((t) => t.id), done: [], mark: now, startedAt: now, extra: 0 };
+    deep.enter(runKey());
     render();
     startBatch(uid, list).catch(fail);
   };
@@ -790,26 +809,70 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onFree
   function cardActions(task, alts, start){
     const card = { task };
     const someN = somedayTasks().length;
+    const closeAsks = () => { state.laterAsk = false; state.pendAsk = false; state.showAlts = false; };
     return [
-      // Start sits at the row's far end (Mor, 2026-10-06), after the quiet three.
+      // Not now (Later, Switch, Pending), Done, Deep Focus, then Start at the
+      // row's far end (Mor, 2026-10-06; Start no longer implies full screen).
       h("div", { className: "now-actions now-row" },
-        action("later", "Later", `not now — choose when to see ${card.task.title} again`,
+        action("later", "Not now", `later, switch or pending: ${card.task.title}`,
+          { ariaExpanded: String(state.notNow), onclick: () => { state.notNow = !state.notNow; if (!state.notNow) closeAsks(); render(); } }),
+        action("check", "Done", `${card.task.title} is already done`, { onclick: () => quickDone(card.task) }),
+        action("focus", "Focus", `start ${card.task.title} in Deep Focus, full screen`, { onclick: () => begin(card.task, "focus") }),
+        start),
+      state.notNow && h("div", { className: "now-actions now-row now-notnow" },
+        action("later", "Later", `choose when to see ${card.task.title} again`,
           { ariaExpanded: String(state.laterAsk), onclick: () => { state.laterAsk = !state.laterAsk; state.pendAsk = false; state.showAlts = false; render(); } }),
         // Never a dead end while Someday holds tasks (DAISEY_SPEC "Someday comes back").
         action("switch", "Switch", state.showAlts ? "hide the other tasks"
-          : alts.length ? `something else — ${alts.length} other tasks`
-          : someN ? "nothing else is active — pick from Not now" : "nothing else is active",
+          : alts.length ? `something else: ${alts.length} other tasks`
+          : someN ? "nothing else is active: pick from Not now" : "nothing else is active",
           { disabled: !alts.length && !someN, ariaExpanded: String(state.showAlts),
             onclick: () => { state.showAlts = !state.showAlts; state.laterAsk = false; state.pendAsk = false; render(); } }),
-        action("pending", "Pending", `${card.task.title} is blocked — set it to Pending`,
-          { ariaExpanded: String(state.pendAsk), onclick: () => { state.pendAsk = !state.pendAsk; state.laterAsk = false; state.showAlts = false; render(); } }),
-        start),
+        action("pending", "Pending", `${card.task.title} is blocked: set it to Pending`,
+          { ariaExpanded: String(state.pendAsk), onclick: () => { state.pendAsk = !state.pendAsk; state.laterAsk = false; state.showAlts = false; render(); } })),
       state.pendAsk && pendingAsk(card.task),
       state.laterAsk && h("div", { className: "later-ask", role: "group", ariaLabel: "When instead?" },
         h("span", { className: "muted", textContent: "When?" }),
         ...[["today", "Later today"], ["tomorrow", "Tomorrow"], ["week", "This week"], ["someday", "Not now"]].map(([w, text]) =>
           h("button", { className: "chip", type: "button", textContent: text, onclick: () => later(card.task, w) }))),
     ];
+  }
+
+  // Done on a task that was never started here (already finished, or done
+  // elsewhere): finished with no time booked, with an Undo.
+  function quickDone(task){
+    const before = { status: task.status || "ready", doneAt: task.doneAt ?? null, skipsSinceStart: task.skipsSinceStart ?? 0 };
+    handoff = { title: task.title, skip: task.id, minutes: 0, ids: [task.id] };
+    finishTask(uid, task).catch(fail);
+    reset(); render();
+    flash("Done: ", task.title, { undo: () => { handoff = null; restoreTask(uid, task.id, before).catch(fail); render(); } });
+  }
+
+  // The card while a task runs and the dashboard stays: area and project,
+  // title, the clock, then Pause, Stop, Focus and hold-to-finish. Past the
+  // "Still on it?" point it asks the same question Deep Focus does.
+  const clockText = (min) => { const t = Math.floor(min * 60), p2 = (n) => String(n).padStart(2, "0"); return t >= 3600 ? `${Math.floor(t / 3600)}:${p2(Math.floor(t / 60) % 60)}:${p2(t % 60)}` : `${Math.floor(t / 60)}:${p2(t % 60)}`; };
+  // Once a second, only the clock's text: nothing is rebuilt under a finger.
+  const paintInlineClock = () => { const el = root.querySelector(".inl-time"); if (el && run) el.textContent = clockText(elapsedMinutes(run)); };
+  function inlineCard(){
+    const task = tasks?.find((t) => t.id === run.taskId) || null;
+    const mins = elapsedMinutes(run), target = task ? targetMinutes(run, task) : 0, cap = runCap(target);
+    const paused_ = !!run.pausedAt, what = task?.title || "this task";
+    const hold = holdButton(`inline:${runKey()}`, `Hold to finish ${what}`, !task, () => finishRun(task, bookedMinutes(run, task)));
+    return h("div", { className: "now-card main hero running" + areaClass(task) },
+      task ? heroTop(task, "Running") : h("div", { className: "now-meta", textContent: "Running" }),
+      task && onOpen ? titleButton(task) : h("div", { className: "now-title", dir: "auto", textContent: task?.title || "That task is gone" }),
+      h("p", { className: "now-why inl-clock" }, h("b", { className: "inl-time", textContent: clockText(mins) }), target ? ` of ${dur(target)}` : "", paused_ ? " · paused" : ""),
+      mins > cap && h("div", { className: "focus-still", role: "status" },
+        h("p", { className: "focus-still-text", textContent: `Still on it? It's been ${dur(Math.round(mins))}. If you stopped earlier, Done and Stop count ${dur(Math.round(cap))}.` }),
+        h("div", { className: "focus-still-btns" },
+          h("button", { className: "btn line", type: "button", textContent: "Still on it", onclick: () => { const prev = run, m = stillOnMinutes(prev, task); run = { ...run, extra: (run.extra || 0) + m }; render(); extendRun(uid, prev, m).catch(fail); } }),
+          h("button", { className: "btn line", type: "button", textContent: "Stop", onclick: () => endSession() }))),
+      h("div", { className: "now-actions now-row" },
+        action(paused_ ? "play" : "pause", paused_ ? "Resume" : "Pause", `${paused_ ? "resume" : "pause"} ${what}`, { onclick: paused_ ? resume : pause }),
+        action("stop", "Stop", `stop ${what} for now; the time so far is kept`, { onclick: () => endSession() }),
+        action("focus", "Focus", "Deep Focus, full screen", { onclick: () => setMode("focus") }),
+        hold));
   }
 
   // Switch's list: the other tasks, or the way into Someday when there are none.
@@ -837,8 +900,11 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onFree
   let reported = null, reportedNeeds = null;
 
   function render(){
-    const live = !!run; // paused or not, a run is focus mode
-    document.body.classList.toggle("focus", live || !!handoff);
+    const live = !!run; // paused or not
+    const deepOn = focusing();
+    if (!deepOn) deep.leave();
+    else if (!deep.isOn()) deep.enter(runKey()); // a reload or the other device: no tap, so no full screen, but awake and counting
+    document.body.classList.toggle("focus", deepOn || !!handoff);
     const hrs = dayHours(settings);
     if (!isNight(Date.now(), hrs)) nightFree = false;
     const night = !live && !handoff && tasks != null && isNight(Date.now(), hrs) && !nightFree;
@@ -850,7 +916,10 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onFree
       if (nn !== reportedNeeds) { reportedNeeds = nn; onNeedsCount?.(nn); }
     }
 
-    if (live) { fill(renderFocus()); return; }
+    if (deepOn) { fill(renderFocus()); return; }
+    // Started, and the dashboard stays: the card is the running task (Mor,
+    // 2026-10-06). Deep Focus is one tap away on it.
+    if (live && tasks != null) { showing(run.taskId); fill(topOf(calendarNow()), inlineCard(), glance(), toast && toastView()); return; }
     if (handoff) {
       // The task just worked on isn't offered straight back.
       const m = momentInput();
@@ -1004,6 +1073,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onFree
     skips.delete(id);
     begin(task);
   };
+  deep.watch(() => { if (focusing()) render(); }); // came back from another app: the away line
   const unsubs = [
     watchWhere((v) => { located = v; render(); }),
     watchProjectColors(() => render()),
@@ -1019,7 +1089,11 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onFree
   // re-renders when the free window's minute changes.
   const tick = setInterval(() => {
     if (document.hidden) return;
-    if (run && !run.pausedAt) { const c = Math.floor(elapsedMinutes(run) * 60); if (c !== lastClock) { lastClock = c; render(); } return; }
+    if (run && !run.pausedAt) {
+      const c = Math.floor(elapsedMinutes(run) * 60);
+      if (c !== lastClock) { lastClock = c; if (focusing()) render(); else paintInlineClock(); }
+      return;
+    }
     if (windowMark(calendarNow()) !== lastWindow) render();
   }, 1000);
   const onVisible = () => { if (!document.hidden) render(); };
@@ -1049,6 +1123,6 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onFree
       begin(task);
     },
     startFromNotice(id){ noticeStart = id; tryNoticeStart(); },
-    unmount(){ showing(null); clearTimeout(toastTimer); document.body.classList.remove("focus"); document.documentElement.classList.remove("night"); unsubs.forEach((u) => u()); clearInterval(tick); document.removeEventListener("visibilitychange", onVisible); root.replaceChildren(); root.hidden = true; },
+    unmount(){ deep.leave(); deep.watch(() => {}); showing(null); clearTimeout(toastTimer); document.body.classList.remove("focus"); document.documentElement.classList.remove("night"); unsubs.forEach((u) => u()); clearInterval(tick); document.removeEventListener("visibilitychange", onVisible); root.replaceChildren(); root.hidden = true; },
   };
 }

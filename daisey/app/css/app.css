@@ -1289,3 +1289,13 @@ body.focus .shell { block-size: auto; min-block-size: 100dvh; overflow: visible;
 .plan-h { margin: 0 0 6px; font-size: 12px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--ink-2); }
 .glance-row:has(.gl-go:not(:empty)) .gl-go { font-size: 12px; font-weight: 600; white-space: nowrap; }
 .glance-row { grid-template-columns: 44px 1fr auto; }
+
+/* Start no longer means full screen (2026-10-06): the card runs on the dashboard, Deep Focus is one tap away. */
+.now-notnow { margin-block-start: 8px; }
+.now-card.running .inl-clock { font-size: 15px; }
+.now-card.running .inl-time { font-size: 30px; font-weight: 600; font-variant-numeric: tabular-nums; margin-inline-end: 4px; }
+.focus-away { margin: 8px 0 0; text-align: center; font-size: 13px; color: var(--ink-2); }
+.focus-help { margin-block-start: 10px; font-size: 13px; color: var(--ink-2); }
+.focus-help summary { cursor: pointer; min-block-size: 32px; display: flex; align-items: center; justify-content: center; }
+.focus-help p { margin: 4px 0 0; line-height: 1.4; }
+.now-row .hold { block-size: 88px; min-block-size: 0; }

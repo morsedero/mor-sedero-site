@@ -29,6 +29,14 @@ Five rules every feature must pass. If a feature breaks one, it doesn't ship.
 
 **The test for every new feature** (Mor, 2026-10-06, master spec): *does this help Daisey decide what I should do, or does it just help me manage more information?* More lists, tags, metadata, dashboards or things to keep up to date fail it. The user manages their life; Daisey manages the plan.
 
+## Start, Focus and Deep Focus (Mor, 2026-10-06)
+
+Start no longer means full screen. The Now card is **Not now ▾ · Done · Focus · Start**:
+
+- **Start** makes the task Active (`state/now`, `mode: "inline"`) and the card becomes the running card on the dashboard: the clock, Pause, Stop, Focus and hold-to-finish. The Schedule/Projects panel stays visible, for whoever wants to work while seeing their day. Active is the same strong signal either way (reality.js).
+- **Focus** (on the card, or on the running card) is **Deep Focus**: `mode: "focus"`, the old focus screen plus what a web page can honestly do (`deep.js`): full screen (on the tap), screen kept awake, and "Away 2× · 6 min" when you come back after leaving Daisey. It cannot block apps or silence the phone and says so (a "Block other apps?" note points to Android's App pinning). **Dashboard** leaves it and keeps the task running. Batches and runs from before modes existed open in Deep Focus.
+- **Not now** opens Later · Switch · Pending (their asks as before). **Done** on an idle card means already finished: no time booked, with an Undo.
+
 ## Reality over plan
 
 A calendar event, a booked slot and anything Daisey plans are **predictions**. What you actually do is **evidence**, and evidence wins. Daisey adapts on its own and asks only when a decision really needs you (Mor, 2026-10-06). The rules live in one module, `app/js/reality.js`, which both the Now card and the server's notifications read, so they can't disagree.

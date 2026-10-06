@@ -73,6 +73,7 @@ const PATHS = {
   home: "M3 11l9-7 9 7M5 10v10h14V10",
   globe: "M12 3a9 9 0 1 0 0 18 9 9 0 1 0 0-18M3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9s-1.3 6.4-3.8 9c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3",
   check: "M5 12l5 5 9-10",
+  focus: "M4 9V5.5A1.5 1.5 0 0 1 5.5 4H9M15 4h3.5A1.5 1.5 0 0 1 20 5.5V9M20 15v3.5a1.5 1.5 0 0 1-1.5 1.5H15M9 20H5.5A1.5 1.5 0 0 1 4 18.5V15",
   plus: "M12 5v14M5 12h14",
   edit: "M4 20h4L19 9l-4-4L4 16v4ZM13.5 6.5l4 4", // a pencil: the task's settings
   play: "M7 4.5v15l13-7.5z", // filled, not stroked (FILLED)

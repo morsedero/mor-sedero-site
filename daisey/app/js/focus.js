@@ -23,6 +23,7 @@ import { h, bdi, dur, icon } from "./ui.js";
 import { LABELS } from "./model.js";
 import { elapsedMinutes, runCap } from "./reality.js";
 import { daisy, areaClass, areaName, projectShown } from "./look.js";
+import { awayText } from "./deep.js";
 
 const BATCH_NOUN = { call: ["call", "calls"], admin: ["admin bit", "admin bits"], errand: ["errand", "errands"] };
 // "3 calls", "1 errand".
@@ -98,7 +99,7 @@ export function burst(x, y, n = 14, reach = 90){
 const HOLD_MS = 1000;
 let held = null; // { key, el, onDone }: the current run's button
 
-function holdButton(key, aria, disabled, onDone){
+export function holdButton(key, aria, disabled, onDone){
   if (held?.key === key){
     const { el } = held, hadFocus = document.activeElement === el;
     held.onDone = onDone; el.disabled = disabled; el.ariaLabel = aria;
@@ -185,7 +186,8 @@ let screen = null; // { key, el, parts, cb }
 
 // run: the state/now doc. task: the task it names (may be missing if it was
 // deleted elsewhere — then Done is disabled).
-// Callers: onDone() · onExtend(minutes) · onPause() · onResume() · onStop() · onPending().
+// Callers: onDone() · onExtend(minutes) · onPause() · onResume() · onStop() · onPending() · onBack()
+// (leave Deep Focus, keep the task running on the dashboard).
 export function focusView(run, task, cb){
   const key = `${run.taskId}@${run.startedAt}`;
   const mins = elapsedMinutes(run), target = task ? targetMinutes(run, task) : 0;
@@ -204,6 +206,7 @@ export function focusView(run, task, cb){
         onclick: () => screen && screen.cb.onExtend(stillOnMinutes(screen.run, screen.task)) }),
       task && h("button", { className: "btn line", type: "button", textContent: "Finished earlier", onclick: () => askTook() }));
     const still = h("div", { className: "focus-still", role: "status", hidden: true }, stillText, stillBtns);
+    const away = h("p", { className: "focus-away", role: "status", hidden: true });
     const askTook = () => {
       const s = screen;
       if (!s) return;
@@ -224,14 +227,20 @@ export function focusView(run, task, cb){
       h("section", { className: "focus-card", ariaLabel: "Focus" }, title,
         h("p", { className: "focus-hold", textContent: "I'll hold everything else." }), ring.el),
       still,
+      away,
       h("div", { className: "focus-spacer" }),
       ctlRow(() => (screen?.paused ? screen.cb.onResume() : screen?.cb.onPause()),
         `Stop ${what} for now; the time so far is kept`, () => screen?.cb.onStop()),
       hold,
       h("div", { className: "focus-row" },
         quiet("plus", "15 min", `Give ${what} 15 more minutes`, () => screen?.cb.onExtend(15)),
-        task && quiet("pending", "Pending", `${what} is blocked — stop and set it to Pending`, () => screen?.cb.onPending?.())));
-    screen = { key, el, title, ring, hold, still, stillText };
+        task && quiet("pending", "Pending", `${what} is blocked — stop and set it to Pending`, () => screen?.cb.onPending?.())),
+      h("div", { className: "focus-row" },
+        quiet("back", "Dashboard", `Leave Deep Focus; ${what} keeps running`, () => screen?.cb.onBack?.())),
+      // Honest about the limit: a web page can't block apps (deep.js).
+      h("details", { className: "focus-help" }, h("summary", { textContent: "Block other apps?" }),
+        h("p", { textContent: "Daisey can't block apps or silence your phone from here, it only holds the screen and tells you when you've been away. Android can: search Settings for “App pinning” (Samsung: “Pin windows”), turn it on, then pin Daisey from the recent-apps screen." })));
+    screen = { key, el, title, ring, hold, still, stillText, away };
   }
   screen.cb = cb;
   screen.run = run;
@@ -242,6 +251,9 @@ export function focusView(run, task, cb){
   pauseState(screen.el, !!run.pausedAt, what);
   screen.paused = !!run.pausedAt;
   screen.title.textContent = task?.title || "That task is gone";
+  const awayNow = awayText();
+  screen.away.hidden = !awayNow;
+  screen.away.textContent = awayNow;
   setRing(screen.ring, mins, target);
   holdButton(key, `Hold to finish ${what}`, !task, () => screen?.cb.onDone());
   return screen.el;

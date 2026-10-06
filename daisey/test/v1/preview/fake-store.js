@@ -22,7 +22,7 @@ export const restoreTask = (uid, id, fields) => patchTask(uid, id, fields);
 export const watchRun = watch("now");
 export const watchSkips = watch("skips");
 export const saveSkips = (uid, state) => { docs.skips = state; return ok("skips"); };
-export const startRun = (uid, task) => { docs.now = { taskId: task.id, startedAt: Date.now(), extra: 0 }; patchTask(uid, task.id, startedTask(task)); return ok("now"); };
+export const startRun = (uid, task, mode = "inline") => { docs.now = { taskId: task.id, startedAt: Date.now(), extra: 0, mode }; patchTask(uid, task.id, startedTask(task)); return ok("now"); };
 export const startBatch = (uid, ts) => { const now = Date.now(); docs.now = { taskId: ts[0].id, batch: ts.map((t) => t.id), done: [], mark: now, startedAt: now, extra: 0 }; ts.forEach((t) => patchTask(uid, t.id, startedTask(t))); return ok("now"); };
 export const tickBatch = (uid, run, task, m) => { docs.now = { ...run, done: [...(run.done || []), task.id], mark: Date.now() }; patchTask(uid, task.id, workedTask(task, m, { finished: true })); return ok("now"); };
 export const endBatch = (uid, left, m) => { docs.now = null; left.forEach((t) => patchTask(uid, t.id, { spentMinutes: (t.spentMinutes || 0) + Math.round(m / left.length) })); return ok("now"); };
