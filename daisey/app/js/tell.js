@@ -107,8 +107,8 @@ export function mountTell(form, input, mic, uid, { openAdd }){
     if (a.kind === "add") {
       if (a.project) bits.push(a.project);
       if (a.size) bits.push(dur(a.size));
+      if (a.notBefore) bits.push(`starts ${day(a.notBefore)}`);
       if (a.due) bits.push(`${a.dateKind === "deadline" ? "deadline" : "by"} ${day(a.due)}`);
-      if (a.notBefore) bits.push(`from ${day(a.notBefore)}`);
     } else if (a.kind === "update") {
       if (a.title) bits.push(`rename → ${a.title}`);
       if (a.project) bits.push(`project → ${a.project}`);

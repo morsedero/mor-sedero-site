@@ -79,6 +79,7 @@ const SCENARIOS = {
       steps: [{ text: "Bounce", done: true }, { text: "Layer", done: false }] },
     { title: "Combat SFX pass", project: "Monster Punk", size: 30, area: "work", due: day(6), dateKind: "deadline" },
     { title: "Send stems to QA", project: "Monster Punk", size: 15, area: "work", due: day(-1), dateKind: "deadline" },
+    { title: "Boss intro sting", project: "Monster Punk", size: 30, area: "work", notBefore: day(2), due: day(4), dateKind: "deadline" },
     { title: "Credits list", project: "Monster Punk", size: 15, area: "work", due: day(20), dateKind: "deadline" },
     // Enough done and parked for two-digit counts: the toggles stay one row.
     ...Array.from({ length: 12 }, (_, i) => ({ title: `Old cue ${i + 1}`, project: "Monster Punk", size: 15, area: "work", over: { status: "done", doneAt: Date.now() - (i + 3) * 864e5 } })),
