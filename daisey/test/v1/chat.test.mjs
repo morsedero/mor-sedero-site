@@ -4,7 +4,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { createRequire } from "node:module";
 
-const { tidy } = createRequire(import.meta.url)("../../functions/daisey-now-chat.js");
+const { tidy, handler } = createRequire(import.meta.url)("../../functions/daisey-now-chat.js");
 const ids = new Set(["t1", "t2"]);
 
 test("keeps adds, and changes only to tasks that exist", () => {
@@ -64,4 +64,15 @@ test("a plan question keeps its part, defaulting to the whole day", () => {
 test("a moment can move today's day end", () => {
   const out = tidy({ reply: "", actions: [{ kind: "moment", dayEnd: "23:00" }, { kind: "moment", dayEnd: "11pm" }] }, ids);
   assert.deepEqual(out.actions, [{ kind: "moment", dayEnd: "23:00" }]);
+});
+
+test("guest chat requires the explicit guest marker and Netlify client IP", async () => {
+  const body = JSON.stringify({ guest: true, text: "Add a task", today: "2026-10-06" });
+  const response = await handler({ httpMethod: "POST", headers: { "x-daisey-guest": "1" }, body });
+  assert.equal(response.statusCode, 503);
+  assert.deepEqual(JSON.parse(response.body), { error: "guest_limit_unavailable" });
+
+  const noGuestFlag = await handler({ httpMethod: "POST", headers: {}, body });
+  assert.equal(noGuestFlag.statusCode, 401);
+  assert.deepEqual(JSON.parse(noGuestFlag.body), { error: "no_session" });
 });

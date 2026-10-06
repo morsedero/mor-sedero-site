@@ -18,12 +18,13 @@
 // exactly what they hold. tidy() then drops whatever is still out of place,
 // and one retry covers a busy model or an answer that ran away.
 //
-// Each user gets DAILY_CAP messages a day (Netlify Blobs, chat:<uid>:<date>),
-// so one runaway tab can't run up the bill.
+// Each signed-in user or guest IP gets DAILY_CAP messages per UTC day
+// (Netlify Blobs, chat:<id>:<date>), so request-supplied dates cannot reset it.
 //
 // Errors: 401 no_session · 400 bad_input · 429 daily_cap · 503 not_configured
 // (no key set) · 502 model.
 const { verifyIdToken } = require("./_daisey-lib/firebase-auth");
+const crypto = require("crypto");
 // Blobs is required where it is used, so the tests can load tidy() without it.
 
 const MODEL = process.env.GEMINI_MODEL || "gemini-3.5-flash-lite";
@@ -194,7 +195,7 @@ function tidy(out, ids){
 
 // The day's count for this user; true when it's allowed. If Blobs can't be
 // reached the cap doesn't block — better a message too many than a dead feature.
-async function bump(uid, day){
+async function bump(uid, day, failClosed = false){
   try {
     const { openStore } = require("./_daisey-lib/blobs");
     const store = openStore("daisey-chat");
@@ -205,7 +206,7 @@ async function bump(uid, day){
     return true;
   } catch (e) {
     console.warn("[daisey-now-chat] cap store", e.message);
-    return true;
+    return failClosed ? null : true;
   }
 }
 
@@ -244,21 +245,36 @@ exports.handler = async (event) => {
   // GET: is it set up? Says only whether a key is present, never the key.
   if (event.httpMethod === "GET") return reply(200, { configured: !!process.env.GEMINI_API_KEY, model: MODEL });
   if (event.httpMethod !== "POST") return fail(405, "method");
+  let body;
+  try { body = JSON.parse(event.body || "{}"); } catch { return fail(400, "bad_input"); }
+  const headers = event.headers || {};
+  const guest = body.guest === true && (headers["x-daisey-guest"] || headers["X-Daisey-Guest"]) === "1";
   let claims;
-  try {
-    const token = (event.headers.authorization || event.headers.Authorization || "").replace(/^Bearer\s+/i, "");
-    claims = await verifyIdToken(token);
-  } catch {
-    return fail(401, "no_session");
+  let rateId;
+  if (guest) {
+    // Trust only Netlify's client-IP header, not caller-controlled forwarded
+    // headers. Store a hash rather than the raw address in the rate-limit key.
+    const ip = headers["x-nf-client-connection-ip"];
+    if (!ip) return fail(503, "guest_limit_unavailable");
+    rateId = `guest:${crypto.createHash("sha256").update(ip).digest("hex")}`;
+  } else {
+    try {
+      const token = (headers.authorization || headers.Authorization || "").replace(/^Bearer\s+/i, "");
+      claims = await verifyIdToken(token);
+    } catch {
+      return fail(401, "no_session");
+    }
+    rateId = claims.sub;
   }
   const key = process.env.GEMINI_API_KEY;
   if (!key) return fail(503, "not_configured");
 
-  let body;
-  try { body = JSON.parse(event.body || "{}"); } catch { return fail(400, "bad_input"); }
   const text = clean(body.text, MAX_TEXT);
   if (!text || !isDay(body.today)) return fail(400, "bad_input");
-  if (!(await bump(claims.sub, body.today))) return fail(429, "daily_cap");
+  const rateDay = guest ? new Date().toISOString().slice(0, 10) : body.today;
+  const allowed = await bump(rateId, rateDay, guest);
+  if (allowed === null) return fail(503, "guest_limit_unavailable");
+  if (!allowed) return fail(429, "daily_cap");
 
   const tasks = (Array.isArray(body.tasks) ? body.tasks : []).slice(0, MAX_TASKS)
     .map((t) => ({ id: clean(t.id, 60), title: clean(t.title, 120), project: clean(t.project, 60), due: isDay(t.due) ? t.due : undefined, status: clean(t.status, 12) }))

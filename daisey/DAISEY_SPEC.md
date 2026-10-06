@@ -248,9 +248,9 @@ One bar under the Now card, text or hold-to-talk. It turns plain language into c
 
 **Engine.** A language model parses messages into structured actions (add, edit, set context, query). The Now engine logic itself stays rule-based, so picks are explainable and predictable.
 
-**Built (Oct 5, 2026).** The Tell Daisey bar at the bottom of the app (`app/js/tell.js`). Server side: `functions/daisey-now-chat.js` calls Gemini Flash-Lite (`gemini-3.5-flash-lite`, override with `GEMINI_MODEL`; 3.5 beat 3.1 on the same messages, ~1 s each) through `generateContent` with a JSON schema, and returns proposed actions: add (one or several), update (dates, title, project, size), waiting, drop, and moment (energy/place right now). Nothing is written server-side; the app shows one card per action and applies only on Apply. The key is `GEMINI_API_KEY` in Netlify's environment; without it the bar falls back to opening Add task with the text. Each user gets 60 messages a day (Netlify Blobs). The message, today's date and the open tasks' titles, projects and dates go to Google with each request. Voice uses the browser's own speech-to-text. "I have 30 minutes" (a moment with minutes) sets the Now card's window, counting down from when it was said; it only ever shortens the window. A "new project" message gets its own card whose button opens the first task with the project set — projects exist only through their tasks.
+**Built (Oct 5, 2026).** The Tell Daisey bar at the bottom of the app (`app/js/tell.js`). Server side: `functions/daisey-now-chat.js` calls Gemini Flash-Lite (`gemini-3.5-flash-lite`, override with `GEMINI_MODEL`; 3.5 beat 3.1 on the same messages, ~1 s each) through `generateContent` with a JSON schema, and returns proposed actions: add (one or several), update (dates, title, project, size), waiting, drop, and moment (energy/place right now). Nothing is written server-side; the app shows one card per action and applies only on Apply. The key is `GEMINI_API_KEY` in Netlify's environment; without it the bar falls back to opening Add task with the text. Signed-in users get 60 messages a day per account; guests get 60 a day per client IP, rate-limited server-side. The message, today's date and the open task titles, projects and dates go to Gemini with each request. Voice uses the browser's own speech-to-text. "I have 30 minutes" (a moment with minutes) sets the Now card's window, counting down from when it was said; it only ever shortens the window. A "new project" message gets its own card whose button opens the first task with the project set — projects exist only through their tasks.
 
-**Adding by hand.** A round + at the start of the bar opens Task or Event: the one place to add either without Tell Daisey (Mor, Oct 5). Event opens on the day the Today panel is showing; it is off while the calendar isn't connected. There is no other add button in the app.
+**Adding by hand.** A round + at the start of the bar opens Task or Event: the one place to add either without Tell Daisey (Mor, Oct 5). Event opens on the day the Today panel is showing; in guest mode it saves locally, otherwise it requires a connected calendar. There is no other add button in the app.
 
 ## Google Calendar
 
@@ -324,7 +324,7 @@ v1 is done when the Now card picks a task you actually start, most days, for one
 **In v1 (build in this order):**
 
 - [x] Google sign-in + Firebase storage, synced across phone and computer
-- [x] Guest mode: full planner with tasks, events, and settings stored only in this browser; no Google Calendar sync, chat, notifications, or cross-device sync
+- [x] Guest mode: full planner with tasks, events, settings, and Tell Daisey stored only in this browser; no Google Calendar sync, notifications, or cross-device sync
 - [x] Task data model (fields above, including type, where, open hours, stakes, date kind)
 - [x] Now card UI with Start · Later · Switch · Pending, Hebrew and RTL ready
 - [x] Running timer and Done flow
@@ -357,7 +357,7 @@ v1 is done when the Now card picks a task you actually start, most days, for one
 
 **Decisions:**
 
-- **Storage:** signed-in data syncs via Firebase and Google sign-in; guest tasks, events, and settings stay in this browser's localStorage and are not transferred or synced. Google Calendar sync requires sign-in.
+- **Storage:** signed-in data syncs via Firebase and Google sign-in; guest tasks, events, and settings stay in this browser's localStorage and are not transferred or synced. Google Calendar sync requires sign-in. Tell Daisey works for both, with guest requests rate-limited per client IP.
 - **Chat model:** Gemini API. The key never sits in page code; a small server function (Netlify Function if the site is on Netlify) calls Gemini.
 - **Language:** Hebrew and English from day one: RTL layout, mixed-language task titles, chat and voice in both.
 - **Finished-task history:** used for learning only in v1; no history screen.

@@ -31,6 +31,7 @@ const SAID = {
   network: "Couldn't reach Daisey's helper.",
   bad_input: "Couldn't read that one. Try saying it another way?",
   no_session: "Signed out. Sign in again and retry.",
+  guest_limit_unavailable: "Tell Daisey is temporarily unavailable. Try again shortly.",
 };
 const day = (s) => new Date(`${s}T12:00`).toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" });
 const ENERGY = { low: "Low energy", medium: "Medium energy", high: "High energy" };
@@ -52,7 +53,7 @@ const HINT_MS = 4500;
 
 // form/input/mic: the bar's own elements (index.html). openAdd(project, title):
 // the Add task form, prefilled.
-export function mountTell(form, input, mic, uid, { openAdd, openTask }){
+export function mountTell(form, input, mic, uid, { openAdd, openTask, guest = false }){
   let tasks = [];
   const panel = h("section", { className: "tell-panel", ariaLabel: "What Daisey understood", ariaLive: "polite", hidden: true });
   form.before(panel);
@@ -80,11 +81,15 @@ export function mountTell(form, input, mic, uid, { openAdd, openTask }){
     const open = tasks.filter((t) => t.status !== "done" && t.status !== "dropped");
     let res, body;
     try {
+      const headers = { "Content-Type": "application/json" };
+      if (guest) headers["X-Daisey-Guest"] = "1";
+      else headers.Authorization = `Bearer ${await idToken()}`;
       res = await fetch(URL_, {
         method: "POST",
-        headers: { Authorization: `Bearer ${await idToken()}`, "Content-Type": "application/json" },
+        headers,
         body: JSON.stringify({
           text, today: localDate(), weekday: new Date().toLocaleDateString("en", { weekday: "long" }),
+          ...(guest ? { guest: true } : {}),
           tasks: open.map((t) => ({ id: t.id, title: t.title, project: t.project, due: t.due || undefined, status: t.status })),
           projects: [...new Set(open.map((t) => t.project))],
         }),

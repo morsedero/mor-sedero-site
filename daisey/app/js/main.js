@@ -363,17 +363,15 @@ async function boot(){
         document.addEventListener("click", (e) => { if (!plusMenu.hidden && !plusMenu.contains(e.target)) setPlus(false); });
         document.addEventListener("keydown", (e) => { if (e.key === "Escape") setPlus(false); });
         // Tell Daisey: plain language in, confirm cards out (tell.js).
-        if (isGuest) {
-          $("#tellInput").disabled = true;
-          $("#tellInput").placeholder = "Sign in to use Tell Daisey";
-          $("#mic").disabled = true;
-        } else {
-          import("./tell.js").then(({ mountTell }) => {
-            if (mounted !== m) return; // signed out while it loaded
-            m.tell = mountTell($("#tell"), $("#tellInput"), $("#mic"), user.uid, { openAdd: (project, title) => m.adder.open(project ?? tabProject(), title), openTask: (task) => m.adder.edit(task) });
-            if (shared) m.tell.ask(shared.slice(0, 800));
-          }).catch((e) => console.error("[daisey] tell", e));
-        }
+        import("./tell.js").then(({ mountTell }) => {
+          if (mounted !== m) return; // signed out while it loaded
+          m.tell = mountTell($("#tell"), $("#tellInput"), $("#mic"), user.uid, {
+            guest: isGuest,
+            openAdd: (project, title) => m.adder.open(project ?? tabProject(), title),
+            openTask: (task) => m.adder.edit(task),
+          });
+          if (shared) m.tell.ask(shared.slice(0, 800));
+        }).catch((e) => console.error("[daisey] tell", e));
         for (const s of SIGNED_IN) $(s).hidden = false;
       }).catch((e) => console.error("[daisey] boot views", e));
   };
