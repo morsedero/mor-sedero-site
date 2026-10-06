@@ -262,6 +262,10 @@ Daisey speaks first (Mor, Oct 6, 2026; Android, app notifications; no daily limi
 | Free time after a meeting | A busy event ended in the last 10 min and 30+ free min follow | "Teaching is over. 1 h 25 min free. Next: Send invoice to Uri. <why>" (the Now card's own pick for that window) |
 | Booked task starting | A booked slot starts (within a few minutes) | "Mix review, booked 14:00–15:30." |
 
+| Before meetings | Up to 45 min before an event that names someone a Pending task waits on | "Coffee with Yuval at 14:00: You're waiting on Yuval for: Pre-attack cue." |
+
+**Built Oct 6 (second round):** a 10-min buffer before the next event; tasks pushed to a later day twice get "Keeps sliding" in Needs you (shrink · keep · not now · let go); weekly goals per area, asked in Needs you when missing and kept in Settings; "Again? Next week · Next month" after Done (a fresh copy, no repeat engine); "Nudge on WhatsApp" on Pending tasks (a check-in in the task's language, you send it); Tell Daisey handles done, events at a time, and questions (what's next / due today or this week / what am I waiting on); sharing text or a link into Daisey from the phone reads it like a Tell message.
+
 **Today chip** (header, next to ✓ N): tap to open the same brief, live from now, as a small message; ✕, Escape or a tap elsewhere closes it.
 
 **How it works**: Web Push. `functions/daisey-now-morning.js` runs every 5 minutes; `_daisey-lib/notify.js` decides, using the app's own engine, brief and Needs-you modules (required from `app/js`, bundled with esbuild), so the server and the app can't disagree. The server can't read Firestore, so while notifications are on the app sends `daisey-now-push` a snapshot of its open tasks (and those done in the last 2 days) whenever they change: scoring fields only, never notes, links, steps or who a task waits on. The calendar is read live. Keys: `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` in Netlify's environment.

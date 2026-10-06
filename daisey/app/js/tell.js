@@ -13,8 +13,11 @@
 // The mic uses the browser's own speech-to-text, so a spoken message goes
 // down the same path as a typed one. Where there's none, it opens the keyboard.
 import { idToken } from "./firebase.js";
-import { watchTasks, addTask, updateTask, saveMoment } from "./store.js";
-import { localDate, LABELS } from "./model.js";
+import { watchTasks, addTask, updateTask, saveMoment, finishTask } from "./store.js";
+import { localDate, LABELS, dayAfter } from "./model.js";
+import { createEvent } from "./calendar.js";
+import { rank } from "./engine.js";
+import { effectiveDue } from "./triage.js";
 import { h, bdi, dur, flash } from "./ui.js";
 
 const URL_ = "/.netlify/functions/daisey-now-chat";
@@ -81,8 +84,9 @@ export function mountTell(form, input, mic, uid, { openAdd }){
   function proposal(text, { reply, actions = [], question, choices = [] }){
     const list = [...actions];
     const draw = () => {
-      const cards = list.map((a, i) => card(a, () => { list.splice(i, 1); draw(); }));
-      const applicable = list.filter((a) => a.kind !== "project"); // a project card has its own button
+      const queries = list.filter((a) => a.kind === "query");
+      const cards = list.map((a, i) => a.kind === "query" ? null : card(a, () => { list.splice(i, 1); draw(); })).filter(Boolean);
+      const applicable = list.filter((a) => a.kind !== "project" && a.kind !== "query"); // a project card has its own button
       show(
         h("div", { className: "tell-head" },
           h("p", { className: "tell-reply", dir: "auto", textContent: reply || (list.length ? "Here's what I got:" : "Nothing to change.") }),
@@ -91,6 +95,7 @@ export function mountTell(form, input, mic, uid, { openAdd }){
           h("p", { dir: "auto", textContent: question }),
           h("div", { className: "tell-choices" }, ...choices.map((c) => h("button", { className: "chip", type: "button", dir: "auto", textContent: c,
             onclick: () => ask(`${text}\n(${question} → ${c})`) })))),
+        ...queries.map(answer),
         cards.length > 0 && h("ul", { className: "tell-cards" }, ...cards),
         applicable.length > 0 && h("div", { className: "tell-btns" },
           h("button", { className: "btn primary start", type: "button", textContent: applicable.length > 1 ? `Apply all ${applicable.length}` : "Apply",
@@ -98,6 +103,28 @@ export function mountTell(form, input, mic, uid, { openAdd }){
           h("button", { className: "btn quiet", type: "button", textContent: "Cancel", onclick: close })));
     };
     draw();
+  }
+
+  // A question about the list, answered here from the tasks the app already
+  // has (2026-10-06): what's next (the engine's top 3, without the calendar's
+  // window), what's due today / this week, what's pending on whom.
+  function answer(q){
+    const open = tasks.filter((t) => t.status === "ready" || t.status === "waiting");
+    let rows = [];
+    if (q.query === "next") {
+      rows = rank(tasks, { realWindow: false }).ranked.slice(0, 3).map((s) => [s.task.title, s.why]);
+    } else if (q.query === "due") {
+      const until = q.range === "week" ? dayAfter(6) : localDate();
+      rows = open.filter((t) => t.due && effectiveDue(t) <= until).sort((a, b) => effectiveDue(a).localeCompare(effectiveDue(b)))
+        .map((t) => [t.title, `${t.dateKind === "deadline" ? "deadline" : "planned"} ${day(effectiveDue(t))}`]);
+    } else {
+      rows = open.filter((t) => t.status === "waiting").map((t) => [t.title, t.waitingOn ? `waiting on ${t.waitingOn}` : "pending"]);
+    }
+    return h("div", { className: "tell-answer" }, rows.length
+      ? h("ul", { className: "tell-cards" }, ...rows.map(([title, meta]) => h("li", { className: "tell-card" },
+        h("div", { className: "tell-card-main" }, h("span", { className: "tell-title", dir: "auto", textContent: title }),
+          meta && h("span", { className: "tell-meta", dir: "auto", textContent: meta })))))
+      : h("p", { className: "tell-reply", textContent: "Nothing there." }));
   }
 
   // One proposed change, in words. ✕ drops it; a new task can open in the full form.
@@ -117,12 +144,14 @@ export function mountTell(form, input, mic, uid, { openAdd }){
       if (a.notBefore) bits.push(`not before ${day(a.notBefore)}`);
     } else if (a.kind === "waiting") {
       bits.push(a.waitingOn ? `pending: waiting on ${a.waitingOn}` : "pending");
+    } else if (a.kind === "event") {
+      bits.push(`${day(a.date)} ${a.time}`, dur(a.minutes));
     } else if (a.kind === "moment") {
       if (a.energy) bits.push(ENERGY[a.energy]);
       if (a.place) bits.push(PLACE[a.place]);
     }
-    const LABEL = { add: "New task", update: "Change", waiting: "Pending", drop: "Drop", moment: "Right now", project: "New project" };
-    const title = a.kind === "add" ? a.title : a.kind === "project" ? a.project : a.kind === "moment" ? null : t?.title;
+    const LABEL = { add: "New task", update: "Change", waiting: "Pending", drop: "Drop", moment: "Right now", project: "New project", done: "Done", event: "New event" };
+    const title = a.kind === "add" || a.kind === "event" ? a.title : a.kind === "project" ? a.project : a.kind === "moment" ? null : t?.title;
     // A project lives through its tasks, so it starts with the first one:
     // the task form, with the new project already chosen.
     if (a.kind === "project") bits.push("starts with its first task");
@@ -144,7 +173,9 @@ export function mountTell(form, input, mic, uid, { openAdd }){
       const t = a.taskId ? byId(a.taskId) : null;
       const pick = (keys) => Object.fromEntries(keys.filter((k) => a[k] != null).map((k) => [k, a[k]]));
       if (a.kind === "add") return addTask(uid, pick(["title", "project", "size", "due", "dateKind", "notBefore"]), tasks);
+      if (a.kind === "event") return createEvent({ title: a.title, date: a.date, at: a.time, minutes: a.minutes });
       if (!t && a.kind !== "moment") return null; // gone since
+      if (a.kind === "done") return finishTask(uid, t);
       if (a.kind === "update") return updateTask(uid, t, pick(["title", "project", "size", "due", "dateKind", "notBefore"]), tasks);
       if (a.kind === "waiting") return updateTask(uid, t, { status: "waiting", waitingOn: a.waitingOn || "" }, tasks);
       if (a.kind === "drop") return updateTask(uid, t, { status: "dropped" }, tasks);
@@ -183,5 +214,6 @@ export function mountTell(form, input, mic, uid, { openAdd }){
     rec.start();
   };
 
-  return { unmount(){ stop(); rec?.abort(); close(); panel.remove(); form.onsubmit = mic.onclick = null; } };
+  // ask(text): a message from outside the bar (a share into Daisey).
+  return { ask, unmount(){ stop(); rec?.abort(); close(); panel.remove(); form.onsubmit = mic.onclick = null; } };
 }

@@ -288,8 +288,12 @@ async function boot(){
         // A notification's tap: "?open=wrap" on a fresh start, or a message
         // from sw.js when Daisey was already open.
         const openFrom = (what) => { if (what === "wrap" || what === "needs") { m.needs.open(what); screens.open("needs"); } };
-        const asked = new URL(location.href).searchParams.get("open");
-        if (asked) { history.replaceState(history.state, "", location.pathname); openFrom(asked); }
+        const params = new URL(location.href).searchParams;
+        const asked = params.get("open");
+        // Shared into Daisey (manifest share_target, 2026-10-06): read like a Tell message → cards.
+        const shared = [...new Set(["title", "text", "url"].map((k) => (params.get(k) || "").trim()).filter(Boolean))].join("\n");
+        if (asked || shared) history.replaceState(history.state, "", location.pathname);
+        if (asked) openFrom(asked);
         const onSwMessage = (e) => { if (e.data?.daisey === "open") openFrom(e.data.what); };
         navigator.serviceWorker?.addEventListener("message", onSwMessage);
         m.swMessages = { unmount(){ navigator.serviceWorker?.removeEventListener("message", onSwMessage); } };
@@ -315,6 +319,7 @@ async function boot(){
         import("./tell.js").then(({ mountTell }) => {
           if (mounted !== m) return; // signed out while it loaded
           m.tell = mountTell($("#tell"), $("#tellInput"), $("#mic"), user.uid, { openAdd: (project, title) => m.adder.open(project ?? tabProject(), title) });
+          if (shared) m.tell.ask(shared.slice(0, 800));
         }).catch((e) => console.error("[daisey] tell", e));
         for (const s of SIGNED_IN) $(s).hidden = false;
       }).catch((e) => console.error("[daisey] boot views", e));
