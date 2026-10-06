@@ -196,7 +196,6 @@ async function boot(){
         m.projects = mountProjects({ grid: $("#projPage"), view: $("#projectview") }, user.uid, {
           onOpen: (task) => m.adder.edit(task),
           onAdd: (project) => m.adder.open(project),
-          onNew: () => m.adder.newProject(),
           onStart: startTask,
           onScreen: (name) => (name ? screens.open("project") : screens.back()),
         });
