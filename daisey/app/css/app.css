@@ -807,7 +807,7 @@ button.now-title:focus-visible { outline: 2px solid var(--aink); outline-offset:
 .tell-panel { inset-block-end: calc(140px + env(safe-area-inset-bottom)); }
 
 .pgrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-block-start: 10px; }
-.pcard { display: grid; gap: 0; align-content: start; padding: 12px; border-radius: 16px; background: var(--tint); border: 1px solid var(--aline); color: var(--ink); font: inherit; text-align: start; cursor: pointer; }
+.pcard { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0; align-content: start; padding: 12px; border-radius: 16px; background: var(--tint); border: 1px solid var(--aline); color: var(--ink); font: inherit; text-align: start; cursor: pointer; }
 .pcard-top { display: flex; justify-content: space-between; align-items: center; gap: 6px; }
 .pcard-name { min-inline-size: 0; font-size: 15px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pcard-n { flex: none; font-size: 12px; color: var(--aink); }
