@@ -8,8 +8,7 @@
 //
 // The project screen. Back arrow + a row of project chips (the current one
 // filled in its colour); tap a chip, or swipe sideways anywhere that isn't a
-// task, for the next/previous project. A project card (name, nearest date,
-// progress), and under its bar two toggles, "X of Y done" and "Not now · N",
+// task, for the next/previous project. A project card (name, progress), and under its bar two toggles, "X of Y done" and "Not now · N",
 // each opening its drawer in the card: done tasks with a ticked tick that
 // reopens, Not now (status someday) with Bring back. Below the card, one
 // list in the order Daisey hands tasks out: ready first, then Pending,
@@ -93,12 +92,15 @@ const progress = (p) => (p.all.length ? p.done.length / p.all.length : 0);
 const bar = (p, cls) => h("div", { className: cls, role: "img", ariaLabel: `${p.done.length} of ${p.all.length} done` },
   h("span", { style: `inline-size:${Math.round(progress(p) * 100)}%` }));
 
-// The project card's one number: the nearest date. Open count and hours of
-// work were cut (Mor, 2026-10-06): the count repeated Next's, the hours
-// belong to planning, and "Work" restated the colour.
-function nearestDate(p){
-  const dated = [...p.next, ...p.pending].filter((t) => t.due).sort((a, b) => String(a.due).localeCompare(String(b.due)))[0];
-  return dated && [shortDay(dated.due).replace(/^\w+,?\s*/, ""), isOverdue(dated) ? "was due" : dated.dateKind === "deadline" ? "deadline" : "next date"];
+// A task's date says how close it is (Mor, 2026-10-06; the project card's
+// nearest-date badge is gone — a date belongs to its task): a deadline
+// within a week yellow, within 2 days orange, passed red and bold.
+const daysTo = (s) => Math.round((new Date(`${s}T12:00`) - new Date(`${localDate()}T12:00`)) / 864e5);
+function dueTone(t){
+  if (isOverdue(t)) return "over";
+  if (t.dateKind !== "deadline" || !t.due) return "";
+  const d = daysTo(t.due);
+  return d <= 2 ? "soon" : d <= 7 ? "near" : "";
 }
 
 // els: { grid, view, dialog }. onOpen(task): the task sheet. onAdd(project):
@@ -223,8 +225,11 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
     const parts = [durText(t.size || 30)];
     if (st.length) parts.push(`${st.filter((x) => x.done).length} of ${st.length} steps`);
     if (notYet(t)) parts.push(`from ${shortDay(t.notBefore)}`);
-    else if (t.due) parts.push(`${isOverdue(t) ? "was due" : t.dateKind === "deadline" ? "due" : "by"} ${shortDay(t.due)}`);
-    return parts.join(" · ");
+    else if (t.due) {
+      const tone = dueTone(t), text = `${isOverdue(t) ? "was due" : t.dateKind === "deadline" ? "due" : "by"} ${shortDay(t.due)}`;
+      parts.push(tone ? h("span", { className: `pj-date ${tone}`, textContent: text }) : text);
+    }
+    return parts.flatMap((x, i) => (i ? [" · ", x] : [x]));
   }
   const taskBtn = (t, kids) => h("button", { type: "button", className: "pj-task" + (notYet(t) ? " later" : ""), dir: dirOf(t.title),
     ariaLabel: `Open ${t.title}`, onclick: () => onOpen?.(t) }, ...kids);
@@ -266,14 +271,13 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
     const next = p.next.map((t) => swipeCard(t, taskBtn(t, [
       h("span", { className: "pj-row" }, h("span", { className: "pj-title", dir: "auto", textContent: t.title }),
         t.id === onCard && h("span", { className: "pj-now", textContent: "NOW" })),
-      h("span", { className: "pj-meta", dir: "ltr", textContent: nextMeta(t) })])));
+      h("span", { className: "pj-meta", dir: "ltr" }, ...nextMeta(t))])));
     const pending = p.pending.map((t) => swipeCard(t, taskBtn(t, [
       h("span", { className: "pj-row" },
         h("span", { className: "pj-col" }, h("span", { className: "pj-title", dir: "auto", textContent: t.title }),
           h("span", { className: "pj-meta", dir: "ltr" }, ...(t.waitingOn ? ["Waiting on ", bdi(t.waitingOn)] : ["Pending"]),
             t.checkOn ? (t.checkOn <= localDate() ? " · check now" : ` · I'll ask you ${shortDay(t.checkOn)}`) : "")),
         t.waitingOn && h("span", { className: "pj-who", ariaHidden: "true", textContent: [...t.waitingOn.trim()][0]?.toUpperCase() || "" }))])));
-    const due = nearestDate(p);
     if (drawer === "someday" && !p.someday.length) drawer = null;
     const drawerEl = drawer === "done" ? h("div", { className: "pj-drawer" },
       ...(p.done.length ? p.done.slice(0, 50).map(doneRow) : [h("p", { className: "pj-hint", textContent: "Nothing done yet." })]))
@@ -284,12 +288,11 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
       h("div", { className: "pj-top" },
         h("button", { type: "button", className: "pj-back", ariaLabel: "Back to home", onclick: () => onScreen?.(null) }, icon("back")), chips),
       h("div", { className: "pj-card" },
-        h("div", { className: "pj-card-top" }, h("h2", { className: "pj-name", dir: "auto", textContent: p.name }),
-          due && h("div", { className: "pj-due" }, h("span", { className: "pj-due-v", textContent: due[0] }), h("span", { className: "pj-due-l", textContent: due[1] }))),
+        h("div", { className: "pj-card-top" }, h("h2", { className: "pj-name", dir: "auto", textContent: p.name })),
         h("div", { className: "pj-prog" }, bar(p, "pbar big")),
         p.all.length > 0 && h("div", { className: "pj-tgs" },
-          toggle("done", h("span", { className: "pj-ok", ariaHidden: "true" }, icon("check")), `${p.done.length} of ${p.all.length} done`),
-          p.someday.length > 0 && toggle("someday", h("span", { className: "pj-zz", ariaHidden: "true" }), `Not now · ${p.someday.length}`)),
+          toggle("done", h("span", { className: "pj-ok", ariaHidden: "true" }, icon("check")), h("span", { className: "pj-tg-t", textContent: `${p.done.length} of ${p.all.length} done` })),
+          p.someday.length > 0 && toggle("someday", h("span", { className: "pj-zz", ariaHidden: "true" }), h("span", { className: "pj-tg-t", textContent: `Not now · ${p.someday.length}` }))),
         drawerEl),
       h("section", { className: "pj-sec pj-one", ariaLabel: "Tasks" }, ...next, ...pending,
         h("button", { type: "button", className: "pj-add", textContent: "+ Add a task", onclick: () => onAdd?.(p.name === INBOX ? "" : p.name) })),

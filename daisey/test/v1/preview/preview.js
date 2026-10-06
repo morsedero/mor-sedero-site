@@ -77,7 +77,12 @@ const SCENARIOS = {
   project: { tasks: [
     { title: "Boss smashes", project: "Monster Punk", size: 180, area: "work", due: day(3), dateKind: "deadline",
       steps: [{ text: "Bounce", done: true }, { text: "Layer", done: false }] },
-    { title: "Combat SFX pass", project: "Monster Punk", size: 30, area: "work" },
+    { title: "Combat SFX pass", project: "Monster Punk", size: 30, area: "work", due: day(6), dateKind: "deadline" },
+    { title: "Send stems to QA", project: "Monster Punk", size: 15, area: "work", due: day(-1), dateKind: "deadline" },
+    { title: "Credits list", project: "Monster Punk", size: 15, area: "work", due: day(20), dateKind: "deadline" },
+    // Enough done and parked for two-digit counts: the toggles stay one row.
+    ...Array.from({ length: 12 }, (_, i) => ({ title: `Old cue ${i + 1}`, project: "Monster Punk", size: 15, area: "work", over: { status: "done", doneAt: Date.now() - (i + 3) * 864e5 } })),
+    ...Array.from({ length: 11 }, (_, i) => ({ title: `Idea ${i + 1}`, project: "Monster Punk", size: 15, area: "work", over: { status: "someday" } })),
     { title: "Pre-attack cue notes", project: "Monster Punk", size: 15, area: "work", over: { status: "waiting", waitingOn: "Yuval", checkOn: day(2) } },
     { title: "Unicycle enemy batch", project: "Monster Punk", size: 60, area: "work", over: { status: "done", doneAt: Date.now() - 864e5 } },
     { title: "Fix boost-bus leak", project: "Monster Punk", size: 30, area: "work", over: { status: "done", doneAt: Date.now() - 2 * 864e5 } },

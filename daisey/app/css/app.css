@@ -841,18 +841,19 @@ body:has(.screen:not([hidden])) { overflow: hidden; }
 /* Children of .screen keep its centring (margin-inline: auto): the 20px
    gutter is a narrower width, not a side margin, or wide screens pin them left. */
 .pj-card { margin: 14px auto 0; inline-size: calc(100% - 40px); max-inline-size: 520px; padding: 18px 18px 16px; border-radius: 22px; background: var(--surface); border: 1px solid var(--aline); box-shadow: 0 6px 20px color-mix(in srgb, var(--aink) 12%, transparent); }
-.pj-due { flex: none; display: grid; gap: 2px; padding: 8px 12px; border-radius: 14px; background: var(--tint); }
-.pj-due-v { font-size: 18px; font-weight: 700; color: var(--aink); font-variant-numeric: tabular-nums; white-space: nowrap; }
-.pj-due-l { font-size: 11px; color: color-mix(in srgb, var(--aink) 45%, var(--ink-2)); }
 .pj-card-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .pj-name { margin: 0; min-inline-size: 0; font-size: 26px; font-weight: 700; letter-spacing: -0.3px; line-height: 1.15; overflow-wrap: anywhere; }
 .pj-prog { display: flex; align-items: center; gap: 10px; margin-block-start: 14px; font-size: 12px; color: color-mix(in srgb, var(--aink) 45%, var(--ink)); }
 .pj-sec { padding-inline: 20px; }
 .pj-one { max-inline-size: 560px; margin: 10px auto 0; }
 /* Done / Not now: toggles under the bar, each opening a drawer in the card. */
-.pj-tgs { display: flex; flex-wrap: wrap; gap: 8px; margin-block-start: 12px; }
-.pj-tg { display: inline-flex; align-items: center; gap: 6px; min-block-size: 34px; padding-inline: 12px; border: 1px solid var(--line); border-radius: 999px; background: var(--card); color: var(--ink-2); font: inherit; font-size: 13px; font-weight: 500; cursor: pointer; }
+/* Always one row (Mor, 2026-10-06): they shrink, and the label ellipsizes, before they'd wrap. */
+.pj-tgs { display: flex; gap: 8px; min-inline-size: 0; margin-block-start: 12px; }
+.pj-tg { flex: 0 1 auto; min-inline-size: 0; white-space: nowrap; display: inline-flex; align-items: center; gap: 6px; min-block-size: 34px; padding-inline: 12px; border: 1px solid var(--line); border-radius: 999px; background: var(--card); color: var(--ink-2); font: inherit; font-size: 13px; font-weight: 500; cursor: pointer; }
 .pj-tg[aria-expanded="true"] { background: var(--ink); border-color: var(--ink); color: var(--card); }
+.pj-tg-t { min-inline-size: 0; overflow: hidden; text-overflow: ellipsis; }
+.pj-ok, .pj-zz, .pj-car { flex: none; }
+@media (max-width: 380px) { .pj-tg { gap: 5px; padding-inline: 10px; font-size: 12px; } .pj-car { display: none; } }
 .pj-car { font-size: 10px; transition: transform .15s; }
 :dir(rtl) .pj-car { transform: scaleX(-1); }
 .pj-tg[aria-expanded="true"] .pj-car { transform: rotate(90deg); }
@@ -887,6 +888,9 @@ body:has(.screen:not([hidden])) { overflow: hidden; }
 .pj-title { min-inline-size: 0; font-size: 15px; font-weight: 600; overflow-wrap: anywhere; }
 .pj-now { flex: none; padding: 3px 8px; border-radius: 999px; background: var(--a-job-tint); color: var(--a-job-ink); font-size: 11px; font-weight: 600; }
 .pj-meta { font-size: 12px; color: var(--ink-2); }
+.pj-date.near { color: var(--a-job-ink); font-weight: 500; }
+.pj-date.soon { color: var(--p-orange-ink); font-weight: 600; }
+.pj-date.over { color: var(--danger); font-weight: 700; }
 /* Meta is English chrome: ltr keeps "1h · from Wed" in order, aligned to an RTL title's side. */
 .pj-task[dir="rtl"] .pj-meta { text-align: right; }
 .pj-who { flex: none; display: grid; place-items: center; inline-size: 30px; block-size: 30px; border-radius: 50%; background: var(--chip); color: var(--ink); font-size: 13px; font-weight: 600; }
