@@ -592,9 +592,21 @@ dialog.now:focus { outline: none; }
 .focus-title { font-size: 30px; font-weight: 600; line-height: 1.2; letter-spacing: -0.3px; overflow-wrap: anywhere; }
 .focus-hold { margin: 8px 0 0; font-size: 15px; color: var(--sub); }
 .focus-still { margin: 12px 0 0; padding: 12px 14px; border-radius: 16px; background: var(--card); border: 1px solid var(--line); display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
-.menu-kinds { display: grid; gap: 6px; padding-inline-start: 26px; }
-.menu-kinds .menu-check { font-size: 13px; }
-.menu-note { margin: 0; font-size: 12px; color: var(--ink-2); max-width: 260px; }
+/* The account menu's sections (2026-10-06): a quiet email line, then
+   Theme + My day, Notifications, Google Calendar, and plain links last. */
+.acct-menu { min-inline-size: 290px; max-inline-size: calc(100vw - 32px); justify-items: stretch; gap: 0; padding: 12px 16px; }
+.menu-who { font-size: 12px; color: var(--ink-2); padding-block-end: 8px; }
+.menu-sec { display: grid; gap: 8px; padding-block: 12px; border-block-start: 1px solid var(--line); }
+.menu-h { margin: 0; font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-2); }
+.menu-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.menu-label { font-size: 14px; white-space: nowrap; }
+.menu-kinds { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 12px; padding-inline-start: 8px; }
+.menu-kinds .menu-check { font-size: 13px; white-space: nowrap; }
+.menu-note { margin: 0; font-size: 12px; color: var(--ink-2); }
+.menu-link { justify-self: start; min-block-size: 32px; padding: 0; border: 0; background: none; font: inherit; font-size: 14px; color: var(--ink); cursor: pointer; }
+.menu-link:hover { text-decoration: underline; }
+.menu-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 18px; padding-block-end: 2px; }
+.menu-foot #signout { color: var(--ink-2); margin-inline-start: auto; }
 .focus-still-btns { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .focus-took-row { display: inline-flex; gap: 8px; align-items: center; }
 .focus-took-other { width: 72px; min-height: 44px; padding: 0 10px; border-radius: 12px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); font: inherit; }

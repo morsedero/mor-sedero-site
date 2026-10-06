@@ -4,6 +4,7 @@ import { configured } from "./config.js";
 const $ = (s) => document.querySelector(s);
 
 import { mountPlaces } from "./places.js";
+import { flash } from "./ui.js";
 
 // The header's chips (round 3, New Design/6): green "✓ N" done today, and
 // amber Needs you with its count, only when there is something. now.js
@@ -181,14 +182,15 @@ async function boot(){
           }
           pushSwitch.disabled = false; paintPush();
         };
+        // Send the brief now: the menu closes straight away (Mor, 2026-10-06);
+        // the notification itself is the answer, and a toast says if it failed.
         pushTest.onclick = async () => {
-          pushTest.disabled = true;
+          setMenu(false);
           try {
             const r = await push.sendTest();
-            note(r.sent ? `Sent: "${r.body}"${r.cal === "ok" ? "" : ` (calendar not read: ${r.cal})`}` : "It didn't arrive. Switch it off and on again.");
-          }
-          catch (e) { note("Couldn't send it."); }
-          pushTest.disabled = false;
+            if (!r.sent) flash("The brief didn't arrive. Switch notifications off and on again.");
+            else if (r.cal !== "ok") flash("Sent, but the calendar couldn't be read.");
+          } catch (e) { flash("Couldn't send the brief."); }
         };
         const stopBriefTasks = watchTasks(user.uid, (ts) => { briefTasks = ts; if (briefOn) push.syncSnapshot(ts, lastSettings, hours); }, fail);
         const stopSettings = watchSettings(user.uid, (s) => {
