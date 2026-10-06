@@ -152,6 +152,19 @@ export function endRun(uid, task, minutes, { finished = false } = {}){
   ]);
 }
 
+// Projects made by name before they have a task, users/{uid}/state/projects:
+// { names: [...] }. A project is otherwise just the tasks that carry its
+// name, so without this an empty one couldn't exist.
+const projectsDoc = (uid) => fb.doc(fb.db, "users", uid, "state", "projects");
+
+export function watchProjectNames(uid, cb, onError){
+  return fb.onSnapshot(projectsDoc(uid), (snap) => cb((snap.exists() && snap.data().names) || []), onError);
+}
+
+export function saveProjectNames(uid, names){
+  return fb.setDoc(projectsDoc(uid), { names });
+}
+
 // Settings, users/{uid}/state/settings: { deadlinesAsked, ... }. Merged on
 // write, so one feature's key never clobbers another's.
 const settingsDoc = (uid) => fb.doc(fb.db, "users", uid, "state", "settings");

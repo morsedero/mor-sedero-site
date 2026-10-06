@@ -23,7 +23,7 @@
 // The guessed chips are the same as before: each drops its own menu over the
 // sheet, "Daisey guesses" hands a field back, dashed = a guess, solid = yours.
 // While typing a new task's title they catch up only once typing stops.
-import { watchTasks, addTask, updateTask, removeTask } from "./store.js";
+import { watchTasks, addTask, updateTask, removeTask, watchProjectNames } from "./store.js";
 import { durText, guessFields, validField, CHOICES, LABELS, INBOX, localDate } from "./model.js";
 import { h, flash, icon, bdi } from "./ui.js";
 import { projectsOf } from "./projects.js";
@@ -359,10 +359,17 @@ export function mountAddTask(dialog, uid, { onStart } = {}){
   });
   dialog.addEventListener("keydown", (e) => { if (e.key === "Escape" && openChip) { e.preventDefault(); openChip = null; paintChips(); } });
 
+  // The project list: every project a task names, plus the empty ones
+  // made with "+ New" on the Projects page.
+  let made = [];
+  const refill = () => {
+    colors = Object.fromEntries(projectsOf(tasks || [], null, made).map((p) => [p.name, p.color]).filter(([, c]) => c));
+    fillProjects([...new Set([...(tasks || []).map((t) => t.project), ...made])].filter((p) => p && p !== INBOX).sort((a, b) => a.localeCompare(b)));
+  };
+  const unsubNames = watchProjectNames(uid, (ns) => { made = ns; refill(); }, fail);
   const unsub = watchTasks(uid, (ts) => {
     tasks = ts;
-    colors = Object.fromEntries(projectsOf(ts).map((p) => [p.name, p.color]).filter(([, c]) => c));
-    fillProjects([...new Set(ts.map((t) => t.project))].filter((p) => p && p !== INBOX).sort((a, b) => a.localeCompare(b)));
+    refill();
     if (editing) {
       const fresh = ts.find((t) => t.id === editing.id);
       if (!fresh) { editing = null; if (dialog.open) dialog.close(); return; }
@@ -413,6 +420,6 @@ export function mountAddTask(dialog, uid, { onStart } = {}){
       paintAll();
       show();
     },
-    unmount(){ clearTimeout(settle); unsub(); if (dialog.open) dialog.close(); dialog.replaceChildren(); },
+    unmount(){ clearTimeout(settle); unsub(); unsubNames(); if (dialog.open) dialog.close(); dialog.replaceChildren(); },
   };
 }

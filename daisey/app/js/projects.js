@@ -17,7 +17,7 @@
 // area when no other project has that one yet, else the next free colour in
 // PALETTE. Names are taken in order, so a colour doesn't move around as
 // counts change. Inbox has none.
-import { watchTasks, finishTask, restoreTask } from "./store.js";
+import { watchTasks, finishTask, restoreTask, watchProjectNames, saveProjectNames } from "./store.js";
 import { INBOX, notYet, durText, localDate } from "./model.js";
 import { isOverdue } from "./triage.js";
 import { h, bdi, flash, icon } from "./ui.js";
@@ -45,9 +45,11 @@ export function colorize(ps){
 }
 const colorClass = (p) => (p.color ? ` pc-${p.color}` : "");
 
-// The projects, with everything both views show about each.
-export function projectsOf(tasks = [], onCard = null){
-  const names = [...new Set(tasks.filter(isOpen).map((t) => t.project || INBOX))];
+// The projects, with everything both views show about each. `made`: names
+// made with "+ New"; each shows, empty, until it has a task of its own.
+export function projectsOf(tasks = [], onCard = null, made = []){
+  const names = [...new Set([...tasks.filter(isOpen).map((t) => t.project || INBOX),
+    ...made.filter((n) => !tasks.some((t) => t.project === n && t.status !== "dropped"))])];
   return colorize(names.map((name) => {
     const all = tasks.filter((t) => (t.project || INBOX) === name && t.status !== "dropped");
     const open = all.filter(isOpen);
@@ -98,19 +100,14 @@ function stats(p){
   ];
 }
 
-// A new project has no tasks yet, so nothing in the store knows it: the
-// screen holds it as DRAFT, its name in `draft`, until a task gives it one.
-const DRAFT = Symbol("new project");
-
-// els: { grid, view }. onOpen(task): the task sheet. onAdd(project): a new
-// task there. onStart(id).
+// els: { grid, view, dialog }. onOpen(task): the task sheet. onAdd(project):
+// a new task there. onStart(id).
 export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {}){
-  let tasks = null, onCard = null;
+  let tasks = null, onCard = null, made = [];
   let shown = null; // the project on the project screen
-  let draft = "";   // the new project's name so far, while shown === DRAFT
   let fold = { someday: false, done: false };
   const fail = (e) => console.error("[daisey] projects", e);
-  const list = () => projectsOf(tasks || [], onCard);
+  const list = () => projectsOf(tasks || [], onCard, made);
 
   // ---------- the Projects page ----------
   function paintGrid(){
@@ -121,7 +118,7 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
     const y = els.grid.scrollTop;
     els.grid.replaceChildren(...[
       h("div", { className: "pp-head" }, h("span", { className: "pp-sum", textContent: `${plural(ps.length, "project")} · ${plural(n, "task")}` }),
-        h("button", { type: "button", className: "pp-new", textContent: "+ New", onclick: () => newProject() })),
+        h("button", { type: "button", className: "pp-new", textContent: "+ New", onclick: () => askName() })),
       ps.length ? h("div", { className: "pgrid" }, ...ps.map((p) => h("button", { type: "button", className: "pcard" + colorClass(p),
         onclick: () => openProject(p.name) },
         h("span", { className: "pcard-top" }, h("span", { className: "pcard-name", dir: "auto", textContent: p.name }), h("span", { className: "pcard-n", textContent: String(p.open.length) })),
@@ -132,6 +129,34 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
         icon("inbox"), h("span", { className: "pp-inbox-t", textContent: "Inbox" }),
         h("span", { className: "pp-inbox-n", textContent: `${inbox.open.length} · no project yet` })) : null].filter(Boolean));
     els.grid.scrollTop = y;
+  }
+
+  // ---------- "+ New": a name, and an empty project ----------
+  function askName(){
+    const d = els.dialog;
+    const name = h("input", { className: "ts-input", dir: "auto", autocomplete: "off", enterKeyHint: "done",
+      placeholder: "Project name", ariaLabel: "Project name", required: true });
+    const msg = h("p", { className: "msg", role: "alert" });
+    const create = (e) => {
+      e.preventDefault();
+      const v = name.value.trim();
+      if (!v) { name.focus(); return; }
+      if (v === INBOX || list().some((p) => p.name.toLowerCase() === v.toLowerCase())) { msg.textContent = "There's already a project by that name."; name.focus(); return; }
+      made = [...made, v];
+      saveProjectNames(uid, made).catch(fail);
+      paintGrid();
+      d.close();
+    };
+    d.replaceChildren(
+      h("div", { className: "now-head" }, h("h2", { id: "npTitle", textContent: "New project" }),
+        h("button", { className: "now-x", type: "button", ariaLabel: "Close", textContent: "✕", onclick: () => d.close() })),
+      h("form", { className: "np-form", onsubmit: create }, name, msg,
+        h("div", { className: "sheet-actions" },
+          h("button", { className: "btn primary", type: "submit", textContent: "Add project" }),
+          h("button", { className: "btn quiet", type: "button", textContent: "Cancel", onclick: () => d.close() }))));
+    d.onclick = (e) => { if (e.target === d) d.close(); };
+    d.showModal();
+    name.focus();
   }
 
   // ---------- the project screen ----------
@@ -206,20 +231,13 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
   function paintView(){
     if (shown == null) return;
     const ps = list();
-    // Its first task landed: the new project is a real one now.
-    if (shown === DRAFT && ps.some((x) => x.name === draft.trim())) shown = draft.trim();
     let p = ps.find((x) => x.name === shown);
-    if (shown === DRAFT) p = { name: DRAFT, area: null, open: [], all: [], next: [], pending: [], someday: [], done: [] };
-    else if (!p) { // emptied out: keep showing it as done, from all tasks
+    if (!p) { // emptied out: keep showing it as done, from all tasks
       const all = (tasks || []).filter((t) => (t.project || INBOX) === shown && t.status !== "dropped");
       if (!all.length) { closeProject(); return; }
       p = { name: shown, area: null, open: [], all, next: [], pending: [], someday: [], done: all.filter((t) => t.status === "done") };
     }
     const y = els.view.scrollTop, x = els.view.querySelector(".pj-chips")?.scrollLeft;
-    const typing = document.activeElement?.classList.contains("pj-name-in");
-    const nameIn = shown === DRAFT && h("input", { className: "pj-name pj-name-in", dir: "auto", autocomplete: "off", enterKeyHint: "done",
-      placeholder: "Name the project", ariaLabel: "Project name", value: draft,
-      oninput: (e) => { draft = e.target.value; }, onkeydown: (e) => { if (e.key === "Enter") e.target.blur(); } });
     const chips = h("div", { className: "pj-chips", role: "tablist", ariaLabel: "Projects" },
       ...ps.map((q) => h("button", { type: "button", role: "tab", ariaSelected: String(q.name === p.name),
         className: "pj-chip" + colorClass(q), onclick: () => go(q.name) },
@@ -240,17 +258,17 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
       h("div", { className: "pj-top" },
         h("button", { type: "button", className: "pj-back", ariaLabel: "Back to home", onclick: () => onScreen?.(null) }, icon("back")), chips),
       h("div", { className: "pj-card" },
-        h("div", { className: "pj-card-top" }, nameIn || h("h2", { className: "pj-name", dir: "auto", textContent: p.name }),
+        h("div", { className: "pj-card-top" }, h("h2", { className: "pj-name", dir: "auto", textContent: p.name }),
           p.area && h("span", { className: "pj-area", textContent: areaName({ area: p.area }) })),
         h("div", { className: "pj-stats" }, ...stats(p).map(([v, l]) => h("div", { className: "pj-stat" },
           h("span", { className: "pj-stat-v", textContent: v }), h("span", { className: "pj-stat-l", textContent: l })))),
         h("div", { className: "pj-prog" }, bar(p, "pbar big"), h("span", { textContent: `${p.done.length} of ${p.all.length} done` }))),
       section("next", "Next", p.next.length, ...next,
-        h("button", { type: "button", className: "pj-add", textContent: "+ Add a task", onclick: () => addTo(p) })),
+        h("button", { type: "button", className: "pj-add", textContent: "+ Add a task", onclick: () => onAdd?.(p.name === INBOX ? "" : p.name) })),
       p.pending.length > 0 && section("pending", "Pending", p.pending.length, ...pending),
       ...foldRow("someday", "someday", "Someday", p.someday, quietRow),
       ...foldRow("done", "done", "Done", p.done, quietRow),
-      ps.length > 1 && !nameIn && h("p", { className: "pj-hint" }, icon("back"), "Swipe for the next project", icon("chev"))].filter(Boolean));
+      ps.length > 1 && h("p", { className: "pj-hint" }, icon("back"), "Swipe for the next project", icon("chev"))].filter(Boolean));
     els.view.className = "screen" + colorClass(p);
     els.view.scrollTop = y;
     const row = els.view.querySelector(".pj-chips");
@@ -260,14 +278,6 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
       const r = cur.getBoundingClientRect(), b = row.getBoundingClientRect();
       if (r.left < b.left || r.right > b.right) cur.scrollIntoView({ block: "nearest", inline: "center", behavior: x == null || !motionOK() ? "auto" : "smooth" });
     }
-    if (nameIn && typing) nameIn.focus();
-  }
-  // A new project needs a name before its first task.
-  function addTo(p){
-    if (p.name !== DRAFT) return onAdd?.(p.name === INBOX ? "" : p.name);
-    const name = draft.trim();
-    if (name) return onAdd?.(name);
-    els.view.querySelector(".pj-name-in")?.focus();
   }
   function go(name){
     if (name === shown) return;
@@ -304,22 +314,20 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
     paintView();
     onScreen?.(name);
   }
-  function newProject(){
-    draft = "";
-    openProject(DRAFT);
-    els.view.querySelector(".pj-name-in")?.focus();
-  }
-  function closeProject(){ shown = null; draft = ""; els.view.hidden = true; els.view.replaceChildren(); }
+  function closeProject(){ shown = null; els.view.hidden = true; els.view.replaceChildren(); }
 
   function render(){ paintGrid(); paintView(); }
-  const unsub = watchTasks(uid, (ts) => { tasks = ts; render(); }, fail);
+  const unsubs = [
+    watchTasks(uid, (ts) => { tasks = ts; render(); }, fail),
+    watchProjectNames(uid, (ns) => { made = ns; render(); }, fail),
+  ];
   render();
 
   return {
     setCurrent(id){ onCard = id; render(); },
     openProject,
     closeProject,
-    shownProject: () => (shown === DRAFT ? draft.trim() || null : shown),
-    unmount(){ unsub(); closeProject(); els.grid.replaceChildren(); },
+    shownProject: () => shown,
+    unmount(){ unsubs.forEach((u) => u()); closeProject(); els.grid.replaceChildren(); if (els.dialog.open) els.dialog.close(); },
   };
 }

@@ -806,6 +806,8 @@ button.now-title:focus-visible { outline: 2px solid var(--aink); outline-offset:
 .plus-menu button:disabled { opacity: .45; cursor: default; }
 .tell-panel { inset-block-end: calc(140px + env(safe-area-inset-bottom)); }
 
+.np-form { display: grid; gap: 10px; margin-block-start: 12px; }
+.np-form .msg:empty { display: none; }
 .pgrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-block-start: 10px; }
 .pcard { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0; align-content: start; padding: 12px; border-radius: 16px; background: var(--tint); border: 1px solid var(--aline); color: var(--ink); font: inherit; text-align: start; cursor: pointer; }
 .pcard-top { display: flex; justify-content: space-between; align-items: center; gap: 6px; }
@@ -844,9 +846,6 @@ body:has(.screen:not([hidden])) { overflow: hidden; }
 .pj-stat-l { font-size: 11px; color: color-mix(in srgb, var(--aink) 45%, var(--ink-2)); }
 .pj-card-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .pj-name { margin: 0; min-inline-size: 0; font-size: 26px; font-weight: 700; letter-spacing: -0.3px; line-height: 1.15; overflow-wrap: anywhere; }
-.pj-name-in { flex: 1; inline-size: 100%; padding: 0; border: 0; border-block-end: 2px dashed var(--aline); border-radius: 0; background: none; color: var(--ink); font-family: inherit; outline: none; }
-.pj-name-in:focus { border-block-end-color: var(--aink); }
-.pj-name-in::placeholder { color: var(--ink-2); opacity: .6; }
 .pj-area { flex: none; padding: 3px 10px; border-radius: 999px; background: var(--tint); font-size: 12px; font-weight: 600; color: var(--aink); }
 .pj-prog { display: flex; align-items: center; gap: 10px; margin-block-start: 14px; font-size: 12px; color: color-mix(in srgb, var(--aink) 45%, var(--ink)); }
 .pj-sec { padding-inline: 20px; }
