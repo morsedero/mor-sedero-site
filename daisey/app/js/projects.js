@@ -28,7 +28,17 @@ import { dirOf, setProjectColors } from "./look.js";
 
 const SWIPE_DONE = 90; // px a task travels right before letting go finishes it
 const SWIPE_PAGE = 70; // px sideways that turns the page to the next project
-const shortDay = (s) => new Date(`${s}T12:00`).toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" });
+// A date in the list said the way a person would (Mor, 2026-10-06): today,
+// tomorrow, yesterday; a weekday within the week either side; else "12 Oct".
+// Not numbers: 8/10 reads as a different day in another locale.
+function shortDay(s){
+  const d = daysTo(s), at = new Date(`${s}T12:00`);
+  if (d === 0) return "today";
+  if (d === 1) return "tomorrow";
+  if (d === -1) return "yesterday";
+  if (Math.abs(d) <= 6) return at.toLocaleDateString(undefined, { weekday: "short" });
+  return at.toLocaleDateString(undefined, { day: "numeric", month: "short" });
+}
 const motionOK = () => !window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 const isOpen = (t) => t.status !== "done" && t.status !== "dropped";
 const plural = (n, one, many = one + "s") => `${n} ${n === 1 ? one : many}`;
