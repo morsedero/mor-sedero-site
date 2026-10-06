@@ -45,9 +45,26 @@ export function moonDaisy(){
   return svg;
 }
 
-// The area class that colours a card: .area-admin etc. Unknown → none, and
-// the card keeps the neutral card colours.
-export const areaClass = (task) => (AREAS.includes(task?.area) ? ` area-${task.area}` : "");
+// Each project's colour, as the Projects page assigned it (projects.js
+// colorize). A task wears its project's colour so the card and the project
+// match (Mor, 2026-10-06); the Projects page publishes, cards listen.
+let projColors = {};
+const colorSubs = new Set();
+export function setProjectColors(map){
+  const same = Object.keys(map).length === Object.keys(projColors).length && Object.entries(map).every(([k, v]) => projColors[k] === v);
+  if (same) return;
+  projColors = map;
+  colorSubs.forEach((cb) => cb());
+}
+export function watchProjectColors(cb){ colorSubs.add(cb); return () => colorSubs.delete(cb); }
+
+// The class that colours a card: its project's .pc-<colour>, else its
+// area's .area-admin etc. Neither → none, and the card keeps the neutral
+// card colours.
+export const areaClass = (task) => {
+  const c = task?.project && projColors[task.project];
+  return c ? ` pc-${c}` : AREAS.includes(task?.area) ? ` area-${task.area}` : "";
+};
 export const areaName = (task) => LABELS.area[task?.area] || "";
 // The project, where it adds something: not the Inbox, and not a project
 // named after its own area ("Admin · Admin" says nothing twice).

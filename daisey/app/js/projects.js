@@ -21,7 +21,7 @@ import { watchTasks, finishTask, restoreTask, watchProjectNames, saveProjectName
 import { INBOX, notYet, durText, localDate } from "./model.js";
 import { isOverdue } from "./triage.js";
 import { h, bdi, flash, icon } from "./ui.js";
-import { areaName, dirOf } from "./look.js";
+import { areaName, dirOf, setProjectColors } from "./look.js";
 
 const SWIPE_DONE = 90; // px a task travels right before letting go finishes it
 const SWIPE_PAGE = 70; // px sideways that turns the page to the next project
@@ -112,6 +112,7 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
   // ---------- the Projects page ----------
   function paintGrid(){
     const all = list();
+    setProjectColors(Object.fromEntries(all.filter((p) => p.color).map((p) => [p.name, p.color])));
     const inbox = all.find((p) => p.name === INBOX);
     const ps = all.filter((p) => p !== inbox);
     const n = all.reduce((s, p) => s + p.open.length, 0);

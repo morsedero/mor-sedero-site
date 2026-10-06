@@ -24,7 +24,7 @@ import { localDate, skipSnapshot, shrunk, shrinkPatch, dayAfter, PENDING_CHECK_D
 import { dayHours, isNight, nextMorning, dayEndAt, bookings, sameTitle, minText } from "./day.js";
 import { collectNeeds } from "./needs.js";
 import { h, icon, bdi, pieces, sizeText, dur, say, nightDivider, flash } from "./ui.js";
-import { areaClass, areaName, projectShown, doneToday, dirOf, stemDaisy, moonDaisy } from "./look.js";
+import { areaClass, areaName, projectShown, doneToday, dirOf, stemDaisy, moonDaisy, watchProjectColors } from "./look.js";
 
 const LATER_MS = LATER_MINUTES * 60000;
 const UNDO_MS = 5000;
@@ -934,6 +934,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
   const fail = (e) => console.error("[daisey] now", e);
   const unsubs = [
     watchWhere((v) => { located = v; render(); }),
+    watchProjectColors(() => render()),
     watchTasks(uid, (ts) => { tasks = ts; render(); }, fail),
     watchCalendar((c) => { cal = c; render(); }),
     watchRun(uid, (r) => { run = r; if (r) handoff = null; render(); }, fail),
