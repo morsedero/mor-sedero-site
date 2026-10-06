@@ -122,8 +122,8 @@ export function mountAddTask(dialog, uid, { onStart } = {}){
   const section = (label, ...kids) => h("div", { className: "field" }, h("h3", { className: "ts-h", textContent: label }), ...kids);
 
   dialog.replaceChildren(h("div", { className: "now-head" }, heading, closeX),
-    field("Task", title),
     field("Project", projectSel, newProject),
+    field("Task", title),
     h("div", { className: "ts-dates" }, start.box, due.box),
     detailsBtn, chipRow, pendBox, stateLine,
     section("Steps", stepList),
