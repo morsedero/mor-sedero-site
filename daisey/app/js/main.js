@@ -117,7 +117,13 @@ async function boot(){
   $("#signout").onclick = () => { setMenu(false); fb.signOut(); };
   // Where you are, by hand, and saved places (this device only).
   const places = mountPlaces($("#placedlg"));
-  $("#placesBtn").onclick = () => { setMenu(false); places.open(); };
+  // Settings: the avatar menu's one door to everything else (Mor, 2026-10-06).
+  // A tap on the dim backdrop closes it, like Escape and ✕.
+  const settings = $("#settingsdlg");
+  $("#settingsBtn").onclick = () => { setMenu(false); settings.showModal(); };
+  $("#settingsX").onclick = () => settings.close();
+  settings.addEventListener("click", (e) => { if (e.target === settings) settings.close(); });
+  $("#placesBtn").onclick = () => { settings.close(); places.open(); };
 
   const SIGNED_IN = ["#board", "#dock", "#doneChip"];
 
@@ -151,7 +157,7 @@ async function boot(){
         m.deadlines = mountDeadlines($("#deadlinedlg"), user.uid);
         m.event = mountAddEvent($("#eventdlg"));
         m.importer = mountImport($("#importdlg"), user.uid);
-        $("#importTrello").onclick = () => { setMenu(false); m.importer.open(); };
+        $("#importTrello").onclick = () => { $("#settingsdlg").close(); m.importer.open(); };
         const fail = (e) => console.error("[daisey] menu", e);
         // Day hours in the account menu (DAISEY_SPEC "Day hours"), saved on change.
         const start = $("#dayStart"), end = $("#dayEnd");
@@ -182,10 +188,10 @@ async function boot(){
           }
           pushSwitch.disabled = false; paintPush();
         };
-        // Send the brief now: the menu closes straight away (Mor, 2026-10-06);
+        // Send the brief now: Settings closes straight away (Mor, 2026-10-06);
         // the notification itself is the answer, and a toast says if it failed.
         pushTest.onclick = async () => {
-          setMenu(false);
+          $("#settingsdlg").close();
           try {
             const r = await push.sendTest();
             if (!r.sent) flash("The brief didn't arrive. Switch notifications off and on again.");

@@ -54,46 +54,11 @@
       <div class="acct">
         <button id="avatar" class="avatar" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="acctMenu" hidden></button>
         <div id="acctMenu" class="acct-menu" hidden>
-          <!-- Settings in short sections (Mor, 2026-10-06: "make it clearer, too much fluff"). -->
+          <!-- The avatar menu: who you are, Settings, Sign out. Everything else
+               lives in the Settings popup (Mor, 2026-10-06). -->
           <p id="who" class="menu-who"></p>
-          <div class="menu-sec">
-            <div class="menu-row"><span class="menu-label">Theme</span>
-              <div class="theme" role="radiogroup" aria-label="Theme">
-                <button class="theme-btn" type="button" role="radio" data-set-theme="system">Auto</button>
-                <button class="theme-btn" type="button" role="radio" data-set-theme="light">Light</button>
-                <button class="theme-btn" type="button" role="radio" data-set-theme="dark">Dark</button>
-              </div></div>
-            <!-- Day hours: free time counts only inside them; outside is night mode. -->
-            <div class="menu-row"><span class="menu-label">My day</span>
-              <div class="dayhours" role="group" aria-label="Day hours">
-                <input id="dayStart" type="time" aria-label="Day starts" value="08:00">
-                <span class="muted">–</span>
-                <input id="dayEnd" type="time" aria-label="Day ends" value="22:00">
-              </div></div>
-          </div>
-          <!-- Notifications (push.js): this device, then which kinds (any device). -->
-          <div class="menu-sec">
-            <h3 class="menu-h">Notifications</h3>
-            <label class="menu-check"><input id="pushBrief" type="checkbox"> On this device</label>
-            <div id="pushKinds" class="menu-kinds" hidden>
-              <label class="menu-check"><input data-kind="brief" type="checkbox" checked> Morning brief</label>
-              <label class="menu-check"><input data-kind="wrap" type="checkbox" checked> End of day</label>
-              <label class="menu-check"><input data-kind="gap" type="checkbox" checked> Free time</label>
-              <label class="menu-check"><input data-kind="booked" type="checkbox" checked> Task starts</label>
-            </div>
-            <p id="pushNote" class="menu-note" hidden></p>
-            <button id="pushTest" class="menu-link" type="button" hidden>Send the brief now</button>
-          </div>
-          <div class="menu-sec">
-            <h3 class="menu-h">Google Calendar</h3>
-            <label class="menu-check"><input id="logDone" type="checkbox" checked> Log finished tasks</label>
-          </div>
-          <div class="menu-sec menu-foot">
-            <!-- Where you are: picked by hand, and saved places (places.js). -->
-            <button id="placesBtn" class="menu-link" type="button">Places</button>
-            <button id="importTrello" class="menu-link" type="button">Import from Trello</button>
-            <button id="signout" class="menu-link" type="button">Sign out</button>
-          </div>
+          <button id="settingsBtn" class="menu-item" type="button"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z"/></svg><span>Settings</span></button>
+          <button id="signout" class="menu-item quiet" type="button">Sign out</button>
         </div>
       </div>
     </div>
@@ -156,6 +121,47 @@
   <dialog id="deadlinedlg" class="now" aria-labelledby="dlTitle"></dialog>
   <dialog id="placedlg" class="now" aria-labelledby="plTitle"></dialog>
   <dialog id="projdlg" class="now" aria-labelledby="npTitle"></dialog>
+  <!-- Settings (Mor, 2026-10-06): opened from the avatar menu. -->
+  <dialog id="settingsdlg" class="now settings" aria-labelledby="setTitle">
+    <div class="now-head"><h2 id="setTitle">Settings</h2><button id="settingsX" class="now-x" type="button" aria-label="Close">✕</button></div>
+    <div class="menu-sec">
+      <div class="menu-row"><span class="menu-label">Theme</span>
+        <div class="theme" role="radiogroup" aria-label="Theme">
+          <button class="theme-btn" type="button" role="radio" data-set-theme="system">Auto</button>
+          <button class="theme-btn" type="button" role="radio" data-set-theme="light">Light</button>
+          <button class="theme-btn" type="button" role="radio" data-set-theme="dark">Dark</button>
+        </div></div>
+      <!-- Day hours: free time counts only inside them; outside is night mode. -->
+      <div class="menu-row"><span class="menu-label">My day</span>
+        <div class="dayhours" role="group" aria-label="Day hours">
+          <input id="dayStart" type="time" aria-label="Day starts" value="08:00">
+          <span class="muted">–</span>
+          <input id="dayEnd" type="time" aria-label="Day ends" value="22:00">
+        </div></div>
+    </div>
+    <!-- Notifications (push.js): this device, then which kinds (any device). -->
+    <div class="menu-sec">
+      <h3 class="menu-h">Notifications</h3>
+      <label class="menu-check"><input id="pushBrief" type="checkbox"> On this device</label>
+      <div id="pushKinds" class="menu-kinds" hidden>
+        <label class="menu-check"><input data-kind="brief" type="checkbox" checked> Morning brief</label>
+        <label class="menu-check"><input data-kind="wrap" type="checkbox" checked> End of day</label>
+        <label class="menu-check"><input data-kind="gap" type="checkbox" checked> Free time</label>
+        <label class="menu-check"><input data-kind="booked" type="checkbox" checked> Task starts</label>
+      </div>
+      <p id="pushNote" class="menu-note" hidden></p>
+      <button id="pushTest" class="menu-link" type="button" hidden>Send the brief now</button>
+    </div>
+    <div class="menu-sec">
+      <h3 class="menu-h">Google Calendar</h3>
+      <label class="menu-check"><input id="logDone" type="checkbox" checked> Log finished tasks</label>
+    </div>
+    <div class="menu-sec menu-foot">
+      <!-- Where you are: picked by hand, and saved places (places.js). -->
+      <button id="placesBtn" class="menu-link" type="button">Places</button>
+      <button id="importTrello" class="menu-link" type="button">Import from Trello</button>
+    </div>
+    </dialog>
 </main>
 </body>
 </html>

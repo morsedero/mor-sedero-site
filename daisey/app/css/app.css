@@ -606,7 +606,13 @@ dialog.now:focus { outline: none; }
 .menu-link { justify-self: start; min-block-size: 32px; padding: 0; border: 0; background: none; font: inherit; font-size: 14px; color: var(--ink); cursor: pointer; }
 .menu-link:hover { text-decoration: underline; }
 .menu-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 18px; padding-block-end: 2px; }
-.menu-foot #signout { color: var(--ink-2); margin-inline-start: auto; }
+/* The avatar menu is three lines now; the settings live in their popup. */
+.acct-menu:has(#settingsBtn) { min-inline-size: 220px; }
+.menu-item { display: flex; align-items: center; gap: 10px; min-block-size: 44px; padding: 0 4px; border: 0; background: none; font: inherit; font-size: 15px; color: var(--ink); text-align: start; cursor: pointer; border-block-start: 1px solid var(--line); }
+.menu-item.quiet { color: var(--ink-2); }
+.menu-item:hover { color: var(--ink); text-decoration: underline; }
+dialog.settings { inline-size: min(420px, calc(100vw - 32px)); }
+dialog.settings .now-head + .menu-sec { border-block-start: 0; padding-block-start: 4px; }
 .focus-still-btns { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .focus-took-row { display: inline-flex; gap: 8px; align-items: center; }
 .focus-took-other { width: 72px; min-height: 44px; padding: 0 10px; border-radius: 12px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); font: inherit; }
