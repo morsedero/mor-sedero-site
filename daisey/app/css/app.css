@@ -1045,20 +1045,20 @@ dialog.tsheet .msg:empty { display: none; }
 .now-top:empty { display: none; }
 .now-top { margin: 0; }
 
-/* The compact Now card (~214px): area line, title, one-line why, one row. */
-.now-card.main { min-block-size: 214px; display: flex; flex-direction: column; gap: 0; padding: 16px 18px; border-radius: 22px; box-shadow: 0 10px 24px color-mix(in srgb, var(--aink) 12%, transparent); }
+/* The compact Now card (~150px): area line, title, one-line why, one row. */
+.now-card.main { min-block-size: 150px; display: flex; flex-direction: column; gap: 0; padding: 13px 15px; border-radius: 20px; box-shadow: 0 10px 24px color-mix(in srgb, var(--aink) 12%, transparent); }
 .now-card.main .hero-top, .now-card.main .hero-area { font-size: 12px; }
 .now-card.main .hero-side { font-size: 12px; }
 .now-card.main .now-title, .now-card.main button.now-title {
-  margin-block-start: 8px; font-size: 26px; line-height: 1.15; letter-spacing: -0.3px;
+  margin-block-start: 6px; font-size: 21px; line-height: 1.15; letter-spacing: -0.2px;
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
 }
-.now-card.main .now-next, .now-card.main .now-why { margin: 4px 0 0; font-size: 14px; line-height: 1.35; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.now-row { display: flex; align-items: center; gap: 8px; margin-block-start: auto; padding-block-start: 12px; }
-.now-row .btn.start, .now-card.main .now-row .btn.start { flex: 1; inline-size: auto; margin: 0; min-block-size: 50px; block-size: 50px; border-radius: 14px; font-size: 17px; }
+.now-card.main .now-next, .now-card.main .now-why { margin: 3px 0 0; font-size: 13px; line-height: 1.35; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.now-row { display: flex; align-items: center; gap: 6px; margin-block-start: auto; padding-block-start: 10px; }
+.now-row .btn.start, .now-card.main .now-row .btn.start { flex: 1; inline-size: auto; margin: 0; min-block-size: 44px; block-size: 44px; border-radius: 12px; font-size: 16px; }
 .now-row .iconbtn {
   flex: none; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px;
-  inline-size: 50px; min-inline-size: 50px; block-size: 50px; min-block-size: 50px; padding: 0; border: 0; border-radius: 14px;
+  inline-size: 44px; min-inline-size: 44px; block-size: 44px; min-block-size: 44px; padding: 0; border: 0; border-radius: 12px;
   background: color-mix(in srgb, var(--aline) 70%, var(--tint)); color: var(--sub); font-size: 10px; font-weight: 500;
 }
 .now-row .iconbtn svg { inline-size: 16px; block-size: 16px; stroke-width: 2; }
@@ -1069,7 +1069,7 @@ dialog.tsheet .msg:empty { display: none; }
 
 /* The panel: a card with [Schedule | Projects], two page dots, two pages. */
 .panel {
-  flex: 1 1 0; min-block-size: 180px; display: flex; flex-direction: column; overflow: hidden;
+  flex: 1 1 0; min-block-size: 150px; display: flex; flex-direction: column; overflow: hidden;
   padding: 12px 14px 0; border-radius: 22px; background: var(--card); border: 1px solid var(--line);
 }
 .seg { flex: none; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); padding: 3px; border-radius: 12px; background: var(--cream); }
@@ -1123,6 +1123,10 @@ dialog.tsheet .msg:empty { display: none; }
 .sc-chip-dot.on { background: currentColor; }
 .sc-chip[aria-selected="true"] { background: var(--ink); color: var(--card); }
 .sc-chip[aria-selected="true"] .sc-chip-n { color: var(--card); }
+/* Saturday stands apart, in red like a printed calendar. */
+.sc-chip.sat, .sc-chip.sat .sc-chip-n { color: var(--nowline); }
+.sc-chip.sat[aria-selected="true"] { background: var(--nowline); }
+.sc-chip.sat[aria-selected="true"], .sc-chip.sat[aria-selected="true"] .sc-chip-n { color: var(--card); }
 .sc-note { margin: 4px 0 0; font-size: 14px; color: var(--ink-2); }
 .sc-note a { color: inherit; }
 .ppage .night-div { margin-block: 12px; }

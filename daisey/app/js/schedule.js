@@ -96,7 +96,7 @@ export function mountSchedule(el, uid, { onEvent, onNew } = {}){
     const name = nameOf(day.i, day.date);
 
     const strip = h("div", { className: "sc-strip", role: "tablist", ariaLabel: "Day" }, ...days.map((d) => h("button", {
-      type: "button", className: "sc-chip", role: "tab", ariaSelected: String(d === day),
+      type: "button", className: "sc-chip" + (d.date.getDay() === 6 ? " sat" : ""), role: "tab", ariaSelected: String(d === day),
       ariaLabel: `${nameOf(d.i, d.date)}, ${short(d.date)}: ${d.events ? `${d.events} event${d.events > 1 ? "s" : ""}` : "nothing scheduled"}`,
       onclick: () => { picked = d.i === auto ? null : d.ymd; el.scrollTop = 0; render(); },
     }, h("span", { className: "sc-chip-wd", textContent: d.i === 0 ? "Today" : d.date.toLocaleDateString("en-GB", { weekday: "short" }) }),

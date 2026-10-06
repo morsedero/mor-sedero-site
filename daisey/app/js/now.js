@@ -750,7 +750,8 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
     const card = { task };
     const someN = somedayTasks().length;
     return [
-      h("div", { className: "now-actions now-row" }, start,
+      // Start sits at the row's far end (Mor, 2026-10-06), after the quiet three.
+      h("div", { className: "now-actions now-row" },
         action("later", "Later", `not now — choose when to see ${card.task.title} again`,
           { ariaExpanded: String(state.laterAsk), onclick: () => { state.laterAsk = !state.laterAsk; state.pendAsk = false; state.showAlts = false; render(); } }),
         // Never a dead end while Someday holds tasks (DAISEY_SPEC "Someday comes back").
@@ -760,7 +761,8 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
           { disabled: !alts.length && !someN, ariaExpanded: String(state.showAlts),
             onclick: () => { state.showAlts = !state.showAlts; state.laterAsk = false; state.pendAsk = false; render(); } }),
         action("pending", "Pending", `${card.task.title} is blocked — set it to Pending`,
-          { ariaExpanded: String(state.pendAsk), onclick: () => { state.pendAsk = !state.pendAsk; state.laterAsk = false; state.showAlts = false; render(); } })),
+          { ariaExpanded: String(state.pendAsk), onclick: () => { state.pendAsk = !state.pendAsk; state.laterAsk = false; state.showAlts = false; render(); } }),
+        start),
       state.pendAsk && pendingAsk(card.task),
       state.laterAsk && h("div", { className: "later-ask", role: "group", ariaLabel: "When instead?" },
         h("span", { className: "muted", textContent: "When?" }),
