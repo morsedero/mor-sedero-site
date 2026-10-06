@@ -51,7 +51,7 @@ const ACTION_FIELDS = {
   taskId: str("update/waiting/drop/done only: the exact id of an existing task from the list."),
   title: str("add: the new task's title in the user's own words. update: only when renaming."),
   project: str("An existing project when one clearly fits, or a new project the user names. Otherwise leave empty."),
-  minutes: { type: "INTEGER", description: "How long the task takes, only if the user said (\"15 min\" → 15, \"2 hours\" → 120)." },
+  minutes: { type: "INTEGER", description: "add/update/event: how long it takes, only if the user said (\"15 min\" → 15, \"2 hours\" → 120). moment: how many minutes the user has free right now." },
   dueDate: str("YYYY-MM-DD the task is due (\"by Thursday\", \"עד יום רביעי\"). Only if the user gave one."),
   dateKind: str("deadline only for a hard date with a cost if missed, else target.", { enum: ["deadline", "target"] }),
   startDate: str("YYYY-MM-DD before which the task shouldn't come up (\"next week\", \"after Sunday\")."),
@@ -86,7 +86,7 @@ Kinds:
 - update: change an existing task's dueDate, startDate, title, project or minutes.
 - waiting: an existing task is blocked on someone or something.
 - drop: the user no longer wants an existing task.
-- moment: how the user is right now (energy, place). Changes no task.
+- moment: how the user is right now (energy, place), or how long they have free right now (minutes: "I have 30 minutes", "free for an hour"). Changes no task.
 - project: the user wants a new project (put its name in project). If they also name tasks for it, add those too, each with that project.
 - done: the user says they finished an existing task ("paid the arnona", "sent the stems").
 - event: something at a fixed time ("dentist Thursday at 15:00", "meeting with Dana tomorrow 10:30"): a calendar event, not a task. Title, eventDate, time; minutes only if said.
@@ -115,6 +115,8 @@ Message: new project חתונה: book the DJ, send invites
 {"reply":"פרויקט חדש חתונה, עם 2 משימות?","actions":[{"kind":"project","project":"חתונה"},{"kind":"add","title":"Book the DJ","project":"חתונה"},{"kind":"add","title":"Send invites","project":"חתונה"}]}
 Message: I'm wrecked and out
 {"reply":"Low energy, out. Got it?","actions":[{"kind":"moment","energy":"low","place":"out"}]}
+Message: I have 30 minutes
+{"reply":"30 minutes free. Got it?","actions":[{"kind":"moment","minutes":30}]}
 Message: sent the pre-attack cue
 {"reply":"Mark it done?","actions":[{"kind":"done","taskId":"t3"}]}
 Message: רופא שיניים ביום חמישי ב-15:00
@@ -171,7 +173,9 @@ function tidy(out, ids){
     if (kind === "moment") {
       if (["low", "medium", "high"].includes(a.energy)) x.energy = a.energy;
       if (["home", "out", "anywhere"].includes(a.place)) x.place = a.place;
-      if (!x.energy && !x.place) return [];
+      const free = Number.isFinite(a.minutes) ? Math.round(a.minutes) : 0;
+      if (free >= 5 && free <= 240) x.minutes = free;
+      if (!x.energy && !x.place && !x.minutes) return [];
     }
     return [x];
   });

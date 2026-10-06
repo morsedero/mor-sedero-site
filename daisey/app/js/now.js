@@ -531,19 +531,29 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onFree
   // The day/night flip is worth a render too, calendar or not.
   const windowMark = (fw) => `${fw?.current
     ? `m${Math.ceil((fw.current.end - Date.now()) / 60000)}`
-    : fw?.window}|${isNight(Date.now(), dayHours(settings))}`;
+    : fw?.window}|${saidFree() ?? ""}|${isNight(Date.now(), dayHours(settings))}`;
 
   // Booked tasks right now, id → { start, end, title } (day.js).
   const booked = () => (cal.status === "ok" ? bookings(tasks || [], cal.events) : new Map());
 
+  // "I have 30 minutes" (Tell Daisey, moment.free): the user's own word for
+  // how long they have, counting down from when they said it. It only ever
+  // shortens the window — the calendar can still say less.
+  const saidFree = (now = Date.now()) => {
+    const f = momentDoc.free;
+    const left = f && Number.isFinite(f.minutes) ? Math.floor(f.minutes - (now - f.at) / 60000) : 0;
+    return left > 0 ? left : null;
+  };
   function momentInput(fw = calendarNow()){
     const now = Date.now();
+    const said = saidFree(now);
     const f = feel();
     const block = blockOf(fw);
     return {
       ...(!fw ? { realWindow: false }
         : block ? { window: Math.floor((block.end - now) / 60000), blockProject: block.project }
         : { window: fw.window, nextEvent: fw.next?.title ?? null }),
+      ...(said ? { window: Math.min(said, !fw ? 60 : block ? Math.floor((block.end - now) / 60000) : fw.window), realWindow: true } : {}),
       ...workBase(tasks || [], now),
       sessionSkips: hidden(now),
       skipsToday: skipCounts(),

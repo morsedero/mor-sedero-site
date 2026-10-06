@@ -50,3 +50,8 @@ test("done, event and query (2026-10-06)", () => {
     { kind: "query", query: "due", range: "week" }, { kind: "query", query: "next" },
   ]);
 });
+
+test("a moment can say how long you have free: 5 min to 4 h, nothing else", () => {
+  const out = tidy({ reply: "", actions: [{ kind: "moment", minutes: 30 }, { kind: "moment", minutes: 2 }, { kind: "moment", minutes: 999 }, { kind: "moment", energy: "low", minutes: 45 }] }, ids);
+  assert.deepEqual(out.actions, [{ kind: "moment", minutes: 30 }, { kind: "moment", energy: "low", minutes: 45 }]);
+});
