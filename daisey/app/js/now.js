@@ -14,7 +14,7 @@
 // the same timer.
 import { watchTasks, watchRun, watchSkips, saveSkips, startRun, extendRun, endRun, startBatch, tickBatch, endBatch, skipNow, blockTask, restoreTask, watchSettings, saveSettings, watchMoment, saveMoment, watchLearn, bumpLearn, saveRun, cancelRun } from "./store.js";
 import { energyNow, placeNow, workBase } from "./context.js";
-import { watchWhere, setRide, setStill } from "./where.js";
+import { watchWhere, setRide, setStill, saveSpot, setManual } from "./where.js";
 import { pickWeekDay } from "./triage.js";
 import { focusView, handoffView, elapsedMinutes, targetMinutes, batchFocusView, batchName, sinceMark, paused, resumed } from "./focus.js";
 import { watchCalendar, logDone } from "./calendar.js";
@@ -23,7 +23,7 @@ import { rank, freeWindow, timeBucket, matchProject } from "./engine.js";
 import { localDate, skipSnapshot, shrunk, shrinkPatch, dayAfter, PENDING_CHECK_DAYS } from "./model.js";
 import { dayHours, isNight, nextMorning, dayEndAt, bookings, sameTitle, minText } from "./day.js";
 import { collectNeeds } from "./needs.js";
-import { h, icon, bdi, pieces, sizeText, dur, say, nightDivider } from "./ui.js";
+import { h, icon, bdi, pieces, sizeText, dur, say, nightDivider, flash } from "./ui.js";
 import { areaClass, areaName, projectShown, doneToday, dirOf, stemDaisy, moonDaisy } from "./look.js";
 
 const LATER_MS = LATER_MINUTES * 60000;
@@ -624,7 +624,26 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
     for (const o of r.out) if (OUT_SAID[o.reason]) n[o.reason] = (n[o.reason] || 0) + 1;
     delete n.booked; // the card itself is the booked one
     const parts = Object.entries(n).map(([k, c]) => `${c} ${OUT_SAID[k]}`);
-    return parts.length ? h("p", { className: "muted now-out", textContent: `Out right now: ${parts.join(" · ")}.` }) : null;
+    if (!parts.length) return null;
+    const line = h("p", { className: "muted now-out", textContent: `Out right now: ${parts.join(" · ")}.` });
+    return n.place ? h("div", {}, line, placeFix(r.moment)) : line;
+  }
+  // The place guess was invisible, so a wrong one just read as "nothing
+  // fits" (Mor, 2026-10-06: a free day at home, no tasks). Say where Daisey
+  // thinks you are, and fix it in one tap. "I'm home" re-saves Home right
+  // here: if it's being asked, the saved Home is off or missing.
+  const PLACE_SAID = { out: "out", walk: "walking", ride: "on the move", train: "on a train", bus: "on a bus", car: "driving" };
+  function placeFix(m){
+    const where = m.place === "spot" ? `at ${m.spot}` : PLACE_SAID[m.place] || m.place;
+    const chip = (text, onclick) => h("button", { type: "button", className: "chip", textContent: text, onclick });
+    const moving = ["walk", "ride", "train", "bus", "car"].includes(m.place);
+    return h("div", { className: "ride-ask place-fix", role: "group", ariaLabel: "Where are you?" },
+      h("span", { className: "muted" }, "You seem to be ", bdi(where), "."),
+      chip("I'm home", async () => {
+        if (await saveSpot("Home")) setManual("home"); // and hold it, so the next noisy read can't flip it straight back
+        else flash("Couldn't get your location. Allow it for this site and try again.");
+      }),
+      moving && chip("Not moving", () => setStill()));
   }
   // Counts only what the engine is really holding back as put off. Pending,
   // Tomorrow, This week and Someday also hide a task for a while (stepAside),

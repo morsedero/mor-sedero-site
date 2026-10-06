@@ -69,8 +69,10 @@ export function placeFrom(fixes, places = [], ride = null, now = Date.now()){
   v ??= 0;
   if (v >= WALK_MPS) return ride && now - ride.at < RIDE_MS ? ride.mode : "ride";
   if (v >= STILL_MPS) return "walk";
-  const reach = Math.max(NEAR_M, Math.min(last.acc || 0, 400));
-  const near = places.map((p) => ({ p, d: dist(last, p) })).filter((x) => x.d <= reach).sort((a, b) => a.d - b.d)[0];
+  // A place saved from a vague fix gets that much more reach (acc, kept since
+  // 2026-10-06; older saves have none).
+  const reach = (p) => Math.max(NEAR_M, Math.min(last.acc || 0, 400), Math.min(p.acc || 0, 400));
+  const near = places.map((p) => ({ p, d: dist(last, p) })).filter((x) => x.d <= reach(x.p)).sort((a, b) => a.d - b.d)[0];
   if (near) return placeOf(near.p);
   return places.some((p) => isHome(p.name)) ? "out" : null;
 }
@@ -164,7 +166,7 @@ export async function saveSpot(name){
   if (!fix || Date.now() - fix.t > 60000) { await fixes().then((fs) => fs.length && save({ ...load(), last: fs.at(-1) })); fix = load().last; }
   if (!fix || Date.now() - fix.t > 60000) return false;
   const d = load();
-  const places = d.places.filter((p) => p.name.toLowerCase() !== name.toLowerCase()).concat({ name, lat: fix.lat, lng: fix.lng });
+  const places = d.places.filter((p) => p.name.toLowerCase() !== name.toLowerCase()).concat({ name, lat: fix.lat, lng: fix.lng, acc: fix.acc || 0 });
   save({ ...d, places });
   tell(placeOf({ name }));
   return true;

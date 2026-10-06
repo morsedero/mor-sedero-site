@@ -44,6 +44,12 @@ test("where: a vague first fix jumping to a sharp one isn't a ride", () => {
   assert.equal(placeFrom([fix(0, 0, { speed: 12 }), fix(0, 1000, { speed: 13 }), fix(0, 2000, { speed: 0.5 }), fix(0, 3000, { speed: 12 })], PLACES), "ride");
 });
 
+test("where: a Home saved from a vague fix reaches that much further", () => {
+  const far = [fix(0.0025, 0), fix(0.0025, 10000)]; // ~280 m from the saved point
+  assert.equal(placeFrom(far, PLACES), "out");
+  assert.equal(placeFrom(far, [{ ...PLACES[0], acc: 300 }]), "home");
+});
+
 test("where: no home saved and still → unknown; no fixes → unknown", () => {
   assert.equal(placeFrom([fix(0, 0), fix(0, 10000)], []), null);
   assert.equal(placeFrom([], PLACES), null);
