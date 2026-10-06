@@ -1057,7 +1057,12 @@ dialog.tsheet .msg:empty { display: none; }
 .now-row .iconbtn svg { inline-size: 16px; block-size: 16px; stroke-width: 2; }
 .now-row .iconbtn:hover:not(:disabled), .now-row .iconbtn[aria-expanded="true"] { background: var(--aline); color: var(--ink); border-color: transparent; }
 .now-card.main .later-ask, .now-card.main .pend-ask, .now-card.main .now-out { margin-block-start: 10px; }
-.now-card.main.meeting, .now-card.main.empty, .now-card.main.rest, .now-card.main.night { min-block-size: 0; }
+.now-card.main.meeting, .now-card.main.empty, .now-card.main.night { min-block-size: 0; }
+/* Nothing active: same footprint as a task's card, not taller (Mor, 2026-10-06). */
+.now-card.main.rest { block-size: 150px; min-block-size: 150px; align-items: center; justify-content: center; padding: 10px 15px; overflow: hidden; }
+.now-card.main.rest .stem-daisy { inline-size: 32px; block-size: 38px; flex: none; }
+.now-card.main.rest .rest-h { margin: 4px 0 2px; font-size: 18px; line-height: 1.2; }
+.now-card.main.rest .rest-p { font-size: 13px; line-height: 1.35; }
 .now-card.main.batch .btn.start { margin-block-start: auto; }
 
 /* The panel: a card with [Schedule | Projects], two page dots, two pages. */

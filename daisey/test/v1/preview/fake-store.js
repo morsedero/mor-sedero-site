@@ -8,8 +8,8 @@ let tasks = (seed.tasks || []).map((t) => ({ id: "t" + ++n, ...createTask(t), ..
 // seed.run: { task: <title>, minutes: <elapsed>, extra } — a run already going.
 const run = seed.run && (() => { const t = tasks.find((x) => x.title === seed.run.task) || tasks[0];
   return { taskId: t.id, startedAt: Date.now() - (seed.run.minutes || 0) * 60000, extra: seed.run.extra || 0 }; })();
-const docs = { now: run || null, skips: seed.skips ?? null, settings: seed.settings ?? { deadlinesAsked: true }, moment: seed.moment ?? {}, learn: seed.learn ?? {} };
-const subs = { tasks: new Set(), now: new Set(), skips: new Set(), settings: new Set(), moment: new Set(), learn: new Set() };
+const docs = { now: run || null, skips: seed.skips ?? null, settings: seed.settings ?? { deadlinesAsked: true }, moment: seed.moment ?? {}, learn: seed.learn ?? {}, projects: seed.projects ?? [] };
+const subs = { tasks: new Set(), now: new Set(), skips: new Set(), settings: new Set(), moment: new Set(), learn: new Set(), projects: new Set() };
 
 const emit = (k) => setTimeout(() => { for (const cb of subs[k]) cb(k === "tasks" ? tasks.map((t) => ({ ...t })) : docs[k], {}); });
 const watch = (k) => (uid, cb) => { subs[k].add(cb); setTimeout(() => cb(k === "tasks" ? tasks.map((t) => ({ ...t })) : docs[k], {})); return () => subs[k].delete(cb); };
@@ -43,6 +43,8 @@ export const saveNow = (uid, state) => { docs.now = state; return ok("now"); };
 
 export const migrateTasks = () => () => {};
 export const watchSettings = watch("settings");
+export const watchProjectNames = watch("projects");
+export const saveProjectNames = (uid, names) => { docs.projects = names; return ok("projects"); };
 export const watchMoment = watch("moment");
 export const saveMoment = (uid, f) => { docs.moment = { ...docs.moment, ...f }; return ok("moment"); };
 export const watchLearn = watch("learn");
