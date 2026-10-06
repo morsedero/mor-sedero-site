@@ -1,6 +1,6 @@
 // The home panel's two pages, Schedule and Projects (layout round 3, Mor
-// 2026-10-06; New Design/6 and 7): a segmented control with two page dots
-// under it. Tap a tab, or swipe sideways inside the panel, to switch; the
+// 2026-10-06; New Design/6 and 7): a segmented control (its page dots
+// removed, Mor 2026-10-06). Tap a tab, or swipe sideways inside the panel, to switch; the
 // track follows the finger. The last tab is remembered on this device.
 const KEY = "daisey.panel";
 const SWIPE = 60; // px sideways that turns the page
