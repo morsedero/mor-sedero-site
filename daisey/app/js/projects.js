@@ -21,7 +21,7 @@ import { watchTasks, finishTask, restoreTask, watchProjectNames, saveProjectName
 import { INBOX, notYet, durText, localDate } from "./model.js";
 import { isOverdue } from "./triage.js";
 import { h, bdi, flash, icon } from "./ui.js";
-import { areaName, dirOf, setProjectColors } from "./look.js";
+import { dirOf, setProjectColors } from "./look.js";
 
 const SWIPE_DONE = 90; // px a task travels right before letting go finishes it
 const SWIPE_PAGE = 70; // px sideways that turns the page to the next project
@@ -89,17 +89,12 @@ const progress = (p) => (p.all.length ? p.done.length / p.all.length : 0);
 const bar = (p, cls) => h("div", { className: cls, role: "img", ariaLabel: `${p.done.length} of ${p.all.length} done` },
   h("span", { style: `inline-size:${Math.round(progress(p) * 100)}%` }));
 
-// The project card's three numbers: what's open, how long it adds up to,
-// and the nearest date (Mor, 2026-10-06: the screen "feels empty and dull").
-function stats(p){
-  const live = [...p.next, ...p.pending];
-  const mins = live.reduce((s, t) => s + (t.size || 30), 0);
-  const dated = live.filter((t) => t.due).sort((a, b) => String(a.due).localeCompare(String(b.due)))[0];
-  return [
-    [String(live.length), live.length === 1 ? "task open" : "tasks open"],
-    [mins ? durText(mins).replace(" min", "m").replace(" h", "h") : "—", "of work"],
-    dated ? [shortDay(dated.due).replace(/^\w+,?\s*/, ""), isOverdue(dated) ? "was due" : dated.dateKind === "deadline" ? "deadline" : "next date"] : ["—", "no dates"],
-  ];
+// The project card's one number: the nearest date. Open count and hours of
+// work were cut (Mor, 2026-10-06): the count repeated Next's, the hours
+// belong to planning, and "Work" restated the colour.
+function nearestDate(p){
+  const dated = [...p.next, ...p.pending].filter((t) => t.due).sort((a, b) => String(a.due).localeCompare(String(b.due)))[0];
+  return dated && [shortDay(dated.due).replace(/^\w+,?\s*/, ""), isOverdue(dated) ? "was due" : dated.dateKind === "deadline" ? "deadline" : "next date"];
 }
 
 // els: { grid, view, dialog }. onOpen(task): the task sheet. onAdd(project):
@@ -257,13 +252,14 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
     const next = p.next.map((t) => swipeCard(t, taskBtn(t, [
       h("span", { className: "pj-row" }, h("span", { className: "pj-title", dir: "auto", textContent: t.title }),
         t.id === onCard && h("span", { className: "pj-now", textContent: "NOW" })),
-      h("span", { className: "pj-meta", textContent: nextMeta(t) })])));
+      h("span", { className: "pj-meta", dir: "ltr", textContent: nextMeta(t) })])));
     const pending = p.pending.map((t) => swipeCard(t, taskBtn(t, [
       h("span", { className: "pj-row" },
         h("span", { className: "pj-col" }, h("span", { className: "pj-title", dir: "auto", textContent: t.title }),
-          h("span", { className: "pj-meta" }, ...(t.waitingOn ? ["Waiting on ", bdi(t.waitingOn)] : ["Pending"]),
+          h("span", { className: "pj-meta", dir: "ltr" }, ...(t.waitingOn ? ["Waiting on ", bdi(t.waitingOn)] : ["Pending"]),
             t.checkOn ? (t.checkOn <= localDate() ? " · check now" : ` · ask ${shortDay(t.checkOn)}`) : "")),
         t.waitingOn && h("span", { className: "pj-who", ariaHidden: "true", textContent: [...t.waitingOn.trim()][0]?.toUpperCase() || "" }))])));
+    const due = nearestDate(p);
     const quietRow = (t) => h("button", { type: "button", className: "pj-quiet" + (t.status === "done" ? " done" : ""), dir: dirOf(t.title),
       onclick: () => onOpen?.(t) }, bdi(t.title));
     els.view.replaceChildren(...[
@@ -271,17 +267,14 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
         h("button", { type: "button", className: "pj-back", ariaLabel: "Back to home", onclick: () => onScreen?.(null) }, icon("back")), chips),
       h("div", { className: "pj-card" },
         h("div", { className: "pj-card-top" }, h("h2", { className: "pj-name", dir: "auto", textContent: p.name }),
-          p.area && h("span", { className: "pj-area", textContent: areaName({ area: p.area }) })),
-        h("div", { className: "pj-stats" }, ...stats(p).map(([v, l]) => h("div", { className: "pj-stat" },
-          h("span", { className: "pj-stat-v", textContent: v }), h("span", { className: "pj-stat-l", textContent: l })))),
+          due && h("div", { className: "pj-due" }, h("span", { className: "pj-due-v", textContent: due[0] }), h("span", { className: "pj-due-l", textContent: due[1] }))),
         h("div", { className: "pj-prog" }, bar(p, "pbar big"), h("span", { textContent: `${p.done.length} of ${p.all.length} done` }))),
       section("next", "Next", p.next.length, ...next,
         h("button", { type: "button", className: "pj-add", textContent: "+ Add a task", onclick: () => onAdd?.(p.name === INBOX ? "" : p.name) })),
       p.pending.length > 0 && section("pending", "Pending", p.pending.length, ...pending),
       ...foldRow("someday", "someday", "Someday", p.someday, quietRow),
       ...foldRow("done", "done", "Done", p.done, quietRow),
-      !p.all.length && made.includes(p.name) && h("button", { type: "button", className: "pj-del", textContent: "Delete project", onclick: () => deleteProject(p.name) }),
-      ps.length > 1 && h("p", { className: "pj-hint" }, icon("back"), "Swipe for the next project", icon("chev"))].filter(Boolean));
+      !p.all.length && made.includes(p.name) && h("button", { type: "button", className: "pj-del", textContent: "Delete project", onclick: () => deleteProject(p.name) })].filter(Boolean));
     els.view.className = "screen" + colorClass(p);
     els.view.scrollTop = y;
     const row = els.view.querySelector(".pj-chips");

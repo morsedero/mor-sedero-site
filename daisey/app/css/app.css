@@ -785,7 +785,6 @@ button.now-title:focus-visible { outline: 2px solid var(--aink); outline-offset:
 .bud-heart { fill: var(--bud-heart); }
 .night-foot .night-div { align-self: stretch; }
 
-:dir(rtl) .pj-hint svg { transform: scaleX(-1); }
 
 .tellbar { display: flex; align-items: center; gap: 0; block-size: 52px; margin-block-start: 8px; padding-inline: 6px; border: 1px solid var(--line); border-radius: 999px; background: var(--bg); }
 .tellbar:focus-within { border-color: var(--accent); }
@@ -840,13 +839,11 @@ body:has(.screen:not([hidden])) { overflow: hidden; }
 /* Children of .screen keep its centring (margin-inline: auto): the 20px
    gutter is a narrower width, not a side margin, or wide screens pin them left. */
 .pj-card { margin: 14px auto 0; inline-size: calc(100% - 40px); max-inline-size: 520px; padding: 18px 18px 16px; border-radius: 22px; background: var(--surface); border: 1px solid var(--aline); box-shadow: 0 6px 20px color-mix(in srgb, var(--aink) 12%, transparent); }
-.pj-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-block-start: 14px; }
-.pj-stat { display: grid; gap: 2px; padding: 10px 12px; border-radius: 14px; background: var(--tint); }
-.pj-stat-v { font-size: 18px; font-weight: 700; color: var(--aink); font-variant-numeric: tabular-nums; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.pj-stat-l { font-size: 11px; color: color-mix(in srgb, var(--aink) 45%, var(--ink-2)); }
+.pj-due { flex: none; display: grid; gap: 2px; padding: 8px 12px; border-radius: 14px; background: var(--tint); }
+.pj-due-v { font-size: 18px; font-weight: 700; color: var(--aink); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.pj-due-l { font-size: 11px; color: color-mix(in srgb, var(--aink) 45%, var(--ink-2)); }
 .pj-card-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .pj-name { margin: 0; min-inline-size: 0; font-size: 26px; font-weight: 700; letter-spacing: -0.3px; line-height: 1.15; overflow-wrap: anywhere; }
-.pj-area { flex: none; padding: 3px 10px; border-radius: 999px; background: var(--tint); font-size: 12px; font-weight: 600; color: var(--aink); }
 .pj-prog { display: flex; align-items: center; gap: 10px; margin-block-start: 14px; font-size: 12px; color: color-mix(in srgb, var(--aink) 45%, var(--ink)); }
 .pj-sec { padding-inline: 20px; }
 .pj-h { display: flex; align-items: center; gap: 8px; margin: 18px 0 0; }
@@ -877,6 +874,8 @@ body:has(.screen:not([hidden])) { overflow: hidden; }
 .pj-title { min-inline-size: 0; font-size: 15px; font-weight: 600; overflow-wrap: anywhere; }
 .pj-now { flex: none; padding: 3px 8px; border-radius: 999px; background: var(--a-job-tint); color: var(--a-job-ink); font-size: 11px; font-weight: 600; }
 .pj-meta { font-size: 12px; color: var(--ink-2); }
+/* Meta is English chrome: ltr keeps "1h · from Wed" in order, aligned to an RTL title's side. */
+.pj-task[dir="rtl"] .pj-meta { text-align: right; }
 .pj-who { flex: none; display: grid; place-items: center; inline-size: 30px; block-size: 30px; border-radius: 50%; background: var(--chip); color: var(--ink); font-size: 13px; font-weight: 600; }
 .pj-del { display: block; margin: 28px auto 0; min-block-size: 44px; padding-inline: 18px; border: 0; border-radius: 12px; background: none; color: var(--danger); font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; }
 .pj-add { inline-size: 100%; min-block-size: 46px; margin-block-start: 8px; padding-inline: 16px; border: 1px solid var(--aline); border-radius: 14px; background: color-mix(in srgb, var(--tint) 60%, var(--surface)); color: var(--aink); font: inherit; font-size: 14px; font-weight: 600; text-align: start; cursor: pointer; }
@@ -886,8 +885,6 @@ body:has(.screen:not([hidden])) { overflow: hidden; }
 .pj-tick:hover { border-color: var(--aink); color: var(--aink); }
 .pj-tick.on { border-color: var(--green); background: var(--green); color: #fff; }
 .pj-swipe.swiping .pj-tick { opacity: 0; }
-.pj-hint { display: flex; align-items: center; justify-content: center; gap: 10px; margin: 28px auto 0; color: #8c8574; font-size: 12px; }
-.pj-hint svg { inline-size: 16px; block-size: 16px; stroke-width: 2; }
 
 /* The task sheet, built like the event sheet (Mor, 2026-10-06: "make it
    identical"): the same .now card, .now-head, .field labels and inputs, and
