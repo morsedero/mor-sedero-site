@@ -55,3 +55,8 @@ test("a moment can say how long you have free: 5 min to 4 h, nothing else", () =
   const out = tidy({ reply: "", actions: [{ kind: "moment", minutes: 30 }, { kind: "moment", minutes: 2 }, { kind: "moment", minutes: 999 }, { kind: "moment", energy: "low", minutes: 45 }] }, ids);
   assert.deepEqual(out.actions, [{ kind: "moment", minutes: 30 }, { kind: "moment", energy: "low", minutes: 45 }]);
 });
+
+test("a plan question keeps its part, defaulting to the whole day", () => {
+  const out = tidy({ reply: "", actions: [{ kind: "query", query: "plan", part: "afternoon" }, { kind: "query", query: "plan", part: "lunch" }] }, ids);
+  assert.deepEqual(out.actions, [{ kind: "query", query: "plan", part: "afternoon" }, { kind: "query", query: "plan", part: "day" }]);
+});

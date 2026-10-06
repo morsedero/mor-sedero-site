@@ -21,7 +21,9 @@
 // shows below in full. It opens on today, or on tomorrow once today's hours
 // are over and nothing's left. The pick lasts only as long as the tab.
 import { watchCalendar } from "./calendar.js";
-import { watchSettings } from "./store.js";
+import { watchSettings, watchTasks, watchRun } from "./store.js";
+import { planDay } from "./plan.js";
+import { planView } from "./plan-view.js";
 import { dayHours, minText } from "./day.js";
 import { localDate, durText } from "./model.js";
 import { h, bdi, nightDivider } from "./ui.js";
@@ -67,9 +69,10 @@ export function dayRows(events, date, hrs, from = 0){
 
 // el: the page. onEvent(ev): an event's details. onNew(date, at): a new
 // event on "YYYY-MM-DD", at "HH:MM" when a gap was tapped.
-export function mountSchedule(el, uid, { onEvent, onNew } = {}){
+export function mountSchedule(el, uid, { onEvent, onNew, onOpen } = {}){
   let cal = { status: "loading", events: [] };
   let settings = {};
+  let tasks = null, run = null; // for Plan my day
   let picked = null; // "YYYY-MM-DD" tapped in the day strip; null = today (tomorrow once tonight is empty)
   const fail = (e) => console.error("[daisey] schedule", e);
 
@@ -112,6 +115,9 @@ export function mountSchedule(el, uid, { onEvent, onNew } = {}){
     const label = h("div", { className: "sc-label" }, h("span", { className: "sc-name", textContent: name }), h("span", { className: "sc-date", textContent: short(day.date) }));
     const none = h("button", { type: "button", className: "sc-none", onclick: () => onNew?.(day.ymd) },
       h("span", { textContent: "Nothing scheduled" }), h("span", { className: "sc-add", ariaHidden: "true", textContent: "+ Add" }));
+    // Today: what Daisey would do with the free time (plan.js). Not in the calendar.
+    const plan = day.i === 0 && tasks && !late ? planView(planDay({ tasks, events: cal.events, now, hours: hrs, settings, run }), { onOpen }) : null;
+    if (plan) kids.push(plan);
     kids.push(h("section", { className: "sc-day", ariaLabel: `${name}, ${short(day.date)}` }, label,
       ...(day.rows.length ? day.rows.map((x) => row(x, now)) : [none])));
     const y = el.scrollTop;
@@ -137,6 +143,8 @@ export function mountSchedule(el, uid, { onEvent, onNew } = {}){
   const unsubs = [
     watchCalendar((c) => { cal = c; render(); }),
     watchSettings(uid, (s) => { settings = s || {}; render(); }, fail),
+    watchTasks(uid, (ts) => { tasks = ts; render(); }, fail),
+    watchRun(uid, (r) => { run = r; render(); }, fail),
   ];
   // Free time shrinks as the clock moves; once a minute is plenty.
   let mark = null;

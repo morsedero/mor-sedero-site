@@ -15,7 +15,11 @@
 import { idToken } from "./firebase.js";
 import { watchTasks, addTask, updateTask, saveMoment, finishTask } from "./store.js";
 import { localDate, LABELS, dayAfter } from "./model.js";
-import { createEvent } from "./calendar.js";
+import { createEvent, watchCalendar } from "./calendar.js";
+import { planDay } from "./plan.js";
+import { planView } from "./plan-view.js";
+import { dayHours } from "./day.js";
+import { watchSettings, watchRun } from "./store.js";
 import { rank } from "./engine.js";
 import { effectiveDue } from "./triage.js";
 import { h, bdi, dur, flash } from "./ui.js";
@@ -36,7 +40,7 @@ const PLACE = { home: "Home", out: "Out", anywhere: "Anywhere" };
 // in use, the placeholder turns between "Tell Daisey…" and one thing it really
 // handles, picked for the moment. Only what daisey-now-chat.js understands
 // (its KINDS), never a promise it can't keep, and short enough for a phone.
-const HINTS = ["What's next?", "Call Uri tomorrow at 10", "Mix review, 2 h, by Thu", "Done with the invoice",
+const HINTS = ["What's next?", "Plan my afternoon", "I have 30 minutes", "Call Uri tomorrow at 10", "Mix review, 2 h, by Thu", "Done with the invoice",
   "What's due this week?", "Lunch with Dana at 13:00", "I'm wrecked"];
 export function hintsFor(tasks){
   const list = [...HINTS];
@@ -48,12 +52,14 @@ const HINT_MS = 4500;
 
 // form/input/mic: the bar's own elements (index.html). openAdd(project, title):
 // the Add task form, prefilled.
-export function mountTell(form, input, mic, uid, { openAdd }){
+export function mountTell(form, input, mic, uid, { openAdd, openTask }){
   let tasks = [];
   const panel = h("section", { className: "tell-panel", ariaLabel: "What Daisey understood", ariaLive: "polite", hidden: true });
   form.before(panel);
   const stop = watchTasks(uid, (ts) => { tasks = ts || []; }, (e) => console.error("[daisey] tell", e));
   let busy = false;
+  let cal = { status: "loading", events: [] }, settings = {}, run = null; // for "plan my afternoon"
+  const stops = [watchCalendar((c) => { cal = c; }), watchSettings(uid, (s) => { settings = s || {}; }, () => {}), watchRun(uid, (r) => { run = r; }, () => {})];
   const plain = input.placeholder;
   let turn = 0;
   const hinting = setInterval(() => {
@@ -131,6 +137,11 @@ export function mountTell(form, input, mic, uid, { openAdd }){
   // has (2026-10-06): what's next (the engine's top 3, without the calendar's
   // window), what's due today / this week, what's pending on whom.
   function answer(q){
+    if (q.query === "plan") {
+      const plan = planDay({ tasks, events: cal.status === "ok" ? cal.events : [], hours: dayHours(settings), settings, run });
+      const v = planView(plan, { only: q.part === "day" ? null : q.part, onOpen: (t) => { close(); openTask?.(t); } });
+      return h("div", { className: "tell-answer" }, v || h("p", { className: "tell-reply", textContent: "No free time left there." }));
+    }
     const open = tasks.filter((t) => t.status === "ready" || t.status === "waiting");
     let rows = [];
     if (q.query === "next") {
@@ -238,5 +249,5 @@ export function mountTell(form, input, mic, uid, { openAdd }){
   };
 
   // ask(text): a message from outside the bar (a share into Daisey).
-  return { ask, unmount(){ stop(); clearInterval(hinting); input.placeholder = plain; rec?.abort(); close(); panel.remove(); form.onsubmit = mic.onclick = null; } };
+  return { ask, unmount(){ stop(); stops.forEach((s) => s()); clearInterval(hinting); input.placeholder = plain; rec?.abort(); close(); panel.remove(); form.onsubmit = mic.onclick = null; } };
 }

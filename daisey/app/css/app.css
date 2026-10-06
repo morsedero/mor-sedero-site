@@ -1273,3 +1273,16 @@ body.focus .shell { block-size: auto; min-block-size: 100dvh; overflow: visible;
 .gl-v { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .gl-v b { font-weight: 600; font-variant-numeric: tabular-nums; }
 .gl-go { color: var(--ink-2); }
+
+/* Plan my day (plan-view.js): Daisey's own plan above today's calendar. */
+.plan { margin: 4px 0 10px; padding: 12px 14px; border-radius: 16px; background: var(--chip); }
+.plan-win + .plan-win { margin-block-start: 10px; }
+.plan-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.plan-name { font-weight: 600; font-size: 14px; }
+.plan-free { font-size: 12px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.plan-list { list-style: none; margin: 4px 0 0; padding: 0; }
+.plan-task { display: flex; justify-content: space-between; gap: 10px; inline-size: 100%; min-block-size: 40px; align-items: center; padding: 0; border: 0; background: none; font: inherit; font-size: 14px; color: var(--ink); text-align: start; cursor: pointer; }
+.plan-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.plan-size { flex: none; font-size: 12px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.plan-none { margin: 4px 0 0; font-size: 13px; color: var(--ink-2); }
+.plan-note { margin: 10px 0 0; font-size: 12px; color: var(--ink-2); }

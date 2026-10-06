@@ -60,8 +60,9 @@ const ACTION_FIELDS = {
   place: str("moment only: where the user is right now.", { enum: ["home", "out", "anywhere"] }),
   eventDate: str("event only: YYYY-MM-DD the event happens."),
   time: str("event only: the start time, HH:MM, 24-hour."),
-  query: str("query only: what they ask about.", { enum: ["next", "due", "waiting"] }),
+  query: str("query only: what they ask about.", { enum: ["next", "due", "waiting", "plan"] }),
   range: str("query due only: today or this week.", { enum: ["today", "week"] }),
+  part: str("query plan only: which part of today, or the whole day.", { enum: ["morning", "afternoon", "evening", "day"] }),
 };
 const SCHEMA = {
   type: "OBJECT",
@@ -90,7 +91,7 @@ Kinds:
 - project: the user wants a new project (put its name in project). If they also name tasks for it, add those too, each with that project.
 - done: the user says they finished an existing task ("paid the arnona", "sent the stems").
 - event: something at a fixed time ("dentist Thursday at 15:00", "meeting with Dana tomorrow 10:30"): a calendar event, not a task. Title, eventDate, time; minutes only if said.
-- query: a question about their tasks, changing nothing: "what's next?" → next; "what's due today/this week?" → due with range; "what am I waiting on?" → waiting.
+- query: a question about their tasks, changing nothing: "what's next?" → next; "what's due today/this week?" → due with range; "what am I waiting on?" → waiting; "plan my afternoon / my day" → plan with part (morning, afternoon, evening, or day).
 
 Rules:
 - Each value goes only in its own field. Dates go in dueDate or startDate as YYYY-MM-DD, never in waitingFor or title.
@@ -122,7 +123,9 @@ Message: sent the pre-attack cue
 Message: רופא שיניים ביום חמישי ב-15:00
 {"reply":"להוסיף ליומן ביום חמישי ב-15:00?","actions":[{"kind":"event","title":"רופא שיניים","eventDate":"2026-10-08","time":"15:00"}]}
 Message: what's due this week?
-{"reply":"Here's what's due this week:","actions":[{"kind":"query","query":"due","range":"week"}]}`;
+{"reply":"Here's what's due this week:","actions":[{"kind":"query","query":"due","range":"week"}]}
+Message: plan my afternoon
+{"reply":"Here's the afternoon:","actions":[{"kind":"query","query":"plan","part":"afternoon"}]}`;
 
 const clean = (s, n = 200) => String(s ?? "").replace(/\s+/g, " ").trim().slice(0, n);
 const isDay = (s) => /^\d{4}-\d{2}-\d{2}$/.test(String(s || ""));
@@ -167,8 +170,9 @@ function tidy(out, ids){
       return [{ kind, title, date, time, minutes: Number.isFinite(size) && size > 0 && size <= 24 * 60 ? Math.round(size) : 60 }];
     }
     if (kind === "query") {
-      if (!["next", "due", "waiting"].includes(a.query)) return [];
-      return [{ kind, query: a.query, ...(a.query === "due" ? { range: a.range === "week" ? "week" : "today" } : {}) }];
+      if (!["next", "due", "waiting", "plan"].includes(a.query)) return [];
+      return [{ kind, query: a.query, ...(a.query === "due" ? { range: a.range === "week" ? "week" : "today" } : {}),
+        ...(a.query === "plan" ? { part: ["morning", "afternoon", "evening"].includes(a.part) ? a.part : "day" } : {}) }];
     }
     if (kind === "moment") {
       if (["low", "medium", "high"].includes(a.energy)) x.energy = a.energy;

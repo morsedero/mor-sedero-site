@@ -276,7 +276,7 @@ async function boot(){
         m.needs = mountNeeds($("#needsview"), user.uid, { onClose: () => screens.back() });
         // The home panel: Schedule and Projects, one page each.
         m.panel = mountPanel({ panel: $("#panel"), tabs: [$("#tabSched"), $("#tabProj")], track: $("#panel .ptrack") });
-        m.schedule = mountSchedule($("#schedPage"), user.uid, { onEvent: (ev) => m.event.view(ev), onNew: (date, at) => m.event.open(date, at) });
+        m.schedule = mountSchedule($("#schedPage"), user.uid, { onEvent: (ev) => m.event.view(ev), onNew: (date, at) => m.event.open(date, at), onOpen: (task) => m.adder.edit(task) });
         m.projects = mountProjects({ grid: $("#projPage"), view: $("#projectview"), dialog: $("#projdlg") }, user.uid, {
           onOpen: (task) => m.adder.edit(task),
           onAdd: (project) => m.adder.open(project),
@@ -331,7 +331,7 @@ async function boot(){
         // Tell Daisey: plain language in, confirm cards out (tell.js).
         import("./tell.js").then(({ mountTell }) => {
           if (mounted !== m) return; // signed out while it loaded
-          m.tell = mountTell($("#tell"), $("#tellInput"), $("#mic"), user.uid, { openAdd: (project, title) => m.adder.open(project ?? tabProject(), title) });
+          m.tell = mountTell($("#tell"), $("#tellInput"), $("#mic"), user.uid, { openAdd: (project, title) => m.adder.open(project ?? tabProject(), title), openTask: (task) => m.adder.edit(task) });
           if (shared) m.tell.ask(shared.slice(0, 800));
         }).catch((e) => console.error("[daisey] tell", e));
         for (const s of SIGNED_IN) $(s).hidden = false;
