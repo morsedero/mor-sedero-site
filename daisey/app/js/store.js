@@ -3,6 +3,7 @@
 // only moves documents. `tasks` arguments are the current list from
 // watchTasks, used as history for "similar past tasks" guesses.
 import * as fb from "./firebase.js";
+import { worthChecking, checkOnline } from "./research.js";
 import { createTask, editTask, completeTask, startedTask, workedTask, keptTime, skipTask, skipReason, migrateTask, toDate } from "./model.js";
 
 const tasksCol = (uid) => fb.collection(fb.db, "users", uid, "tasks");
@@ -19,7 +20,12 @@ export function watchTasks(uid, cb, onError){
 // Write promises resolve on server ack, which never comes offline; the local
 // listener already shows the change, so callers needn't wait on them.
 export function addTask(uid, input, tasks = []){
-  return fb.addDoc(tasksCol(uid), createTask(input, { history: tasks }));
+  const task = createTask(input, { history: tasks });
+  const added = fb.addDoc(tasksCol(uid), task);
+  // A guessed "Office hours": check the web once, quietly (research.js).
+  if (worthChecking(task)) added.then((ref) => checkOnline(task).then((patch) => patch && fb.updateDoc(ref, patch)))
+    .catch((e) => console.warn("[daisey] online check", e.message || e));
+  return added;
 }
 
 export function updateTask(uid, task, changes, tasks = []){

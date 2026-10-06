@@ -117,6 +117,8 @@ export function mountAddTask(dialog, uid, { onStart } = {}){
     h("label", {}, h("span", { textContent: "Ask me again" }), checkOn),
     nudgeBtn);
   const stateLine = h("p", { className: "ts-state" });
+  // What the web check found (research.js): "Daisey checked: online…" / "needs a call…".
+  const researchLine = h("p", { className: "ts-state ts-research", dir: "auto" });
 
   const stepList = h("ul", { className: "ts-steps" });
   const linkRow = h("div", { className: "ts-links" });
@@ -131,7 +133,7 @@ export function mountAddTask(dialog, uid, { onStart } = {}){
     field("Project", projectSel, newProject),
     field("Task", title),
     h("div", { className: "ts-dates" }, start.box, due.box),
-    detailsBtn, chipRow, pendBox, stateLine,
+    detailsBtn, chipRow, pendBox, researchLine, stateLine,
     section("Steps", stepList),
     section("Links & notes", h("div", { className: "ts-group" }, linkRow, notes)),
     worked, startBtn, del, msg);
@@ -307,6 +309,9 @@ export function mountAddTask(dialog, uid, { onStart } = {}){
       ? [`Done ${t.doneAt ? new Date(t.doneAt).toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" }) : ""}. `,
         h("button", { type: "button", className: "linkish", textContent: "Reopen", onclick: () => save({ status: "ready" }) })]
       : ["In Not now. Start brings it back."]));
+    const r = t?.research;
+    researchLine.hidden = !r || r.online === "unsure" || !r.why;
+    researchLine.textContent = r ? `${r.online === "yes" ? "Daisey checked: can be done online" : "Daisey checked: needs a call or a visit"}${r.why ? ` — ${r.why}` : ""}` : "";
     startBtn.hidden = done;
     startBtn.replaceChildren(icon(t ? "play" : "plus"), h("span", { textContent: t ? "Start" : "Add task" }));
     del.hidden = !t;

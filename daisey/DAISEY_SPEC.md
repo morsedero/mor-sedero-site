@@ -295,6 +295,10 @@ Daisey speaks first (Mor, Oct 6, 2026; Android, app notifications; no daily limi
 
 **How it works**: Web Push. `functions/daisey-now-morning.js` runs every 5 minutes; `_daisey-lib/notify.js` decides, using the app's own engine, brief and Needs-you modules (required from `app/js`, bundled with esbuild), so the server and the app can't disagree. The server can't read Firestore, so while notifications are on the app sends `daisey-now-push` a snapshot of its open tasks (and those done in the last 2 days) and the running task whenever they change: scoring fields only, never notes, links or steps. The calendar is read live. Keys: `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` in Netlify's environment.
 
+## Can it be done online? (2026-10-06)
+
+A task whose open hours are only a guess at "Office hours" (a call, a school, an office) gets one quiet web check when it's added (`research.js`, `functions/daisey-now-research.js`: Gemini with Google Search, 40 a day). If the web finds an online way, the guess becomes "Anytime" so the task isn't held back until the offices open; either way the one-line reason ("Daisey checked: can be done online — …") sits in the task sheet. No question, no spinner, a failure leaves the task as it was; a task you set to Office hours yourself is never touched. Only the title and project name go out.
+
 ## Day hours, booked tasks and calendar tasks
 
 Daisey only plans inside your waking day, never pushes a task that already has a time, and helps tasks that ended up in the calendar become real tasks.
