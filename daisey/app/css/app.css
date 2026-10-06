@@ -1109,6 +1109,7 @@ dialog.tsheet .msg:empty { display: none; }
 .sc-add { font-size: 12px; font-weight: 600; color: var(--ink-2); opacity: 0; transition: opacity .15s; }
 .sc-none:hover .sc-add, .sc-none:focus-visible .sc-add, .sc-gap:hover .sc-add, .sc-gap:focus-visible .sc-add { opacity: 1; }
 @media (hover: none) { .sc-add { opacity: .7; } }
+.sc-row.sc-past { opacity: .5; } /* already over today — still shown, quieter */
 .sc-row.sc-on .sc-ev { box-shadow: 0 0 0 2px color-mix(in srgb, var(--ev, var(--ink-2)) 70%, var(--card)); }
 .sc-time .sc-nowtag { display: block; inline-size: fit-content; margin-block-start: 3px; padding: 1px 7px; border-radius: 999px; background: var(--accent); color: var(--on-accent); font-size: 11px; font-weight: 700; }
 /* The day strip: 7 equal columns, never a horizontal scroll (that would fight

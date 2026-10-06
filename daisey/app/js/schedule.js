@@ -12,6 +12,9 @@
 // Remove); a free gap or an empty day opens a new event right there. An event
 // happening now is marked Now.
 //
+// Today shows the whole day, what already passed included (Mor, 2026-10-06),
+// dimmed; only free time starts from now.
+//
 // One day at a time (Mor, 2026-10-06: the whole week stacked vertically was
 // crowded and confusing). A strip of the 7 days calendar.js fetches sits on
 // top — weekday, date, a dot when there's something on — and the picked day
@@ -34,7 +37,7 @@ const hm = (ms) => clock(ms);
 
 // One day's rows: events (busy or not) in order, and Free boxes for the gaps
 // between busy ones inside the day hours. from: nothing before this counts
-// as free (now, for today).
+// as free (now, for today); events before it still show.
 export function dayRows(events, date, hrs, from = 0){
   const d0 = new Date(date); d0.setHours(0, 0, 0, 0);
   const d1 = new Date(d0); d1.setDate(d1.getDate() + 1);
@@ -43,7 +46,7 @@ export function dayRows(events, date, hrs, from = 0){
     .map((e) => ({ kind: "event", allDay: true, ev: e }));
   const timed = events.filter((e) => !e.allDay)
     .map((e) => ({ kind: "event", start: Date.parse(e.start), end: Date.parse(e.end), ev: e }))
-    .filter((x) => x.start < d1.getTime() && x.end > d0.getTime() && x.end > from)
+    .filter((x) => x.start < d1.getTime() && x.end > d0.getTime())
     .sort((a, b) => a.start - b.start || a.end - b.end);
   const open = atMin(d0, hrs.start), close = atMin(d0, hrs.end);
   const rows = [];
@@ -85,10 +88,11 @@ export function mountSchedule(el, uid, { onEvent, onNew } = {}){
     const days = Array.from({ length: DAYS }, (_, i) => {
       const date = new Date(today); date.setDate(date.getDate() + i);
       const rows = dayRows(cal.events, date, hrs, i === 0 ? now : 0);
-      return { i, date, ymd: localDate(date.getTime()), rows, events: rows.filter((x) => x.kind === "event").length };
+      const evs = rows.filter((x) => x.kind === "event");
+      return { i, date, ymd: localDate(date.getTime()), rows, events: evs.length, left: evs.filter((x) => x.allDay || x.end > now).length };
     });
     // Past the day's end with nothing left tonight, the strip opens on tomorrow.
-    const auto = late && !days[0].events ? 1 : 0;
+    const auto = late && !days[0].left ? 1 : 0;
     if (!days.some((d) => d.ymd === picked)) picked = null; // the picked day has slid out of the week
     const day = days.find((d) => d.ymd === picked) || days[auto];
     const nameOf = (i, date) => (i === 0 ? (late || today.getHours() >= 18 ? "Tonight" : "Today")
@@ -124,7 +128,8 @@ export function mountSchedule(el, uid, { onEvent, onNew } = {}){
       onclick: () => onNew?.(localDate(x.start), hm(quarterUp(x.start))) },
       h("span", { className: "sc-free" }, `${durText((x.end - x.start) / 60000)} free`, h("span", { className: "sc-add", ariaHidden: "true", textContent: "+" })));
     const on = !x.allDay && x.start <= now && now < x.end;
-    return h("div", { className: "sc-row" + (on ? " sc-on" : "") }, h("span", { className: "sc-time strong" }, time, on && h("span", { className: "sc-nowtag", textContent: "Now" })),
+    const past = !x.allDay && x.end <= now;
+    return h("div", { className: "sc-row" + (on ? " sc-on" : past ? " sc-past" : "") }, h("span", { className: "sc-time strong" }, time, on && h("span", { className: "sc-nowtag", textContent: "Now" })),
       h("button", { type: "button", className: "sc-ev", style: x.ev.color ? `--ev:${x.ev.color}` : "",
         ariaLabel: `${on ? "Now: " : ""}${x.ev.title}, ${time}`, onclick: () => onEvent?.(x.ev) }, bdi(x.ev.title)));
   }
