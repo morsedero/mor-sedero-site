@@ -41,19 +41,28 @@ if ("serviceWorker" in navigator) {
 // the page for good — "Firebase isn't configured" and a second "Sign in with
 // Google" among them, read out by screen readers and page readers alike.)
 let onSignIn = () => {};
+let onGuest = () => {};
 function show(view, text = ""){
   const box = $("#status");
   if (view === "signedin") { box.hidden = true; box.replaceChildren(); return; }
   box.hidden = false;
   if (view === "signedout") {
     const msg = Object.assign(document.createElement("p"), { className: "msg", role: "alert" });
-    const btn = Object.assign(document.createElement("button"), { className: "btn primary", type: "button", textContent: "Sign in with Google" });
-    btn.onclick = () => onSignIn(msg);
-    box.replaceChildren(Object.assign(document.createElement("p"), { textContent: "Sign in to see your tasks." }), btn, msg);
+    const googleBtn = Object.assign(document.createElement("button"), { className: "btn primary", type: "button", textContent: "Sign in with Google" });
+    const guestBtn = Object.assign(document.createElement("button"), { className: "btn secondary", type: "button", textContent: "Continue as guest" });
+    googleBtn.onclick = () => onSignIn(msg);
+    guestBtn.onclick = () => onGuest(msg);
+    box.replaceChildren(
+      Object.assign(document.createElement("p"), { textContent: "Sign in to see your tasks." }),
+      googleBtn,
+      guestBtn,
+      msg,
+    );
     return;
   }
   box.replaceChildren(Object.assign(document.createElement("p"), { className: view === "loading" ? "muted" : "", textContent: text || "Loading…" }));
 }
+
 
 // Theme (Mor, 2026-10-04). Auto follows the phone; Light and Dark override it
 // and stay overridden. The choice is a data-theme attribute on <html> that
@@ -108,6 +117,13 @@ async function boot(){
       msg.textContent = e.code === "auth/popup-blocked"
         ? "Popup was blocked. Allow popups for this site and try again."
         : "Sign-in failed: " + (e.code || e.message);
+    }
+  };
+  onGuest = async (msg) => {
+    msg.textContent = "";
+    try { await fb.signInGuest(); }
+    catch (e) {
+      msg.textContent = e?.message || "Guest sign-in failed.";
     }
   };
   // Account menu under the avatar.

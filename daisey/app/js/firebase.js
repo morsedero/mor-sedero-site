@@ -30,6 +30,10 @@ export async function signIn(){
   await auth.signInWithPopup(a, p);
 }
 
+export async function signInGuest(){
+  await auth.signInAnonymously(a);
+}
+
 export function signOut(){ return auth.signOut(a); }
 
 export const { doc, collection, setDoc, addDoc, updateDoc, deleteDoc, onSnapshot, serverTimestamp, increment } = fs;
