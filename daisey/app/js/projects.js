@@ -225,7 +225,8 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
     const parts = [durText(t.size || 30)];
     if (st.length) parts.push(`${st.filter((x) => x.done).length} of ${st.length} steps`);
     if (notYet(t)) parts.push(`from ${shortDay(t.notBefore)}`);
-    else if (t.due) {
+    // Further than 2 weeks: no date in the list, only in the task sheet.
+    else if (t.due && (isOverdue(t) || daysTo(t.due) <= 14)) {
       const tone = dueTone(t), text = `${isOverdue(t) ? "was due" : t.dateKind === "deadline" ? "due" : "by"} ${shortDay(t.due)}`;
       parts.push(tone ? h("span", { className: `pj-date ${tone}`, textContent: text }) : text);
     }
