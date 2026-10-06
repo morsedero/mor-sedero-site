@@ -80,8 +80,7 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen } = {}){
     const now = Date.now(), hrs = dayHours(settings);
     const note = { loading: "Loading the calendar…", not_connected: "Calendar not connected.", needs_reauth: "Calendar sign-in expired.", error: "Couldn't load the calendar." }[cal.status];
     if (note) {
-      el.replaceChildren(h("p", { className: "sc-note" }, note, ...(cal.status === "not_connected" || cal.status === "needs_reauth"
-        ? [" ", h("a", { href: "/daisey/", textContent: "Open old Daisey" })] : [])));
+      el.replaceChildren(h("p", { className: "sc-note", textContent: note }));
       return;
     }
     const today = new Date(now);

@@ -34,7 +34,7 @@ function dropCardLinks(uid, tasks, done){
 
 const URL_ = "/.netlify/functions/daisey-now-trello";
 const ERROR = {
-  not_connected: "Trello isn't linked. Sign in to the old Daisey once, with Trello connected.",
+  not_connected: "Trello isn't linked. Connect Trello from a signed-in account first.",
   no_session: "Signed out.",
   trello: "Trello didn't answer.",
 };

@@ -18,6 +18,7 @@ const WRITE_URL = "/.netlify/functions/daisey-now-calendar-write";
 // comes back. (Instant would mean Google push channels and a webhook to
 // receive them — more machinery than a minute of lag is worth.)
 const EVERY = 60000;
+const GUEST_EVENTS_KEY = "daisey.guest.events.v1";
 
 const subs = new Set();
 let state = { status: "loading", events: [] };
@@ -28,8 +29,28 @@ const localGuest = () => {
   catch { return false; }
 };
 
+function guestEvents(){
+  let raw;
+  try { raw = localStorage.getItem(GUEST_EVENTS_KEY); }
+  catch(error){ throw new Error(`Guest events are unavailable: ${error.message || error}`); }
+  if(!raw) return [];
+  try {
+    const events = JSON.parse(raw);
+    if(!Array.isArray(events)) throw new Error("invalid event list");
+    return events;
+  } catch(error){
+    throw new Error(`Guest events could not be read: ${error.message || error}`);
+  }
+}
+
+function saveGuestEvents(events){
+  try { localStorage.setItem(GUEST_EVENTS_KEY, JSON.stringify(events)); }
+  catch(error){ throw new Error(`Guest events could not be saved: ${error.message || error}`); }
+  publish({ status: "ok", events });
+}
+
 async function fetchAgenda(fresh = false){
-  if(localGuest()) return { status: "not_connected", events: [] };
+  if(localGuest()) return { status: "ok", events: guestEvents() };
   // From the start of today, so the panel can show what already happened, to
   // the end of the seventh day ahead — as far as the panel can step.
   const from = new Date(); from.setHours(0, 0, 0, 0);
@@ -89,7 +110,33 @@ export function watchCalendar(cb){
 // (daisey-now-calendar-write). Each refetches straight after, so the card and
 // the panel show the new day rather than the one the user just changed.
 async function write(body){
-  if(localGuest()) throw new Error("Google sign-in is needed for calendar changes.");
+  if(localGuest()){
+    const events = guestEvents();
+    const event = events.find((item) => item.id === body.eventId);
+    if(body.action === "create"){
+      const created = {
+        id: globalThis.crypto?.randomUUID ? globalThis.crypto.randomUUID() : `guest-event-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+        title: body.title,
+        start: body.start,
+        end: body.end,
+        calendarId: "guest-local",
+        color: null,
+        busy: true,
+        editable: true,
+      };
+      saveGuestEvents([...events, created]);
+      return created;
+    }
+    if(!event) throw Object.assign(new Error("That event no longer exists."), { code: "gone" });
+    if(body.action === "delete"){
+      saveGuestEvents(events.filter((item) => item.id !== event.id));
+      return { status: "deleted" };
+    }
+    if(body.action === "rename") event.title = body.title;
+    if(body.action === "move"){ event.start = body.start; event.end = body.end; }
+    saveGuestEvents(events);
+    return event;
+  }
   const res = await fetch(WRITE_URL, {
     method: "POST",
     headers: { Authorization: `Bearer ${await idToken()}`, "Content-Type": "application/json" },

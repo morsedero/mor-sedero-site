@@ -41,9 +41,9 @@ function nextQuarter(){
 
 const ERROR = {
   read_only: "That calendar is read-only.",
-  needs_reauth: "Calendar sign-in expired. Sign in to the old Daisey again.",
+  needs_reauth: "Calendar sign-in expired. Sign in again to reconnect it.",
   no_session: "Signed out.",
-  not_connected: "Calendar not connected. Sign in to the old Daisey once to link it.",
+  not_connected: "Calendar not connected. Sign in again to link it.",
   gone: "That event is already gone.",
   bad_request: "Something in that didn't make sense to Google.",
 };
@@ -92,7 +92,7 @@ function timePick(label){
   return sel;
 }
 
-export function mountAddEvent(dialog){
+export function mountAddEvent(dialog, { localOnly = false } = {}){
   let busy = false;
   let editing = null; // the event being looked at or edited, or null when adding
   const f = {
@@ -102,14 +102,16 @@ export function mountAddEvent(dialog){
     to: timePick("To"),
   };
   const msg = h("p", { className: "msg", role: "alert" });
-  const submit = h("button", { className: "btn primary", type: "submit", textContent: "Add to calendar" });
+  const submit = h("button", { className: "btn primary", type: "submit", textContent: localOnly ? "Add event" : "Add to calendar" });
   const form = h("form", { className: "form-grid ev-grid" },
     field("Event", f.title, true),
     field("Day", f.date, true),
     field("From", f.at),
     field("To", f.to),
     submit);
-  const note = h("p", { className: "muted ev-note", textContent: "Goes in your main Google calendar. Guests, repeats and the rest are a tap away in Google Calendar." });
+  const note = h("p", { className: "muted ev-note", textContent: localOnly
+    ? "Saved on this device only."
+    : "Goes in your main Google calendar. Guests, repeats and the rest are a tap away in Google Calendar." });
   const heading = h("h2", { id: "evTitle", textContent: "New event" });
   const close = h("button", { className: "now-x", type: "button", ariaLabel: "Close", textContent: "✕", onclick: () => dialog.close() });
   const details = h("div", { className: "ev-detail" });
@@ -177,7 +179,7 @@ export function mountAddEvent(dialog){
     form.hidden = false;
     note.hidden = !!ev;
     heading.textContent = ev ? "Edit event" : "New event";
-    submit.textContent = ev ? "Save" : "Add to calendar";
+    submit.textContent = ev ? "Save" : localOnly ? "Add event" : "Add to calendar";
     if (ev) {
       const start = Date.parse(ev.start), end = Date.parse(ev.end);
       f.title.value = ev.title;
@@ -223,9 +225,9 @@ export function mountAddEvent(dialog){
       }
     } catch (e) {
       console.error("[daisey] save event", e);
-      msg.textContent = ERROR[e.code] || (target ? "Couldn't save it." : "Couldn't add it to the calendar.");
+      msg.textContent = ERROR[e.code] || (target ? "Couldn't save it." : localOnly ? "Couldn't save the event on this device." : "Couldn't add it to the calendar.");
     }
-    working(false, target ? "Save" : "Add to calendar");
+    working(false, target ? "Save" : localOnly ? "Add event" : "Add to calendar");
   };
 
   dialog.replaceChildren(h("div", { className: "now-head" }, heading, close), details, form, msg, note);

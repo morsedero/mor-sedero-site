@@ -184,7 +184,7 @@ async function boot(){
         const stopMigrate = migrateTasks(user.uid);
         m.migrate = { unmount: stopMigrate };
         m.deadlines = mountDeadlines($("#deadlinedlg"), user.uid);
-        m.event = mountAddEvent($("#eventdlg"));
+        m.event = mountAddEvent($("#eventdlg"), { localOnly: isGuest });
         m.importer = mountImport($("#importdlg"), user.uid);
         $("#importTrello").onclick = () => { $("#settingsdlg").close(); m.importer.open(); };
         const fail = (e) => console.error("[daisey] menu", e);
@@ -288,7 +288,7 @@ async function boot(){
         end.onchange = saveHours;
         // + → Event is off while the calendar isn't connected.
         let calOk = false;
-        const stopCal = watchCalendar((c) => { calOk = !isGuest && c.status === "ok"; });
+        const stopCal = watchCalendar((c) => { calOk = c.status === "ok"; });
         m.menu = { unmount(){ stopSettings(); stopCal(); stopBriefTasks(); stopBriefRun(); start.onchange = end.onchange = logSwitch.onchange = pushSwitch.onchange = pushTest.onclick = null;
           kindBoxes.forEach((b) => { b.onchange = null; }); } };
         m.brief = mountBriefChip($("#briefChip"), $("#briefPop"), user.uid);
