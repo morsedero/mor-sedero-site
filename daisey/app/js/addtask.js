@@ -49,18 +49,21 @@ export function mountAddTask(dialog, uid, { onStart } = {}){
   let detailsOpen = false;
   let steps = [], links = [];
   let kind = "target";
-  let settle = 0, armed = false;
+  let settle = 0, armed = false, fieldN = 0;
   const fail = (e) => console.error("[daisey] task", e);
 
   // ---------- the pieces ----------
-  const heading = h("h2", { id: "addTitle", className: "sr", textContent: "Task" });
-  // The sheet is a plain centred card, not a pull-up sheet (Mor, 2026-10-05
-  // for a new task, 10-06 for editing too), so it closes with an X.
-  const closeX = h("button", { className: "ts-x", type: "button", ariaLabel: "Close", onclick: () => dialog.close() }, icon("close"));
-  const projectSel = h("select", { className: "ts-project", ariaLabel: "Project" });
-  const projRow = h("div", { className: "ts-proj" }, h("span", { className: "dot", ariaHidden: "true" }), projectSel);
+  // The sheet is built like the event sheet (addevent.js) — same card, head,
+  // labelled fields and button (Mor, 2026-10-06: "make it identical").
+  const heading = h("h2", { id: "addTitle", textContent: "New task" });
+  const closeX = h("button", { className: "now-x", type: "button", ariaLabel: "Close", textContent: "✕", onclick: () => dialog.close() });
+  const field = (label, input, ...more) => {
+    input.id ||= `ts-f${++fieldN}`;
+    return h("div", { className: "field" }, h("label", { htmlFor: input.id, textContent: label }), input, ...more);
+  };
+  const projectSel = h("select", { className: "ts-project" });
   const newProject = h("input", { className: "ts-input", dir: "auto", autocomplete: "off", placeholder: "Name the new project", ariaLabel: "New project name" });
-  const title = h("textarea", { className: "ts-title", dir: "auto", rows: 1, placeholder: "What's the task?", ariaLabel: "Task", required: true });
+  const title = h("textarea", { className: "ts-title", dir: "auto", rows: 1, placeholder: "What's the task?", required: true });
 
   // A date box: the label, what's set (or "Any time"), and a native date
   // input laid over the whole box, so a tap anywhere opens the picker.
@@ -70,15 +73,16 @@ export function mountAddTask(dialog, uid, { onStart } = {}){
     const value = h("span", { className: "ts-date-v" });
     const clear = h("button", { type: "button", className: "ts-date-x", ariaLabel: `Clear ${label}`, onclick: (e) => { e.preventDefault(); input.value = ""; input.dispatchEvent(new Event("change")); } }, icon("close"));
     const tag = h("button", { type: "button", className: "ts-kind", hidden: true });
-    const box = h("div", { className: "ts-date" }, h("span", { className: "ts-date-l", textContent: label }), value, tag, clear, input);
+    const box = field(label, h("div", { className: "ts-date" }, value, tag, clear, input));
+    box.querySelector("label").htmlFor = input.id = `ts-f${++fieldN}`;
     const paint = () => {
       value.textContent = input.value ? boxDate(input.value) : empty;
-      box.classList.toggle("set", !!input.value);
+      box.lastChild.classList.toggle("set", !!input.value);
       clear.hidden = !input.value;
     };
     return { input, box, tag, paint };
   }
-  const start = dateBox("Start (not before)", "Any time");
+  const start = dateBox("Start", "Any time");
   const due = dateBox("Due", "No date");
   due.tag.onclick = (e) => {
     e.preventDefault();
@@ -112,16 +116,19 @@ export function mountAddTask(dialog, uid, { onStart } = {}){
   const linkRow = h("div", { className: "ts-links" });
   const notes = h("textarea", { className: "ts-notes", dir: "auto", rows: 2, placeholder: "Notes…", ariaLabel: "Notes" });
   const worked = h("p", { className: "ts-worked" });
-  const startBtn = h("button", { type: "button", className: "btn primary start ts-start" });
+  const startBtn = h("button", { type: "button", className: "btn primary ts-start" });
   const del = h("button", { type: "button", className: "ts-del" });
   const msg = h("p", { className: "msg", role: "status" });
+  const section = (label, ...kids) => h("div", { className: "field" }, h("h3", { className: "ts-h", textContent: label }), ...kids);
 
-  dialog.replaceChildren(heading, closeX, projRow, newProject, title,
+  dialog.replaceChildren(h("div", { className: "now-head" }, heading, closeX),
+    field("Task", title),
+    field("Project", projectSel, newProject),
     h("div", { className: "ts-dates" }, start.box, due.box),
     detailsBtn, chipRow, pendBox, stateLine,
-    h("h3", { className: "ts-h", textContent: "Steps" }), stepList,
-    h("h3", { className: "ts-h", textContent: "Links & notes" }), h("div", { className: "ts-group" }, linkRow, notes),
-    h("div", { className: "ts-grow" }), worked, startBtn, del, msg);
+    section("Steps", stepList),
+    section("Links & notes", h("div", { className: "ts-group" }, linkRow, notes)),
+    worked, startBtn, del, msg);
 
   // ---------- saving ----------
   // Other tasks teach the guesses; the open one must not teach itself.
@@ -183,7 +190,7 @@ export function mountAddTask(dialog, uid, { onStart } = {}){
   newProject.addEventListener("change", () => { if (editing && newProject.value.trim()) save({ project: newProject.value.trim() }); else reguess(); });
 
   // ---------- title ----------
-  const fit = () => { title.style.blockSize = "auto"; title.style.blockSize = `${title.scrollHeight}px`; };
+  const fit = () => { title.style.blockSize = "auto"; title.style.blockSize = `${title.scrollHeight + title.offsetHeight - title.clientHeight}px`; };
   title.addEventListener("input", () => {
     fit();
     if (editing) return;
@@ -386,7 +393,7 @@ export function mountAddTask(dialog, uid, { onStart } = {}){
     edit(task){
       clear();
       editing = task;
-      heading.textContent = task.title;
+      heading.textContent = "Edit task";
       showProject(task.project);
       title.value = task.title;
       start.input.value = task.notBefore || "";

@@ -886,45 +886,35 @@ body:has(.screen:not([hidden])) { overflow: hidden; }
 .pj-hint { display: flex; align-items: center; justify-content: center; gap: 10px; margin: 28px auto 0; color: #8c8574; font-size: 12px; }
 .pj-hint svg { inline-size: 16px; block-size: 16px; stroke-width: 2; }
 
-/* The task sheet: a bottom sheet. */
-/* The task sheet (restyled 2026-10-06): paper, washed at the top in the
-   project's colour, fields grouped on white cards like the app's other
-   surfaces. One surface colour for every field; the project colour only on
-   the wash, the project pill and the small accents. */
-dialog.tsheet { inline-size: calc(100% - 32px); max-inline-size: 560px; max-block-size: calc(100dvh - 32px); margin: auto; padding: 18px 20px 20px; border: 1px solid var(--aline); border-radius: 24px; box-shadow: 0 12px 32px rgb(0 0 0 / .12);
-  background: linear-gradient(180deg, var(--tint) 0, var(--tint) 90px, var(--bg) 240px); }
-dialog.tsheet[open] { display: flex; flex-direction: column; }
+/* The task sheet, built like the event sheet (Mor, 2026-10-06: "make it
+   identical"): the same .now card, .now-head, .field labels and inputs, and
+   12px between fields. The project colour stays only in small accents. */
+dialog.tsheet[open] { display: flex; flex-direction: column; gap: 12px; }
+dialog.tsheet[open] > * { flex: none; margin: 0; }
+dialog.tsheet .now-head { margin-block-end: -4px; }
 @media (prefers-reduced-motion: no-preference) { dialog.tsheet[open] { animation: card-in .18s ease-out; } }
-/* The task card: centred, an X in the corner. */
-.ts-x { position: absolute; inset-block-start: 12px; inset-inline-end: 12px; z-index: 1; display: grid; place-items: center; inline-size: 34px; block-size: 34px; padding: 0; border: 1px solid var(--aline); border-radius: 50%; background: var(--surface); color: var(--ink-2); cursor: pointer; }
-.ts-x svg { inline-size: 16px; block-size: 16px; stroke-width: 2; }
-dialog.tsheet .ts-proj { padding-inline-end: 44px; }
 @keyframes card-in { from { opacity: 0; transform: scale(.97); } }
-.ts-proj { display: inline-flex; align-self: flex-start; align-items: center; gap: 6px; max-inline-size: calc(100% - 44px); margin-block-start: 4px; padding: 2px 12px 2px 10px; border: 1px solid var(--aline); border-radius: 999px; background: var(--surface); color: var(--aink); }
-.ts-proj .dot { inline-size: 8px; block-size: 8px; flex: none; border-radius: 50%; background: currentColor; }
-.ts-project { field-sizing: content; min-inline-size: 0; max-inline-size: 100%; padding: 4px 0; border: 0; background: none; color: inherit; font: inherit; font-size: 13px; font-weight: 600; appearance: none; -webkit-appearance: none; cursor: pointer; text-overflow: ellipsis; }
+.ts-project { inline-size: 100%; cursor: pointer; }
 .ts-project option { color: var(--ink); background: var(--card); }
-.ts-input { inline-size: 100%; min-inline-size: 0; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--bg); color: var(--ink); font: inherit; font-size: 16px; }
-.ts-proj + .ts-input { margin-block-start: 6px; }
-.ts-title { flex: none; margin-block-start: 6px; padding: 0; border: 0; background: none; color: var(--ink); font: inherit; font-size: 26px; font-weight: 600; letter-spacing: -0.3px; line-height: 1.2; resize: none; overflow: hidden; }
-.ts-title:focus { outline: none; }
-.ts-title::placeholder { color: var(--ink-2); opacity: .45; }
-.ts-dates { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-block-start: 14px; }
-.ts-date { position: relative; display: flex; flex-direction: column; align-items: flex-start; gap: 2px; min-inline-size: 0; padding: 10px 12px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); }
-.ts-date:focus-within { border-color: var(--aink); }
-.ts-date-l { font-size: 12px; color: var(--ink-2); }
-.ts-date-v { font-size: 15px; font-weight: 500; color: var(--ink-2); }
-.ts-date.set .ts-date-v { font-weight: 600; color: var(--ink); }
+.ts-input { inline-size: 100%; min-inline-size: 0; padding: 8px 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--ink); font: inherit; font-size: 16px; }
+.ts-project + .ts-input { margin-block-start: 2px; }
+.ts-title { color: var(--ink); line-height: 1.35; resize: none; overflow: hidden; }
+.ts-dates { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.ts-date { position: relative; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; min-inline-size: 0; min-block-size: 42px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
+.ts-date:focus-within { border-color: var(--ink); }
+.ts-date-v { font-size: 16px; color: var(--ink-2); }
+.ts-date.set { padding-inline-end: 36px; }
+.ts-date.set .ts-date-v { color: var(--ink); }
 .ts-date-in { position: absolute; inset: 0; z-index: 1; inline-size: 100%; block-size: 100%; opacity: 0; cursor: pointer; border: 0; padding: 0; }
 .ts-date-in::-webkit-calendar-picker-indicator { position: absolute; inset: 0; inline-size: 100%; block-size: 100%; opacity: 0; cursor: pointer; }
-.ts-date-x { position: absolute; z-index: 2; inset-block-start: 4px; inset-inline-end: 4px; inline-size: 32px; block-size: 32px; display: grid; place-items: center; border: 0; border-radius: 50%; background: none; color: var(--ink-2); cursor: pointer; }
+.ts-date-x { position: absolute; z-index: 2; inset-block: 0; margin-block: auto; inset-inline-end: 4px; inline-size: 32px; block-size: 32px; display: grid; place-items: center; border: 0; border-radius: 50%; background: none; color: var(--ink-2); cursor: pointer; }
 .ts-date-x svg { inline-size: 14px; block-size: 14px; }
-.ts-kind { position: relative; z-index: 2; margin-block-start: 2px; padding: 1px 7px; border: 0; border-radius: 999px; font: inherit; font-size: 11px; font-weight: 600; cursor: pointer; }
+.ts-kind { position: relative; z-index: 2; padding: 1px 7px; border: 0; border-radius: 999px; font: inherit; font-size: 11px; font-weight: 600; cursor: pointer; }
 .ts-kind.deadline { background: #fff1cc; color: #8a4b00; }
 .ts-kind.target { background: var(--chip); color: var(--ink-2); }
 :root[data-theme="dark"] .ts-kind.deadline, :root.night .ts-kind.deadline { background: #2a2210; color: #f0c35a; }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .ts-kind.deadline { background: #2a2210; color: #f0c35a; } }
-.ts-details { flex: none; display: flex; align-items: center; gap: 8px; inline-size: 100%; min-block-size: 46px; margin-block-start: 8px; padding-inline: 12px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); color: var(--ink); font: inherit; font-size: 14px; cursor: pointer; }
+.ts-details { flex: none; display: flex; align-items: center; gap: 8px; inline-size: 100%; min-block-size: 42px; padding-inline: 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--ink); font: inherit; font-size: 16px; cursor: pointer; }
 .ts-details > svg { color: var(--aink); }
 .ts-details svg { inline-size: 16px; block-size: 16px; flex: none; stroke-width: 2; }
 .ts-details-t { flex: 1; text-align: start; }
@@ -934,8 +924,8 @@ dialog.tsheet .ts-proj { padding-inline-end: 44px; }
 .ts-pend { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-block-start: 8px; }
 .ts-pend label { display: grid; gap: 4px; font-size: 12px; color: var(--ink-2); }
 .ts-state { margin: 10px 0 0; font-size: 13px; color: var(--ink-2); }
-.ts-h { margin: 18px 4px 6px; font-size: 13px; font-weight: 600; color: var(--ink-2); }
-.ts-steps, .ts-group { margin: 0; padding: 4px 12px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); }
+.ts-h { margin: 0; font-size: 14px; font-weight: 600; color: var(--ink-2); }
+.ts-steps, .ts-group { margin: 0; padding: 2px 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
 .ts-steps { list-style: none; display: grid; }
 .ts-steps > li + li { border-block-start: 1px solid var(--line); }
 .ts-step { display: flex; align-items: center; gap: 10px; min-block-size: 42px; }
@@ -943,9 +933,9 @@ dialog.tsheet .ts-proj { padding-inline-end: 44px; }
 .ts-check::after { content: ""; position: absolute; inset: -12px; }
 .ts-check[aria-pressed="true"] { border: 0; background: var(--green); }
 .ts-check svg { inline-size: 12px; block-size: 12px; stroke-width: 3; }
-.ts-step-t { flex: 1; min-inline-size: 0; padding: 6px 0; border: 0; border-block-end: 1px solid transparent; background: none; color: var(--ink); font: inherit; font-size: 15px; font-weight: 500; }
-.ts-step-t:focus { outline: none; border-block-end-color: var(--line); }
-.ts-step.done .ts-step-t { font-weight: 400; color: var(--ink-2); text-decoration: line-through; }
+.ts-steps .ts-step-t { flex: 1; min-inline-size: 0; padding: 6px 0; border: 0; border-radius: 0; border-block-end: 1px solid transparent; background: none; color: var(--ink); font: inherit; font-size: 15px; font-weight: 500; }
+.ts-steps .ts-step-t:focus { outline: none; border-block-end-color: var(--line); }
+.ts-steps .ts-step.done .ts-step-t { font-weight: 400; color: var(--ink-2); text-decoration: line-through; }
 .ts-step-x { flex: none; display: grid; place-items: center; inline-size: 32px; block-size: 32px; padding: 0; border: 0; border-radius: 50%; background: none; color: var(--ink-2); cursor: pointer; opacity: .6; }
 .ts-step-x:hover, .ts-step-x:focus-visible { opacity: 1; background: var(--chip); }
 .ts-step-x svg { inline-size: 14px; block-size: 14px; stroke-width: 2; }
@@ -962,11 +952,11 @@ dialog.tsheet .ts-proj { padding-inline-end: 44px; }
 .ts-link-new { block-size: 32px; padding: 0; border: 0; background: none; color: var(--aink); font: inherit; font-size: 14px; font-weight: 500; cursor: pointer; }
 .ts-link-add { display: flex; gap: 6px; inline-size: 100%; }
 .ts-link-add .ts-input { padding-block: 6px; }
-.ts-notes { display: block; flex: none; inline-size: 100%; min-block-size: 64px; margin: 0; padding: 10px 0 8px; border: 0; border-block-start: 1px solid var(--line); border-radius: 0; background: none; color: var(--ink); font: inherit; font-size: 14px; resize: none; }
-.ts-notes:focus { outline: none; }
-.ts-grow { flex: 1; min-block-size: 16px; }
+.ts-group .ts-notes { display: block; flex: none; inline-size: 100%; min-block-size: 64px; margin: 0; padding: 10px 0 8px; border: 0; border-block-start: 1px solid var(--line); border-radius: 0; background: none; color: var(--ink); font: inherit; font-size: 14px; resize: none; }
+.ts-group .ts-notes:focus { outline: none; }
 .ts-worked { margin: 0 0 10px; text-align: center; font-size: 12px; color: var(--ink-2); }
-.ts-start { flex: none; min-block-size: 56px; margin: 0; font-size: 17px; }
+.ts-start { display: flex; align-items: center; justify-content: center; gap: 8px; }
+.ts-start svg { inline-size: 16px; block-size: 16px; }
 .ts-del { flex: none; align-self: center; min-block-size: 40px; margin-block-start: 6px; padding-inline: 14px; border: 0; border-radius: 10px; background: none; color: var(--ink-2); font: inherit; font-size: 13px; cursor: pointer; }
 .ts-del.arm { color: var(--danger); background: color-mix(in srgb, var(--danger) 10%, transparent); font-weight: 600; }
 dialog.tsheet .msg:empty { display: none; }
