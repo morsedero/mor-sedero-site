@@ -57,6 +57,7 @@ const ACTION_FIELDS = {
   startDate: str("YYYY-MM-DD before which the task shouldn't come up (\"next week\", \"after Sunday\")."),
   waitingFor: str("waiting only: the person or thing it waits on, never a date."),
   energy: str("moment only: the user's energy right now.", { enum: ["low", "medium", "high"] }),
+  dayEnd: str("moment only: HH:MM, 24-hour, when the user says their day runs until a different time today (\"I can work until 11pm\")."),
   place: str("moment only: where the user is right now.", { enum: ["home", "out", "anywhere"] }),
   eventDate: str("event only: YYYY-MM-DD the event happens."),
   time: str("event only: the start time, HH:MM, 24-hour."),
@@ -87,7 +88,7 @@ Kinds:
 - update: change an existing task's dueDate, startDate, title, project or minutes.
 - waiting: an existing task is blocked on someone or something.
 - drop: the user no longer wants an existing task.
-- moment: how the user is right now (energy, place), or how long they have free right now (minutes: "I have 30 minutes", "free for an hour"). Changes no task.
+- moment: how the user is right now (energy, place), or how long they have free right now (minutes: "I have 30 minutes", "free for an hour"), or that their day runs later or earlier today (dayEnd: "my day can go until 11 pm"). Changes no task.
 - project: the user wants a new project (put its name in project). If they also name tasks for it, add those too, each with that project.
 - done: the user says they finished an existing task ("paid the arnona", "sent the stems").
 - event: something at a fixed time ("dentist Thursday at 15:00", "meeting with Dana tomorrow 10:30"): a calendar event, not a task. Title, eventDate, time; minutes only if said.
@@ -118,6 +119,8 @@ Message: I'm wrecked and out
 {"reply":"Low energy, out. Got it?","actions":[{"kind":"moment","energy":"low","place":"out"}]}
 Message: I have 30 minutes
 {"reply":"30 minutes free. Got it?","actions":[{"kind":"moment","minutes":30}]}
+Message: my day can extend to 11 pm today
+{"reply":"Day ends at 23:00 today. Got it?","actions":[{"kind":"moment","dayEnd":"23:00"}]}
 Message: sent the pre-attack cue
 {"reply":"Mark it done?","actions":[{"kind":"done","taskId":"t3"}]}
 Message: רופא שיניים ביום חמישי ב-15:00
@@ -179,7 +182,8 @@ function tidy(out, ids){
       if (["home", "out", "anywhere"].includes(a.place)) x.place = a.place;
       const free = Number.isFinite(a.minutes) ? Math.round(a.minutes) : 0;
       if (free >= 5 && free <= 240) x.minutes = free;
-      if (!x.energy && !x.place && !x.minutes) return [];
+      if (/^([01]\d|2[0-3]):[0-5]\d$/.test(String(a.dayEnd || ""))) x.dayEnd = a.dayEnd;
+      if (!x.energy && !x.place && !x.minutes && !x.dayEnd) return [];
     }
     return [x];
   });

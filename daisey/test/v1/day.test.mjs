@@ -117,3 +117,11 @@ test("migration v3: a flat-30 size is guessed again", () => {
   assert.equal(p.v, TASK_VERSION);
   assert.equal(migrateTask({ title: "Write the essay", size: 60, v: 2, guessed: [] }).size, undefined);
 });
+
+test("dayEndToday stretches today's end only", async () => {
+  const { dayHours } = await import("../../app/js/day.js");
+  const { localDate } = await import("../../app/js/model.js");
+  assert.equal(dayHours({ dayEndToday: { date: localDate(), end: "23:00" } }).end, 23 * 60);
+  assert.equal(dayHours({ dayEndToday: { date: "2020-01-01", end: "23:00" } }).end, 22 * 60); // yesterday's is gone
+  assert.equal(dayHours({ dayEndToday: { date: localDate(), end: "06:00" } }).end, 22 * 60); // before the start: ignored
+});

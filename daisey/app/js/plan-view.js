@@ -9,6 +9,7 @@ export function planView(plan, { onOpen, only = null } = {}){
   const shown = only ? plan.filter((p) => p.key === only) : plan;
   if (!shown.length) return null;
   return h("section", { className: "plan", ariaLabel: "Daisey's plan" },
+    h("h3", { className: "plan-h", textContent: only ? "Plan" : "Plan for today" }),
     ...shown.map((p) => h("div", { className: "plan-win" },
       h("div", { className: "plan-head" }, h("span", { className: "plan-name", textContent: p.label }), h("span", { className: "plan-free", textContent: `${durText(p.minutes)} free` })),
       p.picks.length

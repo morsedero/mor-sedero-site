@@ -23,9 +23,14 @@ export const minText = (min) => `${pad(Math.floor(min / 60))}:${pad(min % 60)}`;
 
 // The user's day hours from state/settings ({ dayStart, dayEnd } as "HH:MM"),
 // as minutes after midnight; the default when unset or nonsense.
+// "My day can run until 23:00 today" (Tell Daisey): settings.dayEndToday =
+// { date, end } stretches (or shortens) today's end only; tomorrow it's gone.
 export function dayHours(settings = {}){
   const s = toMin(settings.dayStart), e = toMin(settings.dayEnd);
-  return s != null && e != null && e > s ? { start: s, end: e } : { ...W.DAY_HOURS };
+  const base = s != null && e != null && e > s ? { start: s, end: e } : { ...W.DAY_HOURS };
+  const today = settings.dayEndToday, end = toMin(today?.end);
+  if (today?.date === localDate() && end != null && end > base.start) base.end = end;
+  return base;
 }
 
 const atMin = (ms, min) => new Date(ms).setHours(0, min, 0, 0);

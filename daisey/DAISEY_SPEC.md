@@ -299,7 +299,7 @@ Daisey speaks first (Mor, Oct 6, 2026; Android, app notifications; no daily limi
 
 Daisey only plans inside your waking day, never pushes a task that already has a time, and helps tasks that ended up in the calendar become real tasks.
 
-**Day hours.** Default 08:00–22:00, set once in settings. Free time is counted only inside them. Outside them, the card switches to night mode: "Late. Tomorrow first: <task> — <why>." with no Start button; "I'm free now" still overrides. The day's free-time line counts from now (or 08:00) to 22:00.
+**Day hours.** Default 08:00–22:00, set once in settings. "My day can run until 11 pm today" in Tell Daisey stretches (or shortens) today's end only (`settings.dayEndToday`, read by `dayHours`); tomorrow the usual hours are back. Free time is counted only inside them. Outside them, the card switches to night mode: "Late. Tomorrow first: <task> — <why>." with no Start button; "I'm free now" still overrides. The day's free-time line counts from now (or 08:00) to 22:00.
 
 **Booked tasks.** A task linked to a calendar event (created from Daisey, or matched by title) is not suggested before its slot. The card shows it as "Booked for 19:00" only when nothing else fits. When its slot starts, it becomes the card.
 

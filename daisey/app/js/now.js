@@ -959,12 +959,12 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onFree
     const busy = cal.events.filter((e) => e.busy !== false && !e.allDay);
     const nx = busy.map((e) => ({ ...e, s: Date.parse(e.start) })).filter((e) => e.s > now && localDate(e.s) === localDate(now)).sort((a, b) => a.s - b.s)[0];
     const free = gapsToday(busy, now, hrs).reduce((t, g) => t + g.minutes, 0);
-    const row = (k, aria, onclick, ...v) => h("button", { className: "glance-row", type: "button", ariaLabel: aria, onclick },
-      h("span", { className: "gl-k", textContent: k }), h("span", { className: "gl-v" }, ...v), h("span", { className: "gl-go", ariaHidden: "true", textContent: "›" }));
+    const row = (k, aria, onclick, hint, ...v) => h("button", { className: "glance-row", type: "button", ariaLabel: aria, onclick },
+      h("span", { className: "gl-k", textContent: k }), h("span", { className: "gl-v" }, ...v), h("span", { className: "gl-go", ariaHidden: !hint, textContent: hint || "›" }));
     if (!nx && free < 15) return null;
     return h("div", { className: "glance" },
-      nx && row("Next", `Next: ${nx.title} at ${clock(nx.s)}`, () => onEvent?.(nx), h("b", { textContent: clock(nx.s) }), " ", bdi(nx.title)),
-      free >= 15 && row("Free", `${dur(free)} free ${new Date(now).getHours() >= 17 ? "this evening" : "today"}: open Schedule`, () => onFree?.(),
+      nx && row("Next", `Next: ${nx.title} at ${clock(nx.s)}`, () => onEvent?.(nx), null, h("b", { textContent: clock(nx.s) }), " ", bdi(nx.title)),
+      free >= 15 && row("Free", `${dur(free)} free ${new Date(now).getHours() >= 17 ? "this evening" : "today"}: open today's plan`, () => onFree?.(), "Plan ›",
         h("b", { textContent: dur(free) }), new Date(now).getHours() >= 17 ? " this evening" : " today"));
   }
 

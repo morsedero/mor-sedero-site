@@ -234,8 +234,9 @@ async function boot(){
         const stopBriefRun = watchRun(user.uid, (r) => { briefRun = r || null; snap(); }, fail);
         const stopSettings = watchSettings(user.uid, (s) => {
           const hrs = dayHours(s || {});
-          if (document.activeElement !== start) start.value = minText(hrs.start);
-          if (document.activeElement !== end) end.value = minText(hrs.end);
+          const usual = dayHours({ ...s, dayEndToday: null }); // the field shows the usual day, not today's stretch
+          if (document.activeElement !== start) start.value = minText(usual.start);
+          if (document.activeElement !== end) end.value = minText(usual.end);
           logSwitch.checked = s?.logDone !== false;
           hours = hrs;
           lastSettings = s || {};

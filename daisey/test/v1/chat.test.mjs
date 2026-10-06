@@ -60,3 +60,8 @@ test("a plan question keeps its part, defaulting to the whole day", () => {
   const out = tidy({ reply: "", actions: [{ kind: "query", query: "plan", part: "afternoon" }, { kind: "query", query: "plan", part: "lunch" }] }, ids);
   assert.deepEqual(out.actions, [{ kind: "query", query: "plan", part: "afternoon" }, { kind: "query", query: "plan", part: "day" }]);
 });
+
+test("a moment can move today's day end", () => {
+  const out = tidy({ reply: "", actions: [{ kind: "moment", dayEnd: "23:00" }, { kind: "moment", dayEnd: "11pm" }] }, ids);
+  assert.deepEqual(out.actions, [{ kind: "moment", dayEnd: "23:00" }]);
+});

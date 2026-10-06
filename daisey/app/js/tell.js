@@ -19,7 +19,7 @@ import { createEvent, watchCalendar } from "./calendar.js";
 import { planDay } from "./plan.js";
 import { planView } from "./plan-view.js";
 import { dayHours } from "./day.js";
-import { watchSettings, watchRun } from "./store.js";
+import { watchSettings, watchRun, saveSettings } from "./store.js";
 import { rank } from "./engine.js";
 import { effectiveDue } from "./triage.js";
 import { h, bdi, dur, flash } from "./ui.js";
@@ -183,6 +183,7 @@ export function mountTell(form, input, mic, uid, { openAdd, openTask }){
       if (a.energy) bits.push(ENERGY[a.energy]);
       if (a.place) bits.push(PLACE[a.place]);
       if (a.minutes) bits.push(`${dur(a.minutes)} free`);
+      if (a.dayEnd) bits.push(`day ends ${a.dayEnd} today`);
     }
     const LABEL = { add: "New task", update: "Change", waiting: "Pending", drop: "Drop", moment: "Right now", project: "New project", done: "Done", event: "New event" };
     const title = a.kind === "add" || a.kind === "event" ? a.title : a.kind === "project" ? a.project : a.kind === "moment" ? null : t?.title;
@@ -213,7 +214,7 @@ export function mountTell(form, input, mic, uid, { openAdd, openTask }){
       if (a.kind === "update") return updateTask(uid, t, pick(["title", "project", "size", "due", "dateKind", "notBefore"]), tasks);
       if (a.kind === "waiting") return updateTask(uid, t, { status: "waiting", waitingOn: a.waitingOn || "" }, tasks);
       if (a.kind === "drop") return updateTask(uid, t, { status: "dropped" }, tasks);
-      if (a.kind === "moment") return saveMoment(uid, { ...(a.energy ? { energy: { value: a.energy, at: now } } : {}), ...(a.place ? { place: { value: a.place, at: now } } : {}), ...(a.minutes ? { free: { minutes: a.minutes, at: now } } : {}) });
+      if (a.kind === "moment") return Promise.all([a.dayEnd ? saveSettings(uid, { dayEndToday: { date: localDate(), end: a.dayEnd } }) : null, (a.energy || a.place || a.minutes) ? saveMoment(uid, { ...(a.energy ? { energy: { value: a.energy, at: now } } : {}), ...(a.place ? { place: { value: a.place, at: now } } : {}), ...(a.minutes ? { free: { minutes: a.minutes, at: now } } : {}) }) : null]);
       return null;
     }).filter(Boolean);
     close();
