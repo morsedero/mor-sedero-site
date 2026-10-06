@@ -394,7 +394,6 @@ export function mountAddTask(dialog, uid, { onStart } = {}){
       if (text) reguess();
       paintAll();
       show();
-      (project === NEW_PROJECT ? newProject : title).focus();
     },
     newProject(){ this.open(NEW_PROJECT); },
     // The sheet for one task.

@@ -186,7 +186,6 @@ export function mountAddEvent(dialog){
       f.to.value = hhmm(end); // the event's own end, unclamped
       f.to.relabel(f.at.value);
     }
-    setTimeout(() => f.title.focus());
   }
 
   form.onsubmit = async (ev) => {
