@@ -358,6 +358,7 @@ const freshCounters = () => ({
   skipCount: 0,
   skipReasons: Object.fromEntries(SKIP_REASONS.map((r) => [r, 0])),
   skipsSinceStart: 0, // the stale rule counts these
+  pushes: 0, // moved on to a later day (pushedTo); Needs you asks at PUSHES_ASK
   spentMinutes: 0,
   starts: 0,
   stopsUnfinished: 0,
@@ -407,6 +408,8 @@ export function createTask(input, { now = Date.now(), history = [] } = {}){
     // Where it came from, when it wasn't typed here: { app, cardId, boardId }.
     // Daisey owns the task from this moment on; nothing syncs back.
     source: input.source && input.source.app ? { ...input.source } : null,
+    // Made by "Again?" after Done: which period it repeats on, if any.
+    again: AGAIN.includes(input.again) ? input.again : null,
     guessed: GUESSABLE.filter((k) => !(k in given)),
     v: TASK_VERSION,
     createdAt: now,
@@ -544,7 +547,7 @@ export function skipReason(task, reason, { now = Date.now() } = {}){
 // Everything the two patches above can touch, as it was — so Undo puts the
 // task back exactly, not approximately.
 export const skipSnapshot = (task) => ({
-  skipCount: task.skipCount || 0, skipsSinceStart: task.skipsSinceStart || 0,
+  skipCount: task.skipCount || 0, skipsSinceStart: task.skipsSinceStart || 0, pushes: task.pushes || 0,
   skipReasons: task.skipReasons || {}, status: task.status, touchedAt: task.touchedAt ?? null,
   notBefore: task.notBefore ?? null, // Later → This week sets it
   waitingOn: task.waitingOn ?? null, // Pending's reason
@@ -555,7 +558,45 @@ export const skipSnapshot = (task) => ({
 // start isn't one you keep refusing. workedAt is real work only — not an
 // edit or a skip, which also move touchedAt — and is what momentum reads.
 export const startedTask = (task, { now = Date.now() } = {}) =>
-  ({ starts: (task.starts || 0) + 1, skipsSinceStart: 0, touchedAt: now, workedAt: now });
+  ({ starts: (task.starts || 0) + 1, skipsSinceStart: 0, pushes: 0, touchedAt: now, workedAt: now });
+
+// Pushed on to a later day (Later → Tomorrow / This week, the wrap's "Move to
+// tomorrow", the sweep's "Move to …"): counted, so a task that keeps sliding
+// gets asked about (weights PUSHES_ASK). Starting it clears the count.
+export const pushedTo = (task, fields, { now = Date.now() } = {}) => ({ ...fields, pushes: (task.pushes || 0) + 1, touchedAt: now });
+
+// Out of Not now and back on the list. A wish date that passed while it was
+// parked goes with it — otherwise it lands straight in the old-dates sweep.
+// A real deadline stays: it's still real.
+export function bringBack(task, { now = Date.now() } = {}){
+  const stale = task.dateKind !== "deadline" && task.due && task.due < localDate(now);
+  return { status: "ready", notBefore: null, touchedAt: now, ...(stale ? { due: null, dueTime: null, dateKind: null } : {}) };
+}
+
+// "Again?" after Done (Mor, 2026-10-06: no repeat engine; finishing offers
+// next week / next month and makes one fresh copy). The copy keeps the
+// user's own choices (never Daisey's guesses), its steps unticked, links and
+// notes; it waits until that day (notBefore), and a date moves on with it.
+// `again` remembers the choice so the next Done suggests it first.
+export const AGAIN = ["week", "month"];
+export function shiftDay(day, period){
+  const [y, m, d] = day.split("-").map(Number);
+  const t = period === "month" ? new Date(y, m, Math.min(d, new Date(y, m + 1, 0).getDate())) : new Date(y, m - 1, d + 7);
+  return localDate(t.getTime());
+}
+export function againInput(task, period, { now = Date.now() } = {}){
+  const guessed = new Set(task.guessed || []);
+  const own = Object.fromEntries(GUESSABLE.filter((k) => !guessed.has(k) && task[k] != null).map((k) => [k, task[k]]));
+  let notBefore = shiftDay(localDate(now), period);
+  const due = task.due ? shiftDay(task.due, period) : null;
+  if (due && due < notBefore) notBefore = due;
+  return {
+    ...own, title: task.title, project: task.project,
+    steps: task.steps ? task.steps.map((s) => ({ text: s.text, done: false })) : null,
+    links: task.links || null, notes: task.notes || null,
+    due, dueTime: due ? task.dueTime || null : null, dateKind: due ? task.dateKind : null, notBefore, again: period,
+  };
+}
 
 // Leaving focus mode: the real minutes always count, whether or not the
 // task is finished. `finished` completes it; otherwise it stays open and

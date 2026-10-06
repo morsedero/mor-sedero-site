@@ -146,7 +146,7 @@ test("not now: Undo puts back exactly what the skip touched", () => {
 
 test("focus mode: starting counts a start and clears the stale-skip count", () => {
   const t = { ...M.createTask({ title: "x" }, opts), starts: 1, skipsSinceStart: 3 };
-  assert.deepEqual(M.startedTask(t, opts), { starts: 2, skipsSinceStart: 0, touchedAt: NOW, workedAt: NOW });
+  assert.deepEqual(M.startedTask(t, opts), { starts: 2, skipsSinceStart: 0, pushes: 0, touchedAt: NOW, workedAt: NOW });
 });
 
 test("focus mode: real minutes always count; finishing completes, stopping is recorded", () => {
@@ -357,4 +357,29 @@ test("pendingCheck: 3 days on, but the day before a real deadline, never before 
   assert.equal(M.skipReason({ due: "2026-10-07", dateKind: "deadline" }, "blocked", { now }).checkOn, "2026-10-06");
   const t = { ...M.createTask({ title: "Mix review", due: "2026-10-07", dateKind: "deadline" }, { now }), id: "a" };
   assert.equal(M.editTask(t, { waitingOn: "Yuval" }, { now }).checkOn, "2026-10-06");
+});
+
+test("bringBack: a passed wish date goes, a deadline stays (2026-10-06)", () => {
+  const now = new Date(2026, 9, 6, 10).getTime();
+  assert.deepEqual(M.bringBack({ due: "2026-10-01", dateKind: "target" }, { now }),
+    { status: "ready", notBefore: null, touchedAt: now, due: null, dueTime: null, dateKind: null });
+  assert.deepEqual(M.bringBack({ due: "2026-10-01", dateKind: "deadline" }, { now }), { status: "ready", notBefore: null, touchedAt: now });
+  assert.deepEqual(M.bringBack({ due: "2026-10-09", dateKind: "target" }, { now }), { status: "ready", notBefore: null, touchedAt: now });
+  assert.deepEqual(M.pushedTo({ pushes: 1 }, { notBefore: "2026-10-07" }, { now }), { notBefore: "2026-10-07", pushes: 2, touchedAt: now });
+});
+
+test("againInput: next week / next month copy keeps the user's choices, unticks steps, moves the date (2026-10-06)", () => {
+  const now = new Date(2026, 9, 6, 10).getTime(); // Tue 6 Oct
+  const done = { ...M.createTask({ title: "Lesson prep", project: "Teaching", size: 60, due: "2026-10-08", dateKind: "deadline",
+    steps: [{ text: "Slides", done: true }], notes: "Room 4" }, { now }), status: "done" };
+  const w = M.againInput(done, "week", { now });
+  assert.equal(w.size, 60); // the user's own
+  assert.ok(!("type" in w)); // a guess, guessed again
+  assert.deepEqual([w.due, w.notBefore, w.dateKind, w.again], ["2026-10-15", "2026-10-13", "deadline", "week"]);
+  assert.deepEqual(w.steps, [{ text: "Slides", done: false }]);
+  const copy = M.createTask(w, { now });
+  assert.deepEqual([copy.again, copy.notBefore, copy.notes], ["week", "2026-10-13", "Room 4"]);
+  // A month on, clamped to the month's last day.
+  assert.equal(M.shiftDay("2026-01-31", "month"), "2026-02-28");
+  assert.equal(M.againInput({ title: "Invoices", project: "Admin" }, "month", { now }).notBefore, "2026-11-06");
 });

@@ -23,6 +23,7 @@
 // The guessed chips are the same as before: each drops its own menu over the
 // sheet, "Daisey guesses" hands a field back, dashed = a guess, solid = yours.
 // While typing a new task's title they catch up only once typing stops.
+import { nudgeText, waLink } from "./nudge.js";
 import { watchTasks, addTask, updateTask, removeTask, watchProjectNames } from "./store.js";
 import { durText, guessFields, validField, CHOICES, LABELS, INBOX, localDate } from "./model.js";
 import { h, flash, icon, bdi } from "./ui.js";
@@ -107,9 +108,14 @@ export function mountAddTask(dialog, uid, { onStart } = {}){
   // Pending's details, on a pending task: data, not a switch.
   const waitingOn = h("input", { className: "ts-input", dir: "auto", autocomplete: "off", placeholder: "who or what?" });
   const checkOn = h("input", { className: "ts-input", type: "date" });
+  // Nudge (2026-10-06): a short check-in drafted in WhatsApp; you pick the
+  // contact and send it yourself (nudge.js).
+  const nudgeBtn = h("button", { className: "linkish ts-nudge", type: "button", textContent: "Nudge on WhatsApp",
+    onclick: () => { if (editing) window.open(waLink(nudgeText({ ...editing, waitingOn: waitingOn.value })), "_blank", "noopener"); } });
   const pendBox = h("div", { className: "ts-pend" },
     h("label", {}, h("span", { textContent: "Waiting on" }), waitingOn),
-    h("label", {}, h("span", { textContent: "Ask me again" }), checkOn));
+    h("label", {}, h("span", { textContent: "Ask me again" }), checkOn),
+    nudgeBtn);
   const stateLine = h("p", { className: "ts-state" });
 
   const stepList = h("ul", { className: "ts-steps" });

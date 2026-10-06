@@ -8,6 +8,7 @@
 // and never grows more urgent than a today-target (spec, "Overdue triage").
 import * as W from "./weights.js";
 import { localDate } from "./model.js";
+import { officeDay as officeOpenDay } from "./holidays.js";
 
 const MIN = 60000;
 
@@ -55,9 +56,10 @@ export function weekDays(now = Date.now()){
 
 // Free minutes in a day's waking hours: minus busy calendar events, minus
 // what other open tasks dated that day already need.
-export function roomOn(day, { events = [], tasks = [], skip = null, now = Date.now() } = {}){
-  const start = new Date(day).setHours(0, W.DAY_HOURS.start, 0, 0);
-  const end = new Date(day).setHours(0, W.DAY_HOURS.end, 0, 0);
+// hours: the user's day hours (day.js dayHours), minutes after midnight.
+export function roomOn(day, { events = [], tasks = [], skip = null, now = Date.now(), hours = W.DAY_HOURS } = {}){
+  const start = new Date(day).setHours(0, hours.start, 0, 0);
+  const end = new Date(day).setHours(0, hours.end, 0, 0);
   let busy = 0;
   for (const e of events) {
     if (e.busy === false || e.allDay) continue;
@@ -71,7 +73,7 @@ export function roomOn(day, { events = [], tasks = [], skip = null, now = Date.n
 
 // "This week" for one task: the roomiest day, earliest on a tie. A task
 // that needs office hours only looks at days offices open.
-export function pickWeekDay(task, { events = [], tasks = [], now = Date.now(), officeDay = defaultOfficeDay } = {}){
+export function pickWeekDay(task, { events = [], tasks = [], now = Date.now(), officeDay = defaultOfficeDay, hours = W.DAY_HOURS } = {}){
   let days = weekDays(now);
   if (task.openHours === "office") {
     // Thursday's "this week" for a call is Friday–Saturday: all closed. Then
@@ -85,25 +87,31 @@ export function pickWeekDay(task, { events = [], tasks = [], now = Date.now(), o
   }
   let best = days[0], bestRoom = -Infinity;
   for (const d of days) {
-    const room = roomOn(d, { events, tasks, skip: task.id, now });
+    const room = roomOn(d, { events, tasks, skip: task.id, now, hours });
     if (room > bestRoom) { best = d; bestRoom = room; }
   }
   return localDate(best.getTime());
 }
 
-// Sunday–Thursday until the three-gate engine brings the holiday list.
-const defaultOfficeDay = (d) => d.getDay() <= 4;
+// Sunday–Thursday, minus Israeli holidays (holidays.js; 2026-10-06 — it was
+// weekdays only "until the engine brings the holiday list").
+const defaultOfficeDay = (d) => officeOpenDay(d.getTime());
 
 // ---------- the four answers ----------
 
 // Everything an answer can change, as it was, so Undo is exact.
-export const answerSnapshot = (t) => ({ due: t.due ?? null, status: t.status, touchedAt: t.touchedAt ?? null, droppedAt: t.droppedAt ?? null });
+export const answerSnapshot = (t) => ({ due: t.due ?? null, dateKind: t.dateKind ?? null, status: t.status, touchedAt: t.touchedAt ?? null,
+  droppedAt: t.droppedAt ?? null, pushes: t.pushes || 0 });
 
 // today / week / someday / drop → the patch. `week` is the picked date.
 export function answer(kind, t, { now = Date.now(), week = null } = {}){
   switch (kind) {
-    case "today": return { due: localDate(now), touchedAt: now };
-    case "week": return { due: week, touchedAt: now };
+    // A passed deadline done "today" is a date you set yourself now, not the
+    // real one (that's gone): a target, so it doesn't come back as overdue
+    // every morning (2026-10-06).
+    case "today": return { due: localDate(now), touchedAt: now,
+      ...(t.dateKind === "deadline" && t.due && t.due < localDate(now) ? { dateKind: "target" } : {}) };
+    case "week": return { due: week, touchedAt: now, pushes: (t.pushes || 0) + 1 };
     case "someday": return { status: "someday", touchedAt: now };
     case "drop": return { status: "dropped", droppedAt: now, touchedAt: now };
     default: return {};

@@ -99,7 +99,7 @@ test("decide: gap after an event names the Now card's pick, once", () => {
   const r = rec({ sentOn: "2026-10-06", tasks: [t({ title: "Send invoice to Uri", size: 15, type: "admin", due: "2026-10-06", dateKind: "deadline" })] });
   const d = N.decide(r, evs, at(11, 5));
   assert.deepEqual(types(d.out), ["gap"]);
-  assert.match(d.out[0].body, /^1 h 25 min free\. Next: Send invoice to Uri\./);
+  assert.match(d.out[0].body, /^1 h 15 min free\. Next: Send invoice to Uri\./); // 85 min less the 10-minute buffer
   assert.equal(d.out[0].title, "Teaching is over");
   assert.equal(N.decide({ ...r, gapFor: d.patch.gapFor }, evs, at(11, 10)).out.length, 0); // not twice
   assert.equal(N.decide(r, evs, at(11, 20)).out.length, 0); // ended too long ago
@@ -123,4 +123,31 @@ test("decide: booked slot starting, once; wrap in the day's last hour", () => {
   assert.equal(w.out[0].body, "Done today: 2. Still open for today: 1, deadline: Pay arnona. Tap to sort them.");
   assert.equal(w.out[0].url, "./?open=wrap");
   assert.equal(N.decide({ ...day, wrapOn: "2026-10-06" }, [], at(21, 10)).out.length, 0);
+});
+
+// ---------- waiting on people (2026-10-06) ----------
+const Nu = await import("../../app/js/nudge.js");
+test("nudge: the name, the language, the WhatsApp link", () => {
+  assert.equal(Nu.personOf("Yuval sends the stems"), "Yuval");
+  assert.equal(Nu.personOf("יובל שולח את הסטמס"), "יובל");
+  assert.equal(Nu.personOf("the bank"), null);
+  assert.ok(Nu.names("Coffee with Yuval", "Yuval") && Nu.names("פגישה עם יובל", "יובל") && Nu.names("שיחה ליובל", "יובל"));
+  assert.ok(!Nu.names("Yuvalim party", "Yuval"));
+  assert.equal(Nu.nudgeText({ title: "Pre-attack cue", waitingOn: "Yuval" }), 'Hi Yuval, just checking in about "Pre-attack cue". Any news?');
+  assert.equal(Nu.nudgeText({ title: "הסטמס", waitingOn: "יובל" }), 'היי יובל, רציתי לבדוק לגבי "הסטמס". יש עדכון?');
+  assert.equal(Nu.waLink("a b"), "https://wa.me/?text=a%20b");
+});
+
+test("decide: people — before a meeting with someone you wait on, once; gap leaves the buffer", () => {
+  const r = rec({ sentOn: "2026-10-06", tasks: [t({ id: "c", title: "Pre-attack cue", status: "waiting", waitingOn: "Yuval sends it" })] });
+  const ev = { id: "m1", title: "Coffee with Yuval", start: il(14), end: il(15), busy: true };
+  assert.equal(N.decide(r, [ev], at(13, 0)).out.length, 0); // an hour early
+  const d = N.decide(r, [ev], at(13, 30));
+  assert.deepEqual(types(d.out), ["people"]);
+  assert.equal(d.out[0].body, "You're waiting on Yuval for: Pre-attack cue.");
+  assert.equal(N.decide({ ...r, peopleSent: d.patch.peopleSent }, [ev], at(13, 40)).out.length, 0);
+  // Gap: 11:05 → 12:30 is 85 min, less the 10-minute buffer.
+  const evs = [{ id: "e1", title: "Teaching", start: il(9), end: il(11), busy: true }, { id: "e2", title: "Rehearsal", start: il(12, 30), end: il(14), busy: true }];
+  const g = N.decide(rec({ sentOn: "2026-10-06", tasks: [t({ title: "Send invoice", size: 15 })] }), evs, at(11, 5));
+  assert.match(g.out[0].body, /^1 h 15 min free\./);
 });

@@ -66,12 +66,14 @@ test("this week: a task needing office hours only lands Sun–Thu", () => {
 
 test("answers: today, week, someday, drop — and undo puts it back", () => {
   const t = dl("2026-10-01", { touchedAt: 5 });
-  assert.deepEqual(T.answer("today", t, { now: NOW }), { due: "2026-10-07", touchedAt: NOW });
-  assert.deepEqual(T.answer("week", t, { now: NOW, week: "2026-10-09" }), { due: "2026-10-09", touchedAt: NOW });
+  // A passed deadline done "today" becomes a target (2026-10-06); a move is a push.
+  assert.deepEqual(T.answer("today", t, { now: NOW }), { due: "2026-10-07", touchedAt: NOW, dateKind: "target" });
+  assert.deepEqual(T.answer("today", tg("2026-10-01"), { now: NOW }), { due: "2026-10-07", touchedAt: NOW });
+  assert.deepEqual(T.answer("week", t, { now: NOW, week: "2026-10-09" }), { due: "2026-10-09", touchedAt: NOW, pushes: 1 });
   assert.equal(T.answer("someday", t, { now: NOW }).status, "someday");
   const dropped = { ...t, ...T.answer("drop", t, { now: NOW }) };
   assert.equal(dropped.status, "dropped");
-  assert.deepEqual({ ...dropped, ...T.answerSnapshot(t) }, { ...t, droppedAt: null });
+  assert.deepEqual({ ...dropped, ...T.answerSnapshot(t) }, { ...t, droppedAt: null, pushes: 0 });
 });
 
 test("engine: someday and dropped never reach the card; a passed target isn't overdue", () => {
@@ -81,4 +83,16 @@ test("engine: someday and dropped never reach the card; a passed target isn't ov
   assert.equal(late.parts.deadline, 0);
   assert.equal(late.details.target.days, 0);
   assert.equal(E.rank([dl("2026-10-01")], { now: NOW }).pick.details.deadline.passed, true);
+});
+
+test("pickWeekDay: the user's day hours and Israeli holidays (2026-10-06)", () => {
+  // 2027-04-22 is Pesach (Nisan 15, a Thursday): an office call that week skips it.
+  const call = task({ openHours: "office" });
+  const days = new Set();
+  const mon = new Date(2027, 3, 18, 10).getTime(); // Sunday 18 Apr 2027
+  for (let i = 0; i < 3; i++) days.add(T.pickWeekDay(call, { now: mon, events: [], tasks: [] }));
+  assert.ok(![...days].includes("2027-04-22"));
+  // Day hours: a busy 10–18 on the earliest day leaves no room in a 10–18 day.
+  const ev = { start: new Date(2026, 9, 8, 10).toISOString(), end: new Date(2026, 9, 8, 18).toISOString() };
+  assert.equal(T.roomOn(new Date(2026, 9, 8), { events: [ev], hours: { start: 600, end: 1080 } }), 0);
 });

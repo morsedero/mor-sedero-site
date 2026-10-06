@@ -21,7 +21,7 @@
 // PALETTE. Names are taken in order, so a colour doesn't move around as
 // counts change. Inbox has none.
 import { watchTasks, finishTask, restoreTask, watchProjectNames, saveProjectNames } from "./store.js";
-import { INBOX, notYet, durText, localDate } from "./model.js";
+import { INBOX, notYet, durText, localDate, bringBack } from "./model.js";
 import { isOverdue } from "./triage.js";
 import { h, bdi, flash, icon } from "./ui.js";
 import { dirOf, setProjectColors } from "./look.js";
@@ -256,8 +256,9 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
     flash("Reopened: ", t.title, { undo: () => restoreTask(uid, t.id, before).catch(fail) });
   }
   function bringBack(t){
-    restoreTask(uid, t.id, { status: "ready", notBefore: null, touchedAt: Date.now() }).catch(fail);
-    flash("Back on the list: ", t.title, { undo: () => restoreTask(uid, t.id, { status: "someday", notBefore: t.notBefore ?? null }).catch(fail) });
+    restoreTask(uid, t.id, bringBack(t)).catch(fail);
+    flash("Back on the list: ", t.title, { undo: () => restoreTask(uid, t.id, { status: "someday", notBefore: t.notBefore ?? null,
+      due: t.due ?? null, dueTime: t.dueTime ?? null, dateKind: t.dateKind ?? null }).catch(fail) });
   }
   const toggle = (key, ...kids) => h("button", { type: "button", className: "pj-tg", ariaExpanded: String(drawer === key),
     onclick: () => { drawer = drawer === key ? null : key; paintView(); } }, ...kids, h("span", { className: "pj-car", ariaHidden: "true", textContent: "▸" }));

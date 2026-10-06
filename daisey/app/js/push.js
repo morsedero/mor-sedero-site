@@ -7,7 +7,7 @@
 // The server can't read Firestore, so while notifications are on (settings
 // morningBrief, on any device) the app sends it a snapshot of the open tasks
 // (and those done in the last two days) whenever they change: the fields the
-// engine scores on, never notes, links, steps or who a task waits on.
+// engine scores on, and who a Pending task waits on — never notes, links or steps.
 import { idToken } from "./firebase.js";
 
 const URL_ = "/.netlify/functions/daisey-now-push";
@@ -68,7 +68,8 @@ export const sendTest = () => post({ action: "test" });
 // The snapshot, at most every few seconds and only when it changed.
 let timer = null, lastSent = "";
 const FIELDS = ["id", "title", "project", "area", "type", "where", "openHours", "stakes", "energy", "status", "dateKind", "due", "dueTime",
-  "notBefore", "checkOn", "size", "spentMinutes", "starts", "skipsSinceStart", "skipCount", "createdAt", "touchedAt", "workedAt", "doneAt", "canSplit"];
+  "notBefore", "checkOn", "size", "spentMinutes", "starts", "skipsSinceStart", "skipCount", "pushes", "createdAt", "touchedAt", "workedAt",
+  "doneAt", "canSplit", "waitingOn", "again"];
 const RECENT = 2 * 864e5;
 export function syncSnapshot(tasks, settings, hours){
   const now = Date.now();
@@ -76,7 +77,7 @@ export function syncSnapshot(tasks, settings, hours){
     .map((t) => Object.fromEntries(FIELDS.filter((k) => t[k] != null).map((k) => [k, t[k]])));
   const s = settings || {};
   const body = { action: "snapshot", tasks: list, tz: tz(), dayStart: hours.start, dayEnd: hours.end,
-    settings: { needsLater: s.needsLater || null, calOffered: s.calOffered || [], somedayAsked: s.somedayAsked || null },
+    settings: { needsLater: s.needsLater || null, calOffered: s.calOffered || [], somedayAsked: s.somedayAsked || null, intents: s.intents || {} },
     notify: s.notify || {} };
   const mark = JSON.stringify(body);
   if (mark === lastSent) return;

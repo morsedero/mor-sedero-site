@@ -12,7 +12,7 @@
 // alternatives, tap one to make it the card. Start → focus mode (focus.js):
 // the run lives in Firestore, so this tab, a reload and the phone all show
 // the same timer.
-import { watchTasks, watchRun, watchSkips, saveSkips, startRun, extendRun, endRun, startBatch, tickBatch, endBatch, skipNow, blockTask, restoreTask, watchSettings, saveSettings, watchMoment, saveMoment, watchLearn, bumpLearn, saveRun, cancelRun } from "./store.js";
+import { addTask, watchTasks, watchRun, watchSkips, saveSkips, startRun, extendRun, endRun, startBatch, tickBatch, endBatch, skipNow, blockTask, restoreTask, watchSettings, saveSettings, watchMoment, saveMoment, watchLearn, bumpLearn, saveRun, cancelRun } from "./store.js";
 import { energyNow, placeNow, workBase } from "./context.js";
 import { watchWhere, setRide, setStill, saveSpot, setManual } from "./where.js";
 import { pickWeekDay } from "./triage.js";
@@ -20,7 +20,8 @@ import { focusView, handoffView, elapsedMinutes, targetMinutes, batchFocusView, 
 import { watchCalendar, logDone } from "./calendar.js";
 import { LATER_MINUTES, DRAIN, CANCEL_KEEP_MINUTES } from "./weights.js";
 import { rank, freeWindow, timeBucket, matchProject, dueAt } from "./engine.js";
-import { localDate, skipSnapshot, pendingCheck, notYet } from "./model.js";
+import { localDate, skipSnapshot, pendingCheck, notYet, pushedTo, bringBack, againInput } from "./model.js";
+import { waitingFor, personOf } from "./nudge.js";
 import { dayHours, isNight, nextMorning, dayEndAt, bookings, sameTitle, minText } from "./day.js";
 import { collectNeeds } from "./needs.js";
 import { h, icon, bdi, pieces, sizeText, dur, say, nightDivider, flash } from "./ui.js";
@@ -257,6 +258,9 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
       h("p", { className: "now-why", textContent: left
         ? `${dur(left)} left. Daisey picks a task again when it ends.`
         : "Just about done." }),
+      // With someone a Pending task waits on: worth raising while you're there.
+      ...waitingFor(ev.title, tasks || []).slice(0, 3).map((t) => h("p", { className: "now-wait" },
+        `Waiting on ${personOf(t.waitingOn)}: `, bdi(t.title))),
       h("button", { className: "btn quiet free-now", type: "button", textContent: "I'm free now",
         ariaLabel: `I'm free now: ignore ${ev.title} and pick a task anyway`,
         onclick: () => { freeFrom = ev.start; render(); } }));
@@ -415,12 +419,12 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
       const d = new Date(); d.setDate(d.getDate() + 1);
       let day = localDate(d.getTime());
       if (task.dateKind === "deadline" && task.due && task.due < day) day = task.due; // never hide it past its deadline
-      stepAside(task, { label: "Tomorrow: ", write: () => Promise.all([restoreTask(uid, task.id, { notBefore: day, touchedAt: Date.now() }), declined(task)]) });
+      stepAside(task, { label: "Tomorrow: ", write: () => Promise.all([restoreTask(uid, task.id, pushedTo(task, { notBefore: day })), declined(task)]) });
     } else if (when === "week") {
-      let day = pickWeekDay(task, { events: cal.status === "ok" ? cal.events : [], tasks: tasks || [] });
+      let day = pickWeekDay(task, { events: cal.status === "ok" ? cal.events : [], tasks: tasks || [], hours: dayHours(settings) });
       if (task.dateKind === "deadline" && task.due && task.due < day) day = task.due; // never hide it past its deadline
       const label = new Date(`${day}T12:00`).toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" });
-      stepAside(task, { label: `This week (${label}): `, write: () => Promise.all([restoreTask(uid, task.id, { notBefore: day, touchedAt: Date.now() }), declined(task)]) });
+      stepAside(task, { label: `This week (${label}): `, write: () => Promise.all([restoreTask(uid, task.id, pushedTo(task, { notBefore: day })), declined(task)]) });
     } else if (when === "someday") {
       stepAside(task, { label: "Not now: ", write: () => Promise.all([restoreTask(uid, task.id, { status: "someday", touchedAt: Date.now() }), declined(task)]) });
     }
@@ -540,6 +544,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
       ...workBase(tasks || [], now),
       sessionSkips: hidden(now),
       skipsToday: skipCounts(),
+      intents: settings.intents || {},
       energy: f.energy.value,
       place: f.place.value,
       spot: f.place.spot,
@@ -565,6 +570,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
       ...workBase(tasks || [], now),
       energy: energyNow({ history: momentDoc.history || [], events: evs, now: morning }).value,
       place: "home",
+      intents: settings.intents || {},
       learnStats,
       booked: Object.fromEntries([...booked()].map(([id, b]) => [id, b.start])),
     });
@@ -709,7 +715,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
     const n = sd.sel.length;
     const bring = () => {
       const now = Date.now();
-      for (const id of sd.sel) restoreTask(uid, id, { status: "ready", notBefore: null, touchedAt: now }).catch(fail);
+      for (const id of sd.sel) { const t = (tasks || []).find((x) => x.id === id); if (t) restoreTask(uid, id, bringBack(t, { now })).catch(fail); }
       sd.sel = [];
       render();
     };
@@ -750,7 +756,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
     };
     const pick = (t) => {
       sd.picked.push(t.id);
-      restoreTask(uid, t.id, { status: "ready", notBefore: null, touchedAt: Date.now() }).catch(fail);
+      restoreTask(uid, t.id, bringBack(t)).catch(fail);
       if (sd.picked.length >= 2) close(); else render();
     };
     return h("div", { className: "learn-ask someday-ask", role: "group", ariaLabel: "Pick from Not now" },
@@ -838,7 +844,19 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
       const r = rank(tasks || [], { ...m, sessionSkips: [...m.sessionSkips, handoff.skip] });
       const cheer = !handoff.cheered; // the petals once, not on every re-render
       handoff.cheered = true;
-      fill(handoffView({ title: handoff.title, minutes: handoff.minutes || 0, count: n }, r.pick, {
+      // "Again?" (2026-10-06): one task finished, not a batch → offer next week / next month.
+      const finished = handoff.ids?.length === 1 ? (tasks || []).find((t) => t.id === handoff.ids[0]) : null;
+      const again = finished && {
+        suggest: finished.again || null,
+        made: handoff.againMade || null,
+        pick: (period) => {
+          const input = againInput(finished, period);
+          addTask(uid, input, tasks || []).catch(fail);
+          handoff.againMade = new Date(`${input.notBefore}T12:00`).toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" });
+          render();
+        },
+      };
+      fill(handoffView({ title: handoff.title, minutes: handoff.minutes || 0, count: n, again }, r.pick, {
         cheer,
         onStart: begin,
         onSkip: (task) => { if (task) skips.add(task.id); handoff = null; showing(null); render(); },

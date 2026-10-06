@@ -35,7 +35,7 @@ export function timeBucket(now = Date.now()){
 
 // The free window from the calendar's busy events ({ title, start, end },
 // ISO strings, sorted). In an event → 0 until it ends. Else minutes until
-// the next one (readMoment caps it). restOfDay: nothing else today.
+// the next one, less EVENT_BUFFER (readMoment caps it). restOfDay: nothing else today.
 // `until` (ms): the end of the day hours — free time stops there too.
 export function freeWindow(events, now = Date.now(), until = null){
   const ev = events.map((e) => ({ ...e, title: e.title, start: Date.parse(e.start), end: Date.parse(e.end) }));
@@ -43,7 +43,8 @@ export function freeWindow(events, now = Date.now(), until = null){
   if (current) return { window: 0, current, next: null, restOfDay: false };
   const next = ev.find((e) => e.start > now) || null;
   const restOfDay = !next || localDate(next.start) !== localDate(now);
-  let window = next ? Math.floor((next.start - now) / MIN) : W.WINDOW_CAP;
+  // EVENT_BUFFER: leave room before the next event (2026-10-06).
+  let window = next ? Math.max(0, Math.floor((next.start - now) / MIN) - W.EVENT_BUFFER) : W.WINDOW_CAP;
   if (until != null) window = Math.max(0, Math.min(window, Math.floor((until - now) / MIN)));
   return { window, current: null, next: restOfDay ? null : next, restOfDay };
 }

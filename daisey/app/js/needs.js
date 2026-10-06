@@ -26,7 +26,9 @@ import { watchTasks, watchSettings, saveSettings, restoreTask, addTask } from ".
 import { watchCalendar, deleteEvent } from "./calendar.js";
 import { draftFrom } from "./caltask.js";
 import { pickWeekDay, answer, answerSnapshot, effectiveDue } from "./triage.js";
-import { localDate, pendingCheck, shrunk, shrinkPatch, dayAfter, notYet } from "./model.js";
+import { localDate, pendingCheck, shrunk, shrinkPatch, dayAfter, notYet, pushedTo, bringBack, LABELS } from "./model.js";
+import { dayHours } from "./day.js";
+import { nudgeText, waLink } from "./nudge.js";
 import { daysUntil } from "./engine.js";
 import { collectNeeds, somedayDue } from "./needs-list.js";
 export { collectNeeds, somedayDue }; // now.js counts them for the header chip
@@ -78,7 +80,7 @@ export function mountNeeds(root, uid, { onClose } = {}){
   };
   const sweep = (t, kind) => {
     const now = Date.now();
-    const week = kind === "week" ? pickWeekDay(t, { events: cal.events || [], tasks, now }) : null;
+    const week = kind === "week" ? pickWeekDay(t, { events: cal.events || [], tasks, now, hours: dayHours(settings) }) : null;
     restoreTask(uid, t.id, { ...answerSnapshot(t), ...answer(kind, t, { now, week }) }).catch(fail);
     next();
   };
@@ -97,10 +99,24 @@ export function mountNeeds(root, uid, { onClose } = {}){
         yes: ["Yes, make it a task", () => { markOffered(ev); addTask(uid, d.input, tasks).catch(fail); follow = ev; paint(); }],
         no: ["No, it's an event", () => { markOffered(ev); next(); }] };
     }
+    if (item.kind === "goal") {
+      const name = LABELS.area[item.area] || item.area;
+      const set = (n) => () => {
+        const intents = { ...(settings.intents || {}), [item.area]: n };
+        settings = { ...settings, intents };
+        saveSettings(uid, { intents }).catch(fail);
+        next();
+      };
+      return { tone: `area-${item.area}`, ico: "energy", q: `Weekly goal: ${name}`,
+        sub: `${item.open} open ${name} task${item.open === 1 ? "" : "s"}. How many a week feels right?`, item: name,
+        say: "When it falls behind, I'll give it a turn. You can change it in Settings.",
+        yes: ["2 a week", set(2)], no: ["No goal", set(0)],
+        more: [["1 a week", set(1)], ["3 a week", set(3)], ["5 a week", set(5)]] };
+    }
     const t = find(item.id);
     if (!t) return null; // deleted since: skip it
     if (item.kind === "wrap") {
-      const tomorrow = () => { restoreTask(uid, t.id, { due: dayAfter(1), touchedAt: Date.now() }).catch(fail); next(); };
+      const tomorrow = () => { restoreTask(uid, t.id, pushedTo(t, { due: dayAfter(1) })).catch(fail); next(); };
       const drop = ["Let it go", () => { restoreTask(uid, t.id, { status: "dropped", droppedAt: Date.now(), touchedAt: Date.now() }).catch(fail); next(); }];
       if (t.dateKind === "deadline") {
         const past = t.due < localDate();
@@ -133,22 +149,38 @@ export function mountNeeds(root, uid, { onClose } = {}){
           ? { yes: [`Shrink to ${dur(small)}`, () => { restoreTask(uid, t.id, shrinkPatch(t)).catch(fail); next(); }], no: keep, more: [drop] }
           : { yes: keep, no: drop }) };
     }
+    if (item.kind === "pushed") {
+      const small = shrunk(t.size);
+      const canShrink = small < (t.size || 0);
+      const keep = ["Keep it", () => { restoreTask(uid, t.id, { pushes: 0, touchedAt: Date.now() }).catch(fail); next(); }];
+      const drop = ["Let it go", () => { restoreTask(uid, t.id, { status: "dropped", droppedAt: Date.now(), touchedAt: Date.now() }).catch(fail); next(); }];
+      const park = ["Not now", () => { restoreTask(uid, t.id, { status: "someday", pushes: 0, touchedAt: Date.now() }).catch(fail); next(); }];
+      return { tone: areaClass(t).trim() || "area-work", ico: "later", q: "Keeps sliding",
+        sub: `Pushed to a later day ${t.pushes} times.`, item: t.title,
+        say: canShrink ? `I'd make it a ${sizeWords(small)} first piece, so it's easy to start.` : "Keep it, park it, or let it go?",
+        ...(canShrink
+          ? { yes: [`Shrink to ${dur(small)}`, () => { restoreTask(uid, t.id, { ...shrinkPatch(t), pushes: 0 }).catch(fail); next(); }], no: keep, more: [park, drop] }
+          : { yes: keep, no: park, more: [drop] }) };
+    }
     if (item.kind === "pending") {
       const since = t.touchedAt ? ` since ${new Date(t.touchedAt).toLocaleDateString(undefined, { day: "numeric", month: "short" })}` : "";
       return { tone: areaClass(t).trim() || "area-social", ico: "pending", q: "Still pending?",
         sub: t.waitingOn ? `Waiting on ${t.waitingOn}${since}.` : `Pending${since}.`,
         item: t.title, say: `If it's still stuck, I'll ask again ${weekday(pendingCheck(t))}.`,
         yes: ["Yes, still pending", () => { restoreTask(uid, t.id, { checkOn: pendingCheck(t), touchedAt: Date.now() }).catch(fail); next(); }],
-        no: ["No, it's ready", () => { restoreTask(uid, t.id, { status: "ready", waitingOn: null, checkOn: null, touchedAt: Date.now() }).catch(fail); next(); }] };
+        no: ["No, it's ready", () => { restoreTask(uid, t.id, { status: "ready", waitingOn: null, checkOn: null, touchedAt: Date.now() }).catch(fail); next(); }],
+        // Nudge: WhatsApp with a short check-in typed in; asked again later, as for "still pending".
+        more: [["Nudge on WhatsApp", () => { window.open(waLink(nudgeText(t)), "_blank", "noopener");
+          restoreTask(uid, t.id, { checkOn: pendingCheck(t), touchedAt: Date.now() }).catch(fail); next(); }]] };
     }
     if (item.kind === "someday") {
       return { tone: "area-home", ico: "someday", q: "Bring one back?", sub: "From Not now, for this week.",
         item: t.title, say: MARK[t.stakes] || `It's ${dur(t.size)}, and the week has room.`,
-        yes: ["Bring it back", () => { somedayDone(); restoreTask(uid, t.id, { status: "ready", notBefore: null, touchedAt: Date.now() }).catch(fail); next(); }],
+        yes: ["Bring it back", () => { somedayDone(); restoreTask(uid, t.id, bringBack(t)).catch(fail); next(); }],
         no: ["Leave it there", () => { somedayDone(); next(); }] };
     }
     // sweep
-    const week = pickWeekDay(t, { events: cal.events || [], tasks });
+    const week = pickWeekDay(t, { events: cal.events || [], tasks, hours: dayHours(settings) });
     return { tone: "area-job", ico: "later", q: "Still doing this?",
       sub: `${t.dateKind === "deadline" ? "The deadline was" : "It was planned for"} ${shortDay(t.due)}.`,
       item: t.title, say: `I'd move it to ${weekday(week)}, the roomiest day this week.`,

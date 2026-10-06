@@ -10,6 +10,8 @@
 //   gap     a busy event just ended and 30+ free minutes follow: the task
 //           the Now card would pick for that window, with its why
 //   booked  a task's booked slot (day.js bookings) is starting
+//   people  up to 45 minutes before an event that names someone a Pending
+//           task waits on: "You're waiting on Yuval for: …" (app/js/nudge.js)
 //
 // Nothing outside the day hours. The picks are the app's own code — engine,
 // context, day, needs-list, brief — required from app/js (esbuild bundles
@@ -23,13 +25,16 @@ const { workBase, energyNow } = require("../../app/js/context.js");
 const { bookings } = require("../../app/js/day.js");
 const { localDate, notYet, durText } = require("../../app/js/model.js");
 const { effectiveDue } = require("../../app/js/triage.js");
+const { waitingFor, personOf } = require("../../app/js/nudge.js");
+const { EVENT_BUFFER } = require("../../app/js/weights.js");
 
 const BRIEF_WINDOW = 240; // minutes after the day starts the brief may still go
 const WRAP_BEFORE = 60; // the wrap goes in the day's last hour
 const GAP_LOOKBACK = 10; // an event that ended this recently opens a gap
 const GAP_MIN = 30; // free minutes worth a nudge
 const BOOKED_EARLY = 3, BOOKED_LATE = 10; // minutes around a slot's start
-const DEFAULT_TYPES = { brief: true, wrap: true, gap: true, booked: true };
+const PEOPLE_BEFORE = 45; // minutes before the meeting
+const DEFAULT_TYPES = { brief: true, wrap: true, gap: true, booked: true, people: true };
 
 const isBusy = (e) => !e.allDay && e.busy !== false && e.start && e.end;
 const clockIn = (ms, tz) => { const m = localParts(ms, tz).minutes; return `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`; };
@@ -78,11 +83,12 @@ function decide(rec, events, now = Date.now()) {
       patch.gapFor = evKey(ended);
       const next = busy.filter((e) => Date.parse(e.start) > now).sort((a, b) => Date.parse(a.start) - Date.parse(b.start))[0];
       const until = Math.min(next ? Date.parse(next.start) : Infinity, zoned(date, end, tz));
-      const free = Math.floor((until - now) / MIN);
+      // Room before the next event, as the Now card leaves it (EVENT_BUFFER).
+      const free = Math.floor((until - now) / MIN) - (next && Date.parse(next.start) <= until ? EVENT_BUFFER : 0);
       if (free >= GAP_MIN) {
         const r = rank(tasks, {
           now, window: free, nextEvent: next && localDate(Date.parse(next.start)) === date ? next.title : null,
-          ...workBase(tasks, now), energy: energyNow({ events: evs, now }).value,
+          ...workBase(tasks, now), energy: energyNow({ events: evs, now }).value, intents: rec.settings?.intents || {},
           booked: Object.fromEntries([...booked].map(([id, b]) => [id, b.start])),
         });
         if (r.pick) out.push({ type: "gap", title: `${ended.title} is over`,
@@ -101,6 +107,20 @@ function decide(rec, events, now = Date.now()) {
       out.push({ type: "booked", title: "Starts now", body: `${t?.title || b.title}, booked ${clockIn(b.start, tz)}–${clockIn(b.end, tz)}.`, tag: `booked-${k}`, url: "./" });
     }
     if (sent.size !== (rec.bookedSent || []).length) patch.bookedSent = [...sent].slice(-50);
+  }
+
+  if (types.people) {
+    const sent = new Set(rec.peopleSent || []);
+    for (const e of busy) {
+      const s = Date.parse(e.start), k = evKey(e);
+      if (s <= now || s - now > PEOPLE_BEFORE * MIN || sent.has(k)) continue;
+      const hits = waitingFor(e.title, tasks);
+      if (!hits.length) continue;
+      sent.add(k);
+      out.push({ type: "people", title: `${e.title} at ${clockIn(s, tz)}`,
+        body: `You're waiting on ${personOf(hits[0].waitingOn)} for: ${hits.map((t) => t.title).join(", ")}.`, tag: `people-${k}`, url: "./" });
+    }
+    if (sent.size !== (rec.peopleSent || []).length) patch.peopleSent = [...sent].slice(-50);
   }
   return { out, patch };
 }

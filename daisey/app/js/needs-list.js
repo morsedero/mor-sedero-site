@@ -6,7 +6,8 @@ import { nextOffer } from "./caltask.js";
 import { sweepList, isOverdue, shouldOffer } from "./triage.js";
 import { localDate, notYet } from "./model.js";
 import { deadlineWithin } from "./engine.js";
-import { STALE_SKIPS, SOMEDAY_DEADLINE_DAYS } from "./weights.js";
+import { STALE_SKIPS, SOMEDAY_DEADLINE_DAYS, PUSHES_ASK } from "./weights.js";
+import { AREAS } from "./model.js";
 
 const STAKES_FIRST = { penalty: 0, money: 1, someone: 2, low: 3 };
 
@@ -46,6 +47,9 @@ export function collectNeeds({ tasks = [], events = [], calOk = false, settings 
     .forEach((t) => add({ key: `pend:${t.id}`, kind: "pending", id: t.id }));
   tasks.filter((t) => t.status === "ready" && (t.skipsSinceStart || 0) >= STALE_SKIPS)
     .forEach((t) => add({ key: `stale:${t.id}`, kind: "stale", id: t.id }));
+  // Pushed to a later day PUSHES_ASK times without a start (2026-10-06).
+  tasks.filter((t) => t.status === "ready" && (t.pushes || 0) >= PUSHES_ASK && (t.skipsSinceStart || 0) < STALE_SKIPS)
+    .forEach((t) => add({ key: `pushed:${t.id}`, kind: "pushed", id: t.id }));
   if (somedayDue(tasks, settings, now)) {
     const t = somedayTop(tasks.filter((x) => !parked.includes(x))); // a parked deadline is already asked about
     if (t) add({ key: "someday", kind: "someday", id: t.id });
@@ -55,5 +59,13 @@ export function collectNeeds({ tasks = [], events = [], calOk = false, settings 
   const targets = shouldOffer(tasks, now, {});
   sweepList(tasks, now).filter((t) => isOverdue(t, now) || targets)
     .forEach((t) => add({ key: `sweep:${t.id}`, kind: "sweep", id: t.id }));
+  // Weekly goals (Mor, 2026-10-06: "Daisey should ask if it doesn't have the
+  // info, and keep it in settings"): an area with open tasks and no goal yet
+  // — most open tasks first, two a day at most. "No goal" is kept as 0.
+  const intents = settings.intents || {};
+  const counts = {};
+  for (const t of tasks) if (t.status === "ready" && AREAS.includes(t.area)) counts[t.area] = (counts[t.area] || 0) + 1;
+  Object.keys(counts).filter((a) => intents[a] == null).sort((a, b) => counts[b] - counts[a]).slice(0, 2)
+    .forEach((a) => add({ key: `goal:${a}`, kind: "goal", area: a, open: counts[a] }));
   return out;
 }

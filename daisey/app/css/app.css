@@ -600,6 +600,17 @@ dialog.now:focus { outline: none; }
 .menu-h { margin: 0; font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-2); }
 .menu-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .menu-label { font-size: 14px; white-space: nowrap; }
+.again { display: flex; align-items: center; justify-content: center; gap: 8px; margin-block-start: 12px; flex-wrap: wrap; }
+.again-q { font-size: 14px; color: var(--ink-2); }
+.again .chip.on { background: var(--accent); color: var(--ink); border-color: var(--accent); }
+.again-made { margin: 12px 0 0; font-size: 14px; color: var(--ink-2); text-align: center; }
+.now-wait { margin: 6px 0 0; font-size: 14px; color: var(--ink-2); }
+.ts-nudge { justify-self: start; font-size: 14px; }
+.goals { display: grid; grid-template-columns: 1fr auto 1fr auto; gap: 8px 10px; align-items: center; }
+.goals label { font-size: 14px; display: grid; }
+.goals input { inline-size: 48px; block-size: 36px; min-block-size: 0; padding: 0 8px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); color: var(--ink); font: inherit; text-align: center; }
+.goals .goal-done { font-size: 11px; color: var(--ink-2); white-space: nowrap; }
+.goals .goal-done:empty { display: none; }
 .menu-kinds { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 12px; padding-inline-start: 8px; }
 .menu-kinds .menu-check { font-size: 13px; white-space: nowrap; }
 .menu-note { margin: 0; font-size: 12px; color: var(--ink-2); }

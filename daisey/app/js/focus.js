@@ -266,7 +266,14 @@ export function handoffView(done, next, { onStart, onSkip, cheer }){
       h("div", { className: "done-flower" }, daisy(Math.max(1, n), { size: 150, cls: "daisy big" + (cheer ? " pop" : "") }), petals),
       h("h2", { className: "done-h" + (cheer ? " pop" : ""), textContent: `Done in ${dur(Math.max(1, Math.round(done.minutes || 0)))}` }),
       h("p", { className: "done-p", textContent: n && n <= 8 ? `${n} done today. Your daisy grew a petal.` : `${n} done today.` }),
-      done.title && h("p", { className: "done-what" }, bdi(done.title))),
+      done.title && h("p", { className: "done-what" }, bdi(done.title)),
+      done.again && (done.again.made
+        ? h("p", { className: "again-made", textContent: `Again from ${done.again.made}.` })
+        : h("div", { className: "again", role: "group", ariaLabel: "Do it again?" },
+          h("span", { className: "again-q", textContent: "Again?" }),
+          ...[["week", "Next week"], ["month", "Next month"]].map(([p, text]) => h("button", {
+            className: "chip" + (done.again.suggest === p ? " on" : ""), type: "button", textContent: text,
+            ariaLabel: `Again ${text.toLowerCase()}: add a fresh copy`, onclick: () => done.again.pick(p) }))))),
     t
       ? h("section", { className: "next-card" + areaClass(t), ariaLabel: "Next" },
         h("div", { className: "next-top" },

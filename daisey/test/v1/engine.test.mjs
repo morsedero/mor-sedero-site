@@ -31,7 +31,8 @@ const ev = (title, sh, sm, eh, em, d = 5, o = {}) => ({ title, start: new Date(a
 
 test("calendar window: minutes to the next event; inside one → 0; none today → rest of day", () => {
   const next = E.freeWindow([ev("Teaching", 10, 45, 12, 0)], NOW);
-  assert.deepEqual([next.window, next.next.title, next.restOfDay], [45, "Teaching", false]);
+  // 45 minutes to Teaching, less the 10-minute buffer before it (2026-10-06).
+  assert.deepEqual([next.window, next.next.title, next.restOfDay], [45 - W.EVENT_BUFFER, "Teaching", false]);
   const inside = E.freeWindow([ev("Teaching", 9, 30, 11, 0), ev("Call", 12, 0, 13, 0)], NOW);
   assert.deepEqual([inside.window, inside.current.title], [0, "Teaching"]);
   const done = E.freeWindow([ev("Earlier", 8, 0, 9, 0)], NOW);

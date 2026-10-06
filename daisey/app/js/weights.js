@@ -5,6 +5,10 @@
 // ---------- Step 1 — read the moment ----------
 export const WINDOW_CAP = 180; // minutes; a longer free stretch counts as 180
 export const NO_CALENDAR_WINDOW = 60;
+// Breathing room before the next calendar event (Mor, 2026-10-06: 10 min):
+// a 60-minute gap offers 50 minutes of task, so nothing ends exactly as a
+// meeting starts.
+export const EVENT_BUFFER = 10;
 export const AFTERNOON_FROM = 12; // hour; morning before, afternoon 12–17
 export const EVENING_FROM = 17; // also when an "Evening" task opens up
 export const WEEKEND_DAYS = [5, 6]; // Friday + Saturday (Israel), getDay() numbers
@@ -36,6 +40,10 @@ export const STALE_KEEP_DEADLINE_DAYS = 7;
 // A task parked in Not now (someday) with a real deadline this close, or
 // passed, comes back as a Needs you question — Someday can't hide a deadline.
 export const SOMEDAY_DEADLINE_DAYS = 3;
+// Pushed to Tomorrow / This week (or moved on by the wrap or the sweep) this
+// many times without a start → Needs you asks shrink, keep or let go (Mor,
+// 2026-10-06: 2). A plan made twice and kept twice is a task in trouble.
+export const PUSHES_ASK = 2;
 // Which task places can't happen where you are. Anywhere (as the moment)
 // filters nothing. (Mor approved, 2026-10-04.) The moving ones come from
 // the phone's location (where.js, 2026-10-05): walking takes calls and

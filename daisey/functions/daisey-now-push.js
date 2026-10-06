@@ -30,11 +30,12 @@ const day = (v) => (typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v :
 const mins = (v, dflt) => (Number.isInteger(v) && v >= 0 && v < 1440 ? v : dflt);
 const validTz = (tz) => { try { new Intl.DateTimeFormat("en", { timeZone: tz }); return tz; } catch { return null; } };
 
-// Only the fields the engine, the brief and the wrap read, cleaned. No
-// notes, links, steps or who it waits on.
-const TEXT = ["id", "title", "project", "area", "type", "where", "openHours", "stakes", "energy", "status", "dateKind"];
+// Only the fields the engine, the brief, the wrap and the people alert read,
+// cleaned. No notes, links or steps. (waitingOn since 2026-10-06: the
+// "before a meeting" alert names who a task waits on.)
+const TEXT = ["id", "title", "project", "area", "type", "where", "openHours", "stakes", "energy", "status", "dateKind", "waitingOn", "again"];
 const DAYS = ["due", "notBefore", "checkOn"];
-const NUMS = ["size", "spentMinutes", "starts", "skipsSinceStart", "skipCount", "createdAt", "touchedAt", "workedAt", "doneAt"];
+const NUMS = ["size", "spentMinutes", "starts", "skipsSinceStart", "skipCount", "pushes", "createdAt", "touchedAt", "workedAt", "doneAt"];
 const cleanTask = (t) => {
   const o = {};
   for (const k of TEXT) { const v = str(t?.[k], k === "title" || k === "project" ? 200 : 40); if (v != null) o[k] = v; }
@@ -50,8 +51,10 @@ const cleanSettings = (s) => ({
   needsLater: s?.needsLater && typeof s.needsLater === "object" ? { date: day(s.needsLater.date), keys: (s.needsLater.keys || []).slice(0, 100).map((k) => str(k, 120)) } : null,
   calOffered: Array.isArray(s?.calOffered) ? s.calOffered.slice(-200).map((k) => str(k, 200)) : [],
   somedayAsked: day(s?.somedayAsked),
+  // Weekly goals per area: the area balance and Needs you's goal question.
+  intents: Object.fromEntries(Object.entries(s?.intents || {}).filter(([k, v]) => /^[a-z]{2,12}$/.test(k) && Number.isInteger(v) && v >= 0 && v <= 50)),
 });
-const KINDS = ["brief", "wrap", "gap", "booked"];
+const KINDS = ["brief", "wrap", "gap", "booked", "people"];
 const cleanNotify = (n) => Object.fromEntries(KINDS.map((k) => [k, n?.[k] !== false]));
 const where = (b) => ({
   ...(validTz(b.tz) ? { tz: b.tz } : {}),
