@@ -100,7 +100,7 @@ export function mountAddTask(dialog, uid, { onStart } = {}){
 
   // Details: collapsed by default; opens Daisey's guessed chips.
   const detailsBtn = h("button", { type: "button", className: "ts-details", ariaExpanded: "false",
-    onclick: () => { detailsOpen = !detailsOpen; openChip = null; paintChips(); } },
+    onclick: () => { detailsOpen = !detailsOpen; openChip = null; reguess(); } },
   icon("details"), h("span", { className: "ts-details-t", textContent: "Details: size, energy, place" }), icon("chev"));
   const chipRow = h("div", { className: "gchips ts-chips", role: "group", ariaLabel: "Daisey's guesses — tap one to change it" });
 
@@ -207,7 +207,8 @@ export function mountAddTask(dialog, uid, { onStart } = {}){
   // ---------- chips ----------
   function reguess(){
     const t = title.value.trim();
-    if (t) {
+    // Open Details on an untitled task: the plain defaults, not an empty row.
+    if (t || detailsOpen) {
       const given = Object.fromEntries([...mine].map((k) => [k, vals[k]]));
       const g = guessFields(t, projectOf(), given, history());
       for (const k of CHIPS) if (!mine.has(k)) vals[k] = g[k];

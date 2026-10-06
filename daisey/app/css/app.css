@@ -917,7 +917,7 @@ dialog.tsheet .now-head { margin-block-end: -4px; }
 .ts-details { flex: none; display: flex; align-items: center; gap: 8px; inline-size: 100%; min-block-size: 42px; padding-inline: 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--ink); font: inherit; font-size: 16px; cursor: pointer; }
 .ts-details > svg { color: var(--aink); }
 .ts-details svg { inline-size: 16px; block-size: 16px; flex: none; stroke-width: 2; }
-.ts-details-t { flex: 1; text-align: start; }
+.ts-details-t { flex: 1; min-inline-size: 0; text-align: start; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ts-details[aria-expanded="true"] > svg:last-child { transform: rotate(90deg); }
 :dir(rtl) .ts-details[aria-expanded="false"] > svg:last-child { transform: scaleX(-1); }
 .ts-chips { margin-block-start: 8px; }
