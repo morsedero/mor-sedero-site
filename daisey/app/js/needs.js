@@ -23,7 +23,7 @@
 // The list is fixed when the screen opens, so answering one never reshuffles
 // the dots.
 import { watchTasks, watchSettings, saveSettings, restoreTask, addTask } from "./store.js";
-import { watchCalendar, deleteEvent } from "./calendar.js";
+import { watchCalendar, deleteEvent, retime } from "./calendar.js";
 import { draftFrom } from "./caltask.js";
 import { pickWeekDay, answer, answerSnapshot, effectiveDue } from "./triage.js";
 import { localDate, pendingCheck, shrunk, shrinkPatch, dayAfter, notYet, pushedTo, bringBack, LABELS } from "./model.js";
@@ -115,6 +115,14 @@ export function mountNeeds(root, uid, { onClose } = {}){
     }
     const t = find(item.id);
     if (!t) return null; // deleted since: skip it
+    if (item.kind === "clash") {
+      const c = item.clash, mv = c.move;
+      return { tone: "area-job", ico: "calendar", q: `${c.over.title} is running into this`,
+        sub: `It's booked ${clock(Date.parse(c.slot.start))}–${clock(Date.parse(c.slot.end))}. Deadline ${shortDay(t.due)}.`, item: t.title,
+        say: `I can move it to ${clock(mv.start)}.`,
+        yes: [`Move it to ${clock(mv.start)}`, () => { retime(c.slot, mv.start, mv.end).catch(fail); next(); }],
+        no: ["Keep current plan", () => later(item.key)], noLater: true };
+    }
     if (item.kind === "wrap") {
       const tomorrow = () => { restoreTask(uid, t.id, pushedTo(t, { due: dayAfter(1) })).catch(fail); next(); };
       const drop = ["Let it go", () => { restoreTask(uid, t.id, { status: "dropped", droppedAt: Date.now(), touchedAt: Date.now() }).catch(fail); next(); }];

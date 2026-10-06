@@ -28,7 +28,8 @@ the server-side active-task state as a core part, not a one-notification fix.
 - ✅ P0 4. Header: "N need you", no zero chips.
 - ✅ P0 5. Now lines: option A (two rows under the card; Next opens the event, Free opens Schedule).
 - ✅ P0 6. Tell Daisey examples.
-- P1 7–12: not started.
+- ✅ P1 7. Booked slot run into by a meeting: silent unless a real deadline can move today (Needs you, clash.js).
+- P1 8–12: not started.
 
 Scope: Daisey v1, `daisey/app/` (served at morsedero.com/daisey/now/) and its
 functions in `daisey/functions/`. The old `daisey/daisey.html` (morsedero.com/daisey/)

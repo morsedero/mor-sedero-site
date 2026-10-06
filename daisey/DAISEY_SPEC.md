@@ -44,6 +44,8 @@ A calendar event, a booked slot and anything Daisey plans are **predictions**. W
 | Work logged during an event (a Start, Done or kept time) | You weren't in it, or it ended early | The event stops counting as busy: the card picks a task, the brief isn't held back, its end isn't announced |
 | A run past "Still on it?" or paused 3 h+ | A forgotten timer | Not evidence of anything |
 
+A booked slot another event runs into is adapted silently (the task is back in the pool when the slot passes) — except one case, a **real deadline** with room to move it today: Needs you asks once, "Dentist is running into this. Move it to 15:40 · Keep current plan" (`clash.js`). Move retimes the slot's calendar event on that tap; Keep hides the question for the day. A target date never asks.
+
 Events still ahead are never overruled: a plan for later is still the best guess about later. Daisey can't see a meeting running over (the calendar doesn't know either), so the free-gap push says "After Teaching", not "Teaching is over", and expires in 30 minutes.
 
 **Calendar writes** stay as they are: only on a tap, plus the Daisey log (a record of what happened, in its own calendar, marked free, never read as a commitment). Recommendations never become calendar events on their own.
