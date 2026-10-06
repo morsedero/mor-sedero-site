@@ -1,12 +1,13 @@
-// The morning brief on this device (2026-10-06, Mor: "as a morning
-// message", app notification, Android). The account menu's switch signs this
-// device up for Web Push; the server (daisey-now-morning) sends one message
-// at the start of the day hours: free time, how many dated tasks are open
-// and how many fit, today's deadlines, the first event.
+// Notifications on this device (2026-10-06, Mor: app notifications,
+// Android). The account menu's switch signs this device up for Web Push; the
+// server (daisey-now-morning, every 5 min, inside the day hours) sends the
+// morning brief, the evening wrap, a free gap after an event and a booked
+// slot starting — each kind can be switched off (settings.notify).
 //
-// The server can't read Firestore, so while the brief is on (settings
-// morningBrief, on any device) the app sends it a snapshot of the dated,
-// ready tasks whenever they change — titles, dates and sizes only.
+// The server can't read Firestore, so while notifications are on (settings
+// morningBrief, on any device) the app sends it a snapshot of the open tasks
+// (and those done in the last two days) whenever they change: the fields the
+// engine scores on, never notes, links, steps or who a task waits on.
 import { idToken } from "./firebase.js";
 
 const URL_ = "/.netlify/functions/daisey-now-push";
@@ -66,11 +67,17 @@ export const sendTest = () => post({ action: "test" });
 
 // The snapshot, at most every few seconds and only when it changed.
 let timer = null, lastSent = "";
-export function syncSnapshot(tasks, hours){
-  const list = (tasks || []).filter((t) => t.status === "ready" && t.due)
-    .map((t) => ({ title: t.title, status: t.status, due: t.due, dateKind: t.dateKind, notBefore: t.notBefore || null,
-      size: t.size, spentMinutes: t.spentMinutes || 0 }));
-  const body = { action: "snapshot", tasks: list, tz: tz(), dayStart: hours.start, dayEnd: hours.end };
+const FIELDS = ["id", "title", "project", "area", "type", "where", "openHours", "stakes", "energy", "status", "dateKind", "due", "dueTime",
+  "notBefore", "checkOn", "size", "spentMinutes", "starts", "skipsSinceStart", "skipCount", "createdAt", "touchedAt", "workedAt", "doneAt", "canSplit"];
+const RECENT = 2 * 864e5;
+export function syncSnapshot(tasks, settings, hours){
+  const now = Date.now();
+  const list = (tasks || []).filter((t) => ["ready", "waiting", "someday"].includes(t.status) || (t.status === "done" && now - (t.doneAt || 0) < RECENT))
+    .map((t) => Object.fromEntries(FIELDS.filter((k) => t[k] != null).map((k) => [k, t[k]])));
+  const s = settings || {};
+  const body = { action: "snapshot", tasks: list, tz: tz(), dayStart: hours.start, dayEnd: hours.end,
+    settings: { needsLater: s.needsLater || null, calOffered: s.calOffered || [], somedayAsked: s.somedayAsked || null },
+    notify: s.notify || {} };
   const mark = JSON.stringify(body);
   if (mark === lastSent) return;
   clearTimeout(timer);

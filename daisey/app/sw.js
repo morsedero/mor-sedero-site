@@ -6,8 +6,9 @@ self.addEventListener("install", () => self.skipWaiting());
 self.addEventListener("activate", (e) => e.waitUntil(self.clients.claim()));
 self.addEventListener("fetch", () => {}); // pass through to the network
 
-/* The morning brief (functions/daisey-now-morning.js, 2026-10-06): show it,
-   and a tap opens Daisey (an open Daisey tab is brought forward instead). */
+/* Notifications (functions/daisey-now-morning.js, 2026-10-06): show it,
+   and a tap opens Daisey at its url ("./?open=wrap" opens the evening wrap).
+   An open Daisey is brought forward and told what to open instead. */
 self.addEventListener("push", (e) => {
   let m = {};
   try { m = e.data ? e.data.json() : {}; } catch (_) { m = { body: e.data && e.data.text() }; }
@@ -16,12 +17,17 @@ self.addEventListener("push", (e) => {
     tag: m.tag || "daisey",
     icon: "icons/daisey-192.png",
     badge: "icons/daisey-192.png",
+    data: { url: m.url || "./" },
   }));
 });
 self.addEventListener("notificationclick", (e) => {
   e.notification.close();
+  const url = new URL((e.notification.data && e.notification.data.url) || "./", self.registration.scope);
+  const what = url.searchParams.get("open");
   e.waitUntil(self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((list) => {
     const open = list.find((c) => c.url.startsWith(self.registration.scope));
-    return open ? open.focus() : self.clients.openWindow(self.registration.scope);
+    if (!open) return self.clients.openWindow(url.href);
+    if (what) open.postMessage({ daisey: "open", what });
+    return open.focus();
   }));
 });

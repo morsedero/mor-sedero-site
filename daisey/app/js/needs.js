@@ -24,15 +24,15 @@
 // the dots.
 import { watchTasks, watchSettings, saveSettings, restoreTask, addTask } from "./store.js";
 import { watchCalendar, deleteEvent } from "./calendar.js";
-import { nextOffer, draftFrom } from "./caltask.js";
-import { sweepList, isOverdue, shouldOffer, pickWeekDay, answer, answerSnapshot } from "./triage.js";
-import { localDate, notYet, pendingCheck, shrunk, shrinkPatch } from "./model.js";
-import { daysUntil, deadlineWithin } from "./engine.js";
-import { STALE_SKIPS, SOMEDAY_DEADLINE_DAYS } from "./weights.js";
+import { draftFrom } from "./caltask.js";
+import { pickWeekDay, answer, answerSnapshot, effectiveDue } from "./triage.js";
+import { localDate, pendingCheck, shrunk, shrinkPatch, dayAfter, notYet } from "./model.js";
+import { daysUntil } from "./engine.js";
+import { collectNeeds, somedayDue } from "./needs-list.js";
+export { collectNeeds, somedayDue }; // now.js counts them for the header chip
 import { h, icon, dur } from "./ui.js";
 import { areaClass } from "./look.js";
 
-const STAKES_FIRST = { penalty: 0, money: 1, someone: 2, low: 3 };
 const MARK = { penalty: "There's a penalty if it's late.", money: "It costs money to leave it.", someone: "Someone's waiting on it." };
 const shortDay = (s) => new Date(`${s}T12:00`).toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" });
 const weekday = (s) => new Date(`${s}T12:00`).toLocaleDateString(undefined, { weekday: "short" });
@@ -40,58 +40,21 @@ const weekday = (s) => new Date(`${s}T12:00`).toLocaleDateString(undefined, { we
 const sizeWords = (m) => (m < 60 ? `${m}-minute` : m % 60 ? dur(m) : `${m / 60}-hour`);
 const clock = (ms) => new Date(ms).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
 
-// The Someday pick's rule (DAISEY_SPEC "Someday comes back"): Sunday
-// morning, or whenever fewer than 3 tasks are active, at most once a day.
-export function somedayDue(tasks = [], settings = {}, now = Date.now()){
-  if (!tasks.some((t) => t.status === "someday")) return false;
-  if (settings.somedayAsked === localDate(now)) return false;
-  const d = new Date(now);
-  const active = tasks.filter((t) => t.status === "ready" && !notYet(t, now)).length;
-  return (d.getDay() === 0 && d.getHours() < 12) || active < 3;
-}
-const somedayTop = (tasks) => tasks.filter((t) => t.status === "someday")
-  .sort((a, b) => (STAKES_FIRST[a.stakes] ?? 3) - (STAKES_FIRST[b.stakes] ?? 3) || (a.createdAt || 0) - (b.createdAt || 0))[0];
-
-// Everything waiting on an answer right now, as { key, kind, … }. PURE apart
-// from reading the clock: now.js calls it for the count on the home screen.
-export function collectNeeds({ tasks = [], events = [], calOk = false, settings = {}, now = Date.now() } = {}){
-  const later = settings.needsLater?.date === localDate(now) ? new Set(settings.needsLater.keys || []) : new Set();
-  const out = [];
-  const add = (item) => { if (!later.has(item.key)) out.push(item); };
-  const parked = tasks.filter((t) => t.status === "someday" && deadlineWithin(t, now, SOMEDAY_DEADLINE_DAYS))
-    .sort((a, b) => a.due.localeCompare(b.due));
-  parked.forEach((t) => add({ key: `parked:${t.id}`, kind: "parked", id: t.id }));
-  if (calOk) {
-    const offered = [...(settings.calOffered || [])];
-    for (let i = 0; i < 5; i++) {
-      const ev = nextOffer(events, tasks, offered);
-      if (!ev) break;
-      offered.push(ev.id);
-      add({ key: `cal:${ev.id}`, kind: "cal", ev });
-    }
-  }
+// The evening wrap (2026-10-06): opened from the end-of-day notification
+// (?open=wrap). Each ready task still dated today or earlier, deadlines
+// first: a deadline asks "tonight, or move it?", a target "tomorrow, or not
+// now?". Both can be let go.
+export function wrapList(tasks = [], now = Date.now()){
   const today = localDate(now);
-  tasks.filter((t) => t.status === "waiting" && t.checkOn && t.checkOn <= today)
-    .sort((a, b) => a.checkOn.localeCompare(b.checkOn))
-    .forEach((t) => add({ key: `pend:${t.id}`, kind: "pending", id: t.id }));
-  tasks.filter((t) => t.status === "ready" && (t.skipsSinceStart || 0) >= STALE_SKIPS)
-    .forEach((t) => add({ key: `stale:${t.id}`, kind: "stale", id: t.id }));
-  if (somedayDue(tasks, settings, now)) {
-    const t = somedayTop(tasks.filter((x) => !parked.includes(x))); // a parked deadline is already asked about
-    if (t) add({ key: "someday", kind: "someday", id: t.id });
-  }
-  // Passed deadlines always; passed targets only once they pile up (the
-  // sweep's old threshold) — a target that slipped sits quietly under today.
-  const targets = shouldOffer(tasks, now, {});
-  sweepList(tasks, now).filter((t) => isOverdue(t, now) || targets)
-    .forEach((t) => add({ key: `sweep:${t.id}`, kind: "sweep", id: t.id }));
-  return out;
+  return tasks.filter((t) => t.status === "ready" && t.due && !notYet(t, now) && effectiveDue(t, now) <= today)
+    .sort((a, b) => (b.dateKind === "deadline") - (a.dateKind === "deadline") || a.due.localeCompare(b.due))
+    .map((t) => ({ key: `wrap:${t.id}`, kind: "wrap", id: t.id }));
 }
 
 // onClose(): back to home.
 export function mountNeeds(root, uid, { onClose } = {}){
   let tasks = [], settings = {}, cal = { status: "loading", events: [] };
-  let list = [], i = 0, follow = null; // follow: the "keep the event?" step after making one a task
+  let list = [], i = 0, follow = null, mode = "needs", loaded = false, waiting = null; // follow: the "keep the event?" step after making one a task
   const fail = (e) => console.error("[daisey] needs", e);
   const find = (id) => tasks.find((t) => t.id === id);
 
@@ -136,6 +99,20 @@ export function mountNeeds(root, uid, { onClose } = {}){
     }
     const t = find(item.id);
     if (!t) return null; // deleted since: skip it
+    if (item.kind === "wrap") {
+      const tomorrow = () => { restoreTask(uid, t.id, { due: dayAfter(1), touchedAt: Date.now() }).catch(fail); next(); };
+      const drop = ["Let it go", () => { restoreTask(uid, t.id, { status: "dropped", droppedAt: Date.now(), touchedAt: Date.now() }).catch(fail); next(); }];
+      if (t.dateKind === "deadline") {
+        const past = t.due < localDate();
+        return { tone: "area-job", ico: "later", q: past ? "Deadline passed" : "Deadline today",
+          sub: past ? `It was ${shortDay(t.due)}.` : "It's still open.", item: t.title, say: "Tonight, or does the date move?",
+          yes: ["I'll do it tonight", () => next()], no: ["Move it to tomorrow", tomorrow], more: [drop], noLater: true };
+      }
+      return { tone: areaClass(t).trim() || "area-home", ico: "later", q: "Still for today?",
+        sub: t.due < localDate() ? `It was planned for ${shortDay(t.due)}.` : "It was planned for today.", item: t.title,
+        say: "I'd move it to tomorrow.", yes: ["Move to tomorrow", tomorrow],
+        no: ["Not now", () => { restoreTask(uid, t.id, { status: "someday", touchedAt: Date.now() }).catch(fail); next(); }], more: [drop], noLater: true };
+    }
     if (item.kind === "parked") {
       const days = daysUntil(t.due, Date.now());
       return { tone: "area-job", ico: "someday", q: "Deadline coming up",
@@ -192,8 +169,8 @@ export function mountNeeds(root, uid, { onClose } = {}){
       h("span", { className: "ny-pad", ariaHidden: "true" }));
     if (i >= list.length) {
       root.replaceChildren(top, h("div", { className: "ny-end" },
-        h("h2", { textContent: "That's everything." }),
-        h("p", { textContent: "Nothing else needs you." }),
+        h("h2", { textContent: mode === "wrap" ? "That's the day." : "That's everything." }),
+        h("p", { textContent: mode === "wrap" ? "Tomorrow's sorted. Sleep well." : "Nothing else needs you." }),
         big("Back to now", "line big", () => onClose?.())));
       return;
     }
@@ -223,14 +200,17 @@ export function mountNeeds(root, uid, { onClose } = {}){
   }
 
   const unsubs = [
-    watchTasks(uid, (ts) => { tasks = ts; }, fail),
+    // Opened from a notification before the tasks loaded: open once they do.
+    watchTasks(uid, (ts) => { tasks = ts; loaded = true; if (waiting) { const w = waiting; waiting = null; api.open(w); } }, fail),
     watchSettings(uid, (s) => { settings = s || {}; }, fail),
     watchCalendar((c) => { cal = c; }),
   ];
 
-  return {
-    open(){
-      list = collectNeeds({ tasks, events: cal.events || [], calOk: cal.status === "ok", settings });
+  const api = {
+    open(which = "needs"){
+      if (!loaded) { waiting = which; return; }
+      mode = which;
+      list = which === "wrap" ? wrapList(tasks) : collectNeeds({ tasks, events: cal.events || [], calOk: cal.status === "ok", settings });
       i = 0; follow = null;
       paint();
       root.hidden = false;
@@ -239,4 +219,5 @@ export function mountNeeds(root, uid, { onClose } = {}){
     close(){ root.hidden = true; root.replaceChildren(); },
     unmount(){ unsubs.forEach((u) => u()); root.replaceChildren(); root.hidden = true; },
   };
+  return api;
 }

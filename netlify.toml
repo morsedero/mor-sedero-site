@@ -19,6 +19,12 @@
 [functions."audio-sync"]
   schedule = "*/30 * * * *"
 
-# Daisey v1 morning brief: checks every 15 min who is at the start of their day.
+# Daisey v1 notifications (morning brief, evening wrap, free gap, booked slot):
+# every 5 min. Both functions require the app's own ES modules from
+# daisey/app/js (engine, brief, needs-list), so they bundle with esbuild.
 [functions."daisey-now-morning"]
-  schedule = "*/15 * * * *"
+  schedule = "*/5 * * * *"
+  node_bundler = "esbuild"
+
+[functions."daisey-now-push"]
+  node_bundler = "esbuild"

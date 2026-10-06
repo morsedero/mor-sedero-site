@@ -7,7 +7,9 @@ import crypto from "node:crypto";
 import { createRequire } from "node:module";
 const require = createRequire(import.meta.url);
 const P = require("../../functions/_daisey-lib/webpush.js");
-const B = require("../../functions/_daisey-lib/brief.js");
+process.env.TZ = "Asia/Jerusalem"; // the engine reads local time, as on the server
+const B = await import("../../app/js/brief.js");
+const N = require("../../functions/_daisey-lib/notify.js");
 
 test("encrypt: RFC 8291 Appendix A, byte for byte", () => {
   const out = P.encrypt("When I grow up, I want to be a watermelon",
@@ -36,7 +38,7 @@ test("vapidHeader: an ES256 JWT for the push service's origin that the public ke
 const TZ = "Asia/Jerusalem";
 const NOW = Date.UTC(2026, 9, 6, 5, 5);
 const il = (h, m = 0) => new Date(Date.UTC(2026, 9, 6, h - 3, m)).toISOString();
-const t = (o) => ({ title: "Task", status: "ready", due: "2026-10-06", dateKind: "target", size: 30, spentMinutes: 0, ...o });
+const t = (o) => ({ id: String(Math.random()), title: "Task", status: "ready", due: "2026-10-06", dateKind: "target", size: 30, spentMinutes: 0, ...o });
 
 test("brief: the wall clock in the user's zone, not the server's", () => {
   assert.deepEqual(B.localParts(NOW, TZ), { date: "2026-10-06", minutes: 8 * 60 + 5 });
@@ -67,4 +69,58 @@ test("brief: free time, open and fit, deadlines, first event", () => {
 test("brief: no calendar claims no free time; an empty day says so", () => {
   assert.equal(B.brief({ tasks: [t({})], events: null, now: NOW, tz: TZ }).body, "1 open today.");
   assert.equal(B.brief({ tasks: [], events: [], now: NOW, tz: TZ, dayStart: 480, dayEnd: 1320 }).body, "13 h 55 min free today. Nothing due today.");
+});
+
+test("brief: tomorrow's deadline not started, and Needs you's count", () => {
+  const tasks = [t({ title: "Send stems", dateKind: "deadline", due: "2026-10-07" }),
+    t({ title: "Begun", dateKind: "deadline", due: "2026-10-07", starts: 1 })];
+  const b = B.brief({ tasks, events: null, now: NOW, tz: TZ, needs: 2 });
+  assert.equal(b.body, "Nothing due today. Deadline tomorrow, not started: Send stems. 2 things need you.");
+});
+
+// ---------- notify.decide: what goes, when ----------
+const at = (h, m = 0) => Date.UTC(2026, 9, 6, h - 3, m); // Israel wall clock, 6 Oct
+const rec = (o = {}) => ({ tz: TZ, dayStart: 480, dayEnd: 1320, subs: [{}], tasks: [], ...o });
+const types = (out) => out.map((m) => m.type);
+
+test("decide: brief once, at day start, never inside an event or at night", () => {
+  const teach = { id: "e1", title: "Teaching", start: il(8), end: il(10), busy: true };
+  assert.deepEqual(types(N.decide(rec(), [], at(7, 55)).out), []); // before the day
+  assert.deepEqual(types(N.decide(rec(), [teach], at(8, 5)).out), []); // in an event: wait
+  const d = N.decide(rec(), [teach], at(10, 5));
+  assert.ok(types(d.out).includes("brief"));
+  assert.equal(d.patch.sentOn, "2026-10-06");
+  assert.ok(!types(N.decide(rec({ sentOn: "2026-10-06" }), [], at(10, 10)).out).includes("brief"));
+  assert.deepEqual(types(N.decide(rec({ notify: { brief: false } }), [], at(8, 5)).out), []); // switched off
+});
+
+test("decide: gap after an event names the Now card's pick, once", () => {
+  const evs = [{ id: "e1", title: "Teaching", start: il(9), end: il(11), busy: true }, { id: "e2", title: "Rehearsal", start: il(12, 30), end: il(14), busy: true }];
+  const r = rec({ sentOn: "2026-10-06", tasks: [t({ title: "Send invoice to Uri", size: 15, type: "admin", due: "2026-10-06", dateKind: "deadline" })] });
+  const d = N.decide(r, evs, at(11, 5));
+  assert.deepEqual(types(d.out), ["gap"]);
+  assert.match(d.out[0].body, /^1 h 25 min free\. Next: Send invoice to Uri\./);
+  assert.equal(d.out[0].title, "Teaching is over");
+  assert.equal(N.decide({ ...r, gapFor: d.patch.gapFor }, evs, at(11, 10)).out.length, 0); // not twice
+  assert.equal(N.decide(r, evs, at(11, 20)).out.length, 0); // ended too long ago
+  assert.equal(N.decide(r, [evs[0], { ...evs[1], start: il(11, 20) }], at(11, 5)).out.length, 0); // under 30 min free
+});
+
+test("decide: booked slot starting, once; wrap in the day's last hour", () => {
+  const task = t({ id: "mix", title: "Mix review", due: null });
+  const slot = { id: "s1", title: "Mix review", start: il(14), end: il(15, 30), busy: true, taskId: "mix" };
+  const r = rec({ sentOn: "2026-10-06", tasks: [task] });
+  assert.equal(N.decide(r, [slot], at(13, 50)).out.length, 0); // too early
+  const d = N.decide(r, [slot], at(14, 1));
+  assert.deepEqual(types(d.out), ["booked"]);
+  assert.equal(d.out[0].body, "Mix review, booked 14:00–15:30.");
+  assert.equal(N.decide({ ...r, bookedSent: d.patch.bookedSent }, [slot], at(14, 5)).out.length, 0);
+
+  const day = rec({ sentOn: "2026-10-06", tasks: [t({ title: "Pay arnona", dateKind: "deadline" }), t({ status: "done", doneAt: at(12) }), t({ status: "done", doneAt: at(9) })] });
+  assert.equal(N.decide(day, [], at(20, 55)).out.length, 0);
+  const w = N.decide(day, [], at(21, 5));
+  assert.deepEqual(types(w.out), ["wrap"]);
+  assert.equal(w.out[0].body, "Done today: 2. Still open for today: 1, deadline: Pay arnona. Tap to sort them.");
+  assert.equal(w.out[0].url, "./?open=wrap");
+  assert.equal(N.decide({ ...day, wrapOn: "2026-10-06" }, [], at(21, 10)).out.length, 0);
 });

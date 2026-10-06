@@ -144,6 +144,7 @@ const outDir = flag("--out") || path.join(require("os").tmpdir(), "daisey-previe
 const clicks = [];
 const widthFlag = flag("--width"); // phone width in CSS px (default 390)
 const heightFlag = flag("--height"); // phone height in CSS px (default 844)
+const query = flag("--query") || ""; // e.g. "?open=wrap": what a notification tap opens
 const evalJs = flag("--eval"); // run this in the page at the end and print what it returns
 const holdSel = flag("--hold");
 const chatFlag = flag("--chat"); // "off": Tell Daisey answers as if no Gemini key were set // press and hold it for 1.5 s (Hold to finish)
@@ -235,7 +236,7 @@ const FAKES = {
     if (!fs.existsSync(file)) return route.fulfill({ status: 404, body: "" });
     route.fulfill({ path: file });
   });
-  await page.goto(ORIGIN + "/");
+  await page.goto(ORIGIN + "/" + query);
   await page.waitForSelector(".now-card, .focus, .now-empty, .tk-empty");
   await page.waitForTimeout(150);
   for (const sel of clicks) {

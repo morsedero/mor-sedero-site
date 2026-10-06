@@ -1,10 +1,12 @@
-// The morning brief's endpoint (2026-10-06). GET → { configured, publicKey }
+// Daisey's notifications endpoint (2026-10-06). GET → { configured, publicKey }
 // for the browser to subscribe with. POST with "Authorization: Bearer
 // <Firebase ID token>" and { action, … }:
 //   subscribe    { subscription, tz, dayStart, dayEnd } — this device gets it
 //   unsubscribe  { endpoint } — this device stops
-//   snapshot     { tasks, tz, dayStart, dayEnd } — what the brief counts
-//   test         sends today's brief now, to every device signed up
+//   snapshot     { tasks, settings, notify, tz, dayStart, dayEnd } — what
+//                the notifications count, and which kinds are on
+//   test         sends today's brief now, to every device signed up; returns
+//                { sent, body, cal } so the menu can show what went
 // State lives in Blobs (_daisey-lib/morning.js); daisey-now-morning sends.
 //
 // Errors: 401 no_session · 400 bad_input · 503 not_configured (VAPID keys
@@ -28,11 +30,29 @@ const day = (v) => (typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v :
 const mins = (v, dflt) => (Number.isInteger(v) && v >= 0 && v < 1440 ? v : dflt);
 const validTz = (tz) => { try { new Intl.DateTimeFormat("en", { timeZone: tz }); return tz; } catch { return null; } };
 
-// Only the fields the brief reads, cleaned.
-const cleanTask = (t) => ({
-  title: str(t?.title, 200) || "Untitled", status: str(t?.status, 20), due: day(t?.due), dateKind: t?.dateKind === "deadline" ? "deadline" : "target",
-  notBefore: day(t?.notBefore), size: Number(t?.size) || 30, spentMinutes: Number(t?.spentMinutes) || 0,
+// Only the fields the engine, the brief and the wrap read, cleaned. No
+// notes, links, steps or who it waits on.
+const TEXT = ["id", "title", "project", "area", "type", "where", "openHours", "stakes", "energy", "status", "dateKind"];
+const DAYS = ["due", "notBefore", "checkOn"];
+const NUMS = ["size", "spentMinutes", "starts", "skipsSinceStart", "skipCount", "createdAt", "touchedAt", "workedAt", "doneAt"];
+const cleanTask = (t) => {
+  const o = {};
+  for (const k of TEXT) { const v = str(t?.[k], k === "title" || k === "project" ? 200 : 40); if (v != null) o[k] = v; }
+  for (const k of DAYS) o[k] = day(t?.[k]);
+  for (const k of NUMS) if (Number.isFinite(t?.[k])) o[k] = t[k];
+  o.dueTime = typeof t?.dueTime === "string" && /^\d{2}:\d{2}$/.test(t.dueTime) ? t.dueTime : null;
+  o.canSplit = !!t?.canSplit;
+  o.title ||= "Untitled";
+  return o;
+};
+// Needs you's own memory (what was answered or put off), for its count.
+const cleanSettings = (s) => ({
+  needsLater: s?.needsLater && typeof s.needsLater === "object" ? { date: day(s.needsLater.date), keys: (s.needsLater.keys || []).slice(0, 100).map((k) => str(k, 120)) } : null,
+  calOffered: Array.isArray(s?.calOffered) ? s.calOffered.slice(-200).map((k) => str(k, 200)) : [],
+  somedayAsked: day(s?.somedayAsked),
 });
+const KINDS = ["brief", "wrap", "gap", "booked"];
+const cleanNotify = (n) => Object.fromEntries(KINDS.map((k) => [k, n?.[k] !== false]));
 const where = (b) => ({
   ...(validTz(b.tz) ? { tz: b.tz } : {}),
   ...(Number.isInteger(b.dayStart) ? { dayStart: mins(b.dayStart, 480) } : {}),
@@ -59,7 +79,7 @@ exports.handler = async (event) => {
   if (b.action === "snapshot") {
     if (!Array.isArray(b.tasks)) return fail(400, "bad_input");
     const tasks = b.tasks.slice(0, MAX_TASKS).map(cleanTask);
-    await update(uid, () => ({ sub, tasks, tasksAt: Date.now(), ...where(b) }));
+    await update(uid, () => ({ sub, tasks, tasksAt: Date.now(), settings: cleanSettings(b.settings), notify: cleanNotify(b.notify), ...where(b) }));
     return reply(200, { ok: true });
   }
   if (b.action === "unsubscribe") {
@@ -84,9 +104,9 @@ exports.handler = async (event) => {
   if (b.action === "test") {
     const rec = await load(uid);
     if (!(rec.subs || []).length) return fail(400, "no_devices");
-    const { sent, subs, msg } = await deliver(rec);
-    await update(uid, () => ({ subs }));
-    return reply(200, { sent, body: msg.body });
+    const { sent, subs, msg, cal } = await deliver(rec);
+    await update(uid, () => ({ subs, cal }));
+    return reply(200, { sent, body: msg.body, cal: cal.ok ? "ok" : cal.error });
   }
   return fail(400, "bad_input");
 };

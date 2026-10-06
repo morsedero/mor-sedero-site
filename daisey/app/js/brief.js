@@ -1,17 +1,20 @@
-// The morning brief (2026-10-06, Mor: "as a morning message"): one
-// notification at the start of the day hours saying how the day looks.
+// The day brief (2026-10-06, Mor): how today looks, in one paragraph. The
+// morning notification sends it (functions/daisey-now-morning.js), and the
+// header's Today chip shows it live (briefchip.js) — one copy of the sums
+// for both, so the two never disagree.
 //   "3 h 20 min free today. 8 open, about 3 fit. Deadline today: Pay arnona.
 //    First: Teaching at 10:00."
 // PURE. The same sums as the app's day.js capacity() — free minutes left in
 // the day hours between busy calendar events; open = ready tasks dated today
 // or earlier (a passed target rolls to today), not held by a start date;
 // fit = how many of those the free time holds, deadlines first, then
-// smallest, each counted by the time it still needs. Re-done here because
-// the server runs in UTC and must read "today" in the user's own zone.
-const MIN = 60000;
+// smallest, each counted by the time it still needs. Takes the time zone as
+// an argument because the server runs in UTC and must read "today" in the
+// user's own zone. PURE.
+export const MIN = 60000;
 
 // The wall clock in `tz`: { date: "YYYY-MM-DD", minutes: after midnight }.
-function localParts(ms, tz) {
+export function localParts(ms, tz) {
   const p = Object.fromEntries(new Intl.DateTimeFormat("en-CA", {
     timeZone: tz, year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hourCycle: "h23",
   }).formatToParts(new Date(ms)).map((x) => [x.type, x.value]));
@@ -20,7 +23,7 @@ function localParts(ms, tz) {
 
 // Epoch ms of `minutes` after midnight on `date` in `tz` (checked twice, so a
 // DST change that day lands right).
-function zoned(date, minutes, tz) {
+export function zoned(date, minutes, tz) {
   const [y, m, d] = date.split("-").map(Number);
   const want = Date.UTC(y, m - 1, d, 0, minutes);
   let ms = want;
@@ -37,7 +40,7 @@ const left = (t) => Math.max(5, (Number(t.size) || 30) - (Number(t.spentMinutes)
 const busy = (e) => !e.allDay && e.busy !== false && e.start && e.end;
 
 // Free minutes from max(now, day start) to the day's end, between busy events.
-function freeMinutes(events, from, end) {
+export function freeMinutes(events, from, end) {
   if (from >= end) return 0;
   const spans = events.filter(busy).map((e) => [Date.parse(e.start), Date.parse(e.end)])
     .filter(([s, e]) => e > from && s < end).sort((a, b) => a[0] - b[0]);
@@ -53,10 +56,12 @@ function freeMinutes(events, from, end) {
 const titled = (label, list) => !list.length ? null
   : `${label}: ${list[0].title}${list.length > 1 ? ` and ${list.length - 1} more` : ""}.`;
 
-// tasks: the app's snapshot (ready tasks with a date). events: today's
-// agenda, or null when the calendar can't be read (then no free time is
-// claimed). dayStart/dayEnd: minutes after midnight. Returns { title, body }.
-function brief({ tasks = [], events = null, now = Date.now(), tz = "Asia/Jerusalem", dayStart = 480, dayEnd = 1320 } = {}) {
+// tasks: the user's tasks (any status). events: today's agenda, or null when
+// the calendar can't be read (then no free time is claimed). dayStart/dayEnd:
+// minutes after midnight. needs: how many Needs you questions are waiting.
+// Returns { title, body, today }.
+export function brief({ tasks = [], events = null, now = Date.now(), tz = Intl.DateTimeFormat().resolvedOptions().timeZone,
+  dayStart = 480, dayEnd = 1320, needs = 0, title = "Good morning" } = {}) {
   const today = localParts(now, tz).date;
   const from = Math.max(now, zoned(today, dayStart, tz)), end = zoned(today, dayEnd, tz);
   const open = tasks.filter((t) => t.status === "ready" && t.due && t.due <= today && !(t.notBefore && t.notBefore > today));
@@ -73,10 +78,14 @@ function brief({ tasks = [], events = null, now = Date.now(), tz = "Asia/Jerusal
   else parts.push(`${open.length} open today.`);
   const late = open.filter((t) => isDl(t) && t.due < today), dueToday = open.filter((t) => isDl(t) && t.due === today);
   parts.push(titled("Deadline passed", late), titled("Deadline today", dueToday));
+  // Tomorrow's deadline, not started yet: the one worth knowing a day early.
+  const tomorrow = localParts(zoned(today, 36 * 60, tz), tz).date;
+  parts.push(titled("Deadline tomorrow, not started", tasks.filter((t) => t.status === "ready" && isDl(t) && t.due === tomorrow
+    && !(t.starts > 0) && !(t.spentMinutes > 0))));
+  if (needs > 0) parts.push(needs === 1 ? "1 thing needs you." : `${needs} things need you.`);
   const first = (events || []).filter((e) => busy(e) && Date.parse(e.start) >= now && Date.parse(e.start) < end)
     .sort((a, b) => Date.parse(a.start) - Date.parse(b.start))[0];
   if (first) parts.push(`First: ${first.title} at ${clock(Date.parse(first.start), tz)}.`);
-  return { title: "Good morning", body: parts.filter(Boolean).join(" "), today };
+  return { title, body: parts.filter(Boolean).join(" "), today };
 }
 
-module.exports = { brief, localParts, zoned, freeMinutes };

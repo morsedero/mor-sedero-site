@@ -251,12 +251,20 @@ The calendar becomes context, not a plan to obey. Daisey reads it freely and wri
 
 **Meetings to set up (v2).** A task like "set a meeting with X" becomes: Daisey suggests 3 free slots from the calendar and drafts the message. You approve, then send it yourself.
 
-## Morning brief
+## Notifications and the Today chip
 
-One notification at the start of the day hours (Mor, Oct 6, 2026; Android, app notification): "Good morning. 9 h 55 min free today. 4 open, about 3 fit. Deadline today: Pay arnona. First: Teaching at 10:00." Switched on per device in the account menu ("Morning brief on this device", with "Send the brief now" to test).
+Daisey speaks first (Mor, Oct 6, 2026; Android, app notifications; no daily limit for now). Switched on per device in the account menu ("Notifications on this device"); each kind can be turned off there, for all devices. Nothing is sent outside the day hours.
 
-- **Open**: ready tasks dated today or earlier (a passed target rolls to today), not held by a start date. **Fit**: how many of those the free time holds, deadlines first, then smallest, by time still to do. **Free**: the rest of the day hours between busy calendar events; left out when the calendar can't be read.
-- **How it works**: Web Push. `functions/daisey-now-morning.js` runs every 15 minutes and sends once a day, in the first 90 minutes after the user's day start, in their own time zone. The server can't read Firestore, so while the brief is on the app sends `daisey-now-push` a snapshot of its dated, ready tasks (titles, dates, sizes) whenever they change; the calendar is read live. Keys: `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` in Netlify's environment.
+| Kind | When | Says |
+| --- | --- | --- |
+| Morning brief | First check after the day starts that isn't inside a calendar event (up to 4 h late) | "9 h 55 min free today. 4 open, about 3 fit. Deadline today: Pay arnona. Deadline tomorrow, not started: Send stems. 2 things need you. First: Teaching at 10:00." |
+| End of the day | The day's last hour, not inside an event | "Done today: 4. Still open for today: 2, deadline: X. Tap to sort them." The tap opens the wrap: one question per task (deadline: I'll do it tonight · Move it to tomorrow · Let it go; target: Move to tomorrow · Not now · Let it go) |
+| Free time after a meeting | A busy event ended in the last 10 min and 30+ free min follow | "Teaching is over. 1 h 25 min free. Next: Send invoice to Uri. <why>" (the Now card's own pick for that window) |
+| Booked task starting | A booked slot starts (within a few minutes) | "Mix review, booked 14:00–15:30." |
+
+**Today chip** (header, next to ✓ N): tap to open the same brief, live from now, as a small message; ✕, Escape or a tap elsewhere closes it.
+
+**How it works**: Web Push. `functions/daisey-now-morning.js` runs every 5 minutes; `_daisey-lib/notify.js` decides, using the app's own engine, brief and Needs-you modules (required from `app/js`, bundled with esbuild), so the server and the app can't disagree. The server can't read Firestore, so while notifications are on the app sends `daisey-now-push` a snapshot of its open tasks (and those done in the last 2 days) whenever they change: scoring fields only, never notes, links, steps or who a task waits on. The calendar is read live. Keys: `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` in Netlify's environment.
 
 ## Day hours, booked tasks and calendar tasks
 
@@ -295,7 +303,7 @@ v1 is done when the Now card picks a task you actually start, most days, for one
 - Pencil schedule (suggestions placed in calendar gaps): dropped
 - Calendar writes other than deadline blocks and chat-requested events
 - Meeting scheduling with others (find slots, draft message)
-- Evening wrap and notifications when a gap opens (the **morning brief** is built, below)
+- (Built after all, Oct 6: evening wrap and notifications when a gap opens; see Notifications)
 - Multiple users, sharing, accounts for others
 - Wearables or sleep data
 

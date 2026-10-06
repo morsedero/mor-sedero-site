@@ -1,13 +1,13 @@
-// The morning brief's clock (2026-10-06): every 15 minutes (netlify.toml),
-// for each user signed up in daisey-now-push, sends today's brief once, in
-// the first 90 minutes after their day hours start, in their own time zone.
-// The 90 minutes let a missed or late run still catch the morning; sentOn
-// keeps it to one a day.
-const { store, update, deliver } = require("./_daisey-lib/morning");
-const { localParts } = require("./_daisey-lib/brief");
+// Daisey's notification clock (2026-10-06): every 5 minutes (netlify.toml),
+// for each user signed up in daisey-now-push, inside their day hours and in
+// their own time zone, sends whatever _daisey-lib/notify.js decides is due —
+// the morning brief, the evening wrap, a free gap after an event, a booked
+// slot starting. What was sent is remembered on the record so nothing goes
+// twice. (Named for the morning brief, its first job.)
+const { store, update, readEvents, sendAll, logged } = require("./_daisey-lib/morning");
+const { decide } = require("./_daisey-lib/notify");
+const { localParts } = require("../app/js/brief.js");
 const { configured } = require("./_daisey-lib/webpush");
-
-const WINDOW_MINUTES = 90;
 
 exports.handler = async () => {
   if (!configured()) return { statusCode: 200, body: "not configured" };
@@ -18,12 +18,20 @@ exports.handler = async () => {
     try {
       const rec = await store().get(key, { type: "json" });
       if (!rec?.subs?.length) continue;
-      const { date, minutes } = localParts(now, rec.tz || "Asia/Jerusalem");
-      const start = rec.dayStart ?? 480;
-      if (rec.sentOn === date || minutes < start || minutes >= start + WINDOW_MINUTES) continue;
-      const r = await deliver(rec, now);
-      sent += r.sent;
-      await update(key.slice(2), () => ({ sentOn: date, subs: r.subs }));
+      const tz = rec.tz || "Asia/Jerusalem";
+      const { minutes } = localParts(now, tz);
+      if (minutes < (rec.dayStart ?? 480) || minutes >= (rec.dayEnd ?? 1320)) continue; // night: no calendar read either
+      process.env.TZ = tz; // the app's engine reads local time
+      const { events, cal } = await readEvents(rec, now);
+      const { out, patch } = decide(rec, events, now);
+      let subs = rec.subs;
+      for (const m of out) {
+        const r = await sendAll({ ...rec, subs }, { title: m.title, body: m.body, tag: m.tag, url: m.url });
+        sent += r.sent; subs = r.subs;
+      }
+      // subs only when a device dropped out: a sign-up that landed mid-run stays.
+      await update(key.slice(2), (cur) => ({ ...patch, cal, ...(subs.length !== rec.subs.length ? { subs } : {}),
+        ...(out.length ? { log: logged(cur, out, now) } : {}) }));
     } catch (e) {
       console.error("daisey-now-morning", key, e.message);
     }
