@@ -14,6 +14,12 @@
 // happening now is marked Now. A week ahead, as far as calendar.js fetches;
 // a run of empty days folds into one line instead of a "Nothing scheduled"
 // per day.
+//
+// Detail drops off with distance (Mor, 2026-10-06: the week read as crowded).
+// Today is the only day with free-time rows. Tomorrow shows its events only.
+// From the day after, each day is one summary line ("3 events · from 10:00",
+// or a single event's name and time); tap it to open that day's events, and
+// tap Less to fold it again. Which days are open lasts only as long as the tab.
 import { watchCalendar } from "./calendar.js";
 import { watchSettings } from "./store.js";
 import { dayHours, minText } from "./day.js";
@@ -64,6 +70,7 @@ export function dayRows(events, date, hrs, from = 0){
 export function mountSchedule(el, uid, { onEvent, onNew } = {}){
   let cal = { status: "loading", events: [] };
   let settings = {};
+  const opened = new Set(); // "YYYY-MM-DD" of the later days tapped open
   const fail = (e) => console.error("[daisey] schedule", e);
 
   function render(){
@@ -98,13 +105,23 @@ export function mountSchedule(el, uid, { onEvent, onNew } = {}){
     };
     for (let i = 0; i < DAYS; i++) {
       const date = new Date(today); date.setDate(date.getDate() + i);
-      const rows = dayRows(cal.events, date, hrs, i === 0 ? now : 0);
+      const rows = dayRows(cal.events, date, hrs, i === 0 ? now : 0).filter((x) => i === 0 || x.kind !== "free");
       // Past the day's end with nothing left tonight: go straight to tomorrow.
       if (i === 0 && late && !rows.length) { kids.push(nightDivider(minText(hrs.end), minText(hrs.start))); continue; }
       const name = nameOf(i, date);
       if (i >= 2 && !rows.length) { empty.push({ name, date }); continue; }
       flush();
-      kids.push(h("section", { className: "sc-day", ariaLabel: `${name}, ${short(date)}` }, label(name, short(date)),
+      const ymd = localDate(date.getTime());
+      if (i >= 2 && !opened.has(ymd)) {
+        kids.push(h("section", { className: "sc-day", ariaLabel: `${name}, ${short(date)}` }, label(name, short(date)),
+          h("button", { type: "button", className: "sc-sum", ariaExpanded: "false", onclick: () => { opened.add(ymd); render(); } },
+            h("span", { className: "sc-sum-text" }, ...[summary(rows)].flat()), h("span", { className: "sc-chev", ariaHidden: "true", textContent: "›" }))));
+        continue;
+      }
+      const lbl = label(name, short(date));
+      if (i >= 2) lbl.lastChild.append(" · ", h("button", { type: "button", className: "sc-less", ariaExpanded: "true", textContent: "Less",
+        onclick: () => { opened.delete(ymd); render(); } }));
+      kids.push(h("section", { className: "sc-day", ariaLabel: `${name}, ${short(date)}` }, lbl,
         ...(rows.length ? rows.map((x) => row(x, now)) : [none(date, "Nothing scheduled")])));
       if (i === 0) kids.push(nightDivider(minText(hrs.end), minText(hrs.start)));
     }
@@ -112,6 +129,14 @@ export function mountSchedule(el, uid, { onEvent, onNew } = {}){
     const y = el.scrollTop;
     el.replaceChildren(...kids);
     el.scrollTop = y;
+  }
+
+  // A folded day in one line: a lone event by name and time, else a count and
+  // the first start.
+  function summary(rows){
+    const timed = rows.filter((x) => !x.allDay);
+    if (rows.length === 1) return [bdi(rows[0].ev.title), ` · ${timed.length ? clock(timed[0].start) : "All day"}`];
+    return `${rows.length} events${timed.length ? ` · from ${clock(Math.min(...timed.map((x) => x.start)))}` : ""}`;
   }
 
   function row(x, now){

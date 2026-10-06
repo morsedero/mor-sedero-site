@@ -1111,6 +1111,10 @@ dialog.tsheet .msg:empty { display: none; }
 @media (hover: none) { .sc-add { opacity: .7; } }
 .sc-row.sc-on .sc-ev { box-shadow: 0 0 0 2px color-mix(in srgb, var(--ev, var(--ink-2)) 70%, var(--card)); }
 .sc-time .sc-nowtag { display: block; inline-size: fit-content; margin-block-start: 3px; padding: 1px 7px; border-radius: 999px; background: var(--accent); color: var(--on-accent); font-size: 11px; font-weight: 700; }
+.sc-sum { display: flex; align-items: center; justify-content: space-between; gap: 8px; inline-size: 100%; margin: 4px 0 0; padding: 4px 0; border: 0; background: none; font: inherit; font-size: 14px; color: color-mix(in srgb, var(--ink) 85%, var(--ink-2)); text-align: start; cursor: pointer; }
+.sc-sum-text { min-inline-size: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sc-chev { flex: none; font-size: 16px; color: var(--ink-2); }
+.sc-less { padding: 0; border: 0; background: none; font: inherit; font-size: 12px; font-weight: 600; color: var(--ink-2); cursor: pointer; }
 .sc-note { margin: 4px 0 0; font-size: 14px; color: var(--ink-2); }
 .sc-note a { color: inherit; }
 .ppage .night-div { margin-block: 12px; }
