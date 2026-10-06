@@ -117,6 +117,10 @@ export const CANCEL_KEEP_MINUTES = 2;
 // Start left running overnight booked 14 h to the task, the calendar log and
 // every later size guess for similar tasks.
 export const RUN_ASK = { factor: 2, extra: 30 };
+// A paused run still counts as your focus for this long (reality.js
+// runState): no competing suggestions while you stepped away. Past it, it's a
+// forgotten pause, not a signal.
+export const RUN_PAUSE_STALE = 180;
 
 // Something else
 export const ALTERNATIVES = 3;

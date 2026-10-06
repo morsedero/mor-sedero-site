@@ -26,7 +26,7 @@ exports.handler = async () => {
       const { out, patch } = decide(rec, events, now);
       let subs = rec.subs;
       for (const m of out) {
-        const r = await sendAll({ ...rec, subs }, { title: m.title, body: m.body, tag: m.tag, url: m.url });
+        const r = await sendAll({ ...rec, subs }, { title: m.title, body: m.body, tag: m.tag, url: m.url, ...(m.taskId ? { taskId: m.taskId } : {}) }, { ttl: m.ttl });
         sent += r.sent; subs = r.subs;
       }
       // subs only when a device dropped out: a sign-up that landed mid-run stays.

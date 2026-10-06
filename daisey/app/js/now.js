@@ -12,6 +12,7 @@
 // alternatives, tap one to make it the card. Start → focus mode (focus.js):
 // the run lives in Firestore, so this tab, a reload and the phone all show
 // the same timer.
+import { overruled, eventKey } from "./reality.js";
 import { addTask, watchTasks, watchRun, watchSkips, saveSkips, startRun, extendRun, endRun, startBatch, tickBatch, endBatch, skipNow, blockTask, restoreTask, watchSettings, saveSettings, watchMoment, saveMoment, watchLearn, bumpLearn, saveRun, cancelRun } from "./store.js";
 import { energyNow, placeNow, workBase } from "./context.js";
 import { watchWhere, setRide, setStill, saveSpot, setManual } from "./where.js";
@@ -486,14 +487,16 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
   // answered, today's Laters, and which projects are already warm — momentum
   // and the skip penalty were both scoring zero until this was passed in.
   // The calendar as Daisey should read it now: an event you've overridden
-  // doesn't count as busy.
+  // ("I'm free now"), or one reality overruled (reality.js: you started or
+  // logged work during it), doesn't count as busy.
   // Free time ends with the day hours (DAISEY_SPEC "Day hours"); after "I'm
   // free now" at night, only the next event bounds it.
   function calendarNow(){
     if (cal.status !== "ok") return null;
     const busy = cal.events.filter((e) => e.busy !== false && !e.allDay);
-    const events = freeFrom ? busy.filter((e) => Date.parse(e.start) !== freeFrom) : busy;
     const now = Date.now(), hrs = dayHours(settings);
+    const over = overruled(busy, { tasks: tasks || [], run, now });
+    const events = busy.filter((e) => Date.parse(e.start) !== freeFrom && !over.has(eventKey(e)));
     const fw = freeWindow(events, now, isNight(now, hrs) ? null : dayEndAt(now, hrs));
     // The override only ever applies to the event that was running; once it
     // ends, or another starts, the calendar speaks for itself again.
@@ -957,12 +960,27 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
   // header's chip hold them now.)
   const day = fill;
   const fail = (e) => console.error("[daisey] now", e);
+  // "Start task" on a notification (sw.js → ?start=<id>). The suggestion was
+  // made minutes ago; what happened since wins (reality.js). Something
+  // already running stays, and its focus screen is what opens; a task done,
+  // parked or set Pending since isn't started. A cold start from the
+  // notification has neither the tasks nor the run yet, so it waits for both.
+  let noticeStart = null, runKnown = false;
+  const tryNoticeStart = () => {
+    if (!noticeStart || tasks === null || !runKnown) return;
+    const id = noticeStart;
+    noticeStart = null;
+    const task = tasks.find((t) => t.id === id);
+    if (run || !task || task.status !== "ready" || notYet(task)) return;
+    skips.delete(id);
+    begin(task);
+  };
   const unsubs = [
     watchWhere((v) => { located = v; render(); }),
     watchProjectColors(() => render()),
-    watchTasks(uid, (ts) => { tasks = ts; render(); }, fail),
+    watchTasks(uid, (ts) => { tasks = ts; render(); tryNoticeStart(); }, fail),
     watchCalendar((c) => { cal = c; render(); }),
-    watchRun(uid, (r) => { run = r; if (r) handoff = null; render(); }, fail),
+    watchRun(uid, (r) => { run = r; runKnown = true; if (r) handoff = null; render(); tryNoticeStart(); }, fail),
     watchSkips(uid, (s) => { skipDoc = s; render(); }, fail),
     watchSettings(uid, (s) => { settings = s || {}; render(); }, fail),
     watchMoment(uid, (d) => { momentDoc = d || {}; render(); }, fail),
@@ -1001,6 +1019,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
       skips.delete(id);
       begin(task);
     },
+    startFromNotice(id){ noticeStart = id; tryNoticeStart(); },
     unmount(){ showing(null); clearTimeout(toastTimer); document.body.classList.remove("focus"); document.documentElement.classList.remove("night"); unsubs.forEach((u) => u()); clearInterval(tick); document.removeEventListener("visibilitychange", onVisible); root.replaceChildren(); root.hidden = true; },
   };
 }

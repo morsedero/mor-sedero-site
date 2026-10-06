@@ -21,7 +21,7 @@
 // startedAt rather than counted here.
 import { h, bdi, dur, icon } from "./ui.js";
 import { LABELS } from "./model.js";
-import { RUN_ASK } from "./weights.js";
+import { elapsedMinutes, runCap } from "./reality.js";
 import { daisy, areaClass, areaName, projectShown } from "./look.js";
 
 const BATCH_NOUN = { call: ["call", "calls"], admin: ["admin bit", "admin bits"], errand: ["errand", "errands"] };
@@ -33,7 +33,8 @@ export const batchName = (type, n) => `${n} ${(BATCH_NOUN[type] || ["task", "tas
 const upTo = (run, now) => run.pausedAt ?? now;
 export const sinceMark = (run, now = Date.now()) => Math.max(0, (upTo(run, now) - (run.mark ?? run.startedAt)) / 60000);
 
-export const elapsedMinutes = (run, now = Date.now()) => Math.max(0, (upTo(run, now) - run.startedAt) / 60000);
+// elapsedMinutes and runCap live in reality.js: the server reads runs too.
+export { elapsedMinutes, runCap };
 
 // Pausing and resuming the state/now doc. Resuming moves startedAt (and a
 // batch's mark) on by the length of the pause, so elapsed carries on from
@@ -51,7 +52,6 @@ export const isOver = (run, task, now = Date.now()) => elapsedMinutes(run, now) 
 // A forgotten timer (weights RUN_ASK): past this many minutes focus mode asks
 // "Still on it?", and what Done or Stop books is capped here. "Still on it"
 // moves the plan up to now (extra), which moves the cap with it.
-export const runCap = (target) => Math.max((target || 0) * RUN_ASK.factor, (target || 0) + RUN_ASK.extra);
 export const bookedMinutes = (run, task, now = Date.now()) => Math.min(elapsedMinutes(run, now), runCap(targetMinutes(run, task)));
 // What "Still on it" adds to the plan: enough that the plan is now.
 export const stillOnMinutes = (run, task, now = Date.now()) => Math.max(0, Math.ceil(elapsedMinutes(run, now) - targetMinutes(run, task)));

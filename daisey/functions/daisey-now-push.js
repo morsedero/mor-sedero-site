@@ -3,8 +3,9 @@
 // <Firebase ID token>" and { action, … }:
 //   subscribe    { subscription, tz, dayStart, dayEnd } — this device gets it
 //   unsubscribe  { endpoint } — this device stops
-//   snapshot     { tasks, settings, notify, tz, dayStart, dayEnd } — what
-//                the notifications count, and which kinds are on
+//   snapshot     { tasks, settings, notify, run, tz, dayStart, dayEnd } —
+//                what the notifications count, which kinds are on, and the
+//                running task (app/js/reality.js: it beats the calendar)
 //   test         sends today's brief now, to every device signed up; returns
 //                { sent, body, cal } so the menu can show what went
 // State lives in Blobs (_daisey-lib/morning.js); daisey-now-morning sends.
@@ -54,6 +55,17 @@ const cleanSettings = (s) => ({
   // Weekly goals per area: the area balance and Needs you's goal question.
   intents: Object.fromEntries(Object.entries(s?.intents || {}).filter(([k, v]) => /^[a-z]{2,12}$/.test(k) && Number.isInteger(v) && v >= 0 && v <= 50)),
 });
+// The running task (state/now), or null: ids and times only.
+const at = (v) => (Number.isFinite(v) && v > 0 ? v : null);
+const ids = (v) => (Array.isArray(v) ? v.slice(0, 20).map((x) => str(x, 40)).filter(Boolean) : null);
+const cleanRun = (r) => {
+  const taskId = str(r?.taskId, 40), startedAt = at(r?.startedAt);
+  if (!taskId || !startedAt) return null;
+  const o = { taskId, startedAt, extra: Number.isFinite(r.extra) ? Math.max(0, Math.min(r.extra, 1440)) : 0 };
+  if (at(r.pausedAt)) o.pausedAt = r.pausedAt;
+  if (ids(r.batch)) { o.batch = ids(r.batch); o.done = ids(r.done) || []; }
+  return o;
+};
 const KINDS = ["brief", "wrap", "gap", "booked", "people"];
 const cleanNotify = (n) => Object.fromEntries(KINDS.map((k) => [k, n?.[k] !== false]));
 const where = (b) => ({
@@ -82,7 +94,8 @@ exports.handler = async (event) => {
   if (b.action === "snapshot") {
     if (!Array.isArray(b.tasks)) return fail(400, "bad_input");
     const tasks = b.tasks.slice(0, MAX_TASKS).map(cleanTask);
-    await update(uid, () => ({ sub, tasks, tasksAt: Date.now(), settings: cleanSettings(b.settings), notify: cleanNotify(b.notify), ...where(b) }));
+    await update(uid, () => ({ sub, tasks, tasksAt: Date.now(), settings: cleanSettings(b.settings), notify: cleanNotify(b.notify),
+      run: cleanRun(b.run), ...where(b) }));
     return reply(200, { ok: true });
   }
   if (b.action === "unsubscribe") {

@@ -6,16 +6,18 @@ const $ = (s) => document.querySelector(s);
 import { mountPlaces } from "./places.js";
 import { flash } from "./ui.js";
 
-// The header's chips (round 3, New Design/6): green "✓ N" done today, and
-// amber Needs you with its count, only when there is something. now.js
-// reports both. The daisy itself is always the full five-petal logo.
+// The header's chips (round 3, New Design/6): green "✓ N done" today, and
+// amber "N need you", each only when there is something. now.js reports both.
+// Words on both (2026-10-06): bare numbers beside "Today" read as "2 Today 0".
+// The daisy itself is always the full five-petal logo.
 function paintDone(n){
+  $("#doneChip").hidden = !n;
   $("#doneN").textContent = String(n);
   $("#doneChip").ariaLabel = `${n === 1 ? "1 task" : `${n} tasks`} done today`;
 }
 function paintNeeds(n){
   $("#needsChip").hidden = !n;
-  $("#needsN").textContent = String(n);
+  $("#needsN").textContent = `${n} need${n === 1 ? "s" : ""} you`;
   $("#needsChip").ariaLabel = `Needs you: ${n} decision${n === 1 ? "" : "s"}`;
 }
 
@@ -125,7 +127,7 @@ async function boot(){
   settings.addEventListener("click", (e) => { if (e.target === settings) settings.close(); });
   $("#placesBtn").onclick = () => { settings.close(); places.open(); };
 
-  const SIGNED_IN = ["#board", "#dock", "#doneChip"];
+  const SIGNED_IN = ["#board", "#dock"];
 
 
   fb.onUser((user) => {
@@ -133,6 +135,7 @@ async function boot(){
     if (mounted) { for (const m of Object.values(mounted)) m?.unmount(); mounted = null; }
     for (const s of SIGNED_IN) $(s).hidden = true;
     paintNeeds(0);
+    paintDone(0);
     avatar.hidden = !user;
     if (!user) { show("signedout"); return; }
 
@@ -148,7 +151,7 @@ async function boot(){
     show("signedin"); // no element of its own: just clears loading/sign-in views
 
     Promise.all([import("./now.js"), import("./projects.js"), import("./addtask.js"), import("./needs.js"), import("./import-trello.js"), import("./addevent.js"), import("./store.js"), import("./deadlines.js"), import("./day.js"), import("./calendar.js"), import("./schedule.js"), import("./panel.js"), import("./push.js"), import("./briefchip.js"), import("./model.js"), import("./context.js")])
-      .then(([{ mountNow }, { mountProjects }, { mountAddTask }, { mountNeeds }, { mountImport }, { mountAddEvent }, { migrateTasks, watchSettings, saveSettings, watchTasks }, { mountDeadlines }, { dayHours, minText }, { watchCalendar }, { mountSchedule }, { mountPanel }, push, { mountBriefChip }, { AREAS, LABELS }, { workBase }]) => {
+      .then(([{ mountNow }, { mountProjects }, { mountAddTask }, { mountNeeds }, { mountImport }, { mountAddEvent }, { migrateTasks, watchSettings, saveSettings, watchTasks, watchRun }, { mountDeadlines }, { dayHours, minText }, { watchCalendar }, { mountSchedule }, { mountPanel }, push, { mountBriefChip }, { AREAS, LABELS }, { workBase }]) => {
         if (fb.currentUid() !== user.uid || mounted) return;
         const m = mounted = {};
         // Old tasks get the new fields first; then, once, which dates are real.
@@ -166,7 +169,9 @@ async function boot(){
         // The morning brief (push.js): this device's switch, a test button,
         // and — while it's on anywhere — the task snapshot the server counts.
         const pushSwitch = $("#pushBrief"), pushNote = $("#pushNote"), pushTest = $("#pushTest"), pushKinds = $("#pushKinds");
-        let briefOn = false, briefTasks = null, hours = dayHours({}), lastSettings = {};
+        let briefOn = false, briefTasks = null, hours = dayHours({}), lastSettings = {}, briefRun = null;
+        // The running task goes too: what you're actually doing beats the plan (reality.js).
+        const snap = () => { if (briefOn && briefTasks) push.syncSnapshot(briefTasks, lastSettings, hours, briefRun); };
         const note = (t) => { pushNote.textContent = t || ""; pushNote.hidden = !t; };
         const paintPush = () => push.deviceOn().catch(() => false).then((on) => { pushSwitch.checked = on; pushTest.hidden = !on; pushKinds.hidden = !on; });
         // Which kinds: one account-wide setting (settings.notify), the server reads it from the snapshot.
@@ -225,7 +230,8 @@ async function boot(){
             goalDone[a].textContent = v > 0 ? `${done[a] || 0} this week` : "";
           }
         };
-        const stopBriefTasks = watchTasks(user.uid, (ts) => { briefTasks = ts; paintGoals(); if (briefOn) push.syncSnapshot(ts, lastSettings, hours); }, fail);
+        const stopBriefTasks = watchTasks(user.uid, (ts) => { briefTasks = ts; paintGoals(); snap(); }, fail);
+        const stopBriefRun = watchRun(user.uid, (r) => { briefRun = r || null; snap(); }, fail);
         const stopSettings = watchSettings(user.uid, (s) => {
           const hrs = dayHours(s || {});
           if (document.activeElement !== start) start.value = minText(hrs.start);
@@ -236,7 +242,7 @@ async function boot(){
           briefOn = !!s?.morningBrief;
           kindBoxes.forEach((b) => { b.checked = s?.notify?.[b.dataset.kind] !== false; });
           paintGoals();
-          if (briefOn && briefTasks) push.syncSnapshot(briefTasks, lastSettings, hours);
+          snap();
         }, fail);
         logSwitch.onchange = () => saveSettings(user.uid, { logDone: logSwitch.checked }).catch(fail);
         const saveHours = () => {
@@ -249,7 +255,7 @@ async function boot(){
         // + → Event is off while the calendar isn't connected.
         let calOk = false;
         const stopCal = watchCalendar((c) => { calOk = c.status === "ok"; });
-        m.menu = { unmount(){ stopSettings(); stopCal(); stopBriefTasks(); start.onchange = end.onchange = logSwitch.onchange = pushSwitch.onchange = pushTest.onclick = null;
+        m.menu = { unmount(){ stopSettings(); stopCal(); stopBriefTasks(); stopBriefRun(); start.onchange = end.onchange = logSwitch.onchange = pushSwitch.onchange = pushTest.onclick = null;
           kindBoxes.forEach((b) => { b.onchange = null; }); } };
         m.brief = mountBriefChip($("#briefChip"), $("#briefPop"), user.uid);
 
@@ -289,12 +295,18 @@ async function boot(){
         // from sw.js when Daisey was already open.
         const openFrom = (what) => { if (what === "wrap" || what === "needs") { m.needs.open(what); screens.open("needs"); } };
         const params = new URL(location.href).searchParams;
-        const asked = params.get("open");
+        const asked = params.get("open"), startId = params.get("start");
         // Shared into Daisey (manifest share_target, 2026-10-06): read like a Tell message → cards.
         const shared = [...new Set(["title", "text", "url"].map((k) => (params.get(k) || "").trim()).filter(Boolean))].join("\n");
-        if (asked || shared) history.replaceState(history.state, "", location.pathname);
+        if (asked || shared || startId) history.replaceState(history.state, "", location.pathname);
         if (asked) openFrom(asked);
-        const onSwMessage = (e) => { if (e.data?.daisey === "open") openFrom(e.data.what); };
+        // "Start task" on a notification (sw.js): straight into focus mode.
+        const startFrom = (id) => { if (history.state?.daisey) history.back(); closeScreens(); m.now.startFromNotice(id); };
+        if (startId) startFrom(startId);
+        const onSwMessage = (e) => {
+          if (e.data?.daisey === "open") openFrom(e.data.what);
+          if (e.data?.daisey === "start" && e.data.id) startFrom(String(e.data.id));
+        };
         navigator.serviceWorker?.addEventListener("message", onSwMessage);
         m.swMessages = { unmount(){ navigator.serviceWorker?.removeEventListener("message", onSwMessage); } };
         // + in the Tell Daisey pill: a task (in the project on screen, if

@@ -8,6 +8,8 @@
 // morningBrief, on any device) the app sends it a snapshot of the open tasks
 // (and those done in the last two days) whenever they change: the fields the
 // engine scores on, and who a Pending task waits on — never notes, links or steps.
+// The running task (state/now) goes with it: the server holds back anything
+// that would compete with what you're actually doing (reality.js).
 import { idToken } from "./firebase.js";
 
 const URL_ = "/.netlify/functions/daisey-now-push";
@@ -71,14 +73,16 @@ const FIELDS = ["id", "title", "project", "area", "type", "where", "openHours", 
   "notBefore", "checkOn", "size", "spentMinutes", "starts", "skipsSinceStart", "skipCount", "pushes", "createdAt", "touchedAt", "workedAt",
   "doneAt", "canSplit", "waitingOn", "again"];
 const RECENT = 2 * 864e5;
-export function syncSnapshot(tasks, settings, hours){
+const RUN_FIELDS = ["taskId", "startedAt", "pausedAt", "extra", "batch", "done"];
+export function syncSnapshot(tasks, settings, hours, run = null){
   const now = Date.now();
   const list = (tasks || []).filter((t) => ["ready", "waiting", "someday"].includes(t.status) || (t.status === "done" && now - (t.doneAt || 0) < RECENT))
     .map((t) => Object.fromEntries(FIELDS.filter((k) => t[k] != null).map((k) => [k, t[k]])));
   const s = settings || {};
   const body = { action: "snapshot", tasks: list, tz: tz(), dayStart: hours.start, dayEnd: hours.end,
     settings: { needsLater: s.needsLater || null, calOffered: s.calOffered || [], somedayAsked: s.somedayAsked || null, intents: s.intents || {} },
-    notify: s.notify || {} };
+    notify: s.notify || {},
+    run: run ? Object.fromEntries(RUN_FIELDS.filter((k) => run[k] != null).map((k) => [k, run[k]])) : null };
   const mark = JSON.stringify(body);
   if (mark === lastSent) return;
   clearTimeout(timer);

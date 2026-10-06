@@ -32,6 +32,20 @@ const day = (s) => new Date(`${s}T12:00`).toLocaleDateString(undefined, { weekda
 const ENERGY = { low: "Low energy", medium: "Medium energy", high: "High energy" };
 const PLACE = { home: "Home", out: "Out", anywhere: "Anywhere" };
 
+// Examples in the bar (master spec §13, 2026-10-06): while it's empty and not
+// in use, the placeholder turns between "Tell Daisey…" and one thing it really
+// handles, picked for the moment. Only what daisey-now-chat.js understands
+// (its KINDS), never a promise it can't keep, and short enough for a phone.
+const HINTS = ["What's next?", "Call Uri tomorrow at 10", "Mix review, 2 h, by Thu", "Done with the invoice",
+  "What's due this week?", "Lunch with Dana at 13:00", "I'm wrecked"];
+export function hintsFor(tasks){
+  const list = [...HINTS];
+  if (!tasks.some((t) => t.status === "ready")) list.unshift("Invoice, stems, call Uri"); // a brain dump first
+  if (tasks.some((t) => t.status === "waiting")) list.splice(1, 0, "What am I waiting on?");
+  return list;
+}
+const HINT_MS = 4500;
+
 // form/input/mic: the bar's own elements (index.html). openAdd(project, title):
 // the Add task form, prefilled.
 export function mountTell(form, input, mic, uid, { openAdd }){
@@ -40,6 +54,14 @@ export function mountTell(form, input, mic, uid, { openAdd }){
   form.before(panel);
   const stop = watchTasks(uid, (ts) => { tasks = ts || []; }, (e) => console.error("[daisey] tell", e));
   let busy = false;
+  const plain = input.placeholder;
+  let turn = 0;
+  const hinting = setInterval(() => {
+    if (input.value || document.activeElement === input || document.hidden) return;
+    const list = hintsFor(tasks);
+    input.placeholder = turn % 2 ? plain : `“${list[Math.floor(turn / 2) % list.length]}”`;
+    turn++;
+  }, HINT_MS);
 
   const close = () => { panel.hidden = true; panel.replaceChildren(); };
   const show = (...kids) => { panel.replaceChildren(...kids.filter(Boolean)); panel.hidden = false; };
@@ -215,5 +237,5 @@ export function mountTell(form, input, mic, uid, { openAdd }){
   };
 
   // ask(text): a message from outside the bar (a share into Daisey).
-  return { ask, unmount(){ stop(); rec?.abort(); close(); panel.remove(); form.onsubmit = mic.onclick = null; } };
+  return { ask, unmount(){ stop(); clearInterval(hinting); input.placeholder = plain; rec?.abort(); close(); panel.remove(); form.onsubmit = mic.onclick = null; } };
 }

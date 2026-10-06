@@ -13,6 +13,18 @@
 //   people  up to 45 minutes before an event that names someone a Pending
 //           task waits on: "You're waiting on Yuval for: …" (app/js/nudge.js)
 //
+// Reality over plan (app/js/reality.js, 2026-10-06): the snapshot carries
+// the running task, and what you're actually doing beats the calendar.
+//   - While a task runs (or is paused, still your focus), nothing competes
+//     with it: no gap or booked-slot suggestion, the brief and the wrap
+//     wait for it to end, a people alert only comes in the last
+//     PEOPLE_FOCUS minutes before the meeting.
+//   - An event you worked through (a task started or finished during it)
+//     isn't busy: it doesn't hold back the brief and its end isn't a gap.
+//   - gap and booked name one task, so they carry its id: the notification
+//     gets a "Start task" button (sw.js). They expire quickly (ttl), so a
+//     phone that was off doesn't get a suggestion for a moment long gone.
+//
 // Nothing outside the day hours. The picks are the app's own code — engine,
 // context, day, needs-list, brief — required from app/js (esbuild bundles
 // them; netlify.toml), so the server and the Now card can't disagree. The
@@ -27,6 +39,7 @@ const { localDate, notYet, durText } = require("../../app/js/model.js");
 const { effectiveDue } = require("../../app/js/triage.js");
 const { waitingFor, personOf } = require("../../app/js/nudge.js");
 const { EVENT_BUFFER } = require("../../app/js/weights.js");
+const { runState, overruled, eventKey } = require("../../app/js/reality.js");
 
 const BRIEF_WINDOW = 240; // minutes after the day starts the brief may still go
 const WRAP_BEFORE = 60; // the wrap goes in the day's last hour
@@ -34,6 +47,8 @@ const GAP_LOOKBACK = 10; // an event that ended this recently opens a gap
 const GAP_MIN = 30; // free minutes worth a nudge
 const BOOKED_EARLY = 3, BOOKED_LATE = 10; // minutes around a slot's start
 const PEOPLE_BEFORE = 45; // minutes before the meeting
+const PEOPLE_FOCUS = 15; // ...or this close, while a task is running
+const GAP_TTL = 30 * 60, BOOKED_TTL = 15 * 60; // seconds a suggestion stays worth delivering
 const DEFAULT_TYPES = { brief: true, wrap: true, gap: true, booked: true, people: true };
 
 const isBusy = (e) => !e.allDay && e.busy !== false && e.start && e.end;
@@ -51,17 +66,19 @@ function decide(rec, events, now = Date.now()) {
   if (minutes < start || minutes >= end) return { out, patch };
   const tasks = rec.tasks || [];
   const evs = events || [];
-  const busy = evs.filter(isBusy);
+  const focus = runState(rec.run, tasks, now); // "running" | "paused" | null
+  const over = overruled(evs, { tasks, run: rec.run, now });
+  const busy = evs.filter((e) => isBusy(e) && !over.has(eventKey(e)));
   const current = busy.find((e) => Date.parse(e.start) <= now && now < Date.parse(e.end)) || null;
 
-  if (types.brief && rec.sentOn !== date && minutes < start + BRIEF_WINDOW && !current) {
+  if (types.brief && rec.sentOn !== date && minutes < start + BRIEF_WINDOW && !current && !focus) {
     const needs = collectNeeds({ tasks, events: evs, calOk: !!events, settings: rec.settings || {}, now }).length;
     const b = brief({ tasks, events, now, tz, dayStart: start, dayEnd: end, needs });
     out.push({ type: "brief", title: b.title, body: b.body, tag: `brief-${date}`, url: "./" });
     patch.sentOn = date;
   }
 
-  if (types.wrap && rec.wrapOn !== date && minutes >= end - WRAP_BEFORE && !current) {
+  if (types.wrap && rec.wrapOn !== date && minutes >= end - WRAP_BEFORE && !current && !focus) {
     patch.wrapOn = date;
     const done = tasks.filter((t) => t.status === "done" && t.doneAt && localDate(t.doneAt) === date).length;
     const open = tasks.filter((t) => t.status === "ready" && t.due && !notYet(t, now) && effectiveDue(t, now) <= date);
@@ -85,13 +102,16 @@ function decide(rec, events, now = Date.now()) {
       const until = Math.min(next ? Date.parse(next.start) : Infinity, zoned(date, end, tz));
       // Room before the next event, as the Now card leaves it (EVENT_BUFFER).
       const free = Math.floor((until - now) / MIN) - (next && Date.parse(next.start) <= until ? EVENT_BUFFER : 0);
-      if (free >= GAP_MIN) {
+      // Already on something: the gap is spoken for. Still marked as
+      // handled above, so it doesn't arrive late once the task ends.
+      if (free >= GAP_MIN && !focus) {
         const r = rank(tasks, {
           now, window: free, nextEvent: next && localDate(Date.parse(next.start)) === date ? next.title : null,
           ...workBase(tasks, now), energy: energyNow({ events: evs, now }).value, intents: rec.settings?.intents || {},
           booked: Object.fromEntries([...booked].map(([id, b]) => [id, b.start])),
         });
-        if (r.pick) out.push({ type: "gap", title: `${ended.title} is over`,
+        // "After X", not "X is over": the calendar says it ended, not you.
+        if (r.pick) out.push({ type: "gap", title: `After ${ended.title}`, taskId: r.pick.task.id, ttl: GAP_TTL,
           body: `${durText(free)} free. Next: ${r.pick.task.title}. ${r.pick.why}`.trim(), tag: `gap-${evKey(ended)}`, url: "./" });
       }
     }
@@ -103,8 +123,10 @@ function decide(rec, events, now = Date.now()) {
       const k = `${id}|${b.start}`;
       if (sent.has(k) || b.start > now + BOOKED_EARLY * MIN || b.start <= now - BOOKED_LATE * MIN) continue;
       sent.add(k);
+      if (focus) continue; // you're on something else (or on this): the plan yields
       const t = tasks.find((x) => x.id === id);
-      out.push({ type: "booked", title: "Starts now", body: `${t?.title || b.title}, booked ${clockIn(b.start, tz)}–${clockIn(b.end, tz)}.`, tag: `booked-${k}`, url: "./" });
+      out.push({ type: "booked", title: "Starts now", body: `${t?.title || b.title}, booked ${clockIn(b.start, tz)}–${clockIn(b.end, tz)}.`, tag: `booked-${k}`, url: "./",
+        ...(t && t.status === "ready" ? { taskId: id } : {}), ttl: BOOKED_TTL });
     }
     if (sent.size !== (rec.bookedSent || []).length) patch.bookedSent = [...sent].slice(-50);
   }
@@ -113,12 +135,13 @@ function decide(rec, events, now = Date.now()) {
     const sent = new Set(rec.peopleSent || []);
     for (const e of busy) {
       const s = Date.parse(e.start), k = evKey(e);
-      if (s <= now || s - now > PEOPLE_BEFORE * MIN || sent.has(k)) continue;
+      if (s <= now || s - now > (focus ? PEOPLE_FOCUS : PEOPLE_BEFORE) * MIN || sent.has(k)) continue;
       const hits = waitingFor(e.title, tasks);
       if (!hits.length) continue;
       sent.add(k);
       out.push({ type: "people", title: `${e.title} at ${clockIn(s, tz)}`,
-        body: `You're waiting on ${personOf(hits[0].waitingOn)} for: ${hits.map((t) => t.title).join(", ")}.`, tag: `people-${k}`, url: "./" });
+        body: `You're waiting on ${personOf(hits[0].waitingOn)} for: ${hits.map((t) => t.title).join(", ")}.`, tag: `people-${k}`, url: "./",
+        ttl: Math.max(60, Math.round((s - now) / 1000)) });
     }
     if (sent.size !== (rec.peopleSent || []).length) patch.peopleSent = [...sent].slice(-50);
   }

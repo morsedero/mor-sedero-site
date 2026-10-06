@@ -100,7 +100,9 @@ test("decide: gap after an event names the Now card's pick, once", () => {
   const d = N.decide(r, evs, at(11, 5));
   assert.deepEqual(types(d.out), ["gap"]);
   assert.match(d.out[0].body, /^1 h 15 min free\. Next: Send invoice to Uri\./); // 85 min less the 10-minute buffer
-  assert.equal(d.out[0].title, "Teaching is over");
+  assert.equal(d.out[0].title, "After Teaching"); // the calendar says it ended, not you
+  assert.equal(d.out[0].taskId, r.tasks[0].id); // "Start task" on the notification
+  assert.equal(d.out[0].ttl, 30 * 60);
   assert.equal(N.decide({ ...r, gapFor: d.patch.gapFor }, evs, at(11, 10)).out.length, 0); // not twice
   assert.equal(N.decide(r, evs, at(11, 20)).out.length, 0); // ended too long ago
   assert.equal(N.decide(r, [evs[0], { ...evs[1], start: il(11, 20) }], at(11, 5)).out.length, 0); // under 30 min free
@@ -114,6 +116,7 @@ test("decide: booked slot starting, once; wrap in the day's last hour", () => {
   const d = N.decide(r, [slot], at(14, 1));
   assert.deepEqual(types(d.out), ["booked"]);
   assert.equal(d.out[0].body, "Mix review, booked 14:00–15:30.");
+  assert.equal(d.out[0].taskId, "mix");
   assert.equal(N.decide({ ...r, bookedSent: d.patch.bookedSent }, [slot], at(14, 5)).out.length, 0);
 
   const day = rec({ sentOn: "2026-10-06", tasks: [t({ title: "Pay arnona", dateKind: "deadline" }), t({ status: "done", doneAt: at(12) }), t({ status: "done", doneAt: at(9) })] });

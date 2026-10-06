@@ -1,7 +1,34 @@
 # Master spec audit (2026-10-06)
 
-The "Daisey — Master Product & UX Specification" checked against what's built.
-**Nothing has been changed yet.** This is the map and the plan, waiting for OK.
+The "Daisey — Master Product & UX Specification" checked against what's built,
+and the plan that came out of it.
+
+## Decisions (Mor, 2026-10-06)
+
+1. **Daisey log: keep.** It records what happened, in its own calendar, marked
+   free; never read as a future commitment.
+2. **Project deadlines: stay off** (the 10-06 decision holds; the core test applies).
+3. **Plan My Day: yes**, as a Daisey plan only: flexible, adaptive, nothing in
+   Google Calendar unless the user explicitly chooses it.
+4. **Deep Focus: web-only**, and good at what it can control. No pretend blocking.
+5. **Now lines: yes, mockup first.** "Next: 19:30 — Dinner" / "Free: 2h 15m this
+   evening", useful rather than informational; exact UI follows the Now card.
+
+And the framing: Reality over plan is the behaviour underneath all of it, with
+the server-side active-task state as a core part, not a one-notification fix.
+
+## Progress
+
+- ✅ P0 1. Principles, Reality over plan and the state table in `DAISEY_SPEC.md`.
+- ✅ P0 2. Reality over plan, built: `app/js/reality.js` (shared by the Now card
+  and `_daisey-lib/notify.js`); the running task in the push snapshot; work
+  during an event overrules it on the card and on the server. Tests:
+  `test/v1/reality.test.mjs`.
+- ✅ P0 3. "Start task" on the gap and booked-slot notifications.
+- ✅ P0 4. Header: "N need you", no zero chips.
+- ⏳ P0 5. Now lines: mockup shown, waiting for a pick.
+- ✅ P0 6. Tell Daisey examples.
+- P1 7–12: not started.
 
 Scope: Daisey v1, `daisey/app/` (served at morsedero.com/daisey/now/) and its
 functions in `daisey/functions/`. The old `daisey/daisey.html` (morsedero.com/daisey/)

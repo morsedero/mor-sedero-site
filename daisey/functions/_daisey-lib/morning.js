@@ -45,9 +45,10 @@ async function readEvents(rec, now = Date.now()) {
 
 // One message to every device. Returns { sent, subs } — subs without the
 // ones the push service says are gone.
-async function sendAll(rec, message) {
+// opts.ttl: seconds the push service may hold it for a phone that's off.
+async function sendAll(rec, message, { ttl } = {}) {
   const subs = rec.subs || [];
-  const results = await Promise.all(subs.map((s) => send(s, message)
+  const results = await Promise.all(subs.map((s) => send(s, message, ttl ? { ttl } : {})
     .catch((e) => { console.error("daisey push", e.message); return { ok: false }; })));
   return { sent: results.filter((r) => r.ok).length, subs: subs.filter((_, i) => !results[i].gone) };
 }

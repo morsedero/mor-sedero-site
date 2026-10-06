@@ -27,6 +27,27 @@ Five rules every feature must pass. If a feature breaks one, it doesn't ship.
 4. **No means no, without guilt.** Skipping is normal, not failure. No streaks, no red badges, no scolding. A skip is information.
 5. **Explain every pick.** One plain sentence says why this task, now. If Daisey can't explain it, it shouldn't suggest it.
 
+**The test for every new feature** (Mor, 2026-10-06, master spec): *does this help Daisey decide what I should do, or does it just help me manage more information?* More lists, tags, metadata, dashboards or things to keep up to date fail it. The user manages their life; Daisey manages the plan.
+
+## Reality over plan
+
+A calendar event, a booked slot and anything Daisey plans are **predictions**. What you actually do is **evidence**, and evidence wins. Daisey adapts on its own and asks only when a decision really needs you (Mor, 2026-10-06). The rules live in one module, `app/js/reality.js`, which both the Now card and the server's notifications read, so they can't disagree.
+
+**Task states.** Suggested (the engine's pick, computed, never stored) · Planned (a booked slot today; Plan My Day's windows later) · **Active** (the running task, `state/now`) · Done. Pending and Not now sit beside them. Planned is a guess; Active is a fact.
+
+**What counts as evidence:**
+
+| Signal | Means | Effect |
+| --- | --- | --- |
+| A task running | You're on it | Nothing competes: no other suggestion on the card, no free-gap or booked-slot push, the brief and the evening wrap wait, a people alert only comes in the last 15 min before the meeting |
+| A task paused (under 3 h) | Still your focus, you stepped away | Same as running for suggestions; says nothing about where you are |
+| Work logged during an event (a Start, Done or kept time) | You weren't in it, or it ended early | The event stops counting as busy: the card picks a task, the brief isn't held back, its end isn't announced |
+| A run past "Still on it?" or paused 3 h+ | A forgotten timer | Not evidence of anything |
+
+Events still ahead are never overruled: a plan for later is still the best guess about later. Daisey can't see a meeting running over (the calendar doesn't know either), so the free-gap push says "After Teaching", not "Teaching is over", and expires in 30 minutes.
+
+**Calendar writes** stay as they are: only on a tap, plus the Daisey log (a record of what happened, in its own calendar, marked free, never read as a commitment). Recommendations never become calendar events on their own.
+
 ## The Now card
 
 Opening Daisey shows a single card. That card is the whole home screen.
@@ -259,16 +280,18 @@ Daisey speaks first (Mor, Oct 6, 2026; Android, app notifications; no daily limi
 | --- | --- | --- |
 | Morning brief | First check after the day starts that isn't inside a calendar event (up to 4 h late) | "9 h 55 min free today. 4 open, about 3 fit. Deadline today: Pay arnona. Deadline tomorrow, not started: Send stems. 2 things need you. First: Teaching at 10:00." |
 | End of the day | The day's last hour, not inside an event | "Done today: 4. Still open for today: 2, deadline: X. Tap to sort them." The tap opens the wrap: one question per task (deadline: I'll do it tonight · Move it to tomorrow · Let it go; target: Move to tomorrow · Not now · Let it go) |
-| Free time after a meeting | A busy event ended in the last 10 min and 30+ free min follow | "Teaching is over. 1 h 25 min free. Next: Send invoice to Uri. <why>" (the Now card's own pick for that window) |
-| Booked task starting | A booked slot starts (within a few minutes) | "Mix review, booked 14:00–15:30." |
+| Free time after a meeting | A busy event ended in the last 10 min and 30+ free min follow, nothing is running, and you didn't work through the event | "After Teaching. 1 h 25 min free. Next: Send invoice to Uri. <why>" (the Now card's own pick for that window), with **Start task** |
+| Booked task starting | A booked slot starts (within a few minutes), nothing else running | "Mix review, booked 14:00–15:30.", with **Start task** |
 
 | Before meetings | Up to 45 min before an event that names someone a Pending task waits on | "Coffee with Yuval at 14:00: You're waiting on Yuval for: Pre-attack cue." |
 
 **Built Oct 6 (second round):** a 10-min buffer before the next event; tasks pushed to a later day twice get "Keeps sliding" in Needs you (shrink · keep · not now · let go); weekly goals per area, asked in Needs you when missing and kept in Settings; "Again? Next week · Next month" after Done (a fresh copy, no repeat engine); "Nudge on WhatsApp" on Pending tasks (a check-in in the task's language, you send it); Tell Daisey handles done, events at a time, and questions (what's next / due today or this week / what am I waiting on); sharing text or a link into Daisey from the phone reads it like a Tell message.
 
+**Start task** (2026-10-06): a notification that names one task (free gap, booked slot) has a Start task button. It opens Daisey with `?start=<id>` (an open Daisey is told instead) and goes straight into focus mode — unless something is already running (that stays, and its focus screen is what opens) or the task was done, parked or set Pending since. Those two kinds expire quickly (30 and 15 min), so a phone that was off doesn't get a suggestion for a moment long gone.
+
 **Today chip** (header, next to ✓ N): tap to open the same brief, live from now, as a small message; ✕, Escape or a tap elsewhere closes it.
 
-**How it works**: Web Push. `functions/daisey-now-morning.js` runs every 5 minutes; `_daisey-lib/notify.js` decides, using the app's own engine, brief and Needs-you modules (required from `app/js`, bundled with esbuild), so the server and the app can't disagree. The server can't read Firestore, so while notifications are on the app sends `daisey-now-push` a snapshot of its open tasks (and those done in the last 2 days) whenever they change: scoring fields only, never notes, links, steps or who a task waits on. The calendar is read live. Keys: `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` in Netlify's environment.
+**How it works**: Web Push. `functions/daisey-now-morning.js` runs every 5 minutes; `_daisey-lib/notify.js` decides, using the app's own engine, brief and Needs-you modules (required from `app/js`, bundled with esbuild), so the server and the app can't disagree. The server can't read Firestore, so while notifications are on the app sends `daisey-now-push` a snapshot of its open tasks (and those done in the last 2 days) and the running task whenever they change: scoring fields only, never notes, links or steps. The calendar is read live. Keys: `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` in Netlify's environment.
 
 ## Day hours, booked tasks and calendar tasks
 
@@ -332,7 +355,7 @@ The Now screen redesign (Oct 5, 2026; references in `daisey/New Design/`). Calm,
 
 A fixed split screen: nothing pulls up, nothing scrolls but the panel's pages. One column at every width; never two columns under 600 px (the project grid and the two date boxes are tiles inside one column, not page columns). In the UI, Waiting is called **Pending** everywhere; the stored status stays `waiting` ("Waiting on <who>" stays as the phrase for who it waits on).
 
-**Header** (`index.html`, `main.js`): the full daisy logo (always five white petals, softer at night, never a bare dot) + "Daisey" 21/700 at the start. At the end: the amber **Needs you** chip with its count (only when > 0; opens Needs you; `now.js` counts), the green **"✓ N"** done-today chip, the avatar. No greeting, no clock.
+**Header** (`index.html`, `main.js`): the full daisy logo (always five white petals, softer at night, never a bare dot) + "Daisey" 21/700 at the start. At the end: the amber **"N need you"** chip (only when > 0; opens Needs you; `now.js` counts), the **Today** chip, the green **"✓ N"** done-today chip (only when > 0), the avatar. No greeting, no clock. Words on Needs you and no zeros (2026-10-06): bare numbers beside "Today" read as "0 Today 0". Under 430 px, while Needs you shows, Today keeps only its sun so the wordmark fits.
 
 **Home = top: Now card, bottom: panel** (`now.js`, `panel.js`, mockups 6 and 7)
 - The compact Now card (~214px, radius 22): area dot + "Area · project" on one line (the project opens its project screen), size at the end; the title 26/600 is the button that opens the task screen; "Next: <step>" when it has steps; a one-line why; ONE row: the wide amber Start + three 50px square buttons with an icon and a 10px label: Later, Switch, Pending. Their asks (When?, Waiting on, Switch's list) open under the row and push the panel down; the card area scrolls if it gets tall.
@@ -341,7 +364,7 @@ A fixed split screen: nothing pulls up, nothing scrolls but the panel's pages. O
 - **Schedule** (`schedule.js`): a label row per day ("Tonight · Tue 6 Oct" after 18:00 or past the day's end, else "Today"; "Tomorrow · Wed 7 Oct"; then the weekday), seven days. Each row: start–end ONCE in an 88px left column, then a block tinted with the event's Google colour holding only its name (tap = its details), or a dashed "Free" box for a gap of 15 min+ inside the day hours. All-day events say "All day". Past events drop off. The night divider sits between today and tomorrow; a day with nothing on it says "Nothing scheduled". Soft fade at the bottom edge. Labels follow the real clock: after midnight the coming day is "Today" with the night divider above it.
 - **Projects** (`projects.js`): "N projects · N tasks" + "+ New", a 2-column grid of project cards (name, open count, one status line: "Next: …" or "3 pending · 6 not now", progress bar done / all), then the **Inbox** row (dashed: "Inbox · N · no project yet"), only when it has tasks.
 - **Every project has its own colour**: its tasks' most common area when no other project has it yet, else the next free colour (`.pc-<key>`: the six area colours, then teal, orange, slate, brick, lime). Taken in name order, so colours don't move as counts change. The grid card, the project screen's chip and its card use it.
-- At the bottom, in the flow (nothing ever sits under it): one pill [ + | Tell Daisey… | mic ], 54px. + opens New task / New event.
+- At the bottom, in the flow (nothing ever sits under it): one pill [ + | Tell Daisey… | mic ], 54px. + opens New task / New event. While it's empty and not in use, the placeholder turns between "Tell Daisey…" and an example of something it really handles ("What's next?", "Call Uri tomorrow at 10"; a brain dump when there are no tasks, "What am I waiting on?" when something is Pending) — `tell.js hintsFor`.
 
 **Night** (`now.js nightView`): the panel steps aside; the night screen fills the card area. A real deadline due today and still open is named above "Tomorrow first" ("Due today", with Start), never "Nothing needs you tonight". "Tomorrow first" shows each time once (start–end) on the left. "I'm free now, show me something" and the night divider sit at the bottom of that area, always above the pill.
 
