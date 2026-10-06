@@ -8,6 +8,12 @@
 //
 // Labels follow the real clock: after midnight the coming day is "Today"
 // (with the night divider above it), never "Tomorrow".
+//
+// Editable from here (Mor, 2026-10-06): an event opens its details (Edit,
+// Remove); a free gap or an empty day opens a new event right there. An event
+// happening now is marked Now. A week ahead, as far as calendar.js fetches;
+// a run of empty days folds into one line instead of a "Nothing scheduled"
+// per day.
 import { watchCalendar } from "./calendar.js";
 import { watchSettings } from "./store.js";
 import { dayHours, minText } from "./day.js";
@@ -19,6 +25,9 @@ const MIN_FREE = 15; // minutes; a shorter gap isn't worth a box
 const clock = (ms) => new Date(ms).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
 const short = (d) => d.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" });
 const atMin = (d, min) => { const x = new Date(d); x.setHours(Math.floor(min / 60), min % 60, 0, 0); return x.getTime(); };
+
+const quarterUp = (ms) => { const q = 15 * 60000; return Math.ceil(ms / q) * q; };
+const hm = (ms) => clock(ms);
 
 // One day's rows: events (busy or not) in order, and Free boxes for the gaps
 // between busy ones inside the day hours. from: nothing before this counts
@@ -50,8 +59,9 @@ export function dayRows(events, date, hrs, from = 0){
   return [...allDay, ...rows];
 }
 
-// el: the page. onEvent(ev): an event's details.
-export function mountSchedule(el, uid, { onEvent } = {}){
+// el: the page. onEvent(ev): an event's details. onNew(date, at): a new
+// event on "YYYY-MM-DD", at "HH:MM" when a gap was tapped.
+export function mountSchedule(el, uid, { onEvent, onNew } = {}){
   let cal = { status: "loading", events: [] };
   let settings = {};
   const fail = (e) => console.error("[daisey] schedule", e);
@@ -70,32 +80,52 @@ export function mountSchedule(el, uid, { onEvent } = {}){
     const late = now >= close;
     const kids = [];
     if (early) kids.push(nightDivider(minText(hrs.end), minText(hrs.start)));
+    const nameOf = (i, date) => (i === 0 ? (late || today.getHours() >= 18 ? "Tonight" : "Today")
+      : i === 1 ? "Tomorrow" : date.toLocaleDateString("en-GB", { weekday: "long" }));
+    const label = (name, date) => h("div", { className: "sc-label" }, h("span", { className: "sc-name", textContent: name }), h("span", { className: "sc-date", textContent: date }));
+    const none = (date, text) => h("button", { type: "button", className: "sc-none", onclick: () => onNew?.(localDate(date.getTime())) },
+      h("span", { textContent: text }), h("span", { className: "sc-add", ariaHidden: "true", textContent: "+ Add" }));
+    let empty = []; // a run of empty days after tomorrow, shown as one line
+    const flush = () => {
+      if (!empty.length) return;
+      const [a, b] = [empty[0], empty.at(-1)];
+      kids.push(empty.length === 1
+        ? h("section", { className: "sc-day", ariaLabel: `${a.name}, ${short(a.date)}` }, label(a.name, short(a.date)), none(a.date, "Nothing scheduled"))
+        : h("section", { className: "sc-day", ariaLabel: `${a.name} to ${b.name}: nothing scheduled` },
+          label(`${a.name.slice(0, 3)} – ${b.name.slice(0, 3)}`, `${a.date.getDate()}–${short(b.date).replace(/^\w+\s/, "")}`),
+          none(a.date, `Nothing scheduled for ${empty.length} days`)));
+      empty = [];
+    };
     for (let i = 0; i < DAYS; i++) {
       const date = new Date(today); date.setDate(date.getDate() + i);
       const rows = dayRows(cal.events, date, hrs, i === 0 ? now : 0);
       // Past the day's end with nothing left tonight: go straight to tomorrow.
       if (i === 0 && late && !rows.length) { kids.push(nightDivider(minText(hrs.end), minText(hrs.start))); continue; }
-      const name = i === 0 ? (late || today.getHours() >= 18 ? "Tonight" : "Today")
-        : i === 1 ? "Tomorrow" : date.toLocaleDateString("en-GB", { weekday: "long" });
-      kids.push(h("section", { className: "sc-day", ariaLabel: `${name}, ${short(date)}` },
-        h("div", { className: "sc-label" }, h("span", { className: "sc-name", textContent: name }), h("span", { className: "sc-date", textContent: short(date) })),
-        ...(rows.length ? rows.map(row) : [h("p", { className: "sc-none", textContent: "Nothing scheduled" })])));
+      const name = nameOf(i, date);
+      if (i >= 2 && !rows.length) { empty.push({ name, date }); continue; }
+      flush();
+      kids.push(h("section", { className: "sc-day", ariaLabel: `${name}, ${short(date)}` }, label(name, short(date)),
+        ...(rows.length ? rows.map((x) => row(x, now)) : [none(date, "Nothing scheduled")])));
       if (i === 0) kids.push(nightDivider(minText(hrs.end), minText(hrs.start)));
     }
+    flush();
     const y = el.scrollTop;
     el.replaceChildren(...kids);
     el.scrollTop = y;
   }
 
-  function row(x){
+  function row(x, now){
     const time = x.allDay ? "All day" : `${clock(x.start)}–${clock(x.end)}`;
     // Free time is quiet (Mor, 2026-10-06: the dashed boxes read as slots to
     // fill): no box, no times, just how long, on a hairline.
-    if (x.kind === "free") return h("div", { className: "sc-row sc-gap", ariaLabel: `Free ${time}` },
-      h("span", { className: "sc-free", textContent: `${durText((x.end - x.start) / 60000)} free` }));
-    return h("div", { className: "sc-row" }, h("span", { className: "sc-time strong", textContent: time }),
+    // Tapping it adds an event there.
+    if (x.kind === "free") return h("button", { type: "button", className: "sc-row sc-gap", ariaLabel: `Free ${time} — add an event`,
+      onclick: () => onNew?.(localDate(x.start), hm(quarterUp(x.start))) },
+      h("span", { className: "sc-free" }, `${durText((x.end - x.start) / 60000)} free`, h("span", { className: "sc-add", ariaHidden: "true", textContent: "+" })));
+    const on = !x.allDay && x.start <= now && now < x.end;
+    return h("div", { className: "sc-row" + (on ? " sc-on" : "") }, h("span", { className: "sc-time strong" }, time, on && h("span", { className: "sc-nowtag", textContent: "Now" })),
       h("button", { type: "button", className: "sc-ev", style: x.ev.color ? `--ev:${x.ev.color}` : "",
-        ariaLabel: `${x.ev.title}, ${time}`, onclick: () => onEvent?.(x.ev) }, bdi(x.ev.title)));
+        ariaLabel: `${on ? "Now: " : ""}${x.ev.title}, ${time}`, onclick: () => onEvent?.(x.ev) }, bdi(x.ev.title)));
   }
 
   const unsubs = [

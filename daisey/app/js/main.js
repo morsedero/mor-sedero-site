@@ -183,7 +183,7 @@ async function boot(){
         m.needs = mountNeeds($("#needsview"), user.uid, { onClose: () => screens.back() });
         // The home panel: Schedule and Projects, one page each.
         m.panel = mountPanel({ panel: $("#panel"), tabs: [$("#tabSched"), $("#tabProj")], track: $("#panel .ptrack") });
-        m.schedule = mountSchedule($("#schedPage"), user.uid, { onEvent: (ev) => m.event.view(ev) });
+        m.schedule = mountSchedule($("#schedPage"), user.uid, { onEvent: (ev) => m.event.view(ev), onNew: (date, at) => m.event.open(date, at) });
         m.projects = mountProjects({ grid: $("#projPage"), view: $("#projectview") }, user.uid, {
           onOpen: (task) => m.adder.edit(task),
           onAdd: (project) => m.adder.open(project),

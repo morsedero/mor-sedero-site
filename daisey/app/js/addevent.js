@@ -160,6 +160,7 @@ export function mountAddEvent(dialog){
       h("p", { className: "ev-when", textContent: longDay(start) }),
       h("h3", { className: "ev-name", dir: "auto" }, bdi(ev.title)),
       h("p", { className: "ev-time", textContent: when }),
+      mine && ev.recurring && h("p", { className: "muted ev-rep", textContent: "Repeats — a change here is for this day only." }),
       mine
         ? h("div", { className: "ev-acts" },
           h("button", { className: "btn", type: "button", textContent: "Edit", onclick: () => showForm(ev) }), del)

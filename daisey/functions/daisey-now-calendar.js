@@ -49,8 +49,12 @@ function shape(e, colors, cal) {
   return {
     id: e.id,
     calendarId: cal.id,
-    // Only what the user can actually change offers Move and Delete.
-    editable: !!cal.editable && !e.recurringEventId && e.status !== "cancelled",
+    // Only what the user can actually change offers Edit and Remove. A
+    // repeating event counts (Mor, 2026-10-06: "schedule should be
+    // editable"): its id here is the one occurrence, so a PATCH or DELETE on
+    // it changes that day only, the way Google's "This event" does.
+    editable: !!cal.editable && e.status !== "cancelled",
+    recurring: !!e.recurringEventId,
     title: e.summary || (allDay ? "All day" : "Busy"),
     start: e.start.dateTime || e.start.date,
     end: e.end?.dateTime || e.end?.date || null,
