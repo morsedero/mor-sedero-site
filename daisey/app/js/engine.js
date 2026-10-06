@@ -7,7 +7,7 @@
 // dates are local time, so the node tests in daisey/test/v1/ drive it with
 // fixed moments. Every number lives in weights.js.
 import * as W from "./weights.js";
-import { localDate, durText, notYet, LABELS } from "./model.js";
+import { localDate, durText, notYet, leftMinutes, LABELS } from "./model.js";
 import { effectiveDue } from "./triage.js";
 import { officeOpen, officeMinutesLeft } from "./holidays.js";
 
@@ -132,7 +132,7 @@ export function filterOut(task, m){
   if (task.openHours === "evening" && new Date(m.now).getHours() < W.EVENING_FROM) return "evening";
   if (task.energy === "high" && m.energy === "low") return "energy";
   const w = windowFor(task, m);
-  if (task.size > w && !(task.canSplit && w >= W.SPLIT_MIN_WINDOW)) return "size";
+  if (leftMinutes(task) > w && !(task.canSplit && w >= W.SPLIT_MIN_WINDOW)) return "size";
   return null;
 }
 
@@ -155,13 +155,16 @@ export function dueAt(task){
   return new Date(y, mo - 1, d, hh, mm).getTime();
 }
 
-// A real deadline: past or today 35, within 2 days 25, within 7 days 12.
+// A real deadline: past or today 35, within 2 days 25, within 7 days 12 —
+// counted that many days earlier for big work still to do (DEADLINE_LEAD_PER_DAY).
 function deadline(task, m){
   if (!task.due || task.dateKind !== "deadline") return { points: 0, detail: null };
   const days = daysUntil(task.due, m.now);
   const passed = days < 0 || (days === 0 && !!task.dueTime && m.now >= dueAt(task));
+  const left = leftMinutes(task), lead = Math.max(0, Math.ceil(left / W.DEADLINE_LEAD_PER_DAY) - 1);
+  const eff = days - lead;
   const D = W.DEADLINE;
-  return { points: days <= 0 ? D.today : days <= 2 ? D.within2 : days <= 7 ? D.within7 : 0, detail: { days, passed } };
+  return { points: eff <= 0 ? D.today : eff <= 2 ? D.within2 : eff <= 7 ? D.within7 : 0, detail: { days, passed, lead, left } };
 }
 
 // A target (wish date): today or past 8, within 3 days 4. A passed target
@@ -194,8 +197,12 @@ export function areaBalance(task, m, areas){
   return { points: Math.round(W.AREA_BALANCE_MAX * (max - done(a)) / (max - min)), detail: { area: a, done: done(a) } };
 }
 
+// Days since real work (Start, time, Done: workedAt), else since it was
+// added. Not touchedAt: a skip, Later or an edit moves that, so a task you
+// kept dodging read as freshly looked after (2026-10-06).
 function neglect(task, m){
-  const days = Math.max(0, Math.floor((m.now - (task.touchedAt ?? m.now)) / DAY));
+  const since = task.workedAt ?? task.createdAt ?? task.touchedAt ?? m.now;
+  const days = Math.max(0, Math.floor((m.now - since) / DAY));
   return { points: Math.min(W.NEGLECT_MAX, days * W.NEGLECT_PER_DAY), detail: { days } };
 }
 
@@ -212,7 +219,7 @@ function energyFit(task, m){
 function windowFit(task, m){
   if (!m.realWindow) return { points: 0, detail: null };
   const w = windowFor(task, m);
-  const r = w > 0 ? task.size / w : Infinity;
+  const r = w > 0 ? leftMinutes(task) / w : Infinity;
   const fit = r > 1 ? "piece" : r >= 0.5 ? "full" : r >= 0.25 ? "half" : "small";
   return { points: W.WINDOW_FIT[fit], detail: { fit, window: w, nextEvent: m.nextEvent } };
 }
@@ -230,12 +237,12 @@ function momentum(task, m){
 export function findBatches(tasks, m){
   const out = new Map();
   for (const type of W.BATCH.types) {
-    const pool = tasks.filter((t) => t.type === type).sort((a, b) => a.size - b.size);
+    const pool = tasks.filter((t) => t.type === type).sort((a, b) => leftMinutes(a) - leftMinutes(b));
     const ids = [];
     let minutes = 0;
     for (const t of pool) {
-      if (ids.length >= W.BATCH.max || minutes + t.size > windowFor(t, m)) break;
-      ids.push(t.id); minutes += t.size;
+      if (ids.length >= W.BATCH.max || minutes + leftMinutes(t) > windowFor(t, m)) break;
+      ids.push(t.id); minutes += leftMinutes(t);
     }
     if (ids.length >= W.BATCH.min) for (const id of ids) out.set(id, { type, ids, minutes });
   }
@@ -291,7 +298,7 @@ export function scoreTask(task, m, ctx = { batches: new Map(), areas: [] }){
 // smaller size, then older.
 export function compare(a, b){
   return b.score - a.score || b.parts.deadline - a.parts.deadline || b.parts.stakes - a.parts.stakes
-    || a.task.size - b.task.size || (a.task.createdAt || 0) - (b.task.createdAt || 0);
+    || leftMinutes(a.task) - leftMinutes(b.task) || (a.task.createdAt || 0) - (b.task.createdAt || 0);
 }
 
 // ---------- why line ----------
@@ -311,7 +318,9 @@ const sizeWords = (n) => (n === 60 ? "hour" : durText(n));
 const person = (title) => (String(title).match(/(?:\b(?:to|for)\s+|ל-?)(\p{Lu}[\p{L}'-]*)/u) || [])[1] || null;
 
 const PHRASES = {
-  deadline: (s, d) => d.passed || d.days < 0 ? ["deadline passed"] : [`deadline ${dateWords(s.task.due, d.days)}`],
+  deadline: (s, d) => d.passed || d.days < 0 ? ["deadline passed"]
+    : d.lead > 0 ? [`deadline ${dateWords(s.task.due, d.days)}, ${durText(d.left)} still to do`]
+    : [`deadline ${dateWords(s.task.due, d.days)}`],
   target: (s, d) => [`planned for ${d.days <= 0 ? "today" : dateWords(effectiveDue(s.task), d.days)}`],
   stakes: (s, d) => d.kind === "money" ? ["costs money if late"]
     : d.kind === "penalty" ? ["there's a penalty if late"]
@@ -321,7 +330,7 @@ const PHRASES = {
   area: (s, d) => [{ name: LABELS.area[d.area] || d.area }, d.done ? " is behind this week" : " hasn't moved this week"],
   batch: (s, d) => [`${d.ids.length} ${{ call: "calls", admin: "admin bits", errand: "errands" }[d.type]}, done together`],
   // A quick win is a small task, not just a small share of a long window.
-  window: (s, d) => d.fit === "small" && s.task.size <= W.QUICK_WIN_MAX ? [`${sizeWords(s.task.size)}, quick win`]
+  window: (s, d) => d.fit === "small" && leftMinutes(s.task) <= W.QUICK_WIN_MAX ? [`${sizeWords(leftMinutes(s.task))}, quick win`]
     : d.fit === "small" ? [`fits your ${sizeWords(d.window)}`]
     : d.fit === "piece" ? [`a piece fits your ${sizeWords(d.window)}`]
     : d.nextEvent ? ["fits before ", { name: d.nextEvent }]

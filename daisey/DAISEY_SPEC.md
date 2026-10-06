@@ -109,7 +109,7 @@ The engine picks like a secretary, in three gates, every time the card is shown:
 - Status is Waiting or Done.
 - Its Where doesn't match (a Home task while Out, a Computer task while on the phone).
 - It needs office hours and offices are closed.
-- Size is bigger than the free window, unless it can split and the window is at least 25 min.
+- Time still to do (size minus time already worked, at least 5 min) is bigger than the free window, unless it can split and the window is at least 25 min. Window fit and batches use the same time left.
 - Needs High energy and current energy is Low.
 - Skipped already in this session.
 - The current block names a project and the task isn't in it (unless "I'm free now" was tapped).
@@ -118,11 +118,11 @@ The engine picks like a secretary, in three gates, every time the card is shown:
 
 | Factor | Points | How it's computed |
 | --- | --- | --- |
-| Real deadline | 0–35 | Past or today: 35 · within 2 days: 25 · within 7 days: 12 |
+| Real deadline | 0–35 | Past or today: 35 · within 2 days: 25 · within 7 days: 12. Big work counts early: one day closer per 2 h still to do past the first 2 h ("deadline Fri, 6 h still to do") |
 | Target date | 0–8 | Today or past: 8 · within 3 days: 4. A target is never shown as "overdue". |
 | Stakes | 0–15 | Deadline penalty: 15 · costs money: 12 · affects someone: 10 · low: 0 |
 | Area balance | 0–12 | The area furthest behind its weekly intent (or least touched this week) gets up to 12 |
-| Neglect | 0–8 | +1 per day untouched, max 8 |
+| Neglect | 0–8 | +1 per day since real work (start, time, done), or since added; skips and edits don't reset it. Max 8 |
 
 **Gate 3 — Does it fit this gap?**
 

@@ -188,10 +188,14 @@ test("gate 2 area balance: least done this week gets 12; even weeks give nothing
   assert.deepEqual(sc({ intents: { job: 3 }, areaDone: { job: 1, work: 9 } }), { job: 8, work: 0 });
 });
 
-test("gate 2 neglect: +1 per whole day untouched, max 8", () => {
+test("gate 2 neglect: +1 per whole day without real work, max 8", () => {
   assert.equal(parts(task()).neglect, 0);
-  assert.equal(parts(task({ touchedAt: NOW - 3.5 * 864e5 })).neglect, 3);
-  assert.equal(parts(task({ touchedAt: NOW - 20 * 864e5 })).neglect, 8);
+  assert.equal(parts(task({ createdAt: NOW - 3.5 * 864e5 })).neglect, 3);
+  assert.equal(parts(task({ createdAt: NOW - 20 * 864e5 })).neglect, 8);
+  // Worked on yesterday: 1, however long ago it was added.
+  assert.equal(parts(task({ createdAt: NOW - 20 * 864e5, workedAt: NOW - 1.2 * 864e5 })).neglect, 1);
+  // A skip, Later or edit moves touchedAt — that isn't work (2026-10-06).
+  assert.equal(parts(task({ createdAt: NOW - 5 * 864e5, touchedAt: NOW })).neglect, 5);
 });
 
 // ---------- Gate 3: does it fit this gap? ----------
@@ -337,4 +341,24 @@ test("gate 1: stale doesn't hide a real deadline within a week (2026-10-06)", ()
   assert.equal(E.filterOut(dl("2026-10-01", { skipsSinceStart: W.STALE_SKIPS }), m), null); // passed
   assert.equal(E.filterOut(dl("2026-10-13", { skipsSinceStart: W.STALE_SKIPS }), m), "stale");
   assert.equal(E.filterOut(tg("2026-10-06", { skipsSinceStart: W.STALE_SKIPS }), m), "stale"); // a target isn't a deadline
+});
+
+test("time left, not full size: fits, scores and batches what's still to do (2026-10-06)", () => {
+  const big = task({ size: 90, spentMinutes: 80 });
+  assert.equal(E.filterOut(big, moment({ window: 20 })), null); // 10 min left fits 20
+  assert.equal(E.filterOut(task({ size: 90 }), moment({ window: 20 })), "size");
+  assert.equal(E.filterOut(task({ size: 30, spentMinutes: 45 }), moment({ window: 10 })), null); // ran over: 5 min floor
+});
+
+test("deadline lead: big work left counts the deadline days earlier (2026-10-06)", () => {
+  // 10 days out: nothing for a small task; 6 h left → 2 days early, still > 7.
+  assert.equal(parts(dl("2026-10-15", { size: 30 })).deadline, 0);
+  assert.equal(parts(dl("2026-10-15", { size: 360 })).deadline, 0);
+  // 9 days out: 6 h left reads as 7 → 12.
+  assert.equal(parts(dl("2026-10-14", { size: 360 })).deadline, W.DEADLINE.within7);
+  assert.equal(parts(dl("2026-10-14", { size: 30 })).deadline, 0);
+  // 4 days out: 6 h left reads as 2 → 25; with 5 h already done, 1 h left → 12.
+  assert.equal(parts(dl("2026-10-09", { size: 360 })).deadline, W.DEADLINE.within2);
+  assert.equal(parts(dl("2026-10-09", { size: 360, spentMinutes: 300 })).deadline, W.DEADLINE.within7);
+  assert.match(why(dl("2026-10-09", { size: 360, canSplit: true })), /6 h still to do/);
 });

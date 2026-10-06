@@ -572,6 +572,11 @@ export function workedTask(task, minutes, { finished = false, now = Date.now() }
     : { spentMinutes: spent, stopsUnfinished: (task.stopsUnfinished || 0) + 1, touchedAt: now, workedAt: now };
 }
 
+// What a task still needs: its size less the time already worked on it,
+// never under 5 (a task that ran over and isn't done still needs something).
+// The engine fits and scores this, not the full size (2026-10-06).
+export const leftMinutes = (t) => Math.max(5, (toMinutes(t.size) ?? DEFAULT_SIZE) - (t.spentMinutes || 0));
+
 // Ready to be offered at all? engine.js filterOut adds window, skips and
 // the "not before" date.
 export const isAvailable = (task) => task.status === "ready";

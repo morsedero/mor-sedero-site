@@ -56,6 +56,11 @@ export const PLACE_BLOCKS = {
 
 // ---------- Gate 2 — what does leaving it cost? ----------
 export const DEADLINE = { today: 35, within2: 25, within7: 12 }; // past or today · ≤2 days · ≤7 days
+// OURS (2026-10-06): big work starts early. A deadline scores as if it were
+// one day closer for every DEADLINE_LEAD_PER_DAY minutes still to do past
+// the first day's worth — 6 h left reads a deadline 2 days early. Before
+// this a 6-hour job due in 10 days scored nothing until 7 days out.
+export const DEADLINE_LEAD_PER_DAY = 120;
 export const TARGET = { today: 8, within3: 4 }; // today or past · ≤3 days; never "overdue"
 export const STAKES = { penalty: 15, money: 12, someone: 10, low: 0 };
 export const AREA_BALANCE_MAX = 12;
