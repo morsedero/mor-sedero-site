@@ -344,3 +344,17 @@ test("migrate v4: a next step becomes step 1; a pending task gets a check date",
   assert.equal(p.checkOn, M.dayAfter(M.PENDING_CHECK_DAYS, NOW));
   assert.deepEqual(M.migrateTask({ ...old, ...p }), {});
 });
+
+test("pendingCheck: 3 days on, but the day before a real deadline, never before tomorrow (2026-10-06)", () => {
+  const now = new Date(2026, 9, 5, 10).getTime(); // Mon 5 Oct
+  assert.equal(M.pendingCheck({}, now), "2026-10-08");
+  assert.equal(M.pendingCheck({ due: "2026-10-20", dateKind: "deadline" }, now), "2026-10-08");
+  assert.equal(M.pendingCheck({ due: "2026-10-08", dateKind: "deadline" }, now), "2026-10-07");
+  assert.equal(M.pendingCheck({ due: "2026-10-06", dateKind: "deadline" }, now), "2026-10-06");
+  assert.equal(M.pendingCheck({ due: "2026-10-05", dateKind: "deadline" }, now), "2026-10-06");
+  assert.equal(M.pendingCheck({ due: "2026-10-06", dateKind: "target" }, now), "2026-10-08");
+  // Blocked via Not now, and Pending set by an edit, both use it.
+  assert.equal(M.skipReason({ due: "2026-10-07", dateKind: "deadline" }, "blocked", { now }).checkOn, "2026-10-06");
+  const t = { ...M.createTask({ title: "Mix review", due: "2026-10-07", dateKind: "deadline" }, { now }), id: "a" };
+  assert.equal(M.editTask(t, { waitingOn: "Yuval" }, { now }).checkOn, "2026-10-06");
+});

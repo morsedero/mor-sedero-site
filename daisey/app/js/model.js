@@ -96,6 +96,18 @@ export function toDate(v){
 // The day `days` after `ms`, as "YYYY-MM-DD".
 export const dayAfter = (days, ms = Date.now()) => { const d = new Date(ms); d.setDate(d.getDate() + days); return localDate(d.getTime()); };
 
+// When Pending asks "still pending?": PENDING_CHECK_DAYS on, but for a real
+// deadline no later than the day before it — asking after the date is asking
+// too late. Never before tomorrow: it was only just set.
+export function pendingCheck(task, now = Date.now()){
+  const day = dayAfter(PENDING_CHECK_DAYS, now);
+  if (task?.dateKind !== "deadline" || !toDate(task.due)) return day;
+  const before = dayAfter(-1, new Date(`${task.due}T12:00`).getTime());
+  if (before >= day) return day;
+  const tomorrow = dayAfter(1, now);
+  return before < tomorrow ? tomorrow : before;
+}
+
 // Steps: [{ text, done }], blanks dropped. null when there are none.
 export function toSteps(v){
   if (!Array.isArray(v)) return null;
@@ -467,7 +479,7 @@ export function editTask(task, changes, { now = Date.now(), history = [] } = {})
   } else if (has("waitingOn") && get("waitingOn") && get("status") === "ready") {
     set("status", "waiting");
   }
-  if (get("status") === "waiting" && !get("checkOn")) set("checkOn", dayAfter(PENDING_CHECK_DAYS, now));
+  if (get("status") === "waiting" && !get("checkOn")) set("checkOn", pendingCheck({ due: get("due"), dateKind: get("dateKind") }, now));
   if (has("notes")) set("notes", notesText(changes.notes) || null);
 
   const order = GUESSABLE.filter((k) => guessed.has(k));
@@ -525,7 +537,7 @@ export function skipReason(task, reason, { now = Date.now() } = {}){
   if (!SKIP_REASONS.includes(reason)) return {};
   const counts = { ...Object.fromEntries(SKIP_REASONS.map((r) => [r, 0])), ...(task.skipReasons || {}) };
   const patch = { skipReasons: { ...counts, [reason]: counts[reason] + 1 }, touchedAt: now };
-  if (reason === "blocked") { patch.status = "waiting"; patch.checkOn = dayAfter(PENDING_CHECK_DAYS, now); }
+  if (reason === "blocked") { patch.status = "waiting"; patch.checkOn = pendingCheck(task, now); }
   return patch;
 }
 

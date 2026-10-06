@@ -21,6 +21,7 @@
 // startedAt rather than counted here.
 import { h, bdi, dur, icon } from "./ui.js";
 import { LABELS } from "./model.js";
+import { RUN_ASK } from "./weights.js";
 import { daisy, areaClass, areaName, projectShown } from "./look.js";
 
 const BATCH_NOUN = { call: ["call", "calls"], admin: ["admin bit", "admin bits"], errand: ["errand", "errands"] };
@@ -46,6 +47,14 @@ export function resumed(run, now = Date.now()){
 
 export const targetMinutes = (run, task) => (task?.size || 0) + (run.extra || 0);
 export const isOver = (run, task, now = Date.now()) => elapsedMinutes(run, now) > targetMinutes(run, task);
+
+// A forgotten timer (weights RUN_ASK): past this many minutes focus mode asks
+// "Still on it?", and what Done or Stop books is capped here. "Still on it"
+// moves the plan up to now (extra), which moves the cap with it.
+export const runCap = (target) => Math.max((target || 0) * RUN_ASK.factor, (target || 0) + RUN_ASK.extra);
+export const bookedMinutes = (run, task, now = Date.now()) => Math.min(elapsedMinutes(run, now), runCap(targetMinutes(run, task)));
+// What "Still on it" adds to the plan: enough that the plan is now.
+export const stillOnMinutes = (run, task, now = Date.now()) => Math.max(0, Math.ceil(elapsedMinutes(run, now) - targetMinutes(run, task)));
 
 // mm:ss, and h:mm:ss once it passes an hour — never "72:00".
 const clock = (min) => {
@@ -180,11 +189,16 @@ export function focusView(run, task, cb){
     const quiet = (name, text, aria, fn) => h("button", { className: "btn line withicon", type: "button", ariaLabel: aria, onclick: fn },
       icon(name), h("span", { textContent: text }));
     const hold = holdButton(key, `Hold to finish ${what}`, !task, () => screen?.cb.onDone());
+    const stillText = h("p", { className: "focus-still-text" });
+    const still = h("div", { className: "focus-still", role: "status", hidden: true }, stillText,
+      h("button", { className: "btn line", type: "button", textContent: "Still on it",
+        onclick: () => screen && screen.cb.onExtend(stillOnMinutes(screen.run, screen.task)) }));
     const el = h("div", { className: "focus" + areaClass(task) },
       h("div", { className: "focus-top" }, h("span", { className: "hero-area" }, h("span", { className: "dot", ariaHidden: "true" }),
         [areaName(task), projectShown(task)].filter(Boolean).join(" · ") || "Focus")),
       h("section", { className: "focus-card", ariaLabel: "Focus" }, title,
         h("p", { className: "focus-hold", textContent: "I'll hold everything else." }), ring.el),
+      still,
       h("div", { className: "focus-spacer" }),
       ctlRow(() => (screen?.paused ? screen.cb.onResume() : screen?.cb.onPause()),
         `Stop ${what} for now; the time so far is kept`, () => screen?.cb.onStop()),
@@ -192,9 +206,14 @@ export function focusView(run, task, cb){
       h("div", { className: "focus-row" },
         quiet("plus", "15 min", `Give ${what} 15 more minutes`, () => screen?.cb.onExtend(15)),
         task && quiet("pending", "Pending", `${what} is blocked — stop and set it to Pending`, () => screen?.cb.onPending?.())));
-    screen = { key, el, title, ring, hold };
+    screen = { key, el, title, ring, hold, still, stillText };
   }
   screen.cb = cb;
+  screen.run = run;
+  screen.task = task;
+  const cap = runCap(target);
+  screen.still.hidden = !(mins > cap);
+  if (mins > cap) screen.stillText.textContent = `Still on it? It's been ${dur(Math.round(mins))}. If you stopped earlier, Done and Stop count ${dur(Math.round(cap))}.`;
   pauseState(screen.el, !!run.pausedAt, what);
   screen.paused = !!run.pausedAt;
   screen.title.textContent = task?.title || "That task is gone";

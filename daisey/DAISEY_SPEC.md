@@ -44,7 +44,7 @@ Opening Daisey shows a single card. That card is the whole home screen.
 
 | Button | What happens | What Daisey learns |
 | --- | --- | --- |
-| Start | Card becomes a running timer with Done and Pause. Done means finished, and is press-and-hold (1 s, the button fills) so a mis-tap can't end a task; finishing gets a confetti burst. Pause freezes the timer in place and turns into Resume. Stop ends the session with its time kept and returns to the normal card. Pending stops and asks what it's waiting on. | This task fit this time and energy. Real duration vs estimate. |
+| Start | Card becomes a running timer with Done and Pause. Past 2× the plan (and at least 30 min over), it asks "Still on it?"; without a yes, Done and Stop count only up to that point. Done means finished, and is press-and-hold (1 s, the button fills) so a mis-tap can't end a task; finishing gets a confetti burst. Pause freezes the timer in place and turns into Resume. Stop ends the session with its time kept and returns to the normal card. Pending stops and asks what it's waiting on. | This task fit this time and energy. Real duration vs estimate. |
 | Not now | Optional one-tap reason: too tired · no time · not in the mood · blocked. Card swaps to the next pick. Task stays hidden for this session only. | The reason adjusts that task's fit for similar moments. "Blocked" marks the task as waiting. |
 | Something else | Shows 2–3 alternatives with their why lines. Pick one to start. | The picked task beat the first choice in this context. |
 
@@ -141,7 +141,7 @@ The engine picks like a secretary, in three gates, every time the card is shown:
 
 **Something else** shows the next 2–3 by score and forces variety across areas: no two from the same area if another area scores within 15 points.
 
-**Stale tasks.** A task skipped 5 times without starting stops being suggested. Daisey asks once in chat: "Still want 'X'? Keep, shrink, or drop?"
+**Stale tasks.** A task skipped 5 times without starting stops being suggested, unless it has a real deadline within 7 days. Needs you asks: "Still want this?" Shrink · Keep · Let it go. Setting a task Pending is not a skip.
 
 **Building the why line.** Take the two or three factors that added the most points and turn each into a short phrase, in first person ("I'd do this now: …"):
 
@@ -324,7 +324,7 @@ A fixed split screen: nothing pulls up, nothing scrolls but the panel's pages. O
 - **Every project has its own colour**: its tasks' most common area when no other project has it yet, else the next free colour (`.pc-<key>`: the six area colours, then teal, orange, slate, brick, lime). Taken in name order, so colours don't move as counts change. The grid card, the project screen's chip and its card use it.
 - At the bottom, in the flow (nothing ever sits under it): one pill [ + | Tell Daisey… | mic ], 54px. + opens New task / New event.
 
-**Night** (`now.js nightView`): the panel steps aside; the night screen fills the card area. "Tomorrow first" shows each time once (start–end) on the left. "I'm free now, show me something" and the night divider sit at the bottom of that area, always above the pill.
+**Night** (`now.js nightView`): the panel steps aside; the night screen fills the card area. A real deadline due today and still open is named above "Tomorrow first" ("Due today", with Start), never "Nothing needs you tonight". "Tomorrow first" shows each time once (start–end) on the left. "I'm free now, show me something" and the night divider sit at the bottom of that area, always above the pill.
 
 **Night divider** (`ui.js nightDivider`, used everywhere today meets tomorrow): a thin line with a centred cream pill (`#F1ECDF`, ink-2 text, 12px) "Night · 23:45 – 08:00" and a small closed daisy bud. The hours are the day hours from settings.
 
@@ -349,7 +349,7 @@ A fixed split screen: nothing pulls up, nothing scrolls but the panel's pages. O
 **Needs you** (`needs.js`, mockup 10)
 - Full screen, one decision at a time, progress dots at the top, close X (phone Back closes it too).
 - A big card in a soft tint with an icon, a plain question, the item, and Daisey's suggestion in one line. Big buttons: the primary answer (amber), the secondary answer, "Ask me later" (hides it for the rest of the day).
-- Sources, in order: calendar events that read like tasks ("Is this a task?" → then "Keep the event?"), Pending tasks past their check date ("Still pending?"), the weekly Someday pick ("Bring one back?"), and old dates ("Still doing this?": today · this week · Someday · let it go — this replaced the Old dates sheet).
+- Sources, in order: a task in Not now whose real deadline is 3 days away or passed ("Deadline coming up": Bring it back · Let it go), calendar events that read like tasks ("Is this a task?" → then "Keep the event?"), Pending tasks past their check date ("Still pending?"; the check date is 3 days on, or the day before a real deadline if that's sooner), tasks put off 5 times ("Still want this?"), the weekly Someday pick ("Bring one back?"), and old dates ("Still doing this?": today · this week · Someday · let it go — this replaced the Old dates sheet).
 - After the last one: "That's everything. Nothing else needs you."
 
 Built (round 2, Oct 5; round 3, Oct 6, 2026):

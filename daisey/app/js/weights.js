@@ -30,6 +30,12 @@ export const OUT_AFTER_MINUTES = 30;
 // ---------- Gate 1 — can it be done now? ----------
 export const SPLIT_MIN_WINDOW = 25; // a splittable task too big for the window still fits if the window is this long
 export const STALE_SKIPS = 5; // skipped this many times without a start → stop suggesting, ask in chat
+// …except a real deadline this close: a task you keep dodging still comes up
+// as its date nears, and Needs you asks the keep/shrink/drop question.
+export const STALE_KEEP_DEADLINE_DAYS = 7;
+// A task parked in Not now (someday) with a real deadline this close, or
+// passed, comes back as a Needs you question — Someday can't hide a deadline.
+export const SOMEDAY_DEADLINE_DAYS = 3;
 // Which task places can't happen where you are. Anywhere (as the moment)
 // filters nothing. (Mor approved, 2026-10-04.) The moving ones come from
 // the phone's location (where.js, 2026-10-05): walking takes calls and
@@ -91,6 +97,13 @@ export const LATER_MINUTES = 120;
 // is saved; from here on the minutes were real work and are kept (never
 // counted as a stop either way). Mor, 2026-10-05.
 export const CANCEL_KEEP_MINUTES = 2;
+
+// A forgotten timer (focus.js runCap): past FACTOR × the planned time, and at
+// least EXTRA minutes over it, focus mode asks "Still on it?", and Done or
+// Stop book no more than that cap unless the answer was yes. Without it, a
+// Start left running overnight booked 14 h to the task, the calendar log and
+// every later size guess for similar tasks.
+export const RUN_ASK = { factor: 2, extra: 30 };
 
 // Something else
 export const ALTERNATIVES = 3;

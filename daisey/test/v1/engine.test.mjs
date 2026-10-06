@@ -330,3 +330,11 @@ test("scenario: Friday morning the calls vanish; Sunday they come back as a batc
   assert.equal(sun.pick.task.title, "Call the bank");
   assert.deepEqual(sun.pick.batch.ids.length, 2);
 });
+
+test("gate 1: stale doesn't hide a real deadline within a week (2026-10-06)", () => {
+  const m = moment();
+  assert.equal(E.filterOut(dl("2026-10-12", { skipsSinceStart: W.STALE_SKIPS }), m), null);
+  assert.equal(E.filterOut(dl("2026-10-01", { skipsSinceStart: W.STALE_SKIPS }), m), null); // passed
+  assert.equal(E.filterOut(dl("2026-10-13", { skipsSinceStart: W.STALE_SKIPS }), m), "stale");
+  assert.equal(E.filterOut(tg("2026-10-06", { skipsSinceStart: W.STALE_SKIPS }), m), "stale"); // a target isn't a deadline
+});

@@ -4,10 +4,16 @@
 // many there are ("Needs you: 3 quick decisions").
 //
 // Sources, in this order:
+//   parked   a task in Not now (someday) whose real deadline is close or
+//            passed (2026-10-06: Someday hid deadlines for good — the sweep
+//            only reads open tasks and the weekly pick shows one)
 //   cal      a calendar event that reads like a task (caltask.js) — it was
 //            the "Make this a task?" ask under the card
 //   pending  a Pending task past its check date (model checkOn): "Still
 //            pending?"
+//   stale    a task put off STALE_SKIPS times without a start: keep, shrink
+//            or let go (2026-10-06: was a line under the card that a toast
+//            could crowd out and a reload forgot)
 //   someday  the weekly Someday pick (Sunday morning, or fewer than 3
 //            active) — it was the pick under the card
 //   sweep    an old date (triage.js) — it was the "Old dates" sheet
@@ -20,7 +26,9 @@ import { watchTasks, watchSettings, saveSettings, restoreTask, addTask } from ".
 import { watchCalendar, deleteEvent } from "./calendar.js";
 import { nextOffer, draftFrom } from "./caltask.js";
 import { sweepList, isOverdue, shouldOffer, pickWeekDay, answer, answerSnapshot } from "./triage.js";
-import { localDate, dayAfter, PENDING_CHECK_DAYS, notYet } from "./model.js";
+import { localDate, notYet, pendingCheck, shrunk, shrinkPatch } from "./model.js";
+import { daysUntil, deadlineWithin } from "./engine.js";
+import { STALE_SKIPS, SOMEDAY_DEADLINE_DAYS } from "./weights.js";
 import { h, icon, dur } from "./ui.js";
 import { areaClass } from "./look.js";
 
@@ -50,6 +58,9 @@ export function collectNeeds({ tasks = [], events = [], calOk = false, settings 
   const later = settings.needsLater?.date === localDate(now) ? new Set(settings.needsLater.keys || []) : new Set();
   const out = [];
   const add = (item) => { if (!later.has(item.key)) out.push(item); };
+  const parked = tasks.filter((t) => t.status === "someday" && deadlineWithin(t, now, SOMEDAY_DEADLINE_DAYS))
+    .sort((a, b) => a.due.localeCompare(b.due));
+  parked.forEach((t) => add({ key: `parked:${t.id}`, kind: "parked", id: t.id }));
   if (calOk) {
     const offered = [...(settings.calOffered || [])];
     for (let i = 0; i < 5; i++) {
@@ -63,7 +74,12 @@ export function collectNeeds({ tasks = [], events = [], calOk = false, settings 
   tasks.filter((t) => t.status === "waiting" && t.checkOn && t.checkOn <= today)
     .sort((a, b) => a.checkOn.localeCompare(b.checkOn))
     .forEach((t) => add({ key: `pend:${t.id}`, kind: "pending", id: t.id }));
-  if (somedayDue(tasks, settings, now)) { const t = somedayTop(tasks); if (t) add({ key: "someday", kind: "someday", id: t.id }); }
+  tasks.filter((t) => t.status === "ready" && (t.skipsSinceStart || 0) >= STALE_SKIPS)
+    .forEach((t) => add({ key: `stale:${t.id}`, kind: "stale", id: t.id }));
+  if (somedayDue(tasks, settings, now)) {
+    const t = somedayTop(tasks.filter((x) => !parked.includes(x))); // a parked deadline is already asked about
+    if (t) add({ key: "someday", kind: "someday", id: t.id });
+  }
   // Passed deadlines always; passed targets only once they pile up (the
   // sweep's old threshold) — a target that slipped sits quietly under today.
   const targets = shouldOffer(tasks, now, {});
@@ -120,12 +136,32 @@ export function mountNeeds(root, uid, { onClose } = {}){
     }
     const t = find(item.id);
     if (!t) return null; // deleted since: skip it
+    if (item.kind === "parked") {
+      const days = daysUntil(t.due, Date.now());
+      return { tone: "area-job", ico: "someday", q: "Deadline coming up",
+        sub: `It's in Not now. ${days < 0 ? "The deadline was" : "The deadline is"} ${days === 0 ? "today" : days === 1 ? "tomorrow" : shortDay(t.due)}.`,
+        item: t.title, say: days < 0 ? "Bring it back, or let it go?" : "I'd bring it back before it's too late.",
+        yes: ["Bring it back", () => { restoreTask(uid, t.id, { status: "ready", notBefore: null, touchedAt: Date.now() }).catch(fail); next(); }],
+        no: ["Let it go", () => { restoreTask(uid, t.id, { status: "dropped", droppedAt: Date.now(), touchedAt: Date.now() }).catch(fail); next(); }] };
+    }
+    if (item.kind === "stale") {
+      const small = shrunk(t.size);
+      const keep = ["Keep it", () => { restoreTask(uid, t.id, { skipsSinceStart: 0, touchedAt: Date.now() }).catch(fail); next(); }];
+      const drop = ["Let it go", () => { restoreTask(uid, t.id, { status: "dropped", droppedAt: Date.now(), touchedAt: Date.now() }).catch(fail); next(); }];
+      const canShrink = small < (t.size || 0);
+      return { tone: areaClass(t).trim() || "area-work", ico: "later", q: "Still want this?",
+        sub: `Put off ${t.skipsSinceStart} times without starting.`,
+        item: t.title, say: canShrink ? `I'd make it a ${sizeWords(small)} task: a first piece is easier to start.` : "Keep it, or let it go?",
+        ...(canShrink
+          ? { yes: [`Shrink to ${dur(small)}`, () => { restoreTask(uid, t.id, shrinkPatch(t)).catch(fail); next(); }], no: keep, more: [drop] }
+          : { yes: keep, no: drop }) };
+    }
     if (item.kind === "pending") {
       const since = t.touchedAt ? ` since ${new Date(t.touchedAt).toLocaleDateString(undefined, { day: "numeric", month: "short" })}` : "";
       return { tone: areaClass(t).trim() || "area-social", ico: "pending", q: "Still pending?",
         sub: t.waitingOn ? `Waiting on ${t.waitingOn}${since}.` : `Pending${since}.`,
-        item: t.title, say: `If it's still stuck, I'll ask again ${weekday(dayAfter(PENDING_CHECK_DAYS))}.`,
-        yes: ["Yes, still pending", () => { restoreTask(uid, t.id, { checkOn: dayAfter(PENDING_CHECK_DAYS), touchedAt: Date.now() }).catch(fail); next(); }],
+        item: t.title, say: `If it's still stuck, I'll ask again ${weekday(pendingCheck(t))}.`,
+        yes: ["Yes, still pending", () => { restoreTask(uid, t.id, { checkOn: pendingCheck(t), touchedAt: Date.now() }).catch(fail); next(); }],
         no: ["No, it's ready", () => { restoreTask(uid, t.id, { status: "ready", waitingOn: null, checkOn: null, touchedAt: Date.now() }).catch(fail); next(); }] };
     }
     if (item.kind === "someday") {

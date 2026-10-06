@@ -16,11 +16,11 @@ import { watchTasks, watchRun, watchSkips, saveSkips, startRun, extendRun, endRu
 import { energyNow, placeNow, workBase } from "./context.js";
 import { watchWhere, setRide, setStill, saveSpot, setManual } from "./where.js";
 import { pickWeekDay } from "./triage.js";
-import { focusView, handoffView, elapsedMinutes, targetMinutes, batchFocusView, batchName, sinceMark, paused, resumed } from "./focus.js";
+import { focusView, handoffView, elapsedMinutes, targetMinutes, batchFocusView, batchName, sinceMark, paused, resumed, runCap, bookedMinutes } from "./focus.js";
 import { watchCalendar, logDone } from "./calendar.js";
 import { LATER_MINUTES, DRAIN, CANCEL_KEEP_MINUTES } from "./weights.js";
-import { rank, freeWindow, timeBucket, matchProject } from "./engine.js";
-import { localDate, skipSnapshot, shrunk, shrinkPatch, dayAfter, PENDING_CHECK_DAYS } from "./model.js";
+import { rank, freeWindow, timeBucket, matchProject, dueAt } from "./engine.js";
+import { localDate, skipSnapshot, pendingCheck, notYet } from "./model.js";
 import { dayHours, isNight, nextMorning, dayEndAt, bookings, sameTitle, minText } from "./day.js";
 import { collectNeeds } from "./needs.js";
 import { h, icon, bdi, pieces, sizeText, dur, say, nightDivider, flash } from "./ui.js";
@@ -282,13 +282,14 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
     showing(run.taskId);
     return batchFocusView(run, list, type, {
       onTick: (t) => {
-        const prev = run, minutes = sinceMark(run);
+        const prev = run, minutes = Math.min(sinceMark(run), runCap(t.size));
         const done = [...(run.done || []), t.id];
         const last = list.every((x) => done.includes(x.id));
         if (last) {
-          handoff = { title: batchName(type, list.length), skip: prev.taskId, minutes: elapsedMinutes(prev), ids: [...prev.batch] };
+          const total = Math.min(elapsedMinutes(prev), runCap(list.reduce((s, x) => s + (x.size || 0), 0) + (prev.extra || 0)));
+          handoff = { title: batchName(type, list.length), skip: prev.taskId, minutes: total, ids: [...prev.batch] };
           tickBatch(uid, prev, t, minutes).then(() => endBatch(uid, [], 0)).catch(fail);
-          logFinished(`${batchName(type, list.length)}: ${list.map((x) => x.title).join(", ")}`, elapsedMinutes(prev), prev.taskId,
+          logFinished(`${batchName(type, list.length)}: ${list.map((x) => x.title).join(", ")}`, total, prev.taskId,
             list.reduce((s, x) => s + (x.size || 0), 0));
           run = null;
         } else {
@@ -317,12 +318,13 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
     if (!quiet) render();
     if (prev.batch) { // the minutes since the last tick go to the ones left, as a batch ending does
       const left = (tasks || []).filter((t) => prev.batch.includes(t.id) && !(prev.done || []).includes(t.id));
-      const m = sinceMark(prev);
+      const m = Math.min(sinceMark(prev), runCap(left.reduce((s, t) => s + (t.size || 0), 0)));
       (m >= CANCEL_KEEP_MINUTES && left.length ? endBatch(uid, left, m) : cancelRun(uid)).catch(fail);
       return;
     }
-    const m = elapsedMinutes(prev);
-    cancelRun(uid, tasks?.find((t) => t.id === prev.taskId) || null, m >= CANCEL_KEEP_MINUTES ? m : 0).catch(fail);
+    const task = tasks?.find((t) => t.id === prev.taskId) || null;
+    const m = bookedMinutes(prev, task);
+    cancelRun(uid, task, m >= CANCEL_KEEP_MINUTES ? m : 0).catch(fail);
   };
 
   function renderFocus(){
@@ -333,7 +335,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
       // Done is finished — no "or more left?" (Pause covers more left).
       onDone: () => {
         if (!run) return; // the hold finished after the run moved on
-        const minutes = elapsedMinutes(run);
+        const minutes = bookedMinutes(run, task); // capped: a forgotten timer doesn't book the night
         handoff = { title: task ? task.title : "", skip: run.taskId, minutes, ids: [run.taskId] };
         endRun(uid, task, minutes, { finished: true }).catch(fail);
         if (task) logFinished(task.title, minutes, task.id, targetMinutes(run, task));
@@ -423,7 +425,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
   // Pending asks what it's waiting on (Mor, 2026-10-04); the reason is
   // optional and lands in the task's "Waiting on".
   // The check date (Mor, 2026-10-05): when Needs you asks "still pending?";
-  // PENDING_CHECK_DAYS on unless changed here.
+  // PENDING_CHECK_DAYS on (or the day before a deadline) unless changed here.
   const pending = (task, why = "", checkOn = "") => stepAside(task, { label: "Pending: ", write: () => blockTask(uid, task, why, checkOn) });
 
   function pendingAsk(task){
@@ -431,7 +433,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
     // in state so a redraw doesn't wipe it.
     const input = h("input", { id: "pendWhy", dir: "auto", autocomplete: "off", value: state.pendText || "",
       oninput: (e) => { state.pendText = e.target.value; } });
-    const check = h("input", { id: "pendCheck", type: "date", value: state.pendCheck || dayAfter(PENDING_CHECK_DAYS), min: localDate(),
+    const check = h("input", { id: "pendCheck", type: "date", value: state.pendCheck || pendingCheck(task), min: localDate(),
       oninput: (e) => { state.pendCheck = e.target.value; } });
     const go = () => { const why = input.value; state.pendText = ""; state.pendCheck = ""; pending(task, why, check.value); };
     input.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); go(); } });
@@ -573,11 +575,28 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
     const meta = p && [areaName(p.task) || projectShown(p.task), dur(p.task.size),
       MARK[p.task.stakes] && `${MARK[p.task.stakes]}`].filter(Boolean).join(" · ");
     const who = name ? `, ${name}` : "";
+    // A real deadline that's today and still open (2026-10-06): the night
+    // screen said "Nothing needs you tonight" over it, and by morning it read
+    // "deadline passed". It gets named, with a Start — the one thing night
+    // mode lets through.
+    const today = localDate(now);
+    const dueTonight = early ? [] : (tasks || []).filter((t) => t.status === "ready" && t.dateKind === "deadline"
+      && t.due === today && !notYet(t, now) && !(t.dueTime && now >= dueAt(t)));
+    const lead = dueTonight.length === 1 ? "One deadline is still open today." : `${dueTonight.length} deadlines are still open today.`;
     return [
       h("div", { className: "stars", ariaHidden: "true" }, ...[0, 1, 2, 3].map(() => h("span"))),
       h("div", { className: "night-hero" }, moonDaisy(),
         h("h2", { className: "night-h", textContent: early ? `Early${who}.` : `Late${who}.` }),
-        h("p", { className: "night-p", textContent: early ? "Nothing needs you yet. Here's your day." : "Nothing needs you tonight. Here's tomorrow." })),
+        h("p", { className: "night-p", textContent: early ? "Nothing needs you yet. Here's your day."
+          : dueTonight.length ? lead : "Nothing needs you tonight. Here's tomorrow." })),
+      dueTonight.length > 0 && h("section", { className: "now-card main night", ariaLabel: "Due today" },
+        h("div", { className: "night-label", textContent: "Due today" }),
+        ...dueTonight.map((t) => h("div", { className: "night-row" },
+          h("span", { className: "night-time", textContent: t.dueTime || "Today" }),
+          h("div", { className: "night-task" + areaClass(t) },
+            h("div", { className: "night-task-title", dir: "auto", textContent: t.title }),
+            h("div", { className: "night-task-meta", textContent: dur(Math.max(5, (t.size || 0) - (t.spentMinutes || 0))) + " left" })))),
+        startButton("Start", `Start: ${dueTonight[0].title}`, () => begin(dueTonight[0]))),
       h("section", { className: "now-card main night", ariaLabel: early ? "First today" : "Tomorrow first" },
         h("div", { className: "night-label", textContent: early ? "First today" : "Tomorrow first" }),
         // The time once, start–end, on the left (Mor, 2026-10-06).
@@ -847,7 +866,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
     showing(card?.task.id ?? null);
     // One ask under the card at a time, the most asked-for first.
     // (The calendar offer and the weekly Someday pick moved to Needs you.)
-    const tip = (toast && toastView()) || (sd.open && somedayAsk()) || learnAsk(r);
+    const tip = (toast && toastView()) || (sd.open && somedayAsk());
     // In a meeting, the meeting IS what's happening now, so the card says
     // which one and how much of it is left (Mor, 2026-10-04) instead of
     // "nothing to pick until it ends", which named nothing and read as if
@@ -896,24 +915,9 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
     if (slideIn) { slideIn = false; if (motionOK()) root.querySelector(".now-card.main")?.classList.add("in"); }
   }
 
-  // Learning asks one thing at a time, as a single line under the card, never
-  // a form (DAISEY_SPEC "Learning"): make it smaller after two stops, and
-  // keep, shrink or drop after five skips. Each answer also clears the reason
-  // for asking, so it doesn't come back.
-  const asked = new Set();
-  function learnAsk(r){
-    // (The "Stopped twice — make it smaller?" ask is gone, Mor 2026-10-05.)
-    const st = r.stale.find((t) => !asked.has(t.id));
-    if (!st) return null;
-    const answer = (patch) => { asked.add(st.id); restoreTask(uid, st.id, { ...patch, touchedAt: Date.now() }).catch(fail); render(); };
-    return h("div", { className: "learn-ask", role: "group", ariaLabel: "Still want this task?" },
-      h("p", { className: "muted", textContent: "Skipped five times. Still want it?" }),
-      h("div", { className: "learn-title" }, bdi(st.title)),
-      h("div", { className: "learn-row" },
-        h("button", { className: "chip", type: "button", textContent: "Keep", onclick: () => answer({ skipsSinceStart: 0 }) }),
-        h("button", { className: "chip", type: "button", textContent: `Shrink to ${dur(shrunk(st.size))}`, onclick: () => answer(shrinkPatch(st)) }),
-        h("button", { className: "chip quiet", type: "button", textContent: "Drop", onclick: () => answer({ status: "dropped" }) })));
-  }
+  // (The "Skipped five times. Still want it?" line that lived here moved to
+  // Needs you, 2026-10-06: under the card a toast could crowd it out and a
+  // reload forgot it had been answered.)
 
   // Focus mode hands back the same node every second (focus.js); an
   // unchanged screen is left be rather than taken out and put back.

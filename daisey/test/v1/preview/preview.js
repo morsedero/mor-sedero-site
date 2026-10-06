@@ -62,6 +62,14 @@ const SCENARIOS = {
     { title: "Mix review", project: "חתונה", size: 90, over: ago(3) },
   ] },
   empty: { tasks: [] },
+  // 2026-10-06 fixes: a deadline parked in Not now, a task put off five
+  // times (both Needs you), a deadline due today (night mode names it).
+  fixes: { tasks: [
+    { title: "Pay arnona", project: "Home", size: 15, due: day(2), dateKind: "deadline", over: { status: "someday" } },
+    { title: "Read the grant guidelines", project: "Admin", size: 90, over: { skipsSinceStart: 5 } },
+    { title: "Submit the form", project: "Admin", size: 30, due: day(0), dateKind: "deadline" },
+    { title: "Fix the boss loop", project: "Monster Punk", size: 60 },
+  ] },
   // Layout round 2: steps and links on the card's task, a Pending task past
   // its check date and a Someday one (Needs you), a done one (progress).
   round2: { tasks: [

@@ -122,7 +122,7 @@ export function filterOut(task, m){
   if (task.status === "done" || task.status === "dropped") return "done";
   if (task.status === "waiting") return "waiting";
   if (task.status === "someday") return "someday";
-  if ((task.skipsSinceStart || 0) >= W.STALE_SKIPS) return "stale";
+  if ((task.skipsSinceStart || 0) >= W.STALE_SKIPS && !deadlineWithin(task, m.now, W.STALE_KEEP_DEADLINE_DAYS)) return "stale";
   if (notYet(task, m.now)) return "notyet";
   if (m.booked[task.id] > m.now) return "booked";
   if (m.sessionSkips.has(task.id)) return "skipped";
@@ -144,6 +144,10 @@ export function daysUntil(due, now){
   const [y, mo, d] = dateParts(due), [ty, tm, td] = dateParts(localDate(now));
   return Math.round((Date.UTC(y, mo - 1, d) - Date.UTC(ty, tm - 1, td)) / DAY);
 }
+
+// A real deadline this many days away or fewer (passed counts).
+export const deadlineWithin = (task, now, days) =>
+  task.dateKind === "deadline" && !!task.due && daysUntil(task.due, now) <= days;
 
 export function dueAt(task){
   const [y, mo, d] = dateParts(task.due);

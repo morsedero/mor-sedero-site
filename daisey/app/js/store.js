@@ -59,12 +59,13 @@ export function skipNow(uid, task){
   return fb.updateDoc(taskDoc(uid, task.id), skipTask(task));
 }
 
-// Pending: the card's third action. Counts as a skip and sets it Waiting.
+// Pending: the card's third action. Sets it Waiting. Not a skip: waiting on
+// someone isn't refusing the task, and five of them made it "stale".
 // `waitingOn`: the reason the user typed ("Yuval sends the stems"), if any.
 // `checkOn`: when to ask "still pending?" (default: PENDING_CHECK_DAYS on).
 export function blockTask(uid, task, waitingOn = "", checkOn = ""){
   const why = String(waitingOn || "").trim();
-  return fb.updateDoc(taskDoc(uid, task.id), { ...skipTask(task), ...skipReason(task, "blocked"), ...(why ? { waitingOn: why } : {}),
+  return fb.updateDoc(taskDoc(uid, task.id), { ...skipReason(task, "blocked"), ...(why ? { waitingOn: why } : {}),
     ...(toDate(checkOn) ? { checkOn } : {}) });
 }
 

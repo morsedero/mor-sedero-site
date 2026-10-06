@@ -44,3 +44,18 @@ test("pause freezes the clock; resume carries on from where it stopped", () => {
   assert.equal(F.elapsedMinutes(r, 55 * 60000), 15);
   assert.equal(F.sinceMark(r, 55 * 60000), 15);
 });
+
+test("runCap: a forgotten timer books at most 2× the plan, ≥30 min over it (2026-10-06)", () => {
+  const start = new Date(2026, 9, 5, 22).getTime();
+  const run = { taskId: "a", startedAt: start, extra: 0 };
+  const task = { size: 30 };
+  assert.equal(F.runCap(30), 60);
+  assert.equal(F.runCap(5), 35);
+  assert.equal(F.runCap(90), 180);
+  assert.equal(F.bookedMinutes(run, task, start + 45 * 60000), 45); // under the cap: real time
+  assert.equal(F.bookedMinutes(run, task, start + 14 * 3600000), 60); // overnight: capped
+  // "Still on it" at 70 min moves the plan to 70, so the cap to 140.
+  const more = { ...run, extra: F.stillOnMinutes(run, task, start + 70 * 60000) };
+  assert.equal(F.targetMinutes(more, task), 70);
+  assert.equal(F.bookedMinutes(more, task, start + 100 * 60000), 100);
+});
