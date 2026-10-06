@@ -591,9 +591,12 @@ dialog.now:focus { outline: none; }
 }
 .focus-title { font-size: 30px; font-weight: 600; line-height: 1.2; letter-spacing: -0.3px; overflow-wrap: anywhere; }
 .focus-hold { margin: 8px 0 0; font-size: 15px; color: var(--sub); }
-.focus-still { margin: 12px 0 0; padding: 12px 14px; border-radius: 16px; background: var(--card); border: 1px solid var(--line); display: flex; align-items: center; gap: 12px; }
+.focus-still { margin: 12px 0 0; padding: 12px 14px; border-radius: 16px; background: var(--card); border: 1px solid var(--line); display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+.focus-still-btns { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.focus-took-row { display: inline-flex; gap: 8px; align-items: center; }
+.focus-took-other { width: 72px; min-height: 44px; padding: 0 10px; border-radius: 12px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); font: inherit; }
 .focus-still[hidden] { display: none; }
-.focus-still-text { margin: 0; flex: 1; font-size: 14px; color: var(--ink); }
+.focus-still-text { margin: 0; flex: 1 1 200px; font-size: 14px; color: var(--ink); }
 .ring { position: relative; inline-size: 220px; block-size: 220px; margin-block-start: 26px; }
 .ring-svg { position: absolute; inset: 0; inline-size: 100%; block-size: 100%; }
 .ring-track { fill: var(--card); stroke: var(--aline); stroke-width: 8; }

@@ -109,8 +109,9 @@ export const renameEvent = (ev, title) => write({ action: "rename", calendarId: 
 // A finished task, into the "Daisey log" calendar (made on first use): the
 // time actually spent, ending now, marked free so it never blocks a pick.
 // A lookback in Google Calendar; the write function has the why.
-export function logDone({ title, minutes, taskId, note }){
-  const end = Date.now(), start = end - minutes * 60000;
+// `end`: when it really ended, if not now ("Finished earlier").
+export function logDone({ title, minutes, taskId, note, end = Date.now() }){
+  const start = end - minutes * 60000;
   return write({ action: "create", calendarId: "daisey-log", title: `✓ ${title}`, taskId, note,
     timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
     start: new Date(start).toISOString(), end: new Date(end).toISOString() });

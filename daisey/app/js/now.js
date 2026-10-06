@@ -269,10 +269,10 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
   // A finished task goes into Google Calendar's "Daisey log" as a lookback,
   // unless turned off in the account menu. Under a minute isn't worth a
   // block. A failure is only logged: the task is done either way.
-  const logFinished = (title, minutes, taskId, planned) => {
+  const logFinished = (title, minutes, taskId, planned, end) => {
     if (settings.logDone === false || minutes < 1) return;
     const note = `Done with Daisey: ${dur(Math.round(minutes))}${planned ? ` (planned ${dur(planned)})` : ""}.`;
-    logDone({ title, minutes, taskId, note }).catch((e) => console.error("[daisey] log to calendar", e));
+    logDone({ title, minutes, taskId, note, ...(end ? { end } : {}) }).catch((e) => console.error("[daisey] log to calendar", e));
   };
 
   function renderBatch(){
@@ -330,17 +330,20 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
   function renderFocus(){
     if (run.batch) return renderBatch();
     const task = tasks?.find((t) => t.id === run.taskId) || null;
+    const finish = (minutes, end) => {
+      if (!run) return; // the hold finished after the run moved on
+      handoff = { title: task ? task.title : "", skip: run.taskId, minutes, ids: [run.taskId] };
+      endRun(uid, task, minutes, { finished: true }).catch(fail);
+      if (task) logFinished(task.title, minutes, task.id, targetMinutes(run, task), end);
+      run = null; render();
+    };
     showing(run.taskId);
     return focusView(run, task, {
       // Done is finished — no "or more left?" (Pause covers more left).
-      onDone: () => {
-        if (!run) return; // the hold finished after the run moved on
-        const minutes = bookedMinutes(run, task); // capped: a forgotten timer doesn't book the night
-        handoff = { title: task ? task.title : "", skip: run.taskId, minutes, ids: [run.taskId] };
-        endRun(uid, task, minutes, { finished: true }).catch(fail);
-        if (task) logFinished(task.title, minutes, task.id, targetMinutes(run, task));
-        run = null; render();
-      },
+      onDone: () => finish(bookedMinutes(run, task)), // capped: a forgotten timer doesn't book the night
+      // Forgot to hit Done: the minutes the user says it took, logged as
+      // ending that long after the start rather than now.
+      onFinishedAfter: (m) => finish(Math.min(m, elapsedMinutes(run)), run.startedAt + m * 60000),
       onExtend: (m) => { const prev = run; run = { ...run, extra: (run.extra || 0) + m }; render(); extendRun(uid, prev, m).catch(fail); },
       onPause: pause,
       onResume: resume,

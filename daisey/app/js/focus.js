@@ -55,6 +55,13 @@ export const runCap = (target) => Math.max((target || 0) * RUN_ASK.factor, (targ
 export const bookedMinutes = (run, task, now = Date.now()) => Math.min(elapsedMinutes(run, now), runCap(targetMinutes(run, task)));
 // What "Still on it" adds to the plan: enough that the plan is now.
 export const stillOnMinutes = (run, task, now = Date.now()) => Math.max(0, Math.ceil(elapsedMinutes(run, now) - targetMinutes(run, task)));
+// "Finished earlier": the answers to "how long did it take?" — half the plan
+// to twice it, in 5-minute steps, none longer than the clock has run.
+export function tookOptions(target, elapsed){
+  const r5 = (m) => Math.max(5, Math.round(m / 5) * 5);
+  const out = [...new Set([0.5, 1, 1.5, 2].map((f) => r5((target || 0) * f)))].filter((m) => m <= elapsed);
+  return out.length ? out : [r5(Math.min(target || 5, elapsed))];
+}
 
 // mm:ss, and h:mm:ss once it passes an hour — never "72:00".
 const clock = (min) => {
@@ -190,9 +197,27 @@ export function focusView(run, task, cb){
       icon(name), h("span", { textContent: text }));
     const hold = holdButton(key, `Hold to finish ${what}`, !task, () => screen?.cb.onDone());
     const stillText = h("p", { className: "focus-still-text" });
-    const still = h("div", { className: "focus-still", role: "status", hidden: true }, stillText,
+    // Forgot to hit Done: "Finished earlier" asks how long it took, and
+    // that's what gets booked (and logged, ending when it really ended).
+    const stillBtns = h("div", { className: "focus-still-btns" },
       h("button", { className: "btn line", type: "button", textContent: "Still on it",
-        onclick: () => screen && screen.cb.onExtend(stillOnMinutes(screen.run, screen.task)) }));
+        onclick: () => screen && screen.cb.onExtend(stillOnMinutes(screen.run, screen.task)) }),
+      task && h("button", { className: "btn line", type: "button", textContent: "Finished earlier", onclick: () => askTook() }));
+    const still = h("div", { className: "focus-still", role: "status", hidden: true }, stillText, stillBtns);
+    const askTook = () => {
+      const s = screen;
+      if (!s) return;
+      s.asking = true;
+      const go = (m) => { if (m > 0) s.cb.onFinishedAfter?.(m); };
+      const other = h("input", { type: "number", min: 1, inputMode: "numeric", className: "focus-took-other", ariaLabel: "Minutes it took" });
+      other.addEventListener("keydown", (e) => { if (e.key === "Enter") go(Math.round(Number(other.value))); });
+      s.stillText.textContent = "How long did it take?";
+      stillBtns.replaceChildren(
+        ...tookOptions(targetMinutes(s.run, s.task), elapsedMinutes(s.run)).map((m) =>
+          h("button", { className: "chip", type: "button", textContent: dur(m), onclick: () => go(m) })),
+        h("span", { className: "focus-took-row" }, other, h("span", { className: "muted", textContent: "min" }),
+          h("button", { className: "btn line", type: "button", textContent: "Done", onclick: () => go(Math.round(Number(other.value))) })));
+    };
     const el = h("div", { className: "focus" + areaClass(task) },
       h("div", { className: "focus-top" }, h("span", { className: "hero-area" }, h("span", { className: "dot", ariaHidden: "true" }),
         [areaName(task), projectShown(task)].filter(Boolean).join(" · ") || "Focus")),
@@ -212,8 +237,8 @@ export function focusView(run, task, cb){
   screen.run = run;
   screen.task = task;
   const cap = runCap(target);
-  screen.still.hidden = !(mins > cap);
-  if (mins > cap) screen.stillText.textContent = `Still on it? It's been ${dur(Math.round(mins))}. If you stopped earlier, Done and Stop count ${dur(Math.round(cap))}.`;
+  screen.still.hidden = !(mins > cap || screen.asking);
+  if (mins > cap && !screen.asking) screen.stillText.textContent = `Still on it? It's been ${dur(Math.round(mins))}. If you stopped earlier, Done and Stop count ${dur(Math.round(cap))}.`;
   pauseState(screen.el, !!run.pausedAt, what);
   screen.paused = !!run.pausedAt;
   screen.title.textContent = task?.title || "That task is gone";

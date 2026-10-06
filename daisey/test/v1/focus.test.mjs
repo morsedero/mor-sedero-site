@@ -59,3 +59,10 @@ test("runCap: a forgotten timer books at most 2× the plan, ≥30 min over it (2
   assert.equal(F.targetMinutes(more, task), 70);
   assert.equal(F.bookedMinutes(more, task, start + 100 * 60000), 100);
 });
+
+test("tookOptions: half the plan to twice it, 5-min steps, never past the clock (2026-10-06)", () => {
+  assert.deepEqual(F.tookOptions(60, 300), [30, 60, 90, 120]);
+  assert.deepEqual(F.tookOptions(5, 300), [5, 10]);
+  assert.deepEqual(F.tookOptions(15, 40), [10, 15, 25, 30]);
+  assert.deepEqual(F.tookOptions(60, 70), [30, 60]);
+});
