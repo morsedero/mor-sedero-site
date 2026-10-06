@@ -6,11 +6,112 @@ import * as fb from "./firebase.js";
 import { worthChecking, checkOnline } from "./research.js";
 import { createTask, editTask, completeTask, startedTask, workedTask, keptTime, skipTask, skipReason, migrateTask, toDate } from "./model.js";
 
+const GUEST_UID = "guest-local";
+const GUEST_KEY = "daisey.guest.data.v1";
+const guestTaskListeners = new Set();
+const guestStateListeners = new Map();
+
+function isGuest(uid){ return uid === GUEST_UID; }
+function readGuestData(){
+  let raw;
+  try { raw = localStorage.getItem(GUEST_KEY); }
+  catch (error) { throw new Error(`Guest storage is unavailable: ${error.message || error}`); }
+  if(!raw) return { tasks: [], state: {} };
+  try {
+    const data = JSON.parse(raw);
+    if(!data || !Array.isArray(data.tasks) || !data.state || typeof data.state !== "object") throw new Error("invalid shape");
+    return data;
+  } catch (error) {
+    throw new Error(`Guest data could not be read: ${error.message || error}`);
+  }
+}
+function writeGuestData(data){
+  try { localStorage.setItem(GUEST_KEY, JSON.stringify(data)); }
+  catch (error) { throw new Error(`Guest data could not be saved: ${error.message || error}`); }
+  for(const cb of guestTaskListeners){
+    try { cb(data.tasks.map((task) => ({ ...task })), { fromCache: true, pending: false }); }
+    catch(error){ console.error("[daisey] guest task listener", error); }
+  }
+  for(const [key, listeners] of guestStateListeners){
+    for(const listener of listeners){
+      try { listener(data.state[key] ?? null); }
+      catch(error){ console.error("[daisey] guest state listener", error); }
+    }
+  }
+}
+function watchGuestTasks(cb){
+  guestTaskListeners.add(cb);
+  cb(readGuestData().tasks.map((task) => ({ ...task })), { fromCache: true, pending: false });
+  return () => guestTaskListeners.delete(cb);
+}
+function updateGuestTask(uid, id, patch){
+  if(!isGuest(uid)) return fb.updateDoc(taskDoc(uid, id), patch);
+  try {
+    const data = readGuestData();
+    const index = data.tasks.findIndex((task) => task.id === id);
+    if(index < 0) throw new Error("Guest task no longer exists.");
+    data.tasks[index] = { ...data.tasks[index], ...patch };
+    writeGuestData(data);
+    return Promise.resolve();
+  }
+  catch(error){ return Promise.reject(error); }
+}
+function removeGuestTask(uid, id){
+  if(!isGuest(uid)) return fb.deleteDoc(taskDoc(uid, id));
+  try {
+    const data = readGuestData();
+    data.tasks = data.tasks.filter((task) => task.id !== id);
+    writeGuestData(data);
+    return Promise.resolve();
+  }
+  catch(error){ return Promise.reject(error); }
+}
+function watchGuestState(uid, key, cb, onError){
+  if(!isGuest(uid)) return null;
+  try {
+    const listeners = guestStateListeners.get(key) || new Set();
+    listeners.add(cb);
+    guestStateListeners.set(key, listeners);
+    cb(readGuestData().state[key] ?? null);
+    return () => {
+      listeners.delete(cb);
+      if(!listeners.size) guestStateListeners.delete(key);
+    };
+  } catch(error){
+    onError?.(error);
+    return () => {};
+  }
+}
+function saveGuestState(uid, key, value, merge = false){
+  if(!isGuest(uid)) return fb.setDoc(fb.doc(fb.db, "users", uid, "state", key), value, merge ? { merge: true } : undefined);
+  try {
+    const data = readGuestData();
+    data.state[key] = merge ? { ...(data.state[key] || {}), ...value } : value;
+    writeGuestData(data);
+    return Promise.resolve();
+  }
+  catch(error){ return Promise.reject(error); }
+}
+function removeGuestState(uid, key){
+  if(!isGuest(uid)) return fb.deleteDoc(fb.doc(fb.db, "users", uid, "state", key));
+  try {
+    const data = readGuestData();
+    delete data.state[key];
+    writeGuestData(data);
+    return Promise.resolve();
+  }
+  catch(error){ return Promise.reject(error); }
+}
+
 const tasksCol = (uid) => fb.collection(fb.db, "users", uid, "tasks");
 const taskDoc = (uid, id) => fb.doc(fb.db, "users", uid, "tasks", id);
 
 // cb(tasks, { fromCache, pending }) on every change, local or remote.
 export function watchTasks(uid, cb, onError){
+  if(isGuest(uid)){
+    try { return watchGuestTasks(cb); }
+    catch(error){ onError?.(error); return () => {}; }
+  }
   return fb.onSnapshot(tasksCol(uid), { includeMetadataChanges: true }, (snap) => {
     cb(snap.docs.map((d) => ({ id: d.id, ...d.data() })),
       { fromCache: snap.metadata.fromCache, pending: snap.metadata.hasPendingWrites });
@@ -21,6 +122,16 @@ export function watchTasks(uid, cb, onError){
 // listener already shows the change, so callers needn't wait on them.
 export function addTask(uid, input, tasks = []){
   const task = createTask(input, { history: tasks });
+  if(isGuest(uid)){
+    try {
+      task.id = globalThis.crypto?.randomUUID ? globalThis.crypto.randomUUID() : `guest-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      const data = readGuestData();
+      data.tasks.push(task);
+      writeGuestData(data);
+      return Promise.resolve({ id: task.id });
+    }
+    catch(error){ return Promise.reject(error); }
+  }
   const added = fb.addDoc(tasksCol(uid), task);
   // A guessed "Office hours": check the web once, quietly (research.js).
   if (worthChecking(task)) added.then((ref) => checkOnline(task).then((patch) => patch && fb.updateDoc(ref, patch)))
@@ -30,7 +141,7 @@ export function addTask(uid, input, tasks = []){
 
 export function updateTask(uid, task, changes, tasks = []){
   const patch = editTask(task, changes, { history: tasks });
-  return Object.keys(patch).length ? fb.updateDoc(taskDoc(uid, task.id), patch) : Promise.resolve();
+  return Object.keys(patch).length ? updateGuestTask(uid, task.id, patch) : Promise.resolve();
 }
 
 // Brings every task up to the current fields (model.migrateTask), once per
@@ -39,6 +150,7 @@ export function updateTask(uid, task, changes, tasks = []){
 // Idempotent — a current task yields an empty patch — so two devices
 // migrating at once is harmless.
 export function migrateTasks(uid){
+  if(isGuest(uid)) return () => {};
   let done = false, unsub = null;
   unsub = watchTasks(uid, (tasks, { fromCache }) => {
     if (done || fromCache) return;
@@ -53,16 +165,16 @@ export function migrateTasks(uid){
 }
 
 export function finishTask(uid, task){
-  return fb.updateDoc(taskDoc(uid, task.id), completeTask(task));
+  return updateGuestTask(uid, task.id, completeTask(task));
 }
 
 export function removeTask(uid, id){
-  return fb.deleteDoc(taskDoc(uid, id));
+  return removeGuestTask(uid, id);
 }
 
 // Later, Pending, and Undo putting either back (model.skipSnapshot).
 export function skipNow(uid, task){
-  return fb.updateDoc(taskDoc(uid, task.id), skipTask(task));
+  return updateGuestTask(uid, task.id, skipTask(task));
 }
 
 // Pending: the card's third action. Sets it Waiting. Not a skip: waiting on
@@ -71,12 +183,12 @@ export function skipNow(uid, task){
 // `checkOn`: when to ask "still pending?" (default: PENDING_CHECK_DAYS on).
 export function blockTask(uid, task, waitingOn = "", checkOn = ""){
   const why = String(waitingOn || "").trim();
-  return fb.updateDoc(taskDoc(uid, task.id), { ...skipReason(task, "blocked"), ...(why ? { waitingOn: why } : {}),
+  return updateGuestTask(uid, task.id, { ...skipReason(task, "blocked"), ...(why ? { waitingOn: why } : {}),
     ...(toDate(checkOn) ? { checkOn } : {}) });
 }
 
 export function restoreTask(uid, id, fields){
-  return fb.updateDoc(taskDoc(uid, id), fields);
+  return updateGuestTask(uid, id, fields);
 }
 
 // Today's skips, users/{uid}/state/skips: { date, items: { id: { count, until } } }.
@@ -85,11 +197,13 @@ export function restoreTask(uid, id, fields){
 const skipsDoc = (uid) => fb.doc(fb.db, "users", uid, "state", "skips");
 
 export function watchSkips(uid, cb, onError){
+  const guestUnsub = watchGuestState(uid, "skips", cb, onError);
+  if(guestUnsub) return guestUnsub;
   return fb.onSnapshot(skipsDoc(uid), (snap) => cb(snap.exists() ? snap.data() : null), onError);
 }
 
 export function saveSkips(uid, state){
-  return fb.setDoc(skipsDoc(uid), state);
+  return saveGuestState(uid, "skips", state);
 }
 
 // The running task, users/{uid}/state/now: { taskId, startedAt, extra }.
@@ -98,14 +212,16 @@ export function saveSkips(uid, state){
 const runDoc = (uid) => fb.doc(fb.db, "users", uid, "state", "now");
 
 export function watchRun(uid, cb, onError){
+  const guestUnsub = watchGuestState(uid, "now", cb, onError);
+  if(guestUnsub) return guestUnsub;
   return fb.onSnapshot(runDoc(uid), (snap) => cb(snap.exists() ? snap.data() : null), onError);
 }
 
 // mode: "inline" (the dashboard stays) or "focus" (Deep Focus, the whole screen).
 export function startRun(uid, task, mode = "inline"){
   return Promise.all([
-    fb.setDoc(runDoc(uid), { taskId: task.id, startedAt: Date.now(), extra: 0, mode }),
-    fb.updateDoc(taskDoc(uid, task.id), startedTask(task)),
+    saveGuestState(uid, "now", { taskId: task.id, startedAt: Date.now(), extra: 0, mode }),
+    updateGuestTask(uid, task.id, startedTask(task)),
   ]);
 }
 
@@ -116,16 +232,16 @@ export function startRun(uid, task, mode = "inline"){
 export function startBatch(uid, tasks){
   const now = Date.now(), ids = tasks.map((t) => t.id);
   return Promise.all([
-    fb.setDoc(runDoc(uid), { taskId: ids[0], batch: ids, done: [], mark: now, startedAt: now, extra: 0 }),
-    ...tasks.map((t) => fb.updateDoc(taskDoc(uid, t.id), startedTask(t))),
+    saveGuestState(uid, "now", { taskId: ids[0], batch: ids, done: [], mark: now, startedAt: now, extra: 0 }),
+    ...tasks.map((t) => updateGuestTask(uid, t.id, startedTask(t))),
   ]);
 }
 
 export function tickBatch(uid, run, task, minutes){
   const now = Date.now();
   return Promise.all([
-    fb.setDoc(runDoc(uid), { ...run, done: [...(run.done || []), task.id], mark: now }),
-    fb.updateDoc(taskDoc(uid, task.id), workedTask(task, minutes, { finished: true })),
+    saveGuestState(uid, "now", { ...run, done: [...(run.done || []), task.id], mark: now }),
+    updateGuestTask(uid, task.id, workedTask(task, minutes, { finished: true })),
   ]);
 }
 
@@ -135,28 +251,28 @@ export function tickBatch(uid, run, task, minutes){
 export function endBatch(uid, left, minutes){
   const each = left.length ? Math.round(minutes / left.length) : 0;
   return Promise.all([
-    fb.deleteDoc(runDoc(uid)),
-    ...left.map((t) => fb.updateDoc(taskDoc(uid, t.id), { spentMinutes: (t.spentMinutes || 0) + each, touchedAt: Date.now(), workedAt: Date.now() })),
+    removeGuestState(uid, "now"),
+    ...left.map((t) => updateGuestTask(uid, t.id, { spentMinutes: (t.spentMinutes || 0) + each, touchedAt: Date.now(), workedAt: Date.now() })),
   ]);
 }
 
 // Pause and Resume write the whole doc (focus.js paused/resumed). Cancel
 // drops it; `minutes` > 0 are kept on the task without counting a stop.
-export const saveRun = (uid, run) => fb.setDoc(runDoc(uid), run);
+export const saveRun = (uid, run) => saveGuestState(uid, "now", run);
 export const cancelRun = (uid, task = null, minutes = 0) => Promise.all([
-  fb.deleteDoc(runDoc(uid)),
-  task && minutes > 0 ? fb.updateDoc(taskDoc(uid, task.id), keptTime(task, minutes)) : null,
+  removeGuestState(uid, "now"),
+  task && minutes > 0 ? updateGuestTask(uid, task.id, keptTime(task, minutes)) : null,
 ]);
 
 export function extendRun(uid, run, minutes){
-  return fb.setDoc(runDoc(uid), { ...run, extra: (run.extra || 0) + minutes });
+  return saveGuestState(uid, "now", { ...run, extra: (run.extra || 0) + minutes });
 }
 
 // Ends the run and books the time against the task.
 export function endRun(uid, task, minutes, { finished = false } = {}){
   return Promise.all([
-    fb.deleteDoc(runDoc(uid)),
-    task ? fb.updateDoc(taskDoc(uid, task.id), workedTask(task, minutes, { finished })) : null,
+    removeGuestState(uid, "now"),
+    task ? updateGuestTask(uid, task.id, workedTask(task, minutes, { finished })) : null,
   ]);
 }
 
@@ -166,11 +282,15 @@ export function endRun(uid, task, minutes, { finished = false } = {}){
 const projectsDoc = (uid) => fb.doc(fb.db, "users", uid, "state", "projects");
 
 export function watchProjectNames(uid, cb, onError){
+  if(isGuest(uid)){
+    try { return watchGuestState(uid, "projects", (value) => cb(value?.names || []), onError); }
+    catch(error){ onError?.(error); return () => {}; }
+  }
   return fb.onSnapshot(projectsDoc(uid), (snap) => cb((snap.exists() && snap.data().names) || []), onError);
 }
 
 export function saveProjectNames(uid, names){
-  return fb.setDoc(projectsDoc(uid), { names });
+  return saveGuestState(uid, "projects", { names });
 }
 
 // Settings, users/{uid}/state/settings: { deadlinesAsked, ... }. Merged on
@@ -178,11 +298,13 @@ export function saveProjectNames(uid, names){
 const settingsDoc = (uid) => fb.doc(fb.db, "users", uid, "state", "settings");
 
 export function watchSettings(uid, cb, onError){
+  const guestUnsub = watchGuestState(uid, "settings", (value) => cb({ ...(value || {}), logDone: false }, { fromCache: true }), onError);
+  if(guestUnsub) return guestUnsub;
   return fb.onSnapshot(settingsDoc(uid), (snap) => cb(snap.exists() ? snap.data() : {}, { fromCache: snap.metadata.fromCache }), onError);
 }
 
 export function saveSettings(uid, fields){
-  return fb.setDoc(settingsDoc(uid), fields, { merge: true });
+  return saveGuestState(uid, "settings", fields, true);
 }
 
 // The card's two chips, users/{uid}/state/moment:
@@ -191,21 +313,34 @@ export function saveSettings(uid, fields){
 const momentDoc = (uid) => fb.doc(fb.db, "users", uid, "state", "moment");
 
 export function watchMoment(uid, cb, onError){
+  const guestUnsub = watchGuestState(uid, "moment", (value) => cb(value || {}), onError);
+  if(guestUnsub) return guestUnsub;
   return fb.onSnapshot(momentDoc(uid), (snap) => cb(snap.exists() ? snap.data() : {}), onError);
 }
 
 export function saveMoment(uid, fields){
-  return fb.setDoc(momentDoc(uid), fields, { merge: true });
+  return saveGuestState(uid, "moment", fields, true);
 }
 
 // Learned fit, users/{uid}/state/learn: { "<type>|<time of day>": { starts, skips } }.
 const learnDoc = (uid) => fb.doc(fb.db, "users", uid, "state", "learn");
 
 export function watchLearn(uid, cb, onError){
+  const guestUnsub = watchGuestState(uid, "learn", (value) => cb(value || {}), onError);
+  if(guestUnsub) return guestUnsub;
   return fb.onSnapshot(learnDoc(uid), (snap) => cb(snap.exists() ? snap.data() : {}), onError);
 }
 
 // field: "starts" | "skips"
 export function bumpLearn(uid, type, part, field){
+  if(isGuest(uid)){
+    const data = readGuestData();
+    const key = `${type || "deep"}|${part}`;
+    data.state.learn ||= {};
+    data.state.learn[key] ||= { starts: 0, skips: 0 };
+    data.state.learn[key][field] = (data.state.learn[key][field] || 0) + 1;
+    try { writeGuestData(data); return Promise.resolve(); }
+    catch(error){ return Promise.reject(error); }
+  }
   return fb.setDoc(learnDoc(uid), { [`${type || "deep"}|${part}`]: { [field]: fb.increment(1) } }, { merge: true });
 }

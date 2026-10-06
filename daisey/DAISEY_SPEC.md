@@ -324,6 +324,7 @@ v1 is done when the Now card picks a task you actually start, most days, for one
 **In v1 (build in this order):**
 
 - [x] Google sign-in + Firebase storage, synced across phone and computer
+- [x] Guest mode: full planner with tasks and settings stored only in this browser; no calendar, chat, notifications, or cross-device sync
 - [x] Task data model (fields above, including type, where, open hours, stakes, date kind)
 - [x] Now card UI with Start · Later · Switch · Pending, Hebrew and RTL ready
 - [x] Running timer and Done flow
@@ -356,7 +357,7 @@ v1 is done when the Now card picks a task you actually start, most days, for one
 
 **Decisions:**
 
-- **Storage:** synced via Firebase, Google sign-in. The same login grants Calendar read access.
+- **Storage:** signed-in data syncs via Firebase and Google sign-in; guest data stays in this browser's localStorage and is not transferred or synced. Calendar access requires Google sign-in.
 - **Chat model:** Gemini API. The key never sits in page code; a small server function (Netlify Function if the site is on Netlify) calls Gemini.
 - **Language:** Hebrew and English from day one: RTL layout, mixed-language task titles, chat and voice in both.
 - **Finished-task history:** used for learning only in v1; no history screen.

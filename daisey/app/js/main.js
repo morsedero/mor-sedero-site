@@ -3,6 +3,7 @@ import { configured } from "./config.js";
 
 const $ = (s) => document.querySelector(s);
 const GUEST_KEY = "daisey_guest_mode";
+const GUEST_UID = "guest-local";
 const guestMode = () => { try { return localStorage.getItem(GUEST_KEY) === "1"; } catch { return false; } };
 
 import { mountPlaces } from "./places.js";
@@ -55,7 +56,7 @@ function show(view, text = ""){
     googleBtn.onclick = () => onSignIn(msg);
     guestBtn.onclick = () => onGuest(msg);
     box.replaceChildren(
-      Object.assign(document.createElement("p"), { textContent: "Sign in to see your tasks." }),
+      Object.assign(document.createElement("p"), { textContent: "Sign in to sync your tasks, or try Daisey as a guest. Guest data stays on this device." }),
       googleBtn,
       guestBtn,
       msg,
@@ -64,25 +65,6 @@ function show(view, text = ""){
   }
   box.replaceChildren(Object.assign(document.createElement("p"), { className: view === "loading" ? "muted" : "", textContent: text || "Loading…" }));
 }
-
-function renderGuestMode(){
-  const board = $("#board");
-  const avatar = $("#avatar");
-  const who = $("#who");
-  $("#status").hidden = true;
-  board.hidden = false;
-  board.replaceChildren(
-    Object.assign(document.createElement("div"), {
-      className: "card",
-      innerHTML: "<p><strong>Guest mode</strong></p><p>You're browsing locally without Google sign-in. Sign in with Google to sync tasks and settings.</p>",
-    }),
-  );
-  avatar.hidden = false;
-  avatar.textContent = "G";
-  who.textContent = "Guest";
-}
-
-
 
 // Theme (Mor, 2026-10-04). Auto follows the phone; Light and Dark override it
 // and stay overridden. The choice is a data-theme attribute on <html> that
@@ -142,7 +124,7 @@ async function boot(){
   onGuest = async (msg) => {
     msg.textContent = "";
     try {
-      await fb.signInGuest();
+      fb.enableGuestMode();
       location.reload();
     } catch (e) {
       msg.textContent = e?.message || "Guest sign-in failed.";
@@ -171,12 +153,8 @@ async function boot(){
 
   const SIGNED_IN = ["#board", "#dock"];
 
-  if (guestMode()) {
-    renderGuestMode();
-    return;
-  }
-
-  fb.onUser((user) => {
+  const mountUser = (user) => {
+    const isGuest = user.uid === GUEST_UID;
     setMenu(false);
     if (mounted) { for (const m of Object.values(mounted)) m?.unmount(); mounted = null; }
     for (const s of SIGNED_IN) $(s).hidden = true;
@@ -185,10 +163,12 @@ async function boot(){
     avatar.hidden = !user;
     if (!user) { show("signedout"); return; }
 
-    $("#who").textContent = user.email;
-    avatar.setAttribute("aria-label", `Account: ${user.email}`);
+    const displayName = user.displayName || user.email || "Guest";
+    $("#who").textContent = isGuest ? "Guest · this device" : displayName;
+    $("#signout").textContent = isGuest ? "Exit guest mode" : "Sign out";
+    avatar.setAttribute("aria-label", isGuest ? "Guest account" : `Account: ${user.email}`);
     avatar.replaceChildren();
-    const initial = () => { avatar.textContent = (user.displayName || user.email || "?").trim()[0].toUpperCase(); };
+    const initial = () => { avatar.textContent = displayName.trim()[0].toUpperCase(); };
     if (user.photoURL) {
       const img = Object.assign(document.createElement("img"), { src: user.photoURL, alt: "", referrerPolicy: "no-referrer" });
       img.onerror = () => { img.remove(); initial(); };
@@ -198,7 +178,7 @@ async function boot(){
 
     Promise.all([import("./now.js"), import("./projects.js"), import("./addtask.js"), import("./needs.js"), import("./import-trello.js"), import("./addevent.js"), import("./store.js"), import("./deadlines.js"), import("./day.js"), import("./calendar.js"), import("./schedule.js"), import("./panel.js"), import("./push.js"), import("./briefchip.js"), import("./model.js"), import("./context.js")])
       .then(([{ mountNow }, { mountProjects }, { mountAddTask }, { mountNeeds }, { mountImport }, { mountAddEvent }, { migrateTasks, watchSettings, saveSettings, watchTasks, watchRun }, { mountDeadlines }, { dayHours, minText }, { watchCalendar }, { mountSchedule }, { mountPanel }, push, { mountBriefChip }, { AREAS, LABELS }, { workBase }]) => {
-        if (fb.currentUid() !== user.uid || mounted) return;
+        if ((!isGuest && fb.currentUid() !== user.uid) || mounted) return;
         const m = mounted = {};
         // Old tasks get the new fields first; then, once, which dates are real.
         const stopMigrate = migrateTasks(user.uid);
@@ -224,7 +204,13 @@ async function boot(){
         const kindBoxes = [...pushKinds.querySelectorAll("input[data-kind]")];
         kindBoxes.forEach((b) => { b.onchange = () => saveSettings(user.uid,
           { notify: Object.fromEntries(kindBoxes.map((x) => [x.dataset.kind, x.checked])) }).catch(fail); });
-        if (!push.pushSupported()) { pushSwitch.disabled = true; note("This browser can't show notifications."); } else paintPush();
+        if (isGuest) {
+          pushSwitch.disabled = true;
+          pushTest.hidden = true;
+          pushKinds.hidden = true;
+          note("Notifications need Google sign-in.");
+          $("#importTrello").disabled = true;
+        } else if (!push.pushSupported()) { pushSwitch.disabled = true; note("This browser can't show notifications."); } else paintPush();
         pushSwitch.onchange = async () => {
           pushSwitch.disabled = true; note("");
           try {
@@ -283,7 +269,8 @@ async function boot(){
           const usual = dayHours({ ...s, dayEndToday: null }); // the field shows the usual day, not today's stretch
           if (document.activeElement !== start) start.value = minText(usual.start);
           if (document.activeElement !== end) end.value = minText(usual.end);
-          logSwitch.checked = s?.logDone !== false;
+          logSwitch.checked = !isGuest && s?.logDone !== false;
+          logSwitch.disabled = isGuest;
           hours = hrs;
           lastSettings = s || {};
           briefOn = !!s?.morningBrief;
@@ -301,7 +288,7 @@ async function boot(){
         end.onchange = saveHours;
         // + → Event is off while the calendar isn't connected.
         let calOk = false;
-        const stopCal = watchCalendar((c) => { calOk = c.status === "ok"; });
+        const stopCal = watchCalendar((c) => { calOk = !isGuest && c.status === "ok"; });
         m.menu = { unmount(){ stopSettings(); stopCal(); stopBriefTasks(); stopBriefRun(); start.onchange = end.onchange = logSwitch.onchange = pushSwitch.onchange = pushTest.onclick = null;
           kindBoxes.forEach((b) => { b.onchange = null; }); } };
         m.brief = mountBriefChip($("#briefChip"), $("#briefPop"), user.uid);
@@ -376,12 +363,20 @@ async function boot(){
         document.addEventListener("click", (e) => { if (!plusMenu.hidden && !plusMenu.contains(e.target)) setPlus(false); });
         document.addEventListener("keydown", (e) => { if (e.key === "Escape") setPlus(false); });
         // Tell Daisey: plain language in, confirm cards out (tell.js).
-        import("./tell.js").then(({ mountTell }) => {
-          if (mounted !== m) return; // signed out while it loaded
-          m.tell = mountTell($("#tell"), $("#tellInput"), $("#mic"), user.uid, { openAdd: (project, title) => m.adder.open(project ?? tabProject(), title), openTask: (task) => m.adder.edit(task) });
-          if (shared) m.tell.ask(shared.slice(0, 800));
-        }).catch((e) => console.error("[daisey] tell", e));
+        if (isGuest) {
+          $("#tellInput").disabled = true;
+          $("#tellInput").placeholder = "Sign in to use Tell Daisey";
+          $("#mic").disabled = true;
+        } else {
+          import("./tell.js").then(({ mountTell }) => {
+            if (mounted !== m) return; // signed out while it loaded
+            m.tell = mountTell($("#tell"), $("#tellInput"), $("#mic"), user.uid, { openAdd: (project, title) => m.adder.open(project ?? tabProject(), title), openTask: (task) => m.adder.edit(task) });
+            if (shared) m.tell.ask(shared.slice(0, 800));
+          }).catch((e) => console.error("[daisey] tell", e));
+        }
         for (const s of SIGNED_IN) $(s).hidden = false;
       }).catch((e) => console.error("[daisey] boot views", e));
-  });
+  };
+  if (guestMode()) mountUser({ uid: GUEST_UID, displayName: "Guest", isAnonymous: true });
+  else fb.onUser(mountUser);
 }

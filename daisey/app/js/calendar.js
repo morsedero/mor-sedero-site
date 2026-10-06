@@ -23,7 +23,13 @@ const subs = new Set();
 let state = { status: "loading", events: [] };
 let timer = null, loading = null;
 
+const localGuest = () => {
+  try { return localStorage.getItem("daisey_guest_mode") === "1"; }
+  catch { return false; }
+};
+
 async function fetchAgenda(fresh = false){
+  if(localGuest()) return { status: "not_connected", events: [] };
   // From the start of today, so the panel can show what already happened, to
   // the end of the seventh day ahead — as far as the panel can step.
   const from = new Date(); from.setHours(0, 0, 0, 0);
@@ -83,6 +89,7 @@ export function watchCalendar(cb){
 // (daisey-now-calendar-write). Each refetches straight after, so the card and
 // the panel show the new day rather than the one the user just changed.
 async function write(body){
+  if(localGuest()) throw new Error("Google sign-in is needed for calendar changes.");
   const res = await fetch(WRITE_URL, {
     method: "POST",
     headers: { Authorization: `Bearer ${await idToken()}`, "Content-Type": "application/json" },
@@ -111,6 +118,7 @@ export const renameEvent = (ev, title) => write({ action: "rename", calendarId: 
 // A lookback in Google Calendar; the write function has the why.
 // `end`: when it really ended, if not now ("Finished earlier").
 export function logDone({ title, minutes, taskId, note, end = Date.now() }){
+  if(localGuest()) return Promise.resolve({ skipped: true });
   const start = end - minutes * 60000;
   return write({ action: "create", calendarId: "daisey-log", title: `✓ ${title}`, taskId, note,
     timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,

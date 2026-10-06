@@ -30,10 +30,8 @@ export async function signIn(){
   await auth.signInWithPopup(a, p);
 }
 
-export async function signInGuest(){
-  try { localStorage.setItem("daisey_guest_mode", "1"); }
-  catch { /* private window */ }
-  return;
+export function enableGuestMode(){
+  localStorage.setItem("daisey_guest_mode", "1");
 }
 
 export function signOut(){ return auth.signOut(a); }
