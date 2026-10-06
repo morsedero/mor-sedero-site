@@ -135,7 +135,7 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
         h("button", { type: "button", className: "pp-new", textContent: "+ New", onclick: () => askName() })),
       ps.length ? h("div", { className: "pgrid" }, ...ps.map((p) => h("button", { type: "button", className: "pcard" + colorClass(p),
         onclick: () => openProject(p.name) },
-        h("span", { className: "pcard-top" }, h("span", { className: "pcard-name", dir: "auto", textContent: p.name }), h("span", { className: "pcard-n", textContent: String(p.open.length) })),
+        h("span", { className: "pcard-top", dir: dirOf(p.name) }, h("span", { className: "pcard-name", dir: "auto", textContent: p.name }), h("span", { className: "pcard-n", textContent: String(p.open.length) })),
         h("span", { className: "pcard-status" }, ...statusLine(p)),
         bar(p, "pbar"))))
         : !inbox && h("p", { className: "muted pp-empty", textContent: "No projects yet. Tell Daisey what's on your plate." }),
@@ -302,7 +302,7 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
       h("div", { className: "pj-top" },
         h("button", { type: "button", className: "pj-back", ariaLabel: "Back to home", onclick: () => onScreen?.(null) }, icon("back")), chips),
       h("div", { className: "pj-card" },
-        h("div", { className: "pj-card-top" }, h("h2", { className: "pj-name", dir: "auto", textContent: p.name })),
+        h("div", { className: "pj-card-top", dir: dirOf(p.name) }, h("h2", { className: "pj-name", dir: "auto", textContent: p.name })),
         h("div", { className: "pj-prog" }, bar(p, "pbar big")),
         p.all.length > 0 && h("div", { className: "pj-tgs" },
           toggle("done", h("span", { className: "pj-ok", ariaHidden: "true" }, icon("check")), h("span", { className: "pj-tg-t", textContent: `${p.done.length} of ${p.all.length} done` })),
