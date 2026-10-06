@@ -60,7 +60,30 @@ const STANDALONE_HTML = __dirname + "/../../site/daisey/index.html";
     await ctx.close();
   }
 
-  /* ---- 2. real session -> app boots for real ---------------------------- */
+  /* ---- 2. guest mode -> no Google/Trello session needed ---------------- */
+  {
+    const ctx = await browser.newContext({ viewport:{width:390,height:800} });
+    const p = await ctx.newPage();
+    const errs = [];
+    p.on("pageerror", e => errs.push(e.message));
+    p.on("console", m => { if(m.type() === "error") errs.push(m.text()); });
+    await p.addInitScript(() => localStorage.setItem("daisey_guest_mode", "1"));
+    await p.goto(base, { waitUntil:"load" });
+    await p.waitForTimeout(1500);
+    const r = await p.evaluate(() => ({
+      gate: !!document.querySelector(".login-gate"),
+      guest: !!(typeof S !== "undefined" && S.guestMode),
+      cardsLoaded: typeof allCards === "function" ? allCards().length : -1
+    }));
+    console.log("guest mode       :", JSON.stringify(r));
+    check(!r.gate, "guest mode still rendered the login gate");
+    check(r.guest === true, "guest mode did not set S.guestMode");
+    check(r.cardsLoaded === 0, `guest mode should boot with zero cards, got ${r.cardsLoaded}`);
+    check(errs.length === 0, "page errors in guest mode: " + errs.join("|"));
+    await ctx.close();
+  }
+
+  /* ---- 3. real session -> app boots for real ---------------------------- */
   {
     const ctx = await browser.newContext({ viewport:{width:390,height:800} });
     const p = await ctx.newPage();

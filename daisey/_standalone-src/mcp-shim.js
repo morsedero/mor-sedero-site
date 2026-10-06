@@ -5,6 +5,53 @@
    standalone" section for the architecture this implements.
    ============================================================ */
 
+const GUEST_MODE_KEY = "daisey_guest_mode";
+
+function isGuestMode(){
+  try{ return localStorage.getItem(GUEST_MODE_KEY) === "1"; }
+  catch(_){ return false; }
+}
+
+function setGuestMode(on){
+  try{
+    if(on) localStorage.setItem(GUEST_MODE_KEY, "1");
+    else localStorage.removeItem(GUEST_MODE_KEY);
+  }catch(_){ }
+}
+
+function guestMcp(){
+  async function callTool(server, tool, input){
+    if(server === "Session" && tool === "whoami") return { payload: {} };
+    if(server === "Trello"){
+      if(tool === "trelloReadBoard") return { payload: { cards: { nodes: [], totalCount: 0, pageInfo: { hasNextPage: false, endCursor: null } } } };
+      if(tool === "trelloReadCard") return { payload: { cards: { totalCount: 0, nodes: [] } } };
+      if(tool === "trelloReadList") return { payload: { lists: [] } };
+      if(tool === "trelloReadChecklist") return { payload: { checklists: [], hasMore: false } };
+      if(tool === "trelloWriteCard") return { payload: { cards: { nodes: [{ id: "guest" }] } } };
+      if(tool === "trelloWriteChecklist") return { payload: { id: "guest" } };
+      if(tool === "trelloWriteList") return { payload: { lists: [{ id: "guest" }] } };
+      return { payload: {} };
+    }
+    if(server === "Google Calendar"){
+      if(tool === "list_events") return { payload: { accessRole: "owner", events: [], summary: "Guest mode", timeZone: "UTC" } };
+      if(tool === "list_calendars") return { payload: { calendars: [] } };
+      return { payload: { status: "ok" } };
+    }
+    throw { code: "tool_error", message: `Guest mode does not support ${server}/${tool}.` };
+  }
+
+  function watchTool(server, tool, input, handler, opts){
+    callTool(server, tool, input)
+      .then(result => handler({ type: "data", result }))
+      .catch(error => handler({ type: "error", error }));
+    return () => {};
+  }
+
+  async function invalidate(){ return; }
+
+  return { callTool, watchTool, invalidate };
+}
+
 /* The whole point: daisey.html's 27 Trello/Google call sites all go through
    callTool()/S.mcp.watchTool()/S.mcp.invalidate(). This object implements
    that exact three-method shape over real HTTP to daisey-proxy.js, so NONE
@@ -94,6 +141,7 @@ function standaloneMcp(){
    proxy exposes a dedicated lightweight whoami-shaped check via the same
    callTool path so there's still only one request shape to reason about. */
 async function checkStandaloneSession(){
+  if(isGuestMode()) return true;
   try{
     const res = await fetch("/.netlify/functions/daisey-proxy", {
       method:"POST", credentials:"include",
@@ -121,6 +169,14 @@ function renderLoginGate(){
   const g = el("a","btn primary","Sign in with Google");
   g.href = "/.netlify/functions/daisey-auth-google-start";
   acts.appendChild(g);
+  const guest = el("button","btn secondary","Continue as guest");
+  guest.type = "button";
+  guest.dataset.guest = "true";
+  guest.addEventListener("click", () => {
+    setGuestMode(true);
+    location.href = location.pathname + "?guest=1";
+  });
+  acts.appendChild(guest);
   wrap.appendChild(acts);
   wrap.appendChild(el("p","dim","Trello connects as a second step, right after."));
   return wrap;

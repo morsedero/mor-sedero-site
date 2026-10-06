@@ -1,7 +1,7 @@
 <!-- GENERATED FILE — do not hand-edit.
      Produced by daisey/build-standalone.js from daisey/daisey.html.
      Edit daisey/daisey.html, then re-run: node daisey/build-standalone.js
-     Built 2026-10-05T16:21:10.713Z -->
+     Built 2026-10-06T20:14:28.534Z -->
 <title>Daisey</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <style>
@@ -2670,6 +2670,7 @@ const S = {
   today: dayKey(new Date()),   // the calendar day the app currently believes it is
   view:"day",     // "day" | "pipeline" | "projects" — which view the one page shows
   mcp:null, ready:false, busy:false,
+  guestMode: !!(typeof localStorage !== "undefined" && localStorage.getItem("daisey_guest_mode") === "1"),
   cards:{}, events:null, errs:{},
   boardLists:{},       // tracker boardKey -> {payload,storedAt}: the pipeline stages, in board order
   moving:new Set(),    // asset cardIds with a list-move write in flight
@@ -3077,6 +3078,7 @@ function normCard(n, board){
    in a single list_by_board page — dedupe by id or the swap picker (and
    anything else built on this) shows it twice */
 function allCards(){
+  if(S.guestMode) return [];
   const out=[], seen=new Set();
   for(const b of BOARDS){
     const bag = S.cards[b.key];
@@ -3093,6 +3095,7 @@ const evStart = e => e.start && e.start.dateTime ? new Date(e.start.dateTime) : 
 const evEnd   = e => e.end   && e.end.dateTime   ? new Date(e.end.dateTime)   : (e.end   && e.end.date   ? new Date(e.end.date)   : null);
 
 function allEvents(){
+  if(S.guestMode) return [];
   const p = S.events && S.events.payload;
   return ((p && p.events) || [])
     .filter(e => e.status !== "cancelled")
@@ -9281,9 +9284,23 @@ placeAuto();
   /* --- standalone boot: see daisey/_standalone-src/boot-block.js --- */
   STANDALONE = true;
   const qs = new URLSearchParams(location.search);
+  const guestMode = qs.get("guest") === "1" || isGuestMode();
   if(qs.get("needsTrello")){
     history.replaceState(null, "", location.pathname);
     S.needsTrello = true; S.ready = true; render();
+    return;
+  }
+  if(guestMode){
+    setGuestMode(true);
+    history.replaceState(null, "", location.pathname);
+    S.guestMode = true;
+    S.mcp = guestMcp();
+    S.noMcp = false;
+    S.events = { payload: { events: [] }, storedAt: Date.now() };
+    S.cards = {};
+    S.stats = { ...DEFAULT_STATS };
+    S.ready = true;
+    render();
     return;
   }
   const loggedIn = await checkStandaloneSession();
@@ -9357,6 +9374,53 @@ placeAuto();
    present in the Claude artifact. See daisey/CLAUDE.md's "Daisey
    standalone" section for the architecture this implements.
    ============================================================ */
+
+const GUEST_MODE_KEY = "daisey_guest_mode";
+
+function isGuestMode(){
+  try{ return localStorage.getItem(GUEST_MODE_KEY) === "1"; }
+  catch(_){ return false; }
+}
+
+function setGuestMode(on){
+  try{
+    if(on) localStorage.setItem(GUEST_MODE_KEY, "1");
+    else localStorage.removeItem(GUEST_MODE_KEY);
+  }catch(_){ }
+}
+
+function guestMcp(){
+  async function callTool(server, tool, input){
+    if(server === "Session" && tool === "whoami") return { payload: {} };
+    if(server === "Trello"){
+      if(tool === "trelloReadBoard") return { payload: { cards: { nodes: [], totalCount: 0, pageInfo: { hasNextPage: false, endCursor: null } } } };
+      if(tool === "trelloReadCard") return { payload: { cards: { totalCount: 0, nodes: [] } } };
+      if(tool === "trelloReadList") return { payload: { lists: [] } };
+      if(tool === "trelloReadChecklist") return { payload: { checklists: [], hasMore: false } };
+      if(tool === "trelloWriteCard") return { payload: { cards: { nodes: [{ id: "guest" }] } } };
+      if(tool === "trelloWriteChecklist") return { payload: { id: "guest" } };
+      if(tool === "trelloWriteList") return { payload: { lists: [{ id: "guest" }] } };
+      return { payload: {} };
+    }
+    if(server === "Google Calendar"){
+      if(tool === "list_events") return { payload: { accessRole: "owner", events: [], summary: "Guest mode", timeZone: "UTC" } };
+      if(tool === "list_calendars") return { payload: { calendars: [] } };
+      return { payload: { status: "ok" } };
+    }
+    throw { code: "tool_error", message: `Guest mode does not support ${server}/${tool}.` };
+  }
+
+  function watchTool(server, tool, input, handler, opts){
+    callTool(server, tool, input)
+      .then(result => handler({ type: "data", result }))
+      .catch(error => handler({ type: "error", error }));
+    return () => {};
+  }
+
+  async function invalidate(){ return; }
+
+  return { callTool, watchTool, invalidate };
+}
 
 /* The whole point: daisey.html's 27 Trello/Google call sites all go through
    callTool()/S.mcp.watchTool()/S.mcp.invalidate(). This object implements
@@ -9447,6 +9511,7 @@ function standaloneMcp(){
    proxy exposes a dedicated lightweight whoami-shaped check via the same
    callTool path so there's still only one request shape to reason about. */
 async function checkStandaloneSession(){
+  if(isGuestMode()) return true;
   try{
     const res = await fetch("/.netlify/functions/daisey-proxy", {
       method:"POST", credentials:"include",
@@ -9474,6 +9539,14 @@ function renderLoginGate(){
   const g = el("a","btn primary","Sign in with Google");
   g.href = "/.netlify/functions/daisey-auth-google-start";
   acts.appendChild(g);
+  const guest = el("button","btn secondary","Continue as guest");
+  guest.type = "button";
+  guest.dataset.guest = "true";
+  guest.addEventListener("click", () => {
+    setGuestMode(true);
+    location.href = location.pathname + "?guest=1";
+  });
+  acts.appendChild(guest);
   wrap.appendChild(acts);
   wrap.appendChild(el("p","dim","Trello connects as a second step, right after."));
   return wrap;

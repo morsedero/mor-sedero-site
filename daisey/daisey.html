@@ -2666,6 +2666,7 @@ const S = {
   today: dayKey(new Date()),   // the calendar day the app currently believes it is
   view:"day",     // "day" | "pipeline" | "projects" — which view the one page shows
   mcp:null, ready:false, busy:false,
+  guestMode: !!(typeof localStorage !== "undefined" && localStorage.getItem("daisey_guest_mode") === "1"),
   cards:{}, events:null, errs:{},
   boardLists:{},       // tracker boardKey -> {payload,storedAt}: the pipeline stages, in board order
   moving:new Set(),    // asset cardIds with a list-move write in flight
@@ -3073,6 +3074,7 @@ function normCard(n, board){
    in a single list_by_board page — dedupe by id or the swap picker (and
    anything else built on this) shows it twice */
 function allCards(){
+  if(S.guestMode) return [];
   const out=[], seen=new Set();
   for(const b of BOARDS){
     const bag = S.cards[b.key];
@@ -3089,6 +3091,7 @@ const evStart = e => e.start && e.start.dateTime ? new Date(e.start.dateTime) : 
 const evEnd   = e => e.end   && e.end.dateTime   ? new Date(e.end.dateTime)   : (e.end   && e.end.date   ? new Date(e.end.date)   : null);
 
 function allEvents(){
+  if(S.guestMode) return [];
   const p = S.events && S.events.payload;
   return ((p && p.events) || [])
     .filter(e => e.status !== "cancelled")
