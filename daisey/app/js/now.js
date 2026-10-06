@@ -23,7 +23,7 @@ import { LATER_MINUTES, DRAIN, CANCEL_KEEP_MINUTES } from "./weights.js";
 import { rank, freeWindow, timeBucket, matchProject, dueAt } from "./engine.js";
 import { localDate, skipSnapshot, pendingCheck, notYet, pushedTo, bringBack, againInput } from "./model.js";
 import { waitingFor, personOf } from "./nudge.js";
-import { dayHours, isNight, nextMorning, dayEndAt, bookings, sameTitle, minText } from "./day.js";
+import { dayHours, isNight, nextMorning, dayEndAt, bookings, sameTitle, minText, gapsToday } from "./day.js";
 import { collectNeeds } from "./needs.js";
 import { h, icon, bdi, pieces, sizeText, dur, say, nightDivider, flash } from "./ui.js";
 import { areaClass, areaName, projectShown, doneToday, dirOf, stemDaisy, moonDaisy, watchProjectColors } from "./look.js";
@@ -40,7 +40,7 @@ const clock = (ms) => new Date(ms).toLocaleTimeString([], { hour: "2-digit", min
 // card's title is the way in. onEvent(ev): an event's details. name: the first name for the night screen. onDone(n):
 // how many tasks are done today, for the header's chip. onNeedsCount(n):
 // how many decisions Needs you holds, for the amber chip.
-export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name = "", onDone, onNeedsCount } = {}){
+export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onFree, name = "", onDone, onNeedsCount } = {}){
   let tasks = null; // null until the first snapshot
   let settings = {}; // state/settings: when the sweep was last offered
   let momentDoc = {}; // state/moment: energy and place corrections
@@ -934,9 +934,28 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
     // Start is the one loud thing on the tab; the other two stay quiet under it.
     day(...head, deck(taskCard(card, true,
       ...cardActions(card.task, alts, startButton("Start", `Start: ${card.task.title}`, () => begin(card.task)))), next !== card && next, asking()),
-      ...altsFor(alts), tip);
+      glance(), ...altsFor(alts), tip);
     // One slide-in per step-aside: later snapshots must not replay it.
     if (slideIn) { slideIn = false; if (motionOK()) root.querySelector(".now-card.main")?.classList.add("in"); }
+  }
+
+  // Under the card (Mor picked mockup A, 2026-10-06): the next thing on the
+  // calendar and how much free time is left today, two quiet rows. Next opens
+  // that event; Free opens the Schedule tab (Plan My Day will answer it).
+  // Hidden with no calendar, and each row when it has nothing to say.
+  function glance(){
+    if (cal.status !== "ok") return null;
+    const now = Date.now(), hrs = dayHours(settings);
+    const busy = cal.events.filter((e) => e.busy !== false && !e.allDay);
+    const nx = busy.map((e) => ({ ...e, s: Date.parse(e.start) })).filter((e) => e.s > now && localDate(e.s) === localDate(now)).sort((a, b) => a.s - b.s)[0];
+    const free = gapsToday(busy, now, hrs).reduce((t, g) => t + g.minutes, 0);
+    const row = (k, aria, onclick, ...v) => h("button", { className: "glance-row", type: "button", ariaLabel: aria, onclick },
+      h("span", { className: "gl-k", textContent: k }), h("span", { className: "gl-v" }, ...v), h("span", { className: "gl-go", ariaHidden: "true", textContent: "›" }));
+    if (!nx && free < 15) return null;
+    return h("div", { className: "glance" },
+      nx && row("Next", `Next: ${nx.title} at ${clock(nx.s)}`, () => onEvent?.(nx), h("b", { textContent: clock(nx.s) }), " ", bdi(nx.title)),
+      free >= 15 && row("Free", `${dur(free)} free ${new Date(now).getHours() >= 17 ? "this evening" : "today"}: open Schedule`, () => onFree?.(),
+        h("b", { textContent: dur(free) }), new Date(now).getHours() >= 17 ? " this evening" : " today"));
   }
 
   // (The "Skipped five times. Still want it?" line that lived here moved to

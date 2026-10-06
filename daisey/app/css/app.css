@@ -1264,3 +1264,12 @@ dialog.tsheet .msg:empty { display: none; }
 .night-ev { justify-content: flex-start; }
 .night-ev-title { text-align: start; }
 body.focus .shell { block-size: auto; min-block-size: 100dvh; overflow: visible; }
+
+/* Now's two quiet rows under the card: Next event, Free time (now.js glance). */
+.glance { margin-block-start: 8px; display: grid; border-radius: 16px; background: var(--card); border: 1px solid var(--line); overflow: hidden; }
+.glance-row { display: grid; grid-template-columns: 44px 1fr 14px; align-items: center; gap: 8px; min-block-size: 44px; padding-inline: 14px; border: 0; background: none; font: inherit; font-size: 14px; color: var(--ink); text-align: start; cursor: pointer; }
+.glance-row + .glance-row { border-block-start: 1px solid var(--line); }
+.gl-k { font-size: 12px; font-weight: 600; color: var(--ink-2); text-transform: uppercase; letter-spacing: .04em; }
+.gl-v { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gl-v b { font-weight: 600; font-variant-numeric: tabular-nums; }
+.gl-go { color: var(--ink-2); }

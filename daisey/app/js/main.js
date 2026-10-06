@@ -289,6 +289,7 @@ async function boot(){
           onOpen: (task) => m.adder.edit(task),
           onProject: (name) => m.projects.openProject(name),
           onEvent: (ev) => m.event.view(ev),
+          onFree: () => m.panel.show("schedule"),
         });
         $("#needsChip").onclick = () => { m.needs.open(); screens.open("needs"); };
         // A notification's tap: "?open=wrap" on a fresh start, or a message

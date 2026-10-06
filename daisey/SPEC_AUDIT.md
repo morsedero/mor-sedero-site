@@ -26,7 +26,7 @@ the server-side active-task state as a core part, not a one-notification fix.
   `test/v1/reality.test.mjs`.
 - ✅ P0 3. "Start task" on the gap and booked-slot notifications.
 - ✅ P0 4. Header: "N need you", no zero chips.
-- ⏳ P0 5. Now lines: mockup shown, waiting for a pick.
+- ✅ P0 5. Now lines: option A (two rows under the card; Next opens the event, Free opens Schedule).
 - ✅ P0 6. Tell Daisey examples.
 - P1 7–12: not started.
 
