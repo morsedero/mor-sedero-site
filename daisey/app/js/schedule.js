@@ -168,9 +168,9 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onProjects } = 
     const bar = h("div", { className: "sc-bar" },
       h("button", { type: "button", className: "sc-step", ariaLabel: view === "week" ? "Previous week" : "Previous day", onclick: () => step(-1) }, icon("back")),
       h("button", { type: "button", className: "sc-title" + (isNow ? "" : " away"), ariaLabel: isNow ? title : `${title} — back to today`, onclick: () => go(null) },
-        h("span", { className: "sc-name", textContent: title }), sub && h("span", { className: "sc-date", textContent: sub }),
-        !isNow && h("span", { className: "sc-today", textContent: "Today" })),
+        h("span", { className: "sc-name", textContent: title }), sub && h("span", { className: "sc-date", textContent: sub })),
       h("button", { type: "button", className: "sc-step", ariaLabel: view === "week" ? "Next week" : "Next day", onclick: () => step(1) }, icon("chev")),
+      !isNow && h("button", { type: "button", className: "sc-today", ariaLabel: "Back to today", textContent: "Today", onclick: () => go(null) }),
       seg,
       h("button", { type: "button", className: "sc-proj", onclick: () => onProjects && onProjects() }, "Projects", h("span", { ariaHidden: "true", textContent: " ›" })));
     const head = h("div", { className: "sc-head" + (view === "week" ? " wk" : "") }, bar);
