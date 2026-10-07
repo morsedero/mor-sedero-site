@@ -14,7 +14,9 @@
 // the same timer.
 import { overruled, eventKey } from "./reality.js";
 import * as deep from "./deep.js";
-import { addTask, watchTasks, watchRun, watchSkips, saveSkips, startRun, extendRun, endRun, startBatch, tickBatch, endBatch, skipNow, blockTask, restoreTask, finishTask, watchSettings, saveSettings, watchMoment, saveMoment, watchLearn, bumpLearn, saveRun, cancelRun } from "./store.js";
+import { addTask, watchTasks, watchRun, watchSkips, saveSkips, startRun, extendRun, endRun, startBatch, tickBatch, endBatch, skipNow, blockTask, restoreTask, finishTask, watchSettings, saveSettings, watchMoment, saveMoment, watchLearn, bumpLearn, saveRun, cancelRun, watchDayPlan, saveDayPlan, holdTask, releaseTask } from "./store.js";
+import { proposeDay, timeline, nextPlanned, planProgress } from "./proposal.js";
+import { rethink } from "./rethink.js";
 import { energyNow, placeNow, workBase } from "./context.js";
 import { watchWhere, setRide, setStill, saveSpot, setManual } from "./where.js";
 import { pickWeekDay } from "./triage.js";
@@ -41,7 +43,7 @@ const clock = (ms) => new Date(ms).toLocaleTimeString([], { hour: "2-digit", min
 // card's title is the way in. onEvent(ev): an event's details. name: the first name for the night screen. onDone(n):
 // how many tasks are done today, for the header's chip. onNeedsCount(n):
 // how many decisions Needs you holds, for the amber chip.
-export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onFree, name = "", onDone, onNeedsCount } = {}){
+export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name = "", onDone, onNeedsCount, guest = false } = {}){
   let tasks = null; // null until the first snapshot
   let settings = {}; // state/settings: when the sweep was last offered
   let momentDoc = {}; // state/moment: energy and place corrections
@@ -51,6 +53,12 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onFree
   let lastWindow, lastClock;
   let run = null; // the state/now doc while a task is running
   let handoff = null; // { title, next } after Done, until the next choice
+  // The day's proposed schedule (proposal.js). dayPlan: today's saved doc
+  // (state/dayplan). prop: the proposal on the card while it's open — items
+  // in the user's order, the ids they deleted, the Rethink box.
+  let dayPlan, planKnown = false;
+  const prop = { open: false, items: [], exclude: [], ask: false, text: "", busy: false, note: "", auto: null };
+  let holdAsk = false, holdText = ""; // "Waiting for reply" on the running card
   // The event you said you're free from, as its start time in ms (what
   // engine.freeWindow reports). Cleared on its own once that event is no
   // longer the one running.
@@ -364,6 +372,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onFree
       onResume: resume,
       onStop: () => endSession(),
       onBack: () => setMode("inline"),
+      onWait: () => { holdAsk = true; setMode("inline"); },
       // Pending from focus mode: stop, and the card, back on this task, asks
       // what it's waiting on.
       onPending: () => { const id = run.taskId; endSession({ quiet: true }); reset(); state.chosen = id; state.pendAsk = true; render(); },
@@ -374,6 +383,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onFree
   // screen (call it from a tap: full screen needs one, deep.js).
   const begin = (task, mode = "inline") => {
     bumpLearn(uid, task.type, timeBucket().part, "starts").catch(fail); handoff = null; reset();
+    prop.open = false; holdAsk = false;
     run = { taskId: task.id, startedAt: Date.now(), extra: 0, mode };
     if (mode === "focus") deep.enter(runKey());
     render(); startRun(uid, task, mode).catch(fail);
@@ -859,17 +869,37 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onFree
     const mins = elapsedMinutes(run), target = task ? targetMinutes(run, task) : 0, cap = runCap(target);
     const paused_ = !!run.pausedAt, what = task?.title || "this task";
     const hold = holdButton(`inline:${runKey()}`, `Hold to finish ${what}`, !task, () => finishRun(task, bookedMinutes(run, task)));
-    return h("div", { className: "now-card main hero running" + areaClass(task) },
-      task ? heroTop(task, "Running") : h("div", { className: "now-meta", textContent: "Running" }),
+    // Waiting for a reply (Mor, 2026-10-07): on hold, but the timer keeps
+    // going — the wait is part of the task. "Got the reply" takes it off hold.
+    const onHold = task?.onHold;
+    const waitLine = onHold && h("p", { className: "hold-line", role: "status" }, icon("pending"),
+      h("span", {}, ...(onHold.who ? ["Waiting on ", bdi(onHold.who)] : ["Waiting for a reply"]), ` · since ${clock(onHold.since)} · timer running`));
+    const setHold = () => { const who = holdText; holdAsk = false; holdText = ""; render(); holdTask(uid, task, who).catch(fail); };
+    const holdBox = holdAsk && !onHold && (() => {
+      const input = h("input", { id: "holdWho", dir: "auto", autocomplete: "off", value: holdText, oninput: (e) => { holdText = e.target.value; } });
+      input.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); setHold(); } });
+      setTimeout(() => { if (input.isConnected && document.activeElement !== input) input.focus(); });
+      return h("div", { className: "pend-ask" },
+        h("label", { htmlFor: "holdWho", textContent: "Waiting on who? (optional) The timer keeps running." }),
+        h("div", { className: "pend-row" }, input, h("button", { className: "btn primary small", type: "button", textContent: "Wait", onclick: setHold })));
+    })();
+    return h("div", { className: "now-card main hero running" + (onHold ? " on-hold" : "") + areaClass(task) },
+      task ? heroTop(task, onHold ? "On hold" : "Running") : h("div", { className: "now-meta", textContent: "Running" }),
       task && onOpen ? titleButton(task) : h("div", { className: "now-title", dir: "auto", textContent: task?.title || "That task is gone" }),
       h("p", { className: "now-why inl-clock" }, h("b", { className: "inl-time", textContent: clockText(mins) }), target ? ` of ${dur(target)}` : "", paused_ ? " · paused" : ""),
+      waitLine,
+      holdBox,
       mins > cap && h("div", { className: "focus-still", role: "status" },
         h("p", { className: "focus-still-text", textContent: `Still on it? It's been ${dur(Math.round(mins))}. If you stopped earlier, Done and Stop count ${dur(Math.round(cap))}.` }),
         h("div", { className: "focus-still-btns" },
           h("button", { className: "btn line", type: "button", textContent: "Still on it", onclick: () => { const prev = run, m = stillOnMinutes(prev, task); run = { ...run, extra: (run.extra || 0) + m }; render(); extendRun(uid, prev, m).catch(fail); } }),
           h("button", { className: "btn line", type: "button", textContent: "Stop", onclick: () => endSession() }))),
       h("div", { className: "now-actions now-row" },
-        action(paused_ ? "play" : "pause", paused_ ? "Resume" : "Pause", `${paused_ ? "resume" : "pause"} ${what}`, { onclick: paused_ ? resume : pause }),
+        onHold
+          ? action("play", "Replied", `the reply came: take ${what} off hold`, { onclick: () => releaseTask(uid, task).catch(fail) })
+          : action(paused_ ? "play" : "pause", paused_ ? "Resume" : "Pause", `${paused_ ? "resume" : "pause"} ${what}`, { onclick: paused_ ? resume : pause }),
+        !onHold && task && action("pending", "Waiting", `waiting for a reply on ${what}: put it on hold, the timer keeps running`,
+          { ariaExpanded: String(holdAsk), onclick: () => { holdAsk = !holdAsk; render(); } }),
         action("stop", "Stop", `stop ${what} for now; the time so far is kept`, { onclick: () => endSession() }),
         action("focus", "Focus", "Deep Focus, full screen", { onclick: () => setMode("focus") }),
         hold));
@@ -888,6 +918,126 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onFree
         onclick: () => { state.chosen = s.task.id; state.showAlts = false; render(); },
       }, taskCard(s, false)))),
     ];
+  }
+
+  // ---------- The day's proposed schedule (proposal.js, 2026-10-07) ----------
+  // At the start of the day the card is Daisey's proposal for the rest of
+  // today: approve it, reorder it, drop items, open one to edit it, or ask
+  // for a rethink. On demand from the plan line, the Free row or Schedule's
+  // "Plan my day". Approved, the card follows it in order.
+  const planCtx = () => ({ tasks: tasks || [], events: cal.status === "ok" ? cal.events : [], now: Date.now(), hours: dayHours(settings), settings, run });
+  const todaysPlan = () => (dayPlan?.date === localDate() ? dayPlan : null);
+  const approvedPlan = () => (todaysPlan()?.status === "approved" ? dayPlan : null);
+  function openProposal(){
+    const saved = todaysPlan();
+    prop.items = saved?.items?.length && saved.status !== "dismissed"
+      ? saved.items.filter((it) => (tasks || []).some((t) => t.id === it.taskId && t.status === "ready"))
+      : proposeDay({ ...planCtx(), energy: feel().energy.value, exclude: prop.exclude });
+    prop.open = true; prop.ask = false; prop.note = ""; handoff = null;
+    render();
+  }
+  const closeProposal = () => { prop.open = false; prop.ask = false; prop.note = ""; render(); };
+  const savePlan = (status, items) => {
+    dayPlan = { date: localDate(), status, items, at: Date.now() };
+    saveDayPlan(uid, { date: dayPlan.date, status, items }).catch(fail);
+  };
+  function approve(){
+    const n = prop.items.length;
+    savePlan("approved", prop.items.map(({ taskId, minutes }) => ({ taskId, minutes })));
+    prop.open = false; prop.ask = false; prop.note = ""; reset();
+    render();
+    flash(`Plan set: ${n} ${n === 1 ? "task" : "tasks"}. The card follows it.`);
+  }
+  function dismiss(){ savePlan("dismissed", []); closeProposal(); }
+  function move(i, by){
+    const j = i + by;
+    if (j < 0 || j >= prop.items.length) return;
+    const items = [...prop.items];
+    [items[i], items[j]] = [items[j], items[i]];
+    prop.items = items; render();
+  }
+  function dropItem(i){
+    const items = [...prop.items];
+    const [gone] = items.splice(i, 1);
+    if (gone) prop.exclude = [...prop.exclude, gone.taskId];
+    prop.items = items; render();
+  }
+  async function doRethink(text){
+    if (prop.busy) return;
+    prop.busy = true; prop.note = ""; render();
+    const ctx = planCtx();
+    try {
+      const free = gapsToday(ctx.events, ctx.now, ctx.hours).reduce((t, g) => t + g.minutes, 0);
+      const r = String(text || "").trim()
+        ? await rethink(text, { ...ctx, current: prop.items, exclude: prop.exclude, freeMinutes: free, guest })
+        : { items: proposeDay({ ...ctx, energy: feel().energy.value, exclude: prop.exclude }), note: "" };
+      prop.items = r.items;
+      prop.note = r.note || (r.items.length ? "" : "Nothing fits what's left of today.");
+      prop.text = ""; prop.ask = false;
+    } catch (e) { fail(e); prop.note = "Couldn't rethink it. Try again."; }
+    prop.busy = false; render();
+  }
+  function rethinkBox(){
+    const input = h("input", { id: "rethinkText", dir: "auto", autocomplete: "off", value: prop.text, oninput: (e) => { prop.text = e.target.value; } });
+    const go = () => doRethink(input.value);
+    input.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); go(); } });
+    const chip = (text) => h("button", { type: "button", className: "chip", textContent: text, disabled: prop.busy, onclick: () => doRethink(text) });
+    setTimeout(() => { if (!input.isConnected || document.activeElement === input) return; input.focus(); input.setSelectionRange(input.value.length, input.value.length); });
+    return h("div", { className: "pp-ask" },
+      h("label", { htmlFor: "rethinkText", textContent: "What should change? (blank = a fresh take)" }),
+      h("div", { className: "pend-row" }, input,
+        h("button", { className: "btn primary small", type: "button", disabled: prop.busy, textContent: "Rethink", onclick: go })),
+      h("div", { className: "pp-chips" }, chip("Lighter"), chip("Fewer tasks"), chip("Quick ones first"), chip("No calls")));
+  }
+  function proposalCard(){
+    const { rows, over } = timeline(prop.items, planCtx());
+    const approved = !!approvedPlan();
+    const total = rows.reduce((t, r) => t + r.minutes, 0);
+    const last = rows[rows.length - 1];
+    const pos = new Map(prop.items.map((it, i) => [it.taskId, i]));
+    const row = (r, isOver) => {
+      const i = pos.get(r.taskId), t = r.task;
+      const ctl = (text, label, disabled, onclick) => h("button", { type: "button", className: "pp-ctl", textContent: text, title: label, ariaLabel: `${label}: ${t.title}`, disabled, onclick });
+      return h("li", { className: "pp-row" + areaClass(t) + (isOver ? " over" : "") },
+        isOver ? h("span", { className: "pp-time", textContent: "No room" })
+          : h("span", { className: "pp-time", ariaLabel: `${clock(r.start)} to ${clock(r.end)}` }, clock(r.start), h("small", { textContent: clock(r.end) })),
+        h("button", { type: "button", className: "pp-task", ariaLabel: `Edit ${t.title}`, onclick: () => onOpen?.(t) },
+          h("span", { className: "pp-title", dir: "auto", textContent: t.title }),
+          h("span", { className: "pp-meta" }, ...pieces(projectShown(t) ? t.project : "", dur(r.minutes)))),
+        h("span", { className: "pp-ctls" },
+          ctl("↑", "Move earlier", i === 0, () => move(i, -1)),
+          ctl("↓", "Move later", i === prop.items.length - 1, () => move(i, 1)),
+          ctl("✕", "Take off today's plan", false, () => dropItem(i))));
+    };
+    const plural = (n) => (n === 1 ? ["One doesn't", "it"] : [`${n} don't`, "them"]);
+    return h("section", { className: "now-card main hero proposal", ariaLabel: approved ? "Today's plan" : "Proposed schedule" },
+      h("div", { className: "hero-top" },
+        h("span", { className: "hero-area", textContent: approved ? "Today's plan" : "Proposed for today" }),
+        rows.length > 0 && h("span", { className: "hero-side", textContent: `${dur(total)} · until ${clock(last.end)}` })),
+      h("p", { className: "now-why pp-why", textContent: approved ? "Reorder, drop or rethink, then save." : "How I'd use the rest of today. Approve it, or change it first." }),
+      rows.length || over.length
+        ? h("ol", { className: "pp-list" }, ...rows.map((r) => row(r, false)), ...over.map((r) => row(r, true)))
+        : h("p", { className: "now-empty", textContent: "No open task fits the free time left today." }),
+      over.length > 0 && h("p", { className: "muted pp-note", textContent: `${plural(over.length)[0]} fit today. Move ${plural(over.length)[1]} up, or take ${plural(over.length)[1]} off.` }),
+      prop.note && h("p", { className: "pp-note", role: "status", textContent: prop.note }),
+      prop.ask && rethinkBox(),
+      h("div", { className: "pp-actions" },
+        h("button", { className: "btn primary start", type: "button", disabled: !prop.items.length || prop.busy, onclick: approve },
+          icon("check"), h("span", { textContent: approved ? "Save plan" : "Approve" })),
+        h("button", { className: "btn line", type: "button", ariaExpanded: String(prop.ask), disabled: prop.busy,
+          textContent: prop.busy ? "Thinking…" : prop.ask ? "Cancel" : "Rethink", onclick: () => { prop.ask = !prop.ask; render(); } }),
+        h("button", { className: "btn quiet", type: "button", textContent: approved ? "Close" : "Not today", onclick: approved ? closeProposal : dismiss })));
+  }
+  // Above the card once a plan is approved: how far along it is, and the
+  // way back in to change it.
+  function planLine(){
+    const p = approvedPlan();
+    if (!p) return null;
+    const { done, total } = planProgress(p, tasks || []);
+    if (!total) return null;
+    return h("button", { type: "button", className: "plan-line", ariaLabel: `Today's plan: ${done} of ${total} done. Open it to change it`, onclick: openProposal },
+      h("span", { className: "plan-line-k", textContent: "Plan" }), h("span", { className: "plan-line-v", textContent: `${done} of ${total} done` }),
+      h("span", { className: "plan-line-go", textContent: "Edit ›" }));
   }
 
   // Done today, for the header's daisy: what the snapshot says, plus what was
@@ -924,6 +1074,12 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onFree
       // The task just worked on isn't offered straight back.
       const m = momentInput();
       const r = rank(tasks || [], { ...m, sessionSkips: [...m.sessionSkips, handoff.skip] });
+      const pn = nextPlanned(approvedPlan(), tasks || [], localDate());
+      const nextPick = (pn && r.ranked.find((s) => s.task.id === pn)) || r.pick;
+      // Every option the card has, right here (Mor, 2026-10-07: not just
+      // Start / Not now). Later, Switch and Pending open the card on that
+      // task with the same ask already open.
+      const onCardWith = (task, open) => { handoff = null; reset(); state.chosen = task.id; state.notNow = true; Object.assign(state, open); render(); };
       const cheer = !handoff.cheered; // the petals once, not on every re-render
       handoff.cheered = true;
       // "Again?" (2026-10-06): one task finished, not a batch → offer next week / next month.
@@ -938,9 +1094,16 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onFree
           render();
         },
       };
-      fill(handoffView({ title: handoff.title, minutes: handoff.minutes || 0, count: n, again }, r.pick, {
+      fill(handoffView({ title: handoff.title, minutes: handoff.minutes || 0, count: n, again }, nextPick, {
         cheer,
         onStart: begin,
+        onFocus: (task) => begin(task, "focus"),
+        onDone: (task) => { handoff = null; quickDone(task); },
+        onLater: (task) => onCardWith(task, { laterAsk: true }),
+        onSwitch: (task) => onCardWith(task, { showAlts: true }),
+        onPending: (task) => onCardWith(task, { pendAsk: true }),
+        onOpen: onOpen ? (task) => onOpen(task) : null,
+        onPlan: () => openProposal(),
         onSkip: (task) => { if (task) skips.add(task.id); handoff = null; showing(null); render(); },
       }));
       if (cheer) navigator.vibrate?.(15);
@@ -962,10 +1125,22 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onFree
     if (night) { fill(...head, ...nightView(hrs), toast && toastView()); return; }
     if (located === "ride") head.push(rideAsk());
 
+    // The start of the day: once per day, until it's approved or turned
+    // down, the card opens as the proposal (when there's something to plan).
+    if (!prop.open && planKnown && cal.status !== "loading" && prop.auto !== localDate() && !todaysPlan()) {
+      prop.auto = localDate();
+      const items = proposeDay({ ...planCtx(), energy: feel().energy.value });
+      if (items.length >= 2) { prop.items = items; prop.exclude = []; prop.open = true; }
+    }
+    if (prop.open) { showing(null); day(...head, proposalCard(), toast && toastView()); return; }
+    head.push(planLine());
+
     const r = rank(tasks, momentInput(fw));
     const planned = blockOf(fw)?.taskId;
+    const planNext = nextPlanned(approvedPlan(), tasks, localDate());
     const card = (state.chosen && r.ranked.find((s) => s.task.id === state.chosen))
-      || (planned && r.ranked.find((s) => s.task.id === planned)) || r.pick;
+      || (planned && r.ranked.find((s) => s.task.id === planned))
+      || (planNext && r.ranked.find((s) => s.task.id === planNext)) || r.pick;
     showing(card?.task.id ?? null);
     // One ask under the card at a time, the most asked-for first.
     // (The calendar offer and the weekly Someday pick moved to Needs you.)
@@ -1033,7 +1208,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onFree
     if (!nx && free < 15) return null;
     return h("div", { className: "glance" },
       nx && row("Next", `Next: ${nx.title} at ${clock(nx.s)}`, () => onEvent?.(nx), null, h("b", { textContent: clock(nx.s) }), " ", bdi(nx.title)),
-      free >= 15 && row("Free", `${dur(free)} free ${new Date(now).getHours() >= 17 ? "this evening" : "today"}: open today's plan`, () => onFree?.(), "Plan ›",
+      free >= 15 && row("Free", `${dur(free)} free ${new Date(now).getHours() >= 17 ? "this evening" : "today"}: plan it`, () => openProposal(), "Plan ›",
         h("b", { textContent: dur(free) }), new Date(now).getHours() >= 17 ? " this evening" : " today"));
   }
 
@@ -1084,6 +1259,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onFree
     watchSettings(uid, (s) => { settings = s || {}; render(); }, fail),
     watchMoment(uid, (d) => { momentDoc = d || {}; render(); }, fail),
     watchLearn(uid, (d) => { learnStats = d || {}; render(); }, fail),
+    watchDayPlan(uid, (d) => { dayPlan = d || null; planKnown = true; render(); }, fail),
   ];
   // The timer ticks every second while running; otherwise this only
   // re-renders when the free window's minute changes.
@@ -1123,6 +1299,8 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onFree
       begin(task);
     },
     startFromNotice(id){ noticeStart = id; tryNoticeStart(); },
+    // "Plan my day" from the Schedule: the proposal on the card.
+    plan(){ if (run) { flash("Finish or stop the running task first."); return; } openProposal(); },
     unmount(){ deep.leave(); deep.watch(() => {}); showing(null); clearTimeout(toastTimer); document.body.classList.remove("focus"); document.documentElement.classList.remove("night"); unsubs.forEach((u) => u()); clearInterval(tick); document.removeEventListener("visibilitychange", onVisible); root.replaceChildren(); root.hidden = true; },
   };
 }

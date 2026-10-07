@@ -131,6 +131,23 @@ Message: what's due this week?
 Message: plan my afternoon
 {"reply":"Here's the afternoon:","actions":[{"kind":"query","query":"plan","part":"afternoon"}]}`;
 
+// mode "plan" (2026-10-07): Rethink on the day's proposed schedule. The app
+// sends the open tasks, the free minutes left today, the current order and
+// what the user wants changed; the answer is a new order of task ids. The app
+// lays it on the clock itself (proposal.js timeline) and keeps a local
+// reading of the same words as the fallback.
+const PLAN_SCHEMA = {
+  type: "OBJECT",
+  properties: {
+    order: { type: "ARRAY", items: { type: "STRING" }, description: "Task ids for today, in the order to do them. Only ids from the list." },
+    note: { type: "STRING", description: "One short sentence on what changed, in the user's language." },
+  },
+  required: ["order"],
+};
+const PLAN_SYSTEM = `You re-plan the rest of today for the user of Daisey, a day-planning app.
+You get the open tasks (id, title, project, minutes, type, due, dateKind), how many free minutes are left today, the current proposed order, and the user's instruction.
+Return the task ids to do today, in order, following the instruction. Keep the total minutes at or under the free minutes. Keep hard deadlines due today or earlier unless the user explicitly says to drop them. Never invent ids. If the instruction is unclear, return the current order with a note asking what to change.`;
+
 const clean = (s, n = 200) => String(s ?? "").replace(/\s+/g, " ").trim().slice(0, n);
 const isDay = (s) => /^\d{4}-\d{2}-\d{2}$/.test(String(s || ""));
 // Something that reads as a date, not a person ("Thursday", "2026-10-08", "יום רביעי").
@@ -212,16 +229,16 @@ async function bump(uid, day, failClosed = false){
 
 // One call to Gemini; the parsed JSON, or null (busy, error, or an answer
 // that isn't JSON — usually one that ran away and hit the token limit).
-async function ask(key, prompt){
+async function ask(key, prompt, system = SYSTEM, schema = SCHEMA){
   let res;
   try {
     res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(MODEL)}:generateContent`, {
       method: "POST",
       headers: { "Content-Type": "application/json", "x-goog-api-key": key },
       body: JSON.stringify({
-        systemInstruction: { parts: [{ text: SYSTEM }] },
+        systemInstruction: { parts: [{ text: system }] },
         contents: [{ role: "user", parts: [{ text: prompt }] }],
-        generationConfig: { responseMimeType: "application/json", responseSchema: SCHEMA, temperature: 0.1, maxOutputTokens: 1500 },
+        generationConfig: { responseMimeType: "application/json", responseSchema: schema, temperature: 0.1, maxOutputTokens: 1500 },
       }),
     });
   } catch (e) {
@@ -275,6 +292,25 @@ exports.handler = async (event) => {
   const allowed = await bump(rateId, rateDay, guest);
   if (allowed === null) return fail(503, "guest_limit_unavailable");
   if (!allowed) return fail(429, "daily_cap");
+
+  if (body.mode === "plan") {
+    const open = (Array.isArray(body.tasks) ? body.tasks : []).slice(0, MAX_TASKS)
+      .map((t) => ({ id: clean(t.id, 60), title: clean(t.title, 120), project: clean(t.project, 60), minutes: Math.max(5, Math.min(600, Number(t.minutes) || 30)),
+        type: clean(t.type, 12), due: isDay(t.due) ? t.due : undefined, dateKind: clean(t.dateKind, 10) || undefined }))
+      .filter((t) => t.id && t.title);
+    const ids = new Set(open.map((t) => t.id));
+    const current = (Array.isArray(body.current) ? body.current : []).map((x) => clean(x, 60)).filter((x) => ids.has(x));
+    const free = Math.max(0, Math.min(24 * 60, Number(body.freeMinutes) || 0));
+    const prompt = `Today: ${clean(body.weekday, 12)} ${body.today}. Now: ${clean(body.time, 5)}. Free minutes left today: ${free}.
+Tasks: ${JSON.stringify(open)}
+Current order: ${JSON.stringify(current)}
+
+Instruction: ${text}`;
+    const out = (await ask(key, prompt, PLAN_SYSTEM, PLAN_SCHEMA)) || (await ask(key, prompt, PLAN_SYSTEM, PLAN_SCHEMA));
+    if (!out) return fail(502, "model");
+    const order = [...new Set((Array.isArray(out.order) ? out.order : []).map((x) => clean(x, 60)).filter((x) => ids.has(x)))];
+    return reply(200, { order, note: clean(out.note, 200) });
+  }
 
   const tasks = (Array.isArray(body.tasks) ? body.tasks : []).slice(0, MAX_TASKS)
     .map((t) => ({ id: clean(t.id, 60), title: clean(t.title, 120), project: clean(t.project, 60), due: isDay(t.due) ? t.due : undefined, status: clean(t.status, 12) }))

@@ -122,6 +122,9 @@ const windowFor = (task, m) => (task.openHours === "office" ? Math.min(m.window,
 export function filterOut(task, m){
   if (task.status === "done" || task.status === "dropped") return "done";
   if (task.status === "waiting") return "waiting";
+  // Started, then waiting for a reply (2026-10-07): nothing to do on it until
+  // the reply comes, so it isn't offered. The running card still shows it.
+  if (task.onHold) return "waiting";
   if (task.status === "someday") return "someday";
   if ((task.skipsSinceStart || 0) >= W.STALE_SKIPS && !deadlineWithin(task, m.now, W.STALE_KEEP_DEADLINE_DAYS)) return "stale";
   if (notYet(task, m.now)) return "notyet";

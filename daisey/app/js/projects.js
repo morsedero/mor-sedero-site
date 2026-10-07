@@ -242,6 +242,7 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
     // still ahead (the card is dimmed until then), then the due date.
     // "Starts", not "from": "from" read as the start of a range ending at due.
     if (notYet(t)) parts.push(`Starts ${shortDay(t.notBefore)}`);
+    if (t.onHold) parts.push(t.onHold.who ? `waiting on ${t.onHold.who}` : "waiting for a reply");
     // Further than 2 weeks: no date in the list, only in the task sheet.
     if (t.due && (isOverdue(t) || daysTo(t.due) <= 14)) {
       const tone = dueTone(t), text = `${isOverdue(t) ? "was due" : t.dateKind === "deadline" ? "due" : "by"} ${shortDay(t.due)}`;
@@ -364,6 +365,10 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
     onScreen?.(name);
   }
   function closeProject(){ shown = null; els.view.hidden = true; els.view.replaceChildren(); }
+  // The Projects page (Mor, 2026-10-07): its own screen, opened from the
+  // Schedule's Projects button; a project opens over it.
+  function openAll(){ els.page.hidden = false; els.page.scrollTop = 0; paintGrid(); }
+  function closeAll(){ els.page.hidden = true; }
 
   // Every project a task names gets saved, so it stays when its tasks go.
   // Only once both have loaded: saving before the names arrive would
@@ -388,6 +393,9 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
     setCurrent(id){ onCard = id; render(); },
     openProject,
     closeProject,
+    openAll,
+    closeAll,
+    // The project on screen, for "+ Task": the open project, else none.
     shownProject: () => shown,
     unmount(){ unsubs.forEach((u) => u()); closeProject(); els.grid.replaceChildren(); if (els.dialog.open) els.dialog.close(); },
   };

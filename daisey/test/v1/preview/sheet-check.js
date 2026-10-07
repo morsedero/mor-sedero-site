@@ -67,7 +67,7 @@ const check = (name, pass, got) => { results.push({ pass }); console.log(`${pass
   });
   await page.goto(ORIGIN + "/");
   await page.waitForSelector(".now-card, .now-empty, .tk-empty");
-  await page.click("#tabSched");
+  // The Schedule is always on screen now (no tabs, 2026-10-07).
   await page.waitForSelector(".sc-row");
   const day = page.locator(".sc-day").first();
   const sheet = page.locator("#eventdlg");

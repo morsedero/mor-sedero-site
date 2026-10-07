@@ -473,12 +473,14 @@ export function editTask(task, changes, { now = Date.now(), history = [] } = {})
   if (has("links")) set("links", toLinks(changes.links));
 
   if (has("waitingOn")) set("waitingOn", text(changes.waitingOn) || null);
+  if (has("onHold")) set("onHold", holdValue(changes.onHold, now));
   if (has("checkOn")) set("checkOn", toDate(changes.checkOn));
   if (has("status") && STATUS.includes(changes.status)) {
     set("status", changes.status);
     if (changes.status !== "waiting" && !has("waitingOn")) set("waitingOn", null);
     if (changes.status !== "waiting") set("checkOn", null);
     if (changes.status !== "done") set("doneAt", null); // reopened
+    if (changes.status !== "ready" && !has("onHold")) set("onHold", null);
   } else if (has("waitingOn") && get("waitingOn") && get("status") === "ready") {
     set("status", "waiting");
   }
@@ -527,7 +529,17 @@ export function migrateTask(task, history = []){
 }
 
 export const completeTask = (task, { now = Date.now() } = {}) =>
-  ({ status: "done", doneAt: now, skipsSinceStart: 0, touchedAt: now });
+  ({ status: "done", doneAt: now, skipsSinceStart: 0, touchedAt: now, onHold: null });
+
+// Waiting for a reply (2026-10-07): a started task on hold — "sent it, now
+// waiting on Yuval". Not Pending: the task stays the running one and its
+// timer keeps going. { who, since } or null; who may be "".
+export function holdValue(v, now = Date.now()){
+  if (!v) return null;
+  const who = text(typeof v === "string" ? v : v.who).slice(0, 80);
+  const since = Number.isFinite(v.since) ? v.since : now;
+  return { who, since };
+}
 
 // Not now. The skip counts straight away; the reason is a second, optional
 // patch, because the chips only appear after the card has already moved on.

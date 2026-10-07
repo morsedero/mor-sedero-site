@@ -8,8 +8,8 @@ let tasks = (seed.tasks || []).map((t) => ({ id: "t" + ++n, ...createTask(t), ..
 // seed.run: { task: <title>, minutes: <elapsed>, extra } — a run already going.
 const run = seed.run && (() => { const t = tasks.find((x) => x.title === seed.run.task) || tasks[0];
   return { taskId: t.id, startedAt: Date.now() - (seed.run.minutes || 0) * 60000, extra: seed.run.extra || 0 }; })();
-const docs = { now: run || null, skips: seed.skips ?? null, settings: seed.settings ?? { deadlinesAsked: true }, moment: seed.moment ?? {}, learn: seed.learn ?? {}, projects: seed.projects ?? [] };
-const subs = { tasks: new Set(), now: new Set(), skips: new Set(), settings: new Set(), moment: new Set(), learn: new Set(), projects: new Set() };
+const docs = { now: run || null, skips: seed.skips ?? null, settings: seed.settings ?? { deadlinesAsked: true }, moment: seed.moment ?? {}, learn: seed.learn ?? {}, projects: seed.projects ?? [], dayplan: seed.dayplan ?? null };
+const subs = { tasks: new Set(), now: new Set(), skips: new Set(), settings: new Set(), moment: new Set(), learn: new Set(), projects: new Set(), dayplan: new Set() };
 
 const emit = (k) => setTimeout(() => { for (const cb of subs[k]) cb(k === "tasks" ? tasks.map((t) => ({ ...t })) : docs[k], {}); });
 const watch = (k) => (uid, cb) => { subs[k].add(cb); setTimeout(() => cb(k === "tasks" ? tasks.map((t) => ({ ...t })) : docs[k], {})); return () => subs[k].delete(cb); };
@@ -48,6 +48,10 @@ export const saveProjectNames = (uid, names) => { docs.projects = names; return 
 export const watchMoment = watch("moment");
 export const saveMoment = (uid, f) => { docs.moment = { ...docs.moment, ...f }; return ok("moment"); };
 export const watchLearn = watch("learn");
+export const watchDayPlan = watch("dayplan");
+export const saveDayPlan = (uid, plan) => { docs.dayplan = { ...plan, at: Date.now() }; return ok("dayplan"); };
+export const holdTask = (uid, task, who = "") => patchTask(uid, task.id, { onHold: { who, since: Date.now() } });
+export const releaseTask = (uid, task) => patchTask(uid, task.id, { onHold: null });
 export const bumpLearn = (uid, type, part, field) => { const k = `${type}|${part}`; docs.learn = { ...docs.learn, [k]: { ...docs.learn[k], [field]: (docs.learn[k]?.[field] || 0) + 1 } }; return ok("learn"); };
 export const saveSettings = (uid, fields) => { docs.settings = { ...docs.settings, ...fields }; return ok("settings"); };
 

@@ -116,6 +116,20 @@ export function mountAddTask(dialog, uid, { onStart } = {}){
     h("label", {}, h("span", { textContent: "Waiting on" }), waitingOn),
     h("label", {}, h("span", { textContent: "Ask me again" }), checkOn),
     nudgeBtn);
+  // Waiting for a reply (Mor, 2026-10-07): the same hold as the running
+  // card's Waiting — on hold, off the card, and if it's the running task its
+  // timer keeps going. A switch plus who; not Pending (that has its own box).
+  const holdSwitch = h("input", { type: "checkbox", id: "tsHold" });
+  const holdWho = h("input", { className: "ts-input", dir: "auto", autocomplete: "off", id: "tsHoldWho" });
+  const holdBox = h("div", { className: "ts-hold" },
+    h("label", { className: "ts-hold-sw", htmlFor: "tsHold" }, holdSwitch, h("span", { textContent: "Waiting for a reply" })),
+    h("label", { className: "ts-hold-who", htmlFor: "tsHoldWho" }, h("span", { textContent: "From who (optional)" }), holdWho));
+  holdSwitch.addEventListener("change", () => {
+    if (!editing) return;
+    save({ onHold: holdSwitch.checked ? { who: holdWho.value, since: editing.onHold?.since } : null });
+    paintFoot();
+  });
+  holdWho.addEventListener("change", () => { if (editing?.onHold || holdSwitch.checked) save({ onHold: { who: holdWho.value, since: editing.onHold?.since } }); });
   const stateLine = h("p", { className: "ts-state" });
   // What the web check found (research.js): "Daisey checked: online…" / "needs a call…".
   const researchLine = h("p", { className: "ts-state ts-research", dir: "auto" });
@@ -133,7 +147,7 @@ export function mountAddTask(dialog, uid, { onStart } = {}){
     field("Project", projectSel, newProject),
     field("Task", title),
     h("div", { className: "ts-dates" }, start.box, due.box),
-    detailsBtn, chipRow, pendBox, researchLine, stateLine,
+    detailsBtn, chipRow, pendBox, holdBox, researchLine, stateLine,
     section("Steps", stepList),
     section("Links & notes", h("div", { className: "ts-group" }, linkRow, notes)),
     worked, startBtn, del, msg);
@@ -303,6 +317,10 @@ export function mountAddTask(dialog, uid, { onStart } = {}){
     worked.hidden = !t || (!n && !m);
     worked.textContent = `Worked ${n} session${n === 1 ? "" : "s"} · ${workedText(m)} so far`;
     pendBox.hidden = t?.status !== "waiting";
+    // Only for an open task that isn't already Pending.
+    holdBox.hidden = !t || t.status !== "ready";
+    if (t && document.activeElement !== holdSwitch) holdSwitch.checked = !!t.onHold;
+    holdWho.parentElement.hidden = !holdSwitch.checked;
     const done = t?.status === "done";
     stateLine.hidden = !(t && (done || t.status === "someday"));
     stateLine.replaceChildren(...(done
@@ -419,6 +437,7 @@ export function mountAddTask(dialog, uid, { onStart } = {}){
       kind = task.dateKind === "deadline" ? "deadline" : "target";
       notes.value = task.notes || "";
       waitingOn.value = task.waitingOn || "";
+      holdWho.value = task.onHold?.who || "";
       checkOn.value = task.checkOn || "";
       checkOn.min = localDate();
       steps = (task.steps || []).map((s) => ({ ...s }));

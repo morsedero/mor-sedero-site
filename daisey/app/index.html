@@ -70,19 +70,15 @@
   <!-- Signed in: the Now card (now.js) over the panel. -->
   <div id="board" hidden>
     <section id="nowcard" aria-label="Now" hidden></section>
-    <!-- Schedule (schedule.js) and Projects (projects.js), one page each;
-         tap a tab or swipe sideways (panel.js). -->
-    <section id="panel" class="panel" aria-label="Schedule and projects">
-      <div class="seg" role="tablist" aria-label="Schedule or projects">
-        <button id="tabSched" class="seg-btn" type="button" role="tab" aria-controls="schedPage" aria-selected="true">Schedule</button>
-        <button id="tabProj" class="seg-btn" type="button" role="tab" aria-controls="projPage" aria-selected="false">Projects</button>
+    <!-- The Schedule is the home screen's one panel (Mor, 2026-10-07: no
+         Schedule | Projects tabs). Projects is a button to its own page. -->
+    <section id="panel" class="panel" aria-labelledby="schedTitle">
+      <div class="panel-head">
+        <h2 id="schedTitle" class="panel-title">Schedule</h2>
+        <button id="planBtn" class="panel-btn" type="button">Plan my day</button>
+        <button id="projectsBtn" class="panel-btn proj" type="button">Projects<span aria-hidden="true"> ›</span></button>
       </div>
-      <div class="ptrack-wrap">
-        <div class="ptrack">
-          <div id="schedPage" class="ppage" role="tabpanel" aria-labelledby="tabSched"></div>
-          <div id="projPage" class="ppage" role="tabpanel" aria-labelledby="tabProj"></div>
-        </div>
-      </div>
+      <div id="schedPage" class="ppage"></div>
     </section>
   </div>
   <!-- Tell Daisey (tell.js): type or speak; Daisey shows what it understood
@@ -110,6 +106,14 @@
       </button>
     </form>
   </div>
+  <!-- All projects, full screen (projects.js): opened by the Projects button. -->
+  <section id="projectsview" class="screen" aria-labelledby="projectsTitle" hidden>
+    <div class="pp-top">
+      <button id="projectsBack" class="pj-back" type="button" aria-label="Back to home"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button>
+      <h2 id="projectsTitle" class="pp-title">Projects</h2>
+    </div>
+    <div id="projPage" class="pp-page"></div>
+  </section>
   <!-- One project, full screen (projects.js). -->
   <section id="projectview" class="screen" aria-label="Project" hidden></section>
   <!-- Needs you: one decision at a time, full screen (needs.js). -->

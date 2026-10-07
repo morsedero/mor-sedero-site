@@ -176,8 +176,8 @@ async function boot(){
     } else initial();
     show("signedin"); // no element of its own: just clears loading/sign-in views
 
-    Promise.all([import("./now.js"), import("./projects.js"), import("./addtask.js"), import("./needs.js"), import("./import-trello.js"), import("./addevent.js"), import("./store.js"), import("./deadlines.js"), import("./day.js"), import("./calendar.js"), import("./schedule.js"), import("./panel.js"), import("./push.js"), import("./briefchip.js"), import("./model.js"), import("./context.js")])
-      .then(([{ mountNow }, { mountProjects }, { mountAddTask }, { mountNeeds }, { mountImport }, { mountAddEvent }, { migrateTasks, watchSettings, saveSettings, watchTasks, watchRun }, { mountDeadlines }, { dayHours, minText }, { watchCalendar }, { mountSchedule }, { mountPanel }, push, { mountBriefChip }, { AREAS, LABELS }, { workBase }]) => {
+    Promise.all([import("./now.js"), import("./projects.js"), import("./addtask.js"), import("./needs.js"), import("./import-trello.js"), import("./addevent.js"), import("./store.js"), import("./deadlines.js"), import("./day.js"), import("./calendar.js"), import("./schedule.js"), import("./push.js"), import("./briefchip.js"), import("./model.js"), import("./context.js")])
+      .then(([{ mountNow }, { mountProjects }, { mountAddTask }, { mountNeeds }, { mountImport }, { mountAddEvent }, { migrateTasks, watchSettings, saveSettings, watchTasks, watchRun }, { mountDeadlines }, { dayHours, minText }, { watchCalendar }, { mountSchedule }, push, { mountBriefChip }, { AREAS, LABELS }, { workBase }]) => {
         if ((!isGuest && fb.currentUid() !== user.uid) || mounted) return;
         const m = mounted = {};
         // Old tasks get the new fields first; then, once, which dates are real.
@@ -299,8 +299,15 @@ async function boot(){
           open(kind){ if (history.state?.daisey !== kind) history.pushState({ daisey: kind }, ""); },
           back(){ if (history.state?.daisey) history.back(); else closeScreens(); },
         };
-        const closeScreens = () => { m.projects?.closeProject(); m.needs?.close(); };
-        const onPop = () => { if (!history.state?.daisey) closeScreens(); else if (history.state.daisey !== "needs") m.needs?.close(); };
+        const closeScreens = () => { m.projects?.closeProject(); m.projects?.closeAll(); m.needs?.close(); };
+        // Back from a project lands on the Projects page when that's where it
+        // was opened from (history state "projects" under "project").
+        const onPop = () => {
+          const at = history.state?.daisey;
+          if (!at) closeScreens();
+          else if (at === "projects") { m.projects?.closeProject(); m.needs?.close(); }
+          else if (at !== "needs") m.needs?.close();
+        };
         addEventListener("popstate", onPop);
         m.history = { unmount(){ removeEventListener("popstate", onPop); } };
         // Start from anywhere: back to home first, then focus mode.
@@ -308,22 +315,24 @@ async function boot(){
 
         m.adder = mountAddTask($("#addtask"), user.uid, { onStart: startTask });
         m.needs = mountNeeds($("#needsview"), user.uid, { onClose: () => screens.back() });
-        // The home panel: Schedule and Projects, one page each.
-        m.panel = mountPanel({ panel: $("#panel"), tabs: [$("#tabSched"), $("#tabProj")], track: $("#panel .ptrack") });
+        // The home panel is the Schedule, always. Projects is its own page.
         m.schedule = mountSchedule($("#schedPage"), user.uid, { onEvent: (ev) => m.event.view(ev), onNew: (date, at) => m.event.open(date, at), onOpen: (task) => m.adder.edit(task) });
-        m.projects = mountProjects({ grid: $("#projPage"), view: $("#projectview"), dialog: $("#projdlg") }, user.uid, {
+        m.projects = mountProjects({ grid: $("#projPage"), page: $("#projectsview"), view: $("#projectview"), dialog: $("#projdlg") }, user.uid, {
           onOpen: (task) => m.adder.edit(task),
           onAdd: (project) => m.adder.open(project),
           onStart: startTask,
           onScreen: (name) => (name ? screens.open("project") : screens.back()),
         });
+        $("#projectsBtn").onclick = () => { m.projects.openAll(); screens.open("projects"); };
+        $("#projectsBack").onclick = () => screens.back();
+        $("#planBtn").onclick = () => m.now?.plan();
         m.now = mountNow($("#nowcard"), user.uid, {
           name: (user.displayName || "").trim().split(/\s+/)[0], onDone: paintDone, onNeedsCount: paintNeeds,
           onCard: (id) => m.projects?.setCurrent(id),
           onOpen: (task) => m.adder.edit(task),
           onProject: (name) => m.projects.openProject(name),
           onEvent: (ev) => m.event.view(ev),
-          onFree: () => m.panel.show("schedule"),
+          guest: isGuest,
         });
         $("#needsChip").onclick = () => { m.needs.open(); screens.open("needs"); };
         // A notification's tap: "?open=wrap" on a fresh start, or a message

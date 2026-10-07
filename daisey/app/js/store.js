@@ -276,6 +276,20 @@ export function endRun(uid, task, minutes, { finished = false } = {}){
   ]);
 }
 
+// The day's proposed schedule (proposal.js), users/{uid}/state/dayplan:
+// { date, status: "proposed" | "approved" | "dismissed", items: [{ taskId,
+// minutes }], at }. One doc, so the phone and the laptop show the same plan.
+export function watchDayPlan(uid, cb, onError){
+  const guestUnsub = watchGuestState(uid, "dayplan", cb, onError);
+  if(guestUnsub) return guestUnsub;
+  return fb.onSnapshot(fb.doc(fb.db, "users", uid, "state", "dayplan"), (snap) => cb(snap.exists() ? snap.data() : null), onError);
+}
+export const saveDayPlan = (uid, plan) => saveGuestState(uid, "dayplan", { ...plan, at: Date.now() });
+
+// Waiting for a reply on a started task (model.holdValue): the run goes on.
+export const holdTask = (uid, task, who = "") => updateGuestTask(uid, task.id, { onHold: { who: String(who || "").trim().slice(0, 80), since: Date.now() }, touchedAt: Date.now() });
+export const releaseTask = (uid, task) => updateGuestTask(uid, task.id, { onHold: null, touchedAt: Date.now() });
+
 // Projects made by name before they have a task, users/{uid}/state/projects:
 // { names: [...] }. A project is otherwise just the tasks that carry its
 // name, so without this an empty one couldn't exist.
