@@ -21,9 +21,6 @@ function shape(e, colors, cal) {
   return {
     id: e.id,
     calendarId: cal.id,
-    // Which of the user's calendars it sits on, so a stray event can be traced
-    // to the calendar it came from (shown in the event details).
-    calendarName: cal.name || null,
     // Only what the user can actually change offers Edit and Remove. A
     // repeating event counts (Mor, 2026-10-06: "schedule should be
     // editable"): its id here is the one occurrence, so a PATCH or DELETE on
@@ -78,7 +75,7 @@ async function calendarsFor(accessToken, fresh = false) {
     // the user has already said they don't want to look at.
     const calendars = (list.items || []).filter((c) => c.selected !== false && !c.deleted)
       .slice(0, MAX_CALENDARS)
-      .map((c) => ({ id: c.id, name: c.summaryOverride || c.summary || "", color: c.backgroundColor || null, editable: ["owner", "writer"].includes(c.accessRole) }));
+      .map((c) => ({ id: c.id, color: c.backgroundColor || null, editable: ["owner", "writer"].includes(c.accessRole) }));
     const value = { colors, calendars: calendars.length ? calendars : [{ id: "primary", color: null, editable: true }] };
     cache.delete(accessToken);
     cache.set(accessToken, { at: Date.now(), value });
