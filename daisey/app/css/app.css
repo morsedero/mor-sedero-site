@@ -1415,3 +1415,4 @@ body.focus .shell { block-size: auto; min-block-size: 100dvh; overflow: visible;
 @media (prefers-reduced-motion: reduce) { .bloom svg, .bloom .daisy-petals ellipse { transition: none; } }
 .bloom-btn { touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
 .bloom-btn * { pointer-events: none; }
+.ny-field { margin-block-start: 12px; inline-size: 100%; min-block-size: 48px; padding: 0 14px; border: 1px solid var(--line-2); border-radius: 14px; background: var(--surface); color: var(--ink); font: inherit; font-size: 17px; }

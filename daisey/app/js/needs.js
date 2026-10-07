@@ -32,7 +32,8 @@ import { nudgeText, waLink } from "./nudge.js";
 import { daysUntil } from "./engine.js";
 import { collectNeeds, somedayDue } from "./needs-list.js";
 export { collectNeeds, somedayDue }; // now.js counts them for the header chip
-import { h, icon, dur } from "./ui.js";
+import { h, icon, dur, flash } from "./ui.js";
+import { whereAsk, setRide, setStill, saveSpot, notHomeHere, quietHere, reservedName } from "./where.js";
 import { areaClass } from "./look.js";
 
 const MARK = { penalty: "There's a penalty if it's late.", money: "It costs money to leave it.", someone: "Someone's waiting on it." };
@@ -99,6 +100,28 @@ export function mountNeeds(root, uid, { onClose } = {}){
         yes: ["Yes, make it a task", () => { markOffered(ev); addTask(uid, d.input, tasks).catch(fail); follow = ev; paint(); }],
         no: ["No, it's an event", () => { markOffered(ev); next(); }] };
     }
+    // Device questions (where.js): about where you are, not about a task.
+    if (item.kind === "ride") return { tone: "area-home", ico: "later", q: "How are you travelling?", sub: "You're moving fast.",
+      item: "", say: "I can't tell a train from a bus or a car.", noLater: true,
+      yes: ["Train", () => { setRide("train"); next(); }], no: ["Bus", () => { setRide("bus"); next(); }],
+      more: [["Driving", () => { setRide("car"); next(); }], ["Not moving", () => { setStill(); next(); }]] };
+    if (item.kind === "home") {
+      const failed = () => flash("Couldn't get your location. Allow it for this site and try again.");
+      return { tone: "area-home", ico: "someday", q: "Are you home right now?", sub: "I don't have a Home saved yet.",
+        item: "", say: "Then I'll know when tasks that need home fit.", noLater: true,
+        yes: ["Yes, I'm home", async () => { if (await saveSpot("Home")) next(); else failed(); }],
+        no: ["No", () => { notHomeHere(); next(); }] };
+    }
+    if (item.kind === "place") return { tone: "area-home", ico: "someday", q: "You're here a lot", sub: "Name this place?",
+      item: "", say: "Tasks that mention it come first here.", noLater: true,
+      field: { id: "placeHere", placeholder: "Work, Studio, Gym…" },
+      yes: ["Save", async (name) => {
+        const n = String(name || "").trim();
+        if (!n) return;
+        if (reservedName(n)) { flash(`"${n}" is taken. Pick another name.`); return; }
+        if (await saveSpot(n)) { flash(`Saved. I'll know when you're at ${n}.`); next(); } else flash("Couldn't get your location. Allow it for this site and try again.");
+      }],
+      no: ["Not now", () => { quietHere(); next(); }] };
     const t = find(item.id);
     if (!t) return null; // deleted since: skip it
     if (item.kind === "clash") {
@@ -200,7 +223,7 @@ export function mountNeeds(root, uid, { onClose } = {}){
         big("Back to now", "line big", () => onClose?.())));
       return;
     }
-    let q;
+    let q, field = null;
     if (follow) {
       const ev = follow;
       q = { tone: "area-admin", ico: "calendar", q: "Keep the event?", sub: "Added as a task.", item: ev.title,
@@ -213,13 +236,15 @@ export function mountNeeds(root, uid, { onClose } = {}){
       h("span", { className: "ny-ico" }, icon(q.ico)),
       h("h2", { className: "ny-q", textContent: q.q }),
       h("p", { className: "ny-sub", textContent: q.sub }),
-      h("div", { className: "ny-item", dir: "auto", textContent: q.item }),
-      h("p", { className: "ny-say", textContent: q.say }));
+      q.item && h("div", { className: "ny-item", dir: "auto", textContent: q.item }),
+      h("p", { className: "ny-say", textContent: q.say }),
+      q.field && (field = h("input", { id: q.field.id, className: "ny-field", dir: "auto", autocomplete: "off", enterkeyhint: "done", placeholder: q.field.placeholder, ariaLabel: q.sub })));
+    if (field) field.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); q.yes[1](field.value); } });
     root.replaceChildren(top,
       h("div", { className: "ny-stack" + (left > 1 ? " two" : left ? " one" : "") }, card),
       h("div", { className: "ny-spacer" }),
       h("div", { className: "ny-btns" },
-        big(q.yes[0], "primary big", q.yes[1]),
+        big(q.yes[0], "primary big", () => q.yes[1](field?.value)),
         q.no && big(q.no[0], "line big", q.no[1]),
         q.more && h("div", { className: "ny-more" }, ...q.more.map(([text, go]) => big(text, "quiet", go))),
         !q.noLater && big("Ask me later", "quiet", () => later(list[i].key))));
@@ -236,7 +261,8 @@ export function mountNeeds(root, uid, { onClose } = {}){
     open(which = "needs"){
       if (!loaded) { waiting = which; return; }
       mode = which;
-      list = which === "wrap" ? wrapList(tasks) : collectNeeds({ tasks, events: cal.events || [], calOk: cal.status === "ok", settings });
+      const dev = which === "wrap" ? null : whereAsk();
+      list = which === "wrap" ? wrapList(tasks) : [...(dev ? [{ key: `where:${dev}`, kind: dev === "name" ? "place" : dev }] : []), ...collectNeeds({ tasks, events: cal.events || [], calOk: cal.status === "ok", settings })];
       i = 0; follow = null;
       paint();
       root.hidden = false;

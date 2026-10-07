@@ -174,6 +174,11 @@ export const reservedName = (n) => RESERVED.has(String(n).trim().toLowerCase());
 
 export const whereNow = () => current;
 
+// The one device question waiting, if any: "ride" (a ride the phone can't
+// name), "home", "name", or null. Needs you holds it (Mor, 2026-10-07: the
+// questions are a notification, not a strip above the card).
+export const whereAsk = () => (current === "ride" ? "ride" : placeAsk());
+
 // The answer to "train, bus or driving?" (or "I'm a passenger" = bus).
 export function setRide(mode){
   if (!RIDES.includes(mode)) return;

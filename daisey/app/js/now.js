@@ -18,7 +18,7 @@ import { addTask, watchTasks, watchRun, watchSkips, saveSkips, startRun, extendR
 import { proposeDay, timeline, nextPlanned, planProgress } from "./proposal.js";
 import { rethink } from "./rethink.js";
 import { placeNow, workBase } from "./context.js";
-import { watchWhere, setRide, setStill, saveSpot, setManual, placeAsk, notHomeHere, quietHere, reservedName } from "./where.js";
+import { watchWhere, setManual, whereAsk } from "./where.js";
 import { pickWeekDay } from "./triage.js";
 import { focusView, handoffView, elapsedMinutes, targetMinutes, batchFocusView, batchName, sinceMark, paused, resumed, runCap, bookedMinutes, holdButton, stillOnMinutes, bloomHold } from "./focus.js";
 import { watchCalendar, logDone } from "./calendar.js";
@@ -59,7 +59,6 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
   let dayPlan, planKnown = false;
   const prop = { open: false, items: [], exclude: [], ask: false, text: "", busy: false, note: "", auto: null };
   let holdAsk = false, holdText = ""; // "Waiting for reply" on the running card
-  let placeNaming = false, placeName = ""; // "Name this place?" (placeAskView)
   // The event you said you're free from, as its start time in ms (what
   // engine.freeWindow reports). Cleared on its own once that event is no
   // longer the one running.
@@ -145,30 +144,11 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
       side && h("span", { className: "hero-side", textContent: side }));
   }
 
-  // The card. Swipe it away and the engine's next real pick slides in. (The
-  // Tetris NEXT peek beside it gave its place to the day, Mor 2026-10-05.)
-  // The card breathes while nothing is asked of it (CSS; off under reduced
-  // motion).
-  function deck(card, next, still){
-    const el = h("div", { className: `deck${still ? " still" : ""}` }, card);
-    if (next) {
-      let x0 = null, y0 = 0;
-      card.addEventListener("pointerdown", (e) => { x0 = e.target.closest("input, textarea") ? null : e.clientX; y0 = e.clientY; });
-      card.addEventListener("pointerup", (e) => {
-        if (x0 === null) return;
-        const dx = (e.clientX - x0) * (getComputedStyle(card).direction === "rtl" ? -1 : 1), dy = e.clientY - y0;
-        x0 = null;
-        if (dx < -50 && Math.abs(dx) > 1.5 * Math.abs(dy)) advance(next);
-      });
-    }
-    return el;
-  }
-  // The next piece takes the card: this one slides out, that one slides in.
-  function advance(next){
-    const go = () => { reset(); state.chosen = next.task.id; slideIn = true; render(); };
-    const el = root.querySelector(".now-card.main");
-    if (el && motionOK()) { el.classList.add("out"); setTimeout(go, SLIDE_MS); } else go();
-  }
+  // The card. (Swiping it away is gone, Mor 2026-10-07: nobody could see it,
+  // and Later / Something else do the same job.) It breathes while nothing
+  // is asked of it (CSS; off under reduced motion).
+  const deck = (card, still) => h("div", { className: `deck${still ? " still" : ""}` }, card);
+
   const asking = () => state.notNow || state.pendAsk || state.showAlts;
 
   // The one loud button: amber, with a play icon.
@@ -205,50 +185,6 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
       block && h("p", { className: "freeline" },
         ...(block.taskId ? [`Booked until ${clock(block.end)}`] : ["Working on ", bdi(block.project), ` until ${clock(block.end)}`]),
         " · ", freeNow(block.start, block.title || block.project)));
-  }
-
-  // A ride the phone can't name (speed says train, bus or car alike): ask
-  // once; the answer holds for the rest of the ride (where.js RIDE_MS).
-  // "Not moving" is for when the phone got it wrong.
-  function rideAsk(){
-    const pick = (mode, text) => h("button", { type: "button", className: "chip", textContent: text, onclick: () => setRide(mode) });
-    return h("div", { className: "ride-ask", role: "group", ariaLabel: "How are you travelling?" },
-      h("span", { className: "muted", textContent: "On a" }),
-      pick("train", "Train"), pick("bus", "Bus"), pick("car", "Driving"),
-      h("button", { type: "button", className: "chip", textContent: "Not moving", onclick: () => setStill() }));
-  }
-
-  // Places are learned by asking, not in Settings (Mor, 2026-10-07: "no one
-  // will ever do that intentionally"). where.js placeAsk decides when: no Home
-  // yet → "Are you home?"; a spot you keep coming back to → "Name it?".
-  // Each spot is asked once; "Not now" silences it for good.
-  function placeAskView(kind){
-    const chip = (text, onclick, cls = "chip") => h("button", { type: "button", className: cls, textContent: text, onclick });
-    const failed = () => flash("Couldn't get your location. Allow it for this site and try again.");
-    if (kind === "home") return h("div", { className: "ride-ask", role: "group", ariaLabel: "Are you home?" },
-      h("span", { className: "muted", textContent: "Are you home right now?" }),
-      chip("Yes", async () => { if (!await saveSpot("Home")) failed(); }),
-      chip("No", () => notHomeHere()));
-    const save = async () => {
-      const n = placeName.trim();
-      if (!n) return;
-      if (reservedName(n)) { flash(`"${n}" is taken. Pick another name.`); return; }
-      placeNaming = false; placeName = "";
-      if (await saveSpot(n)) flash(`Saved. I'll know when you're at ${n}.`); else failed();
-      render();
-    };
-    if (!placeNaming) return h("div", { className: "ride-ask", role: "group", ariaLabel: "Name this place?" },
-      h("span", { className: "muted", textContent: "You're here a lot. Name this place?" }),
-      chip("Name it", () => { placeNaming = true; render(); }),
-      chip("Not now", () => quietHere()));
-    const input = h("input", { id: "placeHere", dir: "auto", autocomplete: "off", enterkeyhint: "done", value: placeName,
-      placeholder: "Work, Studio, Gym…", oninput: (e) => { placeName = e.target.value; } });
-    input.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); save(); } });
-    setTimeout(() => { if (input.isConnected && document.activeElement !== input) input.focus(); });
-    return h("div", { className: "pend-ask" },
-      h("label", { htmlFor: "placeHere", textContent: "What's this place? Tasks that mention it come first here." }),
-      h("div", { className: "pend-row" }, input, chip("Save", save, "btn primary small"),
-        chip("Cancel", () => { placeNaming = false; placeName = ""; render(); }, "btn quiet small")));
   }
 
   // Driving and no call to make (hands-free calls are the one thing that
@@ -1126,7 +1062,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
     const pp = planProgressNow(), ppKey = pp ? `${pp.done}/${pp.total}` : "";
     if (ppKey !== reportedPlan) { reportedPlan = ppKey; onPlanProgress?.(pp); }
     if (!live && tasks) {
-      const nn = collectNeeds({ tasks, events: cal.events || [], calOk: cal.status === "ok", settings }).length;
+      const nn = collectNeeds({ tasks, events: cal.events || [], calOk: cal.status === "ok", settings }).length + (whereAsk() ? 1 : 0);
       if (nn !== reportedNeeds) { reportedNeeds = nn; onNeedsCount?.(nn); }
     }
 
@@ -1187,8 +1123,6 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
     if (tasks == null) { fill(...head, h("p", { className: "muted", textContent: "Loading tasks…" })); return; }
 
     if (night) { fill(...head, ...nightView(hrs), toast && toastView()); return; }
-    if (located === "ride") head.push(rideAsk());
-    else { const ask = placeAsk(); if (ask) head.push(placeAskView(ask)); }
 
     // The start of the day: once per day, until it's approved or turned
     // down, the card opens as the proposal (when there's something to plan).
@@ -1250,13 +1184,9 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
 
     if (card === r.pick && r.pick.batch && !state.chosen && !state.single) { day(...head, batchCard(r, r.pick.batch), tip); return; }
     const alts = r.ranked.length > 1 ? [r.pick, ...r.alternatives].filter((s) => s !== card).slice(0, 3) : [];
-    // The next piece: the one after this card in the engine's order, round
-    // again at the end, so tapping through visits every alternative.
-    const order = [r.pick, ...r.alternatives].filter(Boolean);
-    const next = alts.length ? order[(order.indexOf(card) + 1) % order.length] ?? alts[0] : null;
     // Start is the one loud thing on the tab; the other two stay quiet under it.
     day(...head, deck(taskCard(card, true,
-      ...cardActions(card.task, alts, startButton("Start", `Start: ${card.task.title}`, () => begin(card.task)))), next !== card && next, asking()),
+      ...cardActions(card.task, alts, startButton("Start", `Start: ${card.task.title}`, () => begin(card.task)))), asking()),
       ...altsFor(alts), tip);
     // One slide-in per step-aside: later snapshots must not replay it.
     if (slideIn) { slideIn = false; if (motionOK()) root.querySelector(".now-card.main")?.classList.add("in"); }
