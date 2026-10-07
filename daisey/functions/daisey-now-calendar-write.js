@@ -35,7 +35,8 @@ const { verifyIdToken } = require("./_daisey-lib/firebase-auth");
 const { openStore } = require("./_daisey-lib/blobs");
 const { getGoogleAccessToken } = require("./_daisey-lib/tokens");
 
-const API = "https://www.googleapis.com/calendar/v3/calendars";
+const DAISY = "🌼";
+const API ="https://www.googleapis.com/calendar/v3/calendars";
 
 const reply = (statusCode, body) => ({
   statusCode,
@@ -81,15 +82,20 @@ exports.handler = async (event) => {
     calId = await daiseyCalendar(accessToken, req.timeZone, OWN[calId]);
     if (!calId) return fail(502, "google");
   }
+  const hasTask = typeof req.taskId === "string" && req.taskId !== "";
   const note = typeof req.note === "string" ? req.note.slice(0, 500) : "";
   const base = `${API}/${encodeURIComponent(calId)}/events`;
   const url = action === "create" ? base : `${base}/${encodeURIComponent(eventId)}`;
   const headers = { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" };
   const times = { start: { dateTime: start }, end: { dateTime: end } };
   const res = action === "delete" ? await fetch(url, { method: "DELETE", headers })
-    : action === "create" ? await fetch(url, { method: "POST", headers, body: JSON.stringify({ summary: title, ...times,
+    : action === "create" ? await fetch(url, { method: "POST", headers, body: JSON.stringify({
+      // A task's event wears a daisy and Banana yellow (colorId 5), so it reads
+      // as Daisey's at a glance. Events the user typed (no taskId) stay plain.
+      summary: hasTask ? `${DAISY} ${title}` : title, ...times,
+      ...(hasTask ? { colorId: "5" } : {}),
       ...(log ? { transparency: "transparent" } : {}),
-      ...(typeof req.taskId === "string" && req.taskId ? { description: log ? note || "Done with Daisey." : "Planned with Daisey.",
+      ...(hasTask ? { description: log ? note || "Done with Daisey." : "Planned with Daisey.",
         extendedProperties: { private: { daiseyTask: req.taskId.slice(0, 100), ...(log ? { daiseyLog: "1" } : {}) } } } : {}) }) })
     // PATCH, so nothing but the times (or the title) is touched — guests,
     // description and colour stay exactly as the user left them.
