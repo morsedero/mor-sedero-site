@@ -53,10 +53,19 @@ const gJson = async (url, accessToken) => {
 // Kept 10 minutes, and skipped on ?fresh=1 — the client asks for that right
 // after accepting a pencil block, since the first one creates the "Daisey"
 // calendar, which a cached list wouldn't know.
-let cached = null, cachedAt = 0;
+//
+// Kept PER ACCESS TOKEN, never shared (2026-10-07). It used to be one slot for
+// the whole function instance, so once a second person connected, their
+// requests read the first person's calendar list (ids, colours) — a new user
+// saw the owner's calendars. A token belongs to exactly one Google account, and
+// it refreshes about hourly, so entries age out on their own; the map is
+// capped so it can't grow.
+const cache = new Map(); // accessToken → { at, value }
 const CACHE_MS = 10 * 60000;
+const CACHE_MAX = 50;
 async function calendarsFor(accessToken, fresh = false) {
-  if (!cached || fresh || Date.now() - cachedAt > CACHE_MS) {
+  const hit = cache.get(accessToken);
+  if (!hit || fresh || Date.now() - hit.at > CACHE_MS) {
     const [colors, list] = await Promise.all([
       gJson("https://www.googleapis.com/calendar/v3/colors", accessToken),
       gJson("https://www.googleapis.com/calendar/v3/users/me/calendarList?minAccessRole=reader&maxResults=50", accessToken),
@@ -67,10 +76,13 @@ async function calendarsFor(accessToken, fresh = false) {
     const calendars = (list.items || []).filter((c) => c.selected !== false && !c.deleted)
       .slice(0, MAX_CALENDARS)
       .map((c) => ({ id: c.id, color: c.backgroundColor || null, editable: ["owner", "writer"].includes(c.accessRole) }));
-    cached = { colors, calendars: calendars.length ? calendars : [{ id: "primary", color: null, editable: true }] };
-    cachedAt = Date.now();
+    const value = { colors, calendars: calendars.length ? calendars : [{ id: "primary", color: null, editable: true }] };
+    cache.delete(accessToken);
+    cache.set(accessToken, { at: Date.now(), value });
+    while (cache.size > CACHE_MAX) cache.delete(cache.keys().next().value);
+    return value;
   }
-  return cached;
+  return hit.value;
 }
 
 // One calendar's events in the range, already shaped.
@@ -105,4 +117,4 @@ async function readAgenda(accessToken, from, to, fresh = false) {
   return perCalendar.flat().sort((a, b) => Date.parse(a.start) - Date.parse(b.start));
 }
 
-module.exports = { accessForSub, readAgenda };
+module.exports = { accessForSub, readAgenda, calendarsFor };
