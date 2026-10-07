@@ -165,14 +165,17 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onProjects } = 
 
     const seg = h("div", { className: "sc-seg", role: "radiogroup", ariaLabel: "View" }, ...[["day", "Day"], ["week", "Week"]].map(([v, t]) =>
       h("button", { type: "button", role: "radio", ariaChecked: String(view === v), textContent: t, onclick: () => view !== v && setView(v) })));
-    const bar = h("div", { className: "sc-bar" },
+    const nav = h("div", { className: "sc-nav" },
       h("button", { type: "button", className: "sc-step", ariaLabel: view === "week" ? "Previous week" : "Previous day", onclick: () => step(-1) }, icon("back")),
       h("button", { type: "button", className: "sc-title" + (isNow ? "" : " away"), ariaLabel: isNow ? title : `${title} — back to today`, onclick: () => go(null) },
         h("span", { className: "sc-name", textContent: title }), sub && h("span", { className: "sc-date", textContent: sub })),
-      h("button", { type: "button", className: "sc-step", ariaLabel: view === "week" ? "Next week" : "Next day", onclick: () => step(1) }, icon("chev")),
-      h("button", { type: "button", className: "sc-today", ariaLabel: "Back to today", textContent: "Today", hidden: isNow, onclick: () => go(null) }),
+      h("button", { type: "button", className: "sc-step", ariaLabel: view === "week" ? "Next week" : "Next day", onclick: () => step(1) }, icon("chev")));
+    // Today keeps its place (just unseen on today), so nothing ever shifts.
+    const tools = h("div", { className: "sc-tools" },
+      h("button", { type: "button", className: "sc-today" + (isNow ? " off" : ""), ariaLabel: "Back to today", textContent: "Today", tabIndex: isNow ? -1 : 0, onclick: () => go(null) }),
       seg,
       h("button", { type: "button", className: "sc-proj", onclick: () => onProjects && onProjects() }, "Projects", h("span", { ariaHidden: "true", textContent: " ›" })));
+    const bar = h("div", { className: "sc-bar" }, nav, tools);
     const head = h("div", { className: "sc-head" + (view === "week" ? " wk" : "") }, bar);
 
     let body;
