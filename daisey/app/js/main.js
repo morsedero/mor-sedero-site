@@ -13,7 +13,7 @@ import { flash, h, bdi, icon } from "./ui.js";
 // Words on both (2026-10-06): bare numbers beside "Today" read as "2 Today 0".
 // The daisy itself is always the full five-petal logo.
 // Plan and Done are one chip (Mor, 2026-10-08): it opens the plan, the day's
-// done list sits under it. "Plan d/t"; no plan yet but tasks done → "✓ n".
+// done list sits under it. "Plan d/t · ✓ n" (done today, always shown when > 0).
 let doneNow = 0, planNow = null;
 function paintDone(n){ doneNow = n; paintChip(); }
 function paintPlan(p){ planNow = p; paintChip(); }
@@ -22,8 +22,8 @@ function paintChip(){
   $("#planChip").hidden = false;
   $("#planChip").classList.toggle("empty", !p && !n);
   $("#planW").textContent = p ? "Plan " : n ? "" : "Plan my day";
-  $("#planN").textContent = p ? `${p.done}/${p.total}` : n ? `✓ ${n}` : "";
-  $("#planChip").ariaLabel = p ? `Today's plan: ${p.done} of ${p.total} done. Open it to change it`
+  $("#planN").textContent = (p ? `${p.done}/${p.total}` : "") + (p && n ? " · " : "") + (n ? `✓ ${n}` : "");
+  $("#planChip").ariaLabel = p ? `Today's plan: ${p.done} of ${p.total} done${n ? `, ${n} done today` : ""}. Open it to change it`
     : n ? `${n === 1 ? "1 task" : `${n} tasks`} done today. Open the plan` : "Plan my day";
 }
 function paintNeeds(n){
