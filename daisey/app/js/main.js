@@ -313,9 +313,28 @@ async function boot(){
           start.value = minText(hrs.start); end.value = minText(hrs.end);
           saveSettings(user.uid, { dayStart: minText(hrs.start), dayEnd: minText(hrs.end) }).catch(fail);
         };
-        [start, end].forEach((el) => el.addEventListener("keydown", (e) => { if (e.key === "Enter") el.blur(); }));
-        start.onchange = saveHours;
-        end.onchange = saveHours;
+        // No typing: tap a time, tap the hour, tap the minute — done.
+        const picker = document.createElement("div");
+        picker.className = "timepick"; picker.hidden = true;
+        start.closest(".menu-row").after(picker);
+        let target = null, pickH = null;
+        const closePick = () => { picker.hidden = true; target = null; };
+        const paintPick = () => {
+          picker.textContent = "";
+          const cur = clock(target.value), curH = pickH ?? +cur.slice(0, 2), curM = cur.slice(3);
+          const mk = (label, on, fn) => { const b = document.createElement("button"); b.type = "button"; b.textContent = label; b.className = on ? "on" : ""; b.onclick = fn; return b; };
+          const hrs = document.createElement("div"); hrs.className = "tp-hours";
+          for (let h = 0; h < 24; h++) hrs.append(mk(String(h).padStart(2, "0"), h === curH, () => { pickH = h; paintPick(); }));
+          const mins = document.createElement("div"); mins.className = "tp-mins";
+          for (const m of ["00", "15", "30", "45"]) mins.append(mk(":" + m, pickH != null ? false : m === curM, () => {
+            target.value = String(curH).padStart(2, "0") + ":" + m; closePick(); saveHours();
+          }));
+          picker.append(hrs, mins);
+        };
+        [start, end].forEach((el) => el.addEventListener("click", () => {
+          if (target === el) return closePick();
+          target = el; pickH = null; paintPick(); picker.hidden = false;
+        }));
         // + → Event is off while the calendar isn't connected.
         let calOk = false;
         // Settings → Integrations: Connect (or Reconnect) Google Calendar. A

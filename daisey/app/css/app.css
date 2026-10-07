@@ -1347,3 +1347,12 @@ body.focus .shell { block-size: auto; min-block-size: 100dvh; overflow: visible;
 .now-card, .plan-task, .pj-task { position: relative; }
 .task-bar { position: absolute; inset-inline: 0; inset-block-end: 0; block-size: 3px; background: var(--line); border-radius: 0 0 14px 14px; overflow: hidden; pointer-events: none; }
 .task-bar > span { display: block; block-size: 100%; background: var(--area, var(--accent, currentColor)); }
+
+/* Day-hours picker: tap hour, tap minute. */
+.dayhours input { cursor: pointer; }
+.timepick { margin: 6px 0 10px; padding: 8px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
+.timepick[hidden] { display: none; }
+.timepick button { font: inherit; font-size: 14px; padding: 8px 0; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--ink); cursor: pointer; font-variant-numeric: tabular-nums; }
+.timepick button.on { background: var(--ink); color: var(--surface); }
+.tp-hours { display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; }
+.tp-mins { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; margin-top: 8px; }
