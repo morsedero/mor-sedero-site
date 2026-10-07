@@ -1049,26 +1049,6 @@ dialog.tsheet .msg:empty { display: none; }
 @media (max-width: 429px) { .hdr-end:has(#planChip:not([hidden])) #needsChip .hchip-word { display: none; } }
 @media (max-width: 429px) { .hchip.plan .hchip-word, .hchip.plan .hchip-dot { display: none; } .hchip.plan { padding-inline: 9px; } .hdr-end { gap: 6px; } }
 .hchip.done { background: var(--a-home-tint); color: var(--a-home-ink); }
-.hchip.brief { border: 1px solid var(--line); background: var(--card); color: var(--ink-2); cursor: pointer; }
-.hchip.brief[aria-expanded="true"] { background: var(--chip); color: var(--ink); }
-.hchip.brief::after { content: ""; position: absolute; inset: -7px -2px; } /* 44px to the finger */
-/* "8 need you" in words (2026-10-06: bare numbers beside "Today" read as
-   "2 Today 0"). On a phone that leaves no room for the wordmark, so while it
-   shows, Today keeps only its sun (the chip's name stays for screen readers). */
-@media (max-width: 429px) {
-  .hdr-end:has(#needsChip:not([hidden])) #briefChip { padding-inline: 8px; }
-  .hdr-end:has(#needsChip:not([hidden])) #briefChip > span { position: absolute; inline-size: 1px; block-size: 1px; overflow: hidden; clip-path: inset(50%); }
-}
-.brief-pop {
-  position: fixed; z-index: 20; inset-block-start: 58px; inset-inline: 16px; max-inline-size: 420px; margin-inline: auto;
-  padding: 14px 16px; background: var(--card); color: var(--ink); border: 1px solid var(--line); border-radius: 16px;
-  box-shadow: 0 10px 30px rgba(0,0,0,.15);
-}
-.brief-pop[hidden] { display: none; }
-.brief-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-block-end: 6px; }
-.brief-head h2 { margin: 0; font-size: 15px; font-weight: 600; }
-.brief-x { inline-size: 44px; block-size: 44px; margin: -12px -12px -12px 0; border: 0; background: none; color: var(--ink-2); font-size: 16px; cursor: pointer; }
-.brief-pop p { margin: 0; font-size: 14px; line-height: 1.45; }
 #status { margin-block-start: 16px; }
 
 #board { flex: 1; min-block-size: 0; display: flex; flex-direction: column; gap: 0; }
