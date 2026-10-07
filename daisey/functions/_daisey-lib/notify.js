@@ -63,7 +63,7 @@ function decide(rec, events, now = Date.now()) {
   const { date, minutes } = localParts(now, tz);
   const start = rec.dayStart ?? 480, end = rec.dayEnd ?? 1320;
   const out = [], patch = {};
-  if (!((minutes >= start && minutes < end) || minutes + 1440 < end)) return { out, patch }; // end may pass midnight
+  if (minutes < start || minutes >= end) return { out, patch };
   const tasks = rec.tasks || [];
   const evs = events || [];
   const focus = runState(rec.run, tasks, now); // "running" | "paused" | null

@@ -28,7 +28,7 @@ const fail = (statusCode, code) => reply(statusCode, { error: code });
 
 const str = (v, n = 300) => (typeof v === "string" ? v.slice(0, n) : null);
 const day = (v) => (typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : null);
-const mins = (v, dflt, max = 1440) => (Number.isInteger(v) && v >= 0 && v < max ? v : dflt);
+const mins = (v, dflt) => (Number.isInteger(v) && v >= 0 && v < 1440 ? v : dflt);
 const validTz = (tz) => { try { new Intl.DateTimeFormat("en", { timeZone: tz }); return tz; } catch { return null; } };
 
 // Only the fields the engine, the brief, the wrap and the people alert read,
@@ -71,7 +71,7 @@ const cleanNotify = (n) => Object.fromEntries(KINDS.map((k) => [k, n?.[k] !== fa
 const where = (b) => ({
   ...(validTz(b.tz) ? { tz: b.tz } : {}),
   ...(Number.isInteger(b.dayStart) ? { dayStart: mins(b.dayStart, 480) } : {}),
-  ...(Number.isInteger(b.dayEnd) ? { dayEnd: mins(b.dayEnd, 1320, 1801) } : {}),
+  ...(Number.isInteger(b.dayEnd) ? { dayEnd: mins(b.dayEnd, 1320) } : {}),
 });
 
 exports.handler = async (event) => {

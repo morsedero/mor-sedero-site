@@ -15,10 +15,9 @@ const MIN = 60000;
 const pad = (n) => String(n).padStart(2, "0");
 
 // "08:00" → 480. Anything else → null.
-// maxH: hours allowed (24 normally; the day's END may run to 30 = 06:00 next morning).
-export function toMin(s, maxH = 24){
+export function toMin(s){
   const m = /^(\d{1,2}):(\d{2})$/.exec(String(s ?? "").trim());
-  return m && +m[1] < maxH && +m[2] < 60 ? +m[1] * 60 + +m[2] : null;
+  return m && +m[1] < 24 && +m[2] < 60 ? +m[1] * 60 + +m[2] : null;
 }
 export const minText = (min) => `${pad(Math.floor(min / 60))}:${pad(min % 60)}`;
 
@@ -27,24 +26,20 @@ export const minText = (min) => `${pad(Math.floor(min / 60))}:${pad(min % 60)}`;
 // "My day can run until 23:00 today" (Tell Daisey): settings.dayEndToday =
 // { date, end } stretches (or shortens) today's end only; tomorrow it's gone.
 export function dayHours(settings = {}){
-  const s = toMin(settings.dayStart), e = toMin(settings.dayEnd, 31); // end past 24:00 = after midnight, up to 30:00 (06:00)
-  const base = s != null && e != null && e > s && e <= 1800 ? { start: s, end: e } : { ...W.DAY_HOURS };
+  const s = toMin(settings.dayStart), e = toMin(settings.dayEnd);
+  const base = s != null && e != null && e > s ? { start: s, end: e } : { ...W.DAY_HOURS };
   const today = settings.dayEndToday, end = toMin(today?.end);
   if (today?.date === localDate() && end != null && end > base.start) base.end = end;
   return base;
 }
 
 const atMin = (ms, min) => new Date(ms).setHours(0, min, 0, 0);
-// A day that ends past midnight (end > 1440): between midnight and that end it is
-// still YESTERDAY's day, so its start was yesterday and its end is today.
-const tail = (now, hours) => { const d = new Date(now); return d.getHours() * 60 + d.getMinutes() + 1440 < hours.end; };
-export const dayStartAt = (now, hours = W.DAY_HOURS) =>
-  tail(now, hours) ? new Date(now).setHours(-24, hours.start, 0, 0) : atMin(now, hours.start);
-export const dayEndAt = (now, hours = W.DAY_HOURS) => atMin(now, tail(now, hours) ? hours.end - 1440 : hours.end);
+export const dayStartAt = (now, hours = W.DAY_HOURS) => atMin(now, hours.start);
+export const dayEndAt = (now, hours = W.DAY_HOURS) => atMin(now, hours.end);
 
 export function isNight(now = Date.now(), hours = W.DAY_HOURS){
   const d = new Date(now), m = d.getHours() * 60 + d.getMinutes();
-  return !((m >= hours.start && m < hours.end) || tail(now, hours));
+  return m < hours.start || m >= hours.end;
 }
 
 // When the day next starts: this morning if it hasn't yet, else tomorrow's.

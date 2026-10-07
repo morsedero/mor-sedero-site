@@ -20,8 +20,7 @@ exports.handler = async () => {
       if (!rec?.subs?.length) continue;
       const tz = rec.tz || "Asia/Jerusalem";
       const { minutes } = localParts(now, tz);
-      const ds = rec.dayStart ?? 480, de = rec.dayEnd ?? 1320;
-      if (!((minutes >= ds && minutes < de) || minutes + 1440 < de)) continue; // night: no calendar read either
+      if (minutes < (rec.dayStart ?? 480) || minutes >= (rec.dayEnd ?? 1320)) continue; // night: no calendar read either
       process.env.TZ = tz; // the app's engine reads local time
       const { events, cal } = await readEvents(rec, now);
       const { out, patch } = decide(rec, events, now);
