@@ -90,13 +90,74 @@ export function burst(x, y, n = 14, reach = 90){
   setTimeout(() => box.remove(), 1600);
 }
 
-// The hold-to-finish Done button. The timer re-renders the whole focus screen
-// every second, so a fresh button each render would reset a hold half-way:
-// the button is built once per run (key) and the same node is handed back
-// on every render. Its fill lives on the node (--p), driven by rAF, and the
-// release is heard on window, so moving the node mid-hold breaks nothing.
-// Pointer or Space/Enter. A quick tap only wiggles and says to hold.
-const HOLD_MS = 1000;
+// Done is one hold, everywhere (Mor, 2026-10-07: "a mini game, one action,
+// some or all"; the card's Done and Hold to finish are the same thing): a
+// daisy opens over the card a petal at a time while the button is held. Let
+// go when it matches what you did: onEnd(pct). All eight petals is 100, with
+// a burst, without waiting for the release. A tap only says to hold; a touch
+// the browser takes (pointercancel) saves nothing. The daisy lives on <body>
+// and the release is heard on window, so a re-render mid-hold breaks nothing.
+const PETAL_MS = 300, PETALS = 8;
+export function bloomHold(btn, onEnd, { hint } = {}){
+  let t0 = 0, raf = 0, n = 0, ov = null, out = null, petals = [];
+  const listen = (on) => ["pointerup", "pointercancel", "keyup", "blur"].forEach((t) => (on ? addEventListener : removeEventListener)(t, stop));
+  const pct = () => Math.round((n / PETALS) * 100);
+  const open = () => {
+    const over = btn.closest(".now-card") || document.querySelector(".focus .focus-card") || btn;
+    const r = over.getBoundingClientRect();
+    const NS = "http://www.w3.org/2000/svg", el = (tag, a) => { const e = document.createElementNS(NS, tag); for (const k in a) e.setAttribute(k, a[k]); return e; };
+    const size = Math.max(48, Math.min(120, r.height - 64)); // fits a short card too
+    const svg = el("svg", { viewBox: "0 0 40 40", width: size, height: size, "aria-hidden": "true" }), g = el("g", { class: "daisy-petals" });
+    petals = Array.from({ length: PETALS }, (_, i) => el("ellipse", { cx: 20, cy: 9, rx: 4.2, ry: 8, transform: `rotate(${(360 / PETALS) * i} 20 20)` }));
+    g.append(...petals); svg.append(g, el("circle", { cx: 20, cy: 20, r: 6.5, class: "daisy-heart" }));
+    out = h("p", { className: "bloom-p", role: "status" });
+    ov = h("div", { className: "bloom" }, svg, out);
+    Object.assign(ov.style, { left: `${r.left}px`, top: `${r.top}px`, width: `${r.width}px`, height: `${r.height}px` });
+    document.body.append(ov);
+  };
+  const shut = (ms) => { const o = ov; ov = null; if (o) { o.classList.add("gone"); setTimeout(() => o.remove(), ms); } };
+  const step = (now) => {
+    const k = Math.min(PETALS, Math.floor((now - t0) / PETAL_MS));
+    if (k !== n) {
+      n = k; if (!ov) open();
+      petals.forEach((p, i) => p.classList.toggle("on", i < n));
+      out.textContent = n === PETALS ? "All done!" : `${pct()}% done`;
+      navigator.vibrate?.(8);
+    }
+    if (n === PETALS) {
+      const r = ov.getBoundingClientRect();
+      listen(false); t0 = 0; ov.classList.add("full");
+      burst(r.left + r.width / 2, r.top + r.height / 2);
+      setTimeout(() => { shut(200); onEnd(100); }, 450); // let the pop land first
+      return;
+    }
+    raf = requestAnimationFrame(step);
+  };
+  const start = (e) => {
+    if (btn.disabled || t0) return;
+    if (e.type === "keydown") { if (e.repeat || (e.key !== " " && e.key !== "Enter")) return; e.preventDefault(); }
+    else if (e.button) return;
+    t0 = performance.now(); n = 0;
+    raf = requestAnimationFrame(step); listen(true);
+  };
+  function stop(e){
+    if (!t0) return;
+    if (e.type === "keyup" && e.key !== " " && e.key !== "Enter") return;
+    cancelAnimationFrame(raf); listen(false); t0 = 0;
+    if (e.type === "pointercancel" || e.type === "blur") { shut(150); return; }
+    if (!n) { hint?.(); btn.classList.remove("nudge"); void btn.offsetWidth; btn.classList.add("nudge"); return; }
+    shut(250); onEnd(pct());
+  }
+  btn.classList.add("bloom-btn"); // no text selection or scroll stealing a long press (CSS)
+  btn.addEventListener("pointerdown", start);
+  btn.addEventListener("keydown", start);
+  btn.addEventListener("contextmenu", (e) => e.preventDefault()); // a long press on a phone is not a menu
+  return btn;
+}
+
+// The running task's Done button. The timer re-renders the whole focus screen
+// every second: the button is built once per run (key) and the same node is
+// handed back on every render, so a hold isn't reset half-way. onDone(pct).
 let held = null; // { key, el, onDone }: the current run's button
 
 export function holdButton(key, aria, disabled, onDone){
@@ -106,47 +167,10 @@ export function holdButton(key, aria, disabled, onDone){
     if (hadFocus) queueMicrotask(() => el.focus({ preventScroll: true })); // the re-render detached it
     return el;
   }
-  const sub = h("span", { className: "hold-sub" });
-  const el = h("button", { className: "btn primary hold", type: "button", ariaLabel: aria, disabled,
-    oncontextmenu: (e) => e.preventDefault() }, // a long press on a phone is not a menu
-  h("span", { className: "hold-fill", ariaHidden: "true" }),
-  h("span", { className: "hold-label" }, h("span", { textContent: "Hold to finish" }), sub));
+  const el = h("button", { className: "btn primary hold", type: "button", ariaLabel: aria, disabled },
+    h("span", { className: "hold-label" }, h("span", { textContent: "Hold: how much is done" })));
   const me = held = { key, el, onDone };
-  let t0 = 0, raf = 0, done = false;
-  const set = (p) => el.style.setProperty("--p", p);
-  const listen = (on) => ["pointerup", "pointercancel", "keyup", "blur"].forEach((t) => (on ? addEventListener : removeEventListener)(t, stop));
-  const step = (now) => {
-    const t = Math.min(1, (now - t0) / HOLD_MS), p = t * t * t; // ease-in: creeps, then rushes to full
-    set(p);
-    if (t < 1){ raf = requestAnimationFrame(step); return; }
-    done = true; listen(false);
-    el.classList.remove("holding"); el.classList.add("held");
-    sub.textContent = "nice!";
-    const r = el.getBoundingClientRect();
-    burst(r.left + r.width / 2, r.top + r.height / 2);
-    setTimeout(() => me.onDone(), 380); // let the pop land first
-  };
-  const start = (e) => {
-    if (el.disabled || done || t0) return;
-    if (e.type === "keydown"){ if (e.repeat || (e.key !== " " && e.key !== "Enter")) return; e.preventDefault(); }
-    else if (e.button) return;
-    t0 = performance.now();
-    el.classList.remove("nudge"); el.classList.add("holding");
-    sub.textContent = "keep holding…";
-    raf = requestAnimationFrame(step); listen(true);
-  };
-  function stop(e){
-    if (done || !t0) return;
-    if (e.type === "keyup" && e.key !== " " && e.key !== "Enter") return;
-    const quick = performance.now() - t0 < 300;
-    cancelAnimationFrame(raf); listen(false); t0 = 0;
-    el.classList.remove("holding"); set(0);
-    sub.textContent = quick ? "hold it a sec" : "";
-    if (quick){ el.classList.remove("nudge"); void el.offsetWidth; el.classList.add("nudge"); }
-  }
-  el.addEventListener("pointerdown", start);
-  el.addEventListener("keydown", start);
-  return el;
+  return bloomHold(el, (p) => me.onDone(p));
 }
 
 // The ring: a 220px circle, track in the area's border colour, amber
@@ -197,7 +221,7 @@ export function focusView(run, task, cb){
     const title = h("div", { className: "focus-title", dir: "auto" });
     const quiet = (name, text, aria, fn) => h("button", { className: "btn line withicon", type: "button", ariaLabel: aria, onclick: fn },
       icon(name), h("span", { textContent: text }));
-    const hold = holdButton(key, `Hold to finish ${what}`, !task, () => screen?.cb.onDone());
+    const hold = holdButton(key, `Hold to finish ${what}`, !task, (p) => screen?.cb.onDone(p));
     const stillText = h("p", { className: "focus-still-text" });
     // Forgot to hit Done: "Finished earlier" asks how long it took, and
     // that's what gets booked (and logged, ending when it really ended).
@@ -257,7 +281,7 @@ export function focusView(run, task, cb){
   screen.away.hidden = !awayNow;
   screen.away.textContent = awayNow;
   setRing(screen.ring, mins, target);
-  holdButton(key, `Hold to finish ${what}`, !task, () => screen?.cb.onDone());
+  holdButton(key, `Hold to finish ${what}`, !task, (p) => screen?.cb.onDone(p));
   return screen.el;
 }
 
@@ -310,8 +334,11 @@ export function handoffView(done, next, { onStart, onSkip, onFocus, onDone, onLa
             [onPending, "pending", "Pending", `${t.title} is blocked: set it to Pending`],
             [onOpen, "edit", "Open", `open ${t.title} to edit it`],
             [() => onSkip(t), "close", "Not now", `not now: skip ${t.title} for a while`]]
-            .filter(([fn]) => fn).map(([fn, ic, text, aria]) => h("button", { className: "next-opt", type: "button", ariaLabel: `${text}: ${aria}`, onclick: () => fn(t) },
-              icon(ic), h("span", { textContent: text })))),
+            .filter(([fn]) => fn).map(([fn, ic, text, aria]) => fn === onDone
+              ? bloomHold(h("button", { className: "next-opt", type: "button", ariaLabel: `${text}: hold to show how much of ${t.title} is done` },
+                icon(ic), h("span", { textContent: text })), (p) => onDone(t, p))
+              : h("button", { className: "next-opt", type: "button", ariaLabel: `${text}: ${aria}`, onclick: () => fn(t) },
+                icon(ic), h("span", { textContent: text })))),
         onPlan && h("button", { className: "linkish next-plan", type: "button", textContent: "Plan the rest of my day", onclick: onPlan }))
       : h("div", { className: "next-card none" },
         h("p", { className: "next-why", textContent: "Nothing else fits right now. Take the break." }),

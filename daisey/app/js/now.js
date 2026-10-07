@@ -20,7 +20,7 @@ import { rethink } from "./rethink.js";
 import { placeNow, workBase } from "./context.js";
 import { watchWhere, setRide, setStill, saveSpot, setManual, placeAsk, notHomeHere, quietHere, reservedName } from "./where.js";
 import { pickWeekDay } from "./triage.js";
-import { focusView, handoffView, elapsedMinutes, targetMinutes, batchFocusView, batchName, sinceMark, paused, resumed, runCap, bookedMinutes, holdButton, stillOnMinutes, burst } from "./focus.js";
+import { focusView, handoffView, elapsedMinutes, targetMinutes, batchFocusView, batchName, sinceMark, paused, resumed, runCap, bookedMinutes, holdButton, stillOnMinutes, bloomHold } from "./focus.js";
 import { watchCalendar, logDone } from "./calendar.js";
 import { LATER_MINUTES, DRAIN, CANCEL_KEEP_MINUTES } from "./weights.js";
 import { rank, freeWindow, timeBucket, matchProject, dueAt } from "./engine.js";
@@ -28,7 +28,7 @@ import { leftMinutes, toMinutes, progressOf, progressPatch, localDate, skipSnaps
 import { waitingFor, personOf } from "./nudge.js";
 import { dayHours, isNight, nextMorning, dayEndAt, bookings, sameTitle, minText, gapsToday } from "./day.js";
 import { collectNeeds } from "./needs.js";
-import { h, icon, bdi, pieces, sizeText, sizeChip, progressBar, dur, say, nightDivider, flash, askProgress } from "./ui.js";
+import { h, icon, bdi, pieces, sizeText, sizeChip, progressBar, dur, say, nightDivider, flash } from "./ui.js";
 import { areaClass, areaName, projectShown, doneToday, dirOf, stemDaisy, moonDaisy, watchProjectColors } from "./look.js";
 
 const LATER_MS = LATER_MINUTES * 60000;
@@ -351,21 +351,15 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
   };
 
   // Done on a running task, from Deep Focus or the dashboard card.
-  const finishRun = (task, minutes, end) => {
+  const finishRun = (task, minutes, end, pct = 100) => {
     if (!run) return; // the hold finished after the run moved on
     if (!task) return finishRunNow(task, minutes, end);
-    // How much got done? Under 100% the minutes are kept, the task stays
-    // open and goes back on the list for the day the user names.
-    askProgress(task, {
-      start: progressOf(task) || 50,
-      onFull: () => finishRunNow(task, minutes, end),
-      onPartial: (pct, when) => {
-        if (!run) return;
-        cancelRun(uid, task, minutes).catch(fail);
-        run = null; render();
-        later(task, when, progressPatch(pct));
-      },
-    });
+    // Under 100% (the hold let go early) the minutes are kept and the task
+    // stays open with that much progress, off the card for a while.
+    if (pct >= 100) return finishRunNow(task, minutes, end);
+    cancelRun(uid, task, minutes).catch(fail);
+    run = null; render();
+    partDone(task, pct);
   };
   const finishRunNow = (task, minutes, end) => {
     if (!run) return;
@@ -388,7 +382,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
     showing(run.taskId);
     return focusView(run, task, {
       // Done is finished — no "or more left?" (Pause covers more left).
-      onDone: () => finish(bookedMinutes(run, task)), // capped: a forgotten timer doesn't book the night
+      onDone: (pct) => finishRun(task, bookedMinutes(run, task), undefined, pct), // capped: a forgotten timer doesn't book the night
       // Forgot to hit Done: the minutes the user says it took, logged as
       // ending that long after the start rather than now.
       onFinishedAfter: (m) => finish(Math.min(m, elapsedMinutes(run)), run.startedAt + m * 60000),
@@ -879,7 +873,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
           { ariaExpanded: String(state.notNow), onclick: () => { state.notNow = !state.notNow; state.pendAsk = false; state.showAlts = false; render(); } }),
         action("pending", "Pending", `${card.task.title} is blocked: set it to Pending`,
           { ariaExpanded: String(state.pendAsk), onclick: () => { state.pendAsk = !state.pendAsk; state.notNow = false; state.showAlts = false; render(); } }),
-        bloom(action("check", "Done", `hold to show how much of ${card.task.title} is done`, {}), card.task),
+        doneHold(action("check", "Done", `hold to show how much of ${card.task.title} is done`, {}), card.task),
         start),
       state.notNow && h("div", { className: "later-ask", role: "group", ariaLabel: "When instead?" },
         ...[["today", "Later today"], ["tomorrow", "Tomorrow"], ["week", "This week"], ["someday", "Not now"]].map(([w, text]) =>
@@ -892,80 +886,14 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
     ];
   }
 
-  // Done is a hold (Mor, 2026-10-07: "a mini game, one action, some or all"):
-  // a daisy opens over the card a petal at a time while Done is held. Let go
-  // when it matches what you did; all eight petals is done, with a burst.
-  // Fewer is that much progress, off the card for a while (not a skip). A
-  // tap only says to hold. The daisy lives on <body>, so a re-render mid-hold
-  // doesn't take it away; the release is heard on window.
-  const PETAL_MS = 300, PETALS = 8;
-  function bloom(btn, task){
-    let t0 = 0, raf = 0, n = 0, ov = null, out = null, petals = [];
-    const listen = (on) => ["pointerup", "pointercancel", "keyup", "blur"].forEach((t) => (on ? addEventListener : removeEventListener)(t, stop));
-    const pct = () => Math.round((n / PETALS) * 100);
-    const open = () => {
-      const r = (root.querySelector(".now-card.main") || btn).getBoundingClientRect();
-      const NS = "http://www.w3.org/2000/svg", el = (tag, a) => { const e = document.createElementNS(NS, tag); for (const k in a) e.setAttribute(k, a[k]); return e; };
-      const size = Math.max(48, Math.min(120, r.height - 64)); // fits a short card too
-      const svg = el("svg", { viewBox: "0 0 40 40", width: size, height: size, "aria-hidden": "true" }), g = el("g", { class: "daisy-petals" });
-      petals = Array.from({ length: PETALS }, (_, i) => el("ellipse", { cx: 20, cy: 9, rx: 4.2, ry: 8, transform: `rotate(${(360 / PETALS) * i} 20 20)` }));
-      g.append(...petals); svg.append(g, el("circle", { cx: 20, cy: 20, r: 6.5, class: "daisy-heart" }));
-      out = h("p", { className: "bloom-p", role: "status" });
-      ov = h("div", { className: "bloom" }, svg, out);
-      Object.assign(ov.style, { left: `${r.left}px`, top: `${r.top}px`, width: `${r.width}px`, height: `${r.height}px` });
-      document.body.append(ov);
-    };
-    const shut = (ms) => { const o = ov; ov = null; if (o) { o.classList.add("gone"); setTimeout(() => o.remove(), ms); } };
-    const step = (now) => {
-      const k = Math.min(PETALS, Math.floor((now - t0) / PETAL_MS));
-      if (k !== n) {
-        n = k; if (!ov) open();
-        petals.forEach((p, i) => p.classList.toggle("on", i < n));
-        out.textContent = n === PETALS ? "All done!" : `${pct()}% done`;
-        navigator.vibrate?.(8);
-      }
-      if (n === PETALS) { // full bloom: done without waiting for the release
-        const r = ov.getBoundingClientRect();
-        listen(false); t0 = 0; ov.classList.add("full");
-        if (motionOK()) burst(r.left + r.width / 2, r.top + r.height / 2);
-        setTimeout(() => { shut(200); quickDoneNow(task); }, 450);
-        return;
-      }
-      raf = requestAnimationFrame(step);
-    };
-    const start = (e) => {
-      if (t0) return;
-      if (e.type === "keydown") { if (e.repeat || (e.key !== " " && e.key !== "Enter")) return; e.preventDefault(); }
-      else if (e.button) return;
-      t0 = performance.now(); n = 0;
-      raf = requestAnimationFrame(step); listen(true);
-    };
-    function stop(e){
-      if (!t0) return;
-      if (e.type === "keyup" && e.key !== " " && e.key !== "Enter") return;
-      cancelAnimationFrame(raf); listen(false); t0 = 0;
-      if (e.type === "pointercancel" || e.type === "blur") { shut(150); n = 0; return; } // the browser took the touch: nothing saved
-      if (!n) { flash("Hold Done: the daisy opens. Let go at how much you did."); return; }
-      const p = pct();
-      shut(250);
-      stepAside(task, { label: `${p}% done: `, write: () => Promise.all([skipNow(uid, task), restoreTask(uid, task.id, progressPatch(p))]) });
-    }
-    btn.classList.add("bloom-btn"); // no text selection or scroll stealing a long press (CSS)
-    btn.addEventListener("pointerdown", start);
-    btn.addEventListener("keydown", start);
-    btn.addEventListener("contextmenu", (e) => e.preventDefault()); // a long press on a phone is not a menu
-    return btn;
-  }
+  // Done is a hold (focus.js bloomHold). Less than all of it: that much
+  // progress, off the card for a while, with Undo (not a skip).
+  const partDone = (task, p) => stepAside(task, { label: `${p}% done: `, write: () => Promise.all([skipNow(uid, task), restoreTask(uid, task.id, progressPatch(p))]) });
+  const doneHold = (btn, task) => bloomHold(btn, (p) => (p >= 100 ? quickDoneNow(task) : partDone(task, p)),
+    { hint: () => flash("Hold Done: the daisy opens. Let go at how much you did.") });
 
   // Done on a task that was never started here (already finished, or done
   // elsewhere): finished with no time booked, with an Undo.
-  function quickDone(task){
-    askProgress(task, {
-      start: progressOf(task) || 50,
-      onFull: () => quickDoneNow(task),
-      onPartial: (pct, when) => later(task, when, progressPatch(pct)),
-    });
-  }
   function quickDoneNow(task){
     const before = { status: task.status || "ready", doneAt: task.doneAt ?? null, skipsSinceStart: task.skipsSinceStart ?? 0 };
     handoff = { title: task.title, skip: task.id, minutes: 0, ids: [task.id] };
@@ -984,7 +912,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
     const task = tasks?.find((t) => t.id === run.taskId) || null;
     const mins = elapsedMinutes(run), target = task ? targetMinutes(run, task) : 0, cap = runCap(target);
     const paused_ = !!run.pausedAt, what = task?.title || "this task";
-    const hold = holdButton(`inline:${runKey()}`, `Hold to finish ${what}`, !task, () => finishRun(task, bookedMinutes(run, task)));
+    const hold = holdButton(`inline:${runKey()}`, `Hold to finish ${what}`, !task, (pct) => finishRun(task, bookedMinutes(run, task), undefined, pct));
     // Waiting for a reply (Mor, 2026-10-07): on hold, but the timer keeps
     // going — the wait is part of the task. "Got the reply" takes it off hold.
     const onHold = task?.onHold;
@@ -1234,7 +1162,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
         cheer,
         onStart: begin,
         onFocus: (task) => begin(task, "focus"),
-        onDone: (task) => { handoff = null; quickDone(task); },
+        onDone: (task, p) => { handoff = null; if (p >= 100) quickDoneNow(task); else partDone(task, p); },
         onLater: (task) => onCardWith(task, {}),
         onSwitch: (task) => onCardWith(task, { notNow: false, showAlts: true }),
         onPending: (task) => onCardWith(task, { notNow: false, pendAsk: true }),
