@@ -1348,11 +1348,14 @@ body.focus .shell { block-size: auto; min-block-size: 100dvh; overflow: visible;
 .task-bar { position: absolute; inset-inline: 0; inset-block-end: 0; block-size: 3px; background: var(--line); border-radius: 0 0 14px 14px; overflow: hidden; pointer-events: none; }
 .task-bar > span { display: block; block-size: 100%; background: var(--area, var(--accent, currentColor)); }
 
-/* Day-hours picker: tap hour, tap minute. */
+/* Day-hours picker: two scroll wheels (hour : minute), like iOS. */
 .dayhours input { cursor: pointer; }
 .timepick { margin: 6px 0 10px; padding: 8px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
 .timepick[hidden] { display: none; }
-.timepick button { font: inherit; font-size: 14px; padding: 8px 0; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--ink); cursor: pointer; font-variant-numeric: tabular-nums; }
-.timepick button.on { background: var(--ink); color: var(--surface); }
-.tp-hours { display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; }
-.tp-mins { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; margin-top: 8px; }
+.tp-row { position: relative; display: flex; justify-content: center; align-items: center; gap: 4px; }
+.tp-row::before { content: ""; position: absolute; left: 12%; right: 12%; top: 72px; height: 36px; border-radius: 10px; background: var(--line); opacity: .45; pointer-events: none; }
+.tp-wheel { position: relative; height: 180px; width: 72px; overflow-y: auto; scroll-snap-type: y mandatory; padding: 72px 0; box-sizing: border-box; scrollbar-width: none; overscroll-behavior: contain; }
+.tp-wheel::-webkit-scrollbar { display: none; }
+.tp-wheel div { height: 36px; line-height: 36px; text-align: center; font-size: 20px; font-variant-numeric: tabular-nums; scroll-snap-align: center; cursor: pointer; color: var(--ink); }
+.tp-colon { font-size: 20px; font-weight: 700; color: var(--ink); }
+.tp-done { display: block; margin: 6px auto 0; font: inherit; font-size: 14px; padding: 6px 22px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--ink); cursor: pointer; }

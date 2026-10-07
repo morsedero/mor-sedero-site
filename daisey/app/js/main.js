@@ -313,27 +313,40 @@ async function boot(){
           start.value = minText(hrs.start); end.value = minText(hrs.end);
           saveSettings(user.uid, { dayStart: minText(hrs.start), dayEnd: minText(hrs.end) }).catch(fail);
         };
-        // No typing: tap a time, tap the hour, tap the minute — done.
+        // No typing: iOS-style wheels. Tap a time, spin hour and minute, tap Done.
+        const ROW = 36;
         const picker = document.createElement("div");
         picker.className = "timepick"; picker.hidden = true;
         start.closest(".menu-row").after(picker);
-        let target = null, pickH = null;
+        let target = null;
         const closePick = () => { picker.hidden = true; target = null; };
+        const wheel = (vals, cur, onPick) => {
+          const w = document.createElement("div"); w.className = "tp-wheel";
+          vals.forEach((v) => { const i = document.createElement("div"); i.textContent = v; w.append(i); });
+          let t, quiet = true;
+          const idx = () => Math.max(0, Math.min(vals.length - 1, Math.round(w.scrollTop / ROW)));
+          w.addEventListener("scroll", () => { if (quiet) return; clearTimeout(t); t = setTimeout(() => onPick(vals[idx()]), 120); });
+          w.addEventListener("click", (e) => { const i = [...w.children].indexOf(e.target); if (i >= 0) w.scrollTo({ top: i * ROW, behavior: "smooth" }); });
+          requestAnimationFrame(() => { w.scrollTop = Math.max(0, vals.indexOf(cur)) * ROW; setTimeout(() => { quiet = false; }, 50); });
+          return w;
+        };
         const paintPick = () => {
           picker.textContent = "";
-          const cur = clock(target.value), curH = pickH ?? +cur.slice(0, 2), curM = cur.slice(3);
-          const mk = (label, on, fn) => { const b = document.createElement("button"); b.type = "button"; b.textContent = label; b.className = on ? "on" : ""; b.onclick = fn; return b; };
-          const hrs = document.createElement("div"); hrs.className = "tp-hours";
-          for (let h = 0; h < 24; h++) hrs.append(mk(String(h).padStart(2, "0"), h === curH, () => { pickH = h; paintPick(); }));
-          const mins = document.createElement("div"); mins.className = "tp-mins";
-          for (const m of ["00", "15", "30", "45"]) mins.append(mk(":" + m, pickH != null ? false : m === curM, () => {
-            target.value = String(curH).padStart(2, "0") + ":" + m; closePick(); saveHours();
-          }));
-          picker.append(hrs, mins);
+          const cur = clock(target.value) || "08:00";
+          let h = cur.slice(0, 2), m = cur.slice(3);
+          const commit = () => { target.value = h + ":" + m; saveHours(); };
+          const pad2 = (n) => String(n).padStart(2, "0");
+          const hv = Array.from({ length: 24 }, (_, i) => pad2(i)), mv = Array.from({ length: 12 }, (_, i) => pad2(i * 5));
+          if (!mv.includes(m)) { mv.push(m); mv.sort(); }
+          const row = document.createElement("div"); row.className = "tp-row";
+          const colon = document.createElement("span"); colon.className = "tp-colon"; colon.textContent = ":";
+          const done = document.createElement("button"); done.type = "button"; done.className = "tp-done"; done.textContent = "Done"; done.onclick = closePick;
+          row.append(wheel(hv, h, (v) => { h = v; commit(); }), colon, wheel(mv, m, (v) => { m = v; commit(); }));
+          picker.append(row, done);
         };
         [start, end].forEach((el) => el.addEventListener("click", () => {
           if (target === el) return closePick();
-          target = el; pickH = null; paintPick(); picker.hidden = false;
+          target = el; paintPick(); picker.hidden = false;
         }));
         // + → Event is off while the calendar isn't connected.
         let calOk = false;
