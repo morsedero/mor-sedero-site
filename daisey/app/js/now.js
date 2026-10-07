@@ -125,7 +125,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
       main && onOpen ? titleButton(t) : h("div", { className: "now-title", dir: "auto", textContent: t.title }),
       t.nextStep && h("p", { className: "now-next" }, "Next: ", bdi(t.nextStep)),
       why && h("p", { className: "now-why" }, ...say(why)),
-      progressBar(t),
+      !main && progressBar(t),
       ...extra);
   }
   const titleButton = (t) => h("button", { type: "button", className: "now-title", dir: "auto", textContent: t.title,
