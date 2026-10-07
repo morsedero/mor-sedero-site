@@ -132,12 +132,16 @@
     <div class="menu-sec">
       <h3 class="menu-h">Personal</h3>
       <!-- Day hours: free time counts only inside them; outside is night mode. -->
-      <div class="menu-row"><span class="menu-label">My day</span>
-        <div class="dayhours" role="group" aria-label="Day hours">
-          <input id="dayStart" type="text" readonly inputmode="none" autocomplete="off" aria-label="Day starts " value="08:00">
-          <span class="muted">–</span>
-          <input id="dayEnd" type="text" readonly inputmode="none" autocomplete="off" aria-label="Day ends " value="22:00">
-        </div></div>
+      <!-- One 24h bar, two handles (like Apple's Sleep schedule): drag either end, 15-min snaps. -->
+      <div class="menu-row"><span class="menu-label">My day</span><span id="dayRead" class="dayread">08:00 – 22:00</span></div>
+      <div class="daybar">
+        <div class="db-track" id="dayTrack">
+          <div class="db-fill"></div>
+          <button id="dayStart" class="db-thumb" type="button" role="slider" aria-label="Day starts" aria-valuemin="0" aria-valuemax="1440"></button>
+          <button id="dayEnd" class="db-thumb" type="button" role="slider" aria-label="Day ends" aria-valuemin="0" aria-valuemax="1440"></button>
+        </div>
+        <div class="db-ticks" aria-hidden="true"><span>00</span><span>06</span><span>12</span><span>18</span><span>24</span></div>
+      </div>
       <!-- Where you are: picked by hand, and saved places (places.js). -->
       <button id="placesBtn" class="menu-link" type="button">Places</button>
       <p class="menu-note">Places like Home or Studio. Daisey uses where you are to pick tasks that fit.</p>

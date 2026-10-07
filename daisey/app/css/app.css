@@ -93,8 +93,6 @@ body {
 .menu-check input { inline-size: 18px; block-size: 18px; flex: none; accent-color: var(--accent); }
 /* Theme: Auto, Light, Dark — a segmented row in the account menu. */
 /* Day hours in the account menu: two time fields on one line. */
-.dayhours { display: flex; align-items: center; gap: 6px; font-size: 13px; }
-.dayhours input { font: inherit; font-size: 14px; width: 5ch; box-sizing: content-box; text-align: center; font-variant-numeric: tabular-nums; padding: 4px 6px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--ink); }
 .theme { display: inline-flex; padding: 3px; gap: 2px; border-radius: 999px; background: var(--bg); border: 1px solid var(--line); }
 .theme-btn {
   font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; min-block-size: 30px;
@@ -1349,14 +1347,13 @@ body.focus .shell { block-size: auto; min-block-size: 100dvh; overflow: visible;
 .task-bar { position: absolute; inset-inline: 0; inset-block-end: 0; block-size: 3px; background: var(--line); border-radius: 0 0 14px 14px; overflow: hidden; pointer-events: none; }
 .task-bar > span { display: block; block-size: 100%; background: var(--area, var(--accent, currentColor)); }
 
-/* Day-hours picker: two scroll wheels (hour : minute), like iOS. */
-.dayhours input { cursor: pointer; }
-.timepick { margin: 6px 0 10px; padding: 8px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
-.timepick[hidden] { display: none; }
-.tp-row { position: relative; display: flex; justify-content: center; align-items: center; gap: 4px; }
-.tp-row::before { content: ""; position: absolute; left: 12%; right: 12%; top: 72px; height: 36px; border-radius: 10px; background: var(--line); opacity: .45; pointer-events: none; }
-.tp-wheel { position: relative; height: 180px; width: 72px; overflow-y: auto; scroll-snap-type: y mandatory; padding: 72px 0; box-sizing: border-box; scrollbar-width: none; overscroll-behavior: contain; }
-.tp-wheel::-webkit-scrollbar { display: none; }
-.tp-wheel div { height: 36px; line-height: 36px; text-align: center; font-size: 20px; font-variant-numeric: tabular-nums; scroll-snap-align: center; cursor: pointer; color: var(--ink); }
-.tp-colon { font-size: 20px; font-weight: 700; color: var(--ink); }
-.tp-done { display: block; margin: 6px auto 0; font: inherit; font-size: 14px; padding: 6px 22px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--ink); cursor: pointer; }
+/* My day: one 24h bar, two handles (main.js paintDay). */
+.dayread { font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums; color: var(--ink); }
+.daybar { padding: 4px 11px 10px; }
+.db-track { position: relative; height: 28px; touch-action: none; cursor: pointer; }
+.db-track::before { content: ""; position: absolute; inset: 11px 0; border-radius: 3px; background: var(--line); }
+.db-fill { position: absolute; top: 11px; height: 6px; border-radius: 3px; background: var(--accent); }
+.db-thumb { position: absolute; top: 3px; width: 22px; height: 22px; margin-left: -11px; padding: 0; border: 2px solid var(--accent); border-radius: 50%; background: var(--surface); box-shadow: 0 1px 4px rgb(0 0 0 / .18); cursor: grab; transition: transform .12s; }
+.db-thumb:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+.db-track.dragging .db-thumb:focus { transform: scale(1.2); cursor: grabbing; }
+.db-ticks { display: flex; justify-content: space-between; margin: 2px -6px 0; font-size: 11px; color: var(--ink-2); font-variant-numeric: tabular-nums; }

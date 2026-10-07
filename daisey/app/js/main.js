@@ -288,8 +288,7 @@ async function boot(){
         const stopSettings = watchSettings(user.uid, (s) => {
           const hrs = dayHours(s || {});
           const usual = dayHours({ ...s, dayEndToday: null }); // the field shows the usual day, not today's stretch
-          if (document.activeElement !== start) start.value = minText(usual.start);
-          if (document.activeElement !== end) end.value = minText(usual.end);
+          if (!dayDrag) paintDay(usual.start, usual.end);
           logSwitch.checked = !isGuest && s?.logDone !== false;
           logSwitch.disabled = isGuest;
           hours = hrs;
@@ -299,55 +298,50 @@ async function boot(){
           snap();
         }, fail);
         logSwitch.onchange = () => saveSettings(user.uid, { logDone: logSwitch.checked }).catch(fail);
-        // One typed 24h field per time: "8", "830", "8:30", "0830" → "08:30". Junk → "".
-        const clock = (raw) => {
-          const d = String(raw).replace(/\D/g, "");
-          if (!d || d.length > 4) return "";
-          const h = d.length <= 2 ? +d : +d.slice(0, d.length - 2), m = d.length <= 2 ? 0 : +d.slice(-2);
-          return h > 23 || m > 59 ? "" : String(h).padStart(2, "0") + ":" + String(m).padStart(2, "0");
+        // My day as one 24h bar with two handles: drag an end (or tap the bar to
+        // pull the nearer end there), arrows nudge 15 min (Shift: 1 h). Saves once,
+        // on release, not on every pixel.
+        const SNAP = 15, MIN_SPAN = 60, track = $("#dayTrack"), fill = track.querySelector(".db-fill"), read = $("#dayRead");
+        let dayS = 480, dayE = 1320, dayDrag = null;
+        const span = (m) => { const h = Math.floor(m / 60), r = m % 60; return h && r ? `${h} h ${r} m` : h ? `${h} h` : `${r} m`; };
+        function paintDay(s, e){
+          dayS = s; dayE = e;
+          const pct = (m) => (m / 1440 * 100) + "%";
+          start.style.left = pct(s); end.style.left = pct(e);
+          fill.style.left = pct(s); fill.style.width = ((e - s) / 1440 * 100) + "%";
+          read.textContent = `${minText(s)} – ${e === 1440 ? "24:00" : minText(e)} · ${span(e - s)}`;
+          start.setAttribute("aria-valuenow", s); start.setAttribute("aria-valuetext", minText(s));
+          end.setAttribute("aria-valuenow", e); end.setAttribute("aria-valuetext", minText(e));
+        }
+        const saveHours = () => saveSettings(user.uid, { dayStart: minText(dayS), dayEnd: minText(Math.min(dayE, 1439)) }).catch(fail);
+        // Move one end, keeping at least an hour between them.
+        const setEnd = (which, m) => {
+          m = Math.round(m / SNAP) * SNAP;
+          if (which === start) paintDay(Math.max(0, Math.min(m, dayE - MIN_SPAN)), dayE);
+          else paintDay(dayS, Math.min(1440 - SNAP, Math.max(m, dayS + MIN_SPAN)));
         };
-        const saveHours = () => {
-          // Unreadable text falls back to the usual day (dayHours defaults).
-          const hrs = dayHours({ dayStart: clock(start.value), dayEnd: clock(end.value) });
-          // An end before the start isn't a day: the default comes back.
-          start.value = minText(hrs.start); end.value = minText(hrs.end);
-          saveSettings(user.uid, { dayStart: minText(hrs.start), dayEnd: minText(hrs.end) }).catch(fail);
-        };
-        // No typing: iOS-style wheels. Tap a time, spin hour and minute, tap Done.
-        const ROW = 36;
-        const picker = document.createElement("div");
-        picker.className = "timepick"; picker.hidden = true;
-        start.closest(".menu-row").after(picker);
-        let target = null;
-        const closePick = () => { picker.hidden = true; target = null; };
-        const wheel = (vals, cur, onPick) => {
-          const w = document.createElement("div"); w.className = "tp-wheel";
-          vals.forEach((v) => { const i = document.createElement("div"); i.textContent = v; w.append(i); });
-          let t, quiet = true;
-          const idx = () => Math.max(0, Math.min(vals.length - 1, Math.round(w.scrollTop / ROW)));
-          w.addEventListener("scroll", () => { if (quiet) return; clearTimeout(t); t = setTimeout(() => onPick(vals[idx()]), 120); });
-          w.addEventListener("click", (e) => { const i = [...w.children].indexOf(e.target); if (i >= 0) w.scrollTo({ top: i * ROW, behavior: "smooth" }); });
-          requestAnimationFrame(() => { w.scrollTop = Math.max(0, vals.indexOf(cur)) * ROW; setTimeout(() => { quiet = false; }, 50); });
-          return w;
-        };
-        const paintPick = () => {
-          picker.textContent = "";
-          const cur = clock(target.value) || "08:00";
-          let h = cur.slice(0, 2), m = cur.slice(3);
-          const commit = () => { target.value = h + ":" + m; saveHours(); };
-          const pad2 = (n) => String(n).padStart(2, "0");
-          const hv = Array.from({ length: 24 }, (_, i) => pad2(i)), mv = Array.from({ length: 12 }, (_, i) => pad2(i * 5));
-          if (!mv.includes(m)) { mv.push(m); mv.sort(); }
-          const row = document.createElement("div"); row.className = "tp-row";
-          const colon = document.createElement("span"); colon.className = "tp-colon"; colon.textContent = ":";
-          const done = document.createElement("button"); done.type = "button"; done.className = "tp-done"; done.textContent = "Done"; done.onclick = closePick;
-          row.append(wheel(hv, h, (v) => { h = v; commit(); }), colon, wheel(mv, m, (v) => { m = v; commit(); }));
-          picker.append(row, done);
-        };
-        [start, end].forEach((el) => el.addEventListener("click", () => {
-          if (target === el) return closePick();
-          target = el; paintPick(); picker.hidden = false;
+        const atX = (x) => { const r = track.getBoundingClientRect(); return Math.max(0, Math.min(1, (x - r.left) / r.width)) * 1440; };
+        track.addEventListener("pointerdown", (e) => {
+          const m = atX(e.clientX);
+          dayDrag = e.target === start || e.target === end ? e.target
+            : Math.abs(m - dayS) <= Math.abs(m - dayE) ? start : end;
+          track.setPointerCapture(e.pointerId);
+          track.classList.add("dragging"); dayDrag.focus({ preventScroll: true });
+          setEnd(dayDrag, m);
+          e.preventDefault();
+        });
+        track.addEventListener("pointermove", (e) => { if (dayDrag) setEnd(dayDrag, atX(e.clientX)); });
+        const dropDay = () => { if (!dayDrag) return; dayDrag = null; track.classList.remove("dragging"); saveHours(); };
+        track.addEventListener("pointerup", dropDay);
+        track.addEventListener("pointercancel", dropDay);
+        [start, end].forEach((el) => el.addEventListener("keydown", (e) => {
+          const step = { ArrowLeft: -1, ArrowDown: -1, ArrowRight: 1, ArrowUp: 1 }[e.key];
+          if (!step) return;
+          e.preventDefault();
+          setEnd(el, (el === start ? dayS : dayE) + step * (e.shiftKey ? 60 : SNAP));
+          saveHours();
         }));
+        paintDay(dayS, dayE);
         // + → Event is off while the calendar isn't connected.
         let calOk = false;
         // Settings → Integrations: Connect (or Reconnect) Google Calendar. A
