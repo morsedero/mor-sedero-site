@@ -78,7 +78,6 @@ export function matchProject(title, projects){
 //   lastProject     project last started or finished today
 //   recentProjects  projects worked on in the last 2 days
 //   areaDone        { area: tasks worked this week } — area balance
-//   intents         { area: per week } — area balance (weekly intents)
 //   sessionSkips    ids hidden by Not now this session
 //   skipsToday      { id: count } — the skip penalty
 //   learnStats      { "type|bucket": { starts, skips } } — learned fit
@@ -101,7 +100,6 @@ export function readMoment(input = {}){
     lastProject: input.lastProject || null,
     recentProjects: (input.recentProjects || []).map(key),
     areaDone: input.areaDone || {},
-    intents: input.intents || {},
     sessionSkips: new Set(input.sessionSkips || []),
     skipsToday: input.skipsToday || {},
     learnStats: input.learnStats || {},
@@ -180,19 +178,12 @@ function stakes(task){
   return { points: W.STAKES[task.stakes] || 0, detail: { kind: task.stakes } };
 }
 
-// The area furthest behind gets up to 12. With weekly intents, "behind" is
-// the share of the intent still to do; without, it's how little the area got
-// this week compared with the busiest one. An even week gives nobody points.
+// The area furthest behind gets up to 12: how little the area got this week
+// compared with the busiest one. An even week gives nobody points.
 export function areaBalance(task, m, areas){
   const a = task.area;
   if (!a || !areas.length) return { points: 0, detail: null };
   const done = (x) => m.areaDone[x] || 0;
-  const behind = (x) => (m.intents[x] > 0 ? Math.max(0, 1 - done(x) / m.intents[x]) : null);
-  if (Object.keys(m.intents).some((x) => m.intents[x] > 0)) {
-    const b = behind(a);
-    if (b == null) return { points: 0, detail: null };
-    return { points: Math.round(W.AREA_BALANCE_MAX * b), detail: { area: a, done: done(a), intent: m.intents[a] } };
-  }
   const counts = areas.map(done), max = Math.max(...counts), min = Math.min(...counts);
   if (max === min) return { points: 0, detail: null };
   return { points: Math.round(W.AREA_BALANCE_MAX * (max - done(a)) / (max - min)), detail: { area: a, done: done(a) } };

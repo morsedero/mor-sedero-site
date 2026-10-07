@@ -49,7 +49,6 @@ export function planDay({ tasks = [], events = [], now = Date.now(), hours = W.D
     while (picks.length < MAX_PICKS && room >= WORTH) {
       const r = rank(tasks, {
         now: at, window: biggest, nextEvent: null, ...workBase(tasks, now),
-        intents: settings.intents || {},
         sessionSkips: [...taken], booked,
       });
       if (!r.pick) break;

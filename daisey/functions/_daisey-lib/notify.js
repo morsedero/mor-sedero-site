@@ -107,7 +107,7 @@ function decide(rec, events, now = Date.now()) {
       if (free >= GAP_MIN && !focus) {
         const r = rank(tasks, {
           now, window: free, nextEvent: next && localDate(Date.parse(next.start)) === date ? next.title : null,
-          ...workBase(tasks, now), intents: rec.settings?.intents || {},
+          ...workBase(tasks, now),
           booked: Object.fromEntries([...booked].map(([id, b]) => [id, b.start])),
         });
         // "After X", not "X is over": the calendar says it ended, not you.

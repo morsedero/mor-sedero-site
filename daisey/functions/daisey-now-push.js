@@ -54,8 +54,6 @@ const cleanSettings = (s) => ({
   needsLater: s?.needsLater && typeof s.needsLater === "object" ? { date: day(s.needsLater.date), keys: (s.needsLater.keys || []).slice(0, 100).map((k) => str(k, 120)) } : null,
   calOffered: Array.isArray(s?.calOffered) ? s.calOffered.slice(-200).map((k) => str(k, 200)) : [],
   somedayAsked: day(s?.somedayAsked),
-  // Weekly goals per area: the area balance and Needs you's goal question.
-  intents: Object.fromEntries(Object.entries(s?.intents || {}).filter(([k, v]) => /^[a-z]{2,12}$/.test(k) && Number.isInteger(v) && v >= 0 && v <= 50)),
 });
 // The running task (state/now), or null: ids and times only.
 const at = (v) => (Number.isFinite(v) && v > 0 ? v : null);

@@ -62,13 +62,5 @@ export function collectNeeds({ tasks = [], events = [], calOk = false, settings 
   const targets = shouldOffer(tasks, now, {});
   sweepList(tasks, now).filter((t) => isOverdue(t, now) || targets)
     .forEach((t) => add({ key: `sweep:${t.id}`, kind: "sweep", id: t.id }));
-  // Weekly goals (Mor, 2026-10-06: "Daisey should ask if it doesn't have the
-  // info, and keep it in settings"): an area with open tasks and no goal yet
-  // — most open tasks first, two a day at most. "No goal" is kept as 0.
-  const intents = settings.intents || {};
-  const counts = {};
-  for (const t of tasks) if (t.status === "ready" && AREAS.includes(t.area)) counts[t.area] = (counts[t.area] || 0) + 1;
-  Object.keys(counts).filter((a) => intents[a] == null).sort((a, b) => counts[b] - counts[a]).slice(0, 2)
-    .forEach((a) => add({ key: `goal:${a}`, kind: "goal", area: a, open: counts[a] }));
   return out;
 }

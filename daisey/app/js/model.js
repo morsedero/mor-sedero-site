@@ -388,7 +388,7 @@ export function createTask(input, { now = Date.now(), history = [] } = {}){
     status: "ready",
     waitingOn: null,
     checkOn: null, // Pending: the day Daisey asks "still pending?"
-    // The one thing to do next, for a big task or a goal: what the card
+    // The one thing to do next, for a big task: what the card
     // shows under the title so a 90-minute lump has a way in. With steps,
     // it is the first unticked step.
     steps: toSteps(input.steps),

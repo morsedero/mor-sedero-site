@@ -62,7 +62,7 @@ export function proposeDay({ tasks = [], events = [], now = Date.now(), hours = 
   while (items.length < cap && budget >= WORTH) {
     const r = rank(pool, {
       now: usable[0].start, window: biggest, nextEvent: null, ...workBase(tasks, now),
-      intents: settings.intents || {}, sessionSkips: [...out], booked,
+      sessionSkips: [...out], booked,
     });
     if (!r.pick) break;
     take(r.pick.task);

@@ -594,7 +594,6 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
       ...workBase(tasks || [], now),
       sessionSkips: hidden(now),
       skipsToday: skipCounts(),
-      intents: settings.intents || {},
       place: f.place.value,
       spot: f.place.spot,
       learnStats,
@@ -618,7 +617,6 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
       ...(!fw ? { realWindow: false } : { window: fw.current ? 60 : fw.window, nextEvent: fw.next?.title ?? null }),
       ...workBase(tasks || [], now),
       place: "home",
-      intents: settings.intents || {},
       learnStats,
       booked: Object.fromEntries([...booked()].map(([id, b]) => [id, b.start])),
     });

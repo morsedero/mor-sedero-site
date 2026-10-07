@@ -99,20 +99,6 @@ export function mountNeeds(root, uid, { onClose } = {}){
         yes: ["Yes, make it a task", () => { markOffered(ev); addTask(uid, d.input, tasks).catch(fail); follow = ev; paint(); }],
         no: ["No, it's an event", () => { markOffered(ev); next(); }] };
     }
-    if (item.kind === "goal") {
-      const name = LABELS.area[item.area] || item.area;
-      const set = (n) => () => {
-        const intents = { ...(settings.intents || {}), [item.area]: n };
-        settings = { ...settings, intents };
-        saveSettings(uid, { intents }).catch(fail);
-        next();
-      };
-      return { tone: `area-${item.area}`, ico: "energy", q: `Weekly goal: ${name}`,
-        sub: `${item.open} open ${name} task${item.open === 1 ? "" : "s"}. How many a week feels right?`, item: name,
-        say: "When it falls behind, I'll give it a turn. You can change it in Settings.",
-        yes: ["2 a week", set(2)], no: ["No goal", set(0)],
-        more: [["1 a week", set(1)], ["3 a week", set(3)], ["5 a week", set(5)]] };
-    }
     const t = find(item.id);
     if (!t) return null; // deleted since: skip it
     if (item.kind === "clash") {
