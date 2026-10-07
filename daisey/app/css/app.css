@@ -389,12 +389,13 @@ body.focus .shell { padding-block: max(18px, env(safe-area-inset-top)) max(24px,
 
 /* The task sheet's own actions, under the fields (addtask.js in edit mode). */
 .sheet-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-block-start: 12px; padding-block-start: 12px; border-block-start: 1px solid var(--line); }
-.sheet-actions .btn.danger { margin-inline-start: auto; color: var(--danger); }
+.sheet-actions .btn.danger { margin-inline-start: auto; color: var(--danger); background: none; }
+.sheet-actions .btn.danger:hover:not(:disabled) { background: color-mix(in srgb, var(--danger) 8%, transparent); }
 /* The last line of the sheet: Delete at one end, Add/Save at the other. */
 .sheet-bottom { display: flex; align-items: center; gap: 10px; margin-block-start: 14px; }
 .sheet-bottom .btn.danger { color: var(--danger); }
 .sheet-bottom .btn.primary { margin-inline-start: auto; min-inline-size: 120px; }
-.sheet-actions .btn.danger.arm { border-color: var(--danger); background: color-mix(in srgb, var(--danger) 10%, transparent); font-weight: 700; }
+.sheet-actions .btn.danger.arm, .sheet-actions .btn.danger.arm:hover:not(:disabled) { border-color: var(--danger); background: color-mix(in srgb, var(--danger) 14%, transparent); font-weight: 700; }
 .field.wide { grid-column: 1 / -1; }
 /* The event form's first two rows aren't both full-width: only .wide is. */
 .ev-grid > :nth-child(-n+2):not(.wide) { grid-column: auto; }
