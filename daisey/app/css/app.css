@@ -1299,3 +1299,6 @@ body.focus .shell { block-size: auto; min-block-size: 100dvh; overflow: visible;
 .focus-help summary { cursor: pointer; min-block-size: 32px; display: flex; align-items: center; justify-content: center; }
 .focus-help p { margin: 4px 0 0; line-height: 1.4; }
 .now-row .hold { block-size: 88px; min-block-size: 0; }
+.pj-card-top { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.pj-pct { font-size: 15px; font-weight: 600; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.pj-left { margin: 6px 0 0; font-size: 13px; color: var(--ink-2); }

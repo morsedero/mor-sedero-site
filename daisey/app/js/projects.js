@@ -98,6 +98,10 @@ function statusLine(p){
   const parts = [p.pending.length && `${p.pending.length} pending`, p.next.length && `${p.next.length} later`, p.someday.length && `${p.someday.length} not now`].filter(Boolean);
   return [parts.join(" · ") || "All done"];
 }
+// Effort still to do (master spec s.16, 2026-10-06): the sizes of the open
+// tasks less the time already put in, 5 minutes at least each. Pending ones
+// count: they're still part of the way to done. Not now ones don't.
+export const minutesLeft = (p) => [...p.next, ...p.pending].reduce((n, t) => n + Math.max(5, (t.size || 30) - (t.spentMinutes || 0)), 0);
 const progress = (p) => (p.all.length ? p.done.length / p.all.length : 0);
 const bar = (p, cls) => h("div", { className: cls, role: "img", ariaLabel: `${p.done.length} of ${p.all.length} done` },
   h("span", { style: `inline-size:${Math.round(progress(p) * 100)}%` }));
@@ -303,8 +307,10 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
       h("div", { className: "pj-top" },
         h("button", { type: "button", className: "pj-back", ariaLabel: "Back to home", onclick: () => onScreen?.(null) }, icon("back")), chips),
       h("div", { className: "pj-card" },
-        h("div", { className: "pj-card-top", dir: dirOf(p.name) }, h("h2", { className: "pj-name", dir: "auto", textContent: p.name })),
+        h("div", { className: "pj-card-top", dir: dirOf(p.name) }, h("h2", { className: "pj-name", dir: "auto", textContent: p.name }),
+          p.all.length > 0 && h("span", { className: "pj-pct", textContent: `${Math.round(progress(p) * 100)}%` })),
         h("div", { className: "pj-prog" }, bar(p, "pbar big")),
+        minutesLeft(p) > 0 && h("p", { className: "pj-left", textContent: `About ${durText(minutesLeft(p))} left` }),
         p.all.length > 0 && h("div", { className: "pj-tgs" },
           toggle("done", h("span", { className: "pj-ok", ariaHidden: "true" }, icon("check")), h("span", { className: "pj-tg-t", textContent: `${p.done.length} of ${p.all.length} done` })),
           p.someday.length > 0 && toggle("someday", h("span", { className: "pj-zz", ariaHidden: "true" }), h("span", { className: "pj-tg-t", textContent: `Not now · ${p.someday.length}` }))),

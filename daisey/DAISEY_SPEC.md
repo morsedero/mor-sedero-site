@@ -362,6 +362,8 @@ v1 is done when the Now card picks a task you actually start, most days, for one
 - **Language:** Hebrew and English from day one: RTL layout, mixed-language task titles, chat and voice in both.
 - **Finished-task history:** used for learning only in v1; no history screen.
 
+**Settings** (2026-10-06) are grouped Personal (My day, Places, with a line saying what Places is for) · Notifications · Goals (weekly goals) · Integrations (Google Calendar log) · Appearance (Theme) · Data (Trello import). **Projects** show the percent done and "About 1 h 20 min left" (open tasks' sizes less time already put in; Not now tasks don't count) on the project screen. A project still has no date of its own.
+
 ## Visual design
 
 The Now screen redesign (Oct 5, 2026; references in `daisey/New Design/`). Calm, warm, light. One loud thing per screen: the amber button.

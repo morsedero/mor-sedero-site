@@ -124,13 +124,9 @@
   <!-- Settings (Mor, 2026-10-06): opened from the avatar menu. -->
   <dialog id="settingsdlg" class="now settings" aria-labelledby="setTitle">
     <div class="now-head"><h2 id="setTitle">Settings</h2><button id="settingsX" class="now-x" type="button" aria-label="Close">✕</button></div>
+    <!-- Grouped as the master spec asks (2026-10-06): Personal, Notifications, Goals, Integrations, Appearance, Data. Ids unchanged. -->
     <div class="menu-sec">
-      <div class="menu-row"><span class="menu-label">Theme</span>
-        <div class="theme" role="radiogroup" aria-label="Theme">
-          <button class="theme-btn" type="button" role="radio" data-set-theme="system">Auto</button>
-          <button class="theme-btn" type="button" role="radio" data-set-theme="light">Light</button>
-          <button class="theme-btn" type="button" role="radio" data-set-theme="dark">Dark</button>
-        </div></div>
+      <h3 class="menu-h">Personal</h3>
       <!-- Day hours: free time counts only inside them; outside is night mode. -->
       <div class="menu-row"><span class="menu-label">My day</span>
         <div class="dayhours" role="group" aria-label="Day hours">
@@ -138,6 +134,9 @@
           <span class="muted">–</span>
           <input id="dayEnd" type="time" aria-label="Day ends" value="22:00">
         </div></div>
+      <!-- Where you are: picked by hand, and saved places (places.js). -->
+      <button id="placesBtn" class="menu-link" type="button">Places</button>
+      <p class="menu-note">Places like Home or Studio. Daisey uses where you are to pick tasks that fit.</p>
     </div>
     <!-- Notifications (push.js): this device, then which kinds (any device). -->
     <div class="menu-sec">
@@ -156,16 +155,25 @@
     <!-- Weekly goals per area (main.js fills it): blank = not set, and
          Daisey asks in Needs you; 0 = no goal. -->
     <div class="menu-sec">
-      <h3 class="menu-h">Weekly goals</h3>
+      <h3 class="menu-h">Goals</h3>
       <div id="goals" class="goals"></div>
     </div>
     <div class="menu-sec">
-      <h3 class="menu-h">Google Calendar</h3>
-      <label class="menu-check"><input id="logDone" type="checkbox" checked> Log finished tasks</label>
+      <h3 class="menu-h">Integrations</h3>
+      <label class="menu-check"><input id="logDone" type="checkbox" checked> Google Calendar: log finished tasks</label>
+      <p class="menu-note">Only finished tasks go to a separate “Daisey log” calendar. Plans and suggestions never do.</p>
     </div>
-    <div class="menu-sec menu-foot">
-      <!-- Where you are: picked by hand, and saved places (places.js). -->
-      <button id="placesBtn" class="menu-link" type="button">Places</button>
+    <div class="menu-sec">
+      <h3 class="menu-h">Appearance</h3>
+      <div class="menu-row"><span class="menu-label">Theme</span>
+        <div class="theme" role="radiogroup" aria-label="Theme">
+          <button class="theme-btn" type="button" role="radio" data-set-theme="system">Auto</button>
+          <button class="theme-btn" type="button" role="radio" data-set-theme="light">Light</button>
+          <button class="theme-btn" type="button" role="radio" data-set-theme="dark">Dark</button>
+        </div></div>
+    </div>
+    <div class="menu-sec">
+      <h3 class="menu-h">Data</h3>
       <button id="importTrello" class="menu-link" type="button">Import from Trello</button>
     </div>
     </dialog>

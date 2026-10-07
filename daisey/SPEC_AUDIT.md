@@ -32,7 +32,9 @@ the server-side active-task state as a core part, not a one-notification fix.
 - ✅ P1 8. "I have 30 minutes" (moment.free, counts down) and "Plan my afternoon" (query plan).
 - ✅ P1 9. Plan my day: plan.js + plan-view.js on today's Schedule; Daisey-only, recomputed, nothing stored or written.
 - ✅ P1 11. Start vs Deep Focus (card: Not now · Done · Focus · Start; deep.js).
-- P1 10, 12: not started (10 project %, 12 Settings regroup).
+- ✅ P1 10. Project: percent + about N left (no project deadline, per Mor).
+- ✅ P1 12. Settings regrouped; Places explained.
+- P2: not started, by design (wait for P0/P1 to feel right in daily use).
 
 Scope: Daisey v1, `daisey/app/` (served at morsedero.com/daisey/now/) and its
 functions in `daisey/functions/`. The old `daisey/daisey.html` (morsedero.com/daisey/)
