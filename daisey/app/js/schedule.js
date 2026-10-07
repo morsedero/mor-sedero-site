@@ -17,7 +17,7 @@
 //
 // One day at a time (Mor, 2026-10-06: the whole week stacked vertically was
 // crowded and confusing), or the week as a grid — see "Day or Week" below.
-import { watchCalendar, connectCalendar, fetchRange } from "./calendar.js";
+import { watchCalendar, connectCalendar, fetchRange, retime } from "./calendar.js";
 import { watchSettings, watchTasks, watchRun, watchDayPlan } from "./store.js";
 import { timeline } from "./proposal.js";
 import { areaClass, watchProjectColors } from "./look.js";
@@ -230,11 +230,13 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onProjects } = 
         });
         rows = [...cut, ...planned].sort((a, b) => (a.start ?? -1) - (b.start ?? -1) || (a.kind === "free") - (b.kind === "free"));
       }
+    // Events a drag can swap places with: real timed ones still ahead.
+    const peers = rows.filter((x) => x.kind === "event" && !x.allDay && x.end > now && !/^✓/u.test(x.ev.title));
     const out = [];
     if (t === t0 && now < atMin(today, hrs.start)) out.push(nightDivider(minText(hrs.end), minText(hrs.start)));
     const none = h("button", { type: "button", className: "sc-none", onclick: () => onNew?.(ymd) },
       h("span", { textContent: "Nothing scheduled" }), h("span", { className: "sc-add", ariaHidden: "true", textContent: "+ Add" }));
-    out.push(h("section", { className: "sc-day", ariaLabel: short(date) }, ...(rows.length ? rows.map((x) => row(x, now)) : [none])));
+    out.push(h("section", { className: "sc-day", ariaLabel: short(date) }, ...(rows.length ? rows.map((x) => row(x, now, peers)) : [none])));
     return out;
   }
 
@@ -308,7 +310,7 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onProjects } = 
     return [grid];
   }
 
-  function row(x, now){
+  function row(x, now, peers = []){
     const time = x.allDay ? "All day" : `${clock(x.start)}–${clock(x.end)}`;
     // Free time is quiet (Mor, 2026-10-06: the dashed boxes read as slots to
     // fill): no box, no times, just how long, on a hairline.
@@ -324,10 +326,54 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onProjects } = 
         h("span", { className: "sc-evi" }, icon("check")), bdi(x.task.title)));
     // A finished task is logged as a "✓ title" event (calendar.js logDone).
     const done = /^✓\s*/u.test(x.ev.title), title = done ? x.ev.title.replace(/^✓\s*/u, "") : x.ev.title;
-    return h("div", { className: "sc-row" + (on ? " sc-on" : past ? " sc-past" : "") }, h("span", { className: "sc-time strong" }, time, on && h("span", { className: "sc-nowtag", textContent: "Now" })),
+    const rowEl = h("div", { className: "sc-row" + (on ? " sc-on" : past ? " sc-past" : "") }, h("span", { className: "sc-time strong" }, time, on && h("span", { className: "sc-nowtag", textContent: "Now" })),
       h("button", { type: "button", className: "sc-ev" + (done ? " sc-done" : "") + tone(x.ev), style: x.ev.color ? `--ev:${x.ev.color}` : "",
         ariaLabel: `${done ? "Finished task: " : ""}${on ? "Now: " : ""}${title}, ${time}`, onclick: () => onEvent?.(x.ev) },
         done ? h("span", { className: "sc-tick" }, icon("check")) : h("span", { className: "sc-evi" }, icon("calendar")), bdi(title)));
+    if (peers.includes(x)) { x.el = rowEl; rowEl.append(grip(x, rowEl, peers)); rowEl.classList.add("sc-drag"); }
+    return rowEl;
+  }
+
+  // Drag an event's grip up or down past its neighbour and the two swap
+  // places; each keeps its own length and the gap between them stays.
+  function grip(x, rowEl, peers){
+    const g = h("span", { className: "sc-grip", role: "button", ariaLabel: `Drag ${x.ev.title} up or down to swap with the next event`, textContent: "⋮⋮" });
+    let y0 = 0, target = null;
+    g.addEventListener("click", (e) => e.stopPropagation());
+    g.addEventListener("pointerdown", (e) => {
+      e.preventDefault(); e.stopPropagation(); y0 = e.clientY; target = null;
+      g.setPointerCapture(e.pointerId); rowEl.classList.add("sc-dragging");
+    });
+    g.addEventListener("pointermove", (e) => {
+      if (!g.hasPointerCapture(e.pointerId)) return;
+      const dy = e.clientY - y0;
+      rowEl.style.transform = `translateY(${dy}px)`;
+      const i = peers.indexOf(x), nb = peers[i + (dy < 0 ? -1 : 1)];
+      const r = rowEl.getBoundingClientRect(), c = r.top + r.height / 2; // already includes dy
+      target = null;
+      if (nb?.el?.isConnected) {
+        const n = nb.el.getBoundingClientRect(), nc = n.top + n.height / 2;
+        if (dy < 0 ? c < nc : c > nc) target = nb;
+      }
+      peers.forEach((p) => p.el?.classList.toggle("sc-swap", p === target));
+    });
+    const end = async (e) => {
+      if (!g.hasPointerCapture(e.pointerId)) return;
+      g.releasePointerCapture(e.pointerId);
+      rowEl.style.transform = ""; rowEl.classList.remove("sc-dragging");
+      peers.forEach((p) => p.el?.classList.remove("sc-swap"));
+      const nb = e.type === "pointerup" ? target : null; target = null;
+      if (!nb) return;
+      const [a, b] = x.start <= nb.start ? [x, nb] : [nb, x]; // earlier, later
+      try {
+        await Promise.all([
+          retime(b.ev, a.start, a.start + (b.end - b.start)),
+          retime(a.ev, b.end - (a.end - a.start), b.end)]);
+      } catch (err) { fail(err); }
+    };
+    g.addEventListener("pointerup", end);
+    g.addEventListener("pointercancel", end);
+    return g;
   }
 
   const unsubs = [

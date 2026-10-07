@@ -1423,3 +1423,9 @@ body.focus .shell { block-size: auto; min-block-size: 100dvh; overflow: visible;
 .bloom-btn { touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
 .bloom-btn * { pointer-events: none; }
 .ny-field { margin-block-start: 12px; inline-size: 100%; min-block-size: 48px; padding: 0 14px; border: 1px solid var(--line-2); border-radius: 14px; background: var(--surface); color: var(--ink); font: inherit; font-size: 17px; }
+
+/* Schedule: drag an event's grip to swap it with its neighbour */
+.sc-grip { flex: none; margin-inline-start: -4px; padding: 10px 4px; color: var(--ink-2); opacity: .55; font-size: 14px; line-height: 1; letter-spacing: -3px; cursor: grab; touch-action: none; user-select: none; }
+.sc-row.sc-dragging { position: relative; z-index: 5; opacity: .92; filter: drop-shadow(0 4px 10px rgba(0,0,0,.2)); }
+.sc-row.sc-dragging .sc-grip { cursor: grabbing; }
+.sc-row.sc-swap .sc-ev { outline: 2px dashed var(--ink-2); outline-offset: 2px; }
