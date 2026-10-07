@@ -400,8 +400,10 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onProjects } = 
     // Near the top or bottom edge the page scrolls, so any row can be reached.
     const tick = () => {
       const r = el.getBoundingClientRect(), top = el.querySelector(".sc-head")?.getBoundingClientRect().bottom ?? r.top;
-      const v = lastY < top + 40 ? -1 : lastY > r.bottom - 40 ? 1 : 0;
-      if (v) { const was = el.scrollTop; el.scrollTop += v * 8; if (el.scrollTop !== was) show(); }
+      // Nearer the edge, faster (up to 20px a frame); a wide zone to push into.
+      const Z = 72, up = top + Z - lastY, down = lastY - (r.bottom - Z);
+      const v = up > 0 ? -Math.min(1, up / Z) : down > 0 ? Math.min(1, down / Z) : 0;
+      if (v) { const was = el.scrollTop; el.scrollTop += Math.sign(v) * Math.max(3, Math.abs(v) * 20); if (el.scrollTop !== was) show(); }
       raf = requestAnimationFrame(tick);
     };
     const arm = () => {
@@ -417,7 +419,7 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onProjects } = 
       off = mid - y0; mid0 = mid + s0; home = snap.filter((s) => s.mid < mid0).length;
       // A little past the first and last row, so a tall row can still pass
       // a short one's middle and be pushed to the very top or bottom.
-      const EDGE = 28;
+      const EDGE = 56;
       lo = sec.top + s0 - EDGE; hi = sec.bottom + s0 + EDGE;
       timeEl = rowEl.querySelector(".sc-time"); orig = [...timeEl.childNodes];
       navigator.vibrate?.(10);
