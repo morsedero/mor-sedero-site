@@ -133,9 +133,9 @@
       <!-- Day hours: free time counts only inside them; outside is night mode. -->
       <div class="menu-row"><span class="menu-label">My day</span>
         <div class="dayhours" role="group" aria-label="Day hours">
-          <input id="dayStart" type="time" aria-label="Day starts" value="08:00">
+          <input id="dayStart" type="text" inputmode="numeric" maxlength="5" placeholder="08:00" autocomplete="off" aria-label="Day starts (24h, HH:MM)" value="08:00">
           <span class="muted">–</span>
-          <input id="dayEnd" type="time" aria-label="Day ends" value="22:00">
+          <input id="dayEnd" type="text" inputmode="numeric" maxlength="5" placeholder="22:00" autocomplete="off" aria-label="Day ends (24h, HH:MM)" value="22:00">
         </div></div>
       <!-- Where you are: picked by hand, and saved places (places.js). -->
       <button id="placesBtn" class="menu-link" type="button">Places</button>

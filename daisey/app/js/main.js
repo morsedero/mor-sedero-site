@@ -299,11 +299,21 @@ async function boot(){
           snap();
         }, fail);
         logSwitch.onchange = () => saveSettings(user.uid, { logDone: logSwitch.checked }).catch(fail);
+        // One typed 24h field per time: "8", "830", "8:30", "0830" → "08:30". Junk → "".
+        const clock = (raw) => {
+          const d = String(raw).replace(/\D/g, "");
+          if (!d || d.length > 4) return "";
+          const h = d.length <= 2 ? +d : +d.slice(0, d.length - 2), m = d.length <= 2 ? 0 : +d.slice(-2);
+          return h > 23 || m > 59 ? "" : String(h).padStart(2, "0") + ":" + String(m).padStart(2, "0");
+        };
         const saveHours = () => {
-          const hrs = dayHours({ dayStart: start.value, dayEnd: end.value });
+          // Unreadable text falls back to the usual day (dayHours defaults).
+          const hrs = dayHours({ dayStart: clock(start.value), dayEnd: clock(end.value) });
           // An end before the start isn't a day: the default comes back.
+          start.value = minText(hrs.start); end.value = minText(hrs.end);
           saveSettings(user.uid, { dayStart: minText(hrs.start), dayEnd: minText(hrs.end) }).catch(fail);
         };
+        [start, end].forEach((el) => el.addEventListener("keydown", (e) => { if (e.key === "Enter") el.blur(); }));
         start.onchange = saveHours;
         end.onchange = saveHours;
         // + → Event is off while the calendar isn't connected.

@@ -94,7 +94,7 @@ body {
 /* Theme: Auto, Light, Dark — a segmented row in the account menu. */
 /* Day hours in the account menu: two time fields on one line. */
 .dayhours { display: flex; align-items: center; gap: 6px; font-size: 13px; }
-.dayhours input { font: inherit; font-size: 14px; padding: 4px 6px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--ink); }
+.dayhours input { font: inherit; font-size: 14px; width: 5ch; box-sizing: content-box; text-align: center; font-variant-numeric: tabular-nums; padding: 4px 6px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--ink); }
 .theme { display: inline-flex; padding: 3px; gap: 2px; border-radius: 999px; background: var(--bg); border: 1px solid var(--line); }
 .theme-btn {
   font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; min-block-size: 30px;
