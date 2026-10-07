@@ -1369,3 +1369,6 @@ body.focus .shell { block-size: auto; min-block-size: 100dvh; overflow: visible;
 .ts-hold-sw { display: flex; align-items: center; gap: 8px; min-block-size: 36px; font-size: 14px; cursor: pointer; }
 .ts-hold-sw input { inline-size: 18px; block-size: 18px; accent-color: var(--accent); }
 .ts-hold-who { display: grid; gap: 4px; font-size: 12px; color: var(--ink-2); }
+
+/* Connect Google Calendar (2026-10-07): the Schedule's empty state and Settings. */
+.sc-connect { margin: 12px 0 0; min-block-size: 46px; border-radius: 14px; }

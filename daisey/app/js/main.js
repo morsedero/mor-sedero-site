@@ -185,9 +185,10 @@ async function boot(){
     show("signedin"); // no element of its own: just clears loading/sign-in views
 
     Promise.all([import("./now.js"), import("./projects.js"), import("./addtask.js"), import("./needs.js"), import("./import-trello.js"), import("./addevent.js"), import("./store.js"), import("./deadlines.js"), import("./day.js"), import("./calendar.js"), import("./schedule.js"), import("./push.js"), import("./briefchip.js"), import("./model.js"), import("./context.js")])
-      .then(([{ mountNow }, { mountProjects }, { mountAddTask }, { mountNeeds }, { mountImport }, { mountAddEvent }, { migrateTasks, watchSettings, saveSettings, watchTasks, watchRun }, { mountDeadlines }, { dayHours, minText }, { watchCalendar }, { mountSchedule }, push, { mountBriefChip }, { AREAS, LABELS }, { workBase }]) => {
+      .then(([{ mountNow }, { mountProjects }, { mountAddTask }, { mountNeeds }, { mountImport }, { mountAddEvent }, { migrateTasks, watchSettings, saveSettings, watchTasks, watchRun }, { mountDeadlines }, { dayHours, minText }, { watchCalendar, connectCalendar, setCalendarHint }, { mountSchedule }, push, { mountBriefChip }, { AREAS, LABELS }, { workBase }]) => {
         if ((!isGuest && fb.currentUid() !== user.uid) || mounted) return;
         const m = mounted = {};
+        setCalendarHint(isGuest ? "" : user.email);
         // Old tasks get the new fields first; then, once, which dates are real.
         const stopMigrate = migrateTasks(user.uid);
         m.migrate = { unmount: stopMigrate };
@@ -296,7 +297,18 @@ async function boot(){
         end.onchange = saveHours;
         // + → Event is off while the calendar isn't connected.
         let calOk = false;
-        const stopCal = watchCalendar((c) => { calOk = c.status === "ok"; });
+        // Settings → Integrations: Connect (or Reconnect) Google Calendar. A
+        // guest has no Google account to connect, so it says so instead.
+        const connectBtn = $("#connectCal"), calNote = $("#calNote");
+        connectBtn.onclick = connectCalendar;
+        const stopCal = watchCalendar((c) => {
+          calOk = c.status === "ok";
+          connectBtn.hidden = isGuest || calOk;
+          connectBtn.textContent = c.status === "needs_reauth" ? "Reconnect Google Calendar" : "Connect Google Calendar";
+          calNote.textContent = isGuest ? "Sign in with Google to connect your calendar. Guest events stay on this device."
+            : calOk ? "Google Calendar is connected." : c.status === "needs_reauth" ? "The connection expired. Reconnect to bring your calendar back."
+            : "Shows your day here, and Daisey plans around your events.";
+        });
         m.menu = { unmount(){ stopSettings(); stopCal(); stopBriefTasks(); stopBriefRun(); start.onchange = end.onchange = logSwitch.onchange = pushSwitch.onchange = pushTest.onclick = null;
           kindBoxes.forEach((b) => { b.onchange = null; }); } };
         m.brief = mountBriefChip($("#briefChip"), $("#briefPop"), user.uid);
@@ -352,6 +364,11 @@ async function boot(){
         const asked = params.get("open"), startId = params.get("start");
         // Shared into Daisey (manifest share_target, 2026-10-06): read like a Tell message → cards.
         const shared = [...new Set(["title", "text", "url"].map((k) => (params.get(k) || "").trim()).filter(Boolean))].join("\n");
+        // Back from Google's consent screen (daisey-auth-google-callback).
+        const cal = params.get("calendar");
+        if (cal === "connected") flash("Google Calendar connected.");
+        else if (cal === "failed") flash("Couldn't connect Google Calendar. Try again.");
+        if (cal) history.replaceState(history.state, "", location.pathname);
         if (asked || shared || startId) history.replaceState(history.state, "", location.pathname);
         if (asked) openFrom(asked);
         // "Start task" on a notification (sw.js): straight into focus mode.

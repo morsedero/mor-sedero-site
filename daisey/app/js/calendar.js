@@ -20,6 +20,17 @@ const WRITE_URL = "/.netlify/functions/daisey-now-calendar-write";
 const EVERY = 60000;
 const GUEST_EVENTS_KEY = "daisey.guest.events.v1";
 
+// Connect Google Calendar (2026-10-07). A full-page trip through Google's
+// consent screen (functions/daisey-auth-google-start, return=now) that stores
+// the grant under the account's Google id, then lands back here with
+// ?calendar=connected. The hint preselects the account they're signed in
+// with, so the grant matches the id the app's own sign-in carries.
+let hint = "";
+export const setCalendarHint = (email) => { hint = email || ""; };
+export function connectCalendar(){
+  location.href = `/.netlify/functions/daisey-auth-google-start?return=now${hint ? `&hint=${encodeURIComponent(hint)}` : ""}`;
+}
+
 const subs = new Set();
 let state = { status: "loading", events: [] };
 let timer = null, loading = null;

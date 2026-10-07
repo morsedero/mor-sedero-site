@@ -20,7 +20,7 @@
 // top — weekday, date, a dot when there's something on — and the picked day
 // shows below in full. It opens on today, or on tomorrow once today's hours
 // are over and nothing's left. The pick lasts only as long as the tab.
-import { watchCalendar } from "./calendar.js";
+import { watchCalendar, connectCalendar } from "./calendar.js";
 import { watchSettings, watchTasks, watchRun } from "./store.js";
 import { dayHours, minText } from "./day.js";
 import { localDate, durText } from "./model.js";
@@ -76,9 +76,13 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen } = {}){
 
   function render(){
     const now = Date.now(), hrs = dayHours(settings);
-    const note = { loading: "Loading the calendar…", not_connected: "Calendar not connected.", needs_reauth: "Calendar sign-in expired.", error: "Couldn't load the calendar." }[cal.status];
+    const note = { loading: "Loading the calendar…", not_connected: "Connect Google Calendar to see your day here, and so Daisey plans around your events.",
+      needs_reauth: "The calendar connection expired.", error: "Couldn't load the calendar." }[cal.status];
     if (note) {
-      el.replaceChildren(h("p", { className: "sc-note", textContent: note }));
+      const connect = cal.status === "not_connected" || cal.status === "needs_reauth";
+      el.replaceChildren(h("p", { className: "sc-note", textContent: note }),
+        connect && h("button", { className: "btn primary sc-connect", type: "button", textContent: cal.status === "needs_reauth" ? "Reconnect Google Calendar" : "Connect Google Calendar",
+          onclick: connectCalendar }));
       return;
     }
     const today = new Date(now);

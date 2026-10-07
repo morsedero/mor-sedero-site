@@ -44,12 +44,20 @@ exports.handler = async (event) => {
   const error = qs.error;
 
   if (error) {
+    // Declined on the consent screen from Daisey v1: back to the app, quietly.
+    if (/(^|[;\s])daisey_g_state=[^;]*\.now(;|$)/.test((event.headers && (event.headers.cookie || event.headers.Cookie)) || "")) {
+      return { statusCode: 302, headers: { Location: "/daisey/now/?calendar=failed" },
+        multiValueHeaders: { "Set-Cookie": ["daisey_g_state=; Path=/; Max-Age=0"] }, body: "" };
+    }
     return { statusCode: 200, body: `Google returned an error: ${error}` };
   }
 
   const cookieVal = getCookie(event.headers, "daisey_g_state");
   if (!cookieVal) return { statusCode: 400, body: "Missing state cookie. Start over from sign-in." };
-  const [cookieState, cookieSig] = cookieVal.split(".");
+  const [cookieState, cookieSig, cookieFlow] = cookieVal.split(".");
+  // ".now" on the state cookie (set by daisey-auth-google-start?return=now):
+  // the grant was asked for from Daisey v1, so it goes back there.
+  const backToNow = cookieFlow === "now";
   const expectedSig = sign(cookieState || "");
   const sigOk = cookieSig && cookieSig.length === expectedSig.length &&
     crypto.timingSafeEqual(Buffer.from(cookieSig), Buffer.from(expectedSig));
@@ -85,7 +93,18 @@ exports.handler = async (event) => {
   if (!info.sub) return { statusCode: 200, body: "Google didn't return an account id." };
 
   const userId = await userIdForGoogleSub(info.sub);
+  // Google only sends a refresh token on a first grant or with prompt=consent
+  // (start asks for it). Without one the grant dies in an hour, so say so
+  // rather than store a half-connection that reads "connected" and then fails.
+  if (backToNow && !tokenBody.refresh_token) {
+    return { statusCode: 302, headers: { Location: "/daisey/now/?calendar=failed" },
+      multiValueHeaders: { "Set-Cookie": ["daisey_g_state=; Path=/; Max-Age=0"] }, body: "" };
+  }
   await saveGoogleTokens(userId, tokenBody);
+  if (backToNow) {
+    return { statusCode: 302, headers: { Location: "/daisey/now/?calendar=connected" },
+      multiValueHeaders: { "Set-Cookie": ["daisey_g_state=; Path=/; Max-Age=0"] }, body: "" };
+  }
   const sessionCookie = await createSession(userId);
   const needsTrello = !(await hasTrello(userId));
 

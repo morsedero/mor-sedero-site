@@ -10,7 +10,16 @@ function sign(value) {
   return crypto.createHmac("sha256", SESSION_SECRET).update(value).digest("hex");
 }
 
-exports.handler = async () => {
+// ?return=now: Daisey v1's "Connect Google Calendar" (2026-10-07). Same
+// consent and the same stored grant as old Daisey (daisey-now-calendar finds
+// it by the Google `sub`), but the callback sends the user back to
+// /daisey/now/ instead of starting an old-Daisey session. ?hint=<email> asks
+// Google to preselect the account they're signed in with, so the grant lands
+// on the same `sub` the app's Firebase sign-in carries.
+exports.handler = async (event = {}) => {
+  const q = (event && event.queryStringParameters) || {};
+  const back = q.return === "now";
+  const hint = /^[^\s@<>"]+@[^\s@<>"]+$/.test(q.hint || "") ? q.hint : "";
   if (!CLIENT_ID || !SESSION_SECRET) {
     return { statusCode: 500, body: "Google auth is not configured." };
   }
@@ -28,6 +37,7 @@ exports.handler = async () => {
     scope: "https://www.googleapis.com/auth/calendar openid email",
     access_type: "offline",
     prompt: "consent",
+    ...(hint ? { login_hint: hint } : {}),
     state,
   });
 
@@ -35,7 +45,7 @@ exports.handler = async () => {
     statusCode: 302,
     headers: {
       Location: `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`,
-      "Set-Cookie": `daisey_g_state=${cookieValue}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=600`,
+      "Set-Cookie": `daisey_g_state=${cookieValue}${back ? ".now" : ""}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=600`,
     },
     body: "",
   };
