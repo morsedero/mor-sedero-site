@@ -197,6 +197,13 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onProjects } = 
     }
   }
 
+  // Today's approved plan on the clock (derived, never written to the calendar).
+  function planRows(events, now, hrs){
+    if (dayPlan?.status !== "approved" || dayPlan.date !== localDate() || !tasks) return [];
+    return timeline(dayPlan.items || [], { tasks, events, now, hours: hrs, run }).rows
+      .map((r) => ({ kind: "plan", start: r.start, end: r.end, task: r.task }));
+  }
+
   function day(events, date, now, hrs, today){
     const t = date.getTime(), t0 = today.getTime();
     // Free time only from now on: none in the past, today's from the clock.
@@ -206,9 +213,7 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onProjects } = 
     // An approved plan sits inside today's free time (Mor, 2026-10-08): its
     // blocks replace the stretch of gap they cover. Derived, never written to
     // the calendar.
-    if (t === t0 && dayPlan?.status === "approved" && dayPlan.date === ymd && tasks) {
-      const planned = timeline(dayPlan.items || [], { tasks, events, now, hours: hrs, run }).rows
-        .map((r) => ({ kind: "plan", start: r.start, end: r.end, task: r.task }));
+    const planned = t === t0 ? planRows(events, now, hrs) : [];
       if (planned.length) {
         const cut = rows.flatMap((x) => {
           if (x.kind !== "free") return [x];
@@ -220,7 +225,6 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onProjects } = 
         });
         rows = [...cut, ...planned].sort((a, b) => (a.start ?? -1) - (b.start ?? -1) || (a.kind === "free") - (b.kind === "free"));
       }
-    }
     const out = [];
     if (t === t0 && now < atMin(today, hrs.start)) out.push(nightDivider(minText(hrs.end), minText(hrs.start)));
     const none = h("button", { type: "button", className: "sc-none", onclick: () => onNew?.(ymd) },
@@ -238,8 +242,9 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onProjects } = 
       const allDay = events.filter((e) => e.allDay && String(e.start).slice(0, 10) <= ymd && ymd < String(e.end || e.start).slice(0, 10));
       const timed = events.filter((e) => !e.allDay).map((e) => ({ ev: e, start: Date.parse(e.start), end: Date.parse(e.end) }))
         .filter((x) => x.start < b && x.end > a)
-        .map((x) => ({ ...x, s: Math.max(0, (x.start - a) / 60000), e: Math.min(1440, (x.end - a) / 60000) }))
-        .sort((p, q) => p.s - q.s || q.e - p.e);
+        .map((x) => ({ ...x, s: Math.max(0, (x.start - a) / 60000), e: Math.min(1440, (x.end - a) / 60000) }));
+      if (a === t0) for (const p of planRows(events, now, hrs)) timed.push({ plan: p, start: p.start, end: p.end, s: (p.start - a) / 60000, e: (p.end - a) / 60000 });
+      timed.sort((p, q) => p.s - q.s || q.e - p.e);
       return { d, ymd, allDay, timed: lanes(timed) };
     });
     // The grid spans the day hours, stretched to fit anything outside them.
@@ -273,6 +278,14 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onProjects } = 
           onNew?.(c.ymd, `${pad(Math.floor(min / 60))}:${pad(min % 60)}`);
         } });
       for (const x of c.timed) {
+        if (x.plan) {
+          const w = 100 / x.lanes, time = `${clock(x.start)}–${clock(x.end)}`;
+          col.append(h("button", { type: "button", className: "wk-ev wk-plan" + (x.end <= now ? " past" : x.start <= now ? " on" : ""),
+            style: `top:${px(x.s)}px;block-size:${Math.max(18, px(x.e) - px(x.s) - 2)}px;inset-inline-start:${x.lane * w}%;inline-size:calc(${w}% - 2px)`,
+            ariaLabel: `Planned: ${x.plan.task.title}, ${short(c.d)} ${time}`, onclick: () => onOpen?.(x.plan.task) },
+            h("span", { className: "wk-evt" }, bdi(x.plan.task.title)), x.e - x.s >= 45 && h("span", { className: "wk-evtime", textContent: clock(x.start) })));
+          continue;
+        }
         const done = /^✓\s*/u.test(x.ev.title), title = done ? x.ev.title.replace(/^✓\s*/u, "") : x.ev.title;
         const tall = x.e - x.s >= 45, time = `${clock(x.start)}–${clock(x.end)}`;
         const w = 100 / x.lanes;
