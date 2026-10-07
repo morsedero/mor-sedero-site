@@ -17,18 +17,18 @@ import * as deep from "./deep.js";
 import { addTask, watchTasks, watchRun, watchSkips, saveSkips, startRun, extendRun, endRun, startBatch, tickBatch, endBatch, skipNow, blockTask, restoreTask, finishTask, watchSettings, saveSettings, watchMoment, saveMoment, watchLearn, bumpLearn, saveRun, cancelRun, watchDayPlan, saveDayPlan, holdTask, releaseTask } from "./store.js";
 import { proposeDay, timeline, nextPlanned, planProgress } from "./proposal.js";
 import { rethink } from "./rethink.js";
-import { energyNow, placeNow, workBase } from "./context.js";
+import { placeNow, workBase } from "./context.js";
 import { watchWhere, setRide, setStill, saveSpot, setManual } from "./where.js";
 import { pickWeekDay } from "./triage.js";
 import { focusView, handoffView, elapsedMinutes, targetMinutes, batchFocusView, batchName, sinceMark, paused, resumed, runCap, bookedMinutes, holdButton, stillOnMinutes } from "./focus.js";
 import { watchCalendar, logDone } from "./calendar.js";
 import { LATER_MINUTES, DRAIN, CANCEL_KEEP_MINUTES } from "./weights.js";
 import { rank, freeWindow, timeBucket, matchProject, dueAt } from "./engine.js";
-import { leftMinutes, toMinutes, progressOf, progressPatch, localDate, skipSnapshot, pendingCheck, notYet, pushedTo, bringBack, againInput } from "./model.js";
+import { leftMinutes, toMinutes, progressOf, progressPatch, localDate, skipSnapshot, skipLesson, pendingCheck, notYet, pushedTo, bringBack, againInput } from "./model.js";
 import { waitingFor, personOf } from "./nudge.js";
 import { dayHours, isNight, nextMorning, dayEndAt, bookings, sameTitle, minText, gapsToday } from "./day.js";
 import { collectNeeds } from "./needs.js";
-import { h, icon, bdi, pieces, sizeText, dur, say, nightDivider, flash, askProgress } from "./ui.js";
+import { h, icon, bdi, pieces, sizeText, sizeChip, progressBar, dur, say, nightDivider, flash, askProgress } from "./ui.js";
 import { areaClass, areaName, projectShown, doneToday, dirOf, stemDaisy, moonDaisy, watchProjectColors } from "./look.js";
 
 const LATER_MS = LATER_MINUTES * 60000;
@@ -46,7 +46,7 @@ const clock = (ms) => new Date(ms).toLocaleTimeString([], { hour: "2-digit", min
 export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name = "", onDone, onNeedsCount, onPlanProgress, guest = false } = {}){
   let tasks = null; // null until the first snapshot
   let settings = {}; // state/settings: when the sweep was last offered
-  let momentDoc = {}; // state/moment: energy and place corrections
+  let momentDoc = {}; // state/moment: place corrections
   let learnStats = {}; // state/learn: starts and skips per type and time of day
   let located = null; // "home" | "out" from the phone's location (where.js), null = unknown
   let cal = { status: "loading", events: [] };
@@ -117,14 +117,15 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
     const t = s.task;
     // The why line fits the time LEFT (engine leftMinutes), so the chip says it
     // too once some is done/spent: "30 min" beside "fills your free 23 min"
-    // read as a contradiction (Mor, 2026-10-07).
-    const left = leftMinutes(t), sizeLbl = left < (toMinutes(t.size) ?? left) ? `${sizeText(left)} left` : sizeText(t.size);
+    // read as a contradiction (Mor, 2026-10-07). Plus the % and a bar.
+    const sizeLbl = sizeChip(t);
     return h("div", { className: "now-card" + (main ? " main hero" : "") + areaClass(t) },
       main ? heroTop(t, sizeLbl)
         : h("div", { className: "now-meta" }, ...pieces(t.project, sizeLbl)),
       main && onOpen ? titleButton(t) : h("div", { className: "now-title", dir: "auto", textContent: t.title }),
       t.nextStep && h("p", { className: "now-next" }, "Next: ", bdi(t.nextStep)),
       why && h("p", { className: "now-why" }, ...say(why)),
+      progressBar(t),
       ...extra);
   }
   const titleButton = (t) => h("button", { type: "button", className: "now-title", dir: "auto", textContent: t.title,
@@ -180,12 +181,11 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
     return [typeof first === "string" ? first[0].toUpperCase() + first.slice(1) : first, ...rest, "."];
   }
 
-  // Energy and place right now: the user's correction for 3 hours, else
-  // Daisey's guess from the time of day and the calendar (context.js).
+  // Place right now: the user's correction for 3 hours, else the phone,
+  // else the calendar (context.js).
   function feel(){
     const events = cal.status === "ok" ? cal.events : [];
     return {
-      energy: energyNow({ correction: momentDoc.energy, history: momentDoc.history || [], events }),
       place: placeNow({ correction: momentDoc.place, located, events }),
     };
   }
@@ -226,35 +226,6 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
       h("div", { className: "now-title", textContent: "Eyes on the road" }),
       h("p", { className: "now-why", textContent: "I'll have something ready when you stop." }),
       h("button", { className: "btn quiet", type: "button", textContent: "I'm a passenger", onclick: () => setRide("bus") }));
-  }
-
-  // Switch is where "not this one" happens, so it's where you say why:
-  // lighter or bigger. Same correction the energy chip made (3 hours, and
-  // one more point in the time-of-day pattern); tapping the one that's on
-  // goes back to medium. The card re-picks straight away.
-  function energyRow(){
-    const cur = feel().energy;
-    const on = (v) => !cur.guessed && cur.value === v;
-    const pick = (v, text, aria) => h("button", { type: "button", className: "chip energy-pick", ariaPressed: String(on(v)), ariaLabel: aria,
-      onclick: () => { state.showAlts = false; state.chosen = null; correct("energy", on(v) ? "medium" : v); } },
-      icon(v === "low" ? "lighter" : "energy"), h("span", { textContent: text }));
-    return h("div", { className: "energy-row" },
-      pick("low", "Something lighter", "I'm low on energy: show something lighter"),
-      pick("high", "Something bigger", "I've got energy: show something bigger"));
-  }
-
-  // A chip choice: the correction, and for energy one more point in the
-  // pattern for this time of day (context.js energyNow).
-  function correct(kind, value){
-    const now = Date.now();
-    const fields = { [kind]: { value, at: now } };
-    if (kind === "energy") {
-      const b = timeBucket(now);
-      fields.history = [...(momentDoc.history || []), { part: b.part, weekend: b.weekend, value }].slice(-100);
-    }
-    momentDoc = { ...momentDoc, ...fields };
-    render();
-    saveMoment(uid, fields).catch(fail);
   }
 
   // The calendar's answer to "what now": the event that's running, when it
@@ -440,13 +411,13 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
 
   // Later and Pending both move the card on: it slides out, the next slides
   // in, and for 5 seconds a toast offers Undo. Nothing waits on the write.
-  function stepAside(task, { label, write }){
+  function stepAside(task, { label, write, lesson = false }){
     const before = skipSnapshot(task);
     const go = () => {
       skips.add(task.id);
       reset();
       slideIn = true;
-      setToast({ task, before, label });
+      setToast({ task, before, label, lesson });
       write().catch(fail);
       render();
     };
@@ -464,19 +435,19 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
   const declined = (task) => bumpLearn(uid, task.type, timeBucket().part, "skips");
   function later(task, when, extra = null){
     if (when === "today") {
-      stepAside(task, { label: `Later (${dur(LATER_MINUTES)}): `, write: () => Promise.all([skipNow(uid, task), declined(task), extra ? restoreTask(uid, task.id, extra) : null]) });
+      stepAside(task, { label: `Later (${dur(LATER_MINUTES)}): `, lesson: true, write: () => Promise.all([skipNow(uid, task), declined(task), extra ? restoreTask(uid, task.id, extra) : null]) });
     } else if (when === "tomorrow") {
       const d = new Date(); d.setDate(d.getDate() + 1);
       let day = localDate(d.getTime());
       if (task.dateKind === "deadline" && task.due && task.due < day) day = task.due; // never hide it past its deadline
-      stepAside(task, { label: "Tomorrow: ", write: () => Promise.all([restoreTask(uid, task.id, { ...pushedTo(task, { notBefore: day }), ...extra }), declined(task)]) });
+      stepAside(task, { label: "Tomorrow: ", lesson: true, write: () => Promise.all([restoreTask(uid, task.id, { ...pushedTo(task, { notBefore: day }), ...extra }), declined(task)]) });
     } else if (when === "week") {
       let day = pickWeekDay(task, { events: cal.status === "ok" ? cal.events : [], tasks: tasks || [], hours: dayHours(settings) });
       if (task.dateKind === "deadline" && task.due && task.due < day) day = task.due; // never hide it past its deadline
       const label = new Date(`${day}T12:00`).toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" });
-      stepAside(task, { label: `This week (${label}): `, write: () => Promise.all([restoreTask(uid, task.id, { ...pushedTo(task, { notBefore: day }), ...extra }), declined(task)]) });
+      stepAside(task, { label: `This week (${label}): `, lesson: true, write: () => Promise.all([restoreTask(uid, task.id, { ...pushedTo(task, { notBefore: day }), ...extra }), declined(task)]) });
     } else if (when === "someday") {
-      stepAside(task, { label: "Not now: ", write: () => Promise.all([restoreTask(uid, task.id, { status: "someday", touchedAt: Date.now(), ...extra }), declined(task)]) });
+      stepAside(task, { label: "Not now: ", lesson: true, write: () => Promise.all([restoreTask(uid, task.id, { status: "someday", touchedAt: Date.now(), ...extra }), declined(task)]) });
     }
   }
   // Pending asks what it's waiting on (Mor, 2026-10-04); the reason is
@@ -518,12 +489,29 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
     render();
   }
 
+  // The one optional tap after a skip: why. It fixes the field that was
+  // wrong (model.skipLesson) instead of asking for it when the task was added.
+  function teach(reason){
+    if (!toast || toast.taught) return;
+    const task = (tasks || []).find((t) => t.id === toast.task.id) || toast.task;
+    toast.taught = reason;
+    restoreTask(uid, task.id, skipLesson(task, reason, { place: feel().place.value })).catch(fail);
+    render();
+  }
+
   function toastView(){
     const { task } = toast;
+    const why = (reason, text, aria) => h("button", { className: "toast-why", type: "button", textContent: text, ariaLabel: aria, onclick: () => teach(reason) });
     return h("div", { className: "toast", role: "status" },
-      h("span", { className: "toast-text" }, toast.label, bdi(task.title)),
-      h("button", { className: "toast-undo", type: "button", textContent: "Undo",
-        ariaLabel: `Undo: put ${task.title} back on the card`, onclick: undo }));
+      h("div", { className: "toast-row" },
+        h("span", { className: "toast-text" }, toast.label, bdi(task.title)),
+        h("button", { className: "toast-undo", type: "button", textContent: "Undo",
+          ariaLabel: `Undo: put ${task.title} back on the card`, onclick: undo })),
+      toast.lesson && (toast.taught
+        ? h("div", { className: "toast-why-row" }, h("span", { className: "toast-thanks", textContent: "Got it" }))
+        : h("div", { className: "toast-why-row", role: "group", ariaLabel: "Why? (optional)" },
+          why("toobig", "Too big", "Too big: offer it in pieces"),
+          why("nothere", "Not here", "Not here: don't offer it where I am now"))));
   }
 
   // The three quiet actions under Start. Icon plus a small word, with the
@@ -607,7 +595,6 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
       sessionSkips: hidden(now),
       skipsToday: skipCounts(),
       intents: settings.intents || {},
-      energy: f.energy.value,
       place: f.place.value,
       spot: f.place.spot,
       learnStats,
@@ -617,7 +604,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
 
   // Night mode (DAISEY_SPEC "Day hours"): outside the day hours the card
   // doesn't push work. It names the first pick for the morning — the engine
-  // run for the start of the day, with its window, energy guess and booked
+  // run for the start of the day, with its window and booked
   // slots — and has no Start. "I'm free now" plans as if it were day.
   // The whole screen goes dark for it (.night on <html>), whatever the theme:
   // a dimmed daisy under a moon, a few stars, tomorrow's first calendar block
@@ -630,7 +617,6 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
       now: morning,
       ...(!fw ? { realWindow: false } : { window: fw.current ? 60 : fw.window, nextEvent: fw.next?.title ?? null }),
       ...workBase(tasks || [], now),
-      energy: energyNow({ history: momentDoc.history || [], events: evs, now: morning }).value,
       place: "home",
       intents: settings.intents || {},
       learnStats,
@@ -719,7 +705,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
   // off today · 2 need offices open." Parked, waiting and future-dated tasks
   // aren't news, so they aren't counted.
   const OUT_SAID = {
-    skipped: "put off today", office: "need offices open", place: "can't be done where you are", energy: "need more energy",
+    skipped: "put off today", office: "need offices open", place: "can't be done where you are",
     size: "too long for the time you have", evening: "are for the evening", block: "belong to another project", booked: "booked later",
   };
   function outLine(r){
@@ -948,7 +934,6 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
   // Switch's list: the other tasks, or the way into Someday when there are none.
   function altsFor(alts){
     return [
-      state.showAlts && energyRow(),
       state.showAlts && !alts.length && h("div", { className: "now-alts", role: "group", ariaLabel: "Other tasks" },
         h("p", { className: "muted" }, "Nothing else is active. ",
           h("button", { className: "linkish", type: "button", textContent: "Pick from Not now?",
@@ -972,7 +957,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
     const saved = todaysPlan();
     prop.items = saved?.items?.length && saved.status !== "dismissed"
       ? saved.items.filter((it) => (tasks || []).some((t) => t.id === it.taskId && t.status === "ready"))
-      : proposeDay({ ...planCtx(), energy: feel().energy.value, exclude: prop.exclude });
+      : proposeDay({ ...planCtx(), exclude: prop.exclude });
     prop.open = true; prop.ask = false; prop.note = ""; handoff = null;
     render();
   }
@@ -1010,7 +995,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
       const free = gapsToday(ctx.events, ctx.now, ctx.hours).reduce((t, g) => t + g.minutes, 0);
       const r = String(text || "").trim()
         ? await rethink(text, { ...ctx, current: prop.items, exclude: prop.exclude, freeMinutes: free, guest })
-        : { items: proposeDay({ ...ctx, energy: feel().energy.value, exclude: prop.exclude }), note: "" };
+        : { items: proposeDay({ ...ctx, exclude: prop.exclude }), note: "" };
       prop.items = r.items;
       prop.note = r.note || (r.items.length ? "" : "Nothing fits what's left of today.");
       prop.text = ""; prop.ask = false;
@@ -1168,7 +1153,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
     // down, the card opens as the proposal (when there's something to plan).
     if (!prop.open && planKnown && cal.status !== "loading" && prop.auto !== localDate() && !todaysPlan()) {
       prop.auto = localDate();
-      const items = proposeDay({ ...planCtx(), energy: feel().energy.value });
+      const items = proposeDay({ ...planCtx() });
       if (items.length >= 2) { prop.items = items; prop.exclude = []; prop.open = true; }
     }
     if (prop.open) { showing(null); day(...head, proposalCard(), toast && toastView()); return; }

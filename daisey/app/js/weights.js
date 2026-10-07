@@ -21,13 +21,12 @@ export const OFFICE = { days: [0, 1, 2, 3, 4], open: 9, close: 16 };
 export const HOLIDAYS = ["Tishri 1", "Tishri 2", "Tishri 10", "Tishri 15", "Tishri 22", "Nisan 15", "Nisan 21", "Sivan 6"];
 export const INDEPENDENCE_DAY = "Iyar 5";
 
-// Energy and place: a correction holds this long, then the guess is back.
+// Place: a correction holds this long, then the guess is back. (Energy was
+// dropped 2026-10-07: nobody wants to rate their own energy.)
 export const CORRECTION_HOURS = 3;
-export const ENERGY_LEVELS = ["low", "medium", "high"];
-export const ENERGY_PATTERN_MIN = 5; // corrections in a time bucket before its average counts
-// A calendar event that ended this recently lowers energy one step if it
-// was long or draining.
-export const DRAIN = { withinMinutes: 60, longMinutes: 120, words: ["teaching", "lesson", "rehearsal", "class", "שיעור", "חזרה", "הוראה"] };
+// A calendar event with one of these words is the thing itself, not time set
+// aside for a project (now.js blockOf). It used to also lower energy.
+export const DRAIN = { words: ["teaching", "lesson", "rehearsal", "class", "שיעור", "חזרה", "הוראה"] };
 // An event with a location, running or ended this recently, means Out.
 export const OUT_AFTER_MINUTES = 30;
 
@@ -76,9 +75,6 @@ export const NEGLECT_PER_DAY = 1; // per whole day untouched
 export const NEGLECT_MAX = 8;
 
 // ---------- Gate 3 — does it fit this gap? ----------
-// Steps = task's energy minus yours: 0 exact, −1 one step less, +1 one more.
-// OURS: two steps less (a low task on a high day) still fits, at 5.
-export const ENERGY_FIT = { exact: 15, less: 10, twoLess: 5, more: 3 };
 export const WINDOW_FIT = {
   full: 12, // task fills 50–100% of the window
   half: 8, // 25–50%
@@ -134,6 +130,10 @@ export const WHY_MIN_POINTS = 5; // a factor worth less than this isn't a reason
 // line as if it scored WHY_OFFICE_POINTS.
 export const OFFICE_SOON_MINUTES = 180;
 export const WHY_OFFICE_POINTS = 9;
+// OURS: a task already this far along is worth saying so ("half done, finish
+// it"). Not a score; it ranks in the why line as if it scored WHY_PROGRESS_POINTS.
+export const PROGRESS_SAY_MIN = 25;
+export const WHY_PROGRESS_POINTS = 7;
 
 // Overdue triage (DAISEY_SPEC "Overdue triage"). The sweep is offered when
 // MORE than this many deadlines, or targets, have passed — once a day.

@@ -1,26 +1,25 @@
 // The Now engine, in three gates (DAISEY_SPEC "Now engine logic"):
 //   Gate 1 — can it be done now?        filterOut
 //   Gate 2 — what does leaving it cost? deadline, target, stakes, area, neglect
-//   Gate 3 — does it fit this gap?      energy, window, momentum, batch, learned, skips
+//   Gate 3 — does it fit this gap?      window, momentum, batch, learned, skips
 // then a why line from the factors that gave the most.
 // PURE: no Firebase, no DOM. The clock is only read as a default, and all
 // dates are local time, so the node tests in daisey/test/v1/ drive it with
 // fixed moments. Every number lives in weights.js.
 import * as W from "./weights.js";
-import { localDate, durText, notYet, leftMinutes, LABELS } from "./model.js";
+import { localDate, durText, notYet, leftMinutes, progressOf, LABELS } from "./model.js";
 import { effectiveDue } from "./triage.js";
 import { officeOpen, officeMinutesLeft } from "./holidays.js";
 
 const MIN = 60000;
 const DAY = 86400000;
 // Every scoring factor, in why-line tie order (earlier wins a tie).
-const FACTORS = ["deadline", "stakes", "office", "batch", "spot", "area", "target", "window", "energy", "momentum", "neglect", "learned"];
+const FACTORS = ["deadline", "stakes", "office", "progress", "batch", "spot", "area", "target", "window", "momentum", "neglect", "learned"];
 const DAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
 const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
 const key = (p) => String(p || "").trim().toLowerCase();
-const level = (e) => W.ENERGY_LEVELS.indexOf(e);
 const pad = (n) => String(n).padStart(2, "0");
 
 // ---------- Step 1: the moment ----------
@@ -72,7 +71,6 @@ export function matchProject(title, projects){
 //   realWindow      false = the window is a stand-in: it still filters what
 //                   fits, but earns no window-fit points
 //   nextEvent       title of the next calendar event ("fits before teaching")
-//   energy          low · medium · high (the card's chip; default medium)
 //   place           home · out · anywhere · walk · ride · train · bus · car
 //                   · spot (a saved place other than Home; `spot` names it)
 //                   (where.js; default anywhere)
@@ -95,7 +93,6 @@ export function readMoment(input = {}){
     realWindow: input.realWindow !== false,
     nextEvent: input.nextEvent || null,
     bucket: timeBucket(now),
-    energy: W.ENERGY_LEVELS.includes(input.energy) ? input.energy : "medium",
     place: W.PLACES.includes(input.place) ? input.place : "anywhere",
     officeOpen: officeOpen(now),
     officeLeft: officeMinutesLeft(now),
@@ -131,10 +128,10 @@ export function filterOut(task, m){
   if (m.booked[task.id] > m.now) return "booked";
   if (m.sessionSkips.has(task.id)) return "skipped";
   if (m.blockProject && key(task.project) !== m.blockProject) return "block";
+  if ((task.notAt || []).includes(m.place)) return "place"; // said "Not here" on a skip
   if ((W.PLACE_BLOCKS[m.place] || []).includes(task.where) && !(m.place === "car" && W.DRIVING_TYPES.includes(task.type))) return "place";
   if (task.openHours === "office" && !m.officeOpen) return "office";
   if (task.openHours === "evening" && new Date(m.now).getHours() < W.EVENING_FROM) return "evening";
-  if (task.energy === "high" && m.energy === "low") return "energy";
   const w = windowFor(task, m);
   if (leftMinutes(task) > w && !(task.canSplit && w >= W.SPLIT_MIN_WINDOW)) return "size";
   return null;
@@ -212,13 +209,6 @@ function neglect(task, m){
 
 // ---------- Gate 3: does it fit this gap? ----------
 
-function energyFit(task, m){
-  const t = level(task.energy || "medium"), you = level(m.energy);
-  const step = t - you;
-  const E = W.ENERGY_FIT;
-  const points = step === 0 ? E.exact : step === -1 ? E.less : step <= -2 ? E.twoLess : step === 1 ? E.more : 0;
-  return { points, detail: { step, energy: m.energy, task: task.energy } };
-}
 
 function windowFit(task, m){
   if (!m.realWindow) return { points: 0, detail: null };
@@ -282,13 +272,20 @@ function office(task, m){
   return { points: 0, why: W.WHY_OFFICE_POINTS, detail: { close: `${pad(W.OFFICE.close)}:00` } };
 }
 
+// Not a score: a task well under way says so in the why line.
+function progress(task){
+  const p = progressOf(task);
+  if (p < W.PROGRESS_SAY_MIN) return { points: 0, detail: null };
+  return { points: 0, why: W.WHY_PROGRESS_POINTS, detail: { pct: p } };
+}
+
 // Score parts, total and the details the why line needs. `ctx` carries what
 // depends on the other tasks (batches, areas in play).
 export function scoreTask(task, m, ctx = { batches: new Map(), areas: [] }){
   const f = {
     deadline: deadline(task, m), target: target(task, m), stakes: stakes(task), area: areaBalance(task, m, ctx.areas), neglect: neglect(task, m),
-    energy: energyFit(task, m), window: windowFit(task, m), momentum: momentum(task, m), batch: batch(task, ctx.batches), learned: learned(task, m),
-    office: office(task, m), spot: spot(task, m),
+    window: windowFit(task, m), momentum: momentum(task, m), batch: batch(task, ctx.batches), learned: learned(task, m),
+    office: office(task, m), spot: spot(task, m), progress: progress(task),
   };
   const parts = Object.fromEntries(FACTORS.map((k) => [k, f[k].points]));
   const details = Object.fromEntries(FACTORS.map((k) => [k, f[k].detail]));
@@ -331,6 +328,7 @@ const PHRASES = {
     : d.kind === "someone" ? (person(s.task.title) ? [{ name: person(s.task.title) }, " is waiting on it"] : ["someone's waiting on it"])
     : null,
   office: (s, d) => [`offices close at ${d.close}`],
+  progress: (s, d) => [d.pct >= 90 ? "almost done, finish it" : d.pct >= 45 && d.pct <= 55 ? "half done, finish it" : `${d.pct}% done, finish it`],
   area: (s, d) => [{ name: LABELS.area[d.area] || d.area }, d.done ? " is behind this week" : " hasn't moved this week"],
   batch: (s, d) => [`${d.ids.length} ${{ call: "calls", admin: "admin bits", errand: "errands" }[d.type]}, done together`],
   // A quick win is a small task, not just a small share of a long window.
@@ -339,9 +337,6 @@ const PHRASES = {
     : d.fit === "piece" ? [`a piece fits your ${sizeWords(d.window)}`]
     : d.nextEvent ? ["fits before ", { name: d.nextEvent }]
     : d.fit === "full" ? [`fills your free ${sizeWords(d.window)}`] : [`fits your ${sizeWords(d.window)}`],
-  // Only worth saying at the ends: a medium task on a medium day is just a day.
-  energy: (s, d) => d.step === 0 && d.energy === "low" ? ["light one, you're low"]
-    : d.step === 0 && d.energy === "high" ? ["good use of high energy"] : null,
   momentum: (s, d) => d.kind === "today" ? ["keeps ", { name: s.task.project }, " going"] : ["back to ", { name: s.task.project }],
   neglect: (s, d) => [`untouched for ${d.days} days`],
   spot: (s, d) => ["you're at ", { name: d.name }],

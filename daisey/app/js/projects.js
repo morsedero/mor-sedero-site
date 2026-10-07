@@ -23,7 +23,7 @@
 import { watchTasks, finishTask, restoreTask, removeTask, watchProjectNames, saveProjectNames, saveProjectRanges } from "./store.js";
 import { INBOX, progressOf, progressPatch, leftMinutes, pushedTo, notYet, durText, localDate, bringBack, cleanRange, outsideRange } from "./model.js";
 import { isOverdue } from "./triage.js";
-import { h, bdi, flash, icon, askProgress } from "./ui.js";
+import { h, bdi, flash, icon, askProgress, sizeChip, progressBar } from "./ui.js";
 import { dirOf, setProjectColors } from "./look.js";
 
 const SWIPE_DONE = 90; // px a task travels right before letting go finishes it
@@ -328,8 +328,7 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
   }
 
   function nextMeta(t){
-    const parts = [durText(t.size || 30)];
-    if (progressOf(t) > 0) parts.push(`${progressOf(t)}% done`);
+    const parts = [sizeChip(t.size ? t : { ...t, size: 30 })];
     // Both dates when both apply (Mor, 2026-10-06): the start while it's
     // still ahead (the card is dimmed until then), then the due date.
     // "Starts", not "from": "from" read as the start of a range ending at due.
@@ -383,7 +382,7 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
     const next = p.next.map((t) => swipeCard(t, taskBtn(t, [
       h("span", { className: "pj-row" }, h("span", { className: "pj-title", dir: "auto", textContent: t.title }),
         t.id === onCard && h("span", { className: "pj-now", textContent: "NOW" })),
-      h("span", { className: "pj-meta", dir: "ltr" }, ...nextMeta(t))])));
+      h("span", { className: "pj-meta", dir: "ltr" }, ...nextMeta(t)), progressBar(t)])));
     const pending = p.pending.map((t) => swipeCard(t, taskBtn(t, [
       h("span", { className: "pj-row" },
         h("span", { className: "pj-col" }, h("span", { className: "pj-title", dir: "auto", textContent: t.title }),

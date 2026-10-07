@@ -1,5 +1,5 @@
 // Tiny DOM helpers shared by the Now card and the Tasks board.
-import { durText } from "./model.js";
+import { durText, leftMinutes, progressOf, toMinutes } from "./model.js";
 
 export const h = (tag, props = {}, ...kids) => {
   const el = Object.assign(document.createElement(tag), props);
@@ -20,6 +20,20 @@ export const sizeText = durText;
 
 
 export const dur = durText;
+
+// The one way a task's size reads, everywhere: "30 min" untouched, and once
+// some is done "50% · 15 min left" (Mor, 2026-10-07: always know the %).
+export function sizeChip(t){
+  const p = progressOf(t), left = leftMinutes(t), size = toMinutes(t.size) ?? left;
+  const lbl = left < size ? `${durText(left)} left` : durText(t.size);
+  return p > 0 ? `${p}% · ${lbl}` : lbl;
+}
+
+// A thin bar along a card's bottom edge; nothing at 0%.
+export const progressBar = (t) => {
+  const p = progressOf(t);
+  return p > 0 && h("div", { className: "task-bar", role: "img", ariaLabel: `${p}% done` }, h("span", { style: `inline-size:${p}%` }));
+};
 
 // Every piece of text that can be Hebrew or English goes in its own <bdi>,
 // so a Hebrew project never drags "5 min" around it or flips it to "min 5".
