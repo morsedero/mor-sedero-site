@@ -24,7 +24,7 @@ import { watchCalendar, connectCalendar } from "./calendar.js";
 import { watchSettings, watchTasks, watchRun } from "./store.js";
 import { dayHours, minText } from "./day.js";
 import { localDate, durText } from "./model.js";
-import { h, bdi, nightDivider } from "./ui.js";
+import { h, bdi, nightDivider, icon } from "./ui.js";
 
 const DAYS = 7; // today and six more: calendar.js fetches a week ahead
 const MIN_FREE = 15; // minutes; a shorter gap isn't worth a box
@@ -133,9 +133,12 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen } = {}){
       h("span", { className: "sc-free" }, `${durText((x.end - x.start) / 60000)} free`, h("span", { className: "sc-add", ariaHidden: "true", textContent: "+" })));
     const on = !x.allDay && x.start <= now && now < x.end;
     const past = !x.allDay && x.end <= now;
+    // A finished task is logged as a "✓ title" event (calendar.js logDone).
+    const done = /^✓\s*/u.test(x.ev.title), title = done ? x.ev.title.replace(/^✓\s*/u, "") : x.ev.title;
     return h("div", { className: "sc-row" + (on ? " sc-on" : past ? " sc-past" : "") }, h("span", { className: "sc-time strong" }, time, on && h("span", { className: "sc-nowtag", textContent: "Now" })),
-      h("button", { type: "button", className: "sc-ev", style: x.ev.color ? `--ev:${x.ev.color}` : "",
-        ariaLabel: `${on ? "Now: " : ""}${x.ev.title}, ${time}`, onclick: () => onEvent?.(x.ev) }, bdi(x.ev.title)));
+      h("button", { type: "button", className: "sc-ev" + (done ? " sc-done" : ""), style: x.ev.color ? `--ev:${x.ev.color}` : "",
+        ariaLabel: `${done ? "Finished task: " : ""}${on ? "Now: " : ""}${title}, ${time}`, onclick: () => onEvent?.(x.ev) },
+        done ? h("span", { className: "sc-tick" }, icon("check")) : h("span", { className: "sc-evi" }, icon("calendar")), bdi(title)));
   }
 
   const unsubs = [
