@@ -309,20 +309,26 @@ export async function resetAll(uid){
 }
 
 // Projects made by name before they have a task, users/{uid}/state/projects:
-// { names: [...] }. A project is otherwise just the tasks that carry its
-// name, so without this an empty one couldn't exist.
+// { names: [...], ranges: { name: { start, due } | null } }. A project is
+// otherwise just the tasks that carry its name, so without this an empty one
+// couldn't exist. ranges (Mor, 2026-10-07): the dates a project runs between;
+// its tasks' dates have to stay inside.
 const projectsDoc = (uid) => fb.doc(fb.db, "users", uid, "state", "projects");
 
 export function watchProjectNames(uid, cb, onError){
   if(isGuest(uid)){
-    try { return watchGuestState(uid, "projects", (value) => cb(value?.names || []), onError); }
+    try { return watchGuestState(uid, "projects", (value) => cb(value?.names || [], value?.ranges || {}), onError); }
     catch(error){ onError?.(error); return () => {}; }
   }
-  return fb.onSnapshot(projectsDoc(uid), (snap) => cb((snap.exists() && snap.data().names) || []), onError);
+  return fb.onSnapshot(projectsDoc(uid), (snap) => cb((snap.exists() && snap.data().names) || [], (snap.exists() && snap.data().ranges) || {}), onError);
 }
 
+// Merged, so saving names never wipes the ranges (and the reverse).
 export function saveProjectNames(uid, names){
-  return saveGuestState(uid, "projects", { names });
+  return saveGuestState(uid, "projects", { names }, true);
+}
+export function saveProjectRanges(uid, ranges){
+  return saveGuestState(uid, "projects", { ranges }, true);
 }
 
 // Settings, users/{uid}/state/settings: { deadlinesAsked, ... }. Merged on

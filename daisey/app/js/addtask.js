@@ -25,7 +25,7 @@
 // While typing a new task's title they catch up only once typing stops.
 import { nudgeText, waLink } from "./nudge.js";
 import { watchTasks, addTask, updateTask, removeTask, watchProjectNames } from "./store.js";
-import { durText, guessFields, validField, CHOICES, LABELS, INBOX, localDate } from "./model.js";
+import { durText, guessFields, validField, CHOICES, LABELS, INBOX, localDate, clampDate, outsideRange } from "./model.js";
 import { h, flash, icon, bdi } from "./ui.js";
 import { projectsOf } from "./projects.js";
 
@@ -206,8 +206,10 @@ export function mountAddTask(dialog, uid, { onStart } = {}){
   projectSel.addEventListener("change", () => {
     newProject.hidden = projectSel.value !== NEW_PROJECT;
     paintArea();
-    if (!newProject.hidden) { newProject.focus(); return; }
-    if (editing) save({ project: projectOf() }); else reguess();
+    if (!newProject.hidden) { fenceDates([]); newProject.focus(); return; }
+    const c = fenceDates(["notBefore", "due"]);
+    paintDates();
+    if (editing) save({ project: projectOf(), ...c }); else reguess();
   });
   newProject.addEventListener("change", () => { if (editing && newProject.value.trim()) save({ project: newProject.value.trim() }); else reguess(); });
 
@@ -223,8 +225,28 @@ export function mountAddTask(dialog, uid, { onStart } = {}){
   title.addEventListener("change", () => { if (editing && title.value.trim() && title.value.trim() !== editing.title) save({ title: title.value }); });
 
   // ---------- dates ----------
-  start.input.addEventListener("change", () => { paintDates(); if (editing) save({ notBefore: start.input.value }); });
-  due.input.addEventListener("change", () => { paintDates(); if (editing) save({ due: due.input.value, dateKind: kind }); });
+  // A project's dates fence its tasks' (Mor, 2026-10-07): the pickers get
+  // min/max, and a date typed or carried in from outside is pulled to the
+  // nearest edge, with a line saying so. A saved task already outside is left
+  // alone until it is touched or moved.
+  const rangeNow = () => ranges[projectSel.value] || null;
+  const rangeText = (r) => [r.start && `from ${boxDate(r.start)}`, r.due && `to ${boxDate(r.due)}`].filter(Boolean).join(" ");
+  function fenceDates(touch){
+    const r = rangeNow();
+    for (const box of [start, due]) { box.input.min = r?.start || ""; box.input.max = r?.due || ""; }
+    if (!r) return {};
+    const out = {};
+    for (const [key, box] of [["notBefore", start], ["due", due]]) {
+      const v = box.input.value;
+      if (touch.includes(key) && outsideRange(r, v)) {
+        box.input.value = clampDate(r, v); out[key] = box.input.value;
+        msg.textContent = `${key === "due" ? "Due" : "Start"} kept inside the project dates (${rangeText(r)}).`;
+      }
+    }
+    return out;
+  }
+  start.input.addEventListener("change", () => { const c = fenceDates(["notBefore"]); paintDates(); if (editing) save({ notBefore: start.input.value, ...c }); });
+  due.input.addEventListener("change", () => { const c = fenceDates(["due"]); paintDates(); if (editing) save({ due: due.input.value, dateKind: kind, ...c }); });
 
   // ---------- chips ----------
   function reguess(){
@@ -352,6 +374,7 @@ export function mountAddTask(dialog, uid, { onStart } = {}){
   function add(){
     if (projectSel.value === NEW_PROJECT && !newProject.value.trim()) { msg.textContent = "Name the new project, or pick one from the list."; newProject.focus(); return; }
     if (!title.value.trim()) { msg.textContent = "Give it a name first."; title.focus(); return; }
+    fenceDates(["notBefore", "due"]);
     const input = { title: title.value, project: projectOf() };
     if (start.input.value) input.notBefore = start.input.value;
     if (due.input.value) { input.due = due.input.value; input.dateKind = kind; }
@@ -390,12 +413,12 @@ export function mountAddTask(dialog, uid, { onStart } = {}){
 
   // The project list: every project a task names, plus the empty ones
   // made with "+ New" on the Projects page.
-  let made = [];
+  let made = [], ranges = {};
   const refill = () => {
     colors = Object.fromEntries(projectsOf(tasks || [], null, made).map((p) => [p.name, p.color]).filter(([, c]) => c));
     fillProjects([...new Set([...(tasks || []).map((t) => t.project), ...made])].filter((p) => p && p !== INBOX).sort((a, b) => a.localeCompare(b)));
   };
-  const unsubNames = watchProjectNames(uid, (ns) => { made = ns; refill(); }, fail);
+  const unsubNames = watchProjectNames(uid, (ns, rs) => { made = ns; ranges = rs || {}; refill(); fenceDates([]); }, fail);
   const unsub = watchTasks(uid, (ts) => {
     tasks = ts;
     refill();
@@ -420,6 +443,7 @@ export function mountAddTask(dialog, uid, { onStart } = {}){
       heading.textContent = "New task";
       showProject(project !== undefined ? project : keep);
       title.value = text;
+      fenceDates([]);
       if (text) reguess();
       paintAll();
       show();
@@ -434,6 +458,7 @@ export function mountAddTask(dialog, uid, { onStart } = {}){
       title.value = task.title;
       start.input.value = task.notBefore || "";
       due.input.value = task.due || "";
+      fenceDates([]);
       kind = task.dateKind === "deadline" ? "deadline" : "target";
       notes.value = task.notes || "";
       waitingOn.value = task.waitingOn || "";

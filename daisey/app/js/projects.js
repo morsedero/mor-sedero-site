@@ -20,8 +20,8 @@
 // area when no other project has that one yet, else the next free colour in
 // PALETTE. Names are taken in order, so a colour doesn't move around as
 // counts change. Inbox has none.
-import { watchTasks, finishTask, restoreTask, watchProjectNames, saveProjectNames } from "./store.js";
-import { INBOX, notYet, durText, localDate, bringBack } from "./model.js";
+import { watchTasks, finishTask, restoreTask, watchProjectNames, saveProjectNames, saveProjectRanges } from "./store.js";
+import { INBOX, notYet, durText, localDate, bringBack, cleanRange, outsideRange } from "./model.js";
 import { isOverdue } from "./triage.js";
 import { h, bdi, flash, icon } from "./ui.js";
 import { dirOf, setProjectColors } from "./look.js";
@@ -121,6 +121,7 @@ function dueTone(t){
 // a new task there. onStart(id).
 export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {}){
   let tasks = null, onCard = null, made = [];
+  let ranges = {}; // name -> { start, due }: the dates a project runs between
   let shown = null; // the project on the project screen
   let drawer = null; // the open drawer in the project card: "done", "someday" or null
   const fail = (e) => console.error("[daisey] projects", e);
@@ -150,8 +151,50 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
   }
 
   // ---------- "+ New": a name, and an empty project ----------
+  // A project's start and due (Mor, 2026-10-07). Both optional; its tasks'
+  // dates can't fall outside them (addtask.js reads the same ranges).
+  function dateFields(range){
+    const mk = (label, v) => { const i = h("input", { className: "ts-input", type: "date", ariaLabel: label, value: v || "" });
+      return [i, h("label", { className: "np-date" }, h("span", { textContent: label }), i)]; };
+    const [start, sl] = mk("Start", range?.start), [due, dl] = mk("Due", range?.due);
+    const msg = h("p", { className: "msg", role: "alert" });
+    // Not a range if due is before start: say so rather than swap them silently.
+    const read = () => {
+      if (start.value && due.value && due.value < start.value) { msg.textContent = "Due can't be before the start."; due.focus(); return false; }
+      return cleanRange({ start: start.value, due: due.value }) || null;
+    };
+    return { box: h("div", { className: "np-dates" }, sl, dl), msg, read };
+  }
+  function setRange(name, range){
+    ranges = { ...ranges, [name]: range };
+    saveProjectRanges(uid, ranges).catch(fail);
+  }
+  function askDates(name){
+    const d = els.dialog, f = dateFields(ranges[name]);
+    const save = (e) => {
+      e.preventDefault();
+      const r = f.read();
+      if (r === false) return;
+      setRange(name, r);
+      const out = (tasks || []).filter((t) => isOpen(t) && (t.project || INBOX) === name && (outsideRange(r, t.due) || outsideRange(r, t.notBefore))).length;
+      render();
+      d.close();
+      if (out) flash(`${plural(out, "task")} outside these dates: `, name);
+    };
+    d.replaceChildren(
+      h("div", { className: "now-head" }, h("h2", { id: "npTitle", textContent: "Project dates" }),
+        h("button", { className: "now-x", type: "button", ariaLabel: "Close", textContent: "✕", onclick: () => d.close() })),
+      h("form", { className: "np-form", onsubmit: save }, f.box, f.msg,
+        h("div", { className: "sheet-actions" },
+          h("button", { className: "btn primary", type: "submit", textContent: "Save" }),
+          h("button", { className: "btn quiet", type: "button", textContent: "Cancel", onclick: () => d.close() }))));
+    d.onclick = (e) => { if (e.target === d) d.close(); };
+    d.showModal();
+  }
+
   function askName(){
     const d = els.dialog;
+    const dates = dateFields(null);
     const name = h("input", { className: "ts-input", dir: "auto", autocomplete: "off", enterKeyHint: "done",
       placeholder: "Project name", ariaLabel: "Project name", required: true });
     const msg = h("p", { className: "msg", role: "alert" });
@@ -160,15 +203,18 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
       const v = name.value.trim();
       if (!v) { name.focus(); return; }
       if (v === INBOX || list().some((p) => p.name.toLowerCase() === v.toLowerCase())) { msg.textContent = "There's already a project by that name."; name.focus(); return; }
+      const r = dates.read();
+      if (r === false) return;
       made = [...made, v];
       saveProjectNames(uid, made).catch(fail);
+      if (r) setRange(v, r);
       paintGrid();
       d.close();
     };
     d.replaceChildren(
       h("div", { className: "now-head" }, h("h2", { id: "npTitle", textContent: "New project" }),
         h("button", { className: "now-x", type: "button", ariaLabel: "Close", textContent: "✕", onclick: () => d.close() })),
-      h("form", { className: "np-form", onsubmit: create }, name, msg,
+      h("form", { className: "np-form", onsubmit: create }, name, msg, dates.box, dates.msg,
         h("div", { className: "sheet-actions" },
           h("button", { className: "btn primary", type: "submit", textContent: "Add project" }),
           h("button", { className: "btn quiet", type: "button", textContent: "Cancel", onclick: () => d.close() }))));
@@ -311,6 +357,8 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
         h("div", { className: "pj-card-top", dir: dirOf(p.name) }, h("h2", { className: "pj-name", dir: "auto", textContent: p.name }),
           p.all.length > 0 && h("span", { className: "pj-pct", textContent: `${Math.round(progress(p) * 100)}%` })),
         h("div", { className: "pj-prog" }, bar(p, "pbar big")),
+        p.name !== INBOX && h("button", { type: "button", className: "pj-dates", onclick: () => askDates(p.name) },
+          ranges[p.name] ? [ranges[p.name].start ? `Starts ${shortDay(ranges[p.name].start)}` : null, ranges[p.name].due ? `due ${shortDay(ranges[p.name].due)}` : null].filter(Boolean).join(" · ") : "Set start and due dates"),
         minutesLeft(p) > 0 && h("p", { className: "pj-left", textContent: `About ${durText(minutesLeft(p))} left` }),
         p.all.length > 0 && h("div", { className: "pj-tgs" },
           toggle("done", h("span", { className: "pj-ok", ariaHidden: "true" }, icon("check")), h("span", { className: "pj-tg-t", textContent: `${p.done.length} of ${p.all.length} done` })),
@@ -385,7 +433,7 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
   function render(){ paintGrid(); paintView(); }
   const unsubs = [
     watchTasks(uid, (ts) => { tasks = ts; keepNames(); render(); }, fail),
-    watchProjectNames(uid, (ns) => { made = ns; namesIn = true; keepNames(); render(); }, fail),
+    watchProjectNames(uid, (ns, rs) => { made = ns; ranges = rs || {}; namesIn = true; keepNames(); render(); }, fail),
   ];
   render();
 

@@ -383,3 +383,15 @@ test("againInput: next week / next month copy keeps the user's choices, unticks 
   assert.equal(M.shiftDay("2026-01-31", "month"), "2026-02-28");
   assert.equal(M.againInput({ title: "Invoices", project: "Admin" }, "month", { now }).notBefore, "2026-11-06");
 });
+
+test("project range: outsideRange and clampDate keep a date inside start..due", async () => {
+  const { outsideRange, clampDate, cleanRange } = await import("../../app/js/model.js");
+  const r = cleanRange({ start: "2026-10-10", due: "2026-10-20" });
+  assert.equal(outsideRange(r, "2026-10-09"), "before");
+  assert.equal(outsideRange(r, "2026-10-21"), "after");
+  assert.equal(outsideRange(r, "2026-10-15"), null);
+  assert.equal(clampDate(r, "2026-10-01"), "2026-10-10");
+  assert.equal(clampDate(r, "2026-11-01"), "2026-10-20");
+  assert.equal(clampDate({ start: null, due: "2026-10-20" }, "2026-01-01"), "2026-01-01");
+  assert.equal(cleanRange({ start: "x", due: "" }), null);
+});

@@ -636,3 +636,20 @@ export const isAvailable = (task) => task.status === "ready";
 
 // Still waiting for its day to come round.
 export const notYet = (task, now = Date.now()) => !!task.notBefore && task.notBefore > localDate(now);
+
+// A project's dates (Mor, 2026-10-07): it runs from start to due, either
+// optional, and its tasks' start and due dates stay inside. outsideRange says
+// which way a date misses ("before" / "after" / null); clampDate pulls it in.
+export const validDay = (s) => typeof s === "string" && /^\d{4}-\d{2}-\d{2}$/.test(s);
+export function cleanRange(r){
+  const start = validDay(r?.start) ? r.start : null, due = validDay(r?.due) ? r.due : null;
+  return start || due ? { start, due } : null;
+}
+export function outsideRange(range, day){
+  if (!range || !day) return null;
+  if (range.start && day < range.start) return "before";
+  if (range.due && day > range.due) return "after";
+  return null;
+}
+export const clampDate = (range, day) => (!range || !day ? day : range.start && day < range.start ? range.start : range.due && day > range.due ? range.due : day);
+

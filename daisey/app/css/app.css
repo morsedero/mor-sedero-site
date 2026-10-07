@@ -1314,6 +1314,9 @@ body.focus .shell { block-size: auto; min-block-size: 100dvh; overflow: visible;
 .pj-card-top { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
 .pj-pct { font-size: 15px; font-weight: 600; color: var(--ink-2); font-variant-numeric: tabular-nums; }
 .pj-left { margin: 6px 0 0; font-size: 13px; color: var(--ink-2); }
+.np-dates { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.np-date { display: grid; gap: 4px; font-size: 13px; color: var(--ink-2); }
+.pj-dates { margin: 6px 0 0; padding: 0; background: none; border: 0; font: inherit; font-size: 13px; color: var(--ink-2); text-decoration: underline dotted; cursor: pointer; text-align: start; }
 
 /* ===== 2026-10-07: day proposal, handoff options, waiting for a reply ===== */
 /* The proposal on the Now card (now.js proposalCard): a list of the day,
