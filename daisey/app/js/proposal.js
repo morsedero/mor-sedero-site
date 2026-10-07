@@ -75,8 +75,9 @@ export function proposeDay({ tasks = [], events = [], now = Date.now(), hours = 
 // gap from where the previous one ended that holds all of it. Order wins over
 // packing — a gap left too short for the next item stays empty rather than
 // pulling a later item forward. → { rows: [{ taskId, task, minutes, start,
-// end }], over: [{ taskId, task, minutes }] } (over: doesn't fit today, or the
-// task is gone/done).
+// end }], over: [{ taskId, task, minutes, room }] } (over: doesn't fit today;
+// room: the most minutes a shorter version could still have today, on a round
+// five, when that's at least WORTH — the plan offers to shorten it to that).
 export function timeline(items = [], { tasks = [], events = [], now = Date.now(), hours = W.DAY_HOURS, run = null } = {}){
   const { gaps } = freeGaps({ tasks, events, now, hours, run });
   const byId = new Map(tasks.map((t) => [t.id, t]));
@@ -96,7 +97,12 @@ export function timeline(items = [], { tasks = [], events = [], now = Date.now()
         break;
       }
     }
-    if (!placed) over.push({ taskId: it.taskId, task, minutes: need / MIN });
+    if (!placed) {
+      let room = 0;
+      for (let k = gi; k < gaps.length; k++) room = Math.max(room, gaps[k].end - Math.max(cursor, gaps[k].start));
+      room = Math.floor(room / (5 * MIN)) * 5;
+      over.push({ taskId: it.taskId, task, minutes: need / MIN, room: room >= WORTH ? room : 0 });
+    }
   }
   return { rows, over };
 }

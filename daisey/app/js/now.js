@@ -979,6 +979,11 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
     [items[i], items[j]] = [items[j], items[i]];
     prop.items = items; render();
   }
+  // A plan item that no longer fits (it's late) can be cut to what's left.
+  function shorten(i, minutes){
+    prop.items = prop.items.map((it, k) => (k === i ? { ...it, minutes } : it));
+    render();
+  }
   function dropItem(i){
     const items = [...prop.items];
     const [gone] = items.splice(i, 1);
@@ -1030,7 +1035,9 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
         h("span", { className: "pp-ctls" },
           ctl("↑", "Move earlier", i === 0, () => move(i, -1)),
           ctl("↓", "Move later", i === prop.items.length - 1, () => move(i, 1)),
-          ctl("✕", "Take off today's plan", false, () => dropItem(i))));
+          ctl("✕", "Take off today's plan", false, () => dropItem(i))),
+        isOver && r.room > 0 && h("button", { type: "button", className: "pp-fit", ariaLabel: `Shorten ${t.title} to ${dur(r.room)}`, onclick: () => shorten(i, r.room) },
+          `Shorten to ${dur(r.room)}`));
     };
     const plural = (n) => (n === 1 ? ["One doesn't", "it"] : [`${n} don't`, "them"]);
     return h("section", { className: "now-card main hero proposal", ariaLabel: approved ? "Today's plan" : "Proposed schedule" },
@@ -1041,7 +1048,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
       rows.length || over.length
         ? h("ol", { className: "pp-list" }, ...rows.map((r) => row(r, false)), ...over.map((r) => row(r, true)))
         : h("p", { className: "now-empty", textContent: "No open task fits the free time left today." }),
-      over.length > 0 && h("p", { className: "muted pp-note", textContent: `${plural(over.length)[0]} fit today. Move ${plural(over.length)[1]} up, or take ${plural(over.length)[1]} off.` }),
+      over.length > 0 && h("p", { className: "muted pp-note", textContent: `${plural(over.length)[0]} fit today. ${over.some((o) => o.room) ? `Shorten ${plural(over.length)[1]}, move` : "Move"} ${plural(over.length)[1]} up, or take ${plural(over.length)[1]} off.` }),
       prop.note && h("p", { className: "pp-note", role: "status", textContent: prop.note }),
       prop.ask && rethinkBox(),
       h("div", { className: "pp-actions" },
