@@ -756,19 +756,17 @@ body.focus .tell-panel { display: none; }
 .place-fix > .muted { flex-basis: 100%; }
 
 /* The Places sheet (places.js). */
-.pl-opts { display: flex; flex-wrap: wrap; gap: 6px; margin-block: 4px 8px; }
-.pl-opts .chip { min-block-size: 38px; padding-inline: 13px; border: none; background: var(--chip); font-size: 14px; }
+.pl-box { display: grid; gap: 8px; }
+.pl-opts { display: flex; flex-wrap: wrap; gap: 6px; }
+.pl-opts .chip { min-block-size: 34px; padding-inline: 12px; border: none; background: var(--chip); font-size: 13px; }
 .pl-opts .chip[aria-checked="true"] { background: var(--ink); color: var(--bg); }
-.pl-h { margin: 18px 0 6px; font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-2); }
-.pl-sub { color: var(--ink-2); font-weight: 400; font-size: 14px; }
-#plTitle .pl-sub { font-size: 15px; }
-.pl-reset { margin-inline: auto 6px; font-size: 14px; color: var(--ink-2); }
-.pl-list { list-style: none; margin: 0; padding: 0; }
-.pl-list li { display: grid; grid-template-columns: 1fr auto auto; align-items: center; gap: 10px; min-block-size: 40px; border-block-end: 1px solid var(--line); }
-.pl-x { font: inherit; font-size: 14px; inline-size: 32px; block-size: 32px; border: 0; border-radius: 999px; background: transparent; color: var(--ink-2); cursor: pointer; }
-.pl-x:hover { background: var(--chip); }
-.pl-save { display: grid; grid-template-columns: 1fr auto; gap: 8px; margin-block-start: 10px; }
-.pl-save input { font: inherit; font-size: 16px; padding: 8px 12px; border: 1px solid var(--line); border-radius: 10px; background: transparent; color: inherit; min-inline-size: 0; }
+.pl-opts .chip.pl-del { color: var(--nowline); }
+.pl-now { font-size: 14px; font-weight: 600; white-space: nowrap; }
+.pl-sub { color: var(--ink-2); font-weight: 400; }
+.pl-reset { margin-inline-start: 8px; color: var(--ink-2); }
+.pl-save { display: grid; grid-template-columns: 1fr auto auto; align-items: center; gap: 8px; }
+.pl-save input { font: inherit; font-size: 16px; padding: 6px 10px; border: 1px solid var(--line); border-radius: 10px; background: transparent; color: inherit; min-inline-size: 0; }
+.pl-edit { font-size: 14px; color: var(--ink-2); }
 
 /* ===== Layout round 2 (Mor, 2026-10-05; daisey/New Design/6–10) =====
    A calm home with everything one pull away. Sizes and colours follow the

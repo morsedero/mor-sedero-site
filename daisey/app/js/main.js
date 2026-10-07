@@ -149,14 +149,13 @@ async function boot(){
     fb.signOut().finally(() => location.reload());
   };
   // Where you are, by hand, and saved places (this device only).
-  const places = mountPlaces($("#placedlg"));
+  const places = mountPlaces($("#placesBox"), $("#settingsdlg"));
   // Settings: the avatar menu's one door to everything else (Mor, 2026-10-06).
   // A tap on the dim backdrop closes it, like Escape and ✕.
   const settings = $("#settingsdlg");
-  $("#settingsBtn").onclick = () => { setMenu(false); settings.showModal(); };
+  $("#settingsBtn").onclick = () => { setMenu(false); places.show(); settings.showModal(); };
   $("#settingsX").onclick = () => settings.close();
   settings.addEventListener("click", (e) => { if (e.target === settings) settings.close(); });
-  $("#placesBtn").onclick = () => { settings.close(); places.open(); };
 
   const SIGNED_IN = ["#board", "#dock"];
 

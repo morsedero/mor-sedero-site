@@ -122,7 +122,6 @@
   <dialog id="importdlg" class="now" aria-labelledby="importTitle"></dialog>
   <dialog id="eventdlg" class="now" aria-labelledby="evTitle" autofocus></dialog>
   <dialog id="deadlinedlg" class="now" aria-labelledby="dlTitle"></dialog>
-  <dialog id="placedlg" class="now" aria-labelledby="plTitle"></dialog>
   <dialog id="donedlg" class="now" aria-labelledby="dnTitle"></dialog>
   <dialog id="projdlg" class="now" aria-labelledby="npTitle"></dialog>
   <!-- Settings (Mor, 2026-10-06): opened from the avatar menu. -->
@@ -142,9 +141,8 @@
         </div>
         <div class="db-ticks" aria-hidden="true"><span>00</span><span>06</span><span>12</span><span>18</span><span>24</span></div>
       </div>
-      <!-- Where you are: picked by hand, and saved places (places.js). -->
-      <button id="placesBtn" class="menu-link" type="button">Places</button>
-      <p class="menu-note">Places like Home or Studio. Daisey uses where you are to pick tasks that fit.</p>
+      <!-- Where you are: picked by hand, and saved places (places.js), filled in on open. -->
+      <div id="placesBox" class="pl-box"></div>
     </div>
     <!-- Notifications (push.js): this device, then which kinds (any device). -->
     <div class="menu-sec">
