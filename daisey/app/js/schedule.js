@@ -135,6 +135,7 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onProjects } = 
   }
 
   let dragging = false, stale = false; // a redraw mid-drag would drop the grip
+  let dayCtx = null; // the shown day's { events, now, hrs, d0 }, for a drag's preview
   function render(){
     if (dragging) { stale = true; return; }
     const now = Date.now(), hrs = dayHours(settings);
@@ -232,14 +233,15 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onProjects } = 
         });
         rows = [...cut, ...planned].sort((a, b) => (a.start ?? -1) - (b.start ?? -1) || (a.kind === "free") - (b.kind === "free"));
       }
-    // What a drag can swap: every timed event and every planned block (each
-    // only with its own kind).
-    const peers = rows.filter((x) => (x.kind === "event" && !x.allDay) || x.kind === "plan");
+    // Where a drag can land: every timed row (free time too). Timed events and
+    // planned blocks are the ones that move.
+    const slots = rows.filter((x) => !x.allDay);
+    dayCtx = { events, now, hrs, d0: t };
     const out = [];
     if (t === t0 && now < atMin(today, hrs.start)) out.push(nightDivider(minText(hrs.end), minText(hrs.start)));
     const none = h("button", { type: "button", className: "sc-none", onclick: () => onNew?.(ymd) },
       h("span", { textContent: "Nothing scheduled" }), h("span", { className: "sc-add", ariaHidden: "true", textContent: "+ Add" }));
-    out.push(h("section", { className: "sc-day", ariaLabel: short(date) }, ...(rows.length ? rows.map((x) => row(x, now, peers)) : [none])));
+    out.push(h("section", { className: "sc-day", ariaLabel: short(date) }, ...(rows.length ? rows.map((x) => row(x, now, slots)) : [none])));
     return out;
   }
 
@@ -313,12 +315,12 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onProjects } = 
     return [grid];
   }
 
-  function row(x, now, peers = []){
+  function row(x, now, slots = []){
     const time = x.allDay ? "All day" : `${clock(x.start)}–${clock(x.end)}`;
     // Free time is quiet (Mor, 2026-10-06: the dashed boxes read as slots to
     // fill): no box, no times, just how long, on a hairline.
     // Tapping it adds an event there.
-    if (x.kind === "free") return h("button", { type: "button", className: "sc-row sc-gap", ariaLabel: `Free ${time} — add an event`,
+    if (x.kind === "free") return x.el = h("button", { type: "button", className: "sc-row sc-gap", ariaLabel: `Free ${time} — add an event`,
       onclick: () => onNew?.(localDate(x.start), hm(quarterUp(x.start))) },
       h("span", { className: "sc-free" }, `${durText((x.end - x.start) / 60000)} free`, h("span", { className: "sc-add", ariaHidden: "true", textContent: "+" })));
     const on = !x.allDay && x.start <= now && now < x.end;
@@ -327,7 +329,7 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onProjects } = 
       h("span", { className: "sc-time strong" }, time, on && h("span", { className: "sc-nowtag", textContent: "Now" })),
       h("button", { type: "button", className: "sc-ev sc-plan" + areaClass(x.task), ariaLabel: `Planned: ${x.task.title}, ${time}`, onclick: () => onOpen?.(x.task) },
         h("span", { className: "sc-dot" }), bdi(x.task.title)));
-      if (peers.includes(x)) { x.el = pe; pe.append(grip(x, pe, peers)); pe.classList.add("sc-drag"); }
+      if (slots.includes(x)) { x.el = pe; pe.append(grip(x, pe, slots)); pe.classList.add("sc-drag"); }
       return pe; }
     // A finished task is logged as a "✓ title" event (calendar.js logDone).
     const done = /^✓\s*/u.test(x.ev.title), title = done ? x.ev.title.replace(/^✓\s*/u, "") : x.ev.title;
@@ -335,54 +337,104 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onProjects } = 
       h("button", { type: "button", className: "sc-ev" + (done ? " sc-done" : "") + tone(x.ev), style: x.ev.color ? `--ev:${x.ev.color}` : "",
         ariaLabel: `${done ? "Finished task: " : ""}${on ? "Now: " : ""}${title}, ${time}`, onclick: () => onEvent?.(x.ev) },
         done ? h("span", { className: "sc-dot" }) : h("span", { className: "sc-evi" }, icon("calendar")), bdi(title)));
-    if (peers.includes(x)) { x.el = rowEl; rowEl.append(grip(x, rowEl, peers)); rowEl.classList.add("sc-drag"); }
+    if (slots.includes(x)) { x.el = rowEl; rowEl.append(grip(x, rowEl, slots)); rowEl.classList.add("sc-drag"); }
     return rowEl;
   }
 
-  // Drag an event's grip up or down past its neighbour and the two swap
-  // places; each keeps its own length and the gap between them stays.
-  function grip(x, rowEl, peers){
-    const g = h("span", { className: "sc-grip", role: "button", ariaLabel: `Drag ${x.ev?.title || x.task.title} up or down to swap with the next event`, textContent: "⋮⋮" });
-    let y0 = 0, target = null;
+  // Drag a grip anywhere in the day (Mor, 2026-10-08: one row away wasn't
+  // enough). Where it's let go decides:
+  // - an event takes a new time and keeps its length. It starts where the row
+  //   above the drop line ends, or where free time it's dropped on starts.
+  //   Nothing else moves; the plan flows around it.
+  // - a planned task takes that place in the plan's order; the plan re-flows
+  //   around the events, so its time follows.
+  // While dragging, the row's time shows where it would land.
+  function grip(x, rowEl, slots){
+    const g = h("span", { className: "sc-grip", role: "button", ariaLabel: `Drag ${x.ev?.title || x.task.title} to another place in the day`, textContent: "⋮⋮" });
+    const dur = x.end - x.start;
+    let y0 = 0, s0 = 0, off = 0, lastY = 0, home = 0, snap = [], drop = null, marked = null, timeEl = null, orig = [], raf = 0;
+    // The pointer → { on: a free row } or { i: the line before snap[i] }.
+    const where = () => {
+      const c = lastY + off + el.scrollTop; // the dragged row's middle, in page terms
+      const on = x.kind === "event" && snap.find((s) => s.p.kind === "free" && c >= s.top && c <= s.bottom);
+      return on ? { on: on.p } : { i: snap.filter((s) => s.mid < c).length };
+    };
+    // What letting go there does; null = nothing changes.
+    const outcome = (w) => {
+      if (x.kind === "event") {
+        if (!w.on && w.i === home) return null;
+        const above = snap[w.i - 1]?.p, below = snap[w.i]?.p;
+        let start = w.on ? w.on.start : above ? (above.kind === "free" ? above.start : above.end) : below.start - dur;
+        start = Math.max(dayCtx.d0, start);
+        return start === x.start ? null : { start, end: start + dur };
+      }
+      const all = dayPlan?.items || [], me = all.find((it) => it.taskId === x.task.id);
+      if (!me) return null;
+      const items = all.filter((it) => it !== me);
+      const plans = snap.filter((s) => s.p.kind === "plan").map((s) => s.p);
+      const k = snap.slice(0, w.i).filter((s) => s.p.kind === "plan").length;
+      const at = k < plans.length ? items.findIndex((it) => it.taskId === plans[k].task.id)
+        : plans.length ? items.findIndex((it) => it.taskId === plans.at(-1).task.id) + 1 : 0;
+      items.splice(Math.max(0, at), 0, me);
+      if (items.every((it, j) => it === all[j])) return null;
+      const r = timeline(items, { tasks, events: dayCtx.events, now: dayCtx.now, hours: dayCtx.hrs, run }).rows.find((q) => q.taskId === x.task.id);
+      return { items, start: r?.start, end: r?.end };
+    };
+    const unmark = () => { marked?.[0].classList.remove(marked[1]); marked = null; };
+    const show = () => {
+      rowEl.style.transform = `translateY(${lastY - y0 + el.scrollTop - s0}px)`;
+      const w = where();
+      drop = outcome(w);
+      unmark();
+      if (drop) {
+        marked = w.on ? [w.on.el, "sc-target"] : snap[w.i] ? [snap[w.i].p.el, "sc-ins"] : [snap.at(-1).p.el, "sc-ins-end"];
+        marked[0].classList.add(marked[1]);
+      }
+      timeEl.replaceChildren(...(!drop ? orig : drop.start == null ? ["Won't fit"] : [`${clock(drop.start)}–${clock(drop.end)}`]));
+    };
+    // Near the top or bottom edge the page scrolls, so any row can be reached.
+    const tick = () => {
+      const r = el.getBoundingClientRect(), top = el.querySelector(".sc-head")?.getBoundingClientRect().bottom ?? r.top;
+      const v = lastY < top + 40 ? -1 : lastY > r.bottom - 40 ? 1 : 0;
+      if (v) { const was = el.scrollTop; el.scrollTop += v * 8; if (el.scrollTop !== was) show(); }
+      raf = requestAnimationFrame(tick);
+    };
     g.addEventListener("click", (e) => e.stopPropagation());
     g.addEventListener("pointerdown", (e) => {
-      e.preventDefault(); e.stopPropagation(); y0 = e.clientY; target = null;
+      e.preventDefault(); e.stopPropagation();
       dragging = true; g.setPointerCapture(e.pointerId); rowEl.classList.add("sc-dragging");
+      y0 = lastY = e.clientY; s0 = el.scrollTop; drop = null;
+      snap = slots.filter((p) => p !== x && p.el?.isConnected).map((p) => {
+        const r = p.el.getBoundingClientRect();
+        return { p, top: r.top + s0, bottom: r.bottom + s0, mid: (r.top + r.bottom) / 2 + s0 };
+      });
+      const r = rowEl.getBoundingClientRect(), mid = (r.top + r.bottom) / 2;
+      off = mid - e.clientY; home = snap.filter((s) => s.mid < mid + s0).length;
+      timeEl = rowEl.querySelector(".sc-time"); orig = [...timeEl.childNodes];
+      raf = requestAnimationFrame(tick);
     });
     g.addEventListener("pointermove", (e) => {
       if (!g.hasPointerCapture(e.pointerId)) return;
-      const dy = e.clientY - y0;
-      rowEl.style.transform = `translateY(${dy}px)`;
-      const same = peers.filter((p) => p.kind === x.kind), i = same.indexOf(x), nb = same[i + (dy < 0 ? -1 : 1)];
-      const r = rowEl.getBoundingClientRect(), c = r.top + r.height / 2; // already includes dy
-      target = null;
-      if (nb?.el?.isConnected) {
-        const n = nb.el.getBoundingClientRect(), nc = n.top + n.height / 2;
-        if (dy < 0 ? c < nc : c > nc) target = nb;
-      }
-      peers.forEach((p) => p.el?.classList.toggle("sc-swap", p === target));
+      lastY = e.clientY; show();
     });
     const end = async (e) => {
       if (!g.hasPointerCapture(e.pointerId)) return;
-      g.releasePointerCapture(e.pointerId); dragging = false;
+      g.releasePointerCapture(e.pointerId); dragging = false; cancelAnimationFrame(raf);
       rowEl.style.transform = ""; rowEl.classList.remove("sc-dragging");
-      peers.forEach((p) => p.el?.classList.remove("sc-swap"));
-      const nb = e.type === "pointerup" ? target : null; target = null;
-      if (!nb) { if (stale) { stale = false; render(); } return; }
-      const [a, b] = x.start <= nb.start ? [x, nb] : [nb, x]; // earlier, later
-      if (x.kind === "plan") { // planned blocks: swap their order in the saved plan
-        const items = [...(dayPlan?.items || [])], i = items.findIndex((it) => it.taskId === a.task.id), j = items.findIndex((it) => it.taskId === b.task.id);
-        if (i < 0 || j < 0) return;
-        [items[i], items[j]] = [items[j], items[i]];
-        stale = false; render(); saveDayPlan(uid, { ...dayPlan, items }).catch(fail);
+      unmark(); timeEl.replaceChildren(...orig);
+      const d = e.type === "pointerup" ? drop : null; drop = null;
+      if (!d) { if (stale) { stale = false; render(); } return; }
+      stale = false;
+      if (x.kind === "plan") { // the saved plan's order; times follow from it
+        dayPlan = { ...dayPlan, items: d.items }; render();
+        saveDayPlan(uid, dayPlan).catch(fail);
         return;
       }
-      stale = false;
-      try {
-        await Promise.all([
-          retime(b.ev, a.start, a.start + (b.end - b.start)),
-          retime(a.ev, b.end - (a.end - a.start), b.end)]);
-      } catch (err) { fail(err); }
+      // Shown at the new time at once; the write's reload confirms it.
+      const ev = x.ev, was = [ev.start, ev.end];
+      ev.start = new Date(d.start).toISOString(); ev.end = new Date(d.end).toISOString(); render();
+      try { await retime(ev, d.start, d.end); }
+      catch (err) { [ev.start, ev.end] = was; render(); fail(err); }
     };
     g.addEventListener("pointerup", end);
     g.addEventListener("pointercancel", end);
