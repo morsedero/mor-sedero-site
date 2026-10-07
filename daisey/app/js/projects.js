@@ -20,7 +20,7 @@
 // area when no other project has that one yet, else the next free colour in
 // PALETTE. Names are taken in order, so a colour doesn't move around as
 // counts change. Inbox has none.
-import { watchTasks, finishTask, restoreTask, watchProjectNames, saveProjectNames, saveProjectRanges } from "./store.js";
+import { watchTasks, finishTask, restoreTask, removeTask, watchProjectNames, saveProjectNames, saveProjectRanges } from "./store.js";
 import { INBOX, notYet, durText, localDate, bringBack, cleanRange, outsideRange } from "./model.js";
 import { isOverdue } from "./triage.js";
 import { h, bdi, flash, icon } from "./ui.js";
@@ -230,13 +230,13 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
       d.close();
       if (out) flash(`${plural(out, "task")} outside these dates: `, v);
     };
-    // Any project but the Inbox. Two taps to confirm; its tasks go to the Inbox.
+    // Any project but the Inbox. Two taps to confirm; its tasks are deleted too.
     let del = null;
     if (old !== INBOX) {
       let armed = false;
       const n = (tasks || []).filter((t) => (t.project || INBOX) === old).length;
       del = h("button", { className: "btn quiet danger", type: "button", textContent: "Delete project", onclick: () => {
-        if (!armed) { armed = true; del.textContent = n ? `Really delete? ${plural(n, "task")} → Inbox` : "Really delete?"; del.classList.add("arm"); return; }
+        if (!armed) { armed = true; del.textContent = n ? `Really delete? ${plural(n, "task")} too` : "Really delete?"; del.classList.add("arm"); return; }
         d.close();
         deleteProject(old);
       } });
@@ -255,23 +255,16 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
     name.select();
   }
 
-  // Tasks in it move to the Inbox, nothing is lost; undo puts them back.
+  // Its tasks are deleted with it. No undo: tasks can't be recreated with the same ids.
   function deleteProject(name){
-    const moved = (tasks || []).filter((t) => (t.project || INBOX) === name);
-    const range = ranges[name];
-    for (const t of moved) restoreTask(uid, t.id, { project: INBOX }).catch(fail);
+    const gone = (tasks || []).filter((t) => (t.project || INBOX) === name);
+    for (const t of gone) removeTask(uid, t.id).catch(fail);
     made = made.filter((n) => n !== name);
     saveProjectNames(uid, made).catch(fail);
     const { [name]: _gone, ...rest } = ranges; ranges = rest;
     onScreen?.(null);
     render();
-    flash("Deleted: ", name, { undo: () => {
-      if (made.includes(name)) return;
-      for (const t of moved) restoreTask(uid, t.id, { project: name }).catch(fail);
-      made = [...made, name]; saveProjectNames(uid, made).catch(fail);
-      if (range) setRange(name, range);
-      render();
-    } });
+    flash("Deleted: ", name);
   }
 
   // ---------- the project screen ----------
