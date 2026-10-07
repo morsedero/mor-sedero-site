@@ -33,7 +33,7 @@
 const { brief, localParts, zoned, MIN } = require("../../app/js/brief.js");
 const { collectNeeds } = require("../../app/js/needs-list.js");
 const { rank } = require("../../app/js/engine.js");
-const { workBase, energyNow } = require("../../app/js/context.js");
+const { workBase } = require("../../app/js/context.js");
 const { bookings } = require("../../app/js/day.js");
 const { localDate, notYet, durText } = require("../../app/js/model.js");
 const { effectiveDue } = require("../../app/js/triage.js");
@@ -107,7 +107,7 @@ function decide(rec, events, now = Date.now()) {
       if (free >= GAP_MIN && !focus) {
         const r = rank(tasks, {
           now, window: free, nextEvent: next && localDate(Date.parse(next.start)) === date ? next.title : null,
-          ...workBase(tasks, now), energy: energyNow({ events: evs, now }).value, intents: rec.settings?.intents || {},
+          ...workBase(tasks, now), intents: rec.settings?.intents || {},
           booked: Object.fromEntries([...booked].map(([id, b]) => [id, b.start])),
         });
         // "After X", not "X is over": the calendar says it ended, not you.

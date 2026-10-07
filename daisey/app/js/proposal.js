@@ -12,7 +12,7 @@
 // PURE: no Firebase, no DOM.
 import { gapsToday, bookings } from "./day.js";
 import { rank } from "./engine.js";
-import { workBase, energyNow } from "./context.js";
+import { workBase } from "./context.js";
 import { overruled, eventKey } from "./reality.js";
 import { LABELS, notYet } from "./model.js";
 import * as W from "./weights.js";
@@ -36,7 +36,7 @@ function freeGaps({ tasks, events, now, hours, run }){
 
 // → [{ taskId, minutes }], in the order Daisey would do them.
 // ask: parseAsk's hints (or {}). exclude: ids the user deleted from the plan.
-export function proposeDay({ tasks = [], events = [], now = Date.now(), hours = W.DAY_HOURS, settings = {}, run = null, energy, ask = {}, exclude = [] } = {}){
+export function proposeDay({ tasks = [], events = [], now = Date.now(), hours = W.DAY_HOURS, settings = {}, run = null, ask = {}, exclude = [] } = {}){
   const { evs, gaps } = freeGaps({ tasks, events, now, hours, run });
   if (!gaps.length) return [];
   const until = Number.isFinite(ask.until) ? atMin(now, ask.until) : Infinity;
@@ -50,7 +50,6 @@ export function proposeDay({ tasks = [], events = [], now = Date.now(), hours = 
   const out = new Set([...exclude, ...(ask.exclude || []), ...(run?.batch || (run?.taskId ? [run.taskId] : []))]);
   const pool = tasks.filter((t) => !skipTypes.has(t.type));
   const booked = Object.fromEntries([...bookings(tasks, evs, now)].map(([id, b]) => [id, b.start]));
-  const mood = ask.lighter ? "low" : ask.bigger ? "high" : energy || energyNow({ events: evs, now }).value;
   const items = [];
   const take = (t) => { items.push({ taskId: t.id, minutes: Math.min(leftOf(t), biggest) }); out.add(t.id); budget -= Math.min(leftOf(t), biggest); };
 
@@ -63,7 +62,7 @@ export function proposeDay({ tasks = [], events = [], now = Date.now(), hours = 
   while (items.length < cap && budget >= WORTH) {
     const r = rank(pool, {
       now: usable[0].start, window: biggest, nextEvent: null, ...workBase(tasks, now),
-      energy: mood, intents: settings.intents || {}, sessionSkips: [...out], booked,
+      intents: settings.intents || {}, sessionSkips: [...out], booked,
     });
     if (!r.pick) break;
     take(r.pick.task);
@@ -122,21 +121,18 @@ export function planProgress(plan, tasks = []){
 // "Rethink" in plain words, read here so it works offline and for guests;
 // Gemini reads it first when it's set up (rethink.js), and this is the
 // fallback. Understands, in English and a little Hebrew:
-//   lighter / tired / easy · bigger / harder / deep — the energy to plan for
-//   fewer / less · more — how many items
+//   fewer / less / tired / easy · more — how many items
 //   no calls / without admin / skip <task or project> — leave out
 //   start with <task> / <task> first — put first
 //   quick first / small things first — shortest first
 //   only 2 hours / 90 min — total time · until 15:00 / by 5pm — end time
-// → { lighter, bigger, fewer, more, quickFirst, skipTypes, exclude, first,
+// → { fewer, more, quickFirst, skipTypes, exclude, first,
 //     maxMinutes, until, understood } (understood: false when nothing matched).
 export function parseAsk(text = "", tasks = []){
   const s = ` ${String(text).toLowerCase().replace(/[.,!?;]+/g, " ").replace(/\s+/g, " ").trim()} `;
   const has = (re) => re.test(s);
   const ask = { skipTypes: [], exclude: [], first: [] };
-  if (has(/\b(light(er)?|easy|easier|tired|wrecked|low energy|chill)\b|עייף|קל/)) ask.lighter = true;
-  if (has(/\b(big(ger)?|hard(er)?|deep|focus(ed)?|ambitious|high energy)\b/)) ask.bigger = true;
-  if (has(/\b(fewer|less|smaller day|lighter day|not so much)\b|פחות/)) ask.fewer = true;
+  if (has(/\b(fewer|less|smaller day|lighter day|not so much|light(er)?|easy|easier|tired|wrecked|chill)\b|פחות|עייף|קל/)) ask.fewer = true;
   if (has(/\b(more tasks|more things|fill (it|the day)|pack)\b|יותר/)) ask.more = true;
   if (has(/\b(quick|small|short)( (ones?|things|tasks|stuff))? first\b|start (small|easy)/)) ask.quickFirst = true;
 
@@ -176,7 +172,7 @@ export function parseAsk(text = "", tasks = []){
     .concat([...s.matchAll(/(?:קודם|להתחיל עם)\s+(.+?)(?=\s+ו|\s*$)/g)].map((m) => m[1]));
   for (const f of firsts) for (const id of named(f)) if (!ask.first.includes(id) && !ask.exclude.includes(id)) ask.first.push(id);
 
-  ask.understood = !!(ask.lighter || ask.bigger || ask.fewer || ask.more || ask.quickFirst || ask.maxMinutes || ask.until != null
+  ask.understood = !!(ask.fewer || ask.more || ask.quickFirst || ask.maxMinutes || ask.until != null
     || ask.skipTypes.length || ask.exclude.length || ask.first.length);
   return ask;
 }

@@ -64,7 +64,7 @@ test("placeNow: location beats the calendar; a fresh correction beats location",
 });
 
 test("place blocks: walking takes calls and errands; a bus no laptop; driving only calls", () => {
-  const m = (place) => ({ place, now: Date.now(), booked: {}, sessionSkips: new Set(), officeOpen: true, energy: "medium" });
+  const m = (place) => ({ place, now: Date.now(), booked: {}, sessionSkips: new Set(), officeOpen: true });
   const t = (where) => ({ id: where, title: where, status: "open", where, size: 0 });
   const ok = (place, where) => filterOut(t(where), m(place)) !== "place";
   assert.ok(ok("walk", "phone") && ok("walk", "out") && !ok("walk", "computer") && !ok("walk", "home"));

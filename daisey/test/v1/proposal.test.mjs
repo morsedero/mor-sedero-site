@@ -51,7 +51,7 @@ test("rethink in plain words", () => {
   assert.deepEqual(parseAsk("skip Reprise today", tasks).exclude, ["mix"]);
   assert.equal(parseAsk("only 2 hours", tasks).maxMinutes, 120);
   assert.equal(parseAsk("done by 5pm", tasks).until, 17 * 60);
-  assert.equal(parseAsk("I'm tired, lighter please", tasks).lighter, true);
+  assert.equal(parseAsk("I'm tired, lighter please", tasks).fewer, true); // no energy: tired means fewer things
   assert.equal(parseAsk("blah", tasks).understood, false);
 });
 

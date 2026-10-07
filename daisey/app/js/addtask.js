@@ -4,8 +4,8 @@
 //
 // Top to bottom: the project (dot + name, a list with "+ New project…"),
 // the title (26px, edited in place), two date boxes side by side — Start
-// (not before) FIRST, then Due with its Deadline/Target tag — one collapsed
-// "Details: size, energy, place" row over Daisey's guessed chips,
+// (not before) FIRST, then Due with its Deadline/Target tag — "How long?",
+// one chip: Daisey's guess until you pick (no Details row any more),
 // Links & notes, "Worked N sessions · Xh so far", and the amber Start.
 //
 // An open task saves as you go: every change is written when it's made (a
@@ -27,8 +27,13 @@ import { durText, guessFields, validField, CHOICES, LABELS, INBOX, localDate, cl
 import { h, flash, icon, bdi } from "./ui.js";
 import { projectsOf } from "./projects.js";
 
-const CHIPS = ["area", "type", "where", "openHours", "size", "stakes", "energy"];
-const NAMES = { area: "Area", type: "Type", where: "Where", openHours: "Open hours", size: "Size", stakes: "Stakes", energy: "Energy" };
+// Every field Daisey guesses, and the one the user sees (Mor, 2026-10-07:
+// "keep only the time the user thinks it's gonna take"). The rest are never
+// asked for: they're guessed from the title and corrected by what the user
+// does — a skip reason, past tasks (model.guessFields, now.js).
+const CHIPS = ["area", "type", "where", "openHours", "size", "stakes"];
+const SHOWN = ["size"];
+const NAMES = { area: "Area", type: "Type", where: "Where", openHours: "Open hours", size: "Size", stakes: "Stakes" };
 const SIZE_OPTIONS = [5, 15, 30, 60, 90, 120, 180, 240];
 const NEW_PROJECT = "__new"; // the project list's "+ New project…" entry
 const SETTLE = 450; // ms of quiet typing before a new task's guesses catch up
@@ -45,7 +50,6 @@ export function mountAddTask(dialog, uid, { onStart } = {}){
   let tasks = [];
   let editing = null; // the open task (kept fresh from the snapshot), or null for a new one
   let vals = {}, mine = new Set(), openChip = null;
-  let detailsOpen = false;
   let links = [];
   let kind = "target";
   let settle = 0, armed = false, fieldN = 0;
@@ -97,11 +101,8 @@ export function mountAddTask(dialog, uid, { onStart } = {}){
     due.tag.ariaLabel = `${kind === "deadline" ? "Deadline (real)" : "Target (wish)"}: tap to change`;
   }
 
-  // Details: collapsed by default; opens Daisey's guessed chips.
-  const detailsBtn = h("button", { type: "button", className: "ts-details", ariaExpanded: "false",
-    onclick: () => { detailsOpen = !detailsOpen; openChip = null; reguess(); } },
-  icon("details"), h("span", { className: "ts-details-t", textContent: "Details: size, energy, place" }), icon("chev"));
-  const chipRow = h("div", { className: "gchips ts-chips", role: "group", ariaLabel: "Daisey's guesses — tap one to change it" });
+  // How long you think it takes: Daisey's guess until you tap it.
+  const chipRow = h("div", { className: "gchips ts-chips", role: "group", ariaLabel: "How long you think it takes — Daisey's guess until you pick" });
 
   // Pending's details, on a pending task: data, not a switch.
   const waitingOn = h("input", { className: "ts-input", dir: "auto", autocomplete: "off", placeholder: "who or what?" });
@@ -144,7 +145,7 @@ export function mountAddTask(dialog, uid, { onStart } = {}){
     field("Project", projectSel, newProject),
     field("Task", title),
     h("div", { className: "ts-dates" }, start.box, due.box),
-    detailsBtn, chipRow, pendBox, holdBox, researchLine, stateLine,
+    field("How long?", chipRow), pendBox, holdBox, researchLine, stateLine,
     section("Links & notes", h("div", { className: "ts-group" }, linkRow, notes)),
     worked, startBtn, del, msg);
 
@@ -244,12 +245,10 @@ export function mountAddTask(dialog, uid, { onStart } = {}){
   // ---------- chips ----------
   function reguess(){
     const t = title.value.trim();
-    // Open Details on an untitled task: the plain defaults, not an empty row.
-    if (t || detailsOpen) {
-      const given = Object.fromEntries([...mine].map((k) => [k, vals[k]]));
-      const g = guessFields(t, projectOf(), given, history());
-      for (const k of CHIPS) if (!mine.has(k)) vals[k] = g[k];
-    }
+    // An untitled task still shows the plain default, not an empty row.
+    const given = Object.fromEntries([...mine].map((k) => [k, vals[k]]));
+    const g = guessFields(t, projectOf(), given, history());
+    for (const k of CHIPS) if (!mine.has(k)) vals[k] = g[k];
     paintChips();
   }
   function pick(k, v){
@@ -265,10 +264,7 @@ export function mountAddTask(dialog, uid, { onStart } = {}){
       textContent: "Daisey guesses", onclick: () => pick(k, null) }));
   function paintChips(){
     paintArea();
-    detailsBtn.ariaExpanded = String(detailsOpen);
-    chipRow.hidden = !detailsOpen;
-    if (!detailsOpen) return;
-    chipRow.replaceChildren(...CHIPS.filter((k) => vals[k] != null).map((k) => {
+    chipRow.replaceChildren(...SHOWN.filter((k) => vals[k] != null).map((k) => {
       const own = mine.has(k);
       const chip = h("button", { type: "button", className: "gchip" + (own ? " mine" : ""), ariaHasPopup: "listbox", ariaExpanded: String(openChip === k),
         ariaLabel: `${NAMES[k]}: ${valueText(k, vals[k])}, ${own ? "yours" : "Daisey's guess"}. Change`,
@@ -362,14 +358,14 @@ export function mountAddTask(dialog, uid, { onStart } = {}){
   // ---------- open / close ----------
   function clear(){
     clearTimeout(settle);
-    vals = {}; mine = new Set(); openChip = null; detailsOpen = false;
+    vals = {}; mine = new Set(); openChip = null;
     links = []; adding = false; kind = "target";
     title.value = ""; notes.value = ""; newProject.value = ""; waitingOn.value = ""; checkOn.value = "";
     start.input.value = ""; due.input.value = "";
     msg.textContent = "";
     disarm();
   }
-  function paintAll(){ paintDates(); paintChips(); paintLinks(); paintFoot(); }
+  function paintAll(){ paintDates(); reguess(); paintLinks(); paintFoot(); } // reguess paints the chips, and fills "How long?" before a title is typed
   const show = () => { if (!dialog.open) dialog.showModal(); requestAnimationFrame(fit); };
 
   dialog.addEventListener("close", () => { flush(); editing = null; });

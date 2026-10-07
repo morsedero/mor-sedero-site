@@ -34,7 +34,6 @@ const SAID = {
   guest_limit_unavailable: "Tell Daisey is temporarily unavailable. Try again shortly.",
 };
 const day = (s) => new Date(`${s}T12:00`).toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" });
-const ENERGY = { low: "Low energy", medium: "Medium energy", high: "High energy" };
 const PLACE = { home: "Home", out: "Out", anywhere: "Anywhere" };
 
 // Examples in the bar (master spec §13, 2026-10-06): while it's empty and not
@@ -185,7 +184,6 @@ export function mountTell(form, input, mic, uid, { openAdd, openTask, guest = fa
     } else if (a.kind === "event") {
       bits.push(`${day(a.date)} ${a.time}`, dur(a.minutes));
     } else if (a.kind === "moment") {
-      if (a.energy) bits.push(ENERGY[a.energy]);
       if (a.place) bits.push(PLACE[a.place]);
       if (a.minutes) bits.push(`${dur(a.minutes)} free`);
       if (a.dayEnd) bits.push(`day ends ${a.dayEnd} today`);
@@ -219,7 +217,7 @@ export function mountTell(form, input, mic, uid, { openAdd, openTask, guest = fa
       if (a.kind === "update") return updateTask(uid, t, pick(["title", "project", "size", "due", "dateKind", "notBefore"]), tasks);
       if (a.kind === "waiting") return updateTask(uid, t, { status: "waiting", waitingOn: a.waitingOn || "" }, tasks);
       if (a.kind === "drop") return updateTask(uid, t, { status: "dropped" }, tasks);
-      if (a.kind === "moment") return Promise.all([a.dayEnd ? saveSettings(uid, { dayEndToday: { date: localDate(), end: a.dayEnd } }) : null, (a.energy || a.place || a.minutes) ? saveMoment(uid, { ...(a.energy ? { energy: { value: a.energy, at: now } } : {}), ...(a.place ? { place: { value: a.place, at: now } } : {}), ...(a.minutes ? { free: { minutes: a.minutes, at: now } } : {}) }) : null]);
+      if (a.kind === "moment") return Promise.all([a.dayEnd ? saveSettings(uid, { dayEndToday: { date: localDate(), end: a.dayEnd } }) : null, (a.place || a.minutes) ? saveMoment(uid, { ...(a.place ? { place: { value: a.place, at: now } } : {}), ...(a.minutes ? { free: { minutes: a.minutes, at: now } } : {}) }) : null]);
       return null;
     }).filter(Boolean);
     close();

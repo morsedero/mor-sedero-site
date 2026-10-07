@@ -12,7 +12,7 @@ test("title only: Inbox, every field guessed, ready, counters zeroed", () => {
   assert.equal(t.project, "Inbox");
   assert.equal(t.type, "deep");
   assert.equal(t.size, 60); // a Deep task's default, not a flat 30
-  assert.equal(t.energy, "high");
+  assert.equal(t.energy, undefined); // energy is gone
   assert.equal(t.status, "ready");
   assert.equal(t.waitingOn, null);
   assert.equal(t.canSplit, true);
@@ -52,10 +52,10 @@ test("given fields are kept, not marked as guesses", () => {
 });
 
 test("adding never takes status, waiting on, hard due or repeat", () => {
-  const t = M.createTask({ title: "email Dana", energy: "high", status: "waiting", waitingOn: "Yuval",
+  const t = M.createTask({ title: "email Dana", size: 20, status: "waiting", waitingOn: "Yuval",
     hardDue: true, due: "2026-10-08", repeat: { every: 7 } }, opts);
-  assert.equal(t.energy, "high"); // the user's own value
-  assert.ok(!t.guessed.includes("energy"));
+  assert.equal(t.size, 20); // the user's own value
+  assert.ok(!t.guessed.includes("size"));
   assert.equal(t.status, "ready");
   assert.equal(t.waitingOn, null);
   assert.equal("hardDue" in t, false);
@@ -141,7 +141,29 @@ test("not now: Undo puts back exactly what the skip touched", () => {
   const before = M.skipSnapshot(t);
   const after = { ...t, ...M.skipTask(t, opts), ...M.skipReason(t, "blocked", opts) };
   assert.equal(after.status, "waiting");
-  assert.deepEqual({ ...after, ...before }, t);
+  assert.deepEqual({ ...after, ...before }, { ...t, notAt: [] }); // notAt: an empty list is "never taught"
+});
+
+test("skip lesson: Too big allows pieces, Not here hides it where you are; Undo takes both back", () => {
+  const t = { ...M.createTask({ title: "Write the report", size: 20 }, opts), canSplit: false };
+  const big = M.skipLesson(t, "toobig", { now: NOW });
+  assert.equal(big.canSplit, true);
+  assert.equal(big.skipReasons.toobig, 1);
+  const here = M.skipLesson(t, "nothere", { place: "home", now: NOW });
+  assert.deepEqual(here.notAt, ["home"]);
+  // Said twice at the same place → still once; the list keeps the last 3 places.
+  const twice = M.skipLesson({ ...t, ...here }, "nothere", { place: "home", now: NOW });
+  assert.deepEqual(twice.notAt, ["home"]);
+  let u = t;
+  for (const p of ["home", "out", "spot", "walk"]) u = { ...u, ...M.skipLesson(u, "nothere", { place: p, now: NOW }) };
+  assert.deepEqual(u.notAt, ["out", "spot", "walk"]);
+  // "anywhere" is no place, an unknown reason does nothing.
+  assert.equal(M.skipLesson(t, "nothere", { place: "anywhere" }).notAt, undefined);
+  assert.deepEqual(M.skipLesson(t, "whatever"), {});
+  // Undo: the snapshot taken before the skip restores what the lessons changed.
+  const before = M.skipSnapshot(t);
+  assert.deepEqual({ ...t, ...big, ...here, ...before }.notAt, []);
+  assert.equal({ ...t, ...big, ...before }.canSplit, false);
 });
 
 test("focus mode: starting counts a start and clears the stale-skip count", () => {
@@ -166,7 +188,6 @@ test("edit: only changed fields, user values stop being guesses", () => {
   const p = M.editTask(t, { size: 15 }, { now: NOW + 1 });
   assert.equal(p.size, 15);
   assert.equal(p.canSplit, false); // still a default, follows size
-  assert.equal(p.energy, "medium"); // and so does energy
   assert.deepEqual(p.guessed, M.GUESSABLE.filter((k) => k !== "size"));
   assert.equal(p.touchedAt, NOW + 1);
 });
@@ -205,9 +226,9 @@ test("reopening a done task clears doneAt", () => {
 
 test("guesses: type, where, open hours, size from the title", () => {
   const g = (title, project = "Inbox") => M.guessFields(title, project);
-  assert.deepEqual(pick(g("call the bank")), { type: "call", where: "phone", openHours: "office", size: 15, energy: "low" });
+  assert.deepEqual(pick(g("call the bank")), { type: "call", where: "phone", openHours: "office", size: 15 });
   assert.equal(g("call mom").openHours, "anytime"); // a person, not an office
-  assert.deepEqual(pick(g("buy strings")), { type: "errand", where: "out", openHours: "anytime", size: 45, energy: "medium" });
+  assert.deepEqual(pick(g("buy strings")), { type: "errand", where: "out", openHours: "anytime", size: 45 });
   assert.equal(g("לקנות מתנה לאבא").type, "errand");
   assert.equal(g("ולהתקשר לרופא").type, "call"); // Hebrew prefix letters
   assert.equal(g("ולהתקשר לרופא").openHours, "office");
@@ -294,11 +315,10 @@ test("migrate: a size the user set survives (any but the old flat 30)", () => {
   const old = { project: "Inbox", title: "call the bank", size: 60, guessed: [], canSplit: false, status: "ready" };
   const p = M.migrateTask(old);
   assert.equal("size" in p, false);
-  assert.equal(p.energy, "medium"); // guessed from the user's 60
   assert.equal(p.dateKind, null); // no date: no kind
 });
 
-function pick(g){ return { type: g.type, where: g.where, openHours: g.openHours, size: g.size, energy: g.energy }; }
+function pick(g){ return { type: g.type, where: g.where, openHours: g.openHours, size: g.size }; }
 
 test("cancel after real work: minutes kept, no stop counted", () => {
   const t = { spentMinutes: 10, stopsUnfinished: 1 };

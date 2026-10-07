@@ -346,8 +346,8 @@ export function saveSettings(uid, fields){
 }
 
 // The card's two chips, users/{uid}/state/moment:
-// { energy: { value, at }, place: { value, at }, history: [{ part, weekend, value }] }.
-// A correction holds 3 hours (context.js); history feeds the energy pattern.
+// { place: { value, at }, free: { minutes, at } }.
+// A correction holds 3 hours (context.js).
 const momentDoc = (uid) => fb.doc(fb.db, "users", uid, "state", "moment");
 
 export function watchMoment(uid, cb, onError){

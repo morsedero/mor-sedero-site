@@ -25,9 +25,9 @@ test("drops nonsense values rather than the whole action", () => {
   assert.deepEqual(a, { kind: "add", title: "Lesson prep" });
 });
 
-test("an add needs a title, a moment needs energy or place", () => {
-  const out = tidy({ reply: "", actions: [{ kind: "add", title: " " }, { kind: "moment" }, { kind: "moment", energy: "low", place: "moon" }] }, ids);
-  assert.deepEqual(out.actions, [{ kind: "moment", energy: "low" }]);
+test("an add needs a title, a moment needs a place", () => {
+  const out = tidy({ reply: "", actions: [{ kind: "add", title: " " }, { kind: "moment" }, { kind: "moment", energy: "low", place: "moon" }, { kind: "moment", place: "out" }] }, ids);
+  assert.deepEqual(out.actions, [{ kind: "moment", place: "out" }]); // energy is gone, and so is a place that isn't one
 });
 
 test("a question only comes with buttons to answer it", () => {
@@ -53,7 +53,7 @@ test("done, event and query (2026-10-06)", () => {
 
 test("a moment can say how long you have free: 5 min to 4 h, nothing else", () => {
   const out = tidy({ reply: "", actions: [{ kind: "moment", minutes: 30 }, { kind: "moment", minutes: 2 }, { kind: "moment", minutes: 999 }, { kind: "moment", energy: "low", minutes: 45 }] }, ids);
-  assert.deepEqual(out.actions, [{ kind: "moment", minutes: 30 }, { kind: "moment", energy: "low", minutes: 45 }]);
+  assert.deepEqual(out.actions, [{ kind: "moment", minutes: 30 }, { kind: "moment", minutes: 45 }]);
 });
 
 test("a plan question keeps its part, defaulting to the whole day", () => {

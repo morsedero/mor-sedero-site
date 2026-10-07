@@ -47,7 +47,7 @@ const SCENARIOS = {
     { title: "לשלוח את הסטמס ל-Yuval", project: "Reprise", size: 15, stakes: "someone", over: { starts: 1, touchedAt: Date.now() } },
     { title: "Send the playlist to Sofi", project: "חתונה", size: 15, due: day(0), dateKind: "deadline", over: { starts: 1, touchedAt: Date.now() - 864e5 } },
     { title: "Book the DJ", project: "חתונה", size: 15, type: "admin" },
-    { title: "לבחור שירים לחופה", project: "חתונה", size: 30, type: "deep", energy: "medium" },
+    { title: "לבחור שירים לחופה", project: "חתונה", size: 30, type: "deep" },
   ] },
   // Three quick admin tasks that fit an hour together: the batch offer.
   batch: { tasks: [
@@ -224,7 +224,7 @@ const FAKES = {
       if (chatFlag === "off") return route.fulfill({ status: 503, contentType: "application/json", body: '{"error":"not_configured"}' });
       const { text = "", tasks = [] } = JSON.parse(route.request().postData() || "{}");
       const wait = /waiting on (\S+)/i.exec(text);
-      const actions = /wreck|tired/i.test(text) ? [{ kind: "moment", energy: "low" }]
+      const actions = /wreck|tired/i.test(text) ? [{ kind: "moment", place: "out" }]
         : wait && tasks[0] ? [{ kind: "waiting", taskId: tasks[0].id, waitingOn: wait[1] }]
         : text.split(",").map((s) => s.trim()).filter(Boolean).map((title) => ({ kind: "add", title, size: 30 }));
       return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ reply: "Got it.", actions }) });
@@ -255,7 +255,7 @@ const FAKES = {
   if (tasksTab) { await page.click("#tabTasks"); await page.waitForTimeout(150); }
   if (evalJs) console.log("eval:", JSON.stringify(await page.evaluate(evalJs)));
   if (args.includes("--text")) console.log(await page.innerText("body"));
-  if (args.includes("--json-dump")) console.log(JSON.stringify(await page.evaluate(() => window.__store.tasks.map(({ title, area, type, where, openHours, size, stakes, energy, due, dateKind, guessed, spentMinutes, stopsUnfinished }) => ({ title, area, type, where, openHours, size, stakes, energy, due, dateKind, guessed, spentMinutes, stopsUnfinished })))));
+  if (args.includes("--json-dump")) console.log(JSON.stringify(await page.evaluate(() => window.__store.tasks.map(({ title, area, type, where, openHours, size, stakes, due, dateKind, guessed, spentMinutes, stopsUnfinished }) => ({ title, area, type, where, openHours, size, stakes, energy, due, dateKind, guessed, spentMinutes, stopsUnfinished })))));
   if (args.includes("--tasks-dump")) console.log(await page.evaluate(() => window.__store.tasks.map((t) => t.title + ": " + t.status + (t.skipCount ? " skips " + t.skipCount : "") + (t.source ? " [" + t.source.app + ":" + t.source.cardId + "]" : "")).join(" | ")));
   fs.mkdirSync(outDir, { recursive: true });
   const file = path.join(outDir, `${name}${tasksTab ? "-tasks" : ""}${cal ? "-cal" + cal.replace(/\W/g, "") : ""}${running ? "-run" + running.replace(/\W/g, "") : ""}${clicks.length ? "-" + clicks.join("").replace(/\W/g, "").slice(0, 24) : ""}${wide ? "-wide" : ""}${args.includes("--dark") ? "-dark" : ""}.png`);

@@ -1,39 +1,14 @@
-// Energy and place for the Now card's two chips (DAISEY_SPEC "Energy
-// guessing and learning", "Read the moment"). PURE.
+// Place for the Now card's chip (DAISEY_SPEC "Read the moment"). PURE.
 //
-// Energy, strongest signal first: your correction in the last 3 hours; else
-// the average of your past corrections at this time of day (once there are
-// 5), else Medium — then one step lower if a long or draining calendar
-// event ended in the last hour.
 // Place: your correction in the last 3 hours; else the phone's location
 // (where.js: home, out, walk, ride, train, bus, car, spot:<name>); else Out
 // while an event with a location runs or just after it; else Home.
+// (Energy lived here until 2026-10-07; it was dropped on purpose.)
 import * as W from "./weights.js";
-import { timeBucket } from "./engine.js";
 import { localDate } from "./model.js";
 
 const HOUR = 3600000, MIN = 60000;
-const fresh = (c, now) => !!c && W.ENERGY_LEVELS.concat(["home", "out", "anywhere"]).includes(c.value) && now - c.at < W.CORRECTION_HOURS * HOUR;
-
-// history: [{ part, weekend, value }] — past energy corrections.
-export function energyNow({ correction = null, history = [], events = [], now = Date.now() } = {}){
-  if (fresh(correction, now) && W.ENERGY_LEVELS.includes(correction.value)) return { value: correction.value, guessed: false };
-  const b = timeBucket(now);
-  const same = history.filter((h) => h.part === b.part && h.weekend === b.weekend && W.ENERGY_LEVELS.includes(h.value));
-  let lvl = 1; // medium
-  if (same.length >= W.ENERGY_PATTERN_MIN) {
-    lvl = Math.round(same.reduce((s, h) => s + W.ENERGY_LEVELS.indexOf(h.value), 0) / same.length);
-  }
-  const drained = events.some((e) => {
-    if (e.allDay) return false;
-    const start = Date.parse(e.start), end = Date.parse(e.end);
-    if (!(end <= now && now - end <= W.DRAIN.withinMinutes * MIN)) return false;
-    const title = String(e.title || "").toLowerCase();
-    return end - start >= W.DRAIN.longMinutes * MIN || W.DRAIN.words.some((w) => title.includes(w));
-  });
-  if (drained) lvl = Math.max(0, lvl - 1);
-  return { value: W.ENERGY_LEVELS[lvl], guessed: true, drained };
-}
+const fresh = (c, now) => !!c && ["home", "out", "anywhere"].includes(c.value) && now - c.at < W.CORRECTION_HOURS * HOUR;
 
 export function placeNow({ correction = null, located = null, events = [], now = Date.now() } = {}){
   if (fresh(correction, now) && ["home", "out", "anywhere"].includes(correction.value)) return { value: correction.value, guessed: false };

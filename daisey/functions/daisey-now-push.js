@@ -34,7 +34,7 @@ const validTz = (tz) => { try { new Intl.DateTimeFormat("en", { timeZone: tz });
 // Only the fields the engine, the brief, the wrap and the people alert read,
 // cleaned. No notes, links or steps. (waitingOn since 2026-10-06: the
 // "before a meeting" alert names who a task waits on.)
-const TEXT = ["id", "title", "project", "area", "type", "where", "openHours", "stakes", "energy", "status", "dateKind", "waitingOn", "again"];
+const TEXT = ["id", "title", "project", "area", "type", "where", "openHours", "stakes", "status", "dateKind", "waitingOn", "again"];
 const DAYS = ["due", "notBefore", "checkOn"];
 const NUMS = ["size", "spentMinutes", "starts", "skipsSinceStart", "skipCount", "pushes", "createdAt", "touchedAt", "workedAt", "doneAt"];
 const cleanTask = (t) => {
@@ -44,6 +44,8 @@ const cleanTask = (t) => {
   for (const k of NUMS) if (Number.isFinite(t?.[k])) o[k] = t[k];
   o.dueTime = typeof t?.dueTime === "string" && /^\d{2}:\d{2}$/.test(t.dueTime) ? t.dueTime : null;
   o.canSplit = !!t?.canSplit;
+  // Places this task was said not to suit ("Not here" on a skip): the engine hides it there.
+  if (Array.isArray(t?.notAt)) o.notAt = t.notAt.slice(0, 5).map((k) => str(k, 20)).filter(Boolean);
   o.title ||= "Untitled";
   return o;
 };

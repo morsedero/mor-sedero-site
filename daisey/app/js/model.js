@@ -6,10 +6,11 @@
 // timestamps are epoch ms.
 //
 // Decided with Mor (2026-10-03, revised 2026-10-04 with the spec update):
-// - Only the title is asked for. Area, type, where, open hours, size, energy
-//   and stakes are guessed from it (guessFields) and shown as chips the user
-//   can fix. Every field still a guess is listed in `guessed`.
-// - Energy is back (2026-10-04) after a day out: a guess per task, fixable.
+// - The user gives a title and the time they think it takes (size). Area,
+//   type, where, open hours and stakes are guessed (guessFields) and fixed by
+//   behaviour — a skip reason, past tasks — not by chips (Mor, 2026-10-07).
+//   Every field still a guess is listed in `guessed`.
+// - Energy is gone (Mor, 2026-10-07): "no one wants to deal with that".
 // - A date is a Deadline (real) or a Target (wish), never computed. New and
 //   migrated dates are Targets until the user says otherwise.
 // - No repeating tasks.
@@ -38,12 +39,11 @@ export const TYPES = ["deep", "admin", "call", "errand", "home", "social"];
 export const WHERE = ["anywhere", "computer", "home", "out", "phone"];
 export const OPEN_HOURS = ["anytime", "office", "evening"];
 export const STAKES = ["low", "money", "someone", "penalty"];
-export const ENERGY = ["low", "medium", "high"];
 export const DATE_KINDS = ["deadline", "target"];
 // The single-choice fields guessed from the title, and what each may hold.
-export const CHOICES = { area: AREAS, type: TYPES, where: WHERE, openHours: OPEN_HOURS, stakes: STAKES, energy: ENERGY };
+export const CHOICES = { area: AREAS, type: TYPES, where: WHERE, openHours: OPEN_HOURS, stakes: STAKES };
 // Every field Daisey can guess, in the order the chips show them.
-export const GUESSABLE = ["area", "type", "where", "openHours", "size", "stakes", "energy", "canSplit"];
+export const GUESSABLE = ["area", "type", "where", "openHours", "size", "stakes", "canSplit"];
 
 export const LABELS = {
   area: { work: "Work", job: "Job search", home: "Home", admin: "Admin", social: "Social", personal: "Personal" },
@@ -51,7 +51,6 @@ export const LABELS = {
   where: { anywhere: "Anywhere", computer: "Computer", home: "Home", out: "Out", phone: "Phone" },
   openHours: { anytime: "Anytime", office: "Office hours", evening: "Evening" },
   stakes: { low: "Low stakes", money: "Costs money", someone: "Affects someone", penalty: "Deadline penalty" },
-  energy: { low: "Low energy", medium: "Medium energy", high: "High energy" },
   dateKind: { deadline: "Deadline", target: "Target" },
 };
 
@@ -315,12 +314,6 @@ export function guessArea(title, project, type, history = []){
   return "work";
 }
 
-export function guessEnergy(type, size){
-  if (type === "deep" && size >= 60) return "high";
-  if ((type === "call" || type === "admin" || type === "errand") && size <= 15) return "low";
-  return "medium";
-}
-
 // Is this a value the field can hold? (size: minutes; canSplit: boolean)
 export function validField(k, v){
   if (k === "size") return toMinutes(v) != null;
@@ -330,7 +323,7 @@ export function validField(k, v){
 
 // Every guessable field. `given` holds the user's own values; the rest are
 // guessed in dependency order, so a type the user picked steers where,
-// hours, size and energy, and a size steers energy and can-split.
+// hours and size, and a size steers can-split.
 export function guessFields(title, project, given = {}, history = []){
   const v = { ...given };
   v.type ??= guessType(title);
@@ -339,7 +332,6 @@ export function guessFields(title, project, given = {}, history = []){
   v.openHours ??= guessOpenHours(title, v.type);
   v.stakes ??= guessStakes(title);
   v.size ??= guessSize(title, history, v.type);
-  v.energy ??= guessEnergy(v.type, v.size);
   v.canSplit ??= v.size >= SPLIT_FROM;
   return v;
 }
@@ -387,7 +379,6 @@ export function createTask(input, { now = Date.now(), history = [] } = {}){
     openHours: v.openHours,
     size: v.size,
     stakes: v.stakes,
-    energy: v.energy,
     due,
     dueTime: due ? toTime(input.dueTime) : null,
     dateKind: due ? (DATE_KINDS.includes(input.dateKind) ? input.dateKind : "target") : null,
@@ -562,6 +553,21 @@ export function skipReason(task, reason, { now = Date.now() } = {}){
   return patch;
 }
 
+// The one optional tap after a skip (Mor, 2026-10-07: minimal input, Daisey
+// learns the rest). It fixes the field that was wrong, at the moment it was
+// wrong, instead of asking for it up front:
+//   toobig   it can be done in pieces, so a smaller gap may offer a part
+//   nothere  never offered again where you are now (notAt: home, out, …)
+export const SKIP_LESSONS = ["toobig", "nothere"];
+export function skipLesson(task, reason, { place = "anywhere", now = Date.now() } = {}){
+  if (!SKIP_LESSONS.includes(reason)) return {};
+  const counts = { ...(task.skipReasons || {}) };
+  const patch = { skipReasons: { ...counts, [reason]: (counts[reason] || 0) + 1 }, touchedAt: now };
+  if (reason === "toobig") patch.canSplit = true;
+  if (reason === "nothere" && place && place !== "anywhere") patch.notAt = [...new Set([...(task.notAt || []), place])].slice(-3);
+  return patch;
+}
+
 // Everything the two patches above can touch, as it was — so Undo puts the
 // task back exactly, not approximately.
 export const skipSnapshot = (task) => ({
@@ -570,6 +576,7 @@ export const skipSnapshot = (task) => ({
   notBefore: task.notBefore ?? null, // Later → This week sets it
   waitingOn: task.waitingOn ?? null, // Pending's reason
   checkOn: task.checkOn ?? null, // …and when to ask again
+  canSplit: task.canSplit ?? false, notAt: task.notAt ?? [], // …and what the reason chips taught
 });
 
 // Focus mode. Starting clears the stale-skip count: a task you actually

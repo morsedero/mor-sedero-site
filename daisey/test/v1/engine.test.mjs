@@ -14,7 +14,7 @@ const NOW = at(5);
 let seq = 0;
 const task = (o = {}) => ({
   id: `t${++seq}`, project: "P", title: "Task", size: 30, area: "work", type: "deep", where: "computer",
-  openHours: "anytime", stakes: "low", energy: "medium",
+  openHours: "anytime", stakes: "low", 
   due: null, dueTime: null, dateKind: null, status: "ready", canSplit: false,
   createdAt: NOW, touchedAt: NOW, skipsSinceStart: 0, spentMinutes: 0, ...o,
 });
@@ -40,10 +40,9 @@ test("calendar window: minutes to the next event; inside one → 0; none today �
   assert.equal(E.readMoment({ now: NOW, window: 660 }).window, W.WINDOW_CAP);
 });
 
-test("moment: no calendar → 60 min, window capped at 180; energy medium, place anywhere by default", () => {
+test("moment: no calendar → 60 min, window capped at 180; place anywhere by default", () => {
   const m = E.readMoment({ now: NOW });
   assert.equal(m.window, 60);
-  assert.equal(m.energy, "medium");
   assert.equal(m.place, "anywhere");
   assert.equal(E.readMoment({ now: NOW, window: 400 }).window, 180);
   assert.equal(E.readMoment({ now: NOW, window: 0 }).window, 0);
@@ -69,18 +68,6 @@ test("office hours: Sun–Thu 9–16; closed Fri, Sat and holidays, worked out p
   assert.ok(H.holidaysOf(2027).has("2027-10-11")); // Yom Kippur 2027
   assert.ok(H.holidaysOf(2026).has("2026-04-22")); // Independence Day 2026
   assert.equal(H.officeMinutesLeft(at(5, 15, 20)), 40);
-});
-
-test("energy guess: correction for 3 h, else Medium, else the bucket's average after 5; a long event lowers it", () => {
-  assert.equal(C.energyNow({ now: NOW }).value, "medium");
-  assert.deepEqual(C.energyNow({ correction: { value: "high", at: NOW - 2 * 3600e3 }, now: NOW }), { value: "high", guessed: false });
-  assert.equal(C.energyNow({ correction: { value: "high", at: NOW - 4 * 3600e3 }, now: NOW }).value, "medium");
-  const hist = (v, n) => Array.from({ length: n }, () => ({ part: "morning", weekend: false, value: v }));
-  assert.equal(C.energyNow({ history: hist("low", 4), now: NOW }).value, "medium"); // not enough yet
-  assert.equal(C.energyNow({ history: hist("low", 5), now: NOW }).value, "low");
-  assert.equal(C.energyNow({ events: [ev("Recording", 7, 0, 9, 30)], now: NOW }).value, "low"); // 2.5 h, ended 30 min ago
-  assert.equal(C.energyNow({ events: [ev("שיעור פסנתר", 9, 0, 9, 45)], now: NOW }).value, "low"); // draining title
-  assert.equal(C.energyNow({ events: [ev("Coffee", 9, 0, 9, 45)], now: NOW }).value, "medium");
 });
 
 test("place guess: correction for 3 h, else Out at/after an event with a location, else Home", () => {
@@ -128,12 +115,6 @@ test("gate 1: window — too big is out, unless it can split and the window is 2
   assert.equal(E.filterOut(task({ size: 61 }), moment()), "size");
   assert.equal(E.filterOut(task({ size: 90, canSplit: true }), moment({ window: 25 })), null);
   assert.equal(E.filterOut(task({ size: 90, canSplit: true }), moment({ window: 24 })), "size");
-});
-
-test("gate 1: energy — a High task is out when you're Low", () => {
-  assert.equal(E.filterOut(task({ energy: "high" }), moment({ energy: "low" })), "energy");
-  assert.equal(E.filterOut(task({ energy: "high" }), moment({ energy: "medium" })), null);
-  assert.equal(E.filterOut(task({ energy: "medium" }), moment({ energy: "low" })), null);
 });
 
 test("gate 1: a calendar block named after a project keeps only that project", () => {
@@ -199,14 +180,13 @@ test("gate 2 neglect: +1 per whole day without real work, max 8", () => {
   assert.equal(parts(task({ createdAt: NOW - 5 * 864e5, touchedAt: NOW })).neglect, 5);
 });
 
-// ---------- Gate 3: does it fit this gap? ----------
-
-test("gate 3 energy fit: exact 15, one step less 10, one step more 3", () => {
-  assert.equal(parts(task({ energy: "medium" }), { energy: "medium" }).energy, 15);
-  assert.equal(parts(task({ energy: "low" }), { energy: "medium" }).energy, 10);
-  assert.equal(parts(task({ energy: "high" }), { energy: "medium" }).energy, 3);
-  assert.equal(parts(task({ energy: "low" }), { energy: "high" }).energy, 5);
+test("gate 1: a task told \"Not here\" is out where you said it, and only there", () => {
+  const t = task({ where: "anywhere", notAt: ["home"] });
+  assert.equal(E.filterOut(t, moment({ place: "home" })), "place");
+  assert.equal(E.filterOut(t, moment({ place: "out" })), null);
 });
+
+// ---------- Gate 3: does it fit this gap? ----------
 
 test("gate 3 window fit: 50–100% 12, 25–50% 8, under 25% 5, split piece 6; stand-in window 0", () => {
   assert.equal(parts(task({ size: 30 })).window, 12);
@@ -246,7 +226,7 @@ test("gate 3 skip penalty: −8 per skip today; the score is the sum of all part
   const t = task();
   const s = E.scoreTask(t, moment({ skipsToday: { [t.id]: 2 } }));
   assert.equal(s.parts.skips, -16);
-  assert.equal(s.score, 15 /* energy */ + 12 /* window */ - 16);
+  assert.equal(s.score, 12 /* window */ - 16);
 });
 
 // ---------- ranking ----------
@@ -257,7 +237,7 @@ test("tie-break: real deadline first, then higher stakes, then smaller size", ()
   assert.equal(E.rank([a, b], { now: NOW }).ranked[0].score, E.rank([a, b], { now: NOW }).ranked[1].score);
   const big = task({ size: 60 }), small = task({ size: 30 });
   assert.equal(pick([big, small]).task.id, small.id);
-  // Deadline 25 vs stakes 15 + energy gap: compare ties directly.
+  // Deadline 25 vs stakes 15 : compare ties directly.
   const s = (o) => ({ task: { size: 30, createdAt: 0 }, score: 50, parts: { deadline: 0, stakes: 0, ...o } });
   assert.ok(E.compare(s({ deadline: 12 }), s({ stakes: 15 })) < 0);
   assert.ok(E.compare(s({ stakes: 12 }), s({ stakes: 10 })) < 0);
@@ -284,10 +264,10 @@ test("why: the strongest 2–3 factors, first person on the card", () => {
   const s = pick(dl("2026-10-05", { stakes: "money", size: 30 }));
   assert.equal(s.why, "Deadline today, costs money if late, fills your free hour.");
   assert.equal(E.whyText(E.whySaid(s)), "I'd do this now: deadline today, costs money if late, fills your free hour.");
-  assert.equal(E.whyText(E.whySaid(pick(task({ energy: "high", size: 120, canSplit: true }), { realWindow: false, energy: "low" }) || { whyParts: [] })), "I'd do this one next.");
+  assert.equal(E.whyText(E.whySaid(pick(task({ size: 120, canSplit: true }), { realWindow: false }) || { whyParts: [] })), "I'd do this one next.");
 });
 
-test("why: phrase table — deadline, stakes, office, area, batch, energy, window, momentum", () => {
+test("why: phrase table — deadline, stakes, office, area, batch, window, momentum", () => {
   assert.match(why(dl("2026-10-06")), /deadline tomorrow/i);
   assert.match(why(dl("2026-10-08")), /deadline Thursday/i);
   assert.match(why(dl("2026-10-01")), /deadline passed/i);
@@ -295,9 +275,8 @@ test("why: phrase table — deadline, stakes, office, area, batch, energy, windo
   assert.match(why(task({ stakes: "penalty" })), /penalty if late/i);
   assert.match(why(task({ openHours: "office", type: "admin", size: 30 }), { now: at(5, 14), window: 60 }), /offices close at 16:00/i);
   assert.match(why([task({ area: "job" }), task({ area: "work", size: 61 })], { areaDone: { work: 3 } }), /Job search hasn't moved this week/i);
-  const calls = [10, 5].map((size) => task({ type: "call", size, where: "phone", energy: "low" }));
-  assert.match(why(calls, { energy: "low" }), /2 calls, done together/i);
-  assert.match(why(task({ energy: "low", size: 5 }), { energy: "low" }), /light one, you're low/i);
+  const calls = [10, 5].map((size) => task({ type: "call", size, where: "phone" }));
+  assert.match(why(calls, {}), /2 calls, done together/i);
   assert.match(why(task({ size: 40 }), { nextEvent: "teaching" }), /fits before teaching/i);
   assert.match(why(task({ project: "Monster Punk" }), { lastProject: "Monster Punk" }), /keeps Monster Punk going/i);
 });
@@ -324,9 +303,9 @@ test("why: the card and its alternatives never share a why line", () => {
 
 test("scenario: Friday morning the calls vanish; Sunday they come back as a batch", () => {
   const tasks = [
-    task({ title: "Call the bank", type: "call", where: "phone", openHours: "office", size: 15, stakes: "money", energy: "low" }),
-    task({ title: "Call Bituach Leumi", type: "call", where: "phone", openHours: "office", size: 15, energy: "low" }),
-    task({ title: "Boss loop fix", project: "Monster Punk", size: 60, energy: "high" }),
+    task({ title: "Call the bank", type: "call", where: "phone", openHours: "office", size: 15, stakes: "money" }),
+    task({ title: "Call Bituach Leumi", type: "call", where: "phone", openHours: "office", size: 15 }),
+    task({ title: "Boss loop fix", project: "Monster Punk", size: 60 }),
   ];
   const fri = E.rank(tasks, { now: at(9, 10), window: 90 });
   assert.equal(fri.pick.task.title, "Boss loop fix");

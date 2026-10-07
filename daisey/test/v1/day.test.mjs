@@ -14,7 +14,7 @@ const iso = (ms) => new Date(ms).toISOString();
 const ev = (title, s, e, o = {}) => ({ title, start: iso(s), end: iso(e), ...o });
 let seq = 0;
 const task = (o = {}) => ({ id: `t${++seq}`, project: "P", title: "Task", size: 30, area: "work", type: "deep", where: "computer",
-  openHours: "anytime", stakes: "low", energy: "medium", status: "ready", canSplit: false, createdAt: 1, touchedAt: NOW, ...o });
+  openHours: "anytime", stakes: "low", status: "ready", canSplit: false, createdAt: 1, touchedAt: NOW, ...o });
 
 test("day hours: default 08–22, settings override, nonsense falls back", () => {
   assert.deepEqual(D.dayHours({}), { start: 480, end: 1320 });

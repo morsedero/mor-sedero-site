@@ -10,7 +10,7 @@
 // PURE: no Firebase, no DOM.
 import { gapsToday, bookings } from "./day.js";
 import { rank } from "./engine.js";
-import { workBase, energyNow } from "./context.js";
+import { workBase } from "./context.js";
 import { overruled, eventKey } from "./reality.js";
 import * as W from "./weights.js";
 
@@ -29,7 +29,7 @@ const left = (t) => Math.max(5, (t.size || 0) - (t.spentMinutes || 0));
 // → [{ key, label, minutes, from, picks: [{ task, why, minutes }] }], only the
 // windows with time left, in order. run: the running task (state/now): the
 // plan leaves it out, it's already being done.
-export function planDay({ tasks = [], events = [], now = Date.now(), hours = W.DAY_HOURS, settings = {}, run = null, energy } = {}){
+export function planDay({ tasks = [], events = [], now = Date.now(), hours = W.DAY_HOURS, settings = {}, run = null } = {}){
   const over = overruled(events, { tasks, run, now });
   const evs = events.filter((e) => !over.has(eventKey(e)));
   const gaps = gapsToday(evs, now, hours).filter((g) => g.minutes >= WORTH);
@@ -49,7 +49,7 @@ export function planDay({ tasks = [], events = [], now = Date.now(), hours = W.D
     while (picks.length < MAX_PICKS && room >= WORTH) {
       const r = rank(tasks, {
         now: at, window: biggest, nextEvent: null, ...workBase(tasks, now),
-        energy: energy || energyNow({ events: evs, now: at }).value, intents: settings.intents || {},
+        intents: settings.intents || {},
         sessionSkips: [...taken], booked,
       });
       if (!r.pick) break;
