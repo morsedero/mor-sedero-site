@@ -141,7 +141,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
     return h("div", { className: "hero-top" },
       h("span", { className: "hero-area" }, h("span", { className: "dot", ariaHidden: "true" }),
         h("span", { className: "hero-where" }, area, area && proj ? " · " : "", proj || (area ? "" : "Inbox"))),
-      side && h("span", { className: "hero-side", textContent: side }));
+      side && h("span", { className: "hero-side" }, side, progressBar(t)));
   }
 
   // The card. (Swiping it away is gone, Mor 2026-10-07: nobody could see it,

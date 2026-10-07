@@ -1064,7 +1064,8 @@ dialog.tsheet .msg:empty { display: none; }
 /* The compact Now card (~150px): area line, title, one-line why, one row. */
 .now-card.main { min-block-size: 150px; display: flex; flex-direction: column; gap: 0; padding: 13px 15px; border-radius: 20px; box-shadow: 0 10px 24px color-mix(in srgb, var(--aink) 12%, transparent); }
 .now-card.main .hero-top, .now-card.main .hero-area { font-size: 12px; }
-.now-card.main .hero-side { font-size: 11px; }
+.now-card.main .hero-side { font-size: 11px; display: inline-flex; align-items: center; gap: 6px; }
+.hero-side .task-bar { position: static; inline-size: 36px; block-size: 3px; border-radius: 2px; flex: none; }
 .now-card.main .now-title, .now-card.main button.now-title {
   margin-block-start: 6px; font-size: 21px; line-height: 1.15; letter-spacing: -0.2px;
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
