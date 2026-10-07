@@ -7,7 +7,7 @@ const GUEST_UID = "guest-local";
 const guestMode = () => { try { return localStorage.getItem(GUEST_KEY) === "1"; } catch { return false; } };
 
 import { mountPlaces } from "./places.js";
-import { flash, h, bdi } from "./ui.js";
+import { flash, h, bdi, icon } from "./ui.js";
 
 // The header's chips (round 3, New Design/6): green "✓ N done" today, and
 // amber "N need you", each only when there is something. now.js reports both.
@@ -435,12 +435,14 @@ async function boot(){
         // Done chip: today's finished tasks, newest first; tap one to open it.
         $("#doneChip").onclick = () => {
           const dlg = $("#donedlg"), list = m.now?.doneList() || [];
-          const row = (t) => h("li", {}, h("button", { type: "button", className: "linkish", onclick: () => { dlg.close(); m.adder.edit(t); } },
-            h("span", {}, new Date(t.doneAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) + " "), bdi(t.title)));
+          const row = (t) => h("div", { className: "pj-drow" },
+            h("span", { className: "pj-tick on", ariaHidden: "true" }, icon("check")),
+            h("button", { type: "button", className: "pj-quiet", onclick: () => { dlg.close(); m.adder.edit(t); } }, bdi(t.title)),
+            h("span", { className: "pj-meta", dir: "ltr", textContent: new Date(t.doneAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) }));
           dlg.replaceChildren(
             h("div", { className: "now-head" }, h("h2", { id: "dnTitle", textContent: "Done today" }),
               h("button", { className: "now-x", type: "button", ariaLabel: "Close", textContent: "✕", onclick: () => dlg.close() })),
-            list.length ? h("ul", { className: "pl-list" }, ...list.map(row)) : h("p", { className: "muted", textContent: "Nothing done yet today." }));
+            h("div", { className: "pj-drawer" }, ...(list.length ? list.map(row) : [h("p", { className: "pj-hint", textContent: "Nothing done yet today." })])));
           dlg.showModal();
         };
         $("#needsChip").onclick = () => { m.needs.open(); screens.open("needs"); };
