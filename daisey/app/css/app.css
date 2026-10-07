@@ -609,6 +609,9 @@ dialog.now:focus { outline: none; }
 .menu-ico { flex: none; display: grid; place-items: center; inline-size: 30px; block-size: 30px; border-radius: 10px; background: var(--surface-2, rgba(0,0,0,.05)); color: var(--ink-2); }
 .menu-ico.logo { background: none; }
 .menu-row:has(.menu-ico) .menu-label { margin-inline-end: auto; }
+.menu-stack { display: grid; gap: 2px; }
+.menu-sub { font-size: 12px; color: var(--ink-2); }
+.menu-sub input { inline-size: 15px; block-size: 15px; }
 .menu-stat { display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--ink-2); }
 .menu-note { margin: 0; font-size: 12px; color: var(--ink-2); }
 .menu-link { justify-self: start; min-block-size: 32px; padding: 0; border: 0; background: none; font: inherit; font-size: 14px; color: var(--ink); cursor: pointer; }
