@@ -230,13 +230,24 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
       d.close();
       if (out) flash(`${plural(out, "task")} outside these dates: `, v);
     };
+    // Same rule as before: only an empty project can go. Two taps to confirm.
+    let del = null;
+    if (made.includes(old) && !(tasks || []).some((t) => (t.project || INBOX) === old)) {
+      let armed = false;
+      del = h("button", { className: "btn quiet danger", type: "button", textContent: "Delete project", onclick: () => {
+        if (!armed) { armed = true; del.textContent = "Really delete?"; del.classList.add("arm"); return; }
+        d.close();
+        deleteProject(old);
+      } });
+    }
     d.replaceChildren(
       h("div", { className: "now-head" }, h("h2", { id: "npTitle", textContent: "Edit project" }),
         h("button", { className: "now-x", type: "button", ariaLabel: "Close", textContent: "✕", onclick: () => d.close() })),
       h("form", { className: "np-form", onsubmit: save }, name, msg, f.box, f.msg,
         h("div", { className: "sheet-actions" },
           h("button", { className: "btn primary", type: "submit", textContent: "Save" }),
-          h("button", { className: "btn quiet", type: "button", textContent: "Cancel", onclick: () => d.close() }))));
+          h("button", { className: "btn quiet", type: "button", textContent: "Cancel", onclick: () => d.close() }),
+          del)));
     d.onclick = (e) => { if (e.target === d) d.close(); };
     d.showModal();
     name.focus();
@@ -388,7 +399,7 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
         drawerEl),
       h("section", { className: "pj-sec pj-one", ariaLabel: "Tasks" }, ...next, ...pending,
         h("button", { type: "button", className: "pj-add", textContent: "+ Add a task", onclick: () => onAdd?.(p.name === INBOX ? "" : p.name) })),
-      !p.all.length && made.includes(p.name) && h("button", { type: "button", className: "pj-del", textContent: "Delete project", onclick: () => deleteProject(p.name) })].filter(Boolean));
+      ].filter(Boolean));
     els.view.className = "screen" + colorClass(p);
     els.view.scrollTop = y;
     const row = els.view.querySelector(".pj-chips");
