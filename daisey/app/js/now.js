@@ -1355,7 +1355,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
     // Tasks finished today, newest first, for the header's done chip.
     doneList(){ return doneToday(tasks || []).sort((a, b) => b.doneAt - a.doneAt); },
     // "Plan my day" from the Schedule: the proposal on the card.
-    plan(){ if (run) { flash("Finish or stop the running task first."); return; } openProposal(); },
+    plan(){ if (prop.open) { closeProposal(); return; } if (run) { flash("Finish or stop the running task first."); return; } openProposal(); },
     unmount(){ deep.leave(); deep.watch(() => {}); showing(null); clearTimeout(toastTimer); document.body.classList.remove("focus"); document.documentElement.classList.remove("night"); unsubs.forEach((u) => u()); clearInterval(tick); document.removeEventListener("visibilitychange", onVisible); root.replaceChildren(); root.hidden = true; },
   };
 }
