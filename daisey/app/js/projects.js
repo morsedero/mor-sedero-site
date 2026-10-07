@@ -8,7 +8,7 @@
 //
 // The project screen. Back arrow + a row of project chips (the current one
 // filled in its colour); tap a chip, or swipe sideways anywhere that isn't a
-// task, for the next/previous project. A project card (name, progress), and under its bar two toggles, "X of Y done" and "Not now · N",
+// task, for the next/previous project. A project card (name, progress), and under its bar two toggles, "X of Y done" and "Archive · N",
 // each opening its drawer in the card: done tasks with a ticked tick that
 // reopens, Not now (status someday) with Bring back. Below the card, one
 // list in the order Daisey hands tasks out: ready first, then Pending,
@@ -95,7 +95,7 @@ const urgency = (onCard) => (a, b) => (b.id === onCard) - (a.id === onCard)
 function statusLine(p){
   const now = p.next.find((t) => !notYet(t));
   if (now) return ["Next: ", bdi(now.title)];
-  const parts = [p.pending.length && `${p.pending.length} pending`, p.next.length && `${p.next.length} later`, p.someday.length && `${p.someday.length} not now`].filter(Boolean);
+  const parts = [p.pending.length && `${p.pending.length} pending`, p.next.length && `${p.next.length} later`, p.someday.length && `${p.someday.length} archived`].filter(Boolean);
   return [parts.join(" · ") || "All done"];
 }
 // Effort still to do (master spec s.16, 2026-10-06): the sizes of the open
@@ -409,7 +409,7 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
           [ranges[p.name].start ? `Starts ${shortDay(ranges[p.name].start)}` : null, ranges[p.name].due ? `due ${shortDay(ranges[p.name].due)}` : null].filter(Boolean).join(" · ") }),
         p.all.length > 0 && h("div", { className: "pj-tgs" },
           toggle("done", h("span", { className: "pj-ok", ariaHidden: "true" }, icon("check")), h("span", { className: "pj-tg-t", textContent: `${p.done.length} of ${p.all.length} done` })),
-          p.someday.length > 0 && toggle("someday", h("span", { className: "pj-zz", ariaHidden: "true" }), h("span", { className: "pj-tg-t", textContent: `Not now · ${p.someday.length}` }))),
+          p.someday.length > 0 && toggle("someday", h("span", { className: "pj-zz", ariaHidden: "true" }), h("span", { className: "pj-tg-t", textContent: `Archive · ${p.someday.length}` }))),
         drawerEl),
       h("section", { className: "pj-sec pj-one", ariaLabel: "Tasks" }, ...next, ...pending,
         h("button", { type: "button", className: "pj-add", textContent: "+ Add a task", onclick: () => onAdd?.(p.name === INBOX ? "" : p.name) })),

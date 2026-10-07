@@ -317,7 +317,7 @@ export function mountAddTask(dialog, uid, { onStart } = {}){
     stateLine.replaceChildren(...(done
       ? [`Done ${t.doneAt ? new Date(t.doneAt).toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" }) : ""}. `,
         h("button", { type: "button", className: "linkish", textContent: "Reopen", onclick: () => save({ status: "ready" }) })]
-      : ["In Not now. Start brings it back."]));
+      : ["In Archive. Start brings it back."]));
     const r = t?.research;
     researchLine.hidden = !r || r.online === "unsure" || !r.why;
     researchLine.textContent = r ? `${r.online === "yes" ? "Daisey checked: can be done online" : "Daisey checked: needs a call or a visit"}${r.why ? ` — ${r.why}` : ""}` : "";
