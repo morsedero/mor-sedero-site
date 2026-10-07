@@ -759,17 +759,16 @@ body.focus .tell-panel { display: none; }
 .pl-opts { display: flex; flex-wrap: wrap; gap: 6px; margin-block: 4px 8px; }
 .pl-opts .chip { min-block-size: 38px; padding-inline: 13px; border: none; background: var(--chip); font-size: 14px; }
 .pl-opts .chip[aria-checked="true"] { background: var(--ink); color: var(--bg); }
-.pl-h { margin: 18px 0 8px; font-size: 14px; font-weight: 600; }
-.pl-save { display: grid; grid-template-columns: 1fr auto; gap: 6px 8px; align-items: end; margin-block-start: 10px; }
-.pl-list { list-style: none; margin: 14px 0 0; padding: 0; display: grid; gap: 8px; }
-.pl-intro { margin: 4px 0 0; font-size: 14px; opacity: .75; }
-.pl-now { margin: 0 0 6px; }
-.pl-empty { margin: 10px 0 0; font-size: 14px; }
-.pl-suggest { grid-column: 1 / -1; display: flex; gap: 6px; flex-wrap: wrap; }
-.pl-list + .btn, .pl-empty + .btn, .pl-save { margin-block-start: 12px; }
-.pl-name { display: grid; gap: 2px; }
-.pl-sub { opacity: .7; }
-.pl-list li { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.pl-h { margin: 18px 0 6px; font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-2); }
+.pl-now { margin: 2px 0 10px; font-weight: 600; }
+.pl-sub { color: var(--ink-2); font-weight: 400; font-size: 14px; }
+.pl-reset { margin-inline-start: 10px; font-size: 14px; color: var(--ink-2); }
+.pl-list { list-style: none; margin: 0; padding: 0; }
+.pl-list li { display: grid; grid-template-columns: 1fr auto auto; align-items: center; gap: 10px; min-block-size: 40px; border-block-end: 1px solid var(--line); }
+.pl-x { font: inherit; font-size: 14px; inline-size: 32px; block-size: 32px; border: 0; border-radius: 999px; background: transparent; color: var(--ink-2); cursor: pointer; }
+.pl-x:hover { background: var(--chip); }
+.pl-save { display: grid; grid-template-columns: 1fr auto; gap: 8px; margin-block-start: 10px; }
+.pl-save input { font: inherit; font-size: 16px; padding: 8px 12px; border: 1px solid var(--line); border-radius: 10px; background: transparent; color: inherit; min-inline-size: 0; }
 
 /* ===== Layout round 2 (Mor, 2026-10-05; daisey/New Design/6–10) =====
    A calm home with everything one pull away. Sizes and colours follow the
