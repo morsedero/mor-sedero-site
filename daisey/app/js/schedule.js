@@ -18,7 +18,7 @@
 // One day at a time (Mor, 2026-10-06: the whole week stacked vertically was
 // crowded and confusing), or the week as a grid — see "Day or Week" below.
 import { watchCalendar, connectCalendar, fetchRange, retime } from "./calendar.js";
-import { watchSettings, watchTasks, watchRun, watchDayPlan } from "./store.js";
+import { watchSettings, watchTasks, watchRun, watchDayPlan, saveDayPlan } from "./store.js";
 import { timeline } from "./proposal.js";
 import { areaClass, watchProjectColors } from "./look.js";
 import { dayHours, minText } from "./day.js";
@@ -230,8 +230,9 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onProjects } = 
         });
         rows = [...cut, ...planned].sort((a, b) => (a.start ?? -1) - (b.start ?? -1) || (a.kind === "free") - (b.kind === "free"));
       }
-    // Events a drag can swap places with: real timed ones still ahead.
-    const peers = rows.filter((x) => x.kind === "event" && !x.allDay && x.end > now && !/^✓/u.test(x.ev.title));
+    // What a drag can swap: every timed event and every planned block (each
+    // only with its own kind).
+    const peers = rows.filter((x) => (x.kind === "event" && !x.allDay) || x.kind === "plan");
     const out = [];
     if (t === t0 && now < atMin(today, hrs.start)) out.push(nightDivider(minText(hrs.end), minText(hrs.start)));
     const none = h("button", { type: "button", className: "sc-none", onclick: () => onNew?.(ymd) },
@@ -320,10 +321,12 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onProjects } = 
       h("span", { className: "sc-free" }, `${durText((x.end - x.start) / 60000)} free`, h("span", { className: "sc-add", ariaHidden: "true", textContent: "+" })));
     const on = !x.allDay && x.start <= now && now < x.end;
     const past = !x.allDay && x.end <= now;
-    if (x.kind === "plan") return h("div", { className: "sc-row" + (on ? " sc-on" : past ? " sc-past" : "") },
+    if (x.kind === "plan") { const pe = h("div", { className: "sc-row" + (on ? " sc-on" : past ? " sc-past" : "") },
       h("span", { className: "sc-time strong" }, time, on && h("span", { className: "sc-nowtag", textContent: "Now" })),
       h("button", { type: "button", className: "sc-ev sc-plan" + areaClass(x.task), ariaLabel: `Planned: ${x.task.title}, ${time}`, onclick: () => onOpen?.(x.task) },
         h("span", { className: "sc-evi" }, icon("check")), bdi(x.task.title)));
+      if (peers.includes(x)) { x.el = pe; pe.append(grip(x, pe, peers)); pe.classList.add("sc-drag"); }
+      return pe; }
     // A finished task is logged as a "✓ title" event (calendar.js logDone).
     const done = /^✓\s*/u.test(x.ev.title), title = done ? x.ev.title.replace(/^✓\s*/u, "") : x.ev.title;
     const rowEl = h("div", { className: "sc-row" + (on ? " sc-on" : past ? " sc-past" : "") }, h("span", { className: "sc-time strong" }, time, on && h("span", { className: "sc-nowtag", textContent: "Now" })),
@@ -348,7 +351,7 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onProjects } = 
       if (!g.hasPointerCapture(e.pointerId)) return;
       const dy = e.clientY - y0;
       rowEl.style.transform = `translateY(${dy}px)`;
-      const i = peers.indexOf(x), nb = peers[i + (dy < 0 ? -1 : 1)];
+      const same = peers.filter((p) => p.kind === x.kind), i = same.indexOf(x), nb = same[i + (dy < 0 ? -1 : 1)];
       const r = rowEl.getBoundingClientRect(), c = r.top + r.height / 2; // already includes dy
       target = null;
       if (nb?.el?.isConnected) {
@@ -365,6 +368,13 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onProjects } = 
       const nb = e.type === "pointerup" ? target : null; target = null;
       if (!nb) return;
       const [a, b] = x.start <= nb.start ? [x, nb] : [nb, x]; // earlier, later
+      if (x.kind === "plan") { // planned blocks: swap their order in the saved plan
+        const items = [...dayPlan.items], i = items.findIndex((it) => it.taskId === a.task.id), j = items.findIndex((it) => it.taskId === b.task.id);
+        if (i < 0 || j < 0) return;
+        [items[i], items[j]] = [items[j], items[i]];
+        saveDayPlan(uid, { ...dayPlan, items }).catch(fail);
+        return;
+      }
       try {
         await Promise.all([
           retime(b.ev, a.start, a.start + (b.end - b.start)),
