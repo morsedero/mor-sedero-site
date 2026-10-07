@@ -283,34 +283,7 @@ async function boot(){
             else if (r.cal !== "ok") flash("Sent, but the calendar couldn't be read.");
           } catch (e) { flash("Couldn't send the brief."); }
         };
-        // Weekly goals (Settings): a number per area, "N this week" beside it.
-        // Blank = not set (Needs you will ask), 0 = no goal.
-        const goalsBox = $("#goals");
-        const goalInputs = Object.fromEntries(AREAS.map((a) => {
-          const input = Object.assign(document.createElement("input"), { type: "number", min: 0, max: 50, inputMode: "numeric", id: `goal-${a}` });
-          input.onchange = () => {
-            const intents = { ...(lastSettings.intents || {}) };
-            const n = parseInt(input.value, 10);
-            if (input.value === "" || !Number.isFinite(n)) delete intents[a]; else intents[a] = Math.max(0, Math.min(50, n));
-            saveSettings(user.uid, { intents }).catch(fail);
-          };
-          return [a, input];
-        }));
-        const goalDone = Object.fromEntries(AREAS.map((a) => [a, Object.assign(document.createElement("span"), { className: "goal-done" })]));
-        goalsBox.replaceChildren(...AREAS.flatMap((a) => {
-          const label = Object.assign(document.createElement("label"), { htmlFor: `goal-${a}`, textContent: LABELS.area[a] });
-          label.append(goalDone[a]);
-          return [label, goalInputs[a]];
-        }));
-        const paintGoals = () => {
-          const done = workBase(briefTasks || []).areaDone;
-          for (const a of AREAS) {
-            const v = lastSettings.intents?.[a];
-            if (document.activeElement !== goalInputs[a]) goalInputs[a].value = v == null ? "" : String(v);
-            goalDone[a].textContent = v > 0 ? `${done[a] || 0} this week` : "";
-          }
-        };
-        const stopBriefTasks = watchTasks(user.uid, (ts) => { briefTasks = ts; paintGoals(); snap(); }, fail);
+        const stopBriefTasks = watchTasks(user.uid, (ts) => { briefTasks = ts; snap(); }, fail);
         const stopBriefRun = watchRun(user.uid, (r) => { briefRun = r || null; snap(); }, fail);
         const stopSettings = watchSettings(user.uid, (s) => {
           const hrs = dayHours(s || {});
@@ -323,7 +296,6 @@ async function boot(){
           lastSettings = s || {};
           briefOn = !!s?.morningBrief;
           kindBoxes.forEach((b) => { b.checked = s?.notify?.[b.dataset.kind] !== false; });
-          paintGoals();
           snap();
         }, fail);
         logSwitch.onchange = () => saveSettings(user.uid, { logDone: logSwitch.checked }).catch(fail);
