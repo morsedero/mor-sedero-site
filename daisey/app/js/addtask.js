@@ -5,7 +5,7 @@
 // Top to bottom: the project (dot + name, a list with "+ New project…"),
 // the title (26px, edited in place), two date boxes side by side — Start
 // (not before) FIRST, then Due with its Deadline/Target tag — one collapsed
-// "Details: size, energy, place" row over Daisey's guessed chips, Steps,
+// "Details: size, energy, place" row over Daisey's guessed chips,
 // Links & notes, "Worked N sessions · Xh so far", and the amber Start.
 //
 // An open task saves as you go: every change is written when it's made (a
@@ -15,8 +15,6 @@
 // pending task back into play (now.js start). Delete is the quiet line under
 // Start, two presses.
 //
-// Steps: the first unticked one is the task's next step (model.js writes it
-// to nextStep), so the Now card's "Next:" line follows the checklist.
 // Links are URLs; a file is a link to it (Drive, Dropbox) — there is no file
 // storage behind Daisey.
 //
@@ -48,7 +46,7 @@ export function mountAddTask(dialog, uid, { onStart } = {}){
   let editing = null; // the open task (kept fresh from the snapshot), or null for a new one
   let vals = {}, mine = new Set(), openChip = null;
   let detailsOpen = false;
-  let steps = [], links = [];
+  let links = [];
   let kind = "target";
   let settle = 0, armed = false, fieldN = 0;
   const fail = (e) => console.error("[daisey] task", e);
@@ -134,7 +132,6 @@ export function mountAddTask(dialog, uid, { onStart } = {}){
   // What the web check found (research.js): "Daisey checked: online…" / "needs a call…".
   const researchLine = h("p", { className: "ts-state ts-research", dir: "auto" });
 
-  const stepList = h("ul", { className: "ts-steps" });
   const linkRow = h("div", { className: "ts-links" });
   const notes = h("textarea", { className: "ts-notes", dir: "auto", rows: 2, placeholder: "Notes…", ariaLabel: "Notes" });
   const worked = h("p", { className: "ts-worked" });
@@ -148,7 +145,6 @@ export function mountAddTask(dialog, uid, { onStart } = {}){
     field("Task", title),
     h("div", { className: "ts-dates" }, start.box, due.box),
     detailsBtn, chipRow, pendBox, holdBox, researchLine, stateLine,
-    section("Steps", stepList),
     section("Links & notes", h("div", { className: "ts-group" }, linkRow, notes)),
     worked, startBtn, del, msg);
 
@@ -171,9 +167,6 @@ export function mountAddTask(dialog, uid, { onStart } = {}){
     if ((notes.value.trim() || null) !== (editing.notes || null)) c.notes = notes.value;
     if (editing.status === "waiting" && (waitingOn.value.trim() || null) !== (editing.waitingOn || null)) c.waitingOn = waitingOn.value;
     if (projectSel.value === NEW_PROJECT && newProject.value.trim() && newProject.value.trim() !== editing.project) c.project = newProject.value.trim();
-    // A step typed but not left yet.
-    const clean = (list) => JSON.stringify((list || []).filter((x) => x.text.trim()).map((x) => ({ text: x.text.trim().replace(/\s+/g, " "), done: !!x.done })));
-    if (clean(steps) !== clean(editing.steps)) c.steps = steps;
     if (Object.keys(c).length) save(c);
   }
 
@@ -287,30 +280,6 @@ export function mountAddTask(dialog, uid, { onStart } = {}){
     if (menu && menu.getBoundingClientRect().right > dialog.getBoundingClientRect().right - 8) menu.classList.add("end");
   }
 
-  // ---------- steps ----------
-  const saveSteps = () => { if (editing) save({ steps }); };
-  function paintSteps(focus = -1){
-    const firstOpen = steps.findIndex((s) => !s.done && s.text.trim());
-    stepList.replaceChildren(...steps.map((s, k) => {
-      const input = h("input", { className: "ts-step-t", dir: "auto", value: s.text, ariaLabel: `Step ${k + 1}`, placeholder: "A step" });
-      input.addEventListener("input", () => { s.text = input.value; });
-      input.addEventListener("change", () => { if (!s.text.trim()) { steps.splice(k, 1); paintSteps(); } saveSteps(); });
-      input.addEventListener("keydown", (e) => {
-        if (e.key === "Enter") { e.preventDefault(); steps.splice(k + 1, 0, { text: "", done: false }); paintSteps(k + 1); }
-        if (e.key === "Backspace" && !input.value) { e.preventDefault(); steps.splice(k, 1); paintSteps(Math.max(0, k - 1)); saveSteps(); }
-      });
-      return h("li", { className: "ts-step" + (s.done ? " done" : "") },
-        h("button", { type: "button", className: "ts-check", ariaPressed: String(s.done), ariaLabel: `${s.done ? "Untick" : "Tick"} step ${k + 1}`,
-          onclick: () => { s.done = !s.done; paintSteps(); saveSteps(); } }, s.done ? icon("check") : null),
-        input,
-        k === firstOpen && h("span", { className: "ts-next", textContent: "next step" }),
-        h("button", { type: "button", className: "ts-step-x", ariaLabel: `Delete step ${k + 1}`,
-          onclick: () => { steps.splice(k, 1); paintSteps(); saveSteps(); } }, icon("close")));
-    }), h("li", {}, h("button", { type: "button", className: "ts-add", textContent: "+ Add step",
-      onclick: () => { steps.push({ text: "", done: false }); paintSteps(steps.length - 1); } })));
-    if (focus >= 0) stepList.querySelectorAll(".ts-step-t")[focus]?.focus();
-  }
-
   // ---------- links ----------
   let adding = false;
   function paintLinks(){
@@ -379,7 +348,6 @@ export function mountAddTask(dialog, uid, { onStart } = {}){
     if (start.input.value) input.notBefore = start.input.value;
     if (due.input.value) { input.due = due.input.value; input.dateKind = kind; }
     if (notes.value.trim()) input.notes = notes.value;
-    if (steps.some((s) => s.text.trim())) input.steps = steps;
     if (links.length) input.links = links;
     for (const k of mine) input[k] = vals[k];
     try {
@@ -395,13 +363,13 @@ export function mountAddTask(dialog, uid, { onStart } = {}){
   function clear(){
     clearTimeout(settle);
     vals = {}; mine = new Set(); openChip = null; detailsOpen = false;
-    steps = []; links = []; adding = false; kind = "target";
+    links = []; adding = false; kind = "target";
     title.value = ""; notes.value = ""; newProject.value = ""; waitingOn.value = ""; checkOn.value = "";
     start.input.value = ""; due.input.value = "";
     msg.textContent = "";
     disarm();
   }
-  function paintAll(){ paintDates(); paintChips(); paintSteps(); paintLinks(); paintFoot(); }
+  function paintAll(){ paintDates(); paintChips(); paintLinks(); paintFoot(); }
   const show = () => { if (!dialog.open) dialog.showModal(); requestAnimationFrame(fit); };
 
   dialog.addEventListener("close", () => { flush(); editing = null; });
@@ -465,8 +433,6 @@ export function mountAddTask(dialog, uid, { onStart } = {}){
       holdWho.value = task.onHold?.who || "";
       checkOn.value = task.checkOn || "";
       checkOn.min = localDate();
-      steps = (task.steps || []).map((s) => ({ ...s }));
-      if (!steps.length && task.nextStep) steps = [{ text: task.nextStep, done: false }];
       links = (task.links || []).map((l) => ({ ...l }));
       const guessed = new Set(task.guessed || []);
       for (const k of CHIPS) if (validField(k, task[k])) { vals[k] = task[k]; if (!guessed.has(k)) mine.add(k); }

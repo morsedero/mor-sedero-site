@@ -323,9 +323,7 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
   }
 
   function nextMeta(t){
-    const st = t.steps || [];
     const parts = [durText(t.size || 30)];
-    if (st.length) parts.push(`${st.filter((x) => x.done).length} of ${st.length} steps`);
     // Both dates when both apply (Mor, 2026-10-06): the start while it's
     // still ahead (the card is dimmed until then), then the due date.
     // "Starts", not "from": "from" read as the start of a range ending at due.

@@ -983,22 +983,7 @@ dialog.tsheet .now-head { margin-block-end: -4px; }
 .ts-pend label { display: grid; gap: 4px; font-size: 12px; color: var(--ink-2); }
 .ts-state { margin: 10px 0 0; font-size: 13px; color: var(--ink-2); }
 .ts-h { margin: 0; font-size: 14px; font-weight: 600; color: var(--ink-2); }
-.ts-steps, .ts-group { margin: 0; padding: 2px 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
-.ts-steps { list-style: none; display: grid; }
-.ts-steps > li + li { border-block-start: 1px solid var(--line); }
-.ts-step { display: flex; align-items: center; gap: 10px; min-block-size: 42px; }
-.ts-check { position: relative; flex: none; display: grid; place-items: center; inline-size: 20px; block-size: 20px; padding: 0; border: 2px solid color-mix(in srgb, var(--ink-2) 55%, transparent); border-radius: 6px; background: none; color: #fff; cursor: pointer; }
-.ts-check::after { content: ""; position: absolute; inset: -12px; }
-.ts-check[aria-pressed="true"] { border: 0; background: var(--green); }
-.ts-check svg { inline-size: 12px; block-size: 12px; stroke-width: 3; }
-.ts-steps .ts-step-t { flex: 1; min-inline-size: 0; padding: 6px 0; border: 0; border-radius: 0; border-block-end: 1px solid transparent; background: none; color: var(--ink); font: inherit; font-size: 15px; font-weight: 500; }
-.ts-steps .ts-step-t:focus { outline: none; border-block-end-color: var(--line); }
-.ts-steps .ts-step.done .ts-step-t { font-weight: 400; color: var(--ink-2); text-decoration: line-through; }
-.ts-step-x { flex: none; display: grid; place-items: center; inline-size: 32px; block-size: 32px; padding: 0; border: 0; border-radius: 50%; background: none; color: var(--ink-2); cursor: pointer; opacity: .6; }
-.ts-step-x:hover, .ts-step-x:focus-visible { opacity: 1; background: var(--chip); }
-.ts-step-x svg { inline-size: 14px; block-size: 14px; stroke-width: 2; }
-.ts-next { flex: none; padding: 2px 8px; border-radius: 999px; background: var(--tint); color: var(--aink); font-size: 11px; font-weight: 600; }
-.ts-add { inline-size: 100%; min-block-size: 42px; padding: 0; border: 0; background: none; color: var(--aink); font: inherit; font-size: 14px; font-weight: 500; text-align: start; cursor: pointer; }
+.ts-group { margin: 0; padding: 2px 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
 .ts-links { display: flex; flex-wrap: wrap; gap: 6px; }
 .ts-link { display: inline-flex; align-items: center; block-size: 32px; padding-inline: 12px 2px; border-radius: 10px; background: var(--tint); color: var(--ink); font-size: 13px; max-inline-size: 100%; }
 .ts-link a { display: inline-flex; align-items: center; gap: 6px; min-inline-size: 0; color: inherit; text-decoration: none; overflow: hidden; }
