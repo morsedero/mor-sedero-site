@@ -24,11 +24,11 @@ import { focusView, handoffView, elapsedMinutes, targetMinutes, batchFocusView, 
 import { watchCalendar, logDone } from "./calendar.js";
 import { LATER_MINUTES, DRAIN, CANCEL_KEEP_MINUTES } from "./weights.js";
 import { rank, freeWindow, timeBucket, matchProject, dueAt } from "./engine.js";
-import { localDate, skipSnapshot, pendingCheck, notYet, pushedTo, bringBack, againInput } from "./model.js";
+import { progressOf, progressPatch, localDate, skipSnapshot, pendingCheck, notYet, pushedTo, bringBack, againInput } from "./model.js";
 import { waitingFor, personOf } from "./nudge.js";
 import { dayHours, isNight, nextMorning, dayEndAt, bookings, sameTitle, minText, gapsToday } from "./day.js";
 import { collectNeeds } from "./needs.js";
-import { h, icon, bdi, pieces, sizeText, dur, say, nightDivider, flash } from "./ui.js";
+import { h, icon, bdi, pieces, sizeText, dur, say, nightDivider, flash, askProgress } from "./ui.js";
 import { areaClass, areaName, projectShown, doneToday, dirOf, stemDaisy, moonDaisy, watchProjectColors } from "./look.js";
 
 const LATER_MS = LATER_MINUTES * 60000;
@@ -344,6 +344,22 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
   // Done on a running task, from Deep Focus or the dashboard card.
   const finishRun = (task, minutes, end) => {
     if (!run) return; // the hold finished after the run moved on
+    if (!task) return finishRunNow(task, minutes, end);
+    // How much got done? Under 100% the minutes are kept, the task stays
+    // open and goes back on the list for the day the user names.
+    askProgress(task, {
+      start: progressOf(task) || 50,
+      onFull: () => finishRunNow(task, minutes, end),
+      onPartial: (pct, when) => {
+        if (!run) return;
+        cancelRun(uid, task, minutes).catch(fail);
+        run = null; render();
+        later(task, when, progressPatch(pct));
+      },
+    });
+  };
+  const finishRunNow = (task, minutes, end) => {
+    if (!run) return;
     handoff = { title: task ? task.title : "", skip: run.taskId, minutes, ids: [run.taskId] };
     endRun(uid, task, minutes, { finished: true }).catch(fail);
     if (task) logFinished(task.title, minutes, task.id, targetMinutes(run, task), end);
@@ -442,21 +458,21 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
   //   week     not before the roomiest day this week (triage.pickWeekDay)
   //   someday  parked until moved back
   const declined = (task) => bumpLearn(uid, task.type, timeBucket().part, "skips");
-  function later(task, when){
+  function later(task, when, extra = null){
     if (when === "today") {
-      stepAside(task, { label: `Later (${dur(LATER_MINUTES)}): `, write: () => Promise.all([skipNow(uid, task), declined(task)]) });
+      stepAside(task, { label: `Later (${dur(LATER_MINUTES)}): `, write: () => Promise.all([skipNow(uid, task), declined(task), extra ? restoreTask(uid, task.id, extra) : null]) });
     } else if (when === "tomorrow") {
       const d = new Date(); d.setDate(d.getDate() + 1);
       let day = localDate(d.getTime());
       if (task.dateKind === "deadline" && task.due && task.due < day) day = task.due; // never hide it past its deadline
-      stepAside(task, { label: "Tomorrow: ", write: () => Promise.all([restoreTask(uid, task.id, pushedTo(task, { notBefore: day })), declined(task)]) });
+      stepAside(task, { label: "Tomorrow: ", write: () => Promise.all([restoreTask(uid, task.id, { ...pushedTo(task, { notBefore: day }), ...extra }), declined(task)]) });
     } else if (when === "week") {
       let day = pickWeekDay(task, { events: cal.status === "ok" ? cal.events : [], tasks: tasks || [], hours: dayHours(settings) });
       if (task.dateKind === "deadline" && task.due && task.due < day) day = task.due; // never hide it past its deadline
       const label = new Date(`${day}T12:00`).toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" });
-      stepAside(task, { label: `This week (${label}): `, write: () => Promise.all([restoreTask(uid, task.id, pushedTo(task, { notBefore: day })), declined(task)]) });
+      stepAside(task, { label: `This week (${label}): `, write: () => Promise.all([restoreTask(uid, task.id, { ...pushedTo(task, { notBefore: day }), ...extra }), declined(task)]) });
     } else if (when === "someday") {
-      stepAside(task, { label: "Not now: ", write: () => Promise.all([restoreTask(uid, task.id, { status: "someday", touchedAt: Date.now() }), declined(task)]) });
+      stepAside(task, { label: "Not now: ", write: () => Promise.all([restoreTask(uid, task.id, { status: "someday", touchedAt: Date.now(), ...extra }), declined(task)]) });
     }
   }
   // Pending asks what it's waiting on (Mor, 2026-10-04); the reason is
@@ -864,6 +880,13 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
   // Done on a task that was never started here (already finished, or done
   // elsewhere): finished with no time booked, with an Undo.
   function quickDone(task){
+    askProgress(task, {
+      start: progressOf(task) || 50,
+      onFull: () => quickDoneNow(task),
+      onPartial: (pct, when) => later(task, when, progressPatch(pct)),
+    });
+  }
+  function quickDoneNow(task){
     const before = { status: task.status || "ready", doneAt: task.doneAt ?? null, skipsSinceStart: task.skipsSinceStart ?? 0 };
     handoff = { title: task.title, skip: task.id, minutes: 0, ids: [task.id] };
     finishTask(uid, task).catch(fail);

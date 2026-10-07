@@ -117,3 +117,30 @@ export function nightDivider(from, to){
   return h("div", { className: "night-div", role: "separator", ariaLabel: `Night, ${from} to ${to}` },
     h("span", { className: "night-pill" }, bud, h("span", { textContent: `Night · ${from} – ${to}` })));
 }
+
+// Done pressed (Mor, 2026-10-07): "how much did you finish?". 100 → onFull().
+// Less → "when do you want to come back to it?" → onPartial(pct, when), where
+// when is today | tomorrow | week | someday. Closing the sheet does nothing.
+export function askProgress(task, { onFull, onPartial, start = 50 }){
+  const d = h("dialog", { className: "now", ariaLabel: "How much is done?" });
+  const close = () => { d.close(); d.remove(); };
+  const head = (t) => h("div", { className: "now-head" }, h("h2", { textContent: t }),
+    h("button", { className: "now-x", type: "button", ariaLabel: "Close", textContent: "✕", onclick: close }));
+  const out = h("output", { className: "pj-pct", textContent: `${start}%` });
+  const range = h("input", { type: "range", min: "5", max: "95", step: "5", value: String(start), ariaLabel: "Percent finished",
+    oninput: () => { out.textContent = `${range.value}%`; } });
+  const when = (pct) => {
+    d.replaceChildren(head("Back to it when?"),
+      h("div", { className: "now-chips" }, ...[["today", "Later today"], ["tomorrow", "Tomorrow"], ["week", "This week"], ["someday", "Not now"]].map(([w, text]) =>
+        h("button", { className: "chip", type: "button", textContent: text, onclick: () => { close(); onPartial(pct, w); } }))));
+  };
+  d.replaceChildren(head("How much is done?"),
+    h("p", { className: "muted", dir: "auto", textContent: task.title }),
+    h("div", { className: "sheet-stack" }, out, range,
+      h("div", { className: "sheet-actions" },
+        h("button", { className: "btn primary", type: "button", textContent: "All done · 100%", onclick: () => { close(); onFull(); } }),
+        h("button", { className: "btn", type: "button", textContent: "Save this %", onclick: () => when(Number(range.value)) }))));
+  d.onclick = (e) => { if (e.target === d) close(); };
+  document.body.append(d);
+  d.showModal();
+}

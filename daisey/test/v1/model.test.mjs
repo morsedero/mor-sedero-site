@@ -395,3 +395,12 @@ test("project range: outsideRange and clampDate keep a date inside start..due", 
   assert.equal(clampDate({ start: null, due: "2026-10-20" }, "2026-01-01"), "2026-01-01");
   assert.equal(cleanRange({ start: "x", due: "" }), null);
 });
+
+test("progress: done is 100, partial is kept, left shrinks", () => {
+  assert.equal(M.progressOf({ status: "done" }), 100);
+  assert.equal(M.progressOf({ status: "ready", progress: 40 }), 40);
+  assert.equal(M.progressOf({ status: "ready" }), 0);
+  assert.equal(M.progressPatch(150).progress, 99);
+  assert.equal(M.completeTask({}).progress, 100);
+  assert.ok(M.leftMinutes({ size: 60, progress: 50 }) <= 30);
+});

@@ -529,7 +529,13 @@ export function migrateTask(task, history = []){
 }
 
 export const completeTask = (task, { now = Date.now() } = {}) =>
-  ({ status: "done", doneAt: now, skipsSinceStart: 0, touchedAt: now, onHold: null });
+  ({ status: "done", doneAt: now, skipsSinceStart: 0, touchedAt: now, onHold: null, progress: 100 });
+
+// How much of a task is finished (Mor, 2026-10-07): 0-100, asked when Done
+// is pressed. Done is always 100; a project's % is the mean of these.
+export const progressOf = (t) => (t.status === "done" ? 100 : Math.max(0, Math.min(99, Math.round(Number(t.progress) || 0))));
+export const progressPatch = (pct, { now = Date.now() } = {}) =>
+  ({ progress: Math.max(0, Math.min(99, Math.round(pct))), touchedAt: now });
 
 // Waiting for a reply (2026-10-07): a started task on hold — "sent it, now
 // waiting on Yuval". Not Pending: the task stays the running one and its
@@ -628,7 +634,11 @@ export function workedTask(task, minutes, { finished = false, now = Date.now() }
 // What a task still needs: its size less the time already worked on it,
 // never under 5 (a task that ran over and isn't done still needs something).
 // The engine fits and scores this, not the full size (2026-10-06).
-export const leftMinutes = (t) => Math.max(5, (toMinutes(t.size) ?? DEFAULT_SIZE) - (t.spentMinutes || 0));
+// Once a progress % is given, that replaces the time-spent guess.
+export const leftMinutes = (t) => {
+  const size = toMinutes(t.size) ?? DEFAULT_SIZE, p = progressOf(t);
+  return Math.max(5, p > 0 ? Math.round(size * (1 - p / 100)) : size - (t.spentMinutes || 0));
+};
 
 // Ready to be offered at all? engine.js filterOut adds window, skips and
 // the "not before" date.

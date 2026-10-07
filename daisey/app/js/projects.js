@@ -21,9 +21,9 @@
 // PALETTE. Names are taken in order, so a colour doesn't move around as
 // counts change. Inbox has none.
 import { watchTasks, finishTask, restoreTask, removeTask, watchProjectNames, saveProjectNames, saveProjectRanges } from "./store.js";
-import { INBOX, notYet, durText, localDate, bringBack, cleanRange, outsideRange } from "./model.js";
+import { INBOX, progressOf, progressPatch, leftMinutes, pushedTo, notYet, durText, localDate, bringBack, cleanRange, outsideRange } from "./model.js";
 import { isOverdue } from "./triage.js";
-import { h, bdi, flash, icon } from "./ui.js";
+import { h, bdi, flash, icon, askProgress } from "./ui.js";
 import { dirOf, setProjectColors } from "./look.js";
 
 const SWIPE_DONE = 90; // px a task travels right before letting go finishes it
@@ -101,9 +101,10 @@ function statusLine(p){
 // Effort still to do (master spec s.16, 2026-10-06): the sizes of the open
 // tasks less the time already put in, 5 minutes at least each. Pending ones
 // count: they're still part of the way to done. Not now ones don't.
-export const minutesLeft = (p) => [...p.next, ...p.pending].reduce((n, t) => n + Math.max(5, (t.size || 30) - (t.spentMinutes || 0)), 0);
-const progress = (p) => (p.all.length ? p.done.length / p.all.length : 0);
-const bar = (p, cls) => h("div", { className: cls, role: "img", ariaLabel: `${p.done.length} of ${p.all.length} done` },
+export const minutesLeft = (p) => [...p.next, ...p.pending].reduce((n, t) => n + leftMinutes(t), 0);
+// Mean of the tasks' own % (done = 100), so half-finished work counts.
+const progress = (p) => (p.all.length ? p.all.reduce((n, t) => n + progressOf(t), 0) / (100 * p.all.length) : 0);
+const bar = (p, cls) => h("div", { className: cls, role: "img", ariaLabel: `${Math.round(progress(p) * 100)}% done` },
   h("span", { style: `inline-size:${Math.round(progress(p) * 100)}%` }));
 
 // A task's date says how close it is (Mor, 2026-10-06; the project card's
@@ -269,9 +270,20 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
 
   // ---------- the project screen ----------
   function complete(t){
-    const before = { status: t.status || "ready", doneAt: t.doneAt ?? null, skipsSinceStart: t.skipsSinceStart ?? 0 };
-    finishTask(uid, t).catch(fail);
-    flash("Done: ", t.title, { undo: () => restoreTask(uid, t.id, before).catch(fail) });
+    const before = { status: t.status || "ready", doneAt: t.doneAt ?? null, skipsSinceStart: t.skipsSinceStart ?? 0, progress: t.progress ?? 0 };
+    askProgress(t, {
+      start: progressOf(t) || 50,
+      onFull: () => {
+        finishTask(uid, t).catch(fail);
+        flash("Done: ", t.title, { undo: () => restoreTask(uid, t.id, before).catch(fail) });
+      },
+      onPartial: (pct, when) => {
+        const day = (n) => { const d = new Date(); d.setDate(d.getDate() + n); let x = localDate(d.getTime()); if (t.dateKind === "deadline" && t.due && t.due < x) x = t.due; return x; };
+        const patch = when === "someday" ? { status: "someday" } : when === "tomorrow" ? { notBefore: day(1) } : when === "week" ? { notBefore: day(3) } : {};
+        restoreTask(uid, t.id, { ...progressPatch(pct), ...(when === "today" ? {} : pushedTo(t, patch)) }).catch(fail);
+        flash(`${pct}% done: `, t.title, { undo: () => restoreTask(uid, t.id, { ...before, notBefore: t.notBefore ?? null, pushes: t.pushes ?? 0 }).catch(fail) });
+      },
+    });
   }
 
   // A task card that swipes right to finish.
@@ -317,6 +329,7 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
 
   function nextMeta(t){
     const parts = [durText(t.size || 30)];
+    if (progressOf(t) > 0) parts.push(`${progressOf(t)}% done`);
     // Both dates when both apply (Mor, 2026-10-06): the start while it's
     // still ahead (the card is dimmed until then), then the due date.
     // "Starts", not "from": "from" read as the start of a range ending at due.
