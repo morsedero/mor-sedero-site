@@ -682,6 +682,19 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
       ...cardActions(b.task, [], startButton("Start now", `Start ${b.task.title} now, before its slot`, () => begin(b.task))), outLine(r), putOffButton(r));
   }
 
+  // Nothing fits before the next calendar event: the event is the card —
+  // when it starts, how long until then — and it opens like any event.
+  // ev: freeWindow's next (start/end already epoch ms).
+  function upcomingCard(ev, r){
+    const mins = Math.max(0, Math.round((ev.start - Date.now()) / 60000));
+    return h("div", { className: "now-card main hero empty upcoming" },
+      h("div", { className: "now-meta", textContent: `Coming up · ${clock(ev.start)}` }),
+      onEvent ? h("button", { type: "button", className: "now-title", dir: "auto", textContent: ev.title, ariaLabel: `Open ${ev.title}`, onclick: () => onEvent({ ...ev, start: new Date(ev.start).toISOString(), end: new Date(ev.end).toISOString() }) })
+        : h("div", { className: "now-title", dir: "auto", textContent: ev.title }),
+      h("p", { className: "now-why", textContent: mins ? `In ${dur(mins)}. Nothing else fits before it.` : "Starting now." }),
+      outLine(r), putOffButton(r));
+  }
+
   // Why the open tasks can't come up now, counted: "Out right now: 3 put
   // off today · 2 need offices open." Parked, waiting and future-dated tasks
   // aren't news, so they aren't counted.
@@ -1164,10 +1177,15 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
     if (bk) { day(...head, bookedCard(bk, r), ...altsFor([]), tip); return; }
     // Nothing active at all: everything open is waiting, in Someday or dated
     // later. Its own calm card, with Someday right there (restState).
+    // With something coming up today, that is the card in both cases below
+    // (Mor, 2026-10-07): the next event, and how long until it.
+    const up = !card && fw?.next ? upcomingCard(fw.next, r) : null;
     if (!card && r.out.length && r.out.every((o) => QUIET.has(o.reason))) {
-      day(...head, ...restState(), toast && toastView());
+      const [rest, ...more] = restState();
+      day(...head, up || rest, ...more, toast && toastView());
       return;
     }
+    if (up) { day(...head, up, tip); return; }
     if (!card) {
       day(...head, h("div", { className: "now-card main hero empty" },
         h("p", { className: "now-empty", textContent: r.empty === "none"
