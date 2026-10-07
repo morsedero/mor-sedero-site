@@ -113,8 +113,9 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen } = {}){
   let extra = { key: null, status: "loading", events: [] };
   const fail = (e) => console.error("[daisey] schedule", e);
 
-  const setView = (v) => { view = v; try { localStorage.setItem(VIEW_KEY, v); } catch {} el.scrollTop = 0; render(); };
-  const go = (ymd) => { focus = ymd; el.scrollTop = 0; render(); };
+  let jump = true; // next render scrolls the week to now (or its first event)
+  const setView = (v) => { view = v; try { localStorage.setItem(VIEW_KEY, v); } catch {} el.scrollTop = 0; jump = true; render(); };
+  const go = (ymd) => { focus = ymd; el.scrollTop = 0; jump = true; render(); };
 
   // The events for [from, to): the shared week when it covers it, else a fetch.
   function eventsFor(from, to){
@@ -181,6 +182,11 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen } = {}){
     const y = el.scrollTop;
     el.replaceChildren(head, ...body);
     el.scrollTop = y;
+    if (jump && src.status === "ok") {
+      jump = false;
+      const mark = view === "week" && (el.querySelector(".wk-now") || [...el.querySelectorAll(".wk-ev")].sort((a, b) => a.getBoundingClientRect().top - b.getBoundingClientRect().top)[0]);
+      if (mark) el.scrollTop = Math.max(0, el.scrollTop + mark.getBoundingClientRect().top - el.getBoundingClientRect().top - head.offsetHeight - HOUR_PX);
+    }
   }
 
   function day(events, date, now, hrs, today){

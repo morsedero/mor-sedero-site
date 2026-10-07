@@ -1139,20 +1139,54 @@ dialog.tsheet .msg:empty { display: none; }
 .sc-row.sc-past { opacity: .5; } /* already over today — still shown, quieter */
 .sc-row.sc-on .sc-ev { box-shadow: 0 0 0 2px color-mix(in srgb, var(--ev, var(--ink-2)) 70%, var(--card)); }
 .sc-time .sc-nowtag { display: block; inline-size: fit-content; margin-block-start: 3px; padding: 1px 7px; border-radius: 999px; background: var(--accent); color: var(--on-accent); font-size: 11px; font-weight: 700; }
-/* The day strip: 7 equal columns, never a horizontal scroll (that would fight
-   the panel's own swipe). Sticks to the top while the day scrolls under it. */
-.sc-strip { position: sticky; inset-block-start: -12px; z-index: 1; display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; margin: -12px -14px 12px; padding: 12px 14px 8px; background: var(--card); border-block-end: 1px solid var(--line); }
-.sc-chip { display: flex; flex-direction: column; align-items: center; gap: 1px; min-inline-size: 0; padding: 5px 0 4px; border: 0; border-radius: 10px; background: none; font: inherit; color: var(--ink-2); cursor: pointer; }
-.sc-chip-wd { font-size: 11px; max-inline-size: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.sc-chip-n { font-size: 15px; font-weight: 600; color: color-mix(in srgb, var(--ink) 85%, var(--ink-2)); font-variant-numeric: tabular-nums; }
-.sc-chip-dot { inline-size: 4px; block-size: 4px; border-radius: 2px; }
-.sc-chip-dot.on { background: currentColor; }
-.sc-chip[aria-selected="true"] { background: var(--ink); color: var(--card); }
-.sc-chip[aria-selected="true"] .sc-chip-n { color: var(--card); }
-/* Saturday stands apart, in red like a printed calendar. */
-.sc-chip.sat, .sc-chip.sat .sc-chip-n { color: var(--nowline); }
-.sc-chip.sat[aria-selected="true"] { background: var(--nowline); }
-.sc-chip.sat[aria-selected="true"], .sc-chip.sat[aria-selected="true"] .sc-chip-n { color: var(--card); }
+/* Day / Week header (2026-10-07): ‹ title › and a Day|Week switch, sticky at
+   the top while the day or week scrolls under it. In Week the weekday
+   headings ride in it too. */
+.sc-head { position: sticky; inset-block-start: -12px; z-index: 2; margin: -12px -14px 12px; padding: 10px 14px 8px; background: var(--card); border-block-end: 1px solid var(--line); }
+.sc-bar { display: flex; align-items: center; gap: 2px; }
+.sc-step { flex: none; display: inline-flex; align-items: center; justify-content: center; inline-size: 34px; block-size: 34px; border: 0; border-radius: 50%; background: none; color: var(--ink-2); cursor: pointer; }
+.sc-step:hover { background: var(--chip); }
+.sc-step svg { inline-size: 18px; block-size: 18px; }
+.sc-title { flex: 1; min-inline-size: 0; display: flex; align-items: baseline; gap: 8px; padding: 4px 4px; border: 0; background: none; font: inherit; text-align: start; cursor: pointer; white-space: nowrap; overflow: hidden; }
+.sc-title .sc-name { font-size: 15px; }
+.sc-title .sc-date { overflow: hidden; text-overflow: ellipsis; }
+.sc-today { margin-inline-start: auto; padding: 1px 8px; border-radius: 999px; background: var(--chip); font-size: 11px; font-weight: 600; color: var(--ink-2); }
+.sc-seg { flex: none; display: flex; padding: 2px; border-radius: 10px; background: var(--chip); }
+.sc-seg button { padding: 4px 10px; border: 0; border-radius: 8px; background: none; font: inherit; font-size: 12px; font-weight: 600; color: var(--ink-2); cursor: pointer; }
+.sc-seg button[aria-checked="true"] { background: var(--card); color: var(--ink); box-shadow: 0 1px 2px rgb(0 0 0 / .12); }
+
+/* Week: an hour column and 7 day columns that always fit — never a sideways
+   scroll (that would fight the panel's own swipe). */
+.wk-heads, .wk-allday, .wk-grid { display: grid; grid-template-columns: 26px repeat(7, minmax(0, 1fr)); }
+.wk-heads { margin-block-start: 6px; }
+.wk-hd { display: flex; flex-direction: column; align-items: center; gap: 1px; min-inline-size: 0; padding: 2px 0; border: 0; border-radius: 10px; background: none; font: inherit; color: var(--ink-2); cursor: pointer; }
+.wk-hd:hover { background: var(--chip); }
+.wk-wd { font-size: 11px; }
+.wk-n { display: inline-flex; align-items: center; justify-content: center; inline-size: 26px; block-size: 26px; border-radius: 50%; font-size: 14px; font-weight: 600; color: color-mix(in srgb, var(--ink) 85%, var(--ink-2)); font-variant-numeric: tabular-nums; }
+.wk-hd.past .wk-n { color: var(--ink-2); font-weight: 500; }
+.wk-hd.sat, .wk-hd.sat .wk-n { color: var(--nowline); }
+.wk-hd.today .wk-n { background: var(--ink); color: var(--card); }
+.wk-allday { margin-block-start: 4px; align-items: start; }
+.wk-adl { font-size: 9px; line-height: 1.1; color: var(--ink-2); }
+.wk-adc { display: flex; flex-direction: column; gap: 2px; min-inline-size: 0; padding-inline: 1px; }
+.wk-ad { min-inline-size: 0; padding: 1px 4px; border: 0; border-radius: 5px; background: color-mix(in srgb, var(--ev, #8c8574) 22%, var(--card)); color: color-mix(in srgb, var(--ev, var(--ink-2)) 55%, var(--ink)); font: inherit; font-size: 10px; font-weight: 600; text-align: start; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; }
+.wk-grid { position: relative; }
+.wk-hours { position: relative; }
+.wk-hours span { position: absolute; inset-inline-end: 4px; transform: translateY(-50%); font-size: 10px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.wk-col { position: relative; min-inline-size: 0; border-inline-start: 1px solid var(--line); cursor: pointer;
+  background: repeating-linear-gradient(to bottom, var(--line) 0 1px, transparent 1px var(--hour)); }
+.wk-col.past { background-color: color-mix(in srgb, var(--chip) 45%, transparent); }
+.wk-col.today { background-color: color-mix(in srgb, var(--accent) 7%, transparent); }
+.wk-ev { position: absolute; display: flex; flex-direction: column; align-items: stretch; gap: 1px; min-inline-size: 0; margin-inline-start: 1px; padding: 2px 3px; border: 0; border-radius: 6px; overflow: hidden;
+  background: color-mix(in srgb, var(--ev, #8c8574) 22%, var(--card)); border-inline-start: 2.5px solid var(--ev, #8c8574);
+  color: color-mix(in srgb, var(--ev, var(--ink-2)) 55%, var(--ink)); font: inherit; text-align: start; cursor: pointer; }
+.wk-evt { font-size: 10.5px; font-weight: 600; line-height: 1.2; overflow: hidden; } /* a word too long for the column is clipped, not split */
+.wk-evtime { font-size: 9.5px; opacity: .8; font-variant-numeric: tabular-nums; }
+.wk-ev.past { opacity: .5; }
+.wk-ev.on { box-shadow: 0 0 0 1.5px color-mix(in srgb, var(--ev, var(--ink-2)) 70%, var(--card)); }
+.wk-ev.done { background: none; border: 1px solid var(--line); color: var(--ink-2); text-decoration: line-through; }
+.wk-now { position: absolute; inset-inline: -1px 0; z-index: 1; block-size: 2px; background: var(--nowline); pointer-events: none; }
+.wk-now::before { content: ""; position: absolute; inset-inline-start: -4px; inset-block-start: -3px; inline-size: 8px; block-size: 8px; border-radius: 50%; background: var(--nowline); }
 .sc-note { margin: 4px 0 0; font-size: 14px; color: var(--ink-2); }
 .sc-note a { color: inherit; }
 .ppage .night-div { margin-block: 12px; }
