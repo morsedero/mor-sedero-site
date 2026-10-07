@@ -653,7 +653,8 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
           h("div", { className: "night-task" + areaClass(t) },
             h("div", { className: "night-task-title", dir: "auto", textContent: t.title }),
             h("div", { className: "night-task-meta", textContent: dur(Math.max(5, (t.size || 0) - (t.spentMinutes || 0))) + " left" })))),
-        startButton("Start", `Start: ${dueTonight[0].title}`, () => begin(dueTonight[0]))),
+        // Same actions as the main card, on the first deadline (Mor, 2026-10-07).
+        ...cardActions(dueTonight[0], [], startButton("Start", `Start: ${dueTonight[0].title}`, () => begin(dueTonight[0])))),
       h("section", { className: "now-card main night", ariaLabel: early ? "First today" : "Tomorrow first" },
         h("div", { className: "night-label", textContent: early ? "First today" : "Tomorrow first" }),
         // The time once, start–end, on the left (Mor, 2026-10-06).
