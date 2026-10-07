@@ -415,7 +415,10 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onProjects } = 
       });
       const r = rowEl.getBoundingClientRect(), mid = (r.top + r.bottom) / 2, sec = rowEl.parentElement.getBoundingClientRect();
       off = mid - y0; mid0 = mid + s0; home = snap.filter((s) => s.mid < mid0).length;
-      lo = sec.top + s0 + r.height / 2; hi = sec.bottom + s0 - r.height / 2;
+      // A little past the first and last row, so a tall row can still pass
+      // a short one's middle and be pushed to the very top or bottom.
+      const EDGE = 28;
+      lo = sec.top + s0 - EDGE; hi = sec.bottom + s0 + EDGE;
       timeEl = rowEl.querySelector(".sc-time"); orig = [...timeEl.childNodes];
       navigator.vibrate?.(10);
       raf = requestAnimationFrame(tick);
