@@ -33,10 +33,11 @@ export function mountPlaces(dialog){
       oninput: (e) => { draft = e.target.value; } });
 
     dialog.replaceChildren(...[
-      h("div", { className: "now-head" }, h("h2", { id: "plTitle", textContent: "Where are you?" }),
+      h("div", { className: "now-head" },
+        h("h2", { id: "plTitle", ariaLabel: `Where are you? ${nowText(now)}` }, bdi(nowText(now)),
+          h("span", { className: "pl-sub", textContent: hand ? " · set by you" : " · auto" })),
+        hand ? h("button", { className: "linkish pl-reset", type: "button", textContent: "Reset", onclick: () => { setManual(null); render(); } }) : null,
         h("button", { className: "now-x", type: "button", ariaLabel: "Close", textContent: "✕", onclick: () => dialog.close() })),
-      h("p", { className: "pl-now" }, bdi(nowText(now)), h("span", { className: "pl-sub", textContent: hand ? " · set by you" : " · auto" }),
-        hand ? h("button", { className: "linkish pl-reset", type: "button", textContent: "Reset", onclick: () => { setManual(null); render(); } }) : null),
       h("div", { className: "pl-opts", role: "radiogroup", ariaLabel: "Where are you?" }, ...opts.map(pick)),
       h("h3", { className: "pl-h", textContent: "Places" }),
       spots.length ? h("ul", { className: "pl-list" }, ...spots.map((sp) => h("li", {},
