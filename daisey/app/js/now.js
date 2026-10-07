@@ -1035,7 +1035,10 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
     const p = approvedPlan();
     if (!p || !tasks) return null;
     const { done, total } = planProgress(p, tasks);
-    return total ? { done, total } : null;
+    // Done today outside the plan counts too, so the chip never reads 0/8 with a task finished.
+    const inPlan = new Set(p.items.map((it) => it.taskId));
+    const extra = doneToday(tasks).filter((t) => !inPlan.has(t.id)).length;
+    return total ? { done: done + extra, total: total + extra } : null;
   }
 
   // Done today, for the header's daisy: what the snapshot says, plus what was
