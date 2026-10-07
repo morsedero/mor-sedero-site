@@ -607,9 +607,7 @@ dialog.now:focus { outline: none; }
 .menu-kinds { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 12px; padding-inline-start: 8px; }
 .menu-kinds .menu-check { font-size: 13px; white-space: nowrap; }
 .menu-ico { flex: none; display: grid; place-items: center; inline-size: 30px; block-size: 30px; border-radius: 10px; background: var(--surface-2, rgba(0,0,0,.05)); color: var(--ink-2); }
-.menu-ico.gcal { color: #4285F4; background: color-mix(in srgb, #4285F4 16%, transparent); }
-.menu-ico.trello { color: #0079BF; background: color-mix(in srgb, #0079BF 16%, transparent); }
-[data-theme="dark"] .menu-ico.trello { color: #4aa3e0; }
+.menu-ico.logo { background: none; }
 .menu-row:has(.menu-ico) .menu-label { margin-inline-end: auto; }
 .menu-stat { display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--ink-2); }
 .menu-note { margin: 0; font-size: 12px; color: var(--ink-2); }
