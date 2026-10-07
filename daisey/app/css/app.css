@@ -762,6 +762,11 @@ body.focus .tell-panel { display: none; }
 .pl-h { margin: 18px 0 8px; font-size: 14px; font-weight: 600; }
 .pl-save { display: grid; grid-template-columns: 1fr auto; gap: 6px 8px; align-items: end; margin-block-start: 10px; }
 .pl-list { list-style: none; margin: 14px 0 0; padding: 0; display: grid; gap: 8px; }
+.pl-intro { margin: 4px 0 0; font-size: 14px; opacity: .75; }
+.pl-now { margin: 0 0 6px; }
+.pl-empty { margin: 10px 0 0; font-size: 14px; }
+.pl-suggest { grid-column: 1 / -1; display: flex; gap: 6px; flex-wrap: wrap; }
+.pl-list + .btn, .pl-empty + .btn, .pl-save { margin-block-start: 12px; }
 .pl-name { display: grid; gap: 2px; }
 .pl-sub { opacity: .7; }
 .pl-list li { display: flex; justify-content: space-between; align-items: center; gap: 8px; }

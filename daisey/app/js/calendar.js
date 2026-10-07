@@ -73,6 +73,18 @@ async function fetchAgenda(fresh = false){
   return { status: ["not_connected", "needs_reauth"].includes(body.error) ? body.error : "error", events: [] };
 }
 
+// Any other stretch of days (the Schedule stepping into last week, or past
+// the week ahead): from/to in ms, at most 9 days apart (the function's cap).
+// Not cached or shared; the caller keeps what it needs.
+export async function fetchRange(from, to){
+  if(localGuest()) return { status: "ok", events: guestEvents() };
+  const q = new URLSearchParams({ from: new Date(from).toISOString(), to: new Date(to).toISOString() });
+  const res = await fetch(`${URL_}?${q}`, { headers: { Authorization: `Bearer ${await idToken()}` } });
+  const body = await res.json().catch(() => ({}));
+  if (res.ok) return { status: "ok", events: body.events || [] };
+  return { status: ["not_connected", "needs_reauth"].includes(body.error) ? body.error : "error", events: [] };
+}
+
 function load(fresh = false){
   if (loading && !fresh) return loading; // a tab switch mid-fetch shouldn't start a second one
   loading = fetchAgenda(fresh)
