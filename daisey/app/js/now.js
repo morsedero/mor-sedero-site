@@ -636,8 +636,6 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
     const day = localDate(morning);
     const first = evs.filter((e) => localDate(Date.parse(e.start)) === day)
       .sort((a, b) => Date.parse(a.start) - Date.parse(b.start))[0];
-    const meta = p && [areaName(p.task) || projectShown(p.task), dur(p.task.size),
-      MARK[p.task.stakes] && `${MARK[p.task.stakes]}`].filter(Boolean).join(" · ");
     const who = name ? `, ${name}` : "";
     const lead = dueTonight.length === 1 ? "One deadline is still open today." : `${dueTonight.length} deadlines are still open today.`;
     return [
@@ -646,28 +644,27 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
         h("h2", { className: "night-h", textContent: early ? `Early${who}.` : `Late${who}.` }),
         h("p", { className: "night-p", textContent: early ? "Nothing needs you yet. Here's your day."
           : dueTonight.length ? lead : "Nothing needs you tonight. Here's tomorrow." })),
-      dueTonight.length > 0 && h("section", { className: "now-card main night", ariaLabel: "Due today" },
+      // Both cards wear the main card's design (Mor, 2026-10-07): hero top row,
+      // big title, why line, the same actions. The label is the eyebrow above.
+      dueTonight.length > 0 && h("section", { className: "now-card main hero night" + areaClass(dueTonight[0]), ariaLabel: "Due today" },
         h("div", { className: "night-label", textContent: "Due today" }),
-        ...dueTonight.map((t) => h("div", { className: "night-row" },
-          h("span", { className: "night-time", textContent: t.dueTime || "Today" }),
-          h("div", { className: "night-task" + areaClass(t) },
-            h("div", { className: "night-task-title", dir: "auto", textContent: t.title }),
-            h("div", { className: "night-task-meta", textContent: dur(Math.max(5, (t.size || 0) - (t.spentMinutes || 0))) + " left" })))),
-        // Same actions as the main card, on the first deadline (Mor, 2026-10-07).
+        heroTop(dueTonight[0], dueTonight[0].dueTime ? `Due ${dueTonight[0].dueTime}` : "Today"),
+        onOpen ? titleButton(dueTonight[0]) : h("div", { className: "now-title", dir: "auto", textContent: dueTonight[0].title }),
+        h("p", { className: "now-why", textContent: dur(Math.max(5, (dueTonight[0].size || 0) - (dueTonight[0].spentMinutes || 0))) + " left" }),
+        dueTonight.length > 1 && h("p", { className: "now-why", textContent: "Also due: " + dueTonight.slice(1).map((t) => t.title).join(", ") }),
         ...cardActions(dueTonight[0], [], startButton("Start", `Start: ${dueTonight[0].title}`, () => begin(dueTonight[0])))),
-      h("section", { className: "now-card main night", ariaLabel: early ? "First today" : "Tomorrow first" },
+      h("section", { className: "now-card main hero night" + (p ? areaClass(p.task) : ""), ariaLabel: early ? "First today" : "Tomorrow first" },
         h("div", { className: "night-label", textContent: early ? "First today" : "Tomorrow first" }),
-        // The time once, start–end, on the left (Mor, 2026-10-06).
-        first && h("div", { className: "night-row" },
-          h("span", { className: "night-time", textContent: `${clock(Date.parse(first.start))}–${clock(Date.parse(first.end))}` }),
-          h("div", { className: "night-ev", style: first.color ? `--ev:${first.color}` : "" },
-            h("span", { className: "night-ev-title" }, bdi(first.title)))),
-        p ? h("div", { className: "night-row" },
-          h("span", { className: "night-time", textContent: first ? "After" : minText(hrs.start) }),
-          h("div", { className: "night-task" + areaClass(p.task) },
-            h("div", { className: "night-task-title", dir: "auto", textContent: p.task.title }),
-            meta && h("div", { className: "night-task-meta", textContent: meta })))
-          : h("p", { className: "night-none", textContent: "Nothing lined up yet." })),
+        ...(p ? [
+          heroTop(p.task, [dur(p.task.size), MARK[p.task.stakes]].filter(Boolean).join(" · ")),
+          onOpen ? titleButton(p.task) : h("div", { className: "now-title", dir: "auto", textContent: p.task.title }),
+          h("p", { className: "now-why", textContent: first
+            ? `${minText(hrs.start)}, after ${first.title} (${clock(Date.parse(first.start))}–${clock(Date.parse(first.end))})`
+            : `Starts ${minText(hrs.start)}` }),
+        ] : [
+          first && h("p", { className: "now-why", textContent: `${clock(Date.parse(first.start))}–${clock(Date.parse(first.end))} ${first.title}` }),
+          h("p", { className: "now-empty", textContent: "Nothing lined up yet." }),
+        ])),
       h("div", { className: "night-foot" },
         h("button", { className: "pill-btn", type: "button", textContent: "I'm free now, show me something",
           ariaLabel: "I'm free now: pick a task anyway", onclick: () => { nightFree = true; render(); } }),

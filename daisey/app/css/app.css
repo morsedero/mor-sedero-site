@@ -468,7 +468,7 @@ dialog.now:focus { outline: none; }
 
 /* Area colours: a card names its area with .area-<key>, and everything in it
    reads --tint / --aline / --aink. --sub is the area's quiet text. */
-:where(.now-card, .next-card, .focus, .night-task) {
+:where(.now-card, .next-card, .focus) {
   --tint: var(--card); --aline: var(--line); --aink: var(--ink-2);
   --sub: color-mix(in srgb, var(--aink) 40%, var(--ink));
 }
@@ -698,20 +698,8 @@ dialog.settings .now-head + .menu-sec { border-block-start: 0; padding-block-sta
 .moon-daisy .daisy-heart { fill: #b88a1a; }
 .night-h { margin: 20px 0 6px; font-size: 28px; font-weight: 600; }
 .night-p { margin: 0; font-size: 15px; color: var(--ink-2); }
-.now-card.main.night { margin-block-start: 30px; display: grid; gap: 8px; background: var(--card); border-color: var(--line); box-shadow: none; }
-.night-label { margin-block-end: 4px; font-size: 12px; font-weight: 600; letter-spacing: .6px; text-transform: uppercase; color: var(--ink-2); }
-.night-row { display: flex; align-items: center; gap: 10px; }
-.night-time { flex: none; inline-size: 54px; font-size: 13px; color: var(--ink-2); }
-.night-ev {
-  flex: 1; min-inline-size: 0; display: flex; align-items: center; justify-content: space-between; gap: 8px;
-  padding: 10px 12px; border-radius: 12px; background: color-mix(in srgb, var(--ev, var(--ink-2)) 20%, var(--card));
-}
-.night-ev-time { flex: none; font-size: 12px; color: color-mix(in srgb, var(--ev, var(--ink-2)) 60%, var(--ink)); }
-.night-ev-title { min-inline-size: 0; font-size: 15px; font-weight: 600; text-align: end; overflow-wrap: anywhere; }
-.night-task { flex: 1; min-inline-size: 0; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--aline); }
-.night-task-title { font-size: 17px; font-weight: 600; overflow-wrap: anywhere; }
-.night-task-meta { margin-block-start: 2px; font-size: 13px; color: var(--aink); }
-.night-none { margin: 0; color: var(--ink-2); }
+.now-card.main.night { margin-block-start: 30px; }
+.night-label { margin-block-end: 10px; font-size: 12px; font-weight: 600; letter-spacing: .6px; text-transform: uppercase; color: var(--ink-2); }
 .night-foot { display: flex; flex-direction: column; align-items: center; gap: 6px; margin-block-start: 24px; }
 .pill-btn { min-block-size: 44px; padding-inline: 18px; border: 1px solid var(--line); border-radius: 999px; background: transparent; color: var(--ink); font: inherit; font-size: 14px; font-weight: 500; cursor: pointer; }
 
@@ -1247,9 +1235,6 @@ dialog.tsheet .msg:empty { display: none; }
 :root.night .night-foot { margin-block-start: auto; padding-block-start: 20px; }
 :root.night .night-hero { margin-block-start: 12px; }
 :root.night .now-card.main.night { margin-block-start: 20px; }
-.night-time { inline-size: 88px; font-variant-numeric: tabular-nums; }
-.night-ev { justify-content: flex-start; }
-.night-ev-title { text-align: start; }
 body.focus .shell { block-size: auto; min-block-size: 100dvh; overflow: visible; }
 
 /* Now's two quiet rows under the card: Next event, Free time (now.js glance). */
