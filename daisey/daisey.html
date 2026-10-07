@@ -3877,10 +3877,9 @@ function planFor(date, mode, picked, ignore){
     shortRoom--;
   }
 
-  /* Quick tasks land as one "quick-brick" entry, not one placed per card —
-     see CLAUDE.md: Google Calendar shows a single event for the whole
-     window, Daisey's own view still tracks each task inside it
-     independently. Work-day size removed (2026-08-24) — quick tasks are no
+  /* Quick tasks share one contiguous window but each gets its OWN calendar
+     event, back-to-back (the merged "N tasks" brick event was removed
+     2026-10-07). Work-day size removed (2026-08-24) — quick tasks are no
      longer suppressed by an 8h card claiming the whole day. */
   {
     const quick = ranked.filter(x=>x.size==="quick");
@@ -3893,7 +3892,7 @@ function planFor(date, mode, picked, ignore){
         n--;
       }
       if(slot){
-        placed.push({ cards:quick.slice(0,n), s:slot.s, e:slot.s + n*slice, kind:"quick-brick" });
+        quick.slice(0,n).forEach((c,i) => placed.push({ card:c, s:slot.s + i*slice, e:slot.s + (i+1)*slice, kind:"quick" }));
         quickLive.push({ s:slot.s, e:slot.s + n*slice });
       }
     }
@@ -3902,9 +3901,8 @@ function planFor(date, mode, picked, ignore){
   /* a card never gets two blocks in one run */
   const seen = new Set();
   const unique = placed.filter(p => {
-    const ids = p.kind==="quick-brick" ? p.cards.map(c=>c.id) : [p.card.id];
-    if(ids.some(id=>seen.has(id))) return false;
-    ids.forEach(id=>seen.add(id));
+    if(seen.has(p.card.id)) return false;
+    seen.add(p.card.id);
     return true;
   });
   unique.sort((a,b)=>a.s-b.s);
@@ -4026,9 +4024,7 @@ function applyPlan(date, mode, picked, rebuild){
      side by side: the delete silently failed, nothing put the local model
      back, and nothing kept the re-plan from filling the "freed" slot. */
   const undoClear = new Map(clearable.map(e => [e.id, dropLocalEvent(e.id)]));
-  const stands = placed.map(p => p.kind==="quick-brick"
-    ? localBrickBlock(p.cards, atMin(date,p.s), atMin(date,p.e))
-    : localBlock(p.card, atMin(date,p.s), atMin(date,p.e), p.kind));
+  const stands = placed.map(p => localBlock(p.card, atMin(date,p.s), atMin(date,p.e), p.kind));
   stands.forEach(s => { addLocalEvent(s); S.pending.add(s.id); });
   const gapStands = gaps.map(g => localBreakBlock(atMin(date,g.s), atMin(date,g.e)));
   gapStands.forEach(s => { addLocalEvent(s); S.pending.add(s.id); });
@@ -4054,7 +4050,7 @@ function applyPlan(date, mode, picked, rebuild){
     const settled = [];   // stand-ins whose real create succeeded — dropped as a batch, below
     for(let i=0; i<placed.length; i++){
       const p = placed[i], stand = stands[i];
-      const pCards = p.kind==="quick-brick" ? p.cards : [p.card];
+      const pCards = [p.card];
       if(pCards.some(c => keepCardId.has(c.id))){
         /* its old block is still real (the delete above failed) — creating
            this one anyway is exactly the duplicate this guard exists to
@@ -4064,8 +4060,7 @@ function applyPlan(date, mode, picked, rebuild){
         continue;
       }
       try{
-        if(p.kind==="quick-brick") await createBrickBlock(p.cards, atMin(date,p.s), atMin(date,p.e));
-        else await createBlock(p.card, atMin(date,p.s), atMin(date,p.e), p.kind);
+        await createBlock(p.card, atMin(date,p.s), atMin(date,p.e), p.kind);
         ok++;
         S.pending.delete(stand.id);
         settled.push(stand);
@@ -7081,11 +7076,8 @@ function relayRows(date, laidRows){
   const runs = [];
   for(const r of laidRows){
     const last = runs[runs.length-1];
-    if(r.isQuick && last && last.isQuick && last.rows[last.rows.length-1].en === r.s){
-      last.rows.push(r); last.en = r.en;
-    }else{
-      runs.push({ isQuick:r.isQuick, s:r.s, en:r.en, rows:[r] });
-    }
+    /* never merge adjacent quick rows into one event — one task, one event */
+    runs.push({ isQuick:r.isQuick, s:r.s, en:r.en, rows:[r] });
   }
   /* Every OLD event a QUICK row in this drag came from, and which of its
      cards (if any) survive unchanged in some run above — an event whose
