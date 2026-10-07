@@ -147,9 +147,9 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onProjects } = 
       needs_reauth: "The calendar connection expired.", error: "Couldn't load the calendar." }[src.status];
     if (note && cal.status !== "ok") {
       const connect = cal.status === "not_connected" || cal.status === "needs_reauth";
-      el.replaceChildren(h("p", { className: "sc-note", textContent: note }),
+      el.replaceChildren(...[h("p", { className: "sc-note", textContent: note }),
         connect && h("button", { className: "btn primary sc-connect", type: "button", textContent: cal.status === "needs_reauth" ? "Reconnect Google Calendar" : "Connect Google Calendar",
-          onclick: connectCalendar }));
+          onclick: connectCalendar })].filter(Boolean));
       return;
     }
 
