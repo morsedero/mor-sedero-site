@@ -164,7 +164,17 @@ Small steps, each tested and shipped on its own. Order follows the spec's P0 →
 
 ### P2
 
-Not planned until P0 feels right in daily use.
+Not planned until P0/P1 feel right in daily use (Mor, 2026-10-06). From the master spec, in its order:
+
+19. Dynamic Daisey prompts (the Tell bar's examples are a first step: `tell.js hintsFor`).
+20. More sophisticated recommendations.
+21. More advanced notification logic.
+22. Deeper integrations.
+23. Configurable Deep Focus exceptions (allowed: calls, selected contacts, music, navigation; blocked: social, games, YouTube). Needs a native Android shell; the web version can't block apps (`deep.js` is the one place to swap).
+24. More context/location intelligence (Places already tilts picks toward tasks that mention a saved place).
+25. Micro-interactions and visual polish.
+
+Rule for all of them: does it help Daisey decide what to do, or only help manage more information?
 
 ## Decisions needed from Mor
 
