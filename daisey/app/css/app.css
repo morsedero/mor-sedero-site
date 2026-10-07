@@ -858,7 +858,8 @@ body:has(.screen:not([hidden])) { overflow: hidden; }
 .pj-chip[aria-selected="true"] { background: var(--aink); color: var(--card); font-weight: 600; }
 /* Children of .screen keep its centring (margin-inline: auto): the 20px
    gutter is a narrower width, not a side margin, or wide screens pin them left. */
-.pj-card { margin: 14px auto 0; inline-size: 67%; max-inline-size: 373px; padding: 18px 18px 16px; border-radius: 22px; background: var(--surface); border: 1px solid var(--aline); box-shadow: 0 6px 20px color-mix(in srgb, var(--aink) 12%, transparent); }
+.pj-card { margin: 14px max(20px, (100% - 520px) / 2) 0 max(20px, (100% - 520px) / 2); margin-right: auto; inline-size: 67%; max-inline-size: 373px; padding: 18px 18px 16px; border-radius: 22px; background: var(--surface); border: 1px solid var(--aline); box-shadow: 0 6px 20px color-mix(in srgb, var(--aink) 12%, transparent); }
+.pj-card.rtl { margin-left: auto; margin-right: max(20px, (100% - 520px) / 2); } /* Hebrew name: card hugs the right, English the left (Mor, 2026-10-08). */
 .pj-card-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .pj-name { margin: 0; min-inline-size: 0; font-size: 26px; font-weight: 700; letter-spacing: -0.3px; line-height: 1.15; overflow-wrap: anywhere; }
 .pj-name.rename { cursor: pointer; flex: 1 1 auto; padding-block: 14px; margin-block: -14px; }

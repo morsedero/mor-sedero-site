@@ -398,7 +398,7 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
     els.view.replaceChildren(...[
       h("div", { className: "pj-top" },
         h("button", { type: "button", className: "pj-back", ariaLabel: "Back to home", onclick: () => onScreen?.(null) }, icon("back")), chips),
-      h("div", { className: "pj-card" },
+      h("div", { className: "pj-card" + (dirOf(p.name) === "rtl" ? " rtl" : "") },
         h("div", { className: "pj-card-top", dir: dirOf(p.name) }, h("h2", { className: "pj-name" + (p.name === INBOX ? "" : " rename"), dir: "auto", textContent: p.name,
           ...(p.name === INBOX ? {} : { role: "button", tabIndex: 0, title: "Edit project", onclick: () => askRename(p.name),
             onkeydown: (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); askRename(p.name); } } }) }),
