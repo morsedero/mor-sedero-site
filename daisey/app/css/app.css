@@ -606,6 +606,7 @@ dialog.now:focus { outline: none; }
 .ts-nudge { justify-self: start; font-size: 14px; }
 .menu-kinds { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 12px; padding-inline-start: 8px; }
 .menu-kinds .menu-check { font-size: 13px; white-space: nowrap; }
+.menu-stat { display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--ink-2); }
 .menu-note { margin: 0; font-size: 12px; color: var(--ink-2); }
 .menu-link { justify-self: start; min-block-size: 32px; padding: 0; border: 0; background: none; font: inherit; font-size: 14px; color: var(--ink); cursor: pointer; }
 .menu-link:hover { text-decoration: underline; }

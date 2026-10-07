@@ -226,8 +226,7 @@ async function boot(){
         const trelloBtn = $("#connectTrello"), trelloNote = $("#trelloNote");
         const paintTrello = (on) => {
           trelloBtn.hidden = isGuest || on;
-          trelloNote.textContent = isGuest ? "Sign in with Google to connect Trello."
-            : on ? "Trello is connected." : "Connect once, then import your boards as tasks.";
+          trelloNote.textContent = isGuest ? "Sign in first" : on ? "Connected" : "Not connected";
         };
         trelloBtn.onclick = connectTrello;
         const checkTrello = () => { if (!isGuest) trelloConnected().then(paintTrello); else paintTrello(false); };
@@ -385,10 +384,8 @@ async function boot(){
           calOk = c.status === "ok";
           pickBtn.hidden = isGuest || !calOk;
           connectBtn.hidden = isGuest || calOk;
-          connectBtn.textContent = c.status === "needs_reauth" ? "Reconnect Google Calendar" : "Connect Google Calendar";
-          calNote.textContent = isGuest ? "Sign in with Google to connect your calendar. Guest events stay on this device."
-            : calOk ? "Google Calendar is connected." : c.status === "needs_reauth" ? "The connection expired. Reconnect to bring your calendar back."
-            : "Shows your day here, and Daisey plans around your events.";
+          connectBtn.textContent = c.status === "needs_reauth" ? "Reconnect" : "Connect";
+          calNote.textContent = isGuest ? "Sign in first" : calOk ? "Connected" : c.status === "needs_reauth" ? "Expired" : "Not connected";
         });
         m.menu = { unmount(){ stopSettings(); stopCal(); stopBriefTasks(); stopBriefRun(); start.onchange = end.onchange = logSwitch.onchange = pushSwitch.onchange = pushTest.onclick = null;
           kindBoxes.forEach((b) => { b.onchange = null; }); } };
