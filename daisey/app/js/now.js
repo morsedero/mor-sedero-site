@@ -1048,7 +1048,11 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
       rows.length || over.length
         ? h("ol", { className: "pp-list" }, ...rows.map((r) => row(r, false)), ...over.map((r) => row(r, true)))
         : h("p", { className: "now-empty", textContent: "No open task fits the free time left today." }),
-      over.length > 0 && h("p", { className: "muted pp-note", textContent: `${plural(over.length)[0]} fit today. ${over.some((o) => o.room) ? `Shorten ${plural(over.length)[1]}, move` : "Move"} ${plural(over.length)[1]} up, or take ${plural(over.length)[1]} off.` }),
+      // An approved plan never changes itself (Mor, 2026-10-07): late in the
+      // day it says so and offers a fresh take on what's left.
+      over.length > 0 && approved && !prop.busy && h("p", { className: "pp-note pp-late" }, "Running late. ",
+        h("button", { type: "button", className: "linkish", textContent: "Rethink for what's left?", onclick: () => doRethink("") })),
+      over.length > 0 && !approved && h("p", { className: "muted pp-note", textContent: `${plural(over.length)[0]} fit today. ${over.some((o) => o.room) ? `Shorten ${plural(over.length)[1]}, move` : "Move"} ${plural(over.length)[1]} up, or take ${plural(over.length)[1]} off.` }),
       prop.note && h("p", { className: "pp-note", role: "status", textContent: prop.note }),
       prop.ask && rethinkBox(),
       h("div", { className: "pp-actions" },
