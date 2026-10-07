@@ -223,6 +223,41 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
     name.focus();
   }
 
+  // Rename (Mor, 2026-10-07): tap the name on the project screen. Every task
+  // carrying the old name moves, as do the saved name and the dates.
+  function askRename(old){
+    const d = els.dialog;
+    const name = h("input", { className: "ts-input", dir: "auto", autocomplete: "off", enterKeyHint: "done",
+      placeholder: "Project name", ariaLabel: "Project name", required: true, value: old });
+    const msg = h("p", { className: "msg", role: "alert" });
+    const save = (e) => {
+      e.preventDefault();
+      const v = name.value.trim();
+      if (!v) { name.focus(); return; }
+      if (v === old) { d.close(); return; }
+      if (v === INBOX || list().some((p) => p.name.toLowerCase() === v.toLowerCase() && p.name !== old)) { msg.textContent = "There's already a project by that name."; name.focus(); return; }
+      for (const t of (tasks || [])) if ((t.project || INBOX) === old) restoreTask(uid, t.id, { project: v }).catch(fail);
+      made = [...made.filter((n) => n !== old && n !== v), v];
+      saveProjectNames(uid, made).catch(fail);
+      if (ranges[old]) { const { [old]: r, ...rest } = ranges; ranges = rest; setRange(v, r); }
+      shown = v;
+      onScreen?.(v);
+      render();
+      d.close();
+    };
+    d.replaceChildren(
+      h("div", { className: "now-head" }, h("h2", { id: "npTitle", textContent: "Rename project" }),
+        h("button", { className: "now-x", type: "button", ariaLabel: "Close", textContent: "✕", onclick: () => d.close() })),
+      h("form", { className: "np-form", onsubmit: save }, name, msg,
+        h("div", { className: "sheet-actions" },
+          h("button", { className: "btn primary", type: "submit", textContent: "Save" }),
+          h("button", { className: "btn quiet", type: "button", textContent: "Cancel", onclick: () => d.close() }))));
+    d.onclick = (e) => { if (e.target === d) d.close(); };
+    d.showModal();
+    name.focus();
+    name.select();
+  }
+
   // Only an empty one: a project with tasks is those tasks.
   function deleteProject(name){
     made = made.filter((n) => n !== name);
@@ -354,7 +389,9 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
       h("div", { className: "pj-top" },
         h("button", { type: "button", className: "pj-back", ariaLabel: "Back to home", onclick: () => onScreen?.(null) }, icon("back")), chips),
       h("div", { className: "pj-card" },
-        h("div", { className: "pj-card-top", dir: dirOf(p.name) }, h("h2", { className: "pj-name", dir: "auto", textContent: p.name }),
+        h("div", { className: "pj-card-top", dir: dirOf(p.name) }, h("h2", { className: "pj-name" + (p.name === INBOX ? "" : " rename"), dir: "auto", textContent: p.name,
+          ...(p.name === INBOX ? {} : { role: "button", tabIndex: 0, title: "Rename project", onclick: () => askRename(p.name),
+            onkeydown: (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); askRename(p.name); } } }) }),
           p.all.length > 0 && h("span", { className: "pj-pct", textContent: `${Math.round(progress(p) * 100)}%` })),
         h("div", { className: "pj-prog" }, bar(p, "pbar big")),
         p.name !== INBOX && h("button", { type: "button", className: "pj-dates", onclick: () => askDates(p.name) },
