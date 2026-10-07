@@ -19,10 +19,11 @@ function paintDone(n){
   $("#doneChip").ariaLabel = `${n === 1 ? "1 task" : `${n} tasks`} done today. Open the list`;
 }
 function paintPlan(p){
-  $("#planChip").hidden = !p;
-  if (!p) return;
-  $("#planN").textContent = `${p.done}/${p.total}`;
-  $("#planChip").ariaLabel = `Today's plan: ${p.done} of ${p.total} done. Open it to change it`;
+  $("#planChip").hidden = false;
+  $("#planChip").classList.toggle("empty", !p);
+  $("#planW").textContent = p ? "Plan " : "Plan my day";
+  $("#planN").textContent = p ? `${p.done}/${p.total}` : "";
+  $("#planChip").ariaLabel = p ? `Today's plan: ${p.done} of ${p.total} done. Open it to change it` : "Plan my day";
 }
 function paintNeeds(n){
   $("#needsChip").hidden = !n;
@@ -168,6 +169,7 @@ async function boot(){
     paintPlan(null);
     paintDone(0);
     avatar.hidden = !user;
+    $("#planChip").hidden = !user;
     if (!user) { show("signedout"); return; }
 
     const displayName = user.displayName || user.email || "Guest";
@@ -426,8 +428,6 @@ async function boot(){
         });
         $("#projectsBtn").onclick = () => { m.projects.openAll(); screens.open("projects"); };
         $("#projectsBack").onclick = () => screens.back();
-        $("#planBtn").onclick = () => m.now?.plan();
-        $("#planChip").onclick = () => m.now?.plan();
         $("#planChip").onclick = () => m.now?.plan();
         m.now = mountNow($("#nowcard"), user.uid, {
           name: (user.displayName || "").trim().split(/\s+/)[0], onDone: paintDone, onNeedsCount: paintNeeds, onPlanProgress: paintPlan,

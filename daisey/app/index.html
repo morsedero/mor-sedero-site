@@ -45,8 +45,9 @@
     <div class="hdr-end">
       <!-- Needs you: amber, only when something does (now.js counts, main.js paints). -->
       <button id="needsChip" class="hchip needs" type="button" hidden><span class="hchip-dot" aria-hidden="true"></span><span id="needsN">0</span><span id="needsW" class="hchip-word"></span></button>
-      <!-- Plan: today's approved plan, done/total; tap to open and change it (now.js reports, main.js paints). -->
-      <button id="planChip" class="hchip plan" type="button" hidden><span class="hchip-dot" aria-hidden="true"></span><span class="hchip-word">Plan&nbsp;</span><span id="planN"></span></button>
+      <!-- Plan: one button (Mor, 2026-10-07). "Plan my day" until a plan is
+           approved, then done/total; tap either way to open it (now.js reports, main.js paints). -->
+      <button id="planChip" class="hchip plan empty" type="button" hidden><span class="hchip-dot" aria-hidden="true"></span><span id="planW" class="hchip-word">Plan my day</span><span id="planN"></span></button>
       <!-- Done today. -->
       <button id="doneChip" class="hchip done" type="button" hidden><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5 9-10"/></svg><span id="doneN">0</span></button>
       <!-- Account: Google-style avatar; tap for email + sign out. -->
@@ -74,7 +75,6 @@
     <section id="panel" class="panel" aria-labelledby="schedTitle">
       <div class="panel-head">
         <h2 id="schedTitle" class="panel-title">Schedule</h2>
-        <button id="planBtn" class="panel-btn" type="button">Plan my day</button>
         <button id="projectsBtn" class="panel-btn proj" type="button">Projects<span aria-hidden="true"> ›</span></button>
       </div>
       <div id="schedPage" class="ppage"></div>

@@ -1049,7 +1049,7 @@ dialog.tsheet .msg:empty { display: none; }
 /* On a phone the word goes; the count and the dot say it (the wordmark needs the room). */
 /* Both chips on a phone: "Needs you" drops to its count too, so the wordmark and (beta) stay whole. */
 @media (max-width: 429px) { .hdr-end:has(#planChip:not([hidden])) #needsChip .hchip-word { display: none; } }
-@media (max-width: 429px) { .hchip.plan .hchip-word, .hchip.plan .hchip-dot { display: none; } .hchip.plan { padding-inline: 9px; } .hdr-end { gap: 6px; } }
+@media (max-width: 429px) { .hchip.plan:not(.empty) .hchip-word, .hchip.plan .hchip-dot { display: none; } .hchip.plan { padding-inline: 9px; } .hdr-end { gap: 6px; } }
 .hchip.done { border: 1px solid var(--a-home-line); background: var(--a-home-tint); color: var(--a-home-ink); cursor: pointer; }
 .hchip.done::after { content: ""; position: absolute; inset: -7px -2px; } /* 44px to the finger */
 #status { margin-block-start: 16px; }
