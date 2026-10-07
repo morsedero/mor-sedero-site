@@ -1145,7 +1145,7 @@ dialog.tsheet .msg:empty { display: none; }
 .sc-title { flex: 1; min-inline-size: 0; display: flex; align-items: baseline; gap: 8px; padding: 4px 4px; border: 0; background: none; font: inherit; text-align: start; cursor: pointer; white-space: nowrap; overflow: hidden; }
 .sc-title .sc-name { font-size: 15px; }
 .sc-title .sc-date { overflow: hidden; text-overflow: ellipsis; }
-.sc-today { margin-inline-start: auto; padding: 1px 8px; border-radius: 999px; background: var(--chip); font-size: 11px; font-weight: 600; color: var(--ink-2); }
+.sc-today { flex: none; padding: 1px 8px; border-radius: 999px; background: var(--chip); font-size: 11px; font-weight: 600; color: var(--ink-2); }
 .sc-proj { flex: none; margin-inline-start: 6px; block-size: 32px; padding-inline: 12px; border: 0; border-radius: 999px; background: #5b67ff; color: #fff; font: inherit; font-size: 13px; font-weight: 700; white-space: nowrap; cursor: pointer; box-shadow: 0 2px 6px rgb(91 103 255 / .35); }
 .sc-proj:hover { background: #4b57ee; }
 .sc-seg { flex: none; display: flex; padding: 2px; border-radius: 10px; background: var(--chip); }
