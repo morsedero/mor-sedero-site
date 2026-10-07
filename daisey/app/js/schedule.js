@@ -20,6 +20,7 @@
 import { watchCalendar, connectCalendar, fetchRange } from "./calendar.js";
 import { watchSettings, watchTasks, watchRun, watchDayPlan } from "./store.js";
 import { timeline } from "./proposal.js";
+import { areaClass, watchProjectColors } from "./look.js";
 import { dayHours, minText } from "./day.js";
 import { localDate, durText } from "./model.js";
 import { h, bdi, nightDivider, icon } from "./ui.js";
@@ -197,6 +198,10 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onProjects } = 
     }
   }
 
+  // A task's project colour (its area's, failing that) for the event made for
+  // it; events with no task keep their calendar colour.
+  const tone = (ev) => { const t = ev.taskId && tasks?.find((x) => x.id === ev.taskId); return t ? areaClass(t) : ""; };
+
   // Today's approved plan on the clock (derived, never written to the calendar).
   function planRows(events, now, hrs){
     if (dayPlan?.status !== "approved" || dayPlan.date !== localDate() || !tasks) return [];
@@ -280,7 +285,7 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onProjects } = 
       for (const x of c.timed) {
         if (x.plan) {
           const w = 100 / x.lanes, time = `${clock(x.start)}–${clock(x.end)}`;
-          col.append(h("button", { type: "button", className: "wk-ev wk-plan" + (x.end <= now ? " past" : x.start <= now ? " on" : ""),
+          col.append(h("button", { type: "button", className: "wk-ev wk-plan" + areaClass(x.plan.task) + (x.end <= now ? " past" : x.start <= now ? " on" : ""),
             style: `top:${px(x.s)}px;block-size:${Math.max(18, px(x.e) - px(x.s) - 2)}px;inset-inline-start:${x.lane * w}%;inline-size:calc(${w}% - 2px)`,
             ariaLabel: `Planned: ${x.plan.task.title}, ${short(c.d)} ${time}`, onclick: () => onOpen?.(x.plan.task) },
             h("span", { className: "wk-evt" }, bdi(x.plan.task.title)), x.e - x.s >= 45 && h("span", { className: "wk-evtime", textContent: clock(x.start) })));
@@ -289,7 +294,7 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onProjects } = 
         const done = /^✓\s*/u.test(x.ev.title), title = done ? x.ev.title.replace(/^✓\s*/u, "") : x.ev.title;
         const tall = x.e - x.s >= 45, time = `${clock(x.start)}–${clock(x.end)}`;
         const w = 100 / x.lanes;
-        col.append(h("button", { type: "button", className: "wk-ev" + (done ? " done" : "") + (x.end <= now ? " past" : x.start <= now ? " on" : ""),
+        col.append(h("button", { type: "button", className: "wk-ev" + (done ? " done" : "") + tone(x.ev) + (x.end <= now ? " past" : x.start <= now ? " on" : ""),
           style: `top:${px(x.s)}px;block-size:${Math.max(18, px(x.e) - px(x.s) - 2)}px;inset-inline-start:${x.lane * w}%;inline-size:calc(${w}% - 2px);${x.ev.color ? `--ev:${x.ev.color}` : ""}`,
           ariaLabel: `${done ? "Finished task: " : ""}${title}, ${short(c.d)} ${time}`, onclick: () => onEvent?.(x.ev) },
           h("span", { className: "wk-evt" }, bdi(title)), tall && h("span", { className: "wk-evtime", textContent: clock(x.start) })));
@@ -315,12 +320,12 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onProjects } = 
     const past = !x.allDay && x.end <= now;
     if (x.kind === "plan") return h("div", { className: "sc-row" + (on ? " sc-on" : past ? " sc-past" : "") },
       h("span", { className: "sc-time strong" }, time, on && h("span", { className: "sc-nowtag", textContent: "Now" })),
-      h("button", { type: "button", className: "sc-ev sc-plan", ariaLabel: `Planned: ${x.task.title}, ${time}`, onclick: () => onOpen?.(x.task) },
+      h("button", { type: "button", className: "sc-ev sc-plan" + areaClass(x.task), ariaLabel: `Planned: ${x.task.title}, ${time}`, onclick: () => onOpen?.(x.task) },
         h("span", { className: "sc-evi" }, icon("check")), bdi(x.task.title)));
     // A finished task is logged as a "✓ title" event (calendar.js logDone).
     const done = /^✓\s*/u.test(x.ev.title), title = done ? x.ev.title.replace(/^✓\s*/u, "") : x.ev.title;
     return h("div", { className: "sc-row" + (on ? " sc-on" : past ? " sc-past" : "") }, h("span", { className: "sc-time strong" }, time, on && h("span", { className: "sc-nowtag", textContent: "Now" })),
-      h("button", { type: "button", className: "sc-ev" + (done ? " sc-done" : ""), style: x.ev.color ? `--ev:${x.ev.color}` : "",
+      h("button", { type: "button", className: "sc-ev" + (done ? " sc-done" : "") + tone(x.ev), style: x.ev.color ? `--ev:${x.ev.color}` : "",
         ariaLabel: `${done ? "Finished task: " : ""}${on ? "Now: " : ""}${title}, ${time}`, onclick: () => onEvent?.(x.ev) },
         done ? h("span", { className: "sc-tick" }, icon("check")) : h("span", { className: "sc-evi" }, icon("calendar")), bdi(title)));
   }
@@ -331,6 +336,7 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onProjects } = 
     watchSettings(uid, (s) => { settings = s || {}; render(); }, fail),
     watchTasks(uid, (ts) => { tasks = ts; render(); }, fail),
     watchRun(uid, (r) => { run = r; render(); }, fail),
+    watchProjectColors(() => render()),
     watchDayPlan(uid, (d) => { dayPlan = d || null; render(); }, fail),
   ];
   // Free time shrinks as the clock moves; once a minute is plenty.
