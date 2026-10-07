@@ -21,8 +21,7 @@
 // shows below in full. It opens on today, or on tomorrow once today's hours
 // are over and nothing's left. The pick lasts only as long as the tab.
 import { watchCalendar } from "./calendar.js";
-import { watchSettings, watchTasks, watchRun, watchDayPlan } from "./store.js";
-import { timeline } from "./proposal.js";
+import { watchSettings, watchTasks, watchRun } from "./store.js";
 import { dayHours, minText } from "./day.js";
 import { localDate, durText } from "./model.js";
 import { h, bdi, nightDivider } from "./ui.js";
@@ -71,7 +70,7 @@ export function dayRows(events, date, hrs, from = 0){
 export function mountSchedule(el, uid, { onEvent, onNew, onOpen } = {}){
   let cal = { status: "loading", events: [] };
   let settings = {};
-  let tasks = null, run = null, dayPlan = null; // for today's approved plan
+  let tasks = null, run = null; // for Plan my day
   let picked = null; // "YYYY-MM-DD" tapped in the day strip; null = today (tomorrow once tonight is empty)
   const fail = (e) => console.error("[daisey] schedule", e);
 
@@ -113,27 +112,11 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen } = {}){
     const label = h("div", { className: "sc-label" }, h("span", { className: "sc-name", textContent: name }), h("span", { className: "sc-date", textContent: short(day.date) }));
     const none = h("button", { type: "button", className: "sc-none", onclick: () => onNew?.(day.ymd) },
       h("span", { textContent: "Nothing scheduled" }), h("span", { className: "sc-add", ariaHidden: "true", textContent: "+ Add" }));
-    // Today, once a plan is approved on the Now card (proposal.js): its tasks
-    // on the clock, above the calendar's own day. Not in the calendar. The
-    // old "Plan for today" windows went (2026-10-07): the header's "Plan my
-    // day" opens the proposal instead, so the panel stays the day itself.
-    const plan = day.i === 0 && tasks && dayPlan?.status === "approved" && dayPlan.date === day.ymd ? planRows(now, hrs) : null;
-    if (plan) kids.push(plan);
     kids.push(h("section", { className: "sc-day", ariaLabel: `${name}, ${short(day.date)}` }, label,
       ...(day.rows.length ? day.rows.map((x) => row(x, now)) : [none])));
     const y = el.scrollTop;
     el.replaceChildren(...kids);
     el.scrollTop = y;
-  }
-
-  function planRows(now, hrs){
-    const { rows } = timeline(dayPlan.items || [], { tasks, events: cal.events, now, hours: hrs, run });
-    const done = (dayPlan.items || []).filter((it) => tasks.some((t) => t.id === it.taskId && t.status === "done")).length;
-    if (!rows.length) return null;
-    return h("section", { className: "sc-plan", ariaLabel: "Today's plan" },
-      h("div", { className: "sc-label" }, h("span", { className: "sc-name", textContent: "Your plan" }), h("span", { className: "sc-date", textContent: `${done} done · ${rows.length} to go` })),
-      ...rows.map((r) => h("div", { className: "sc-row" }, h("span", { className: "sc-time", textContent: `${clock(r.start)}–${clock(r.end)}` }),
-        h("button", { type: "button", className: "sc-task", ariaLabel: `${r.task.title}, planned ${clock(r.start)}`, onclick: () => onOpen?.(r.task) }, bdi(r.task.title)))));
   }
 
   function row(x, now){
@@ -156,7 +139,6 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen } = {}){
     watchSettings(uid, (s) => { settings = s || {}; render(); }, fail),
     watchTasks(uid, (ts) => { tasks = ts; render(); }, fail),
     watchRun(uid, (r) => { run = r; render(); }, fail),
-    watchDayPlan(uid, (d) => { dayPlan = d || null; render(); }, fail),
   ];
   // Free time shrinks as the clock moves; once a minute is plenty.
   let mark = null;

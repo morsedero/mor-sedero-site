@@ -1078,6 +1078,10 @@ dialog.tsheet .msg:empty { display: none; }
 .hchip.needs { border: 1px solid var(--a-job-line); background: var(--a-job-tint); color: color-mix(in srgb, var(--a-job-ink) 80%, var(--ink)); cursor: pointer; }
 .hchip.needs::after { content: ""; position: absolute; inset: -7px -2px; } /* 44px to the finger */
 .hchip-dot { inline-size: 7px; block-size: 7px; border-radius: 50%; background: var(--accent); }
+.hchip.plan { border: 1px solid var(--line); background: var(--card); color: var(--ink); cursor: pointer; }
+.hchip.plan::after { content: ""; position: absolute; inset: -7px -2px; } /* 44px to the finger */
+/* On a phone the word goes; the count and the dot say it (the wordmark needs the room). */
+@media (max-width: 429px) { .hchip.plan .hchip-word, .hchip.plan .hchip-dot { display: none; } .hchip.plan { padding-inline: 9px; } .hdr-end { gap: 6px; } }
 .hchip.done { background: var(--a-home-tint); color: var(--a-home-ink); }
 .hchip.brief { border: 1px solid var(--line); background: var(--card); color: var(--ink-2); cursor: pointer; }
 .hchip.brief[aria-expanded="true"] { background: var(--chip); color: var(--ink); }

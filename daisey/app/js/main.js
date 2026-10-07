@@ -18,6 +18,12 @@ function paintDone(n){
   $("#doneN").textContent = String(n);
   $("#doneChip").ariaLabel = `${n === 1 ? "1 task" : `${n} tasks`} done today`;
 }
+function paintPlan(p){
+  $("#planChip").hidden = !p;
+  if (!p) return;
+  $("#planN").textContent = `${p.done}/${p.total}`;
+  $("#planChip").ariaLabel = `Today's plan: ${p.done} of ${p.total} done. Open it to change it`;
+}
 function paintNeeds(n){
   $("#needsChip").hidden = !n;
   $("#needsN").textContent = `${n} need${n === 1 ? "s" : ""} you`;
@@ -159,6 +165,7 @@ async function boot(){
     if (mounted) { for (const m of Object.values(mounted)) m?.unmount(); mounted = null; }
     for (const s of SIGNED_IN) $(s).hidden = true;
     paintNeeds(0);
+    paintPlan(null);
     paintDone(0);
     avatar.hidden = !user;
     if (!user) { show("signedout"); return; }
@@ -326,8 +333,10 @@ async function boot(){
         $("#projectsBtn").onclick = () => { m.projects.openAll(); screens.open("projects"); };
         $("#projectsBack").onclick = () => screens.back();
         $("#planBtn").onclick = () => m.now?.plan();
+        $("#planChip").onclick = () => m.now?.plan();
+        $("#planChip").onclick = () => m.now?.plan();
         m.now = mountNow($("#nowcard"), user.uid, {
-          name: (user.displayName || "").trim().split(/\s+/)[0], onDone: paintDone, onNeedsCount: paintNeeds,
+          name: (user.displayName || "").trim().split(/\s+/)[0], onDone: paintDone, onNeedsCount: paintNeeds, onPlanProgress: paintPlan,
           onCard: (id) => m.projects?.setCurrent(id),
           onOpen: (task) => m.adder.edit(task),
           onProject: (name) => m.projects.openProject(name),

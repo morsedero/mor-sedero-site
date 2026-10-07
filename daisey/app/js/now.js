@@ -43,7 +43,7 @@ const clock = (ms) => new Date(ms).toLocaleTimeString([], { hour: "2-digit", min
 // card's title is the way in. onEvent(ev): an event's details. name: the first name for the night screen. onDone(n):
 // how many tasks are done today, for the header's chip. onNeedsCount(n):
 // how many decisions Needs you holds, for the amber chip.
-export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name = "", onDone, onNeedsCount, guest = false } = {}){
+export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name = "", onDone, onNeedsCount, onPlanProgress, guest = false } = {}){
   let tasks = null; // null until the first snapshot
   let settings = {}; // state/settings: when the sweep was last offered
   let momentDoc = {}; // state/moment: energy and place corrections
@@ -1028,16 +1028,13 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
           textContent: prop.busy ? "Thinking…" : prop.ask ? "Cancel" : "Rethink", onclick: () => { prop.ask = !prop.ask; render(); } }),
         h("button", { className: "btn quiet", type: "button", textContent: approved ? "Close" : "Not today", onclick: approved ? closeProposal : dismiss })));
   }
-  // Above the card once a plan is approved: how far along it is, and the
-  // way back in to change it.
-  function planLine(){
+  // Once a plan is approved, how far along it is goes to the header chip
+  // (next to Needs you); tapping it reopens the plan to change it.
+  function planProgressNow(){
     const p = approvedPlan();
-    if (!p) return null;
-    const { done, total } = planProgress(p, tasks || []);
-    if (!total) return null;
-    return h("button", { type: "button", className: "plan-line", ariaLabel: `Today's plan: ${done} of ${total} done. Open it to change it`, onclick: openProposal },
-      h("span", { className: "plan-line-k", textContent: "Plan" }), h("span", { className: "plan-line-v", textContent: `${done} of ${total} done` }),
-      h("span", { className: "plan-line-go", textContent: "Edit ›" }));
+    if (!p || !tasks) return null;
+    const { done, total } = planProgress(p, tasks);
+    return total ? { done, total } : null;
   }
 
   // Done today, for the header's daisy: what the snapshot says, plus what was
@@ -1047,7 +1044,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
     for (const id of handoff?.ids || []) ids.add(id);
     return ids.size;
   }
-  let reported = null, reportedNeeds = null;
+  let reported = null, reportedNeeds = null, reportedPlan = "";
 
   function render(){
     const live = !!run; // paused or not
@@ -1061,6 +1058,8 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
     document.documentElement.classList.toggle("night", night);
     const n = doneCount();
     if (n !== reported) { reported = n; onDone?.(n); }
+    const pp = planProgressNow(), ppKey = pp ? `${pp.done}/${pp.total}` : "";
+    if (ppKey !== reportedPlan) { reportedPlan = ppKey; onPlanProgress?.(pp); }
     if (!live && tasks) {
       const nn = collectNeeds({ tasks, events: cal.events || [], calOk: cal.status === "ok", settings }).length;
       if (nn !== reportedNeeds) { reportedNeeds = nn; onNeedsCount?.(nn); }
@@ -1133,7 +1132,6 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
       if (items.length >= 2) { prop.items = items; prop.exclude = []; prop.open = true; }
     }
     if (prop.open) { showing(null); day(...head, proposalCard(), toast && toastView()); return; }
-    head.push(planLine());
 
     const r = rank(tasks, momentInput(fw));
     const planned = blockOf(fw)?.taskId;
