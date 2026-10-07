@@ -612,7 +612,19 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
     const now = Date.now(), morning = nextMorning(now, hrs);
     const evs = cal.status === "ok" ? cal.events.filter((e) => e.busy !== false && !e.allDay) : [];
     const fw = cal.status === "ok" ? freeWindow(evs, morning, dayEndAt(morning, hrs)) : null;
-    const r = rank(tasks || [], {
+    // Before the day starts it's still "tonight" until 04:00; after that the
+    // morning's plan is today's, not tomorrow's.
+    const early = new Date(now).getHours() >= 4 && localDate(morning) === localDate(now);
+    // A real deadline that's today and still open (2026-10-06): the night
+    // screen said "Nothing needs you tonight" over it, and by morning it read
+    // "deadline passed". It gets named, with a Start — the one thing night
+    // mode lets through.
+    const today = localDate(now);
+    const dueTonight = early ? [] : (tasks || []).filter((t) => t.status === "ready" && t.dateKind === "deadline"
+      && t.due === today && !notYet(t, now) && !(t.dueTime && now >= dueAt(t)));
+    // Already named under "Due today" — don't offer it again as tomorrow's pick.
+    const dueIds = new Set(dueTonight.map((t) => t.id));
+    const r = rank((tasks || []).filter((t) => !dueIds.has(t.id)), {
       now: morning,
       ...(!fw ? { realWindow: false } : { window: fw.current ? 60 : fw.window, nextEvent: fw.next?.title ?? null }),
       ...workBase(tasks || [], now),
@@ -621,22 +633,12 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
       booked: Object.fromEntries([...booked()].map(([id, b]) => [id, b.start])),
     });
     const p = r.pick;
-    // Before the day starts it's still "tonight" until 04:00; after that the
-    // morning's plan is today's, not tomorrow's.
-    const early = new Date(now).getHours() >= 4 && localDate(morning) === localDate(now);
     const day = localDate(morning);
     const first = evs.filter((e) => localDate(Date.parse(e.start)) === day)
       .sort((a, b) => Date.parse(a.start) - Date.parse(b.start))[0];
     const meta = p && [areaName(p.task) || projectShown(p.task), dur(p.task.size),
       MARK[p.task.stakes] && `${MARK[p.task.stakes]}`].filter(Boolean).join(" · ");
     const who = name ? `, ${name}` : "";
-    // A real deadline that's today and still open (2026-10-06): the night
-    // screen said "Nothing needs you tonight" over it, and by morning it read
-    // "deadline passed". It gets named, with a Start — the one thing night
-    // mode lets through.
-    const today = localDate(now);
-    const dueTonight = early ? [] : (tasks || []).filter((t) => t.status === "ready" && t.dateKind === "deadline"
-      && t.due === today && !notYet(t, now) && !(t.dueTime && now >= dueAt(t)));
     const lead = dueTonight.length === 1 ? "One deadline is still open today." : `${dueTonight.length} deadlines are still open today.`;
     return [
       h("div", { className: "stars", ariaHidden: "true" }, ...[0, 1, 2, 3].map(() => h("span"))),
