@@ -149,8 +149,8 @@ async function boot(){
     try { localStorage.removeItem(GUEST_KEY); } catch { /* private window */ }
     fb.signOut().finally(() => location.reload());
   };
-  // Where you are, by hand, and saved places (this device only).
-  const places = mountPlaces($("#placesBox"), $("#settingsdlg"));
+  // Saved places, to forget one (this device only). Learned on the Now screen.
+  const places = mountPlaces($("#placesBox"));
   // Settings: the avatar menu's one door to everything else (Mor, 2026-10-06).
   // A tap on the dim backdrop closes it, like Escape and ✕.
   const settings = $("#settingsdlg");

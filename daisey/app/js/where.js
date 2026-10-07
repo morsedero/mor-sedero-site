@@ -98,18 +98,63 @@ function fixes(){
   });
 }
 
+// Unnamed spots you stand still at (Mor, 2026-10-07: nobody names places in
+// Settings, so Daisey asks). d.seen: [{ lat, lng, days: [YYYY-MM-DD…],
+// since, at, notHome, quiet }], one per spot within NEAR_M. placeAsk reads it.
+const SEEN_MAX = 20, SEEN_ACC_M = 100, DWELL_MS = 30 * 60000;
+const today = () => new Date().toLocaleDateString("sv");
+const seenAt = (d, fix) => (d.seen || []).find((s) => dist(fix, s) <= NEAR_M);
+function noteVisit(d, fix){
+  if ((fix.acc || 0) > SEEN_ACC_M) return d;
+  const seen = (d.seen ||= []), day = today();
+  let s = seenAt(d, fix);
+  if (!s) { s = { lat: fix.lat, lng: fix.lng, days: [], since: fix.t }; seen.push(s); }
+  if (s.days.at(-1) !== day) { s.days = s.days.concat(day).slice(-7); s.since = fix.t; }
+  s.at = fix.t;
+  d.seen = seen.sort((a, b) => b.at - a.at).slice(0, SEEN_MAX);
+  return d;
+}
+
 async function detect(){
   if (running) return running;
   lastRun = Date.now();
   const manual = manualNow();
   if (manual) { tell(manual); return; }
   running = fixes().then((fs) => {
-    if (fs.length) save({ ...load(), last: fs.at(-1) });
-    const d = load();
-    tell(manualNow(d) || placeFrom(fs, d.places, d.ride));
+    let d = load();
+    if (fs.length) d.last = fs.at(-1);
+    const v = placeFrom(fs, d.places, d.ride);
+    if (fs.length && (v === "out" || v === null)) d = noteVisit(d, d.last);
+    save(d);
+    tell(manualNow(d) || v);
   }).finally(() => { running = null; });
   return running;
 }
+
+// What to ask about where you are, if anything: "home" (no Home saved yet:
+// is this it?), "name" (Home known, or this isn't it, and you keep coming
+// back: a 2nd day here, or 30+ min today), or null. Only when the location
+// is fresh, you're still, and nothing's picked by hand.
+export function placeAsk(){
+  const d = load();
+  if (manualNow(d) || !d.last || Date.now() - d.last.t > 10 * 60000 || !(current === "out" || current === null)) return null;
+  const s = seenAt(d, d.last);
+  if (!s || s.quiet) return null;
+  if (!d.places.some((p) => isHome(p.name)) && !s.notHome) return "home";
+  return s.days.length >= 2 || s.at - s.since >= DWELL_MS ? "name" : null;
+}
+
+// Answers to placeAsk. "Not home": this spot is never asked as Home again.
+// "Not now": this spot is never asked about again.
+function markHere(patch){
+  const d = load(), s = d.last && seenAt(d, d.last);
+  if (!s) return;
+  Object.assign(s, patch);
+  save(d);
+  listeners.forEach((f) => f(current)); // same place, but the question changed
+}
+export const notHomeHere = () => markHere({ notHome: true });
+export const quietHere = () => markHere({ quiet: true });
 
 // onChange(place) on every change; returns stop(). Reads now, then every
 // REDETECT_MS while the app is on screen, and when it comes back.
@@ -122,6 +167,10 @@ export function watchWhere(onChange){
   document.addEventListener("visibilitychange", again);
   return () => { listeners.delete(onChange); clearInterval(timer); document.removeEventListener("visibilitychange", again); };
 }
+
+// A saved place can't wear a mode's name ("Out", "Train"…): it would read as one.
+const RESERVED = new Set(["out", "walking", "walk", "train", "bus", "car", "driving", "ride", "travelling", "not sure", "anywhere"]);
+export const reservedName = (n) => RESERVED.has(String(n).trim().toLowerCase());
 
 export const whereNow = () => current;
 export const savedPlaces = () => load().places.map((p) => p.name);
@@ -167,7 +216,8 @@ export async function saveSpot(name){
   if (!fix || Date.now() - fix.t > 60000) return false;
   const d = load();
   const places = d.places.filter((p) => p.name.toLowerCase() !== name.toLowerCase()).concat({ name, lat: fix.lat, lng: fix.lng, acc: fix.acc || 0 });
-  save({ ...d, places });
+  const seen = (d.seen || []).filter((s) => dist(fix, s) > NEAR_M); // named now: stop asking about it
+  save({ ...d, places, seen });
   tell(placeOf({ name }));
   return true;
 }

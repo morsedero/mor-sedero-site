@@ -761,12 +761,6 @@ body.focus .tell-panel { display: none; }
 .pl-opts .chip { min-block-size: 34px; padding-inline: 12px; border: none; background: var(--chip); font-size: 13px; }
 .pl-opts .chip[aria-checked="true"] { background: var(--ink); color: var(--bg); }
 .pl-opts .chip.pl-del { color: var(--nowline); }
-.pl-now { font-size: 14px; font-weight: 600; white-space: nowrap; }
-.pl-sub { color: var(--ink-2); font-weight: 400; }
-.pl-reset { margin-inline-start: 8px; color: var(--ink-2); }
-.pl-save { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 8px; }
-.pl-save input { font: inherit; font-size: 16px; padding: 6px 10px; border: 1px solid var(--line); border-radius: 10px; background: transparent; color: inherit; min-inline-size: 0; }
-.pl-edit { font-size: 14px; color: var(--ink-2); }
 
 /* ===== Layout round 2 (Mor, 2026-10-05; daisey/New Design/6–10) =====
    A calm home with everything one pull away. Sizes and colours follow the

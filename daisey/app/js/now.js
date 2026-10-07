@@ -18,7 +18,7 @@ import { addTask, watchTasks, watchRun, watchSkips, saveSkips, startRun, extendR
 import { proposeDay, timeline, nextPlanned, planProgress } from "./proposal.js";
 import { rethink } from "./rethink.js";
 import { placeNow, workBase } from "./context.js";
-import { watchWhere, setRide, setStill, saveSpot, setManual } from "./where.js";
+import { watchWhere, setRide, setStill, saveSpot, setManual, placeAsk, notHomeHere, quietHere, reservedName } from "./where.js";
 import { pickWeekDay } from "./triage.js";
 import { focusView, handoffView, elapsedMinutes, targetMinutes, batchFocusView, batchName, sinceMark, paused, resumed, runCap, bookedMinutes, holdButton, stillOnMinutes } from "./focus.js";
 import { watchCalendar, logDone } from "./calendar.js";
@@ -59,6 +59,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
   let dayPlan, planKnown = false;
   const prop = { open: false, items: [], exclude: [], ask: false, text: "", busy: false, note: "", auto: null };
   let holdAsk = false, holdText = ""; // "Waiting for reply" on the running card
+  let placeNaming = false, placeName = ""; // "Name this place?" (placeAskView)
   // The event you said you're free from, as its start time in ms (what
   // engine.freeWindow reports). Cleared on its own once that event is no
   // longer the one running.
@@ -215,6 +216,39 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
       h("span", { className: "muted", textContent: "On a" }),
       pick("train", "Train"), pick("bus", "Bus"), pick("car", "Driving"),
       h("button", { type: "button", className: "chip", textContent: "Not moving", onclick: () => setStill() }));
+  }
+
+  // Places are learned by asking, not in Settings (Mor, 2026-10-07: "no one
+  // will ever do that intentionally"). where.js placeAsk decides when: no Home
+  // yet → "Are you home?"; a spot you keep coming back to → "Name it?".
+  // Each spot is asked once; "Not now" silences it for good.
+  function placeAskView(kind){
+    const chip = (text, onclick, cls = "chip") => h("button", { type: "button", className: cls, textContent: text, onclick });
+    const failed = () => flash("Couldn't get your location. Allow it for this site and try again.");
+    if (kind === "home") return h("div", { className: "ride-ask", role: "group", ariaLabel: "Are you home?" },
+      h("span", { className: "muted", textContent: "Are you home right now?" }),
+      chip("Yes", async () => { if (!await saveSpot("Home")) failed(); }),
+      chip("No", () => notHomeHere()));
+    const save = async () => {
+      const n = placeName.trim();
+      if (!n) return;
+      if (reservedName(n)) { flash(`"${n}" is taken. Pick another name.`); return; }
+      placeNaming = false; placeName = "";
+      if (await saveSpot(n)) flash(`Saved. I'll know when you're at ${n}.`); else failed();
+      render();
+    };
+    if (!placeNaming) return h("div", { className: "ride-ask", role: "group", ariaLabel: "Name this place?" },
+      h("span", { className: "muted", textContent: "You're here a lot. Name this place?" }),
+      chip("Name it", () => { placeNaming = true; render(); }),
+      chip("Not now", () => quietHere()));
+    const input = h("input", { id: "placeHere", dir: "auto", autocomplete: "off", enterkeyhint: "done", value: placeName,
+      placeholder: "Work, Studio, Gym…", oninput: (e) => { placeName = e.target.value; } });
+    input.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); save(); } });
+    setTimeout(() => { if (input.isConnected && document.activeElement !== input) input.focus(); });
+    return h("div", { className: "pend-ask" },
+      h("label", { htmlFor: "placeHere", textContent: "What's this place? Tasks that mention it come first here." }),
+      h("div", { className: "pend-row" }, input, chip("Save", save, "btn primary small"),
+        chip("Cancel", () => { placeNaming = false; placeName = ""; render(); }, "btn quiet small")));
   }
 
   // Driving and no call to make (hands-free calls are the one thing that
@@ -1157,6 +1191,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
 
     if (night) { fill(...head, ...nightView(hrs), toast && toastView()); return; }
     if (located === "ride") head.push(rideAsk());
+    else { const ask = placeAsk(); if (ask) head.push(placeAskView(ask)); }
 
     // The start of the day: once per day, until it's approved or turned
     // down, the card opens as the proposal (when there's something to plan).
