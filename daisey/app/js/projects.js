@@ -230,12 +230,13 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
       d.close();
       if (out) flash(`${plural(out, "task")} outside these dates: `, v);
     };
-    // Same rule as before: only an empty project can go. Two taps to confirm.
+    // Any project but the Inbox. Two taps to confirm; its tasks go to the Inbox.
     let del = null;
-    if (made.includes(old) && !(tasks || []).some((t) => (t.project || INBOX) === old)) {
+    if (old !== INBOX) {
       let armed = false;
+      const n = (tasks || []).filter((t) => (t.project || INBOX) === old).length;
       del = h("button", { className: "btn quiet danger", type: "button", textContent: "Delete project", onclick: () => {
-        if (!armed) { armed = true; del.textContent = "Really delete?"; del.classList.add("arm"); return; }
+        if (!armed) { armed = true; del.textContent = n ? `Really delete? ${plural(n, "task")} → Inbox` : "Really delete?"; del.classList.add("arm"); return; }
         d.close();
         deleteProject(old);
       } });
@@ -254,13 +255,23 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
     name.select();
   }
 
-  // Only an empty one: a project with tasks is those tasks.
+  // Tasks in it move to the Inbox, nothing is lost; undo puts them back.
   function deleteProject(name){
+    const moved = (tasks || []).filter((t) => (t.project || INBOX) === name);
+    const range = ranges[name];
+    for (const t of moved) restoreTask(uid, t.id, { project: INBOX }).catch(fail);
     made = made.filter((n) => n !== name);
     saveProjectNames(uid, made).catch(fail);
+    const { [name]: _gone, ...rest } = ranges; ranges = rest;
     onScreen?.(null);
     render();
-    flash("Deleted: ", name, { undo: () => { if (!made.includes(name)) { made = [...made, name]; saveProjectNames(uid, made).catch(fail); render(); } } });
+    flash("Deleted: ", name, { undo: () => {
+      if (made.includes(name)) return;
+      for (const t of moved) restoreTask(uid, t.id, { project: name }).catch(fail);
+      made = [...made, name]; saveProjectNames(uid, made).catch(fail);
+      if (range) setRange(name, range);
+      render();
+    } });
   }
 
   // ---------- the project screen ----------
