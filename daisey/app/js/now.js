@@ -871,25 +871,28 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
   function cardActions(task, alts, start){
     const card = { task };
     const someN = somedayTasks().length;
+    const closeAsks = () => { state.laterAsk = false; state.pendAsk = false; state.showAlts = false; };
     return [
-      // Later, Pending, Done, then Start at the row's far end (Mor,
-      // 2026-10-07: Pending is a real step, so its own first tap; Later asks
-      // only when; Focus lives on the running card).
+      // Later, Done, then Start at the row's far end (Mor, 2026-10-07: Focus
+      // left this row — the running card has it — and Later is one ask, not
+      // a menu inside a menu: tomorrow is two taps).
       h("div", { className: "now-actions now-row" },
-        action("later", "Later", `choose when to see ${card.task.title} again`,
-          { ariaExpanded: String(state.notNow), onclick: () => { state.notNow = !state.notNow; state.pendAsk = false; state.showAlts = false; render(); } }),
-        action("pending", "Pending", `${card.task.title} is blocked: set it to Pending`,
-          { ariaExpanded: String(state.pendAsk), onclick: () => { state.pendAsk = !state.pendAsk; state.notNow = false; state.showAlts = false; render(); } }),
+        action("later", "Later", `later, waiting or something else: ${card.task.title}`,
+          { ariaExpanded: String(state.notNow), onclick: () => { state.notNow = !state.notNow; closeAsks(); render(); } }),
         action("check", "Done", `${card.task.title} is already done`, { onclick: () => quickDone(card.task) }),
         start),
       state.notNow && h("div", { className: "later-ask", role: "group", ariaLabel: "When instead?" },
         ...[["today", "Later today"], ["tomorrow", "Tomorrow"], ["week", "This week"], ["someday", "Not now"]].map(([w, text]) =>
-          h("button", { className: "chip", type: "button", textContent: text, onclick: () => later(card.task, w) }))),
+          h("button", { className: "chip", type: "button", textContent: text, onclick: () => later(card.task, w) })),
+        h("button", { className: "chip quiet", type: "button", textContent: "Waiting on…", ariaExpanded: String(state.pendAsk),
+          ariaLabel: `${card.task.title} is blocked: set it to Pending`,
+          onclick: () => { state.pendAsk = !state.pendAsk; state.showAlts = false; render(); } }),
+        // Never a dead end while Not now holds tasks (DAISEY_SPEC "Someday comes back").
+        h("button", { className: "chip quiet", type: "button", textContent: "Something else", ariaExpanded: String(state.showAlts),
+          disabled: !alts.length && !someN,
+          ariaLabel: alts.length ? `something else: ${alts.length} other tasks` : someN ? "nothing else is active: pick from Not now" : "nothing else is active",
+          onclick: () => { state.showAlts = !state.showAlts; state.pendAsk = false; render(); } })),
       state.pendAsk && pendingAsk(card.task),
-      // Never a dead end while Not now holds tasks (DAISEY_SPEC "Someday comes back").
-      (alts.length || someN) && h("button", { className: "linkish now-else", type: "button", ariaExpanded: String(state.showAlts),
-        textContent: state.showAlts ? "Hide other tasks" : "Something else",
-        onclick: () => { state.showAlts = !state.showAlts; state.notNow = false; state.pendAsk = false; render(); } }),
     ];
   }
 
@@ -1173,9 +1176,9 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
         onStart: begin,
         onFocus: (task) => begin(task, "focus"),
         onDone: (task) => { handoff = null; quickDone(task); },
-        onLater: (task) => onCardWith(task, {}),
-        onSwitch: (task) => onCardWith(task, { notNow: false, showAlts: true }),
-        onPending: (task) => onCardWith(task, { notNow: false, pendAsk: true }),
+        onLater: (task) => onCardWith(task, { laterAsk: true }),
+        onSwitch: (task) => onCardWith(task, { showAlts: true }),
+        onPending: (task) => onCardWith(task, { pendAsk: true }),
         onOpen: onOpen ? (task) => onOpen(task) : null,
         onPlan: () => openProposal(),
         onSkip: (task) => { if (task) skips.add(task.id); handoff = null; showing(null); render(); },
