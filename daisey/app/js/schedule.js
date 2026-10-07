@@ -18,7 +18,8 @@
 // One day at a time (Mor, 2026-10-06: the whole week stacked vertically was
 // crowded and confusing), or the week as a grid — see "Day or Week" below.
 import { watchCalendar, connectCalendar, fetchRange } from "./calendar.js";
-import { watchSettings, watchTasks, watchRun } from "./store.js";
+import { watchSettings, watchTasks, watchRun, watchDayPlan } from "./store.js";
+import { timeline } from "./proposal.js";
 import { dayHours, minText } from "./day.js";
 import { localDate, durText } from "./model.js";
 import { h, bdi, nightDivider, icon } from "./ui.js";
@@ -105,6 +106,7 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onProjects } = 
   let cal = { status: "loading", events: [] };
   let settings = {};
   let tasks = null, run = null; // for Plan my day
+  let dayPlan = null; // today's saved plan doc; approved, it sits in today's gaps
   let view = "day";
   try { if (localStorage.getItem(VIEW_KEY) === "week") view = "week"; } catch {}
   let focus = null; // "YYYY-MM-DD" stepped to; null = today
@@ -199,8 +201,26 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onProjects } = 
     const t = date.getTime(), t0 = today.getTime();
     // Free time only from now on: none in the past, today's from the clock.
     const fromMs = t < t0 ? addDays(date, 1).getTime() : t === t0 ? now : 0;
-    const rows = dayRows(events, date, hrs, fromMs);
+    let rows = dayRows(events, date, hrs, fromMs);
     const ymd = localDate(t);
+    // An approved plan sits inside today's free time (Mor, 2026-10-08): its
+    // blocks replace the stretch of gap they cover. Derived, never written to
+    // the calendar.
+    if (t === t0 && dayPlan?.status === "approved" && dayPlan.date === ymd && tasks) {
+      const planned = timeline(dayPlan.items || [], { tasks, events, now, hours: hrs, run }).rows
+        .map((r) => ({ kind: "plan", start: r.start, end: r.end, task: r.task }));
+      if (planned.length) {
+        const cut = rows.flatMap((x) => {
+          if (x.kind !== "free") return [x];
+          let parts = [x];
+          for (const p of planned) parts = parts.flatMap((f) => [
+            { ...f, end: Math.min(f.end, p.start) }, { ...f, start: Math.max(f.start, p.end) }]
+            .filter((g) => g.end - g.start >= MIN_FREE * 60000 && (g.end <= p.start || g.start >= p.end)));
+          return parts;
+        });
+        rows = [...cut, ...planned].sort((a, b) => (a.start ?? -1) - (b.start ?? -1) || (a.kind === "free") - (b.kind === "free"));
+      }
+    }
     const out = [];
     if (t === t0 && now < atMin(today, hrs.start)) out.push(nightDivider(minText(hrs.end), minText(hrs.start)));
     const none = h("button", { type: "button", className: "sc-none", onclick: () => onNew?.(ymd) },
@@ -280,6 +300,10 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onProjects } = 
       h("span", { className: "sc-free" }, `${durText((x.end - x.start) / 60000)} free`, h("span", { className: "sc-add", ariaHidden: "true", textContent: "+" })));
     const on = !x.allDay && x.start <= now && now < x.end;
     const past = !x.allDay && x.end <= now;
+    if (x.kind === "plan") return h("div", { className: "sc-row" + (on ? " sc-on" : past ? " sc-past" : "") },
+      h("span", { className: "sc-time strong" }, time, on && h("span", { className: "sc-nowtag", textContent: "Now" })),
+      h("button", { type: "button", className: "sc-ev sc-plan", ariaLabel: `Planned: ${x.task.title}, ${time}`, onclick: () => onOpen?.(x.task) },
+        h("span", { className: "sc-evi" }, icon("check")), bdi(x.task.title)));
     // A finished task is logged as a "✓ title" event (calendar.js logDone).
     const done = /^✓\s*/u.test(x.ev.title), title = done ? x.ev.title.replace(/^✓\s*/u, "") : x.ev.title;
     return h("div", { className: "sc-row" + (on ? " sc-on" : past ? " sc-past" : "") }, h("span", { className: "sc-time strong" }, time, on && h("span", { className: "sc-nowtag", textContent: "Now" })),
@@ -294,6 +318,7 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onProjects } = 
     watchSettings(uid, (s) => { settings = s || {}; render(); }, fail),
     watchTasks(uid, (ts) => { tasks = ts; render(); }, fail),
     watchRun(uid, (r) => { run = r; render(); }, fail),
+    watchDayPlan(uid, (d) => { dayPlan = d || null; render(); }, fail),
   ];
   // Free time shrinks as the clock moves; once a minute is plenty.
   let mark = null;
