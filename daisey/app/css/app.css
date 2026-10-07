@@ -1405,3 +1405,13 @@ body.focus .shell { block-size: auto; min-block-size: 100dvh; overflow: visible;
 .db-track.dragging .db-thumb:focus { transform: scale(1.2); cursor: grabbing; }
 .db-ticks { display: flex; justify-content: space-between; margin: 2px -6px 0; font-size: 11px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
 .now-else { display: block; margin: 10px auto 0; font-size: 13px; color: var(--ink-2); }
+/* Done's hold (now.js bloom): a daisy over the card, a petal per beat. */
+.bloom { position: fixed; z-index: 60; display: grid; place-content: center; justify-items: center; gap: 6px; overflow: hidden; pointer-events: none;
+  border-radius: 20px; background: color-mix(in srgb, var(--surface) 88%, transparent); backdrop-filter: blur(2px); transition: opacity .2s; }
+.bloom svg { transition: transform .3s; }
+.bloom .daisy-petals ellipse { opacity: .12; transition: opacity .15s; }
+.bloom .daisy-petals ellipse.on { opacity: 1; }
+.bloom.full svg { transform: scale(1.15) rotate(20deg); }
+.bloom.gone { opacity: 0; }
+.bloom-p { margin: 0; font-weight: 700; font-size: 18px; color: var(--ink); font-variant-numeric: tabular-nums; }
+@media (prefers-reduced-motion: reduce) { .bloom svg, .bloom .daisy-petals ellipse { transition: none; } }

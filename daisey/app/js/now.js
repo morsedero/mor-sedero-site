@@ -20,7 +20,7 @@ import { rethink } from "./rethink.js";
 import { placeNow, workBase } from "./context.js";
 import { watchWhere, setRide, setStill, saveSpot, setManual, placeAsk, notHomeHere, quietHere, reservedName } from "./where.js";
 import { pickWeekDay } from "./triage.js";
-import { focusView, handoffView, elapsedMinutes, targetMinutes, batchFocusView, batchName, sinceMark, paused, resumed, runCap, bookedMinutes, holdButton, stillOnMinutes } from "./focus.js";
+import { focusView, handoffView, elapsedMinutes, targetMinutes, batchFocusView, batchName, sinceMark, paused, resumed, runCap, bookedMinutes, holdButton, stillOnMinutes, burst } from "./focus.js";
 import { watchCalendar, logDone } from "./calendar.js";
 import { LATER_MINUTES, DRAIN, CANCEL_KEEP_MINUTES } from "./weights.js";
 import { rank, freeWindow, timeBucket, matchProject, dueAt } from "./engine.js";
@@ -880,7 +880,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
           { ariaExpanded: String(state.notNow), onclick: () => { state.notNow = !state.notNow; state.pendAsk = false; state.showAlts = false; render(); } }),
         action("pending", "Pending", `${card.task.title} is blocked: set it to Pending`,
           { ariaExpanded: String(state.pendAsk), onclick: () => { state.pendAsk = !state.pendAsk; state.notNow = false; state.showAlts = false; render(); } }),
-        action("check", "Done", `${card.task.title} is already done`, { onclick: () => quickDone(card.task) }),
+        bloom(action("check", "Done", `hold to show how much of ${card.task.title} is done`, {}), card.task),
         start),
       state.notNow && h("div", { className: "later-ask", role: "group", ariaLabel: "When instead?" },
         ...[["today", "Later today"], ["tomorrow", "Tomorrow"], ["week", "This week"], ["someday", "Not now"]].map(([w, text]) =>
@@ -891,6 +891,69 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
         textContent: state.showAlts ? "Hide other tasks" : "Something else",
         onclick: () => { state.showAlts = !state.showAlts; state.notNow = false; state.pendAsk = false; render(); } }),
     ];
+  }
+
+  // Done is a hold (Mor, 2026-10-07: "a mini game, one action, some or all"):
+  // a daisy opens over the card a petal at a time while Done is held. Let go
+  // when it matches what you did; all eight petals is done, with a burst.
+  // Fewer is that much progress, off the card for a while (not a skip). A
+  // tap only says to hold. The daisy lives on <body>, so a re-render mid-hold
+  // doesn't take it away; the release is heard on window.
+  const PETAL_MS = 300, PETALS = 8;
+  function bloom(btn, task){
+    let t0 = 0, raf = 0, n = 0, ov = null, out = null, petals = [];
+    const listen = (on) => ["pointerup", "pointercancel", "keyup", "blur"].forEach((t) => (on ? addEventListener : removeEventListener)(t, stop));
+    const pct = () => Math.round((n / PETALS) * 100);
+    const open = () => {
+      const r = (root.querySelector(".now-card.main") || btn).getBoundingClientRect();
+      const NS = "http://www.w3.org/2000/svg", el = (tag, a) => { const e = document.createElementNS(NS, tag); for (const k in a) e.setAttribute(k, a[k]); return e; };
+      const size = Math.max(48, Math.min(120, r.height - 64)); // fits a short card too
+      const svg = el("svg", { viewBox: "0 0 40 40", width: size, height: size, "aria-hidden": "true" }), g = el("g", { class: "daisy-petals" });
+      petals = Array.from({ length: PETALS }, (_, i) => el("ellipse", { cx: 20, cy: 9, rx: 4.2, ry: 8, transform: `rotate(${(360 / PETALS) * i} 20 20)` }));
+      g.append(...petals); svg.append(g, el("circle", { cx: 20, cy: 20, r: 6.5, class: "daisy-heart" }));
+      out = h("p", { className: "bloom-p", role: "status" });
+      ov = h("div", { className: "bloom" }, svg, out);
+      Object.assign(ov.style, { left: `${r.left}px`, top: `${r.top}px`, width: `${r.width}px`, height: `${r.height}px` });
+      document.body.append(ov);
+    };
+    const shut = (ms) => { const o = ov; ov = null; if (o) { o.classList.add("gone"); setTimeout(() => o.remove(), ms); } };
+    const step = (now) => {
+      const k = Math.min(PETALS, Math.floor((now - t0) / PETAL_MS));
+      if (k !== n) {
+        n = k; if (!ov) open();
+        petals.forEach((p, i) => p.classList.toggle("on", i < n));
+        out.textContent = n === PETALS ? "All done!" : `${pct()}% done`;
+        navigator.vibrate?.(8);
+      }
+      if (n === PETALS) { // full bloom: done without waiting for the release
+        const r = ov.getBoundingClientRect();
+        listen(false); t0 = 0; ov.classList.add("full");
+        if (motionOK()) burst(r.left + r.width / 2, r.top + r.height / 2);
+        setTimeout(() => { shut(200); quickDoneNow(task); }, 450);
+        return;
+      }
+      raf = requestAnimationFrame(step);
+    };
+    const start = (e) => {
+      if (t0) return;
+      if (e.type === "keydown") { if (e.repeat || (e.key !== " " && e.key !== "Enter")) return; e.preventDefault(); }
+      else if (e.button) return;
+      t0 = performance.now(); n = 0;
+      raf = requestAnimationFrame(step); listen(true);
+    };
+    function stop(e){
+      if (!t0) return;
+      if (e.type === "keyup" && e.key !== " " && e.key !== "Enter") return;
+      cancelAnimationFrame(raf); listen(false); t0 = 0;
+      if (!n) { flash("Hold Done: the daisy opens. Let go at how much you did."); return; }
+      const p = pct();
+      shut(250);
+      stepAside(task, { label: `${p}% done: `, write: () => Promise.all([skipNow(uid, task), restoreTask(uid, task.id, progressPatch(p))]) });
+    }
+    btn.addEventListener("pointerdown", start);
+    btn.addEventListener("keydown", start);
+    btn.addEventListener("contextmenu", (e) => e.preventDefault()); // a long press on a phone is not a menu
+    return btn;
   }
 
   // Done on a task that was never started here (already finished, or done

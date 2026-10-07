@@ -251,7 +251,10 @@ const FAKES = {
   }
   // --hold "sel": press and hold it for 1.5 s (Hold to finish).
   if (holdSel) { const b = await page.locator(holdSel).boundingBox(); await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2);
-    await page.mouse.down(); await page.waitForTimeout(1500); await page.mouse.up(); await page.waitForTimeout(700); }
+    // --hold-ms N: hold that long; --hold-keep: screenshot still holding (Done's bloom).
+    const ms = Number(args[args.indexOf("--hold-ms") + 1]) || 1500;
+    await page.mouse.down(); await page.waitForTimeout(args.includes("--hold-ms") ? ms : 1500);
+    if (!args.includes("--hold-keep")) { await page.mouse.up(); await page.waitForTimeout(700); } }
   if (tasksTab) { await page.click("#tabTasks"); await page.waitForTimeout(150); }
   if (evalJs) console.log("eval:", JSON.stringify(await page.evaluate(evalJs)));
   if (args.includes("--text")) console.log(await page.innerText("body"));
