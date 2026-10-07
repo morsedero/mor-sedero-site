@@ -296,36 +296,50 @@ async function boot(){
         logSwitch.onchange = () => saveSettings(user.uid, { logDone: logSwitch.checked }).catch(fail);
         // My day as one 24h bar with two handles: drag an end (or tap the bar to
         // pull the nearer end there), arrows nudge 15 min (Shift: 1 h). Saves once,
-        // on release, not on every pixel.
+        // on release, not on every pixel. The end may run past midnight, up to 06:00
+        // (dayE up to 1800; the bar wraps around its left edge), and every minute
+        // past 24:00 pushes the start a minute later, so the night's rest stays put.
         const SNAP = 15, MIN_SPAN = 60, track = $("#dayTrack"), fill = track.querySelector(".db-fill"), read = $("#dayRead");
-        let dayS = 480, dayE = 1320, dayDrag = null;
+        let dayS = 480, dayE = 1320, dayDrag = null, baseS = 480;
+        const MAX_END = 1800, over = (e) => Math.max(0, e - 1440), fill2 = fill.cloneNode();
+        fill.after(fill2);
         function paintDay(s, e){
           dayS = s; dayE = e;
           const pct = (m) => (m / 1440 * 100) + "%";
-          start.style.left = pct(s); end.style.left = pct(e);
-          fill.style.left = pct(s); fill.style.width = ((e - s) / 1440 * 100) + "%";
-          read.textContent = `${minText(s)} – ${e === 1440 ? "24:00" : minText(e)}`;
+          start.style.left = pct(s); end.style.left = pct(e > 1440 ? e - 1440 : e);
+          fill.style.left = pct(s); fill.style.width = ((Math.min(e, 1440) - s) / 1440 * 100) + "%";
+          fill2.style.left = "0"; fill2.style.width = pct(over(e)); fill2.hidden = e <= 1440; // the night, wrapped round
+          read.textContent = `${minText(s)} – ${e === 1440 ? "24:00" : minText(e % 1440)}${e > 1440 ? " (next day)" : ""}`;
           start.setAttribute("aria-valuenow", s); start.setAttribute("aria-valuetext", minText(s));
-          end.setAttribute("aria-valuenow", e); end.setAttribute("aria-valuetext", minText(e));
+          end.setAttribute("aria-valuemax", MAX_END); end.setAttribute("aria-valuenow", e);
+          end.setAttribute("aria-valuetext", e > 1440 ? `${minText(e - 1440)} next day` : minText(e));
         }
-        const saveHours = () => saveSettings(user.uid, { dayStart: minText(dayS), dayEnd: minText(Math.min(dayE, 1439)) }).catch(fail);
-        // Move one end, keeping at least an hour between them.
+        const saveHours = () => saveSettings(user.uid, { dayStart: minText(dayS), dayEnd: minText(dayE === 1440 ? 1439 : dayE) }).catch(fail);
+        // Move one end, keeping at least an hour between them. The end is a linear
+        // minute count (up to 1800); past 24:00 the start follows from where it was
+        // before the end crossed midnight (baseS), so pulling back restores it.
         const setEnd = (which, m) => {
           m = Math.round(m / SNAP) * SNAP;
-          if (which === start) paintDay(Math.max(0, Math.min(m, dayE - MIN_SPAN)), dayE);
-          else paintDay(dayS, Math.min(1440 - SNAP, Math.max(m, dayS + MIN_SPAN)));
+          if (which === start) return paintDay(Math.max(0, Math.min(m, dayE - MIN_SPAN, 1440 - SNAP)), dayE);
+          const e = Math.min(MAX_END, Math.max(m, baseS + MIN_SPAN));
+          paintDay(Math.min(baseS + over(e), 1440 - SNAP), e);
         };
+        // Track position → end minute: the left stretch of the bar (up to 06:00) is the next morning
+        // when the day already runs late (or is already past midnight), never a jump from 22:00 to 03:00.
+        const endAt = (m) => (m < baseS + MIN_SPAN && (m <= 360 || dayE > 1440) && (dayE >= 1260)) ? Math.min(MAX_END, m + 1440) : m;
         const atX = (x) => { const r = track.getBoundingClientRect(); return Math.max(0, Math.min(1, (x - r.left) / r.width)) * 1440; };
         track.addEventListener("pointerdown", (e) => {
           const m = atX(e.clientX);
+          baseS = dayS - over(dayE);
+          const endM = dayE > 1440 ? dayE - 1440 : dayE;
           dayDrag = e.target === start || e.target === end ? e.target
-            : Math.abs(m - dayS) <= Math.abs(m - dayE) ? start : end;
+            : Math.abs(m - dayS) <= Math.abs(m - endM) ? start : end;
           track.setPointerCapture(e.pointerId);
           track.classList.add("dragging"); dayDrag.focus({ preventScroll: true });
-          setEnd(dayDrag, m);
+          setEnd(dayDrag, dayDrag === end ? endAt(m) : m);
           e.preventDefault();
         });
-        track.addEventListener("pointermove", (e) => { if (dayDrag) setEnd(dayDrag, atX(e.clientX)); });
+        track.addEventListener("pointermove", (e) => { if (dayDrag) setEnd(dayDrag, dayDrag === end ? endAt(atX(e.clientX)) : atX(e.clientX)); });
         const dropDay = () => { if (!dayDrag) return; dayDrag = null; track.classList.remove("dragging"); saveHours(); };
         track.addEventListener("pointerup", dropDay);
         track.addEventListener("pointercancel", dropDay);
@@ -333,6 +347,7 @@ async function boot(){
           const step = { ArrowLeft: -1, ArrowDown: -1, ArrowRight: 1, ArrowUp: 1 }[e.key];
           if (!step) return;
           e.preventDefault();
+          baseS = dayS - over(dayE);
           setEnd(el, (el === start ? dayS : dayE) + step * (e.shiftKey ? 60 : SNAP));
           saveHours();
         }));
