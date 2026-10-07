@@ -313,7 +313,7 @@ async function boot(){
         const setEnd = (which, m) => {
           m = Math.round(m / SNAP) * SNAP;
           if (which === start) paintDay(Math.max(0, Math.min(m, dayE - MIN_SPAN)), dayE);
-          else paintDay(dayS, Math.min(1440 - SNAP, Math.max(m, dayS + MIN_SPAN)));
+          else paintDay(dayS, m >= 1440 - SNAP ? 1439 : Math.max(m, dayS + MIN_SPAN)); // top of the bar = 23:59
         };
         const atX = (x) => { const r = track.getBoundingClientRect(); return Math.max(0, Math.min(1, (x - r.left) / r.width)) * 1440; };
         track.addEventListener("pointerdown", (e) => {
