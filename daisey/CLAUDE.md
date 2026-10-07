@@ -1,5 +1,12 @@
 # Daisey
 
+> **"Daisey" ALWAYS means the NEW app: morsedero.com/daisey/now** — source
+> `daisey/app/`, built by `daisey/build-app.js` into `site/daisey/now/`.
+> The OLD one (morsedero.com/daisey, `daisey/daisey.html` +
+> `build-standalone.js`) is legacy. Touch it only if Mor says "old daisey"
+> explicitly. Everything below this notice that describes `daisey.html` is
+> about the OLD app.
+
 Guidance for `daisey/` — Daisey and the audio-sync function. The portfolio
 site lives in `site/` and is covered by the root `CLAUDE.md`.
 

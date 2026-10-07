@@ -1,5 +1,9 @@
 # mor-sedero-site
 
+> **"Daisey" = the NEW app, morsedero.com/daisey/now** (`daisey/app/`).
+> Old = morsedero.com/daisey (`daisey/daisey.html`), legacy; only when Mor
+> says "old daisey". Details in `daisey/CLAUDE.md`.
+
 Two unrelated things in one repo, split by top-level folder:
 
 - **`site/`** — Mor Sedero's portfolio, served at https://morsedero.com.
