@@ -101,7 +101,7 @@ function lanes(items){
 
 // el: the page. onEvent(ev): an event's details. onNew(date, at): a new
 // event on "YYYY-MM-DD", at "HH:MM" when a gap was tapped.
-export function mountSchedule(el, uid, { onEvent, onNew, onOpen } = {}){
+export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onProjects } = {}){
   let cal = { status: "loading", events: [] };
   let settings = {};
   let tasks = null, run = null; // for Plan my day
@@ -171,7 +171,8 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen } = {}){
         h("span", { className: "sc-name", textContent: title }), sub && h("span", { className: "sc-date", textContent: sub }),
         !isNow && h("span", { className: "sc-today", textContent: "Today" })),
       h("button", { type: "button", className: "sc-step", ariaLabel: view === "week" ? "Next week" : "Next day", onclick: () => step(1) }, icon("chev")),
-      seg);
+      seg,
+      h("button", { type: "button", className: "sc-proj", onclick: () => onProjects && onProjects() }, "Projects", h("span", { ariaHidden: "true", textContent: " ›" })));
     const head = h("div", { className: "sc-head" + (view === "week" ? " wk" : "") }, bar);
 
     let body;

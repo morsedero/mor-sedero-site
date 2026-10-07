@@ -413,14 +413,13 @@ async function boot(){
         m.adder = mountAddTask($("#addtask"), user.uid, { onStart: startTask });
         m.needs = mountNeeds($("#needsview"), user.uid, { onClose: () => screens.back() });
         // The home panel is the Schedule, always. Projects is its own page.
-        m.schedule = mountSchedule($("#schedPage"), user.uid, { onEvent: (ev) => m.event.view(ev), onNew: (date, at) => m.event.open(date, at), onOpen: (task) => m.adder.edit(task) });
+        m.schedule = mountSchedule($("#schedPage"), user.uid, { onEvent: (ev) => m.event.view(ev), onNew: (date, at) => m.event.open(date, at), onOpen: (task) => m.adder.edit(task), onProjects: () => { m.projects.openAll(); screens.open("projects"); } });
         m.projects = mountProjects({ grid: $("#projPage"), page: $("#projectsview"), view: $("#projectview"), dialog: $("#projdlg") }, user.uid, {
           onOpen: (task) => m.adder.edit(task),
           onAdd: (project) => m.adder.open(project),
           onStart: startTask,
           onScreen: (name) => (name ? screens.open("project") : screens.back()),
         });
-        $("#projectsBtn").onclick = () => { m.projects.openAll(); screens.open("projects"); };
         $("#projectsBack").onclick = () => screens.back();
         $("#planChip").onclick = () => m.now?.plan();
         m.now = mountNow($("#nowcard"), user.uid, {
