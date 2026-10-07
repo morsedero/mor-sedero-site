@@ -162,20 +162,22 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onProjects } = 
       : `${from.toLocaleDateString("en-GB", { day: "numeric", month: "short" })} – ${last.toLocaleDateString("en-GB", { day: "numeric", month: "short" })}`;
     const title = view === "week" ? (isNow ? "This week" : span) : dayName(at);
     const sub = view === "week" ? (isNow ? span : "") : short(at);
+    // A phone drops the date line, so a plain weekday carries its date ("Wed 15").
+    const rel = Math.abs(Math.round((at - today) / 864e5)) <= 1;
+    const narrow = view === "week" || rel ? title : `${at.toLocaleDateString("en-GB", { weekday: "short" })} ${at.getDate()}`;
 
     const seg = h("div", { className: "sc-seg", role: "radiogroup", ariaLabel: "View" }, ...[["day", "Day"], ["week", "Week"]].map(([v, t]) =>
       h("button", { type: "button", role: "radio", ariaChecked: String(view === v), textContent: t, onclick: () => view !== v && setView(v) })));
-    const nav = h("div", { className: "sc-nav" },
+    // One row (Mor, 2026-10-07). Today keeps its place (just unseen on
+    // today), so the arrows and the switch never shift under the finger.
+    const bar = h("div", { className: "sc-bar" },
       h("button", { type: "button", className: "sc-step", ariaLabel: view === "week" ? "Previous week" : "Previous day", onclick: () => step(-1) }, icon("back")),
       h("button", { type: "button", className: "sc-title" + (isNow ? "" : " away"), ariaLabel: isNow ? title : `${title} — back to today`, onclick: () => go(null) },
-        h("span", { className: "sc-name", textContent: title }), sub && h("span", { className: "sc-date", textContent: sub })),
-      h("button", { type: "button", className: "sc-step", ariaLabel: view === "week" ? "Next week" : "Next day", onclick: () => step(1) }, icon("chev")));
-    // Today keeps its place (just unseen on today), so nothing ever shifts.
-    const tools = h("div", { className: "sc-tools" },
+        h("span", { className: "sc-name", textContent: title }), h("span", { className: "sc-name sc-name-s", textContent: narrow }), sub && h("span", { className: "sc-date", textContent: sub })),
+      h("button", { type: "button", className: "sc-step", ariaLabel: view === "week" ? "Next week" : "Next day", onclick: () => step(1) }, icon("chev")),
       h("button", { type: "button", className: "sc-today" + (isNow ? " off" : ""), ariaLabel: "Back to today", textContent: "Today", tabIndex: isNow ? -1 : 0, onclick: () => go(null) }),
       seg,
-      h("button", { type: "button", className: "sc-proj", onclick: () => onProjects && onProjects() }, "Projects", h("span", { ariaHidden: "true", textContent: " ›" })));
-    const bar = h("div", { className: "sc-bar" }, nav, tools);
+      h("button", { type: "button", className: "sc-proj", ariaLabel: "Projects", onclick: () => onProjects && onProjects() }, icon("folder"), h("span", { className: "sc-proj-t", textContent: "Projects" })));
     const head = h("div", { className: "sc-head" + (view === "week" ? " wk" : "") }, bar);
 
     let body;
