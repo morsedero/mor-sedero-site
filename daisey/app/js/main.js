@@ -303,13 +303,12 @@ async function boot(){
         // on release, not on every pixel.
         const SNAP = 15, MIN_SPAN = 60, track = $("#dayTrack"), fill = track.querySelector(".db-fill"), read = $("#dayRead");
         let dayS = 480, dayE = 1320, dayDrag = null;
-        const span = (m) => { const h = Math.floor(m / 60), r = m % 60; return h && r ? `${h} h ${r} m` : h ? `${h} h` : `${r} m`; };
         function paintDay(s, e){
           dayS = s; dayE = e;
           const pct = (m) => (m / 1440 * 100) + "%";
           start.style.left = pct(s); end.style.left = pct(e);
           fill.style.left = pct(s); fill.style.width = ((e - s) / 1440 * 100) + "%";
-          read.textContent = `${minText(s)} – ${e === 1440 ? "24:00" : minText(e)} · ${span(e - s)}`;
+          read.textContent = `${minText(s)} – ${e === 1440 ? "24:00" : minText(e)}`;
           start.setAttribute("aria-valuenow", s); start.setAttribute("aria-valuetext", minText(s));
           end.setAttribute("aria-valuenow", e); end.setAttribute("aria-valuetext", minText(e));
         }
