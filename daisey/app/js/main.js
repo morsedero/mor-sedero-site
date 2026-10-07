@@ -445,9 +445,9 @@ async function boot(){
           onEvent: (ev) => m.event.view(ev),
           guest: isGuest,
         });
-        // Done chip: today's finished tasks, newest first; tap one to open it.
+        // Done chip: today's finished tasks, oldest first; tap one to open it.
         $("#doneChip").onclick = () => {
-          const dlg = $("#donedlg"), list = m.now?.doneList() || [];
+          const dlg = $("#donedlg"), list = (m.now?.doneList() || []).reverse();
           const row = (t) => h("div", { className: "pj-drow" },
             h("span", { className: "pj-tick on", ariaHidden: "true" }, icon("check")),
             h("button", { type: "button", className: "pj-quiet", onclick: () => { dlg.close(); m.adder.edit(t); } }, bdi(t.title)),
