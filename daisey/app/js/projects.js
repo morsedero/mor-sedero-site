@@ -377,7 +377,7 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
         h("div", { className: "pj-card-top", dir: dirOf(p.name) }, h("h2", { className: "pj-name" + (p.name === INBOX ? "" : " rename"), dir: "auto", textContent: p.name,
           ...(p.name === INBOX ? {} : { role: "button", tabIndex: 0, title: "Edit project", onclick: () => askRename(p.name),
             onkeydown: (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); askRename(p.name); } } }) }),
-          p.all.length > 0 && h("span", { className: "pj-pct", textContent: `${Math.round(progress(p) * 100)}%` })),
+          h("span", { className: "pj-pct", textContent: `${Math.round(progress(p) * 100)}%` })),
         h("div", { className: "pj-prog" }, bar(p, "pbar big")),
         p.name !== INBOX && (ranges[p.name]?.start || ranges[p.name]?.due) && h("p", { className: "pj-left", textContent:
           [ranges[p.name].start ? `Starts ${shortDay(ranges[p.name].start)}` : null, ranges[p.name].due ? `due ${shortDay(ranges[p.name].due)}` : null].filter(Boolean).join(" · ") }),
