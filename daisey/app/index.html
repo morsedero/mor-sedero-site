@@ -185,6 +185,17 @@
     <div class="menu-sec">
       <h3 class="menu-h">Data</h3>
       <button id="importTrello" class="menu-link" type="button">Import from Trello</button>
+      <!-- Reset Daisey (2026-10-07): erase Daisey's own data and read the calendar and Trello from scratch. -->
+      <button id="resetBtn" class="menu-link danger" type="button" aria-expanded="false" aria-controls="resetPanel">Reset Daisey…</button>
+      <div id="resetPanel" class="reset-panel" hidden>
+        <p class="menu-note">Erases your tasks, plan, learning and settings in Daisey, then starts over. Your calendar and Trello are not changed.</p>
+        <label class="menu-check"><input id="resetDisc" type="checkbox" checked> Also disconnect Google Calendar and Trello, so they are read from scratch (you reconnect them after)</label>
+        <div class="reset-acts">
+          <button id="resetGo" class="btn danger" type="button">Erase and start over</button>
+          <button id="resetCancel" class="btn quiet" type="button">Cancel</button>
+        </div>
+        <p id="resetMsg" class="menu-note" role="status"></p>
+      </div>
     </div>
     </dialog>
 </main>

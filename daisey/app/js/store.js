@@ -290,6 +290,24 @@ export const saveDayPlan = (uid, plan) => saveGuestState(uid, "dayplan", { ...pl
 export const holdTask = (uid, task, who = "") => updateGuestTask(uid, task.id, { onHold: { who: String(who || "").trim().slice(0, 80), since: Date.now() }, touchedAt: Date.now() });
 export const releaseTask = (uid, task) => updateGuestTask(uid, task.id, { onHold: null, touchedAt: Date.now() });
 
+// Reset Daisey (Settings, 2026-10-07): every task and every state doc of this
+// user, so everything is read and learned from scratch. Guests: the device's
+// local copy. Calendar and Trello themselves are never touched; their stored
+// connections are dropped separately (reset.js → daisey-now-disconnect).
+const STATE_DOCS = ["now", "skips", "settings", "moment", "learn", "projects", "dayplan"];
+export async function resetAll(uid){
+  if(isGuest(uid)){
+    try { localStorage.removeItem(GUEST_KEY); localStorage.removeItem("daisey.guest.events.v1"); }
+    catch(error){ throw new Error(`Guest data could not be cleared: ${error.message || error}`); }
+    return;
+  }
+  const tasks = await fb.getDocs(tasksCol(uid));
+  await Promise.all([
+    ...tasks.docs.map((d) => fb.deleteDoc(d.ref)),
+    ...STATE_DOCS.map((k) => fb.deleteDoc(fb.doc(fb.db, "users", uid, "state", k))),
+  ]);
+}
+
 // Projects made by name before they have a task, users/{uid}/state/projects:
 // { names: [...] }. A project is otherwise just the tasks that carry its
 // name, so without this an empty one couldn't exist.

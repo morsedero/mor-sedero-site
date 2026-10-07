@@ -36,4 +36,4 @@ export function enableGuestMode(){
 
 export function signOut(){ return auth.signOut(a); }
 
-export const { doc, collection, setDoc, addDoc, updateDoc, deleteDoc, onSnapshot, serverTimestamp, increment } = fs;
+export const { doc, collection, setDoc, addDoc, updateDoc, deleteDoc, onSnapshot, serverTimestamp, increment, getDocs } = fs;

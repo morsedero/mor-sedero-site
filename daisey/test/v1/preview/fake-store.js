@@ -49,6 +49,7 @@ export const watchMoment = watch("moment");
 export const saveMoment = (uid, f) => { docs.moment = { ...docs.moment, ...f }; return ok("moment"); };
 export const watchLearn = watch("learn");
 export const watchDayPlan = watch("dayplan");
+export const resetAll = async () => { tasks = []; Object.keys(docs).forEach((k) => { docs[k] = null; }); window.__RESET = true; emit("tasks"); };
 export const saveDayPlan = (uid, plan) => { docs.dayplan = { ...plan, at: Date.now() }; return ok("dayplan"); };
 export const holdTask = (uid, task, who = "") => patchTask(uid, task.id, { onHold: { who, since: Date.now() } });
 export const releaseTask = (uid, task) => patchTask(uid, task.id, { onHold: null });

@@ -185,7 +185,7 @@ async function boot(){
     show("signedin"); // no element of its own: just clears loading/sign-in views
 
     Promise.all([import("./now.js"), import("./projects.js"), import("./addtask.js"), import("./needs.js"), import("./import-trello.js"), import("./addevent.js"), import("./store.js"), import("./deadlines.js"), import("./day.js"), import("./calendar.js"), import("./schedule.js"), import("./push.js"), import("./briefchip.js"), import("./model.js"), import("./context.js")])
-      .then(([{ mountNow }, { mountProjects }, { mountAddTask }, { mountNeeds }, { mountImport, connectTrello, finishTrelloConnect, trelloConnected }, { mountAddEvent }, { migrateTasks, watchSettings, saveSettings, watchTasks, watchRun }, { mountDeadlines }, { dayHours, minText }, { watchCalendar, connectCalendar, setCalendarHint }, { mountSchedule }, push, { mountBriefChip }, { AREAS, LABELS }, { workBase }]) => {
+      .then(([{ mountNow }, { mountProjects }, { mountAddTask }, { mountNeeds }, { mountImport, connectTrello, finishTrelloConnect, trelloConnected }, { mountAddEvent }, { migrateTasks, watchSettings, saveSettings, watchTasks, watchRun, resetAll }, { mountDeadlines }, { dayHours, minText }, { watchCalendar, connectCalendar, setCalendarHint }, { mountSchedule }, push, { mountBriefChip }, { AREAS, LABELS }, { workBase }]) => {
         if ((!isGuest && fb.currentUid() !== user.uid) || mounted) return;
         const m = mounted = {};
         setCalendarHint(isGuest ? "" : user.email);
@@ -196,6 +196,32 @@ async function boot(){
         m.event = mountAddEvent($("#eventdlg"), { localOnly: isGuest });
         m.importer = mountImport($("#importdlg"), user.uid);
         $("#importTrello").onclick = () => { $("#settingsdlg").close(); m.importer.open(); };
+        // Reset Daisey: erase this account's Daisey data (tasks and state),
+        // optionally forget the Google and Trello connections, and reload so
+        // it all starts over. Never touches the calendar or Trello themselves.
+        const resetBtn = $("#resetBtn"), resetPanel = $("#resetPanel"), resetMsg = $("#resetMsg"), resetGo = $("#resetGo");
+        const openReset = (open) => { resetPanel.hidden = !open; resetBtn.setAttribute("aria-expanded", String(open)); resetMsg.textContent = ""; if (open) resetPanel.scrollIntoView({ block: "nearest" }); };
+        resetBtn.onclick = () => openReset(resetPanel.hidden);
+        $("#resetCancel").onclick = () => openReset(false);
+        $("#resetDisc").parentElement.hidden = isGuest; // a guest has nothing connected
+        resetGo.onclick = async () => {
+          resetGo.disabled = true; resetMsg.textContent = "Erasing…";
+          try {
+            if (!isGuest && $("#resetDisc").checked) {
+              const res = await fetch("/.netlify/functions/daisey-now-disconnect", { method: "POST",
+                headers: { Authorization: `Bearer ${await fb.idToken()}`, "Content-Type": "application/json" }, body: "{}" });
+              if (!res.ok && res.status !== 404) throw new Error(`disconnect ${res.status}`); // 404: nothing was connected
+            }
+            // Firestore answers a delete when it reaches the server, which waits offline: don't hang the reset on it.
+            await Promise.race([resetAll(user.uid), new Promise((r) => setTimeout(r, 8000))]);
+            for (const k of ["daisey.where.v1", "daisey.panel"]) { try { localStorage.removeItem(k); } catch { /* private window */ } }
+            location.replace(location.pathname);
+          } catch (e) {
+            console.error("[daisey] reset", e);
+            resetMsg.textContent = "Couldn't reset. Nothing more was changed after the step that failed; try again.";
+            resetGo.disabled = false;
+          }
+        };
         // Connect Trello (import-trello.js): whether it's linked is asked once
         // here, and again each time Settings opens. A guest has no Google
         // account to link it to.

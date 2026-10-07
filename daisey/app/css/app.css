@@ -1372,3 +1372,13 @@ body.focus .shell { block-size: auto; min-block-size: 100dvh; overflow: visible;
 
 /* Connect Google Calendar (2026-10-07): the Schedule's empty state and Settings. */
 .sc-connect { margin: 12px 0 0; min-block-size: 46px; border-radius: 14px; }
+
+/* Reset Daisey (2026-10-07), Settings → Data. */
+.menu-link.danger { color: var(--nowline); }
+.reset-panel { display: grid; gap: 8px; margin-block-start: 6px; padding: 12px; border: 1px solid var(--line); border-radius: 14px; background: var(--chip); }
+.reset-panel[hidden] { display: none; }
+.reset-panel .menu-note { margin: 0; }
+.reset-acts { display: flex; gap: 8px; }
+.reset-acts .btn { margin: 0; min-block-size: 44px; border-radius: 12px; font-size: 14px; }
+.btn.danger { background: var(--nowline); color: #fff; border-color: transparent; font-weight: 600; }
+.btn.danger:disabled { opacity: .6; }
