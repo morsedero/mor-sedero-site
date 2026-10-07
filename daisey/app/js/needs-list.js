@@ -7,7 +7,6 @@ import { sweepList, isOverdue, shouldOffer } from "./triage.js";
 import { localDate, notYet } from "./model.js";
 import { deadlineWithin } from "./engine.js";
 import { STALE_SKIPS, SOMEDAY_DEADLINE_DAYS, PUSHES_ASK } from "./weights.js";
-import { AREAS } from "./model.js";
 import { slotClashes } from "./clash.js";
 
 const STAKES_FIRST = { penalty: 0, money: 1, someone: 2, low: 3 };
