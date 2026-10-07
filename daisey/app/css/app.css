@@ -1028,7 +1028,7 @@ dialog.tsheet .msg:empty { display: none; }
 .hdr-end { display: flex; align-items: center; gap: 8px; margin-inline-start: auto; }
 .hdr-end .acct { margin-inline-start: 0; display: flex; align-items: center; }
 .hdr-end .hchip, .hdr-end .avatar { block-size: 34px; }
-.hdr-end .hchip { line-height: 1; padding-block: 0; box-sizing: border-box; }
+.hdr-end .hchip { margin: 0; /* the plan chip also matches the plan-panel's .plan {margin:4px 0 10px} */ line-height: 1; padding-block: 0; box-sizing: border-box; }
 .hdr-end .hchip > span { display: inline-flex; align-items: center; line-height: 1; }
 .avatar { inline-size: 34px; block-size: 34px; font-size: 13px; }
 .hchip { position: relative; display: inline-flex; white-space: nowrap; align-items: center; gap: 5px; block-size: 30px; padding-inline: 10px; border-radius: 999px; font: inherit; font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums; }
