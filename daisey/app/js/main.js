@@ -435,23 +435,7 @@ async function boot(){
           guest: isGuest,
         });
         // Done chip: today's finished tasks, oldest first; tap one to open it.
-        // Modal dialog is inert behind it: a tap on the chip lands on the dialog itself, so close on any click outside the box.
-        $("#donedlg").addEventListener("click", (e) => {
-          const d = e.currentTarget, r = d.getBoundingClientRect();
-          if (e.target === d && (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom)) d.close();
-        });
-        $("#doneChip").onclick = () => {
-          const dlg = $("#donedlg"), list = (m.now?.doneList() || []).reverse();
-          const row = (t) => h("div", { className: "pj-drow" },
-            h("span", { className: "pj-tick on", ariaHidden: "true" }, icon("check")),
-            h("button", { type: "button", className: "pj-quiet", onclick: () => { dlg.close(); m.adder.edit(t); } }, bdi(t.title)),
-            h("span", { className: "pj-meta", dir: "ltr", textContent: new Date(t.doneAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) }));
-          dlg.replaceChildren(
-            h("div", { className: "now-head" }, h("h2", { id: "dnTitle", textContent: "Done today" }),
-              h("button", { className: "now-x", type: "button", ariaLabel: "Close", textContent: "✕", onclick: () => dlg.close() })),
-            h("div", { className: "pj-drawer" }, ...(list.length ? list.map(row) : [h("p", { className: "pj-hint", textContent: "Nothing done yet today." })])));
-          dlg.showModal();
-        };
+        $("#doneChip").onclick = () => m.now?.done();
         $("#needsChip").onclick = () => { m.needs.open(); screens.open("needs"); };
         // A notification's tap: "?open=wrap" on a fresh start, or a message
         // from sw.js when Daisey was already open.
