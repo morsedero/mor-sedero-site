@@ -5,14 +5,16 @@
 //  - Saved places: save where you are now under a name (Home, Studio, Gym…),
 //    or remove one. Home tells Home from Out; any other name makes tasks
 //    that mention it (project or title) rank higher while you're there.
-import { whereNow, savedPlaces, pickedByHand, setManual, saveSpot, removeSpot } from "./where.js";
+import { whereNow, savedPlaces, pickedByHand, setManual, saveSpot, removeSpot, restoreSpot, spotStatus } from "./where.js";
 import { h, bdi, flash } from "./ui.js";
 
+const away = (m) => (m == null ? "" : m < 1000 ? `${Math.round(m / 10) * 10} m away` : `${(m / 1000).toFixed(1)} km away`);
 const MODES = [["out", "Out"], ["walk", "Walking"], ["train", "Train"], ["bus", "Bus"], ["car", "Driving"]];
 
 export function mountPlaces(dialog){
   function render(){
     const now = whereNow(), names = savedPlaces(), hand = pickedByHand();
+    const spots = spotStatus();
     const opts = [...names.map((n) => [n.trim().toLowerCase() === "home" ? "home" : `spot:${n}`, n]), ...MODES];
     const pick = ([v, text]) => h("button", { type: "button", className: "chip", role: "radio", ariaChecked: String(now === v),
       onclick: () => { setManual(v); dialog.close(); } }, bdi(text));
@@ -33,9 +35,15 @@ export function mountPlaces(dialog){
       h("form", { className: "pl-save", onsubmit: (e) => { e.preventDefault(); if (name.value.trim()) saveIt(name.value.trim()); } },
         h("div", { className: "field" }, h("label", { htmlFor: "placeName", textContent: "Name it (Studio, Gym…)" }), name),
         h("button", { className: "btn small", type: "submit", textContent: "Save" })),
-      !names.length ? null : h("ul", { className: "pl-list" }, ...names.map((n) => h("li", {},
-        bdi(n), h("button", { className: "linkish", type: "button", textContent: "Remove", ariaLabel: `Remove ${n}`,
-          onclick: () => { removeSpot(n); render(); } }))))].filter(Boolean));
+      !spots.length ? null : h("ul", { className: "pl-list" }, ...spots.map((sp) => h("li", {},
+        h("span", { className: "pl-name" }, bdi(sp.name),
+          h("small", { className: "pl-sub", textContent: sp.here ? "You're here" : away(sp.m) })),
+        h("button", { className: "linkish", type: "button", textContent: "Remove", ariaLabel: `Remove ${sp.name}`,
+          onclick: () => {
+            const gone = removeSpot(sp.name);
+            flash("Removed ", sp.name, { undo: () => { restoreSpot(gone); render(); } });
+            render();
+          } }))))].filter(Boolean));
   }
   return { open(){ render(); dialog.showModal(); } };
 }

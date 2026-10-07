@@ -172,9 +172,31 @@ export async function saveSpot(name){
   return true;
 }
 
+// Saved places with how far each is from the last fix: { name, m, here }.
+// m is null with no fix; here = within the same reach placeFrom uses.
+export function spotStatus(){
+  const { places, last } = load();
+  return places.map((p) => {
+    if (!last) return { name: p.name, m: null, here: false };
+    const m = dist(last, p);
+    return { name: p.name, m, here: m <= Math.max(NEAR_M, Math.min(last.acc || 0, 400), Math.min(p.acc || 0, 400)) };
+  });
+}
+
+// Returns the removed place so a caller can offer undo via restoreSpot.
 export function removeSpot(name){
   const d = load();
+  const gone = d.places.find((p) => p.name === name);
   save({ ...d, places: d.places.filter((p) => p.name !== name) });
+  lastRun = 0;
+  detect();
+  return gone;
+}
+
+export function restoreSpot(place){
+  if (!place) return;
+  const d = load();
+  save({ ...d, places: d.places.filter((p) => p.name !== place.name).concat(place) });
   lastRun = 0;
   detect();
 }
