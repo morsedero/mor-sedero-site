@@ -193,7 +193,6 @@ async function boot(){
         m.deadlines = mountDeadlines($("#deadlinedlg"), user.uid);
         m.event = mountAddEvent($("#eventdlg"), { localOnly: isGuest });
         m.importer = mountImport($("#importdlg"), user.uid);
-        $("#importTrello").onclick = () => { $("#settingsdlg").close(); m.importer.open(); };
         // Reset Daisey: erase this account's Daisey data (tasks and state),
         // optionally forget the Google and Trello connections, and reload so
         // it all starts over. Never touches the calendar or Trello themselves.
@@ -225,10 +224,11 @@ async function boot(){
         // account to link it to.
         const trelloBtn = $("#connectTrello"), trelloNote = $("#trelloNote");
         const paintTrello = (on) => {
-          trelloBtn.hidden = isGuest || on;
+          trelloBtn.hidden = isGuest;
+          trelloBtn.textContent = on ? "Import" : "Connect";
+          trelloBtn.onclick = on ? () => { $("#settingsdlg").close(); m.importer.open(); } : connectTrello;
           trelloNote.textContent = isGuest ? "Sign in first" : on ? "Connected" : "Not connected";
         };
-        trelloBtn.onclick = connectTrello;
         const checkTrello = () => { if (!isGuest) trelloConnected().then(paintTrello); else paintTrello(false); };
         $("#settingsBtn").addEventListener("click", checkTrello);
         checkTrello();
@@ -254,7 +254,6 @@ async function boot(){
           pushTest.hidden = true;
           pushKinds.hidden = true;
           note("Notifications need Google sign-in.");
-          $("#importTrello").disabled = true;
         } else if (!push.pushSupported()) { pushSwitch.disabled = true; note("This browser can't show notifications."); } else paintPush();
         pushSwitch.onchange = async () => {
           pushSwitch.disabled = true; note("");
