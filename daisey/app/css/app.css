@@ -1369,8 +1369,11 @@ body.focus .shell { block-size: auto; min-block-size: 100dvh; overflow: visible;
 .reset-panel .menu-note { margin: 0; }
 .reset-acts { display: flex; gap: 8px; }
 .reset-acts .btn { margin: 0; min-block-size: 44px; border-radius: 12px; font-size: 14px; }
-.btn.danger { background: var(--nowline); color: #fff; border-color: transparent; font-weight: 600; }
-.btn.danger:disabled { opacity: .6; }
+.reset-panel .btn.danger { background: var(--nowline); color: #fff; border-color: transparent; font-weight: 600; }
+.reset-panel .btn.danger:disabled { opacity: .6; }
+/* Remove event / Delete project in dialogs: red text on soft red, not solid. */
+.btn.quiet.danger { background: color-mix(in srgb, var(--danger) 10%, transparent); color: var(--danger); font-weight: 600; }
+.btn.quiet.danger:hover:not(:disabled) { background: color-mix(in srgb, var(--danger) 18%, transparent); color: var(--danger); }
 
 /* Choose calendars (2026-10-07), Settings → Integrations. */
 .pick-list { display: grid; gap: 2px; }
