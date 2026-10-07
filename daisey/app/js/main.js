@@ -6,7 +6,6 @@ const GUEST_KEY = "daisey_guest_mode";
 const GUEST_UID = "guest-local";
 const guestMode = () => { try { return localStorage.getItem(GUEST_KEY) === "1"; } catch { return false; } };
 
-import { mountPlaces } from "./places.js";
 import { flash, h, bdi, icon } from "./ui.js";
 
 // The header's chips (round 3, New Design/6): green "✓ N done" today, and
@@ -149,12 +148,10 @@ async function boot(){
     try { localStorage.removeItem(GUEST_KEY); } catch { /* private window */ }
     fb.signOut().finally(() => location.reload());
   };
-  // Saved places, to forget one (this device only). Learned on the Now screen.
-  const places = mountPlaces($("#placesBox"));
   // Settings: the avatar menu's one door to everything else (Mor, 2026-10-06).
   // A tap on the dim backdrop closes it, like Escape and ✕.
   const settings = $("#settingsdlg");
-  $("#settingsBtn").onclick = () => { setMenu(false); places.show(); settings.showModal(); };
+  $("#settingsBtn").onclick = () => { setMenu(false); settings.showModal(); };
   $("#settingsX").onclick = () => settings.close();
   settings.addEventListener("click", (e) => { if (e.target === settings) settings.close(); });
 

@@ -755,12 +755,6 @@ body.focus .tell-panel { display: none; }
 .place-fix { margin: 8px 0 0; }
 .place-fix > .muted { flex-basis: 100%; }
 
-/* The Places sheet (places.js). */
-.pl-box { display: grid; gap: 8px; }
-.pl-opts { display: flex; flex-wrap: wrap; gap: 6px; }
-.pl-opts .chip { min-block-size: 34px; padding-inline: 12px; border: none; background: var(--chip); font-size: 13px; }
-.pl-opts .chip[aria-checked="true"] { background: var(--ink); color: var(--bg); }
-.pl-opts .chip.pl-del { color: var(--nowline); }
 
 /* ===== Layout round 2 (Mor, 2026-10-05; daisey/New Design/6–10) =====
    A calm home with everything one pull away. Sizes and colours follow the
