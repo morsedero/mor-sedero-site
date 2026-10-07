@@ -170,7 +170,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
     const el = root.querySelector(".now-card.main");
     if (el && motionOK()) { el.classList.add("out"); setTimeout(go, SLIDE_MS); } else go();
   }
-  const asking = () => state.laterAsk || state.pendAsk || state.showAlts;
+  const asking = () => state.notNow || state.pendAsk || state.showAlts;
 
   // The one loud button: amber, with a play icon.
   const startButton = (text, aria, onclick) => h("button", { className: "btn primary start", type: "button", ariaLabel: aria, onclick },
@@ -873,30 +873,26 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
     const someN = somedayTasks().length;
     const closeAsks = () => { state.laterAsk = false; state.pendAsk = false; state.showAlts = false; };
     return [
-      // Not now (Later, Switch, Pending), Done, Deep Focus, then Start at the
-      // row's far end (Mor, 2026-10-06; Start no longer implies full screen).
+      // Later, Done, then Start at the row's far end (Mor, 2026-10-07: Focus
+      // left this row — the running card has it — and Later is one ask, not
+      // a menu inside a menu: tomorrow is two taps).
       h("div", { className: "now-actions now-row" },
-        action("later", "Not now", `later, switch or pending: ${card.task.title}`,
-          { ariaExpanded: String(state.notNow), onclick: () => { state.notNow = !state.notNow; if (!state.notNow) closeAsks(); render(); } }),
+        action("later", "Later", `later, waiting or something else: ${card.task.title}`,
+          { ariaExpanded: String(state.notNow), onclick: () => { state.notNow = !state.notNow; closeAsks(); render(); } }),
         action("check", "Done", `${card.task.title} is already done`, { onclick: () => quickDone(card.task) }),
-        action("focus", "Focus", `start ${card.task.title} in Deep Focus, full screen`, { onclick: () => begin(card.task, "focus") }),
         start),
-      state.notNow && h("div", { className: "now-actions now-row now-notnow" },
-        action("later", "Later", `choose when to see ${card.task.title} again`,
-          { ariaExpanded: String(state.laterAsk), onclick: () => { state.laterAsk = !state.laterAsk; state.pendAsk = false; state.showAlts = false; render(); } }),
-        // Never a dead end while Someday holds tasks (DAISEY_SPEC "Someday comes back").
-        action("switch", "Switch", state.showAlts ? "hide the other tasks"
-          : alts.length ? `something else: ${alts.length} other tasks`
-          : someN ? "nothing else is active: pick from Not now" : "nothing else is active",
-          { disabled: !alts.length && !someN, ariaExpanded: String(state.showAlts),
-            onclick: () => { state.showAlts = !state.showAlts; state.laterAsk = false; state.pendAsk = false; render(); } }),
-        action("pending", "Pending", `${card.task.title} is blocked: set it to Pending`,
-          { ariaExpanded: String(state.pendAsk), onclick: () => { state.pendAsk = !state.pendAsk; state.laterAsk = false; state.showAlts = false; render(); } })),
-      state.pendAsk && pendingAsk(card.task),
-      state.laterAsk && h("div", { className: "later-ask", role: "group", ariaLabel: "When instead?" },
-        h("span", { className: "muted", textContent: "When?" }),
+      state.notNow && h("div", { className: "later-ask", role: "group", ariaLabel: "When instead?" },
         ...[["today", "Later today"], ["tomorrow", "Tomorrow"], ["week", "This week"], ["someday", "Not now"]].map(([w, text]) =>
-          h("button", { className: "chip", type: "button", textContent: text, onclick: () => later(card.task, w) }))),
+          h("button", { className: "chip", type: "button", textContent: text, onclick: () => later(card.task, w) })),
+        h("button", { className: "chip quiet", type: "button", textContent: "Waiting on…", ariaExpanded: String(state.pendAsk),
+          ariaLabel: `${card.task.title} is blocked: set it to Pending`,
+          onclick: () => { state.pendAsk = !state.pendAsk; state.showAlts = false; render(); } }),
+        // Never a dead end while Not now holds tasks (DAISEY_SPEC "Someday comes back").
+        h("button", { className: "chip quiet", type: "button", textContent: "Something else", ariaExpanded: String(state.showAlts),
+          disabled: !alts.length && !someN,
+          ariaLabel: alts.length ? `something else: ${alts.length} other tasks` : someN ? "nothing else is active: pick from Not now" : "nothing else is active",
+          onclick: () => { state.showAlts = !state.showAlts; state.pendAsk = false; render(); } })),
+      state.pendAsk && pendingAsk(card.task),
     ];
   }
 
