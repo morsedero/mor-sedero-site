@@ -9,6 +9,8 @@ import { h, bdi, flash } from "./ui.js";
 
 const MODES = [["out", "Out"], ["walk", "Walking"], ["train", "Train"], ["bus", "Bus"], ["car", "Driving"]];
 const LABELS = { home: "Home", out: "Out", walk: "Walking", ride: "Travelling", train: "Train", bus: "Bus", car: "Driving" };
+// A saved spot can't wear a mode's name: two "Out" chips, one of them deletable.
+const RESERVED = new Set([...MODES.flat(), "ride", "travelling", "not sure"].map((x) => x.toLowerCase()));
 const isHome = (n) => n.trim().toLowerCase() === "home";
 const nowText = (v) => (v == null ? "Not sure" : v.startsWith("spot:") ? v.slice(5) : LABELS[v] || v);
 
@@ -42,6 +44,7 @@ export function mountPlaces(host, dialog){
         e.preventDefault();
         const n = draft.trim();
         if (!n) return;
+        if (RESERVED.has(n.toLowerCase())) { flash(`"${n}" is already a default. Pick another name.`); return; }
         flash(await saveSpot(n) ? `Saved this spot as ${n}` : "Couldn't get your location. Allow it for this site and try again.");
         draft = "";
         render();
