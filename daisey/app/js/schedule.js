@@ -134,7 +134,9 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onProjects } = 
     return extra;
   }
 
+  let dragging = false, stale = false; // a redraw mid-drag would drop the grip
   function render(){
+    if (dragging) { stale = true; return; }
     const now = Date.now(), hrs = dayHours(settings);
     const today = dayStart(now);
     const at = focus ? ymdToDate(focus) : today;
@@ -340,12 +342,12 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onProjects } = 
   // Drag an event's grip up or down past its neighbour and the two swap
   // places; each keeps its own length and the gap between them stays.
   function grip(x, rowEl, peers){
-    const g = h("span", { className: "sc-grip", role: "button", ariaLabel: `Drag ${x.ev.title} up or down to swap with the next event`, textContent: "⋮⋮" });
+    const g = h("span", { className: "sc-grip", role: "button", ariaLabel: `Drag ${x.ev?.title || x.task.title} up or down to swap with the next event`, textContent: "⋮⋮" });
     let y0 = 0, target = null;
     g.addEventListener("click", (e) => e.stopPropagation());
     g.addEventListener("pointerdown", (e) => {
       e.preventDefault(); e.stopPropagation(); y0 = e.clientY; target = null;
-      g.setPointerCapture(e.pointerId); rowEl.classList.add("sc-dragging");
+      dragging = true; g.setPointerCapture(e.pointerId); rowEl.classList.add("sc-dragging");
     });
     g.addEventListener("pointermove", (e) => {
       if (!g.hasPointerCapture(e.pointerId)) return;
@@ -362,19 +364,20 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onProjects } = 
     });
     const end = async (e) => {
       if (!g.hasPointerCapture(e.pointerId)) return;
-      g.releasePointerCapture(e.pointerId);
+      g.releasePointerCapture(e.pointerId); dragging = false;
       rowEl.style.transform = ""; rowEl.classList.remove("sc-dragging");
       peers.forEach((p) => p.el?.classList.remove("sc-swap"));
       const nb = e.type === "pointerup" ? target : null; target = null;
-      if (!nb) return;
+      if (!nb) { if (stale) { stale = false; render(); } return; }
       const [a, b] = x.start <= nb.start ? [x, nb] : [nb, x]; // earlier, later
       if (x.kind === "plan") { // planned blocks: swap their order in the saved plan
-        const items = [...dayPlan.items], i = items.findIndex((it) => it.taskId === a.task.id), j = items.findIndex((it) => it.taskId === b.task.id);
+        const items = [...(dayPlan?.items || [])], i = items.findIndex((it) => it.taskId === a.task.id), j = items.findIndex((it) => it.taskId === b.task.id);
         if (i < 0 || j < 0) return;
         [items[i], items[j]] = [items[j], items[i]];
-        saveDayPlan(uid, { ...dayPlan, items }).catch(fail);
+        stale = false; render(); saveDayPlan(uid, { ...dayPlan, items }).catch(fail);
         return;
       }
+      stale = false;
       try {
         await Promise.all([
           retime(b.ev, a.start, a.start + (b.end - b.start)),
