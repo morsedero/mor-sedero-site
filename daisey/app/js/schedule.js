@@ -356,8 +356,15 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onProjects } = 
     const dur = x.end - x.start;
     let y0 = 0, s0 = 0, off = 0, lastY = 0, home = 0, mid0 = 0, lo = 0, hi = 0, snap = [], drop = null, marked = null, timeEl = null, orig = [], raf = 0;
     let pid = null, armed = false, hold = 0, dragged = false;
-    // The dragged row's middle, in page terms, kept inside its day.
-    const centre = () => Math.min(hi, Math.max(lo, lastY + off + el.scrollTop));
+    // The dragged row's middle, in page terms: inside its day, and inside what
+    // shows of the list (under the sticky bar, above the bottom) give or take
+    // a peek — so at either edge it stays in sight while the list scrolls.
+    let rh = 0;
+    const centre = () => {
+      const s = el.scrollTop, r = el.getBoundingClientRect(), top = el.querySelector(".sc-head")?.getBoundingClientRect().bottom ?? r.top;
+      const PEEK = 14, vlo = top + s + rh / 2 - PEEK, vhi = r.bottom + s - rh / 2 + PEEK;
+      return Math.min(hi, vhi, Math.max(lo, vlo, lastY + off + s));
+    };
     // The pointer → { on: a free row } or { i: the line before snap[i] }.
     const where = () => {
       const c = centre();
@@ -416,7 +423,7 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onProjects } = 
         return { p, top: r.top + s0, bottom: r.bottom + s0, mid: (r.top + r.bottom) / 2 + s0 };
       });
       const r = rowEl.getBoundingClientRect(), mid = (r.top + r.bottom) / 2, sec = rowEl.parentElement.getBoundingClientRect();
-      off = mid - y0; mid0 = mid + s0; home = snap.filter((s) => s.mid < mid0).length;
+      off = mid - y0; mid0 = mid + s0; rh = r.height; home = snap.filter((s) => s.mid < mid0).length;
       // A little past the first and last row, so a tall row can still pass
       // a short one's middle and be pushed to the very top or bottom.
       const EDGE = 56;
