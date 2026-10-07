@@ -12,17 +12,19 @@ import { flash, h, bdi, icon } from "./ui.js";
 // amber "N need you", each only when there is something. now.js reports both.
 // Words on both (2026-10-06): bare numbers beside "Today" read as "2 Today 0".
 // The daisy itself is always the full five-petal logo.
-function paintDone(n){
-  $("#doneChip").hidden = !n;
-  $("#doneN").textContent = String(n);
-  $("#doneChip").ariaLabel = `${n === 1 ? "1 task" : `${n} tasks`} done today. Open the list`;
-}
-function paintPlan(p){
+// Plan and Done are one chip (Mor, 2026-10-08): it opens the plan, the day's
+// done list sits under it. "Plan d/t"; no plan yet but tasks done → "✓ n".
+let doneNow = 0, planNow = null;
+function paintDone(n){ doneNow = n; paintChip(); }
+function paintPlan(p){ planNow = p; paintChip(); }
+function paintChip(){
+  const p = planNow, n = doneNow;
   $("#planChip").hidden = false;
-  $("#planChip").classList.toggle("empty", !p);
-  $("#planW").textContent = p ? "Plan " : "Plan my day";
-  $("#planN").textContent = p ? `${p.done}/${p.total}` : "";
-  $("#planChip").ariaLabel = p ? `Today's plan: ${p.done} of ${p.total} done. Open it to change it` : "Plan my day";
+  $("#planChip").classList.toggle("empty", !p && !n);
+  $("#planW").textContent = p ? "Plan " : n ? "" : "Plan my day";
+  $("#planN").textContent = p ? `${p.done}/${p.total}` : n ? `✓ ${n}` : "";
+  $("#planChip").ariaLabel = p ? `Today's plan: ${p.done} of ${p.total} done. Open it to change it`
+    : n ? `${n === 1 ? "1 task" : `${n} tasks`} done today. Open the plan` : "Plan my day";
 }
 function paintNeeds(n){
   $("#needsChip").hidden = !n;
@@ -429,8 +431,6 @@ async function boot(){
           onEvent: (ev) => m.event.view(ev),
           guest: isGuest,
         });
-        // Done chip: today's finished tasks, oldest first; tap one to open it.
-        $("#doneChip").onclick = () => m.now?.done();
         $("#needsChip").onclick = () => { m.needs.open(); screens.open("needs"); };
         // A notification's tap: "?open=wrap" on a fresh start, or a message
         // from sw.js when Daisey was already open.

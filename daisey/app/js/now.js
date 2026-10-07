@@ -57,7 +57,6 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
   // (state/dayplan). prop: the proposal on the card while it's open — items
   // in the user's order, the ids they deleted, the Rethink box.
   let dayPlan, planKnown = false;
-  let doneOpen = false;
   const prop = { open: false, items: [], exclude: [], ask: false, text: "", busy: false, note: "", auto: null };
   let holdAsk = false, holdText = ""; // "Waiting for reply" on the running card
   let placeNaming = false, placeName = ""; // "Name this place?" (placeAskView)
@@ -409,7 +408,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
   // screen (call it from a tap: full screen needs one, deep.js).
   const begin = (task, mode = "inline") => {
     bumpLearn(uid, task.type, timeBucket().part, "starts").catch(fail); handoff = null; reset();
-    prop.open = false; doneOpen = false; holdAsk = false;
+    prop.open = false; holdAsk = false;
     run = { taskId: task.id, startedAt: Date.now(), extra: 0, mode };
     if (mode === "focus") deep.enter(runKey());
     render(); startRun(uid, task, mode).catch(fail);
@@ -1108,18 +1107,16 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
         h("button", { className: "btn primary small", type: "button", disabled: prop.busy, textContent: "Rethink", onclick: go })),
       h("div", { className: "pp-chips" }, chip("Lighter"), chip("Fewer tasks"), chip("Quick ones first"), chip("No calls")));
   }
-  // The Done chip's list: drops in where the plan does, newest last.
+  // Done today, under the plan (one chip opens both), oldest first. null when empty.
   function doneCard(){
     const list = doneToday(tasks || []).sort((a, b) => a.doneAt - b.doneAt);
+    if (!list.length) return null;
     return h("section", { className: "plan done-list", ariaLabel: "Done today" },
       h("div", { className: "plan-head" }, h("span", { className: "plan-name", textContent: "Done today" })),
-      list.length
-        ? h("div", { className: "pj-drawer" }, ...list.map((t) => h("div", { className: "pj-drow" },
+      h("div", { className: "pj-drawer" }, ...list.map((t) => h("div", { className: "pj-drow" },
             h("span", { className: "pj-tick on", ariaHidden: "true" }, icon("check")),
             h("button", { type: "button", className: "pj-quiet", onclick: () => onOpen?.(t) }, bdi(t.title)),
-            h("span", { className: "pj-meta", dir: "ltr", textContent: new Date(t.doneAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) }))))
-        : h("p", { className: "pj-hint", textContent: "Nothing done yet today." }),
-      h("div", { className: "pp-actions" }, h("button", { className: "btn quiet", type: "button", textContent: "Close", onclick: () => { doneOpen = false; render(); } })));
+            h("span", { className: "pj-meta", dir: "ltr", textContent: new Date(t.doneAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) })))));
   }
   function proposalCard(){
     const { rows, over } = timeline(prop.items, planCtx());
@@ -1270,8 +1267,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
       const items = proposeDay({ ...planCtx() });
       if (items.length >= 2) { prop.items = items; prop.exclude = []; prop.open = true; }
     }
-    if (doneOpen) { showing(null); day(...head, doneCard(), toast && toastView()); return; }
-    if (prop.open) { showing(null); day(...head, proposalCard(), toast && toastView()); return; }
+    if (prop.open) { showing(null); day(...head, proposalCard(), doneCard(), toast && toastView()); return; }
 
     const r = rank(tasks, momentInput(fw));
     const planned = blockOf(fw)?.taskId;
@@ -1424,10 +1420,9 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
     },
     startFromNotice(id){ noticeStart = id; tryNoticeStart(); },
     // Tasks finished today, newest first, for the header's done chip.
-    done(){ if (doneOpen) { doneOpen = false; render(); return; } if (run) { flash("Finish or stop the running task first."); return; } prop.open = false; doneOpen = true; render(); },
     doneList(){ return doneToday(tasks || []).sort((a, b) => b.doneAt - a.doneAt); },
     // "Plan my day" from the Schedule: the proposal on the card.
-    plan(){ if (prop.open) { closeProposal(); return; } doneOpen = false; if (run) { flash("Finish or stop the running task first."); return; } openProposal(); },
+    plan(){ if (prop.open) { closeProposal(); return; } if (run) { flash("Finish or stop the running task first."); return; } openProposal(); },
     unmount(){ deep.leave(); deep.watch(() => {}); showing(null); clearTimeout(toastTimer); document.body.classList.remove("focus"); document.documentElement.classList.remove("night"); unsubs.forEach((u) => u()); clearInterval(tick); document.removeEventListener("visibilitychange", onVisible); root.replaceChildren(); root.hidden = true; },
   };
 }
