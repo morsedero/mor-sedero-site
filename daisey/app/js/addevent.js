@@ -162,6 +162,7 @@ export function mountAddEvent(dialog, { localOnly = false } = {}){
       h("p", { className: "ev-when", textContent: longDay(start) }),
       h("h3", { className: "ev-name", dir: "auto" }, bdi(ev.title)),
       h("p", { className: "ev-time", textContent: when }),
+      ev.calendarName && h("p", { className: "muted ev-cal", textContent: `Calendar: ${ev.calendarName}` }),
       mine && ev.recurring && h("p", { className: "muted ev-rep", textContent: "Repeats — a change here is for this day only." }),
       mine
         ? h("div", { className: "ev-acts" },
