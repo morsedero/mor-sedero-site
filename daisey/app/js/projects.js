@@ -352,7 +352,7 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
     restoreTask(uid, t.id, { status: "ready", doneAt: null, touchedAt: Date.now() }).catch(fail);
     flash("Reopened: ", t.title, { undo: () => restoreTask(uid, t.id, before).catch(fail) });
   }
-  function bringBack(t){
+  function bringBackTask(t){
     restoreTask(uid, t.id, bringBack(t)).catch(fail);
     flash("Back on the list: ", t.title, { undo: () => restoreTask(uid, t.id, { status: "someday", notBefore: t.notBefore ?? null,
       due: t.due ?? null, dueTime: t.dueTime ?? null, dateKind: t.dateKind ?? null }).catch(fail) });
@@ -364,7 +364,7 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
     h("button", { type: "button", className: "pj-quiet done", onclick: () => onOpen?.(t) }, bdi(t.title)));
   const notNowRow = (t) => h("div", { className: "pj-drow", dir: dirOf(t.title) },
     h("button", { type: "button", className: "pj-quiet", onclick: () => onOpen?.(t) }, bdi(t.title)),
-    h("button", { type: "button", className: "pj-bring", textContent: "Bring back", onclick: () => bringBack(t) }));
+    h("button", { type: "button", className: "pj-bring", textContent: "Bring back", onclick: () => bringBackTask(t) }));
 
   function paintView(){
     if (shown == null) return;
