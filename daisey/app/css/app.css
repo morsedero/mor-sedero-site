@@ -1067,6 +1067,7 @@ dialog.tsheet .msg:empty { display: none; }
 .topbar { flex: none; block-size: 44px; min-block-size: 44px; padding-inline: 4px; gap: 8px; }
 .logo { inline-size: 30px; block-size: 30px; flex: none; }
 .brand { font-size: 21px; letter-spacing: -0.4px; }
+.brand .beta { margin-inline-start: 4px; font-size: 10px; font-weight: 500; letter-spacing: 0; color: var(--ink-2); vertical-align: super; }
 .daisy-petals ellipse { fill: #fff; stroke: #e0d5ba; }
 /* The logo stays a full white daisy at night too, just softer. */
 :root.night .logo .daisy-petals ellipse { fill: #e9e2d2; stroke: none; }
@@ -1081,6 +1082,8 @@ dialog.tsheet .msg:empty { display: none; }
 .hchip.plan { border: 1px solid var(--line); background: var(--card); color: var(--ink); cursor: pointer; }
 .hchip.plan::after { content: ""; position: absolute; inset: -7px -2px; } /* 44px to the finger */
 /* On a phone the word goes; the count and the dot say it (the wordmark needs the room). */
+/* Both chips on a phone: "Needs you" drops to its count too, so the wordmark and (beta) stay whole. */
+@media (max-width: 429px) { .hdr-end:has(#planChip:not([hidden])) #needsChip .hchip-word { display: none; } }
 @media (max-width: 429px) { .hchip.plan .hchip-word, .hchip.plan .hchip-dot { display: none; } .hchip.plan { padding-inline: 9px; } .hdr-end { gap: 6px; } }
 .hchip.done { background: var(--a-home-tint); color: var(--a-home-ink); }
 .hchip.brief { border: 1px solid var(--line); background: var(--card); color: var(--ink-2); cursor: pointer; }

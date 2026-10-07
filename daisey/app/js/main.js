@@ -26,7 +26,8 @@ function paintPlan(p){
 }
 function paintNeeds(n){
   $("#needsChip").hidden = !n;
-  $("#needsN").textContent = `${n} need${n === 1 ? "s" : ""} you`;
+  $("#needsN").textContent = String(n);
+  $("#needsW").textContent = ` need${n === 1 ? "s" : ""} you`;
   $("#needsChip").ariaLabel = `Needs you: ${n} decision${n === 1 ? "" : "s"}`;
 }
 
