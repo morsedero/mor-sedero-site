@@ -169,28 +169,6 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
     ranges = { ...ranges, [name]: range };
     saveProjectRanges(uid, ranges).catch(fail);
   }
-  function askDates(name){
-    const d = els.dialog, f = dateFields(ranges[name]);
-    const save = (e) => {
-      e.preventDefault();
-      const r = f.read();
-      if (r === false) return;
-      setRange(name, r);
-      const out = (tasks || []).filter((t) => isOpen(t) && (t.project || INBOX) === name && (outsideRange(r, t.due) || outsideRange(r, t.notBefore))).length;
-      render();
-      d.close();
-      if (out) flash(`${plural(out, "task")} outside these dates: `, name);
-    };
-    d.replaceChildren(
-      h("div", { className: "now-head" }, h("h2", { id: "npTitle", textContent: "Project dates" }),
-        h("button", { className: "now-x", type: "button", ariaLabel: "Close", textContent: "✕", onclick: () => d.close() })),
-      h("form", { className: "np-form", onsubmit: save }, f.box, f.msg,
-        h("div", { className: "sheet-actions" },
-          h("button", { className: "btn primary", type: "submit", textContent: "Save" }),
-          h("button", { className: "btn quiet", type: "button", textContent: "Cancel", onclick: () => d.close() }))));
-    d.onclick = (e) => { if (e.target === d) d.close(); };
-    d.showModal();
-  }
 
   function askName(){
     const d = els.dialog;
@@ -223,10 +201,11 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
     name.focus();
   }
 
-  // Rename (Mor, 2026-10-07): tap the name on the project screen. Every task
-  // carrying the old name moves, as do the saved name and the dates.
+  // Edit project (Mor, 2026-10-07): tap the name on the project screen. The
+  // name and the start/due dates in one dialog. A new name moves every task
+  // carrying the old one, the saved name and the dates.
   function askRename(old){
-    const d = els.dialog;
+    const d = els.dialog, f = dateFields(ranges[old]);
     const name = h("input", { className: "ts-input", dir: "auto", autocomplete: "off", enterKeyHint: "done",
       placeholder: "Project name", ariaLabel: "Project name", required: true, value: old });
     const msg = h("p", { className: "msg", role: "alert" });
@@ -234,21 +213,27 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
       e.preventDefault();
       const v = name.value.trim();
       if (!v) { name.focus(); return; }
-      if (v === old) { d.close(); return; }
-      if (v === INBOX || list().some((p) => p.name.toLowerCase() === v.toLowerCase() && p.name !== old)) { msg.textContent = "There's already a project by that name."; name.focus(); return; }
-      for (const t of (tasks || [])) if ((t.project || INBOX) === old) restoreTask(uid, t.id, { project: v }).catch(fail);
-      made = [...made.filter((n) => n !== old && n !== v), v];
-      saveProjectNames(uid, made).catch(fail);
-      if (ranges[old]) { const { [old]: r, ...rest } = ranges; ranges = rest; setRange(v, r); }
-      shown = v;
-      onScreen?.(v);
+      if (v !== old && (v === INBOX || list().some((p) => p.name.toLowerCase() === v.toLowerCase() && p.name !== old))) { msg.textContent = "There's already a project by that name."; name.focus(); return; }
+      const r = f.read();
+      if (r === false) return;
+      if (v !== old) {
+        for (const t of (tasks || [])) if ((t.project || INBOX) === old) restoreTask(uid, t.id, { project: v }).catch(fail);
+        made = [...made.filter((n) => n !== old && n !== v), v];
+        saveProjectNames(uid, made).catch(fail);
+        const { [old]: _gone, ...rest } = ranges; ranges = rest;
+        shown = v;
+        onScreen?.(v);
+      }
+      setRange(v, r);
+      const out = (tasks || []).filter((t) => isOpen(t) && (t.project || INBOX) === old && (outsideRange(r, t.due) || outsideRange(r, t.notBefore))).length;
       render();
       d.close();
+      if (out) flash(`${plural(out, "task")} outside these dates: `, v);
     };
     d.replaceChildren(
-      h("div", { className: "now-head" }, h("h2", { id: "npTitle", textContent: "Rename project" }),
+      h("div", { className: "now-head" }, h("h2", { id: "npTitle", textContent: "Edit project" }),
         h("button", { className: "now-x", type: "button", ariaLabel: "Close", textContent: "✕", onclick: () => d.close() })),
-      h("form", { className: "np-form", onsubmit: save }, name, msg,
+      h("form", { className: "np-form", onsubmit: save }, name, msg, f.box, f.msg,
         h("div", { className: "sheet-actions" },
           h("button", { className: "btn primary", type: "submit", textContent: "Save" }),
           h("button", { className: "btn quiet", type: "button", textContent: "Cancel", onclick: () => d.close() }))));
@@ -390,12 +375,10 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
         h("button", { type: "button", className: "pj-back", ariaLabel: "Back to home", onclick: () => onScreen?.(null) }, icon("back")), chips),
       h("div", { className: "pj-card" },
         h("div", { className: "pj-card-top", dir: dirOf(p.name) }, h("h2", { className: "pj-name" + (p.name === INBOX ? "" : " rename"), dir: "auto", textContent: p.name,
-          ...(p.name === INBOX ? {} : { role: "button", tabIndex: 0, title: "Rename project", onclick: () => askRename(p.name),
+          ...(p.name === INBOX ? {} : { role: "button", tabIndex: 0, title: "Edit project", onclick: () => askRename(p.name),
             onkeydown: (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); askRename(p.name); } } }) }),
           p.all.length > 0 && h("span", { className: "pj-pct", textContent: `${Math.round(progress(p) * 100)}%` })),
         h("div", { className: "pj-prog" }, bar(p, "pbar big")),
-        p.name !== INBOX && h("button", { type: "button", className: "pj-dates", onclick: () => askDates(p.name) },
-          ranges[p.name] ? [ranges[p.name].start ? `Starts ${shortDay(ranges[p.name].start)}` : null, ranges[p.name].due ? `due ${shortDay(ranges[p.name].due)}` : null].filter(Boolean).join(" · ") : "Set start and due dates"),
         minutesLeft(p) > 0 && h("p", { className: "pj-left", textContent: `About ${durText(minutesLeft(p))} left` }),
         p.all.length > 0 && h("div", { className: "pj-tgs" },
           toggle("done", h("span", { className: "pj-ok", ariaHidden: "true" }, icon("check")), h("span", { className: "pj-tg-t", textContent: `${p.done.length} of ${p.all.length} done` })),
