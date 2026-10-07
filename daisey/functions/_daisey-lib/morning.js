@@ -35,9 +35,9 @@ async function update(uid, change) {
 // The agenda from yesterday to tomorrow, and how the read went.
 async function readEvents(rec, now = Date.now()) {
   try {
-    const { accessToken, error } = await accessForSub(rec.sub);
+    const { accessToken, only, error } = await accessForSub(rec.sub);
     if (!accessToken) return { events: null, cal: { ok: false, error, at: now } };
-    return { events: await readAgenda(accessToken, now - 864e5, now + 864e5), cal: { ok: true, at: now } };
+    return { events: await readAgenda(accessToken, now - 864e5, now + 864e5, false, only), cal: { ok: true, at: now } };
   } catch (e) {
     return { events: null, cal: { ok: false, error: e.reauth ? "needs_reauth" : String(e.message).slice(0, 120), at: now } };
   }

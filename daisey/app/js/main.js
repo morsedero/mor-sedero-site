@@ -185,7 +185,7 @@ async function boot(){
     show("signedin"); // no element of its own: just clears loading/sign-in views
 
     Promise.all([import("./now.js"), import("./projects.js"), import("./addtask.js"), import("./needs.js"), import("./import-trello.js"), import("./addevent.js"), import("./store.js"), import("./deadlines.js"), import("./day.js"), import("./calendar.js"), import("./schedule.js"), import("./push.js"), import("./briefchip.js"), import("./model.js"), import("./context.js")])
-      .then(([{ mountNow }, { mountProjects }, { mountAddTask }, { mountNeeds }, { mountImport, connectTrello, finishTrelloConnect, trelloConnected }, { mountAddEvent }, { migrateTasks, watchSettings, saveSettings, watchTasks, watchRun, resetAll }, { mountDeadlines }, { dayHours, minText }, { watchCalendar, connectCalendar, setCalendarHint }, { mountSchedule }, push, { mountBriefChip }, { AREAS, LABELS }, { workBase }]) => {
+      .then(([{ mountNow }, { mountProjects }, { mountAddTask }, { mountNeeds }, { mountImport, connectTrello, finishTrelloConnect, trelloConnected }, { mountAddEvent }, { migrateTasks, watchSettings, saveSettings, watchTasks, watchRun, resetAll }, { mountDeadlines }, { dayHours, minText }, { watchCalendar, connectCalendar, setCalendarHint, listCalendars, saveCalendars }, { mountSchedule }, push, { mountBriefChip }, { AREAS, LABELS }, { workBase }]) => {
         if ((!isGuest && fb.currentUid() !== user.uid) || mounted) return;
         const m = mounted = {};
         setCalendarHint(isGuest ? "" : user.email);
@@ -340,8 +340,45 @@ async function boot(){
         // guest has no Google account to connect, so it says so instead.
         const connectBtn = $("#connectCal"), calNote = $("#calNote");
         connectBtn.onclick = connectCalendar;
+        // Choose calendars: tick which of your Google calendars Daisey reads.
+        const pickBtn = $("#pickCal"), pickPanel = $("#pickPanel"), pickList = $("#pickList"), pickMsg = $("#pickMsg"), pickSave = $("#pickSave");
+        const pickBoxes = () => [...pickList.querySelectorAll("input")];
+        const pickCount = () => { pickSave.disabled = !pickBoxes().some((b) => b.checked); };
+        const openPick = async (open) => {
+          pickPanel.hidden = !open; pickBtn.setAttribute("aria-expanded", String(open)); pickMsg.textContent = "";
+          if (!open) return;
+          pickList.replaceChildren(); pickSave.disabled = true; pickMsg.textContent = "Loading…";
+          try {
+            const { calendars, chosen } = await listCalendars();
+            pickList.replaceChildren(...calendars.map((c) => {
+              const box = Object.assign(document.createElement("input"), { type: "checkbox", value: c.id, checked: chosen ? chosen.includes(c.id) : c.selected, onchange: pickCount });
+              const dot = Object.assign(document.createElement("span"), { className: "pick-dot" });
+              dot.style.background = c.color || "var(--ink-2)";
+              const name = Object.assign(document.createElement("span"), { className: "pick-name", textContent: c.name || c.id, dir: "auto" });
+              const label = Object.assign(document.createElement("label"), { className: "menu-check pick-row" });
+              label.append(box, dot, name);
+              return label;
+            }));
+            pickMsg.textContent = ""; pickCount();
+            pickPanel.scrollIntoView({ block: "nearest" });
+          } catch (e) { console.error("[daisey] calendars", e); pickMsg.textContent = "Couldn't load your calendars. Try again."; }
+        };
+        pickBtn.onclick = () => openPick(pickPanel.hidden);
+        $("#pickCancel").onclick = () => openPick(false);
+        pickSave.onclick = async () => {
+          pickSave.disabled = true; pickMsg.textContent = "Saving…";
+          try {
+            await saveCalendars(pickBoxes().filter((b) => b.checked).map((b) => b.value));
+            openPick(false); flash("Calendars saved.");
+          } catch (e) { console.error("[daisey] calendars", e); pickMsg.textContent = "Couldn't save. Try again."; pickCount(); }
+        };
+        // Right after connecting, the choice is the first thing asked.
+        if (new URLSearchParams(location.search).get("calendar") === "connected") {
+          setTimeout(() => { $("#settingsdlg").showModal(); openPick(true); }, 400);
+        }
         const stopCal = watchCalendar((c) => {
           calOk = c.status === "ok";
+          pickBtn.hidden = isGuest || !calOk;
           connectBtn.hidden = isGuest || calOk;
           connectBtn.textContent = c.status === "needs_reauth" ? "Reconnect Google Calendar" : "Connect Google Calendar";
           calNote.textContent = isGuest ? "Sign in with Google to connect your calendar. Guest events stay on this device."

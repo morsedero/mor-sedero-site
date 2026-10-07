@@ -230,6 +230,10 @@ const FAKES = {
       return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ reply: "Got it.", actions }) });
     }
     if (rel === ".netlify/functions/daisey-now-calendar-write") return route.fulfill({ status: 200, contentType: "application/json", body: '{"ok":true}' });
+    if (rel === ".netlify/functions/daisey-now-calendar" && route.request().method() === "POST") return route.fulfill({ status: 200, contentType: "application/json", body: '{"ok":true}' });
+    if (rel === ".netlify/functions/daisey-now-calendar" && new URL(route.request().url()).searchParams.has("list")) return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ chosen: null, calendars: [
+      { id: "me@x.com", name: "Mor", color: "#7986cb", primary: true, selected: true }, { id: "w", name: "Work", color: "#33b679", selected: true },
+      { id: "f", name: "משפחה", color: "#e67c73", selected: false }, { id: "h", name: "Holidays in Israel", color: "#f6bf26", selected: false }] }) });
     if (rel === ".netlify/functions/daisey-now-calendar") return route.fulfill({ status: calReply.status, contentType: "application/json", body: JSON.stringify(calReply.body) });
     if (FAKES[rel]) return route.fulfill({ contentType: "text/javascript", body: FAKES[rel] });
     const file = path.join(APP, rel);

@@ -91,6 +91,24 @@ function publish(next){
   for (const cb of subs) cb(state);
 }
 
+// Which of the user's Google calendars Daisey reads (Settings → Choose
+// calendars, 2026-10-07). list: every calendar they can read and which are in
+// use; chosen is null until they pick, and Google's own ticks apply till then.
+export async function listCalendars(){
+  const res = await fetch(`${URL_}?list=1`, { headers: { Authorization: `Bearer ${await idToken()}` } });
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) throw Object.assign(new Error(body.error || `http ${res.status}`), { code: body.error });
+  return body; // { calendars: [{ id, name, color, primary, selected }], chosen: ids | null }
+}
+// ids: the calendars to read; null goes back to Google's ticks.
+export async function saveCalendars(ids){
+  const res = await fetch(URL_, { method: "POST", headers: { Authorization: `Bearer ${await idToken()}`, "Content-Type": "application/json" }, body: JSON.stringify({ ids }) });
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) throw Object.assign(new Error(body.error || `http ${res.status}`), { code: body.error });
+  await load(true); // the day now shows the new pick
+  return body.ids;
+}
+
 const onVisible = () => { if (!document.hidden) load(); };
 
 // cb({ status, events }) — status: loading · ok · not_connected · needs_reauth · error.

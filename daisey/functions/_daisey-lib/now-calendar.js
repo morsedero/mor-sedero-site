@@ -63,20 +63,31 @@ const gJson = async (url, accessToken) => {
 const cache = new Map(); // accessToken → { at, value }
 const CACHE_MS = 10 * 60000;
 const CACHE_MAX = 50;
-async function calendarsFor(accessToken, fresh = false) {
+// Which calendars to read: the ones the user picked in Daisey (`only`, a list
+// of ids), else the ones ticked in Google Calendar. The cache holds every
+// calendar, so a changed pick applies at once without asking Google again.
+async function calendarsFor(accessToken, fresh = false, only = null) {
+  const all = await allCalendars(accessToken, fresh);
+  const chosen = Array.isArray(only) ? only : null;
+  const picked = all.calendars.filter((c) => (chosen ? chosen.includes(c.id) : c.selected)).slice(0, MAX_CALENDARS);
+  return { colors: all.colors, calendars: picked.length ? picked : (chosen ? [] : [{ id: "primary", color: null, editable: true }]) };
+}
+
+// Every calendar the user can read, for the picker and for reading.
+async function allCalendars(accessToken, fresh = false) {
   const hit = cache.get(accessToken);
   if (!hit || fresh || Date.now() - hit.at > CACHE_MS) {
     const [colors, list] = await Promise.all([
       gJson("https://www.googleapis.com/calendar/v3/colors", accessToken),
       gJson("https://www.googleapis.com/calendar/v3/users/me/calendarList?minAccessRole=reader&maxResults=50", accessToken),
     ]);
-    if (!list) return { colors: null, calendars: [{ id: "primary", color: null, editable: true }] };
-    // Only the ones ticked in Google Calendar: an unticked calendar is one
-    // the user has already said they don't want to look at.
-    const calendars = (list.items || []).filter((c) => c.selected !== false && !c.deleted)
-      .slice(0, MAX_CALENDARS)
-      .map((c) => ({ id: c.id, color: c.backgroundColor || null, editable: ["owner", "writer"].includes(c.accessRole) }));
-    const value = { colors, calendars: calendars.length ? calendars : [{ id: "primary", color: null, editable: true }] };
+    if (!list) return { colors: null, calendars: [{ id: "primary", name: "", color: null, editable: true, selected: true }] };
+    // `selected` is Google's own tick: an unticked calendar is one the user
+    // has already said they don't want to look at, and the default here.
+    const calendars = (list.items || []).filter((c) => !c.deleted)
+      .map((c) => ({ id: c.id, name: c.summaryOverride || c.summary || "", color: c.backgroundColor || null, primary: !!c.primary,
+        editable: ["owner", "writer"].includes(c.accessRole), selected: c.selected !== false }));
+    const value = { colors, calendars: calendars.length ? calendars : [{ id: "primary", name: "", color: null, editable: true, selected: true }] };
     cache.delete(accessToken);
     cache.set(accessToken, { at: Date.now(), value });
     while (cache.size > CACHE_MAX) cache.delete(cache.keys().next().value);
@@ -106,15 +117,30 @@ async function accessForSub(sub) {
   const userId = await openStore("daisey-users").get(`google-sub:${sub}`, { type: "text" });
   if (!userId) return { error: "not_connected" };
   const accessToken = await getGoogleAccessToken(userId);
-  return accessToken ? { accessToken } : { error: "needs_reauth" };
+  // `only`: the calendars this user picked in Daisey, or null for the default.
+  return accessToken ? { accessToken, userId, only: await chosenCalendars(userId) } : { error: "needs_reauth" };
+}
+
+// The picked calendars, kept per user next to their tokens' user id. null =
+// never picked, so Google's own ticks decide.
+const prefs = () => openStore("daisey-prefs");
+async function chosenCalendars(userId) {
+  try {
+    const rec = await prefs().get(`user:${userId}:calendars`, { type: "json" });
+    return Array.isArray(rec?.ids) ? rec.ids : null;
+  } catch (e) { console.error("daisey calendars pref", e.message); return null; }
+}
+async function saveChosenCalendars(userId, ids) {
+  if (ids === null) return prefs().delete(`user:${userId}:calendars`);
+  return prefs().setJSON(`user:${userId}:calendars`, { ids, at: Date.now() });
 }
 
 // Every ticked calendar's events in [from, to], merged and sorted. Throws
 // { reauth: true } when Google says the grant is gone.
-async function readAgenda(accessToken, from, to, fresh = false) {
-  const { colors, calendars } = await calendarsFor(accessToken, fresh);
+async function readAgenda(accessToken, from, to, fresh = false, only = null) {
+  const { colors, calendars } = await calendarsFor(accessToken, fresh, only);
   const perCalendar = await Promise.all(calendars.map((c) => eventsFrom(c, from, to, accessToken, colors)));
   return perCalendar.flat().sort((a, b) => Date.parse(a.start) - Date.parse(b.start));
 }
 
-module.exports = { accessForSub, readAgenda, calendarsFor };
+module.exports = { accessForSub, readAgenda, calendarsFor, allCalendars, saveChosenCalendars };

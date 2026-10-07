@@ -168,6 +168,17 @@
       <h3 class="menu-h">Integrations</h3>
       <button id="connectCal" class="menu-link" type="button">Connect Google Calendar</button>
       <p id="calNote" class="menu-note"></p>
+      <!-- Which of your Google calendars Daisey reads (main.js fills it). -->
+      <button id="pickCal" class="menu-link" type="button" aria-expanded="false" aria-controls="pickPanel" hidden>Choose calendars…</button>
+      <div id="pickPanel" class="reset-panel" hidden>
+        <p class="menu-note">Daisey reads the calendars you tick, and plans around them.</p>
+        <div id="pickList" class="pick-list"></div>
+        <div class="reset-acts">
+          <button id="pickSave" class="btn primary" type="button">Save</button>
+          <button id="pickCancel" class="btn quiet" type="button">Cancel</button>
+        </div>
+        <p id="pickMsg" class="menu-note" role="status"></p>
+      </div>
       <button id="connectTrello" class="menu-link" type="button">Connect Trello</button>
       <p id="trelloNote" class="menu-note"></p>
       <label class="menu-check"><input id="logDone" type="checkbox" checked> Google Calendar: log finished tasks</label>
