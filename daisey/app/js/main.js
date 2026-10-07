@@ -327,8 +327,6 @@ async function boot(){
         // Track position → end minute: the left stretch of the bar (up to 06:00) is the next morning
         // when the day already runs late (or is already past midnight), never a jump from 22:00 to 03:00.
         const endAt = (m) => (m < baseS + MIN_SPAN && (m <= 360 || dayE > 1440) && (dayE >= 1260)) ? Math.min(MAX_END, m + 1440) : m;
-        // Dragging the end past the bar's right edge carries it on past midnight (4x speed, to 06:00).
-        const pastEdge = (x) => { const r = track.getBoundingClientRect(); return Math.max(0, (x - r.right) / r.width * 1440 * 4); };
         const atX = (x) => { const r = track.getBoundingClientRect(); return Math.max(0, Math.min(1, (x - r.left) / r.width)) * 1440; };
         track.addEventListener("pointerdown", (e) => {
           const m = atX(e.clientX);
@@ -341,7 +339,7 @@ async function boot(){
           setEnd(dayDrag, dayDrag === end ? endAt(m) : m);
           e.preventDefault();
         });
-        track.addEventListener("pointermove", (e) => { if (dayDrag) setEnd(dayDrag, dayDrag === end ? (pastEdge(e.clientX) && dayE >= 1260 ? 1440 + pastEdge(e.clientX) : endAt(atX(e.clientX))) : atX(e.clientX)); });
+        track.addEventListener("pointermove", (e) => { if (dayDrag) setEnd(dayDrag, dayDrag === end ? endAt(atX(e.clientX)) : atX(e.clientX)); });
         const dropDay = () => { if (!dayDrag) return; dayDrag = null; track.classList.remove("dragging"); saveHours(); };
         track.addEventListener("pointerup", dropDay);
         track.addEventListener("pointercancel", dropDay);
