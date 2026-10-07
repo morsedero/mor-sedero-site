@@ -134,7 +134,7 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onProjects } = 
     return extra;
   }
 
-  let dragging = false, stale = false; // a redraw mid-drag would drop the grip
+  let dragging = false, stale = false; // a redraw mid-drag would drop the dragged row
   let dayCtx = null; // the shown day's { events, now, hrs, d0 }, for a drag's preview
   function render(){
     if (dragging) { stale = true; return; }
@@ -329,7 +329,7 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onProjects } = 
       h("span", { className: "sc-time strong" }, time, on && h("span", { className: "sc-nowtag", textContent: "Now" })),
       h("button", { type: "button", className: "sc-ev sc-plan" + areaClass(x.task), ariaLabel: `Planned: ${x.task.title}, ${time}`, onclick: () => onOpen?.(x.task) },
         h("span", { className: "sc-dot" }), bdi(x.task.title)));
-      if (slots.includes(x)) { x.el = pe; pe.append(grip(x, pe, slots)); pe.classList.add("sc-drag"); }
+      if (slots.includes(x)) { x.el = pe; draggable(x, pe, slots); pe.classList.add("sc-drag"); }
       return pe; }
     // A finished task is logged as a "✓ title" event (calendar.js logDone).
     const done = /^✓\s*/u.test(x.ev.title), title = done ? x.ev.title.replace(/^✓\s*/u, "") : x.ev.title;
@@ -337,25 +337,30 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onProjects } = 
       h("button", { type: "button", className: "sc-ev" + (done ? " sc-done" : "") + tone(x.ev), style: x.ev.color ? `--ev:${x.ev.color}` : "",
         ariaLabel: `${done ? "Finished task: " : ""}${on ? "Now: " : ""}${title}, ${time}`, onclick: () => onEvent?.(x.ev) },
         done ? h("span", { className: "sc-dot" }) : h("span", { className: "sc-evi" }, icon("calendar")), bdi(title)));
-    if (slots.includes(x)) { x.el = rowEl; rowEl.append(grip(x, rowEl, slots)); rowEl.classList.add("sc-drag"); }
+    if (slots.includes(x)) { x.el = rowEl; draggable(x, rowEl, slots); rowEl.classList.add("sc-drag"); }
     return rowEl;
   }
 
-  // Drag a grip anywhere in the day (Mor, 2026-10-08: one row away wasn't
-  // enough). Where it's let go decides:
+  // Drag a row anywhere in the day (Mor, 2026-10-08: one row away wasn't
+  // enough). The row itself is the handle, no grip (Mor, same day): a mouse
+  // drags once it moves a few px, a finger after a short still hold (a quick
+  // swipe still scrolls); a plain tap still opens it. The row stays inside its
+  // day — past the first or last row it stops. Where it's let go decides:
   // - an event takes a new time and keeps its length. It starts where the row
   //   above the drop line ends, or where free time it's dropped on starts.
   //   Nothing else moves; the plan flows around it.
   // - a planned task takes that place in the plan's order; the plan re-flows
   //   around the events, so its time follows.
   // While dragging, the row's time shows where it would land.
-  function grip(x, rowEl, slots){
-    const g = h("span", { className: "sc-grip", role: "button", ariaLabel: `Drag ${x.ev?.title || x.task.title} to another place in the day`, textContent: "⋮⋮" });
+  function draggable(x, rowEl, slots){
     const dur = x.end - x.start;
-    let y0 = 0, s0 = 0, off = 0, lastY = 0, home = 0, snap = [], drop = null, marked = null, timeEl = null, orig = [], raf = 0;
+    let y0 = 0, s0 = 0, off = 0, lastY = 0, home = 0, mid0 = 0, lo = 0, hi = 0, snap = [], drop = null, marked = null, timeEl = null, orig = [], raf = 0;
+    let pid = null, armed = false, hold = 0, dragged = false;
+    // The dragged row's middle, in page terms, kept inside its day.
+    const centre = () => Math.min(hi, Math.max(lo, lastY + off + el.scrollTop));
     // The pointer → { on: a free row } or { i: the line before snap[i] }.
     const where = () => {
-      const c = lastY + off + el.scrollTop; // the dragged row's middle, in page terms
+      const c = centre();
       const on = x.kind === "event" && snap.find((s) => s.p.kind === "free" && c >= s.top && c <= s.bottom);
       return on ? { on: on.p } : { i: snap.filter((s) => s.mid < c).length };
     };
@@ -382,7 +387,7 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onProjects } = 
     };
     const unmark = () => { marked?.[0].classList.remove(marked[1]); marked = null; };
     const show = () => {
-      rowEl.style.transform = `translateY(${lastY - y0 + el.scrollTop - s0}px)`;
+      rowEl.style.transform = `translateY(${centre() - mid0}px)`;
       const w = where();
       drop = outcome(w);
       unmark();
@@ -399,27 +404,46 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onProjects } = 
       if (v) { const was = el.scrollTop; el.scrollTop += v * 8; if (el.scrollTop !== was) show(); }
       raf = requestAnimationFrame(tick);
     };
-    g.addEventListener("click", (e) => e.stopPropagation());
-    g.addEventListener("pointerdown", (e) => {
-      e.preventDefault(); e.stopPropagation();
-      dragging = true; g.setPointerCapture(e.pointerId); rowEl.classList.add("sc-dragging");
-      y0 = lastY = e.clientY; s0 = el.scrollTop; drop = null;
+    const arm = () => {
+      clearTimeout(hold); armed = dragging = dragged = true;
+      try { rowEl.setPointerCapture(pid); } catch {}
+      rowEl.classList.add("sc-dragging");
+      s0 = el.scrollTop; drop = null;
       snap = slots.filter((p) => p !== x && p.el?.isConnected).map((p) => {
         const r = p.el.getBoundingClientRect();
         return { p, top: r.top + s0, bottom: r.bottom + s0, mid: (r.top + r.bottom) / 2 + s0 };
       });
-      const r = rowEl.getBoundingClientRect(), mid = (r.top + r.bottom) / 2;
-      off = mid - e.clientY; home = snap.filter((s) => s.mid < mid + s0).length;
+      const r = rowEl.getBoundingClientRect(), mid = (r.top + r.bottom) / 2, sec = rowEl.parentElement.getBoundingClientRect();
+      off = mid - y0; mid0 = mid + s0; home = snap.filter((s) => s.mid < mid0).length;
+      lo = sec.top + s0 + r.height / 2; hi = sec.bottom + s0 - r.height / 2;
       timeEl = rowEl.querySelector(".sc-time"); orig = [...timeEl.childNodes];
+      navigator.vibrate?.(10);
       raf = requestAnimationFrame(tick);
+      show();
+    };
+    const disarm = () => { clearTimeout(hold); pid = null; };
+    rowEl.addEventListener("pointerdown", (e) => {
+      if (e.button || pid != null) return;
+      pid = e.pointerId; y0 = lastY = e.clientY; dragged = false;
+      if (e.pointerType !== "mouse") hold = setTimeout(arm, 350); // a finger: hold still first
     });
-    g.addEventListener("pointermove", (e) => {
-      if (!g.hasPointerCapture(e.pointerId)) return;
-      lastY = e.clientY; show();
+    rowEl.addEventListener("pointermove", (e) => {
+      if (e.pointerId !== pid) return;
+      lastY = e.clientY;
+      if (armed) return show();
+      if (Math.abs(lastY - y0) > 6) e.pointerType === "mouse" ? arm() : disarm(); // a finger moving first is a scroll
     });
+    // A finger: once armed, the page mustn't take the move as a scroll.
+    rowEl.addEventListener("touchmove", (e) => { if (armed) e.preventDefault(); }, { passive: false });
+    rowEl.addEventListener("contextmenu", (e) => { if (pid != null) e.preventDefault(); });
+    // The click that ends a drag doesn't open the row.
+    rowEl.addEventListener("click", (e) => { if (dragged) { e.stopPropagation(); e.preventDefault(); dragged = false; } }, true);
     const end = async (e) => {
-      if (!g.hasPointerCapture(e.pointerId)) return;
-      g.releasePointerCapture(e.pointerId); dragging = false; cancelAnimationFrame(raf);
+      if (e.pointerId !== pid) return;
+      const live = armed; disarm(); armed = false;
+      if (!live) return;
+      try { rowEl.releasePointerCapture(e.pointerId); } catch {}
+      dragging = false; cancelAnimationFrame(raf);
       rowEl.style.transform = ""; rowEl.classList.remove("sc-dragging");
       unmark(); timeEl.replaceChildren(...orig);
       const d = e.type === "pointerup" ? drop : null; drop = null;
@@ -436,9 +460,8 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onProjects } = 
       try { await retime(ev, d.start, d.end); }
       catch (err) { [ev.start, ev.end] = was; render(); fail(err); }
     };
-    g.addEventListener("pointerup", end);
-    g.addEventListener("pointercancel", end);
-    return g;
+    rowEl.addEventListener("pointerup", end);
+    rowEl.addEventListener("pointercancel", end);
   }
 
   const unsubs = [
