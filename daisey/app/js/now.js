@@ -24,7 +24,7 @@ import { focusView, handoffView, elapsedMinutes, targetMinutes, batchFocusView, 
 import { watchCalendar, logDone } from "./calendar.js";
 import { LATER_MINUTES, DRAIN, CANCEL_KEEP_MINUTES } from "./weights.js";
 import { rank, freeWindow, timeBucket, matchProject, dueAt } from "./engine.js";
-import { progressOf, progressPatch, localDate, skipSnapshot, pendingCheck, notYet, pushedTo, bringBack, againInput } from "./model.js";
+import { leftMinutes, toMinutes, progressOf, progressPatch, localDate, skipSnapshot, pendingCheck, notYet, pushedTo, bringBack, againInput } from "./model.js";
 import { waitingFor, personOf } from "./nudge.js";
 import { dayHours, isNight, nextMorning, dayEndAt, bookings, sameTitle, minText, gapsToday } from "./day.js";
 import { collectNeeds } from "./needs.js";
@@ -115,9 +115,13 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
   function taskCard(s, main, ...extra){
     const why = sentence(s.whyParts);
     const t = s.task;
+    // The why line fits the time LEFT (engine leftMinutes), so the chip says it
+    // too once some is done/spent: "30 min" beside "fills your free 23 min"
+    // read as a contradiction (Mor, 2026-10-07).
+    const left = leftMinutes(t), sizeLbl = left < (toMinutes(t.size) ?? left) ? `${sizeText(left)} left` : sizeText(t.size);
     return h("div", { className: "now-card" + (main ? " main hero" : "") + areaClass(t) },
-      main ? heroTop(t, sizeText(t.size))
-        : h("div", { className: "now-meta" }, ...pieces(t.project, sizeText(t.size))),
+      main ? heroTop(t, sizeLbl)
+        : h("div", { className: "now-meta" }, ...pieces(t.project, sizeLbl)),
       main && onOpen ? titleButton(t) : h("div", { className: "now-title", dir: "auto", textContent: t.title }),
       t.nextStep && h("p", { className: "now-next" }, "Next: ", bdi(t.nextStep)),
       why && h("p", { className: "now-why" }, ...say(why)),
