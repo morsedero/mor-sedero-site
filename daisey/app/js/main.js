@@ -7,7 +7,7 @@ const GUEST_UID = "guest-local";
 const guestMode = () => { try { return localStorage.getItem(GUEST_KEY) === "1"; } catch { return false; } };
 
 import { mountPlaces } from "./places.js";
-import { flash } from "./ui.js";
+import { flash, h, bdi } from "./ui.js";
 
 // The header's chips (round 3, New Design/6): green "✓ N done" today, and
 // amber "N need you", each only when there is something. now.js reports both.
@@ -16,7 +16,7 @@ import { flash } from "./ui.js";
 function paintDone(n){
   $("#doneChip").hidden = !n;
   $("#doneN").textContent = String(n);
-  $("#doneChip").ariaLabel = `${n === 1 ? "1 task" : `${n} tasks`} done today`;
+  $("#doneChip").ariaLabel = `${n === 1 ? "1 task" : `${n} tasks`} done today. Open the list`;
 }
 function paintPlan(p){
   $("#planChip").hidden = !p;
@@ -413,6 +413,17 @@ async function boot(){
           onEvent: (ev) => m.event.view(ev),
           guest: isGuest,
         });
+        // Done chip: today's finished tasks, newest first; tap one to open it.
+        $("#doneChip").onclick = () => {
+          const dlg = $("#donedlg"), list = m.now?.doneList() || [];
+          const row = (t) => h("li", {}, h("button", { type: "button", className: "linkish", onclick: () => { dlg.close(); m.adder.edit(t); } },
+            h("span", {}, new Date(t.doneAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) + " "), bdi(t.title)));
+          dlg.replaceChildren(
+            h("div", { className: "now-head" }, h("h2", { id: "dnTitle", textContent: "Done today" }),
+              h("button", { className: "now-x", type: "button", ariaLabel: "Close", textContent: "✕", onclick: () => dlg.close() })),
+            list.length ? h("ul", { className: "pl-list" }, ...list.map(row)) : h("p", { className: "muted", textContent: "Nothing done yet today." }));
+          dlg.showModal();
+        };
         $("#needsChip").onclick = () => { m.needs.open(); screens.open("needs"); };
         // A notification's tap: "?open=wrap" on a fresh start, or a message
         // from sw.js when Daisey was already open.

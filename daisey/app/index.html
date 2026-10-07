@@ -48,7 +48,7 @@
       <!-- Plan: today's approved plan, done/total; tap to open and change it (now.js reports, main.js paints). -->
       <button id="planChip" class="hchip plan" type="button" hidden><span class="hchip-dot" aria-hidden="true"></span><span class="hchip-word">Plan&nbsp;</span><span id="planN"></span></button>
       <!-- Done today. -->
-      <span id="doneChip" class="hchip done" role="img" hidden><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5 9-10"/></svg><span id="doneN">0</span></span>
+      <button id="doneChip" class="hchip done" type="button" hidden><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5 9-10"/></svg><span id="doneN">0</span></button>
       <!-- Account: Google-style avatar; tap for email + sign out. -->
       <div class="acct">
         <button id="avatar" class="avatar" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="acctMenu" hidden></button>
@@ -123,6 +123,7 @@
   <dialog id="eventdlg" class="now" aria-labelledby="evTitle" autofocus></dialog>
   <dialog id="deadlinedlg" class="now" aria-labelledby="dlTitle"></dialog>
   <dialog id="placedlg" class="now" aria-labelledby="plTitle"></dialog>
+  <dialog id="donedlg" class="now" aria-labelledby="dnTitle"></dialog>
   <dialog id="projdlg" class="now" aria-labelledby="npTitle"></dialog>
   <!-- Settings (Mor, 2026-10-06): opened from the avatar menu. -->
   <dialog id="settingsdlg" class="now settings" aria-labelledby="setTitle">
