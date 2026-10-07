@@ -185,7 +185,7 @@ async function boot(){
     show("signedin"); // no element of its own: just clears loading/sign-in views
 
     Promise.all([import("./now.js"), import("./projects.js"), import("./addtask.js"), import("./needs.js"), import("./import-trello.js"), import("./addevent.js"), import("./store.js"), import("./deadlines.js"), import("./day.js"), import("./calendar.js"), import("./schedule.js"), import("./push.js"), import("./briefchip.js"), import("./model.js"), import("./context.js")])
-      .then(([{ mountNow }, { mountProjects }, { mountAddTask }, { mountNeeds }, { mountImport }, { mountAddEvent }, { migrateTasks, watchSettings, saveSettings, watchTasks, watchRun }, { mountDeadlines }, { dayHours, minText }, { watchCalendar, connectCalendar, setCalendarHint }, { mountSchedule }, push, { mountBriefChip }, { AREAS, LABELS }, { workBase }]) => {
+      .then(([{ mountNow }, { mountProjects }, { mountAddTask }, { mountNeeds }, { mountImport, connectTrello, finishTrelloConnect, trelloConnected }, { mountAddEvent }, { migrateTasks, watchSettings, saveSettings, watchTasks, watchRun }, { mountDeadlines }, { dayHours, minText }, { watchCalendar, connectCalendar, setCalendarHint }, { mountSchedule }, push, { mountBriefChip }, { AREAS, LABELS }, { workBase }]) => {
         if ((!isGuest && fb.currentUid() !== user.uid) || mounted) return;
         const m = mounted = {};
         setCalendarHint(isGuest ? "" : user.email);
@@ -196,6 +196,19 @@ async function boot(){
         m.event = mountAddEvent($("#eventdlg"), { localOnly: isGuest });
         m.importer = mountImport($("#importdlg"), user.uid);
         $("#importTrello").onclick = () => { $("#settingsdlg").close(); m.importer.open(); };
+        // Connect Trello (import-trello.js): whether it's linked is asked once
+        // here, and again each time Settings opens. A guest has no Google
+        // account to link it to.
+        const trelloBtn = $("#connectTrello"), trelloNote = $("#trelloNote");
+        const paintTrello = (on) => {
+          trelloBtn.hidden = isGuest || on;
+          trelloNote.textContent = isGuest ? "Sign in with Google to connect Trello."
+            : on ? "Trello is connected." : "Connect once, then import your boards as tasks.";
+        };
+        trelloBtn.onclick = connectTrello;
+        const checkTrello = () => { if (!isGuest) trelloConnected().then(paintTrello); else paintTrello(false); };
+        $("#settingsBtn").addEventListener("click", checkTrello);
+        checkTrello();
         const fail = (e) => console.error("[daisey] menu", e);
         // Day hours in the account menu (DAISEY_SPEC "Day hours"), saved on change.
         const start = $("#dayStart"), end = $("#dayEnd");
@@ -369,6 +382,12 @@ async function boot(){
         if (cal === "connected") flash("Google Calendar connected.");
         else if (cal === "failed") flash("Couldn't connect Google Calendar. Try again.");
         if (cal) history.replaceState(history.state, "", location.pathname);
+        // Back from Trello's authorize page (daisey-auth-trello-callback).
+        finishTrelloConnect().then((ok) => {
+          if (ok === null) return;
+          flash(ok ? "Trello connected." : "Couldn't connect Trello. Try again.");
+          if (ok) { paintTrello(true); m.importer.open(); }
+        });
         if (asked || shared || startId) history.replaceState(history.state, "", location.pathname);
         if (asked) openFrom(asked);
         // "Start task" on a notification (sw.js): straight into focus mode.

@@ -5,6 +5,8 @@
 // "Google first, Trello second" ordering.
 const { getUserId } = require("./_daisey-lib/session");
 const { saveTrelloToken } = require("./_daisey-lib/tokens");
+const { verifyIdToken } = require("./_daisey-lib/firebase-auth");
+const { userIdForGoogleSub } = require("./_daisey-lib/users");
 
 const KEY = process.env.TRELLO_STANDALONE_API_KEY;
 
@@ -13,7 +15,20 @@ exports.handler = async (event) => {
     return { statusCode: 405, body: "POST only" };
   }
 
-  const userId = await getUserId(event);
+  // Two ways in: old Daisey's session cookie, or Daisey v1's Firebase ID
+  // token (Authorization: Bearer). The second maps the token's Google id to
+  // the same stored-token user id the calendar uses (_daisey-lib/users).
+  let userId = await getUserId(event);
+  if (!userId) {
+    const bearer = ((event.headers && (event.headers.authorization || event.headers.Authorization)) || "").replace(/^Bearer\s+/i, "");
+    if (bearer) {
+      let claims;
+      try { claims = await verifyIdToken(bearer); } catch { return { statusCode: 401, body: "Signed out." }; }
+      const sub = claims.firebase?.identities?.["google.com"]?.[0];
+      if (!sub) return { statusCode: 400, body: "Sign in with Google to connect Trello." };
+      userId = await userIdForGoogleSub(sub);
+    }
+  }
   if (!userId) {
     return { statusCode: 401, body: "Sign in with Google first." };
   }

@@ -33,8 +33,38 @@ function dropCardLinks(uid, tasks, done){
 }
 
 const URL_ = "/.netlify/functions/daisey-now-trello";
+const SAVE_URL = "/.netlify/functions/daisey-auth-trello-save";
+
+// Connect Trello (2026-10-07). A full-page trip through Trello's authorize
+// page (daisey-auth-trello-start, return=now). Trello hands the token back in
+// the URL fragment, the callback forwards it to /daisey/now/?trello=1#token=…,
+// and finishTrelloConnect() saves it under this sign-in, then drops the
+// fragment from the address bar. The token never touches a server in a URL.
+export function connectTrello(){
+  location.href = "/.netlify/functions/daisey-auth-trello-start?return=now";
+}
+// → true saved · false failed · null nothing to finish. Call once at startup.
+export async function finishTrelloConnect(){
+  const params = new URLSearchParams(location.search);
+  if (params.get("trello") !== "1") return null;
+  const token = new URLSearchParams(location.hash.slice(1)).get("token");
+  history.replaceState(history.state, "", location.pathname); // the token leaves the address bar now
+  if (!token) return false;
+  try {
+    const res = await fetch(SAVE_URL, { method: "POST", headers: { Authorization: `Bearer ${await idToken()}`, "Content-Type": "application/json" }, body: JSON.stringify({ token }) });
+    return res.ok;
+  } catch (e) { console.error("[daisey] trello connect", e); return false; }
+}
+// Is Trello linked and still working?
+export async function trelloConnected(){
+  try {
+    const res = await fetch(`${URL_}?status`, { headers: { Authorization: `Bearer ${await idToken()}` } });
+    return res.ok;
+  } catch { return false; }
+}
+
 const ERROR = {
-  not_connected: "Trello isn't linked. Connect Trello from a signed-in account first.",
+  not_connected: "Trello isn't connected yet.",
   no_session: "Signed out.",
   trello: "Trello didn't answer.",
 };
@@ -59,12 +89,14 @@ export function mountImport(dialog, uid){
     try { await fn(); }
     catch (e) {
       console.error("[daisey] trello", e);
-      state.error = ERROR[e.code] || "Couldn't reach Trello.";
+      state.notConnected = e.code === "not_connected";
+      state.error = state.notConnected ? "" : ERROR[e.code] || "Couldn't reach Trello.";
     }
     state.busy = false; render();
   }
 
   const loadBoards = () => run(async () => {
+    state.notConnected = false;
     state.boards = (await get("boards")).boards;
     state.step = "boards";
   });
@@ -129,6 +161,8 @@ export function mountImport(dialog, uid){
             textContent: state.busy ? "Bringing them in…" : `Bring in ${pick().length}`, onclick: doImport })),
       ];
     }
+    if (state.notConnected) return [h("p", { className: "muted", textContent: "Connect Trello once, then pick the boards to bring in." }),
+      h("button", { className: "btn primary", type: "button", textContent: "Connect Trello", onclick: connectTrello })];
     if (!state.boards.length) return [h("p", { className: "muted", textContent: state.busy ? "Looking…" : "No Trello boards." })];
     return [h("p", { className: "muted", textContent: "Which board?" }),
       h("div", { className: "imp-lists" }, ...state.boards.map((b) => h("button", {
@@ -155,7 +189,7 @@ export function mountImport(dialog, uid){
 
   return {
     open(){
-      state = { ...state, step: "boards", board: null, error: "", done: null };
+      state = { ...state, step: "boards", board: null, error: "", done: null, notConnected: false };
       render();
       if (!dialog.open) dialog.showModal();
       loadBoards();

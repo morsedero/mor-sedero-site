@@ -58,6 +58,12 @@ exports.handler = async (event) => {
 
   const q = event.queryStringParameters || {};
   try {
+    // Is Trello linked at all? The token is checked, not just present, so a
+    // revoked one reads as not connected (handled by the 401 branch below).
+    if (q.status !== undefined) {
+      await trello("/members/me", token, { fields: "id" });
+      return reply(200, { connected: true });
+    }
     if (q.boards !== undefined) {
       const boards = await trello("/members/me/boards", token, { fields: "id,name,closed", filter: "open" });
       return reply(200, { boards: boards.filter((b) => !b.closed).map((b) => ({ id: b.id, name: b.name })) });
