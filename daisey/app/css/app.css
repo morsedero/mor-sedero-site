@@ -1430,3 +1430,9 @@ body.focus .shell { block-size: auto; min-block-size: 100dvh; overflow: visible;
 .sc-row.sc-dragging { position: relative; z-index: 5; opacity: .92; filter: drop-shadow(0 4px 10px rgba(0,0,0,.2)); }
 .sc-row.sc-dragging .sc-grip { cursor: grabbing; }
 .sc-row.sc-swap .sc-ev { outline: 2px dashed var(--ink-2); outline-offset: 2px; }
+
+/* Task events (planned, finished) are plain; the project colour is a dot (Mor, 2026-10-08). */
+.sc-dot { flex: none; inline-size: 10px; block-size: 10px; margin-inline: 5px 13px; border-radius: 50%; background: var(--aink); }
+.sc-ev.sc-plan, .sc-ev.sc-plan[class*="pc-"], .sc-ev.sc-plan[class*="area-"] { background: none; color: var(--ink); box-shadow: none; border: 1.5px dashed var(--line); }
+.sc-ev.sc-done[class*="pc-"], .sc-ev.sc-done[class*="area-"] { box-shadow: none; }
+.wk-ev.done[class*="pc-"], .wk-ev.done[class*="area-"], .wk-ev.wk-plan[class*="pc-"], .wk-ev.wk-plan[class*="area-"] { background: none; color: var(--ink-2); box-shadow: none; }
