@@ -944,11 +944,13 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
       if (!t0) return;
       if (e.type === "keyup" && e.key !== " " && e.key !== "Enter") return;
       cancelAnimationFrame(raf); listen(false); t0 = 0;
+      if (e.type === "pointercancel" || e.type === "blur") { shut(150); n = 0; return; } // the browser took the touch: nothing saved
       if (!n) { flash("Hold Done: the daisy opens. Let go at how much you did."); return; }
       const p = pct();
       shut(250);
       stepAside(task, { label: `${p}% done: `, write: () => Promise.all([skipNow(uid, task), restoreTask(uid, task.id, progressPatch(p))]) });
     }
+    btn.classList.add("bloom-btn"); // no text selection or scroll stealing a long press (CSS)
     btn.addEventListener("pointerdown", start);
     btn.addEventListener("keydown", start);
     btn.addEventListener("contextmenu", (e) => e.preventDefault()); // a long press on a phone is not a menu
