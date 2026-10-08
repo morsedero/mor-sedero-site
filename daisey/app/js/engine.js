@@ -345,10 +345,11 @@ const PHRASES = {
   deadline: (s, d) => d.passed || d.days < 0 ? ["deadline passed"]
     : d.lead > 0 ? [`deadline ${dateWords(s.task.due, d.days)}, ${durText(d.left)} still to do`]
     : [`deadline ${dateWords(s.task.due, d.days)}`],
-  // "1 of 3 this week", or "2 more this week, 2 days left" once every day counts.
+  // The card's dots (ui.weekDots) already show the count, so the words say
+  // what the dots can't: "2 more this week, 2 days left" once every day counts.
   routine: (s, d) => d.need >= d.daysLeft && d.daysLeft <= 3
     ? [d.daysLeft === 1 ? `last day to make ${d.per} this week` : `${d.need} more this week, ${d.daysLeft} days left`]
-    : [`${d.done} of ${d.per} this week`],
+    : [`keeps your ${d.per}× a week going`],
   target: (s, d) => [`planned for ${d.days <= 0 ? "today" : dateWords(effectiveDue(s.task), d.days)}`],
   stakes: (s, d) => d.kind === "money" ? ["costs money if late"]
     : d.kind === "penalty" ? ["there's a penalty if late"]

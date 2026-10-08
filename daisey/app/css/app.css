@@ -1031,10 +1031,20 @@ dialog.tsheet .now-head { margin-block-end: -4px; }
 .ts-pct-row { display: flex; align-items: center; gap: 12px; }
 .ts-pct-row input { flex: 1; min-width: 0; }
 .ts-worked { margin: 0 0 10px; text-align: center; font-size: 12px; color: var(--ink-2); }
-/* Routines (routine.js): one compact row of "how often", the week under it. */
-.ts-often { gap: 5px; }
-.ts-often .chip { min-block-size: 34px; padding-inline: 10px; font-size: 14px; }
+/* Routines (routine.js): "Repeats weekly" switch, then − N + times a week. */
+.ts-per { display: flex; align-items: center; gap: 10px; font-size: 14px; color: var(--ink-2); }
+.ts-per[hidden] { display: none; }
+.ts-step { font: inherit; font-size: 18px; font-weight: 700; inline-size: 36px; block-size: 36px; border-radius: 50%;
+  border: 1px solid var(--line); background: var(--surface); color: var(--ink); cursor: pointer; }
+.ts-step:disabled { opacity: .35; cursor: default; }
+.ts-per-n { min-inline-size: 1.2em; text-align: center; font-size: 18px; font-weight: 700; color: var(--ink); }
 .ts-week { margin-block-start: -6px; text-align: start; font-size: 13px; }
+/* A routine's week as dots (ui.weekDots): filled = a session done. */
+.wk-dots { display: inline-flex; align-items: center; gap: 5px; vertical-align: middle; }
+.now-card > .wk-dots { display: flex; margin-block: 2px 4px; }
+.wk-dots i { inline-size: 9px; block-size: 9px; border-radius: 50%; border: 1.5px solid currentColor; opacity: .55; }
+.wk-dots i.on { background: currentColor; opacity: 1; }
+.wk-dots.met i { color: var(--accent); opacity: 1; }
 .ts-start { display: flex; align-items: center; justify-content: center; gap: 8px; }
 .ts-start svg { inline-size: 16px; block-size: 16px; }
 .ts-del { flex: none; align-self: center; min-block-size: 40px; margin-block-start: 6px; padding-inline: 14px; border: 0; border-radius: 10px; background: none; color: var(--ink-2); font: inherit; font-size: 13px; cursor: pointer; }

@@ -21,6 +21,7 @@
 // startedAt rather than counted here.
 import { h, bdi, dur, icon } from "./ui.js";
 import { LABELS } from "./model.js";
+import { isRoutine } from "./routine.js";
 import { elapsedMinutes, runCap } from "./reality.js";
 import { daisy, areaClass, areaName, projectShown } from "./look.js";
 import { awayText } from "./deep.js";
@@ -160,11 +161,20 @@ export function bloomHold(btn, onEnd, { hint } = {}){
 // handed back on every render, so a hold isn't reset half-way. onDone(pct).
 let held = null; // { key, el, onDone }: the current run's button
 
-export function holdButton(key, aria, disabled, onDone){
+// tap: a routine's session is always whole (Mor, 2026-10-08), so its Done is
+// a plain tap, no "how much" hold.
+export function holdButton(key, aria, disabled, onDone, { tap = false } = {}){
+  if (tap) key += ":tap";
   if (held?.key === key){
     const { el } = held, hadFocus = document.activeElement === el;
     held.onDone = onDone; el.disabled = disabled; el.ariaLabel = aria;
     if (hadFocus) queueMicrotask(() => el.focus({ preventScroll: true })); // the re-render detached it
+    return el;
+  }
+  if (tap) {
+    const el = h("button", { className: "btn primary hold", type: "button", ariaLabel: aria.replace(/^Hold to finish/, "Done:"), disabled,
+      onclick: () => me.onDone(100) }, h("span", { className: "hold-label" }, h("span", { textContent: "Done" })));
+    const me = held = { key, el, onDone };
     return el;
   }
   const el = h("button", { className: "btn primary hold", type: "button", ariaLabel: aria, disabled },
@@ -221,7 +231,7 @@ export function focusView(run, task, cb){
     const title = h("div", { className: "focus-title", dir: "auto" });
     const quiet = (name, text, aria, fn) => h("button", { className: "btn line withicon", type: "button", ariaLabel: aria, onclick: fn },
       icon(name), h("span", { textContent: text }));
-    const hold = holdButton(key, `Hold to finish ${what}`, !task, (p) => screen?.cb.onDone(p));
+    const hold = holdButton(key, `Hold to finish ${what}`, !task, (p) => screen?.cb.onDone(p), { tap: isRoutine(task) });
     const stillText = h("p", { className: "focus-still-text" });
     // Forgot to hit Done: "Finished earlier" asks how long it took, and
     // that's what gets booked (and logged, ending when it really ended).
@@ -281,7 +291,7 @@ export function focusView(run, task, cb){
   screen.away.hidden = !awayNow;
   screen.away.textContent = awayNow;
   setRing(screen.ring, mins, target);
-  holdButton(key, `Hold to finish ${what}`, !task, (p) => screen?.cb.onDone(p));
+  holdButton(key, `Hold to finish ${what}`, !task, (p) => screen?.cb.onDone(p), { tap: isRoutine(task) });
   return screen.el;
 }
 
@@ -334,10 +344,10 @@ export function handoffView(done, next, { onStart, onSkip, onFocus, onDone, onLa
             [onPending, "pending", "Pending", `${t.title} is blocked: set it to Pending`],
             [onOpen, "edit", "Open", `open ${t.title} to edit it`],
             [() => onSkip(t), "close", "Not now", `not now: skip ${t.title} for a while`]]
-            .filter(([fn]) => fn).map(([fn, ic, text, aria]) => fn === onDone
+            .filter(([fn]) => fn).map(([fn, ic, text, aria]) => fn === onDone && !isRoutine(t)
               ? bloomHold(h("button", { className: "next-opt", type: "button", ariaLabel: `${text}: hold to show how much of ${t.title} is done` },
                 icon(ic), h("span", { textContent: text })), (p) => onDone(t, p))
-              : h("button", { className: "next-opt", type: "button", ariaLabel: `${text}: ${aria}`, onclick: () => fn(t) },
+              : h("button", { className: "next-opt", type: "button", ariaLabel: `${text}: ${aria}`, onclick: () => (fn === onDone ? fn(t, 100) : fn(t)) },
                 icon(ic), h("span", { textContent: text })))),
         onPlan && h("button", { className: "linkish next-plan", type: "button", textContent: "Plan the rest of my day", onclick: onPlan }))
       : h("div", { className: "next-card none" },

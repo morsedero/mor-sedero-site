@@ -1,5 +1,16 @@
 // Tiny DOM helpers shared by the Now card and the Tasks board.
 import { durText, leftMinutes, progressOf, toMinutes } from "./model.js";
+import { isRoutine, doneThisWeek, weekLine } from "./routine.js";
+
+// A routine's week as dots (Mor, 2026-10-08): ● ● ○ = 2 of 3 done. Read at a
+// glance where "2 of 3 this week" had to be read. Sessions past the count
+// are still dots. null for a task that isn't a routine.
+export function weekDots(t){
+  if (!isRoutine(t)) return null;
+  const done = doneThisWeek(t), n = Math.max(t.routine.per, done);
+  return h("span", { className: "wk-dots" + (done >= t.routine.per ? " met" : ""), role: "img", ariaLabel: weekLine(t) },
+    ...Array.from({ length: n }, (_, i) => h("i", { className: i < done ? "on" : "" })));
+}
 
 export const h = (tag, props = {}, ...kids) => {
   const el = Object.assign(document.createElement(tag), props);

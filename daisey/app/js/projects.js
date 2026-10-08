@@ -22,9 +22,9 @@
 // counts change. Inbox has none.
 import { watchTasks, finishTask, restoreTask, removeTask, watchProjectNames, saveProjectNames, saveProjectRanges, saveProjectOrder, saveProjectTiers } from "./store.js";
 import { INBOX, progressOf, progressPatch, leftMinutes, pushedTo, notYet, durText, localDate, bringBack, cleanRange, outsideRange, doneSnapshot } from "./model.js";
-import { isRoutine, weekLine } from "./routine.js";
+import { isRoutine } from "./routine.js";
 import { isOverdue } from "./triage.js";
-import { h, bdi, flash, icon, askProgress, sizeChip, progressBar } from "./ui.js";
+import { h, bdi, flash, icon, askProgress, sizeChip, progressBar, weekDots } from "./ui.js";
 import { dirOf, setProjectColors } from "./look.js";
 import { setProjectTiers } from "./context.js";
 import { TIERS, FOCUS_MAX } from "./weights.js";
@@ -408,7 +408,7 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
 
   function nextMeta(t){
     const parts = [sizeChip(t.size ? t : { ...t, size: 30 })];
-    if (isRoutine(t)) parts.push(weekLine(t));
+    if (isRoutine(t)) parts.push(weekDots(t));
     // Both dates when both apply (Mor, 2026-10-06): the start while it's
     // still ahead (the card is dimmed until then), then the due date.
     // "Starts", not "from": "from" read as the start of a range ending at due.

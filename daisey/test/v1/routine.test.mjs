@@ -101,7 +101,7 @@ test("engine: behind on the week leans harder, with a why", () => {
   const onPace = gym({ routine: { per: 3, until: null, log: [{ day: "2026-10-05" }, { day: "2026-10-06" }] } });
   const r1 = rank([onPace], base);
   assert.equal(r1.pick.parts.routine, 6); // 1 needed, 3 days left
-  assert.match(r1.pick.why, /2 of 3 this week/);
+  assert.match(r1.pick.why, /keeps your 3× a week going/i);
 });
 
 test("engine: not offered when the week is covered or a session is later today", () => {

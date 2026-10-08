@@ -32,7 +32,7 @@ import { isRoutine, routineCalendar, eventsToLog, sessionPatch } from "./routine
 import { waitingFor, personOf } from "./nudge.js";
 import { dayHours, isNight, nextMorning, dayEndAt, bookings, sameTitle, minText, gapsToday } from "./day.js";
 import { collectNeeds } from "./needs.js";
-import { h, icon, bdi, pieces, sizeText, sizeChip, progressBar, dur, say, nightDivider, flash } from "./ui.js";
+import { h, icon, bdi, pieces, sizeText, sizeChip, progressBar, dur, say, nightDivider, flash, weekDots } from "./ui.js";
 import { areaClass, areaName, projectShown, doneToday, dirOf, stemDaisy, moonDaisy, watchProjectColors } from "./look.js";
 
 const LATER_MS = LATER_MINUTES * 60000;
@@ -128,6 +128,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
       main ? heroTop(t, sizeLbl)
         : h("div", { className: "now-meta" }, ...pieces(t.project, sizeLbl)),
       main && onOpen ? titleButton(t) : h("div", { className: "now-title", dir: "auto", textContent: t.title }),
+      weekDots(t),
       !main && t.nextStep && h("p", { className: "now-next" }, "Next: ", bdi(t.nextStep)),
       why && h("p", { className: "now-why" }, ...say(why)),
       !main && progressBar(t),
@@ -861,8 +862,11 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
   // Done is a hold (focus.js bloomHold). Less than all of it: that much
   // progress, off the card for a while, with Undo (not a skip).
   const partDone = (task, p) => stepAside(task, { label: `${p}% done: `, write: () => Promise.all([skipNow(uid, task), restoreTask(uid, task.id, progressPatch(p))]) });
-  const doneHold = (btn, task) => bloomHold(btn, (p) => (p >= 100 ? quickDoneNow(task) : partDone(task, p)),
-    { hint: () => flash("Hold Done: the daisy opens. Let go at how much you did.") });
+  // A routine's Done is one tap: a session is always whole.
+  const doneHold = (btn, task) => (isRoutine(task)
+    ? (btn.onclick = () => quickDoneNow(task), btn.ariaLabel = `Done: one session of ${task.title}`, btn)
+    : bloomHold(btn, (p) => (p >= 100 ? quickDoneNow(task) : partDone(task, p)),
+      { hint: () => flash("Hold Done: the daisy opens. Let go at how much you did.") }));
 
   // Done on a task that was never started here (already finished, or done
   // elsewhere): finished with no time booked, with an Undo.
@@ -884,7 +888,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
     const task = tasks?.find((t) => t.id === run.taskId) || null;
     const mins = elapsedMinutes(run), target = task ? targetMinutes(run, task) : 0, cap = runCap(target);
     const paused_ = !!run.pausedAt, what = task?.title || "this task";
-    const hold = holdButton(`inline:${runKey()}`, `Hold to finish ${what}`, !task, (pct) => finishRun(task, bookedMinutes(run, task), undefined, pct));
+    const hold = holdButton(`inline:${runKey()}`, `Hold to finish ${what}`, !task, (pct) => finishRun(task, bookedMinutes(run, task), undefined, pct), { tap: isRoutine(task) });
     // Waiting for a reply (Mor, 2026-10-07): on hold, but the timer keeps
     // going — the wait is part of the task. "Got the reply" takes it off hold.
     const onHold = task?.onHold;

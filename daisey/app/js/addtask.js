@@ -26,7 +26,7 @@ import { watchTasks, addTask, updateTask, removeTask, watchProjectNames } from "
 import { durText, guessFields, validField, CHOICES, LABELS, INBOX, localDate, clampDate, outsideRange, progressOf } from "./model.js";
 import { h, flash, icon, bdi } from "./ui.js";
 import { projectsOf } from "./projects.js";
-import { isRoutine, weekLine } from "./routine.js";
+import { isRoutine, weekLine, PER_MAX } from "./routine.js";
 
 // Every field Daisey guesses, and the one the user sees (Mor, 2026-10-07:
 // "keep only the time the user thinks it's gonna take"). The rest are never
@@ -93,22 +93,34 @@ export function mountAddTask(dialog, uid, { onStart } = {}){
   // Made in a project with a due date, it runs until that date.
   const until = dateBox("Until", "No end");
   let per = 0;
-  // Nothing picked = a one-off task (Mor, 2026-10-08: a pressed "Once" chip
-  // read as "once a week"). Tapping the picked one again turns repeat off.
-  const OFTEN = [1, 2, 3, 4, 5, 7];
-  const oftenRow = h("div", { className: "now-chips ts-often", role: "group", ariaLabel: "Repeat, times a week" });
+  // One switch, "Repeats weekly" (Mor, 2026-10-08: simpler than a row of
+  // chips); on, a − N + stepper says how many times. Off = a one-off task.
+  const PER_ON = 3; // where the stepper starts: the usual "3× a week"
+  const repeatSwitch = h("input", { type: "checkbox", id: "tsRepeat" });
+  const perOut = h("output", { className: "ts-per-n" });
+  const stepBtn = (d, text, aria) => h("button", { type: "button", className: "ts-step", textContent: text, ariaLabel: aria,
+    onclick: () => setPer(Math.min(PER_MAX, Math.max(1, per + d))) });
+  const perStep = h("div", { className: "ts-per", role: "group", ariaLabel: "Times a week" },
+    stepBtn(-1, "−", "Fewer times a week"), perOut, stepBtn(1, "+", "More times a week"), h("span", { textContent: "times a week" }));
+  const oftenRow = h("div", { className: "ts-hold ts-repeat" },
+    h("label", { className: "ts-hold-sw", htmlFor: "tsRepeat" }, repeatSwitch, h("span", { textContent: "Repeats weekly" })), perStep);
   const weekNow = h("p", { className: "ts-worked ts-week" });
   const routineOf = () => (per ? { per, until: until.input.value || null } : null);
+  function setPer(n){
+    if (n === per) return;
+    per = n;
+    if (per && !until.input.value && rangeNow()?.due) until.input.value = rangeNow().due;
+    if (per) due.input.value = ""; // a routine has no due date, only its end
+    paintDates(); paintOften();
+    if (editing) save({ routine: routineOf(), ...(per && editing.due ? { due: "" } : {}) });
+  }
+  repeatSwitch.addEventListener("change", () => setPer(repeatSwitch.checked ? PER_ON : 0));
   function paintOften(){
-    oftenRow.replaceChildren(...OFTEN.map((n) => h("button", { type: "button", className: "chip", textContent: `${n}×`,
-      ariaPressed: String(per === n), ariaLabel: n === 7 ? "Every day" : `${n} times a week`,
-      onclick: () => {
-        per = per === n ? 0 : n;
-        if (per && !until.input.value && rangeNow()?.due) until.input.value = rangeNow().due;
-        paintDates(); paintOften();
-        if (per) due.input.value = ""; // a routine has no due date, only its end
-        if (editing) save({ routine: routineOf(), ...(per && editing.due ? { due: "" } : {}) });
-      } })));
+    repeatSwitch.checked = !!per;
+    perStep.hidden = !per;
+    perOut.textContent = String(per);
+    const [less, more] = perStep.querySelectorAll(".ts-step");
+    less.disabled = per <= 1; more.disabled = per >= PER_MAX;
   }
   until.input.addEventListener("change", () => { fenceUntil(); paintDates(); if (editing && per) save({ routine: routineOf() }); });
   due.tag.onclick = (e) => {
@@ -177,7 +189,7 @@ export function mountAddTask(dialog, uid, { onStart } = {}){
     field("Project", projectSel, newProject),
     field("Task", title),
     h("div", { className: "ts-dates" }, start.box, due.box, until.box),
-    field("How long?", chipRow), field("Repeat? (times a week)", oftenRow), weekNow, pctBox, pendBox, holdBox, researchLine, stateLine,
+    field("How long?", chipRow), oftenRow, weekNow, pctBox, pendBox, holdBox, researchLine, stateLine,
     section("Links & notes", h("div", { className: "ts-group" }, linkRow, notes)),
     worked, startBtn, del, msg);
 
