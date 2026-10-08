@@ -42,11 +42,11 @@
       </svg>
       <h1 class="brand">Daisey<span class="beta">(beta)</span></h1>
     </div>
-    <!-- Clock and date, centred in the top bar (Mor, 2026-10-08); main.js ticks it. -->
-    <div id="hdrClock" class="hdr-clock" aria-hidden="true"><time id="hdrTime" class="hdr-time"></time><span id="hdrDate" class="hdr-date"></span></div>
     <div class="hdr-end">
       <!-- Needs you: amber, only when something does (now.js counts, main.js paints). -->
       <button id="needsChip" class="hchip needs" type="button" hidden><span class="hchip-dot" aria-hidden="true"></span><span id="needsN">0</span><span id="needsW" class="hchip-word"></span></button>
+      <!-- Clock and date, right beside the avatar (Mor, 2026-10-08); main.js ticks it. -->
+      <div id="hdrClock" class="hdr-clock" aria-hidden="true"><time id="hdrTime" class="hdr-time"></time><span id="hdrDate" class="hdr-date"></span></div>
       <!-- Account: Google-style avatar; tap for email + sign out. -->
       <div class="acct">
         <button id="avatar" class="avatar" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="acctMenu" hidden></button>

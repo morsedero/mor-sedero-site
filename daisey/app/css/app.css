@@ -1056,10 +1056,10 @@ dialog.tsheet .msg:empty { display: none; }
 :root.night .logo .daisy-heart { fill: var(--accent); }
 .hdr-end { display: flex; align-items: center; gap: 8px; margin-inline-start: auto; }
 /* Clock + date between brand and the chips: time over a small spaced date. */
-/* Equal-width sides keep the clock dead centre whatever the right side holds. */
-.topbar > .brandrow, .topbar > .hdr-end { flex: 1 1 0; }
-.topbar > .hdr-end { justify-content: flex-end; }
-.hdr-clock { flex: none; display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1; overflow: hidden; white-space: nowrap; }
+/* The clock sits in the right group, just left of the avatar. */
+.topbar > .brandrow { flex: 1 1 0; }
+.topbar > .hdr-end { flex: none; justify-content: flex-end; }
+.hdr-clock { flex: none; display: flex; flex-direction: column; align-items: flex-end; justify-content: center; line-height: 1; overflow: hidden; white-space: nowrap; }
 .hdr-time { font-size: 18px; font-weight: 600; letter-spacing: -0.3px; font-variant-numeric: tabular-nums; color: var(--ink); }
 .hdr-date { margin-block-start: 3px; font-size: 10px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-2); }
 .hdr-end .acct { margin-inline-start: 0; display: flex; align-items: center; }
