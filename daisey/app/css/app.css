@@ -1443,3 +1443,21 @@ body.focus .shell { block-size: auto; min-block-size: 100dvh; overflow: visible;
 .sc-ev.sc-plan, .sc-ev.sc-plan[class*="pc-"], .sc-ev.sc-plan[class*="area-"] { background: none; color: var(--ink); box-shadow: none; border: 1.5px dashed var(--line); }
 .sc-ev.sc-done[class*="pc-"], .sc-ev.sc-done[class*="area-"] { box-shadow: none; }
 .wk-ev.done[class*="pc-"], .wk-ev.done[class*="area-"], .wk-ev.wk-plan[class*="pc-"], .wk-ev.wk-plan[class*="area-"] { background: none; color: var(--ink-2); box-shadow: none; }
+
+/* The week as its own page (Mor, 2026-10-08): it was small and untouchable in
+   the home panel. Full screen, taller hours (schedule.js HOUR_PX 60), bigger text. */
+.wkscreen { display: flex; flex-direction: column; overflow: hidden; }
+.wkscreen[hidden] { display: none; }
+.wkscreen > * { max-inline-size: 960px; inline-size: 100%; }
+.wkpage { flex: 1 1 0; min-block-size: 0; overflow-y: auto; overscroll-behavior: contain; padding: 12px 14px 32px; }
+.wkpage .sc-head { background: var(--bg); }
+.wkpage .wk-wd { font-size: 12px; }
+.wkpage .wk-n { inline-size: 30px; block-size: 30px; font-size: 16px; }
+.wkpage .wk-evt { font-size: 12px; }
+.wkpage .wk-evtime { font-size: 11px; }
+.wkpage .wk-hours span { font-size: 11px; }
+.wkpage .wk-ad { font-size: 11px; padding: 2px 5px; }
+.wkpage .wk-heads, .wkpage .wk-allday, .wkpage .wk-grid { grid-template-columns: 32px repeat(7, minmax(0, 1fr)); }
+.sc-weekbtn { flex: none; display: inline-flex; align-items: center; gap: 5px; block-size: 32px; padding-inline: 10px; border: 0; border-radius: 999px; background: var(--chip); font: inherit; font-size: 13px; font-weight: 600; color: var(--ink); cursor: pointer; }
+.sc-weekbtn svg { inline-size: 16px; block-size: 16px; }
+@media (max-width: 479px) { .sc-weekbtn span { display: none; } .sc-weekbtn { inline-size: 32px; padding: 0; justify-content: center; } }

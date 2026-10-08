@@ -72,8 +72,9 @@ export function dayRows(events, date, hrs, from = 0){
 // their times; ‹ › step a week. Tapping a weekday heading opens that day;
 // tapping the title goes back to today. Which view is remembered on this
 // device; where you've stepped to lasts only as long as the tab.
-const HOUR_PX = 44; // week grid: one hour's height
-const VIEW_KEY = "daisey.schedView";
+// Mor, 2026-10-08: the week was small and untouchable inside the home panel,
+// so it moved out. Home is the day only, with a Week button; Week is its own
+// full-screen page (mode "week"), second instance of this same mount.
 const dayStart = (ms) => { const d = new Date(ms); d.setHours(0, 0, 0, 0); return d; };
 const addDays = (d, n) => { const x = new Date(d); x.setDate(x.getDate() + n); return x; };
 const ymdToDate = (ymd) => { const [y, m, d] = ymd.split("-").map(Number); return new Date(y, m - 1, d); };
@@ -103,13 +104,13 @@ function lanes(items){
 
 // el: the page. onEvent(ev): an event's details. onNew(date, at): a new
 // event on "YYYY-MM-DD", at "HH:MM" when a gap was tapped.
-export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onProjects } = {}){
+export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onProjects, onWeek, onDay, mode = "home" } = {}){
   let cal = { status: "loading", events: [] };
   let settings = {};
   let tasks = null, run = null; // for Plan my day
   let dayPlan = null; // today's saved plan doc; approved, it sits in today's gaps
-  let view = "day";
-  try { if (localStorage.getItem(VIEW_KEY) === "week") view = "week"; } catch {}
+  const view = mode === "week" ? "week" : "day";
+  const HOUR_PX = mode === "week" ? 60 : 44; // week grid: one hour's height
   let focus = null; // "YYYY-MM-DD" stepped to; null = today
   // Days outside the week calendar.js fetches (today + 7) come from
   // fetchRange, one stretch at a time, kept until the main calendar changes.
@@ -117,7 +118,6 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onProjects } = 
   const fail = (e) => console.error("[daisey] schedule", e);
 
   let jump = true; // next render scrolls the week to now (or its first event)
-  const setView = (v) => { view = v; try { localStorage.setItem(VIEW_KEY, v); } catch {} el.scrollTop = 0; jump = true; render(); };
   const go = (ymd) => { focus = ymd; el.scrollTop = 0; jump = true; render(); };
 
   // The events for [from, to): the shared week when it covers it, else a fetch.
@@ -172,8 +172,7 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onProjects } = 
     const rel = Math.abs(Math.round((at - today) / 864e5)) <= 1;
     const narrow = view === "week" || rel ? title : `${at.toLocaleDateString("en-GB", { weekday: "short" })} ${at.getDate()}`;
 
-    const seg = h("div", { className: "sc-seg", role: "radiogroup", ariaLabel: "View" }, ...[["day", "Day"], ["week", "Week"]].map(([v, t]) =>
-      h("button", { type: "button", role: "radio", ariaChecked: String(view === v), textContent: t, onclick: () => view !== v && setView(v) })));
+    const weekBtn = h("button", { type: "button", className: "sc-weekbtn", ariaLabel: "Week", onclick: () => onWeek?.() }, icon("calendar"), h("span", { textContent: "Week" }));
     // One row (Mor, 2026-10-07). Today keeps its place (just unseen on
     // today), so the arrows and the switch never shift under the finger.
     const bar = h("div", { className: "sc-bar" },
@@ -182,8 +181,8 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onProjects } = 
         h("span", { className: "sc-name", textContent: title }), h("span", { className: "sc-name sc-name-s", textContent: narrow }), sub && h("span", { className: "sc-date", textContent: sub })),
       h("button", { type: "button", className: "sc-step", ariaLabel: view === "week" ? "Next week" : "Next day", onclick: () => step(1) }, icon("chev")),
       h("button", { type: "button", className: "sc-today" + (isNow ? " off" : ""), ariaLabel: "Back to today", textContent: "Today", tabIndex: isNow ? -1 : 0, onclick: () => go(null) }),
-      seg,
-      h("button", { type: "button", className: "sc-proj", ariaLabel: "Projects", onclick: () => onProjects && onProjects() }, icon("folder"), h("span", { className: "sc-proj-t", textContent: "Projects" })));
+      mode === "home" && weekBtn,
+      mode === "home" && h("button", { type: "button", className: "sc-proj", ariaLabel: "Projects", onclick: () => onProjects && onProjects() }, icon("folder"), h("span", { className: "sc-proj-t", textContent: "Projects" })));
     const head = h("div", { className: "sc-head" + (view === "week" ? " wk" : "") }, bar);
 
     let body;
@@ -270,7 +269,7 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onProjects } = 
     head.append(h("div", { className: "wk-heads" }, h("span"), ...cols.map((c) => {
       const t = c.d.getTime();
       return h("button", { type: "button", className: "wk-hd" + (t === t0 ? " today" : "") + (t < t0 ? " past" : "") + (c.d.getDay() === 6 ? " sat" : ""),
-        ariaLabel: `${short(c.d)} — open the day`, onclick: () => { focus = c.ymd; setView("day"); } },
+        ariaLabel: `${short(c.d)} — open the day`, onclick: () => onDay?.(c.ymd) },
         h("span", { className: "wk-wd", textContent: c.d.toLocaleDateString("en-GB", { weekday: "narrow" }) }),
         h("span", { className: "wk-n", textContent: c.d.getDate() }));
     })));
@@ -490,5 +489,5 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onProjects } = 
   let mark = null;
   const tick = setInterval(() => { const m = Math.floor(Date.now() / 60000); if (m !== mark && !document.hidden) { mark = m; render(); } }, 5000);
   render();
-  return { unmount(){ unsubs.forEach((u) => u()); clearInterval(tick); el.replaceChildren(); } };
+  return { go, unmount(){ unsubs.forEach((u) => u()); clearInterval(tick); el.replaceChildren(); } };
 }

@@ -397,7 +397,7 @@ async function boot(){
           open(kind){ if (history.state?.daisey !== kind) history.pushState({ daisey: kind }, ""); },
           back(){ if (history.state?.daisey) history.back(); else closeScreens(); },
         };
-        const closeScreens = () => { m.projects?.closeProject(); m.projects?.closeAll(); m.needs?.close(); };
+        const closeScreens = () => { m.projects?.closeProject(); m.projects?.closeAll(); m.needs?.close(); $("#weekview").hidden = true; };
         // Back from a project lands on the Projects page when that's where it
         // was opened from (history state "projects" under "project").
         const onPop = () => {
@@ -414,7 +414,13 @@ async function boot(){
         m.adder = mountAddTask($("#addtask"), user.uid, { onStart: startTask });
         m.needs = mountNeeds($("#needsview"), user.uid, { onClose: () => screens.back() });
         // The home panel is the Schedule, always. Projects is its own page.
-        m.schedule = mountSchedule($("#schedPage"), user.uid, { onEvent: (ev) => m.event.view(ev), onNew: (date, at) => m.event.open(date, at), onOpen: (task) => m.adder.edit(task), onProjects: () => { m.projects.openAll(); screens.open("projects"); } });
+        m.schedule = mountSchedule($("#schedPage"), user.uid, { onEvent: (ev) => m.event.view(ev), onNew: (date, at) => m.event.open(date, at), onOpen: (task) => m.adder.edit(task), onProjects: () => { m.projects.openAll(); screens.open("projects"); },
+          onWeek: () => { $("#weekview").hidden = false; $("#weekPage").scrollTop = 0; screens.open("week"); } });
+        // The week is its own page (Mor, 2026-10-08): a second mount, week only.
+        // A weekday heading opens that day back on home.
+        m.week = mountSchedule($("#weekPage"), user.uid, { mode: "week", onEvent: (ev) => m.event.view(ev), onNew: (date, at) => m.event.open(date, at), onOpen: (task) => m.adder.edit(task),
+          onDay: (ymd) => { m.schedule.go(ymd); screens.back(); } });
+        $("#weekBack").onclick = () => screens.back();
         m.projects = mountProjects({ grid: $("#projPage"), page: $("#projectsview"), view: $("#projectview"), dialog: $("#projdlg") }, user.uid, {
           onOpen: (task) => m.adder.edit(task),
           onAdd: (project) => m.adder.open(project),
