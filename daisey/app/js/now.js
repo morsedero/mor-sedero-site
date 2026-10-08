@@ -206,31 +206,36 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
       block && h("p", { className: "freeline" },
         ...(block.taskId ? [`Booked until ${clock(block.end)}`] : ["Working on ", bdi(block.project), ` until ${clock(block.end)}`]),
         " · ", freeNow(block.start, block.title || block.project)),
-      leg && h("p", { className: "freeline" },
-        ...tripSwitch(leg, leg === fw.current ? `${TRIP_ON[leg.trip.mode]} until ${clock(leg.end)}` : `Leave ${clock(leg.start)}, ${TRIP_BY[leg.trip.mode]}`)),
-      leg && laptopLine(leg, "freeline"));
+      leg && tripChips(leg, leg === fw.current ? `${TRIP_ON[leg.trip.mode]} until ${clock(leg.end)}` : `Leave ${clock(leg.start)} ${TRIP_BY[leg.trip.mode]}`));
   }
+  const tripChips = (leg, text) => h("div", { className: "trip-chips" }, tripSwitch(leg, text), laptopLine(leg));
 
   // On a train, the laptop decides what fits (trips.js ridePlace): asked
   // once, then the last answer holds, one tap to change (settings.laptop).
-  function laptopLine(leg, cls){
+  function laptopLine(leg){
     if (leg.trip.mode !== "train") return null;
     const has = settings.laptop;
     const set = (v) => { settings = { ...settings, laptop: v }; tripOpen = null; applyTrips(); render(); saveSettings(uid, { laptop: v }).catch(fail); };
-    const btn = (text, aria, v) => h("button", { className: "linkish", type: "button", textContent: text, ariaLabel: aria, onclick: () => set(v) });
-    return h("p", { className: cls },
-      ...(has == null ? ["Laptop with you? ", btn("Yes", "Yes, the laptop is with me", true), " · ", btn("No", "No laptop, phone only", false)]
-        : answered(`laptop:${leg.start}`, has ? "Laptop with you" : "Phone only",
-          [has ? btn("No laptop", "No laptop this time: phone tasks only", false) : btn("I have the laptop", "The laptop is with me", true)])));
+    return answered(`laptop:${leg.start}`, has ? "Laptop with you" : "Phone only", "Laptop with you?", [
+      { label: "Laptop", aria: "Yes, the laptop is with me", on: has === true, pick: () => set(true) },
+      { label: "Phone only", aria: "No laptop, phone tasks only", on: has === false, pick: () => set(false) }]);
   }
 
-  // An answered question reads as settled (Mor, 2026-10-08: "unclear that I
-  // already answered"): a ✓ and the answer, its other choices behind Change.
-  function answered(key, text, options){
-    const link = (label, aria, open) => h("button", { className: "linkish", type: "button", textContent: label, ariaLabel: aria,
-      onclick: () => { tripOpen = open; render(); } });
-    return tripOpen === key ? [text, " · ", ...options.flatMap((o, i) => [i ? " · " : "", o]), " · ", link("Keep", `Keep: ${text}`, null)]
-      : [h("span", { className: "trip-ok", ariaHidden: "true", textContent: "✓ " }), text, " · ", link("Change", `Change: ${text}`, key)];
+  // An answered question is a chip: ✓, the answer, ▾ (Mor, 2026-10-08:
+  // "unclear that I already answered"). Tapping it opens the choices as
+  // pills, the current one filled; tapping that one again keeps it. An
+  // unanswered question opens straight to the pills.
+  function answered(key, text, prompt, choices){
+    const toggle = (open) => () => { tripOpen = open; render(); };
+    if (choices.some((c) => c.on) && tripOpen !== key) {
+      return h("button", { className: "trip-chip", type: "button", ariaLabel: `${text}. Change`, ariaExpanded: "false", onclick: toggle(key) },
+        h("span", { className: "trip-ok", ariaHidden: "true", textContent: "✓" }), h("span", { textContent: text }),
+        h("span", { className: "trip-caret", ariaHidden: "true", textContent: "▾" }));
+    }
+    return h("div", { className: "trip-pick", role: "group", ariaLabel: prompt },
+      h("span", { className: "trip-q", textContent: prompt }),
+      ...choices.map((c) => h("button", { className: "trip-opt" + (c.on ? " on" : "") + (c.danger ? " danger" : ""), type: "button",
+        textContent: c.label, ariaLabel: c.aria, ariaPressed: String(!!c.on), onclick: c.on ? toggle(null) : c.pick })));
   }
 
   // Today by another way, or not going (settings.tripDay): the saved answer
@@ -252,11 +257,10 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
       // "Not going" takes the trip off the card with it: Undo puts it back.
       if (mode === "none") flash(`No trip to ${t.city} that day.`, null, { undo: () => put(before) });
     };
-    const btn = (text, aria, mode) => h("button", { className: "linkish", type: "button", textContent: text, ariaLabel: aria, onclick: () => set(mode) });
-    const others = MODES.filter((m) => m !== t.mode);
-    return answered(`trip:${t.key}:${leg.start}`, text,
-      [...others.map((m) => btn(TRIP_INSTEAD[m], `${TRIP_INSTEAD[m]} to ${t.city} instead, that day only`, m)),
-        btn("Not going", `Not going to ${t.city} that day`, "none")]);
+    return answered(`trip:${t.key}:${leg.start}`, text, `To ${t.city}`, [
+      ...MODES.map((m) => ({ label: TRIP_INSTEAD[m], aria: m === t.mode ? `Keep: ${TRIP_INSTEAD[m]}` : `${TRIP_INSTEAD[m]} to ${t.city} instead, that day only`,
+        on: m === t.mode, pick: () => set(m) })),
+      { label: "Not going", aria: `Not going to ${t.city} that day`, danger: true, pick: () => set("none") }]);
   }
 
   // The card has three shapes (Mor, 2026-10-07: "too many states"): a TASK
@@ -708,9 +712,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
     // event, the trip back (trips.js chainFrom).
     const chain = first ? chainFrom(first, evs) : null, main = chain?.main;
     const leave = chain?.parts.find((e) => e.trip?.dir === "to"), back = chain?.parts.find((e) => e.trip?.dir === "back");
-    const leaveLine = leave && h("div", {},
-      h("p", { className: "now-why trip-line" }, ...tripSwitch(leave, `Leave ${clock(Date.parse(leave.start))}, ${TRIP_BY[leave.trip.mode]}`)),
-      laptopLine(leave, "now-why trip-line"));
+    const leaveLine = leave && tripChips(leave, `Leave ${clock(Date.parse(leave.start))} ${TRIP_BY[leave.trip.mode]}`);
     const who = name ? `, ${name}` : "";
     const lead = dueTonight.length === 1 ? "One deadline is still open today." : `${dueTonight.length} deadlines are still open today.`;
     return [

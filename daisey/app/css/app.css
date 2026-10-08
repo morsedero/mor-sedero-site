@@ -741,7 +741,22 @@ dialog.settings .now-head + .menu-sec { border-block-start: 0; padding-block-sta
 /* The event name wraps as one piece ("שיעור גיטרה" never splits across lines). */
 .freeline bdi { display: inline-block; }
 .freeline .free-now { font-weight: 600; color: var(--ink); text-underline-offset: 2px; padding-block: 4px; }
-.trip-ok { color: var(--ink); font-weight: 700; } /* an answered trip/laptop question */
+/* Trip + laptop answers (now.js answered()): a chip when settled, pills when
+   choosing. Tinted from currentColor so they sit on any area or night card. */
+.trip-chips { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-block-start: 12px; }
+.trip-chip, .trip-opt { font: inherit; font-size: 13px; line-height: 1; cursor: pointer; border-radius: 999px; min-block-size: 34px;
+  display: inline-flex; align-items: center; gap: 6px; padding: 0 12px; color: inherit;
+  background: color-mix(in srgb, currentColor 8%, transparent); border: 1px solid color-mix(in srgb, currentColor 18%, transparent); }
+.trip-chip { font-weight: 600; }
+.trip-chip:hover, .trip-opt:hover { background: color-mix(in srgb, currentColor 14%, transparent); }
+.trip-ok { display: inline-grid; place-items: center; inline-size: 16px; block-size: 16px; border-radius: 50%; font-size: 10px; font-weight: 800;
+  background: var(--accent); color: var(--on-accent); }
+.trip-caret { opacity: .55; font-size: 11px; }
+.trip-pick { flex-basis: 100%; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.trip-q { font-size: 12px; font-weight: 600; letter-spacing: .02em; opacity: .7; margin-inline-end: 2px; }
+.trip-opt.on { background: var(--accent); border-color: var(--accent); color: var(--on-accent); font-weight: 700; }
+.trip-opt.danger { color: var(--danger); border-color: color-mix(in srgb, var(--danger) 35%, transparent); background: none; }
+.trip-chip:focus-visible, .trip-opt:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 /* The event form's From and To: one quarter-hour picker each. */
 .timepick { inline-size: 100%; min-inline-size: 0; font: inherit; font-size: 16px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--ink); font-variant-numeric: tabular-nums; }
 
