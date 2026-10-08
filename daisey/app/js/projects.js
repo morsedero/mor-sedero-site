@@ -217,7 +217,7 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
           h("span", { className: "pcard-foot" }, bar(p, "pbar"), flowerTime(f) && h("span", { className: "pcard-time", textContent: flowerTime(f) })))); };
     const tier = (t) => { const ins = ps.filter((p) => tierOf(p.name) === t);
       return h("div", { className: `pp-zone tier-${t}`, _tier: t },
-        // Each tier its own panel, with how many it holds (Mor, 2026-10-08: "make areas more clear").
+        // Each tier a header with how many it holds; no box (Mor, 2026-10-08).
         h("div", { className: "pp-tier" }, h("span", { className: "pp-tier-name", textContent: TIER_TEXT[t][0] }), h("span", { className: "pp-tier-sub", textContent: TIER_TEXT[t][1] }),
           h("span", { className: "pp-tier-n", textContent: t === "focus" ? `${ins.length}/${FOCUS_MAX}` : String(ins.length) })),
         h("span", { className: "pp-tier-empty", textContent: "Drag a project here" }), ...ins.map(card)); };
