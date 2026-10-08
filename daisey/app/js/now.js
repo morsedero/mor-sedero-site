@@ -1378,7 +1378,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
       ...cardActions(card.task, alts, startButton("Start", `Start: ${card.task.title}`, () => begin(card.task)))), asking()),
       nextLine(card.task), ...altsFor(alts), tip);
     // One slide-in per step-aside: later snapshots must not replay it.
-    if (slideIn) { slideIn = false; if (motionOK()) root.querySelector(".now-card.main")?.classList.add("in"); }
+    if (slideIn) { slideIn = false; if (motionOK()) { const c = root.querySelector(".now-card.main"); if (c) { c.style.animationDelay = ""; c.classList.add("in"); } } }
   }
 
   // (The "Skipped five times. Still want it?" line that lived here moved to
@@ -1396,6 +1396,9 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
     }
     if (kids.length === root.children.length && kids.every((k, i) => root.children[i] === k)) return;
     root.replaceChildren(...kids);
+    // A rebuilt card would restart its idle bob (breathe, 5s) from the top and
+    // jump; keep the phase on the wall clock so every rebuild carries on.
+    root.querySelectorAll(".deck > .now-card.main").forEach((c) => { c.style.animationDelay = `${-(Date.now() % 5000)}ms`; });
   };
   // The day screens: the card and what's under it. (After this and the
   // Needs you row went with round 3: the panel's Schedule page and the

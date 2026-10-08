@@ -305,7 +305,7 @@ textarea {
 /* Not now: the card slides out, the next slides in. */
 @keyframes card-out { to { opacity: 0; transform: translateX(-12%); } }
 @keyframes card-in { from { opacity: 0; transform: translateX(14%); } }
-.now-card.main.out { animation: card-out .14s ease-in forwards; }
+.now-card.main.out { animation: card-out .14s ease-in forwards; animation-delay: 0s !important; /* beats the inline breathe phase */ }
 .now-card.main.in { animation: card-in .18s ease-out; }
 :dir(rtl) .now-card.main.out { animation-name: card-out-rtl; }
 :dir(rtl) .now-card.main.in { animation-name: card-in-rtl; }
