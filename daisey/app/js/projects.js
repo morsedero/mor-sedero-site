@@ -160,27 +160,26 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
     const inbox = all.find((p) => p.name === INBOX);
     const ps = all.filter((p) => p !== inbox);
     // The order is the priority (Mor, 2026-10-08): the engine gives the top
-    // project the most points (context.js, engine.js priority), and each card
-    // shows its place — an attention meter (signal bars, no number: a rank
-    // read wrong beside Hebrew names and beside the task count, Mor
-    // 2026-10-08) and a stripe that thins down the list.
+    // project the most points (context.js, engine.js priority). The page
+    // says so OUTSIDE the cards (Mor, 2026-10-08: a number or meter on the
+    // card read wrong beside Hebrew names and the task count): a rail on the
+    // left of the list, thick at the top and thinning down, More → Less.
     setProjectRanks(ps.map((p) => p.name));
-    const share = (i) => (ps.length - 1 - i) / (ps.length - 1);
-    const pri = (i) => (ps.length > 1 ? `--pri:${share(i).toFixed(2)}` : "");
-    const meter = (i) => { const on = 1 + Math.round(share(i) * 3);
-      return h("span", { className: "pcard-meter", title: on > 2 ? "More of your time" : "Less of your time" }, ...[1, 2, 3, 4].map((k) => h("i", { className: k <= on ? "on" : "" }))); };
     const n = all.reduce((s, p) => s + p.open.length, 0);
     const y = els.grid.scrollTop;
     els.grid.replaceChildren(...[
       h("div", { className: "pp-head" }, h("span", { className: "pp-sum", textContent: `${plural(ps.length, "project")} · ${plural(n, "task")}` }),
         h("button", { type: "button", className: "pp-new", textContent: "+ New", onclick: () => askName() })),
       ps.length > 1 && h("p", { className: "pp-hint", textContent: "Top first: Daisey gives the ones on top more of your time. Drag to reorder." }),
-      ps.length ? dragProjects(h("div", { className: "pgrid" }, ...ps.map((p, i) => h("button", { type: "button", className: "pcard pp-drag" + colorClass(p),
-        _name: p.name, style: pri(i), onclick: () => openProject(p.name) },
-        h("span", { className: "pcard-top", dir: dirOf(p.name) }, ps.length > 1 && meter(i),
-          h("span", { className: "pcard-name", dir: "auto", textContent: p.name }), h("span", { className: "pcard-n", textContent: String(p.open.length) })),
-        h("span", { className: "pcard-status" }, ...statusLine(p)),
-        bar(p, "pbar")))), ps)
+      ps.length ? h("div", { className: "pp-ranked" + (ps.length > 1 ? " ranked" : "") },
+        ps.length > 1 && h("div", { className: "pp-rail", ariaHidden: "true" },
+          h("span", { textContent: "More" }), h("i"), h("span", { textContent: "Less" })),
+        dragProjects(h("div", { className: "pgrid" }, ...ps.map((p) => h("button", { type: "button", className: "pcard pp-drag" + colorClass(p),
+          _name: p.name, onclick: () => openProject(p.name) },
+          h("span", { className: "pcard-top", dir: dirOf(p.name) },
+            h("span", { className: "pcard-name", dir: "auto", textContent: p.name }), h("span", { className: "pcard-n", textContent: String(p.open.length) })),
+          h("span", { className: "pcard-status" }, ...statusLine(p)),
+          bar(p, "pbar")))), ps))
         : !inbox && h("p", { className: "muted pp-empty", textContent: "No projects yet. Tell Daisey what's on your plate." }),
       inbox ? h("button", { type: "button", className: "pp-inbox", onclick: () => openProject(INBOX) },
         icon("inbox"), h("span", { className: "pp-inbox-t", textContent: "Inbox" }),

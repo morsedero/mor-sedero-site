@@ -853,16 +853,15 @@ button.now-title:focus-visible { outline: 2px solid var(--aink); outline-offset:
 .pgrid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; margin-block-start: 10px; }
 .pcard { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0; align-content: start; padding: 12px; border-radius: 16px; background: var(--tint); border: 1px solid var(--aline); color: var(--ink); font: inherit; text-align: start; cursor: pointer; }
 .pcard-top { display: flex; justify-content: space-between; align-items: center; gap: 6px; }
-/* Priority (Mor, 2026-10-08): the order is the priority. Signal bars, and a
-   stripe on the leading edge that thins from the top project down. */
-.pgrid .pcard { border-inline-start: calc(1px + 5px * var(--pri, 0)) solid color-mix(in srgb, var(--aink) calc(35% + 65% * var(--pri, 0)), transparent); padding-inline-start: calc(12px - 5px * var(--pri, 0) + 5px); } /* text lines up whatever the stripe */
-.pcard-meter { flex: none; display: inline-flex; align-items: flex-end; gap: 2px; block-size: 14px; }
-.pcard-meter i { inline-size: 3px; border-radius: 1px; background: color-mix(in srgb, var(--aink) 22%, transparent); }
-.pcard-meter i:nth-child(1) { block-size: 5px; } .pcard-meter i:nth-child(2) { block-size: 8px; }
-.pcard-meter i:nth-child(3) { block-size: 11px; } .pcard-meter i:nth-child(4) { block-size: 14px; }
-.pcard-meter i.on { background: var(--aink); }
+/* Priority (Mor, 2026-10-08): the order is the priority, shown outside the
+   cards — a rail always on the left (direction doesn't matter), thick and
+   dark at the top project, thin and faint at the last. */
+.pp-ranked.ranked { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 8px; direction: ltr; }
+.pp-ranked .pgrid { direction: initial; }
+.pp-rail { display: flex; flex-direction: column; align-items: center; gap: 4px; margin-block-start: 10px; padding-block: 2px; font-size: 10px; font-weight: 600; letter-spacing: .02em; color: var(--ink-2); }
+.pp-rail i { flex: 1; inline-size: 10px; background: linear-gradient(var(--ink), color-mix(in srgb, var(--ink) 12%, transparent)); clip-path: polygon(0 0, 100% 0, 65% 100%, 35% 100%); border-radius: 2px; }
 .pp-hint { margin: 4px 0 0; font-size: 12px; color: var(--ink-2); }
-.pcard-name { flex: 1; min-inline-size: 0; font-size: 15px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pcard-name { min-inline-size: 0; font-size: 15px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pcard-n { flex: none; font-size: 12px; color: var(--aink); }
 .pcard-status { margin-block-start: 6px; font-size: 12px; color: color-mix(in srgb, var(--aink) 45%, var(--ink)); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pbar { display: block; block-size: 4px; margin-block-start: 8px; border-radius: 2px; background: var(--aline); overflow: hidden; }
