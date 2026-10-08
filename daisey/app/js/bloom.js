@@ -10,7 +10,7 @@ import {
   PERIODS, periodRange, monthsOfRange, summarize, flowers, routineRows, weekStrip, fmtMinutes, oneLine,
   estimatedEntries, eventEntries,
 } from "./bloom-data.js";
-import { h, bdi, icon } from "./ui.js";
+import { h, bdi, icon, weekDots } from "./ui.js";
 import { dayOf, addDays } from "./routine.js";
 
 const NS = "http://www.w3.org/2000/svg";
@@ -158,8 +158,8 @@ export function mountBloom(root, uid, { onProject } = {}){
         h("div", { className: "bl-r-main" },
           h("span", { className: "bl-r-title" }, bdi(r.title)),
           h("span", { className: "bl-r-count" }, `${r.count} of ${r.per}`, r.met ? h("span", { className: "bl-bee", role: "img", ariaLabel: "met" }, " 🐝") : null)),
-        h("div", { className: "bl-dots", role: "img", ariaLabel: `${r.count} of ${r.per} this week` },
-          ...r.dots.map((d) => h("i", { className: `${d.state}${d.today ? " today" : ""}` }))),
+        // One dot per session the week needs, filling up (the Now card's dots).
+        h("span", { className: "bl-dots" }, weekDots(tasks.find((t) => t.id === r.id))),
         r.streak >= 2 ? h("div", { className: "bl-streak" }, `${r.streak} weeks in a row`) : null))) : null;
 
     const tiles = h("section", { className: "bl-tiles", ariaLabel: "Totals" },

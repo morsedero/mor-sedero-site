@@ -1731,11 +1731,9 @@ body.focus .shell { block-size: auto; min-block-size: 100dvh; overflow: visible;
 .bl-r-main { display: flex; flex-direction: column; gap: 2px; min-inline-size: 0; }
 .bl-r-title { font-size: 14px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .bl-r-count { font-size: 12px; color: var(--ink-2); }
-.bl-dots { display: inline-flex; gap: 6px; }
-.bl-dots i { inline-size: 11px; block-size: 11px; border-radius: 50%; border: 1.5px solid var(--line); box-sizing: border-box; }
-.bl-dots i.done { background: var(--accent); border-color: var(--accent); }
-.bl-dots i.set { border-color: var(--accent); }
-.bl-dots i.today { box-shadow: 0 0 0 2px var(--card), 0 0 0 3.5px var(--ink-2); }
+.bl-dots { color: var(--ink-2); }
+.bl-dots .wk-dots { gap: 6px; }
+.bl-dots .wk-dots i { inline-size: 12px; block-size: 12px; }
 .bl-streak { grid-column: 1 / -1; font-size: 12px; color: var(--ink-2); }
 
 /* The "Counted ~30 min" toast's − / +. */
