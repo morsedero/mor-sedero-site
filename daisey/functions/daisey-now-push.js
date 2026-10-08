@@ -64,7 +64,24 @@ const cleanSettings = (s) => ({
   calOffered: Array.isArray(s?.calOffered) ? s.calOffered.slice(-200).map((k) => str(k, 200)) : [],
   somedayAsked: day(s?.somedayAsked),
   silenceOn: day(s?.silenceOn), // the silence check answered that day (miss.js)
+  // How you get to events in other cities (app/js/trips.js): the travel legs
+  // count as busy here too, and "starts in 15 min" names the train, not the meeting.
+  trips: cleanTrips(s?.trips),
+  tripDay: Array.isArray(s?.tripDay) ? s.tripDay.slice(-20).filter((d) => d && day(d.date) && TRIP_MODES.includes(d.mode))
+    .map((d) => ({ date: d.date, key: str(d.key, 200), mode: d.mode })) : [],
 });
+const TRIP_MODES = ["train", "bus", "car", "none"];
+const legMin = (v) => (Number.isFinite(v) && v > 0 ? Math.min(Math.round(v), 600) : null);
+function cleanTrips(t){
+  if (!t || typeof t !== "object") return {};
+  const out = {};
+  for (const [k, v] of Object.entries(t).slice(0, 100)) {
+    if (!v || !TRIP_MODES.includes(v.mode)) continue;
+    out[str(k, 200)] = { city: str(v.city, 60), mode: v.mode,
+      ...(v.min ? { min: { train: legMin(v.min.train), bus: legMin(v.min.bus), car: legMin(v.min.car) } } : {}) };
+  }
+  return out;
+}
 // The running task (state/now), or null: ids and times only.
 const at = (v) => (Number.isFinite(v) && v > 0 ? v : null);
 const ids = (v) => (Array.isArray(v) ? v.slice(0, 20).map((x) => str(x, 40)).filter(Boolean) : null);

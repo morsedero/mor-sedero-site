@@ -58,6 +58,7 @@ const { runState, overruled, eventKey } = require("../../app/js/reality.js");
 const { missState, silenceText } = require("../../app/js/miss.js");
 const { nextPlanned, leftOf } = require("../../app/js/proposal.js");
 const { MISS } = require("../../app/js/weights.js");
+const { withTrips } = require("../../app/js/trips.js");
 
 const BRIEF_WINDOW = 240; // minutes after the day starts the brief may still go
 const WRAP_BEFORE = 60; // the wrap goes in the day's last hour
@@ -84,7 +85,9 @@ function decide(rec, events, now = Date.now()) {
   const start = rec.dayStart ?? 480, end = rec.dayEnd ?? 1320;
   const out = [], patch = {};
   const tasks = rec.tasks || [];
-  const evs = events || [];
+  // With the travel legs (trips.js): "starts in 15 min" names the train to
+  // the meeting, and no gap opens while you're on the way back.
+  const evs = withTrips(events || [], rec.settings?.trips || {}, rec.settings?.tripDay || null);
 
   const lead = rec.meetingLead ?? MEETING_LEAD;
   if (types.meeting && minutes >= start - lead && minutes < end) {

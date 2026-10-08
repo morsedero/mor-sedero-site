@@ -27,6 +27,9 @@ function shape(e, colors, cal) {
     // it changes that day only, the way Google's "This event" does.
     editable: !!cal.editable && e.status !== "cancelled",
     recurring: !!e.recurringEventId,
+    // The series a repeating event belongs to: a trip is asked about once
+    // for all its weeks (app/js/trips.js).
+    series: e.recurringEventId || null,
     title: e.summary || (allDay ? "All day" : "Busy"),
     start: e.start.dateTime || e.start.date,
     end: e.end?.dateTime || e.end?.date || null,

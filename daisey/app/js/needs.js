@@ -35,7 +35,8 @@ import { daysUntil } from "./engine.js";
 import { collectNeeds, somedayDue } from "./needs-list.js";
 export { collectNeeds, somedayDue }; // now.js counts them for the header chip
 import { h, icon, dur, flash } from "./ui.js";
-import { whereAsk, setRide, setStill, saveSpot, notHomeHere, quietHere, reservedName } from "./where.js";
+import { whereAsk, setRide, setStill, saveSpot, notHomeHere, quietHere, reservedName, homeAt } from "./where.js";
+import { estimate, answer as tripAnswer, noTrip } from "./trips.js";
 import { areaClass } from "./look.js";
 
 const MARK = { penalty: "There's a penalty if it's late.", money: "It costs money to leave it.", someone: "Someone's waiting on it." };
@@ -124,6 +125,31 @@ export function mountNeeds(root, uid, { onClose } = {}){
         if (await saveSpot(n)) { flash(`Saved. I'll know when you're at ${n}.`); next(); } else flash("Couldn't get your location. Allow it for this site and try again.");
       }],
       no: ["Not now", () => { quietHere(); next(); }] };
+    // An event in another city (trips.js): how you get there, once per series.
+    // The field takes minutes each way; empty = the estimate from Home.
+    if (item.kind === "trip") {
+      const home = homeAt(), est = estimate(item.city, home), ev = item.ev;
+      const save = (a) => {
+        const trips = { ...(settings.trips || {}), [item.key]: a };
+        settings = { ...settings, trips };
+        saveSettings(uid, { trips }).catch(fail);
+        next();
+      };
+      const go = (mode) => (typed) => {
+        const a = tripAnswer(item.city, mode, { home, minutes: typed });
+        if (!a) { flash("How many minutes each way?"); return; }
+        save(a);
+      };
+      const start = Date.parse(ev.start);
+      return { tone: "area-home", ico: "later", q: `Do you travel to ${item.city.name}?`,
+        sub: `${new Date(start).toLocaleDateString(undefined, { weekday: "long" })}, ${clock(start)}–${clock(Date.parse(ev.end))}${ev.recurring ? ", every week" : ""}.`,
+        item: ev.title,
+        say: est ? `From Home: about ${dur(est.car)} driving, ${dur(est.train)} by train. I'll keep the way there and back free.`
+          : "I'll keep the way there and back free. How long is it each way?",
+        field: { id: "tripMin", placeholder: est ? "Minutes each way (optional)" : "Minutes each way", inputmode: "numeric" },
+        yes: ["Train", go("train")], no: ["Driving", go("car")],
+        more: [["Bus", go("bus")], ["It's not a trip", () => save(noTrip(item.city))]] };
+    }
     const t = find(item.id);
     if (!t) return null; // deleted since: skip it
     if (item.kind === "clash") {
@@ -250,15 +276,16 @@ export function mountNeeds(root, uid, { onClose } = {}){
       h("p", { className: "ny-sub", textContent: q.sub }),
       q.item && h("div", { className: "ny-item", dir: "auto", textContent: q.item }),
       h("p", { className: "ny-say", textContent: q.say }),
-      q.field && (field = h("input", { id: q.field.id, className: "ny-field", dir: "auto", autocomplete: "off", enterkeyhint: "done", placeholder: q.field.placeholder, ariaLabel: q.sub })));
+      q.field && (field = h("input", { id: q.field.id, className: "ny-field", dir: "auto", autocomplete: "off", enterkeyhint: "done", placeholder: q.field.placeholder, ariaLabel: q.field.placeholder || q.sub,
+        ...(q.field.inputmode ? { inputMode: q.field.inputmode } : {}) })));
     if (field) field.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); q.yes[1](field.value); } });
     root.replaceChildren(top,
       h("div", { className: "ny-stack" + (left > 1 ? " two" : left ? " one" : "") }, card),
       h("div", { className: "ny-spacer" }),
       h("div", { className: "ny-btns" },
         big(q.yes[0], "primary big", () => q.yes[1](field?.value)),
-        q.no && big(q.no[0], "line big", q.no[1]),
-        q.more && h("div", { className: "ny-more" }, ...q.more.map(([text, go]) => big(text, "quiet", go))),
+        q.no && big(q.no[0], "line big", () => q.no[1](field?.value)),
+        q.more && h("div", { className: "ny-more" }, ...q.more.map(([text, go]) => big(text, "quiet", () => go(field?.value)))),
         !q.noLater && big("Ask me later", "quiet", () => later(list[i].key))));
   }
 
@@ -274,7 +301,7 @@ export function mountNeeds(root, uid, { onClose } = {}){
       if (!loaded) { waiting = which; return; }
       mode = which;
       const dev = which === "wrap" ? null : whereAsk();
-      list = which === "wrap" ? wrapList(tasks) : [...(dev ? [{ key: `where:${dev}`, kind: dev === "name" ? "place" : dev }] : []), ...collectNeeds({ tasks, events: cal.events || [], calOk: cal.status === "ok", settings })];
+      list = which === "wrap" ? wrapList(tasks) : [...(dev ? [{ key: `where:${dev}`, kind: dev === "name" ? "place" : dev }] : []), ...collectNeeds({ tasks, events: cal.events || [], calOk: cal.status === "ok", settings, home: homeAt() })];
       i = 0; follow = null;
       paint();
       root.hidden = false;

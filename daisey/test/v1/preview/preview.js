@@ -123,6 +123,13 @@ const SCENARIOS = {
   booked: { tasks: [{ title: "Mix review", project: "Reprise", size: 60 },
     { title: "Call the bank", project: "Admin", size: 15, type: "call", openHours: "office" }] },
   one: { tasks: [{ title: "Send invoice to Uri", project: "Admin", size: 5, due: day(0) }] },
+  // A weekly job in Ashkelon, answered "train" (trips.js; use with --cal trip).
+  // --at 22:00 for the night card, --at 06:30 for the ride, no answer: tripask.
+  trip: { tasks: [{ title: "להתאמן להופעות", project: "BOBBA", size: 30 },
+    { title: "Mix review for Reprise", project: "Reprise", size: 45, where: "computer" },
+    { title: "Laundry", project: "Home", size: 20, where: "home" }],
+  settings: { deadlinesAsked: true, somedayAsked: new Date().toLocaleDateString("en-CA"), trips: { "s:ash": { city: "Ashkelon", mode: "train", min: { train: 110, bus: 125, car: 80 } } } } },
+  tripask: { tasks: [{ title: "Send invoice to Uri", project: "Admin", size: 5 }], settings: { deadlinesAsked: true, somedayAsked: new Date().toLocaleDateString("en-CA") } },
   long: { tasks: [
     { title: "Follow up with the production company about the revised cue sheet and the delivery deadline", project: "Reprise Productions International", size: 90 },
     { title: "x", project: "A", size: 5 },
@@ -204,6 +211,10 @@ const calReply = !cal ? { status: 404, body: { error: "not_connected" } }
       return [{ id: "e0", calendarId: "primary", editable: true, title: "עבודה על Daisey", start: at(9), end: at(15), busy: true, updated: at(9, 45) },
         { id: "e1", calendarId: "primary", editable: true, title: "BOBBA", start: at(15), end: at(19), busy: true, updated: at(7) }];
     })() } }
+  : cal === "trip" ? { status: 200, body: { events: [0, 1].map((n) => {
+      const at = (h) => { const d = new Date(); d.setDate(d.getDate() + n); d.setHours(h, 0, 0, 0); return d.toISOString(); };
+      return { id: "ash" + n, series: "ash", recurring: true, calendarId: "primary", editable: true, title: "מחוננים אשקלון", start: at(8), end: at(13), busy: true };
+    }) } }
   : cal === "day" ? { status: 200, body: { events: (() => {
       const at = (h, m = 0) => { const d = new Date(); d.setHours(h, m, 0, 0); return d.toISOString(); };
       const tm = (h) => { const d = new Date(); d.setDate(d.getDate() + 1); d.setHours(h, 0, 0, 0); return d.toISOString(); };

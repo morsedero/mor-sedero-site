@@ -9,6 +9,7 @@ import { deadlineWithin } from "./engine.js";
 import { STALE_SKIPS, SOMEDAY_DEADLINE_DAYS, PUSHES_ASK } from "./weights.js";
 import { slotClashes } from "./clash.js";
 import { slotsToAsk } from "./routine.js";
+import { tripAsks } from "./trips.js";
 
 const STAKES_FIRST = { penalty: 0, money: 1, someone: 2, low: 3 };
 
@@ -26,13 +27,17 @@ const somedayTop = (tasks) => tasks.filter((t) => t.status === "someday")
 
 // Everything waiting on an answer right now, as { key, kind, … }. PURE apart
 // from reading the clock: now.js calls it for the count on the home screen.
-export function collectNeeds({ tasks = [], events = [], calOk = false, settings = {}, now = Date.now() } = {}){
+export function collectNeeds({ tasks = [], events = [], calOk = false, settings = {}, now = Date.now(), home = null } = {}){
   const later = settings.needsLater?.date === localDate(now) ? new Set(settings.needsLater.keys || []) : new Set();
   const out = [];
   const add = (item) => { if (!later.has(item.key)) out.push(item); };
   const parked = tasks.filter((t) => t.status === "someday" && deadlineWithin(t, now, SOMEDAY_DEADLINE_DAYS))
     .sort((a, b) => a.due.localeCompare(b.due));
   parked.forEach((t) => add({ key: `parked:${t.id}`, kind: "parked", id: t.id }));
+  // An event in another city (trips.js): how do you get there? Once per
+  // series. home: this device's Home, to skip a city next door (the server
+  // has none, so it may count one the phone won't ask).
+  if (calOk) tripAsks(events, settings.trips || {}, { now, home }).forEach((a) => add({ key: `trip:${a.key}`, kind: "trip", ...a }));
   if (calOk) {
     const offered = [...(settings.calOffered || [])];
     for (let i = 0; i < 5; i++) {

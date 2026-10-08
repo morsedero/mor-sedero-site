@@ -177,6 +177,12 @@ export const reservedName = (n) => RESERVED.has(String(n).trim().toLowerCase());
 
 export const whereNow = () => current;
 
+// Home's { lat, lng } on this device, or null: trips.js measures from it.
+export function homeAt(){
+  const p = load().places.find((x) => isHome(x.name));
+  return p ? { lat: p.lat, lng: p.lng } : null;
+}
+
 // The one device question waiting, if any: "ride" (a ride the phone can't
 // name), "home", "name", or null. Needs you holds it (Mor, 2026-10-07: the
 // questions are a notification, not a strip above the card).

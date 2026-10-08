@@ -13,7 +13,12 @@ const fresh = (c, now) => !!c && ["home", "out", "anywhere"].includes(c.value) &
 export function placeNow({ correction = null, located = null, events = [], now = Date.now() } = {}){
   if (fresh(correction, now) && ["home", "out", "anywhere"].includes(correction.value)) return { value: correction.value, guessed: false };
   if (String(located).startsWith("spot:")) return { value: "spot", spot: located.slice(5), guessed: false, located: true };
+  // A trip leg running (trips.js): its mode, unless the phone says otherwise.
+  // A ride the phone can't name takes the leg's mode.
+  const leg = events.find((e) => e.trip && Date.parse(e.start) <= now && now < Date.parse(e.end));
+  if (leg && located === "ride") return { value: leg.trip.mode, guessed: true, trip: leg.trip };
   if (W.PLACES.includes(located) && !["anywhere", "spot"].includes(located)) return { value: located, guessed: false, located: true };
+  if (leg) return { value: leg.trip.mode, guessed: true, trip: leg.trip };
   const out = events.some((e) => {
     if (e.allDay || !e.location) return false;
     const start = Date.parse(e.start), end = Date.parse(e.end);

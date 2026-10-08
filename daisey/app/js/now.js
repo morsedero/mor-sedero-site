@@ -19,7 +19,8 @@ import { sortable } from "./ppdrag.js";
 import { proposeDay, timeline, withBreaks, trimBreaks, isBreak, nextPlanned, planProgress, refit } from "./proposal.js";
 import { rethink } from "./rethink.js";
 import { placeNow, workBase, watchProjectTiers } from "./context.js";
-import { watchWhere, setManual, whereAsk } from "./where.js";
+import { watchWhere, setManual, whereAsk, homeAt } from "./where.js";
+import { withTrips, chainFrom, setTripDay, MODES } from "./trips.js";
 import { pickWeekDay } from "./triage.js";
 import { focusView, handoffView, elapsedMinutes, targetMinutes, batchFocusView, batchName, sinceMark, paused, resumed, runCap, bookedMinutes, holdButton, stillOnMinutes, bloomHold } from "./focus.js";
 import { watchCalendar, logDone } from "./calendar.js";
@@ -54,6 +55,12 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
   let learnStats = {}; // state/learn: starts and skips per type and time of day
   let located = null; // "home" | "out" from the phone's location (where.js), null = unknown
   let cal = { status: "loading", events: [] };
+  // The calendar as fetched; cal is it with the travel legs added (trips.js),
+  // so every read below — the window, the place, the plan — sees the trips.
+  let rawCal = cal;
+  const applyTrips = () => {
+    cal = rawCal.status === "ok" ? { ...rawCal, events: withTrips(rawCal.events, settings.trips || {}, settings.tripDay || []) } : rawCal;
+  };
   let lastWindow, lastClock;
   let run = null; // the state/now doc while a task is running
   let handoff = null; // { title, next } after Done, until the next choice
@@ -191,10 +198,36 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
   }
   function topOf(fw){
     const block = blockOf(fw);
+    // On the way, or the next thing is leaving (trips.js): say so, and let
+    // today go another way.
+    const leg = fw?.current?.trip ? fw.current : fw?.next?.trip?.dir === "to" ? fw.next : null;
     return h("div", { className: "now-top" },
       block && h("p", { className: "freeline" },
         ...(block.taskId ? [`Booked until ${clock(block.end)}`] : ["Working on ", bdi(block.project), ` until ${clock(block.end)}`]),
-        " · ", freeNow(block.start, block.title || block.project)));
+        " · ", freeNow(block.start, block.title || block.project)),
+      leg && h("p", { className: "freeline" },
+        leg === fw.current ? `${TRIP_ON[leg.trip.mode]} until ${clock(leg.end)}` : `Leave ${clock(leg.start)}, ${TRIP_BY[leg.trip.mode]}`,
+        " · ", ...tripSwitch(leg)));
+  }
+
+  // Today by another way, or not going (settings.tripDay): the saved answer
+  // stays for every other week.
+  const TRIP_ON = { train: "On the train", bus: "On the bus", car: "Driving" };
+  const TRIP_BY = { train: "by train", bus: "by bus", car: "driving" };
+  const TRIP_INSTEAD = { train: "Train", bus: "Bus", car: "Driving" };
+  function tripSwitch(leg){
+    const t = leg.trip, date = localDate(new Date(leg.start).getTime());
+    const set = (mode) => {
+      const tripDay = setTripDay(settings.tripDay, date, t.key, mode);
+      settings = { ...settings, tripDay };
+      applyTrips(); render();
+      saveSettings(uid, { tripDay }).catch(fail);
+      if (mode === "none") flash(`No trip to ${t.city} that day.`);
+    };
+    const btn = (text, aria, mode) => h("button", { className: "linkish", type: "button", textContent: text, ariaLabel: aria, onclick: () => set(mode) });
+    const others = MODES.filter((m) => m !== t.mode);
+    return [...others.flatMap((m, i) => [i ? " · " : "", btn(TRIP_INSTEAD[m], `${TRIP_INSTEAD[m]} to ${t.city} instead, that day only`, m)]),
+      " · ", btn("Not going", `Not going to ${t.city} that day`, "none")];
   }
 
   // The card has three shapes (Mor, 2026-10-07: "too many states"): a TASK
@@ -529,7 +562,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
   // block ends as the window (DAISEY_SPEC "Current block"). Any other event
   // keeps the meeting card.
   function blockOf(fw){
-    if (!fw?.current) return null;
+    if (!fw?.current || fw.current.trip) return null; // a trip leg is travel, not a project
     // A booked task's slot (an event Daisey made for it, or one titled like
     // it): that task is the card while it runs (DAISEY_SPEC "Booked tasks").
     const live = (tasks || []).filter((t) => t.status !== "done" && t.status !== "dropped");
@@ -586,9 +619,13 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
     const said = saidFree(now);
     const f = feel();
     const block = blockOf(fw);
+    // On the way (trips.js): the ride is the window; the place (feel) says
+    // what fits in it.
+    const leg = fw?.current?.trip ? fw.current : null;
     return {
       ...(!fw ? { realWindow: false }
         : block ? { window: Math.floor((block.end - now) / 60000), blockProject: block.project }
+        : leg ? { window: Math.floor((leg.end - now) / 60000) }
         : { window: fw.window, nextEvent: fw.next?.title ?? null }),
       ...(said ? { window: Math.min(said, !fw ? 60 : block ? Math.floor((block.end - now) / 60000) : fw.window), realWindow: true } : {}),
       ...workBase(tasks || [], now),
@@ -638,6 +675,12 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
     const day = localDate(morning);
     const first = evs.filter((e) => localDate(Date.parse(e.start)) === day)
       .sort((a, b) => Date.parse(a.start) - Date.parse(b.start))[0];
+    // The first thing and whatever runs on from it: the trip there, the
+    // event, the trip back (trips.js chainFrom).
+    const chain = first ? chainFrom(first, evs) : null, main = chain?.main;
+    const leave = chain?.parts.find((e) => e.trip?.dir === "to"), back = chain?.parts.find((e) => e.trip?.dir === "back");
+    const leaveLine = leave && h("p", { className: "now-why trip-line" },
+      `Leave ${clock(Date.parse(leave.start))}, ${TRIP_BY[leave.trip.mode]} · `, ...tripSwitch(leave));
     const who = name ? `, ${name}` : "";
     const lead = dueTonight.length === 1 ? "One deadline is still open today." : `${dueTonight.length} deadlines are still open today.`;
     return [
@@ -660,18 +703,20 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
         ...(p ? [
           heroTop(p.task, [dur(p.task.size), MARK[p.task.stakes]].filter(Boolean).join(" · ")),
           onOpen ? titleButton(p.task) : h("div", { className: "now-title", dir: "auto", textContent: p.task.title }),
-          // Before the first event if it fits there, else when it ends. The
+          // Before the first event if it fits there (counting the trip
+          // there, trips.js), else when it's over, the trip back included. The
           // title is its own <bdi>, or a Hebrew name drags the times after it
           // into RTL and prints the range backwards.
-          first ? (() => {
-            const fs = Date.parse(first.start), fe = Date.parse(first.end);
-            const before = morning + (p.task.size || 0) * 60000 <= fs;
-            return h("p", { className: "now-why" },
-              `${before ? minText(hrs.start) : clock(Math.max(morning, fe))}, ${before ? "before" : "after"} `,
-              bdi(first.title), ` (${clock(fs)}–${clock(fe)})`);
+          chain ? (() => {
+            const before = morning + (p.task.size || 0) * 60000 <= chain.start;
+            const at = before ? minText(hrs.start) : clock(Math.max(morning, chain.end));
+            return h("p", { className: "now-why" }, ...(!before && back ? [`${at}, back from `, bdi(main.title)]
+              : [`${at}, ${before ? "before" : "after"} `, bdi(main.title), ` (${clock(Date.parse(main.start))}–${clock(Date.parse(main.end))})`]));
           })() : h("p", { className: "now-why", textContent: `Starts ${minText(hrs.start)}` }),
+          leaveLine,
         ] : [
-          first && h("p", { className: "now-why" }, `${clock(Date.parse(first.start))}–${clock(Date.parse(first.end))} `, bdi(first.title)),
+          main && h("p", { className: "now-why" }, `${clock(Date.parse(main.start))}–${clock(Date.parse(main.end))} `, bdi(main.title)),
+          leaveLine,
           h("p", { className: "now-empty", textContent: "Nothing lined up yet." }),
         ])),
       h("div", { className: "night-foot" },
@@ -1257,14 +1302,16 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
     refitPlan();
     const hrs = dayHours(settings);
     if (!isNight(Date.now(), hrs)) nightFree = false;
-    const night = !live && !handoff && tasks != null && isNight(Date.now(), hrs) && !nightFree;
+    // On the way somewhere (trips.js) the day has started, whatever the hours say.
+    const riding = cal.status === "ok" && cal.events.some((e) => e.trip && Date.parse(e.start) <= Date.now() && Date.now() < Date.parse(e.end));
+    const night = !live && !handoff && tasks != null && isNight(Date.now(), hrs) && !nightFree && !riding;
     document.documentElement.classList.toggle("night", night);
     const n = doneCount();
     if (n !== reported) { reported = n; onDone?.(n); }
     const pp = planProgressNow(), ppKey = pp ? `${pp.done}/${pp.total}` : "";
     if (ppKey !== reportedPlan) { reportedPlan = ppKey; onPlanProgress?.(pp); }
     if (!live && tasks) {
-      const nn = collectNeeds({ tasks, events: cal.events || [], calOk: cal.status === "ok", settings }).length + (whereAsk() ? 1 : 0);
+      const nn = collectNeeds({ tasks, events: cal.events || [], calOk: cal.status === "ok", settings, home: homeAt() }).length + (whereAsk() ? 1 : 0);
       if (nn !== reportedNeeds) { reportedNeeds = nn; onNeedsCount?.(nn); }
     }
 
@@ -1443,10 +1490,10 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
     watchProjectColors(() => render()),
     watchProjectTiers(() => render()),
     watchTasks(uid, (ts) => { tasks = ts; render(); tryNoticeStart(); logRoutineEvents(); }, fail),
-    watchCalendar((c) => { cal = c; render(); logRoutineEvents(); }),
+    watchCalendar((c) => { rawCal = c; applyTrips(); render(); logRoutineEvents(); }),
     watchRun(uid, (r) => { run = r; runKnown = true; if (r) handoff = null; render(); tryNoticeStart(); }, fail),
     watchSkips(uid, (s) => { skipDoc = s; render(); }, fail),
-    watchSettings(uid, (s) => { settings = s || {}; render(); }, fail),
+    watchSettings(uid, (s) => { settings = s || {}; applyTrips(); render(); }, fail),
     watchMoment(uid, (d) => { momentDoc = d || {}; render(); }, fail),
     watchLearn(uid, (d) => { learnStats = d || {}; render(); }, fail),
     watchDayPlan(uid, (d) => { dayPlan = d || null; planKnown = true; render(); }, fail),

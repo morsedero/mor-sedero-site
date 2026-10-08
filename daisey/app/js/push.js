@@ -82,7 +82,8 @@ export function syncSnapshot(tasks, settings, hours, run = null, plan = null){
     .map((t) => Object.fromEntries(FIELDS.filter((k) => t[k] != null).map((k) => [k, t[k]])));
   const s = settings || {};
   const body = { action: "snapshot", tasks: list, tz: tz(), dayStart: hours.start, dayEnd: hours.end,
-    settings: { needsLater: s.needsLater || null, calOffered: s.calOffered || [], somedayAsked: s.somedayAsked || null, silenceOn: s.silenceOn || null },
+    settings: { needsLater: s.needsLater || null, calOffered: s.calOffered || [], somedayAsked: s.somedayAsked || null, silenceOn: s.silenceOn || null,
+      trips: s.trips || {}, tripDay: s.tripDay || null }, // trips.js: travel legs count on the server too
     plan: plan?.status === "approved" && plan.date ? { date: plan.date, at: plan.approvedAt || 0, ids: (plan.items || []).filter((it) => it.taskId).map((it) => it.taskId) } : null,
     // The whole saved plan, any status, for the brief (brief.js planLine).
     dayplan: plan?.date ? { date: plan.date, status: plan.status, items: (plan.items || []).map((it) => (it.brk ? { brk: it.brk, minutes: it.minutes } : { taskId: it.taskId, minutes: it.minutes })) } : null,
