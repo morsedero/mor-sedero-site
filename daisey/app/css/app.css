@@ -910,7 +910,7 @@ body:has(.screen:not([hidden])) { overflow: hidden; }
 :dir(rtl) .pj-back svg { transform: scaleX(-1); }
 .pj-chips { display: flex; gap: 6px; min-inline-size: 0; overflow-x: auto; padding-block: 5px; padding-inline-end: 20px; scrollbar-width: none; touch-action: pan-x; }
 .pj-chips::-webkit-scrollbar { display: none; }
-.pj-chip { flex: none; display: inline-flex; align-items: center; gap: 6px; block-size: 34px; padding-inline: 12px; border: 0; border-radius: 999px; background: var(--tint); color: var(--aink); font: inherit; font-size: 13px; font-weight: 500; cursor: pointer; }
+.pj-chip { flex: none; display: inline-flex; align-items: center; gap: 5px; block-size: 28px; padding-inline: 10px; border: 0; border-radius: 999px; background: var(--tint); color: var(--aink); font: inherit; font-size: 12px; font-weight: 500; cursor: pointer; }
 .pj-chip .dot { inline-size: 7px; block-size: 7px; border-radius: 50%; background: currentColor; }
 .pj-chip[aria-selected="true"] { background: var(--aink); color: var(--card); font-weight: 600; }
 /* Children of .screen keep its centring (margin-inline: auto): the 20px
@@ -918,7 +918,7 @@ body:has(.screen:not([hidden])) { overflow: hidden; }
 .pj-card { margin: 8px max(20px, (100% - 520px) / 2) 0 max(20px, (100% - 520px) / 2); margin-right: auto; inline-size: 67%; max-inline-size: 373px; padding: 11px 14px 10px; border-radius: 16px; background: var(--surface); border: 1px solid var(--aline); box-shadow: 0 6px 20px color-mix(in srgb, var(--aink) 12%, transparent); }
 .pj-card.rtl { margin-left: auto; margin-right: max(20px, (100% - 520px) / 2); } /* Hebrew name: card hugs the right, English the left (Mor, 2026-10-08). */
 .pj-card-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-.pj-name { margin: 0; min-inline-size: 0; font-size: 20px; font-weight: 700; letter-spacing: -0.3px; line-height: 1.15; overflow-wrap: anywhere; }
+.pj-name { margin: 0; min-inline-size: 0; font-size: 18px; font-weight: 700; letter-spacing: -0.3px; line-height: 1.15; overflow-wrap: anywhere; }
 .pj-name.rename { cursor: pointer; flex: 1 1 auto; padding-block: 10px; margin-block: -10px; }
 .pj-prog { display: flex; align-items: center; gap: 10px; margin-block-start: 8px; font-size: 12px; color: color-mix(in srgb, var(--aink) 45%, var(--ink)); }
 .pj-sec { padding-inline: 20px; }
@@ -942,40 +942,40 @@ body:has(.screen:not([hidden])) { overflow: hidden; }
 .pj-hint { margin: 4px 0; font-size: 12px; color: var(--ink-2); }
 .pj-drow { display: flex; align-items: center; gap: 12px; }
 .pj-drow .pj-quiet { flex: 1; min-inline-size: 0; }
-.pj-bring { flex: none; min-block-size: 32px; padding-inline: 12px; border: 1px solid var(--aline); border-radius: 999px; background: var(--tint); color: var(--aink); font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }
+.pj-bring { flex: none; min-block-size: 26px; padding-inline: 10px; border: 1px solid var(--aline); border-radius: 999px; background: var(--tint); color: var(--aink); font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }
 /* Pending sits in the one list, dashed and quieter. */
 .pj-swipe.wait .pj-task { background: transparent; border-style: dashed; }
 .pj-swipe.wait.swiping .pj-task { background: var(--surface); }
 .pj-swipe:not(.swiping) .pj-reveal { visibility: hidden; } /* a see-through card would show it */
 .pj-swipe.wait .pj-title { color: var(--ink-2); font-weight: 500; }
 .pj-swipe.wait .pj-tick { border-style: dashed; }
-.pj-quiet { min-block-size: 40px; padding: 0; border: 0; background: none; color: var(--ink); font: inherit; font-size: 15px; text-align: start; cursor: pointer; overflow-wrap: anywhere; }
+.pj-quiet { min-block-size: 32px; padding: 0; border: 0; background: none; color: var(--ink); font: inherit; font-size: 13px; text-align: start; cursor: pointer; overflow-wrap: anywhere; }
 .pj-quiet.done { color: var(--ink-2); text-decoration: line-through; }
-.pj-swipe { position: relative; margin-block-start: 8px; border-radius: 14px; overflow: hidden; }
+.pj-swipe { position: relative; margin-block-start: 6px; border-radius: 12px; overflow: hidden; }
 .pj-swipe.swiping { background: var(--green); }
 .pj-reveal { position: absolute; inset-block: 0; inset-inline-start: 16px; display: flex; align-items: center; gap: 6px; color: #fff; font-size: 13px; font-weight: 600; opacity: .55; }
 .pj-swipe.armed .pj-reveal { opacity: 1; }
 .pj-reveal svg { inline-size: 16px; block-size: 16px; stroke-width: 2.5; }
-.pj-task { position: relative; display: grid; gap: 4px; inline-size: 100%; padding: 12px 14px 12px 50px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); color: var(--ink); font: inherit; text-align: start; cursor: pointer; touch-action: pan-y; user-select: none; }
+.pj-task { position: relative; display: grid; gap: 2px; inline-size: 100%; padding: 8px 12px 8px 42px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); color: var(--ink); font: inherit; text-align: start; cursor: pointer; touch-action: pan-y; user-select: none; }
 .pj-swipe:not(.swiping) .pj-task { transition: transform .18s ease; }
 @media (prefers-reduced-motion: reduce) { .pj-swipe:not(.swiping) .pj-task { transition: none; } }
 .pj-task.later { color: var(--ink-2); }
 .pj-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-.pj-col { display: grid; gap: 4px; min-inline-size: 0; }
-.pj-title { min-inline-size: 0; font-size: 15px; font-weight: 600; overflow-wrap: anywhere; }
-.pj-now { flex: none; padding: 3px 8px; border-radius: 999px; background: var(--a-job-tint); color: var(--a-job-ink); font-size: 11px; font-weight: 600; }
-.pj-meta { font-size: 12px; color: var(--ink-2); }
+.pj-col { display: grid; gap: 2px; min-inline-size: 0; }
+.pj-title { min-inline-size: 0; font-size: 13px; font-weight: 600; overflow-wrap: anywhere; }
+.pj-now { flex: none; padding: 2px 7px; border-radius: 999px; background: var(--a-job-tint); color: var(--a-job-ink); font-size: 10px; font-weight: 600; }
+.pj-meta { font-size: 11px; color: var(--ink-2); }
 .pj-date.near { color: var(--a-job-ink); font-weight: 500; }
 .pj-date.soon { color: var(--p-orange-ink); font-weight: 600; }
 .pj-date.over { color: var(--danger); font-weight: 700; }
 /* Meta is English chrome: ltr keeps "1h · from Wed" in order, aligned to an RTL title's side. */
 .pj-task[dir="rtl"] .pj-meta { text-align: right; }
-.pj-who { flex: none; display: grid; place-items: center; inline-size: 30px; block-size: 30px; border-radius: 50%; background: var(--chip); color: var(--ink); font-size: 13px; font-weight: 600; }
-.pj-del { display: block; margin: 28px auto 0; min-block-size: 44px; padding-inline: 18px; border: 0; border-radius: 12px; background: none; color: var(--danger); font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; }
-.pj-add { inline-size: 100%; min-block-size: 46px; margin-block-start: 8px; padding-inline: 16px; border: 1px solid var(--aline); border-radius: 14px; background: color-mix(in srgb, var(--tint) 60%, var(--surface)); color: var(--aink); font: inherit; font-size: 14px; font-weight: 600; text-align: start; cursor: pointer; }
-.pj-tick { position: absolute; z-index: 1; inset-block-start: 50%; inset-inline-start: 12px; translate: 0 -50%; display: grid; place-items: center; inline-size: 26px; block-size: 26px; padding: 0; border: 2px solid var(--aline); border-radius: 50%; background: var(--surface); color: transparent; cursor: pointer; transition: background .15s, color .15s, border-color .15s; }
+.pj-who { flex: none; display: grid; place-items: center; inline-size: 24px; block-size: 24px; border-radius: 50%; background: var(--chip); color: var(--ink); font-size: 11px; font-weight: 600; }
+.pj-del { display: block; margin: 20px auto 0; min-block-size: 36px; padding-inline: 14px; border: 0; border-radius: 10px; background: none; color: var(--danger); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
+.pj-add { inline-size: 100%; min-block-size: 36px; margin-block-start: 6px; padding-inline: 12px; border: 1px solid var(--aline); border-radius: 12px; background: color-mix(in srgb, var(--tint) 60%, var(--surface)); color: var(--aink); font: inherit; font-size: 13px; font-weight: 600; text-align: start; cursor: pointer; }
+.pj-tick { position: absolute; z-index: 1; inset-block-start: 50%; inset-inline-start: 10px; translate: 0 -50%; display: grid; place-items: center; inline-size: 22px; block-size: 22px; padding: 0; border: 2px solid var(--aline); border-radius: 50%; background: var(--surface); color: transparent; cursor: pointer; transition: background .15s, color .15s, border-color .15s; }
 .pj-tick::after { content: ""; position: absolute; inset: -9px; }
-.pj-tick svg { inline-size: 14px; block-size: 14px; stroke-width: 3; }
+.pj-tick svg { inline-size: 12px; block-size: 12px; stroke-width: 3; }
 .pj-tick:hover { border-color: var(--aink); color: var(--aink); }
 .pj-tick.on { border-color: var(--green); background: var(--green); color: #fff; }
 .pj-drow .pj-tick { position: relative; inset: auto; translate: none; flex: none; }
@@ -1452,7 +1452,7 @@ body.focus .shell { block-size: auto; min-block-size: 100dvh; overflow: visible;
 .focus-help p { margin: 4px 0 0; line-height: 1.4; }
 .now-row .hold { block-size: 88px; min-block-size: 0; }
 .pj-card-top { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
-.pj-pct { font-size: 14px; font-weight: 600; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.pj-pct { font-size: 13px; font-weight: 600; color: var(--ink-2); font-variant-numeric: tabular-nums; }
 .pj-left { margin: 4px 0 0; font-size: 12px; color: var(--ink-2); }
 .np-dates { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .np-date { display: grid; gap: 4px; font-size: 13px; color: var(--ink-2); }
