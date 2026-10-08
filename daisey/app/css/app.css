@@ -1070,6 +1070,16 @@ dialog.tsheet .msg:empty { display: none; }
   margin-inline: -16px; padding: 10px 16px 12px;
 }
 #nowcard > * { flex: none; }
+/* Now card on the left, Plan + Projects in a narrow column on the right (Mor, 2026-10-08). */
+.nowrow { flex: 0 1 auto; min-block-size: 0; display: flex; align-items: flex-start; gap: 8px; }
+.nowrow #nowcard { flex: 1 1 0; min-inline-size: 0; margin-inline-end: 0; padding-inline-end: 6px; }
+.side { flex: none; inline-size: 68px; display: flex; flex-direction: column; gap: 8px; padding-block-start: 10px; }
+#side .hchip { inline-size: 100%; block-size: auto; min-block-size: 64px; margin: 0; padding: 8px 4px; flex-direction: column; justify-content: center; gap: 4px; border-radius: 16px; white-space: normal; text-align: center; line-height: 1.15; font-size: 11px; box-sizing: border-box; }
+#side .hchip[hidden] { display: none; }
+#side .hchip .hchip-word, #side .hchip.plan:not(.empty) .hchip-word { display: inline; }
+#side .hchip .hchip-dot { display: none; }
+#side .hchip #planN { font-size: 13px; }
+body.focus #side { display: none; }
 .now-top:empty { display: none; }
 .now-top { margin: 0; }
 
@@ -1274,6 +1284,8 @@ dialog.tsheet .msg:empty { display: none; }
 /* Night (the panel steps aside) and focus: the card area takes the space. */
 :root.night #panel { display: none; }
 :root.night #nowcard, body.focus #nowcard { flex: 1 1 auto; }
+:root.night .nowrow, body.focus .nowrow { flex: 1 1 auto; align-items: stretch; }
+:root.night .nowrow #nowcard, body.focus .nowrow #nowcard { flex: 1 1 0; }
 :root.night .night-foot { margin-block-start: auto; padding-block-start: 20px; }
 :root.night .night-hero { margin-block-start: 12px; }
 :root.night .now-card.main.night { margin-block-start: 20px; }
