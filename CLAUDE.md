@@ -156,14 +156,3 @@ Expect to find another session's in-flight work in the tree, especially in
 writing and confirm it hasn't changed under you — edits to `daisey/daisey.html`
 have been silently lost to this at least twice. Prefer targeted edits over
 whole-file rewrites on anything you did not just create.
-
-**Commit only your own files, and prove they work first.** Never `git add -A`
-or `git commit -a`: another session's half-done edit in the tree gets swept
-into your commit and pushed. Name the files you edited (`git add <paths>`),
-then `git diff --cached --stat` before committing. And before any push, run
-`node --check` on every changed `.js` and the test suite. On 2026-10-08 a
-session committed another's mid-edit `now.js` (~420 lines cut by a bad splice)
-and pushed it: the live Daisey app failed to boot until it was restored. A
-`git push` is a deploy; an unfinished file in the tree is not yours to ship.
-Likewise, when you splice a span out of a big file by index, assert the span's
-length before writing.
