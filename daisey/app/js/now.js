@@ -44,7 +44,7 @@ const clock = (ms) => new Date(ms).toLocaleTimeString([], { hour: "2-digit", min
 // card's title is the way in. onEvent(ev): an event's details. name: the first name for the night screen. onDone(n):
 // how many tasks are done today, for the header's chip. onNeedsCount(n):
 // how many decisions Needs you holds, for the amber chip.
-export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name = "", onDone, onNeedsCount, onPlanProgress, guest = false } = {}){
+export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name = "", onDone, onNeedsCount, onPlanProgress, planRoot, onPlanScreen, guest = false } = {}){
   let tasks = null; // null until the first snapshot
   let settings = {}; // state/settings: when the sweep was last offered
   let momentDoc = {}; // state/moment: place corrections
@@ -1086,7 +1086,18 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
   }
   let reported = null, reportedNeeds = null, reportedPlan = "";
 
-  function render(){
+  // The plan is its own full screen (Mor, 2026-10-08): proposalCard paints into
+  // planRoot, and the Now card behind it renders as usual.
+  let planShown = false;
+  function paintPlanScreen(){
+    if (!planRoot || ppDragging) return;
+    const open = prop.open;
+    if (open) planRoot.replaceChildren(...[proposalCard(), doneCard()].filter(Boolean));
+    else if (planShown) planRoot.replaceChildren();
+    if (open !== planShown) { planShown = open; onPlanScreen?.(open); }
+  }
+  function render(){ renderCard(); paintPlanScreen(); }
+  function renderCard(){
     if (ppDragging) { ppStale = true; return; } // a redraw mid-drag would drop the dragged row
     const live = !!run; // paused or not
     const deepOn = focusing();
@@ -1171,7 +1182,6 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
       const items = proposeDay({ ...planCtx() });
       if (items.length >= 2) { prop.items = withBreaks(items, planCtx()); prop.exclude = []; prop.open = true; }
     }
-    if (prop.open) { showing(null); day(...head, proposalCard(), doneCard(), toast && toastView()); return; }
 
     const r = rank(tasks, momentInput(fw));
     const planned = blockOf(fw)?.taskId;
@@ -1318,7 +1328,8 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
     // Tasks finished today, newest first, for the header's done chip.
     doneList(){ return doneToday(tasks || []).sort((a, b) => b.doneAt - a.doneAt); },
     // "Plan my day" from the Schedule: the proposal on the card.
+    closePlan(){ if (prop.open) closeProposal(); },
     plan(){ if (prop.open) { closeProposal(); return; } if (run) { flash("Finish or stop the running task first."); return; } openProposal(); },
-    unmount(){ deep.leave(); deep.watch(() => {}); showing(null); clearTimeout(toastTimer); document.body.classList.remove("focus"); document.documentElement.classList.remove("night"); unsubs.forEach((u) => u()); clearInterval(tick); document.removeEventListener("visibilitychange", onVisible); root.replaceChildren(); root.hidden = true; },
+    unmount(){ deep.leave(); deep.watch(() => {}); showing(null); clearTimeout(toastTimer); document.body.classList.remove("focus"); document.documentElement.classList.remove("night"); unsubs.forEach((u) => u()); clearInterval(tick); document.removeEventListener("visibilitychange", onVisible); root.replaceChildren(); planRoot?.replaceChildren(); root.hidden = true; },
   };
 }

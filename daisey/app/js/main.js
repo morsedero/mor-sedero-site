@@ -399,7 +399,7 @@ async function boot(){
           open(kind){ if (history.state?.daisey !== kind) history.pushState({ daisey: kind }, ""); },
           back(){ if (history.state?.daisey) history.back(); else closeScreens(); },
         };
-        const closeScreens = () => { m.projects?.closeProject(); m.projects?.closeAll(); m.needs?.close(); $("#weekview").hidden = true; };
+        const closeScreens = () => { m.now?.closePlan(); m.projects?.closeProject(); m.projects?.closeAll(); m.needs?.close(); $("#weekview").hidden = true; };
         // Back from a project lands on the Projects page when that's where it
         // was opened from (history state "projects" under "project").
         const onPop = () => {
@@ -431,9 +431,12 @@ async function boot(){
           onScreen: (name) => (name ? screens.open("project") : screens.back()),
         });
         $("#projectsBack").onclick = () => screens.back();
+        $("#planBack").onclick = () => m.now?.closePlan();
         $("#planChip").onclick = () => m.now?.plan();
         m.now = mountNow($("#nowcard"), user.uid, {
           name: (user.displayName || "").trim().split(/\s+/)[0], onDone: paintDone, onNeedsCount: paintNeeds, onPlanProgress: paintPlan,
+          planRoot: $("#planPage"),
+          onPlanScreen: (open) => { $("#planview").hidden = !open; if (open) { $("#planview").scrollTop = 0; screens.open("plan"); } else if (history.state?.daisey === "plan") history.back(); },
           onCard: (id) => m.projects?.setCurrent(id),
           onOpen: (task) => m.adder.edit(task),
           onProject: (name) => m.projects.openProject(name),
