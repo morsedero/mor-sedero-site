@@ -1315,6 +1315,7 @@ body.focus .shell { block-size: auto; min-block-size: 100dvh; overflow: visible;
 .pp-list { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 6px; }
 .pp-row { display: grid; grid-template-columns: 44px minmax(0, 1fr) auto; align-items: center; gap: 8px; padding: 6px 6px 6px 10px; border-radius: 12px; background: color-mix(in srgb, var(--card) 70%, var(--tint)); border: 1px solid var(--aline); }
 .pp-row.over { border-style: dashed; }
+.pp-row.pp-break { background: transparent; border-style: dotted; opacity: .85; }
 .pp-row.over > :not(.pp-fit) { opacity: .65; }
 /* "Shorten to 55 min": a late plan item cut to the time left. */
 .pp-fit { grid-column: 2 / -1; justify-self: start; position: relative; block-size: 30px; padding-inline: 12px; border: 1px solid var(--line); border-radius: 999px; background: var(--card); color: var(--ink); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }

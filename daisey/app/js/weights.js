@@ -145,3 +145,12 @@ export const WEEK_END_DAY = 6;
 // counts only inside them, and outside them the card is in night mode. The
 // user can change them in the account menu (state/settings dayStart/dayEnd).
 export const DAY_HOURS = { start: 8 * 60, end: 22 * 60 };
+// Breaks in the proposed plan (Mor, 2026-10-08). Work counts tasks and
+// events; a gap of idle RESET minutes or more starts the count over. All
+// minutes except lunch's window, which is minutes after midnight.
+export const BREAKS = {
+  after: 90, short: 10, // a short break after this much work
+  longEvery: 180, long: 30, // a long break after this much work with no long one
+  reset: 15, // idle this long counts as a break
+  lunch: { from: 12 * 60, to: 14 * 60, minutes: 45 },
+};

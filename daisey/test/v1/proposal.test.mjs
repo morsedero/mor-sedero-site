@@ -24,7 +24,7 @@ test("timeline keeps the user's order and steps around meetings", () => {
   const { rows, over } = timeline([{ taskId: "b", minutes: 30 }, { taskId: "a", minutes: 60 }], { tasks, events, now: at(9, 30) });
   assert.deepEqual(rows.map((r) => r.taskId), ["b", "a"]);
   assert.equal(rows[0].start, at(9, 30));
-  assert.equal(rows[1].start, at(12)); // 9:30-10:00 had room for b only
+  assert.equal(rows[1].start, at(12, 45)); // 9:30-10:00 had room for b only; lunch 12:00-12:45
   assert.equal(over.length, 0);
 });
 
@@ -65,4 +65,30 @@ test("rethink changes the proposal: excluded types and names stay out, first goe
   assert.equal(fewer.length, 3);
   const deleted = proposeDay({ tasks, events: [], now: at(9), exclude: ["a"] }).map((i) => i.taskId);
   assert.equal(deleted.includes("a"), false);
+});
+
+test("breaks: 10 min after 90 min of work, never before the first task", () => {
+  const tasks = [t({ id: "a", size: 90 }), t({ id: "b", size: 30 })];
+  const { rows, breaks } = timeline([{ taskId: "a", minutes: 90 }, { taskId: "b", minutes: 30 }], { tasks, events: [], now: at(9) });
+  assert.equal(breaks.length, 1);
+  assert.equal(breaks[0].type, "short");
+  assert.equal(breaks[0].start, rows[0].end);
+  assert.equal(rows[1].start, breaks[0].end);
+});
+
+test("breaks: back-to-back meetings count as work", () => {
+  const tasks = [t({ id: "a", size: 30 })];
+  const events = [ev("M1", [8], [9]), ev("M2", [9], [10, 30])];
+  const { rows, breaks } = timeline([{ taskId: "a", minutes: 30 }], { tasks, events, now: at(8) });
+  assert.equal(breaks.length, 1);
+  assert.equal(rows[0].start, breaks[0].end);
+});
+
+test("breaks: lunch 45 min inside 12-14, once; a 15 min idle gap resets the count", () => {
+  const tasks = [t({ id: "a", size: 30 }), t({ id: "b", size: 30 })];
+  const r = timeline([{ taskId: "a", minutes: 30 }, { taskId: "b", minutes: 30 }], { tasks, events: [], now: at(12, 5) });
+  assert.deepEqual(r.breaks.map((b) => b.type), ["lunch"]);
+  assert.equal(r.breaks[0].minutes, 45);
+  const idle = timeline([{ taskId: "a", minutes: 60 }, { taskId: "b", minutes: 60 }], { tasks, events: [ev("X", [10], [10, 20])], now: at(9) });
+  assert.equal(idle.breaks.length, 0);
 });

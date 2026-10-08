@@ -78,12 +78,38 @@ export function proposeDay({ tasks = [], events = [], now = Date.now(), hours = 
 // end }], over: [{ taskId, task, minutes, room }] } (over: doesn't fit today;
 // room: the most minutes a shorter version could still have today, on a round
 // five, when that's at least WORTH — the plan offers to shorten it to that).
+// Minutes of back-to-back calendar events ending at `t` (gaps under
+// BREAKS.reset between them still count as one run).
+function runBefore(evs, t){
+  const spans = evs.map((e) => [Date.parse(e.start), Date.parse(e.end)]).filter(([s, e]) => e <= t + MIN).sort((a, b) => b[1] - a[1]);
+  let edge = t, total = 0;
+  for (const [s, e] of spans) {
+    if (edge - e >= W.BREAKS.reset * MIN) break;
+    total += Math.max(0, (e - s) / MIN);
+    edge = Math.min(edge, s);
+  }
+  return total;
+}
+const clockMin = (ms) => { const d = new Date(ms); return d.getHours() * 60 + d.getMinutes(); };
+
+// The break due before the next item, or null. worked: minutes since the last
+// break of any kind; sinceLong: since the last long one or lunch.
+export function breakDue({ worked, sinceLong, at, lunchDone }){
+  const B = W.BREAKS, m = clockMin(at);
+  if (!lunchDone && m >= B.lunch.from && m < B.lunch.to) return { type: "lunch", minutes: B.lunch.minutes };
+  if (sinceLong >= B.longEvery) return { type: "long", minutes: B.long };
+  if (worked >= B.after) return { type: "short", minutes: B.short };
+  return null;
+}
+
 export function timeline(items = [], { tasks = [], events = [], now = Date.now(), hours = W.DAY_HOURS, run = null } = {}){
-  const { gaps } = freeGaps({ tasks, events, now, hours, run });
+  const { evs, gaps } = freeGaps({ tasks, events, now, hours, run });
   const byId = new Map(tasks.map((t) => [t.id, t]));
-  const rows = [], over = [];
+  const rows = [], over = [], breaks = [];
   // The first start on a round five minutes: 15:55, not 15:52.
   let gi = 0, cursor = Math.ceil((gaps[0]?.start ?? now) / (5 * MIN)) * 5 * MIN;
+  // Work since the last break, and since the last long one (lunch counts).
+  let worked = 0, sinceLong = 0, lunchDone = false, lastEnd = null;
   for (const it of items) {
     const task = byId.get(it.taskId);
     if (!task || task.status === "done" || task.status === "dropped") continue;
@@ -91,9 +117,23 @@ export function timeline(items = [], { tasks = [], events = [], now = Date.now()
     let placed = false;
     for (let k = gi; k < gaps.length; k++) {
       const from = Math.max(cursor, gaps[k].start);
-      if (gaps[k].end - from >= need) {
-        rows.push({ taskId: it.taskId, task, minutes: need / MIN, start: from, end: from + need });
-        gi = k; cursor = from + need; placed = true;
+      // Same stretch as the last item, or a fresh one that starts with the
+      // meetings just before it.
+      const cont = lastEnd != null && from - lastEnd < W.BREAKS.reset * MIN;
+      const w = cont ? worked : runBefore(evs, from), sl = cont ? sinceLong : w;
+      const brk = breakDue({ worked: w, sinceLong: sl, at: from, lunchDone });
+      const gap = (brk ? brk.minutes * MIN : 0) + need;
+      if (gaps[k].end - from >= gap) {
+        if (brk) {
+          breaks.push({ kind: "break", type: brk.type, minutes: brk.minutes, start: from, end: from + brk.minutes * MIN });
+          if (brk.type === "lunch") lunchDone = true;
+        }
+        const s = from + (brk ? brk.minutes * MIN : 0);
+        rows.push({ taskId: it.taskId, task, minutes: need / MIN, start: s, end: s + need });
+        worked = (brk ? 0 : w) + need / MIN;
+        sinceLong = (brk && brk.type !== "short" ? 0 : sl) + need / MIN;
+        lastEnd = s + need;
+        gi = k; cursor = s + need; placed = true;
         break;
       }
     }
@@ -104,7 +144,7 @@ export function timeline(items = [], { tasks = [], events = [], now = Date.now()
       over.push({ taskId: it.taskId, task, minutes: need / MIN, room: room >= WORTH ? room : 0 });
     }
   }
-  return { rows, over };
+  return { rows, over, breaks };
 }
 
 // The approved plan's next item that's still open and allowed now: the card

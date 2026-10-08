@@ -990,7 +990,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
             h("span", { className: "pj-meta", dir: "ltr", textContent: new Date(t.doneAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) })))));
   }
   function proposalCard(){
-    const { rows, over } = timeline(prop.items, planCtx());
+    const { rows, over, breaks } = timeline(prop.items, planCtx());
     const approved = !!approvedPlan();
     const total = rows.reduce((t, r) => t + r.minutes, 0);
     const last = rows[rows.length - 1];
@@ -1011,6 +1011,10 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
         isOver && r.room > 0 && h("button", { type: "button", className: "pp-fit", ariaLabel: `Shorten ${t.title} to ${dur(r.room)}`, onclick: () => shorten(i, r.room) },
           `Shorten to ${dur(r.room)}`));
     };
+    const breakRow = (b) => h("li", { className: "pp-row pp-break" },
+      h("span", { className: "pp-time", ariaLabel: `${clock(b.start)} to ${clock(b.end)}` }, clock(b.start), h("small", { textContent: clock(b.end) })),
+      h("span", { className: "pp-task" }, h("span", { className: "pp-title", textContent: b.type === "lunch" ? "Lunch" : "Break" }),
+        h("span", { className: "pp-meta", textContent: dur(b.minutes) })));
     const plural = (n) => (n === 1 ? ["One doesn't", "it"] : [`${n} don't`, "them"]);
     return h("section", { className: "now-card main hero proposal", ariaLabel: approved ? "Today's plan" : "Proposed schedule" },
       h("div", { className: "hero-top" },
@@ -1018,7 +1022,10 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
         rows.length > 0 && h("span", { className: "hero-side", textContent: `${dur(total)} · until ${clock(last.end)}` })),
       h("p", { className: "now-why pp-why", textContent: approved ? "Reorder, drop or rethink, then save." : "How I'd use the rest of today. Approve it, or change it first." }),
       rows.length || over.length
-        ? h("ol", { className: "pp-list" }, ...rows.map((r) => row(r, false)), ...over.map((r) => row(r, true)))
+        ? h("ol", { className: "pp-list" },
+          ...[...rows.map((r) => ({ r, s: r.start })), ...breaks.map((b) => ({ b, s: b.start }))]
+            .sort((a, b) => a.s - b.s).map((x) => (x.b ? breakRow(x.b) : row(x.r, false))),
+          ...over.map((r) => row(r, true)))
         : h("p", { className: "now-empty", textContent: "No open task fits the free time left today." }),
       // An approved plan never changes itself (Mor, 2026-10-07): late in the
       // day it says so and offers a fresh take on what's left.

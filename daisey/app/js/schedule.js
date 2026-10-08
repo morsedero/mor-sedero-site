@@ -207,8 +207,9 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onProjects, onW
   // Today's approved plan on the clock (derived, never written to the calendar).
   function planRows(events, now, hrs){
     if (dayPlan?.status !== "approved" || dayPlan.date !== localDate() || !tasks) return [];
-    return timeline(dayPlan.items || [], { tasks, events, now, hours: hrs, run }).rows
-      .map((r) => ({ kind: "plan", start: r.start, end: r.end, task: r.task }));
+    const tl = timeline(dayPlan.items || [], { tasks, events, now, hours: hrs, run });
+    return [...tl.rows.map((r) => ({ kind: "plan", start: r.start, end: r.end, task: r.task })),
+      ...tl.breaks.map((b) => ({ kind: "break", start: b.start, end: b.end, type: b.type }))];
   }
 
   function day(events, date, now, hrs, today){
@@ -324,6 +325,9 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onProjects, onW
       h("span", { className: "sc-free" }, `${durText((x.end - x.start) / 60000)} free`, h("span", { className: "sc-add", ariaHidden: "true", textContent: "+" })));
     const on = !x.allDay && x.start <= now && now < x.end;
     const past = !x.allDay && x.end <= now;
+    if (x.kind === "break") return x.el = h("div", { className: "sc-row" + (on ? " sc-on" : past ? " sc-past" : "") },
+      h("span", { className: "sc-time" }, time),
+      h("span", { className: "sc-free" }, x.type === "lunch" ? "Lunch" : "Break"));
     if (x.kind === "plan") { const pe = h("div", { className: "sc-row" + (on ? " sc-on" : past ? " sc-past" : "") },
       h("span", { className: "sc-time strong" }, time, on && h("span", { className: "sc-nowtag", textContent: "Now" })),
       h("button", { type: "button", className: "sc-ev sc-plan" + areaClass(x.task), ariaLabel: `Planned: ${x.task.title}, ${time}`, onclick: () => onOpen?.(x.task) },
