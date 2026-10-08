@@ -1428,7 +1428,8 @@ body.focus .shell { block-size: auto; min-block-size: 100dvh; overflow: visible;
 
 /* Schedule: drag a row anywhere in its day; a line marks where it lands, an outline the free time it'd start at */
 .sc-row.sc-drag { user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
-.sc-row.sc-dragging .sc-ev { position: relative; z-index: 5; opacity: 1; transform-origin: center; scale: 1.05; box-shadow: 0 0 0 2px var(--ink-2); filter: drop-shadow(0 10px 18px rgba(0,0,0,.35)); }
+.sc-row.sc-dragging .sc-ev { position: relative; z-index: 5; scale: 1.04; filter: none; box-shadow: inset 3px 0 0 var(--aline, transparent), 0 0 0 2px var(--aline, var(--ink-2)), 0 14px 28px -4px rgba(0,0,0,.45), 0 4px 8px rgba(0,0,0,.25); }
+.sc-row.sc-dragging .sc-ev.sc-plan { background: var(--card); border-style: solid; }
 .sc-row.sc-dragging { position: relative; z-index: 5; }
 .sc-row.sc-dragging, .sc-row.sc-dragging * { cursor: grabbing; }
 .sc-row.sc-target .sc-free { outline: 2px dashed var(--ink-2); outline-offset: 2px; border-radius: 6px; }
