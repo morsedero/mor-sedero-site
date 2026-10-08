@@ -93,16 +93,17 @@ export function mountAddTask(dialog, uid, { onStart } = {}){
   // Made in a project with a due date, it runs until that date.
   const until = dateBox("Until", "No end");
   let per = 0;
-  const OFTEN = [[0, "Once"], [1, "1×"], [2, "2×"], [3, "3×"], [4, "4×"], [5, "5×"], [7, "7×"]];
-  const oftenRow = h("div", { className: "now-chips ts-often", role: "group", ariaLabel: "How many times a week" });
+  // Nothing picked = a one-off task (Mor, 2026-10-08: a pressed "Once" chip
+  // read as "once a week"). Tapping the picked one again turns repeat off.
+  const OFTEN = [1, 2, 3, 4, 5, 7];
+  const oftenRow = h("div", { className: "now-chips ts-often", role: "group", ariaLabel: "Repeat, times a week" });
   const weekNow = h("p", { className: "ts-worked ts-week" });
   const routineOf = () => (per ? { per, until: until.input.value || null } : null);
   function paintOften(){
-    oftenRow.replaceChildren(...OFTEN.map(([n, label]) => h("button", { type: "button", className: "chip", textContent: label,
-      ariaPressed: String(per === n), ariaLabel: n ? (n === 7 ? "Every day" : `${n} times a week`) : "Once, no repeat",
+    oftenRow.replaceChildren(...OFTEN.map((n) => h("button", { type: "button", className: "chip", textContent: `${n}×`,
+      ariaPressed: String(per === n), ariaLabel: n === 7 ? "Every day" : `${n} times a week`,
       onclick: () => {
-        if (per === n) return;
-        per = n;
+        per = per === n ? 0 : n;
         if (per && !until.input.value && rangeNow()?.due) until.input.value = rangeNow().due;
         paintDates(); paintOften();
         if (per) due.input.value = ""; // a routine has no due date, only its end
@@ -176,7 +177,7 @@ export function mountAddTask(dialog, uid, { onStart } = {}){
     field("Project", projectSel, newProject),
     field("Task", title),
     h("div", { className: "ts-dates" }, start.box, due.box, until.box),
-    field("How long?", chipRow), field("How often? (a week)", oftenRow), weekNow, pctBox, pendBox, holdBox, researchLine, stateLine,
+    field("How long?", chipRow), field("Repeat? (times a week)", oftenRow), weekNow, pctBox, pendBox, holdBox, researchLine, stateLine,
     section("Links & notes", h("div", { className: "ts-group" }, linkRow, notes)),
     worked, startBtn, del, msg);
 
