@@ -108,7 +108,7 @@ function decide(rec, events, now = Date.now()) {
 
   if (types.brief && rec.sentOn !== date && minutes < start + BRIEF_WINDOW && !current && !focus) {
     const needs = collectNeeds({ tasks, events: evs, calOk: !!events, settings: rec.settings || {}, now }).length;
-    const b = brief({ tasks, events, now, tz, dayStart: start, dayEnd: end, needs });
+    const b = brief({ tasks, events, now, tz, dayStart: start, dayEnd: end, needs, dayplan: rec.dayplan || null, run: rec.run || null });
     out.push({ type: "brief", title: b.title, body: b.body, tag: `brief-${date}`, url: "./" });
     patch.sentOn = date;
   }

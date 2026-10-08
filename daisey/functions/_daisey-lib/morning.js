@@ -61,7 +61,7 @@ async function deliver(rec, now = Date.now()) {
   const { events, cal } = await readEvents(rec, now);
   const needs = collectNeeds({ tasks: rec.tasks || [], events: events || [], calOk: !!events, settings: rec.settings || {}, now }).length;
   const msg = brief({ tasks: rec.tasks || [], events, now, tz: rec.tz || "Asia/Jerusalem",
-    dayStart: rec.dayStart ?? 480, dayEnd: rec.dayEnd ?? 1320, needs });
+    dayStart: rec.dayStart ?? 480, dayEnd: rec.dayEnd ?? 1320, needs, dayplan: rec.dayplan || null, run: rec.run || null });
   const { sent, subs } = await sendAll(rec, { title: msg.title, body: msg.body, tag: `brief-${msg.today}`, url: "./" });
   return { sent, subs, msg, cal };
 }

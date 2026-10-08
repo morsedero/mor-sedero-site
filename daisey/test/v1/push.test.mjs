@@ -63,7 +63,31 @@ test("brief: free time, open and fit, deadlines, first event", () => {
   ];
   const b = B.brief({ tasks, events, now: NOW, tz: TZ, dayStart: 480, dayEnd: 1320 });
   // 08:05–10:00 (115) + 14:00–22:00 (480) = 595 min.
-  assert.equal(b.body, "9 h 55 min free today. 4 open, about 3 fit. Deadline passed: Grant report. Deadline today: Pay arnona. First: Teaching at 10:00.");
+  // No plan saved: Daisey's own proposal, as the card would show it.
+  assert.equal(b.body, "9 h 55 min free today. 4 open today. Plan ready: 4 tasks, 2 h, starting with Grant report at 08:05. Open Daisey to approve it. Deadline passed: Grant report. Deadline today: Pay arnona. First event: Teaching at 10:00.");
+  // Dismissed today: no plan to tell, so the old sum.
+  const d = B.brief({ tasks, events, now: NOW, tz: TZ, dayStart: 480, dayEnd: 1320, dayplan: { date: "2026-10-06", status: "dismissed", items: [] } });
+  assert.match(d.body, /4 open, about 3 fit\./);
+  assert.doesNotMatch(d.body, /Plan/);
+});
+
+test("brief: reads the saved plan — proposed, approved, done", () => {
+  const events = [{ title: "Teaching", start: il(10), end: il(14), busy: true }];
+  const a = t({ id: "a", title: "Mix", size: 90 }), b2 = t({ id: "b", title: "Call Dana", size: 15 }), c = t({ id: "c", title: "Invoice", size: 30 });
+  const items = [{ taskId: "b", minutes: 15 }, { taskId: "a", minutes: 90 }, { taskId: "c", minutes: 30 }];
+  const run = (dayplan, tasks = [a, b2, c]) => B.brief({ tasks, events, now: NOW, tz: TZ, dayStart: 480, dayEnd: 1320, dayplan }).body;
+  // Proposed (saved, not approved): its own items and order, not a fresh pick.
+  assert.match(run({ date: "2026-10-06", status: "proposed", items }), /Plan ready: 3 tasks, 2 h 15 min, starting with Call Dana at 08:05\. Open Daisey to approve it\./);
+  // Approved, one done: progress and the next one on the clock.
+  const done = { ...b2, status: "done" };
+  assert.match(run({ date: "2026-10-06", status: "approved", items }, [a, done, c]), /Plan: 1 of 3 done\. Next: Mix at 08:05\./);
+  // A day too full for the plan says what no longer fits.
+  const big = [{ taskId: "a", minutes: 500 }, { taskId: "c", minutes: 30 }];
+  assert.match(run({ date: "2026-10-06", status: "approved", items: big }), /Next: Mix\. 1 no longer fits today\./);
+  // All done.
+  assert.match(run({ date: "2026-10-06", status: "approved", items }, [{ ...a, status: "done" }, done, { ...c, status: "done" }]), /Plan done: 3 of 3\./);
+  // Yesterday's plan doesn't count.
+  assert.doesNotMatch(run({ date: "2026-10-05", status: "approved", items }), /Plan: /);
 });
 
 test("brief: no calendar claims no free time; an empty day says so", () => {

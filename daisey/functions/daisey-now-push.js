@@ -6,7 +6,8 @@
 //   snapshot     { tasks, settings, notify, run, plan, tz, dayStart, dayEnd } —
 //                what the notifications count, which kinds are on, the
 //                running task (app/js/reality.js: it beats the calendar) and
-//                today's approved plan ({ date, at, ids }: app/js/miss.js)
+//                today's approved plan ({ date, at, ids }: app/js/miss.js),
+//                and the saved plan of any status for the brief (dayplan)
 //   seen         Daisey is on screen now: a missed slot is asked in the app,
 //                not as a notification (notify.js "miss")
 //   test         sends today's brief now, to every device signed up; returns
@@ -73,7 +74,17 @@ const cleanRun = (r) => {
 const KINDS = ["brief", "wrap", "gap", "booked", "people", "meeting", "miss"];
 // Today's approved plan: its day, when it was saved, its tasks in order.
 const cleanPlan = (p) => (day(p?.date) ? { date: p.date, at: at(p.at) || 0, ids: ids(p.ids) || [] } : null);
-const cleanNotify = (n) => Object.fromEntries(KINDS.map((k) => [k, n?.[k] !== false]));
+// The saved plan, any status, as the brief reads it: { date, status, items:
+// [{ taskId, minutes } | { brk, minutes }] }.
+const PLAN_STATUS = ["proposed", "approved", "dismissed"], BRKS = ["short", "long", "lunch"];
+const planMins = (v) => (Number.isFinite(v) && v > 0 ? Math.min(Math.round(v), 1440) : undefined);
+const cleanDayPlan = (p) => (day(p?.date) && PLAN_STATUS.includes(p.status) ? {
+  date: p.date, status: p.status,
+  items: (Array.isArray(p.items) ? p.items : []).slice(0, 30).map((it) => (BRKS.includes(it?.brk)
+    ? { brk: it.brk, minutes: planMins(it.minutes) } : { taskId: str(it?.taskId, 40), minutes: planMins(it?.minutes) }))
+    .filter((it) => it.brk || it.taskId),
+} : null);
+const cleanNotify =(n) => Object.fromEntries(KINDS.map((k) => [k, n?.[k] !== false]));
 // Minutes before a meeting its reminder goes (the menu offers 5–30).
 const cleanLead = (v) => (Number.isInteger(v) && v >= 5 && v <= 60 ? v : 10);
 const where = (b) => ({
@@ -103,7 +114,7 @@ exports.handler = async (event) => {
     if (!Array.isArray(b.tasks)) return fail(400, "bad_input");
     const tasks = b.tasks.slice(0, MAX_TASKS).map(cleanTask);
     await update(uid, () => ({ sub, tasks, tasksAt: Date.now(), settings: cleanSettings(b.settings), notify: cleanNotify(b.notify),
-      meetingLead: cleanLead(b.meetingLead), run: cleanRun(b.run), plan: cleanPlan(b.plan), ...where(b) }));
+      meetingLead: cleanLead(b.meetingLead), run: cleanRun(b.run), plan: cleanPlan(b.plan), dayplan: cleanDayPlan(b.dayplan), ...where(b) }));
     return reply(200, { ok: true });
   }
   if (b.action === "seen") {
