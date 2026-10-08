@@ -1094,7 +1094,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
       h("label", { htmlFor: "rethinkText", textContent: "What should change? (blank = a fresh take)" }),
       h("div", { className: "pend-row" }, input,
         h("button", { className: "btn primary small", type: "button", disabled: prop.busy, textContent: prop.busy ? "Thinking…" : "Rethink", onclick: go })),
-      h("div", { className: "pp-chips" }, chip("Lighter"), chip("Fewer tasks"), chip("Quick ones first"), chip("No calls"),
+      h("div", { className: "pp-chips" }, chip("Fewer tasks"), chip("Quick ones first"), chip("No calls"),
         h("button", { type: "button", className: "linkish", textContent: "Never mind", onclick: () => { prop.ask = false; render(); } })));
   }
   // Done today, under the plan (one chip opens both), oldest first. null when empty.
