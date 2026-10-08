@@ -135,6 +135,20 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onProjects, onW
     return extra;
   }
 
+  // Drag sideways to change day (week: change week); no arrows.
+  let stepBy = () => {}, swipe = null;
+  el.style.touchAction = "pan-y"; // keep the horizontal drag ours, or the browser cancels it
+  el.addEventListener("pointerdown", (e) => { swipe = dragging ? null : { x: e.clientX, y: e.clientY }; });
+  el.addEventListener("pointerup", (e) => {
+    if (!swipe) return;
+    const dx = e.clientX - swipe.x, dy = e.clientY - swipe.y;
+    swipe = null;
+    if (dragging || Math.abs(dx) < 60 || Math.abs(dx) < 1.5 * Math.abs(dy)) return;
+    const rtl = getComputedStyle(el).direction === "rtl";
+    stepBy((dx < 0) !== rtl ? 1 : -1);
+  });
+  el.addEventListener("pointercancel", () => { swipe = null; });
+
   let dragging = false, stale = false; // a redraw mid-drag would drop the dragged row
   let dayCtx = null; // the shown day's { events, now, hrs, d0 }, for a drag's preview
   function render(){
@@ -155,7 +169,7 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onProjects, onW
       return;
     }
 
-    const step = (n) => go(localDate(addDays(at, n * range[1]).getTime()));
+    stepBy = (n) => go(localDate(addDays(at, n * range[1]).getTime()));
     const isNow = view === "week" ? from.getTime() === addDays(today, -today.getDay()).getTime() : at.getTime() === today.getTime();
     const late = now >= atMin(today, hrs.end);
     const dayName = (d) => {
@@ -177,10 +191,8 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onProjects, onW
     // One row (Mor, 2026-10-07). Today keeps its place (just unseen on
     // today), so the arrows and the switch never shift under the finger.
     const bar = h("div", { className: "sc-bar" },
-      h("button", { type: "button", className: "sc-step", ariaLabel: view === "week" ? "Previous week" : "Previous day", onclick: () => step(-1) }, icon("back")),
       h("button", { type: "button", className: "sc-title" + (isNow ? "" : " away"), ariaLabel: isNow ? title : `${title} — back to today`, onclick: () => go(null) },
         h("span", { className: "sc-name", textContent: title }), h("span", { className: "sc-name sc-name-s", textContent: narrow }), sub && h("span", { className: "sc-date", textContent: sub })),
-      h("button", { type: "button", className: "sc-step", ariaLabel: view === "week" ? "Next week" : "Next day", onclick: () => step(1) }, icon("chev")),
       h("button", { type: "button", className: "sc-today" + (isNow ? " off" : ""), ariaLabel: "Back to today", textContent: "Today", tabIndex: isNow ? -1 : 0, onclick: () => go(null) }),
       mode === "home" && onWeek && weekBtn);
     const head = h("div", { className: "sc-head" + (view === "week" ? " wk" : "") }, bar);
