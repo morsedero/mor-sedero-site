@@ -27,21 +27,28 @@ const writeSeen = (v) => { try { localStorage.setItem(SEEN_KEY, JSON.stringify(v
 
 // One flower, 60 wide: stem up to `height`, petals around the head.
 export function flowerSvg(f){
-  const top = 100 - (14 + f.height * 58), cx = 30, root = svg("svg", { viewBox: `0 ${top - 20} 60 ${140 - top}`, class: "bl-svg", "aria-hidden": "true" });
-  root.append(svg("path", { d: `M30 118 C30 ${(118 + top) / 2} 30 ${(118 + top) / 2} 30 ${top + 6}`, class: "bl-stem" }),
-    svg("path", { d: `M30 ${Math.min(top + 50, 106)} q-12 -2 -15 -12 q12 0 15 12z`, class: "bl-leaf" }));
+  // Ground at y 120; the head sits 26-100 above it by the project's time.
+  // The viewBox is cropped to the flower, so a short one takes short space.
+  const top = 120 - (26 + f.height * 74), cx = 30;
+  const root = svg("svg", { viewBox: `0 ${top - 22} 60 ${148 - top}`, width: 60, height: Math.round(148 - top), class: "bl-svg", "aria-hidden": "true" });
+  root.append(svg("ellipse", { cx, cy: 122, rx: 17, ry: 3.5, class: "bl-soil" }),
+    svg("path", { d: `M30 121 C29 ${top + (120 - top) * 0.6} 31 ${top + (120 - top) * 0.3} 30 ${top + 4}`, class: "bl-stem" }));
+  if (120 - top > 40) {
+    const y = top + (120 - top) * 0.62;
+    root.append(svg("path", { d: `M30 ${y} q-13 -1 -16 -11 q12 -1 16 11z`, class: "bl-leaf" }));
+  }
   const head = svg("g", { class: "bl-head" });
   if (f.petals) {
     // Earned petals are filled; up to six slots show, so one task still reads as a flower.
-    const slots = Math.max(f.petals, 6);
+    const slots = Math.max(f.petals, 6), rx = slots > 8 ? 4 : 5.4;
     for (let i = 0; i < slots; i++) {
-      head.append(svg("ellipse", { cx, cy: top - 9, rx: slots > 8 ? 3.4 : 4.4, ry: 8.5, class: "bl-petal" + (i < f.petals ? "" : " empty"), transform: `rotate(${(i * 360) / slots} ${cx} ${top})` }));
+      head.append(svg("ellipse", { cx, cy: top - 10, rx, ry: 10, class: "bl-petal" + (i < f.petals ? "" : " empty"), transform: `rotate(${(i * 360) / slots} ${cx} ${top})` }));
     }
-    head.append(svg("circle", { cx, cy: top, r: 5.5, class: "bl-heart" }));
+    head.append(svg("circle", { cx, cy: top, r: 6.5, class: "bl-heart" }));
   } else {
     // A bud: closed and plain with no time, in the project's tint once it has some.
-    head.append(svg("ellipse", { cx, cy: top - 2, rx: 6, ry: 9, class: "bl-bud" + (f.bud ? "" : " warm") }),
-      svg("path", { d: `M${cx - 6} ${top + 2} q6 6 12 0`, class: "bl-cup" }));
+    head.append(svg("ellipse", { cx, cy: top - 3, rx: 7, ry: 10, class: "bl-bud" + (f.bud ? "" : " warm") }),
+      svg("path", { d: `M${cx - 7} ${top + 1} q7 7 14 0`, class: "bl-cup" }));
   }
   root.append(head);
   return root;
@@ -133,7 +140,7 @@ export function mountBloom(root, uid, { onProject } = {}){
     const bed = fl.length ? h("section", { className: "bl-bed", ariaLabel: "Your projects" },
         h("div", { className: "bl-row" }, ...fl.map((f, i) => {
           const info = colors.get(f.name), cls = info ? ` pc-${info.color}` : "";
-          const btn = h("button", { type: "button", className: `bl-flower ${f.tier}${cls}${f.bud ? " bud" : ""}${pops.has(f.name) ? " pop" : ""}${open === f.name ? " on" : ""}`,
+          const btn = h("button", { type: "button", className: `bl-flower t-${f.tier}${cls}${f.bud ? " bud" : ""}${pops.has(f.name) ? " pop" : ""}${open === f.name ? " on" : ""}`,
             style: `--d:-${(i * 0.9).toFixed(1)}s`, ariaExpanded: String(open === f.name),
             ariaLabel: `${f.name}: ${f.min ? fmtMinutes(f.min) : "no time yet"}, ${f.done} done`,
             onclick: () => { open = open === f.name ? null : f.name; render(); } },
@@ -169,7 +176,7 @@ export function mountBloom(root, uid, { onProject } = {}){
           h("h2", { className: "bl-title" }, icon("bloom"), "Bloom"),
           h("div", { className: "bl-pills", role: "radiogroup", ariaLabel: "Period" }, ...PERIODS.map(pill))),
         h("p", { className: "bl-line" }, oneLine({ summary, flowers: fl, routines: rows, period })),
-        bed, routines, tiles, week));
+        bed, tiles, h("section", { className: "bl-card" }, h("h3", { className: "bl-h", textContent: "This week" }), week), routines));
   }
   const tile = (n, label) => h("div", { className: "bl-tile" }, h("strong", {}, n), h("span", {}, label));
 

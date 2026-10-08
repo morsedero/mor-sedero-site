@@ -160,6 +160,16 @@ const SCENARIOS = {
     { title: "Band practice", project: "Band", size: 60, routine: { per: 2, until: day(30), log: [{ day: day(-30), min: 60 }] } },
     { title: "Mix review", project: "Reprise", size: 60 },
   ] },
+  // Bloom (bloom.js): projects in all three tiers, two routines, a week of work.
+  bloom: { tiers: { Band: "focus", Reprise: "focus", Admin: "background" }, bloomLog: true, tasks: [
+    { title: "Mix chorus", project: "Band", size: 60 },
+    { title: "Master the EP", project: "Reprise", size: 120 },
+    { title: "Send invoice", project: "Admin", size: 15 },
+    { title: "Fix the sink", project: "Home", size: 30 },
+    { title: "Portfolio page", project: "Work", size: 60 },
+    { title: "Exercise", project: "Health", size: 45, routine: { per: 3, log: [{ day: day(-14) }, { day: day(-13) }, { day: day(-12) }, { day: day(-7) }, { day: day(-6) }, { day: day(-5) }, { day: day(-1), min: 45 }] } },
+    { title: "Band practice", project: "Band", size: 60, routine: { per: 2, days: [1, 4], at: "19:00", log: [{ day: day(-2), min: 60 }] } },
+  ] },
   waiting: { tasks: [
     { title: "Waiting on Yuval", project: "Reprise", size: 30, over: { status: "waiting", waitingOn: "Yuval" } },
     { title: "Big edit", project: "Reprise", size: 240 },

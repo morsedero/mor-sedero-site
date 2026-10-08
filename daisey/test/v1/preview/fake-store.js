@@ -42,9 +42,10 @@ export const setDoneMinutes = () => Promise.resolve();
 // Bloom: a few entries over the last days so the page has something to draw.
 export const watchLog = (uid, keys, cb) => {
   const t = Date.now(), d = 864e5;
-  setTimeout(() => cb([
-    { id: "a", t: "x1", p: "Band", m: 90, at: t - 1 * d, d: 1 }, { id: "b", t: "x2", p: "Band", m: 45, at: t - 2 * d },
-    { id: "c", t: "x3", p: "Work", m: 30, at: t - 3 * d, d: 1, g: 1 }]));
+  const rich = [["Band", 90, 0, 1], ["Band", 45, 1], ["Band", 60, 2, 1], ["Band", 30, 3, 1], ["Reprise", 120, 1, 1], ["Reprise", 50, 4],
+    ["Work", 30, 3, 1, 1], ["Work", 25, 0], ["Home", 20, 2, 1], ["Admin", 10, 5, 1]];
+  const few = [["Band", 90, 1, 1], ["Band", 45, 2], ["Work", 30, 3, 1, 1]];
+  setTimeout(() => cb((seed.bloomLog ? rich : few).map(([p, m, ago, done, g], i) => ({ id: "e" + i, t: "x" + i, p, m, at: t - ago * d - 3600000, ...(done ? { d: 1 } : {}), ...(g ? { g: 1 } : {}) }))));
   return () => {};
 };
 export const removeTask = (uid, id) => { tasks = tasks.filter((t) => t.id !== id); return ok("tasks"); };
@@ -52,7 +53,7 @@ export const saveNow = (uid, state) => { docs.now = state; return ok("now"); };
 
 export const migrateTasks = () => () => {};
 export const watchSettings = watch("settings");
-export const watchProjectNames = watch("projects");
+export const watchProjectNames = (uid, cb) => { setTimeout(() => cb(docs.projects, {}, [], seed.tiers || {})); return () => {}; };
 export const saveProjectNames = (uid, names) => { docs.projects = names; return ok("projects"); };
 export const saveProjectRanges = (uid, ranges) => { docs.ranges = ranges; return Promise.resolve(); };
 export const saveProjectOrder = (uid, order) => { docs.projectOrder = order; return Promise.resolve(); };
