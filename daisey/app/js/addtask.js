@@ -431,7 +431,7 @@ export function mountAddTask(dialog, uid, { onStart } = {}){
       checkOn.min = localDate();
       links = (task.links || []).map((l) => ({ ...l }));
       const guessed = new Set(task.guessed || []);
-      for (const k of CHIPS) if (validField(k, task[k])) { vals[k] = task[k]; if (!guessed.has(k)) mine.add(k); }
+      for (const k of CHIPS) if (validField(k, task[k])) { vals[k] = task[k]; if (!guessed.has(k) || SHOWN.includes(k)) mine.add(k); } // a saved "How long?" shows as chosen, even if Daisey set it
       if (CHIPS.some((k) => !(k in vals))) reguess();
       paintAll();
       show();
