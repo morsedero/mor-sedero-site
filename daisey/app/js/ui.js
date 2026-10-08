@@ -67,6 +67,29 @@ export const pieces = (...parts) => parts.filter(Boolean)
 export const UNDO_MS = 5000;
 let livePop = null, liveTimer = null;
 
+// Every .toast is fixed to the same spot (the card's own Undo/why toasts, the
+// plan-cut one, flash()), so two at once used to hide each other. Stack them:
+// the first sits where CSS puts it, each later one lifts above those below.
+// Runs after any DOM change, once per frame; a lift is a `translate`, so it
+// never fights the toast's own position or animation.
+const GAP = 8;
+let stackQueued = false;
+function stackToasts(){
+  stackQueued = false;
+  let lift = 0;
+  for (const t of document.querySelectorAll(".toast")){
+    t.style.translate = lift ? `0 ${-lift}px` : "";
+    lift += t.offsetHeight + GAP;
+  }
+}
+if (typeof MutationObserver !== "undefined" && typeof document !== "undefined"){
+  new MutationObserver(() => {
+    if (stackQueued) return;
+    stackQueued = true;
+    requestAnimationFrame(stackToasts);
+  }).observe(document.body, { childList: true, subtree: true });
+}
+
 export function dismissFlash(){ clearTimeout(liveTimer); livePop?.remove(); livePop = null; }
 
 export function flash(label, title, { undo } = {}){
