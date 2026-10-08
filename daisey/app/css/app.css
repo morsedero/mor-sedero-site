@@ -1172,11 +1172,11 @@ body.focus #side { display: none; }
 .sc-step { flex: none; display: inline-flex; align-items: center; justify-content: center; inline-size: 24px; block-size: 24px; border: 0; border-radius: 50%; background: none; color: var(--ink-2); cursor: pointer; }
 .sc-step:hover { background: var(--chip); }
 .sc-step svg { inline-size: 16px; block-size: 16px; }
-.sc-title { flex: 1; min-inline-size: 0; display: flex; align-items: baseline; gap: 8px; padding: 0 2px; border: 0; background: none; font: inherit; text-align: start; cursor: pointer; white-space: nowrap; overflow: hidden; }
+.sc-title { flex: 0 1 auto; min-inline-size: 0; display: flex; align-items: baseline; gap: 8px; padding: 0 2px; border: 0; background: none; font: inherit; text-align: start; cursor: pointer; white-space: nowrap; overflow: hidden; }
 .sc-title .sc-name { overflow: hidden; text-overflow: ellipsis; font-size: 15px; }
 @media (max-width: 420px) { .sc-title .sc-name { font-size: 14px; } }
 .sc-title .sc-date { overflow: hidden; text-overflow: ellipsis; }
-.sc-today { flex: none; padding: 2px 8px; border: 0; border-radius: 999px; background: var(--chip); font: inherit; font-size: 12px; font-weight: 600; color: var(--ink); cursor: pointer; }
+.sc-today { flex: none; margin-inline-start: auto; padding: 2px 8px; border: 0; border-radius: 999px; background: var(--chip); font: inherit; font-size: 12px; font-weight: 600; color: var(--ink); cursor: pointer; }
 .sc-today.off { visibility: hidden; pointer-events: none; }
 .sc-proj { flex: none; display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-inline-size: 26px; block-size: 24px; padding-inline: 8px; border: 0; border-radius: 999px; background: #5b67ff; color: #fff; font: inherit; font-size: 13px; font-weight: 700; white-space: nowrap; cursor: pointer; }
 .sc-proj svg { inline-size: 15px; block-size: 15px; }
