@@ -524,7 +524,7 @@ dialog.now:focus { outline: none; }
 .now-card.main .now-why { margin: 6px 0 0; font-size: 14px; line-height: 1.4; color: var(--sub); }
 .now-card.main .now-meta { font-size: 13px; font-weight: 600; text-transform: none; letter-spacing: 0; color: var(--aink); }
 /* An event's header wears its schedule colour (the same mix .sc-ev text uses). */
-.now-card.main.event .now-meta, .now-card.main.event .now-title { color: color-mix(in srgb, var(--ev, var(--ink-2)) 55%, var(--ink)); }
+.now-card.main.event .now-title { color: color-mix(in srgb, var(--ev, var(--ink-2)) 55%, var(--ink)); }
 .btn.start {
   display: flex; align-items: center; justify-content: center; gap: 10px; inline-size: 100%;
   margin-block-start: 14px; min-block-size: 48px; border: none; border-radius: var(--r-btn);
@@ -863,7 +863,7 @@ body:has(.screen:not([hidden])) { overflow: hidden; }
 /* The project screen. */
 /* The project screen wears its colour: a wash down from the top, a white
    card on it with the numbers, white task rows (restyled 2026-10-06). */
-#projectview { padding-block-end: max(24px, env(safe-area-inset-bottom)); background: linear-gradient(180deg, var(--tint) 0, var(--tint) 120px, var(--bg) 360px) no-repeat, var(--bg); }
+#projectview { padding: 0 0 32px; background: linear-gradient(180deg, var(--tint) 0, var(--tint) 120px, var(--bg) 360px) no-repeat, var(--bg); }
 .pj-top { display: flex; align-items: center; gap: 4px; padding: 4px 0 0 12px; }
 .pj-back { flex: none; inline-size: 40px; block-size: 40px; display: grid; place-items: center; border: 0; border-radius: 12px; background: none; color: var(--ink); cursor: pointer; }
 .pj-back svg { inline-size: 20px; block-size: 20px; stroke-width: 2; }
