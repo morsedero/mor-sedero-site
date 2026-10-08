@@ -992,12 +992,12 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
             h("span", { className: "pj-meta", dir: "ltr", textContent: new Date(t.doneAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) })))));
   }
   // Drag a row to reorder the plan (ppdrag.js, same drag as the Schedule's).
-  const dragRows = (ol) => sortable(ol, {
+  const dragRows = (ol) => { sortable(ol, {
     busy: (on) => { ppDragging = on; if (!on && ppStale) { ppStale = false; render(); } },
     onMove: (from, to) => {
       const items = [...prop.items], [it] = items.splice(from, 1);
       items.splice(to, 0, it); prop.items = items; render();
-    } });
+    } }); return ol; };
   function proposalCard(){
     const { rows, over, breaks } = timeline(prop.items, planCtx());
     const approved = !!approvedPlan();
