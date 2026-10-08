@@ -154,6 +154,7 @@ async function boot(){
   // A tap on the dim backdrop closes it, like Escape and ✕.
   const settings = $("#settingsdlg");
   $("#settingsBtn").onclick = () => { setMenu(false); settings.showModal(); };
+  $("#projectsMenuBtn").onclick = () => { setMenu(false); window.__openProjects && window.__openProjects(); };
   $("#settingsX").onclick = () => settings.close();
   settings.addEventListener("click", (e) => { if (e.target === settings) settings.close(); });
 
@@ -414,7 +415,8 @@ async function boot(){
         m.adder = mountAddTask($("#addtask"), user.uid, { onStart: startTask });
         m.needs = mountNeeds($("#needsview"), user.uid, { onClose: () => screens.back() });
         // The home panel is the Schedule, always. Projects is its own page.
-        m.schedule = mountSchedule($("#schedPage"), user.uid, { onEvent: (ev) => m.event.view(ev), onNew: (date, at) => m.event.open(date, at), onOpen: (task) => m.adder.edit(task), onProjects: () => { m.projects.openAll(); screens.open("projects"); } });
+        m.schedule = mountSchedule($("#schedPage"), user.uid, { onEvent: (ev) => m.event.view(ev), onNew: (date, at) => m.event.open(date, at), onOpen: (task) => m.adder.edit(task), });
+        window.__openProjects = () => { m.projects.openAll(); screens.open("projects"); };
         // ARCHIVED (Mor, 2026-10-08): the Week page is built but switched off until
         // people ask for it. To bring it back: pass onWeek to the mount above
         //   onWeek: () => { $("#weekview").hidden = false; $("#weekPage").scrollTop = 0; screens.open("week"); }

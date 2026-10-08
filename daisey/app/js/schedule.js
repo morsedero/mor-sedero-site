@@ -181,8 +181,7 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onProjects, onW
         h("span", { className: "sc-name", textContent: title }), h("span", { className: "sc-name sc-name-s", textContent: narrow }), sub && h("span", { className: "sc-date", textContent: sub })),
       h("button", { type: "button", className: "sc-step", ariaLabel: view === "week" ? "Next week" : "Next day", onclick: () => step(1) }, icon("chev")),
       h("button", { type: "button", className: "sc-today" + (isNow ? " off" : ""), ariaLabel: "Back to today", textContent: "Today", tabIndex: isNow ? -1 : 0, onclick: () => go(null) }),
-      mode === "home" && onWeek && weekBtn,
-      mode === "home" && h("button", { type: "button", className: "sc-proj", ariaLabel: "Projects", onclick: () => onProjects && onProjects() }, icon("folder"), h("span", { className: "sc-proj-t", textContent: "Projects" })));
+      mode === "home" && onWeek && weekBtn);
     const head = h("div", { className: "sc-head" + (view === "week" ? " wk" : "") }, bar);
 
     let body;
