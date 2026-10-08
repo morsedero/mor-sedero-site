@@ -1558,3 +1558,20 @@ body.focus .shell { block-size: auto; min-block-size: 100dvh; overflow: visible;
    the plan/done cards inside drop their own border, fill and padding. */
 #planPage .now-card { background: none; border: 0; box-shadow: none; border-radius: 0; padding: 0; }
 #planPage .now-card + .now-card { margin-block-start: 16px; }
+
+/* Opening (Mor, 2026-10-08): only the daisy blooming, over everything, until
+   the Now card has its tasks, plan and calendar (main.js lifts it). No
+   "Loading…" or half-drawn card shows through. */
+.splash { position: fixed; inset: 0; z-index: 1000; display: grid; place-items: center; background: var(--bg); transition: opacity .35s; }
+.splash.gone { opacity: 0; pointer-events: none; }
+.splash svg { inline-size: 96px; block-size: 96px; animation: spl-spin 7s linear infinite; }
+.splash .daisy-petals ellipse { transform-box: view-box; transform-origin: 20px 20px; animation: spl-petal 2.4s cubic-bezier(.3, 1.4, .5, 1) infinite backwards; }
+.splash .daisy-petals g:nth-child(2) ellipse { animation-delay: .14s; }
+.splash .daisy-petals g:nth-child(3) ellipse { animation-delay: .28s; }
+.splash .daisy-petals g:nth-child(4) ellipse { animation-delay: .42s; }
+.splash .daisy-petals g:nth-child(5) ellipse { animation-delay: .56s; }
+.splash .daisy-heart { transform-box: view-box; transform-origin: 20px 20px; animation: spl-heart 2.4s ease-in-out infinite; }
+@keyframes spl-petal { 0% { opacity: 0; transform: scale(.3); } 14% { opacity: 1; transform: scale(1); } 78% { opacity: 1; transform: scale(1); } 100% { opacity: 0; transform: scale(.3); } }
+@keyframes spl-heart { 0%, 100% { transform: scale(.8); } 30% { transform: scale(1.08); } 60% { transform: scale(1); } }
+@keyframes spl-spin { to { rotate: 360deg; } }
+@media (prefers-reduced-motion: reduce) { .splash svg, .splash .daisy-petals ellipse, .splash .daisy-heart { animation: none; } }

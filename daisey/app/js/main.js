@@ -65,9 +65,24 @@ if ("serviceWorker" in navigator) {
 // Google" among them, read out by screen readers and page readers alike.)
 let onSignIn = () => {};
 let onGuest = () => {};
+// The opening daisy (index.html) covers everything until there's something
+// true to show: the sign-in box, an error, or the Now card's first real draw
+// (now.js onReady). A slow or failed load still lifts it after 12s.
+// It stays at least long enough for all five petals to open, so a fast load
+// doesn't flash it.
+function splashOff(){
+  const s = $("#splash");
+  if (!s || s.classList.contains("gone")) return;
+  const wait = 900 - performance.now();
+  if (wait > 0) { setTimeout(splashOff, wait); return; }
+  s.classList.add("gone");
+  setTimeout(() => s.remove(), 400);
+}
+setTimeout(splashOff, 12000);
 function show(view, text = ""){
   const box = $("#status");
   if (view === "signedin") { box.hidden = true; box.replaceChildren(); return; }
+  splashOff();
   box.hidden = false;
   if (view === "signedout") {
     const msg = Object.assign(document.createElement("p"), { className: "msg", role: "alert" });
@@ -461,6 +476,8 @@ async function boot(){
         m.now = mountNow($("#nowcard"), user.uid, {
           name: (user.displayName || "").trim().split(/\s+/)[0], onDone: paintDone, onNeedsCount: paintNeeds, onPlanProgress: paintPlan,
           planRoot: $("#planPage"),
+          // Two frames so the panel and chips settle under the daisy first.
+          onReady: () => requestAnimationFrame(() => requestAnimationFrame(splashOff)),
           onPlanScreen: (open) => {
             if (open) { m.projects?.closeProject(); m.projects?.closeAll(); if (history.state?.daisey === "project") history.back(); }
             $("#planPage").hidden = !open; if (open) $("#planPage").scrollTop = 0; syncPanel();

@@ -22,6 +22,19 @@
 <script type="module" src="js/main.js"></script>
 </head>
 <body>
+<!-- Opening: the daisy blooms until Daisey is ready (main.js removes it). -->
+<div id="splash" class="splash" role="status" aria-label="Loading Daisey">
+  <svg viewBox="0 0 40 40" aria-hidden="true">
+    <g class="daisy-petals">
+      <g><ellipse cx="20" cy="9" rx="4.6" ry="8"/></g>
+      <g transform="rotate(72 20 20)"><ellipse cx="20" cy="9" rx="4.6" ry="8"/></g>
+      <g transform="rotate(144 20 20)"><ellipse cx="20" cy="9" rx="4.6" ry="8"/></g>
+      <g transform="rotate(216 20 20)"><ellipse cx="20" cy="9" rx="4.6" ry="8"/></g>
+      <g transform="rotate(288 20 20)"><ellipse cx="20" cy="9" rx="4.6" ry="8"/></g>
+    </g>
+    <circle class="daisy-heart" cx="20" cy="20" r="6.5"/>
+  </svg>
+</div>
 <main class="shell">
   <!-- Layout round 3 (Mor, 2026-10-06; daisey/New Design/6-home-schedule-tab,
        7-home-projects-tab): a fixed split screen. The Now card on top, a

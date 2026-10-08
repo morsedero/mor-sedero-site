@@ -44,7 +44,7 @@ const clock = (ms) => new Date(ms).toLocaleTimeString([], { hour: "2-digit", min
 // card's title is the way in. onEvent(ev): an event's details. name: the first name for the night screen. onDone(n):
 // how many tasks are done today, for the header's chip. onNeedsCount(n):
 // how many decisions Needs you holds, for the amber chip.
-export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name = "", onDone, onNeedsCount, onPlanProgress, planRoot, onPlanScreen, guest = false } = {}){
+export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name = "", onDone, onNeedsCount, onPlanProgress, planRoot, onPlanScreen, onReady, guest = false } = {}){
   let tasks = null; // null until the first snapshot
   let settings = {}; // state/settings: when the sweep was last offered
   let momentDoc = {}; // state/moment: place corrections
@@ -1145,7 +1145,13 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
     else if (planShown) planRoot.replaceChildren();
     if (open !== planShown) { planShown = open; onPlanScreen?.(open); }
   }
-  function render(){ renderCard(); paintPlanScreen(); }
+  // onReady(): once, the first time the card is drawn from real tasks, plan
+  // and calendar, so main.js can lift the opening daisy.
+  let ready = false;
+  function render(){
+    renderCard(); paintPlanScreen();
+    if (!ready && tasks != null && planKnown && cal.status !== "loading") { ready = true; onReady?.(); }
+  }
   function renderCard(){
     if (ppDragging) { ppStale = true; return; } // a redraw mid-drag would drop the dragged row
     const live = !!run; // paused or not
