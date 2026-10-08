@@ -138,9 +138,9 @@ export function mountGrowth(uid, { onChange } = {}){
 export function totalsLine(summary){
   const tile = (cls, v, word) => h("div", { className: `bl-stat ${cls}` }, h("strong", {}, v), h("span", {}, word));
   return h("div", { className: "bl-totals" },
-    tile("focus", summary.total ? `${summary.guess ? "~" : ""}${fmtMinutes(summary.total)}` : "0", "focused"),
-    tile("done", String(summary.done), "done"),
-    tile("days", String(summary.days), summary.days === 1 ? "day" : "days"));
+    tile("st-focus", summary.total ? `${summary.guess ? "~" : ""}${fmtMinutes(summary.total)}` : "0", "focused"),
+    tile("st-done", String(summary.done), "done"),
+    tile("st-days", String(summary.days), summary.days === 1 ? "day" : "days"));
 }
 
 export function weekCard(strip){

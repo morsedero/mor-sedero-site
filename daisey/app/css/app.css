@@ -1728,9 +1728,9 @@ body.focus .shell { block-size: auto; min-block-size: 100dvh; overflow: visible;
 .bl-stat { display: flex; align-items: baseline; gap: 5px; min-inline-size: 0; padding: 5px 9px; border-radius: 10px; background: var(--card); border: 1px solid var(--line); border-inline-start: 3px solid var(--sc); }
 .bl-stat strong { font-size: 16px; line-height: 1.2; font-weight: 800; letter-spacing: -.01em; color: var(--sc); white-space: nowrap; }
 .bl-stat span { font-size: 11px; font-weight: 600; color: var(--ink-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.bl-stat.focus { --sc: var(--p-teal-ink); }
-.bl-stat.done { --sc: var(--p-lime-ink); }
-.bl-stat.days { --sc: var(--p-orange-ink); }
+.bl-stat.st-focus { --sc: var(--p-teal-ink); }
+.bl-stat.st-done { --sc: var(--p-lime-ink); }
+.bl-stat.st-days { --sc: var(--p-orange-ink); }
 #projPage > .bl-card, #projPage > .bl-routines { margin-block-start: 14px; }
 
 /* The card: flower standing on its bottom edge, the rest beside it. */
