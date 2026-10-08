@@ -34,6 +34,17 @@ function paintNeeds(n){
 }
 
 
+// Top-bar clock and date (Mor, 2026-10-08): 24h like the rest of the app,
+// repainted on the minute, and straight away when the tab comes back.
+function paintClock(){
+  const d = new Date();
+  $("#hdrTime").textContent = d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
+  $("#hdrDate").textContent = d.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" });
+}
+paintClock();
+setInterval(() => { if (!document.hidden) paintClock(); }, 5000);
+document.addEventListener("visibilitychange", () => { if (!document.hidden) paintClock(); });
+
 // The home screen is exactly the window's height (app.css .shell). 100dvh
 // alone ran ~50px past the bottom in the installed app on Mor's Android
 // phone (2026-10-06), pushing Tell Daisey off-screen; innerHeight is what's
