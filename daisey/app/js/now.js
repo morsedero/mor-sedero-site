@@ -222,20 +222,43 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
   }
 
   // An answered question is a chip: ✓, the answer, ▾ (Mor, 2026-10-08:
-  // "unclear that I already answered"). Tapping it opens the choices as
-  // pills, the current one filled; tapping that one again keeps it. An
-  // unanswered question opens straight to the pills.
+  // "unclear that I already answered"). Tapping it drops a menu under it; the
+  // chip never moves (Mor, same day). An unanswered one is the question, no ✓.
   function answered(key, text, prompt, choices){
-    const toggle = (open) => () => { tripOpen = open; render(); };
-    if (choices.some((c) => c.on) && tripOpen !== key) {
-      return h("button", { className: "trip-chip", type: "button", ariaLabel: `${text}. Change`, ariaExpanded: "false", onclick: toggle(key) },
-        h("span", { className: "trip-ok", ariaHidden: "true", textContent: "✓" }), h("span", { textContent: text }),
-        h("span", { className: "trip-caret", ariaHidden: "true", textContent: "▾" }));
-    }
-    return h("div", { className: "trip-pick", role: "group", ariaLabel: prompt },
-      h("span", { className: "trip-q", textContent: prompt }),
+    const open = tripOpen === key, done = choices.some((c) => c.on);
+    const close = () => { tripOpen = null; render(); };
+    const chip = h("button", { className: "trip-chip" + (done ? "" : " ask"), type: "button", ariaLabel: done ? `${text}. Change` : prompt,
+      ariaExpanded: String(open), ariaHasPopup: "menu", onclick: () => { tripOpen = open ? null : key; render(); } },
+      done && h("span", { className: "trip-ok", ariaHidden: "true", textContent: "✓" }), h("span", { textContent: done ? text : prompt }),
+      h("span", { className: "trip-caret", ariaHidden: "true", textContent: "▾" }));
+    if (!open) return chip;
+    wireTripMenu();
+    const menu = h("div", { className: "trip-menu", role: "menu", ariaLabel: prompt },
       ...choices.map((c) => h("button", { className: "trip-opt" + (c.on ? " on" : "") + (c.danger ? " danger" : ""), type: "button",
-        textContent: c.label, ariaLabel: c.aria, ariaPressed: String(!!c.on), onclick: c.on ? toggle(null) : c.pick })));
+        role: "menuitemradio", ariaChecked: String(!!c.on), ariaLabel: c.aria, onclick: c.on ? close : c.pick },
+        h("span", { className: "trip-tick", ariaHidden: "true", textContent: c.on ? "✓" : "" }), c.label)));
+    // Fixed under the chip (above it near the bottom of the screen), so no
+    // card's overflow clips it.
+    requestAnimationFrame(() => {
+      if (!menu.isConnected) return;
+      const r = chip.getBoundingClientRect(), m = menu.getBoundingClientRect();
+      menu.style.top = `${r.bottom + 6 + m.height <= innerHeight ? r.bottom + 6 : Math.max(8, r.top - 6 - m.height)}px`;
+      menu.style.left = `${Math.min(Math.max(8, r.left), innerWidth - m.width - 8)}px`;
+      menu.style.visibility = "visible";
+    });
+    return h("span", { className: "trip-dd" }, chip, menu);
+  }
+  // One set of listeners for whichever menu is open: a tap outside it,
+  // Escape, or a scroll closes it.
+  let tripWired = false;
+  function wireTripMenu(){
+    if (tripWired) return;
+    tripWired = true;
+    const shut = () => { if (tripOpen) { tripOpen = null; render(); } };
+    document.addEventListener("pointerdown", (e) => { if (tripOpen && !e.target.closest?.(".trip-dd, .trip-chip")) shut(); }, true);
+    document.addEventListener("keydown", (e) => { if (e.key === "Escape") shut(); });
+    addEventListener("scroll", (e) => { if (tripOpen && !e.target.closest?.(".trip-menu")) shut(); }, true);
+    addEventListener("resize", shut);
   }
 
   // Today by another way, or not going (settings.tripDay): the saved answer
