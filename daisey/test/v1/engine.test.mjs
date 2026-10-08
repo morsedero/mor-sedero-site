@@ -260,10 +260,10 @@ test("rank: stale tasks listed for keep/shrink/drop; empty states", () => {
 
 // ---------- why line ----------
 
-test("why: the strongest 2–3 factors, first person on the card", () => {
+test("why: the strongest 2 factors, first person on the card", () => {
   const s = pick(dl("2026-10-05", { stakes: "money", size: 30 }));
-  assert.equal(s.why, "Deadline today, costs money if late, fills your free hour.");
-  assert.equal(E.whyText(E.whySaid(s)), "I'd do this now: deadline today, costs money if late, fills your free hour.");
+  assert.equal(s.why, "Deadline today, costs money if late.");
+  assert.equal(E.whyText(E.whySaid(s)), "I'd do this now: deadline today, costs money if late.");
   assert.equal(E.whyText(E.whySaid(pick(task({ size: 120, canSplit: true }), { realWindow: false }) || { whyParts: [] })), "I'd do this one next.");
 });
 

@@ -104,7 +104,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
     },
     get size(){ return hidden().length; },
   };
-  const reset = () => { state.chosen = null; state.showAlts = false; state.laterAsk = false; state.pendAsk = false; state.notNow = false; state.pendText = ""; state.pendCheck = ""; state.single = false; };
+  const reset = () => { state.chosen = null; state.showAlts = false; state.laterAsk = false; state.pendAsk = false; state.notNow = false; state.more = false; state.pendText = ""; state.pendCheck = ""; state.single = false; };
   let shown;
   const showing = (id) => { if (id !== shown) { shown = id; onCard?.(id); } };
 
@@ -125,16 +125,20 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
       main ? heroTop(t, sizeLbl)
         : h("div", { className: "now-meta" }, ...pieces(t.project, sizeLbl)),
       main && onOpen ? titleButton(t) : h("div", { className: "now-title", dir: "auto", textContent: t.title }),
-      t.nextStep && h("p", { className: "now-next" }, "Next: ", bdi(t.nextStep)),
+      !main && t.nextStep && h("p", { className: "now-next" }, "Next: ", bdi(t.nextStep)),
       why && h("p", { className: "now-why" }, ...say(why)),
       !main && progressBar(t),
       ...extra);
   }
   const titleButton = (t) => h("button", { type: "button", className: "now-title", dir: "auto", textContent: t.title,
     ariaLabel: `Open ${t.title}`, onclick: () => onOpen(t) });
+  // The main card's next step sits just under the card, not on it (Mor,
+  // 2026-10-08: less on the card).
+  const nextLine = (t) => t?.nextStep && h("p", { className: "now-next-out" }, "Next: ", bdi(t.nextStep));
 
-  // The hero's top row, on ONE line: area dot, "Area · project" in the
-  // area's colour, and on the far side the size (or whatever the card says
+  // The hero's top row, on ONE line: the area's dot, the project in the
+  // area's colour (the area's name only when there's no project; Mor,
+  // 2026-10-08), and on the far side the size (or whatever the card says
   // there). The project name opens its project screen.
   function heroTop(t, side){
     const area = areaName(t);
@@ -142,7 +146,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
       title: `Open ${t.project}`, onclick: () => onProject?.(t.project) }, bdi(t.project));
     return h("div", { className: "hero-top" },
       h("span", { className: "hero-area" }, h("span", { className: "dot", ariaHidden: "true" }),
-        h("span", { className: "hero-where" }, area, area && proj ? " · " : "", proj || (area ? "" : "Inbox"))),
+        h("span", { className: "hero-where" }, proj || area || "Inbox")),
       side && h("span", { className: "hero-side" }, side, progressBar(t)));
   }
 
@@ -151,7 +155,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
   // is asked of it (CSS; off under reduced motion).
   const deck = (card, still) => h("div", { className: `deck${still ? " still" : ""}` }, card);
 
-  const asking = () => state.notNow || state.pendAsk || state.showAlts;
+  const asking = () => state.more || state.notNow || state.pendAsk || state.showAlts;
 
   // The one loud button: amber, with a play icon.
   const startButton = (text, aria, onclick) => h("button", { className: "btn primary start", type: "button", ariaLabel: aria, onclick },
@@ -807,25 +811,27 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
   function cardActions(task, alts, start){
     const card = { task };
     const someN = somedayTasks().length;
+    // Done, More, then Start at the row's far end (Mor, 2026-10-08: two
+    // buttons and Start). Later, Pending and Something else live behind
+    // More; a second tap on More closes whatever it opened.
+    const open = state.more || state.notNow || state.pendAsk || state.showAlts;
+    const only = (key) => () => { state.more = state.notNow = state.pendAsk = state.showAlts = false; state[key] = true; render(); };
+    const chip = (text, onclick) => h("button", { className: "chip", type: "button", textContent: text, onclick });
     return [
-      // Later, Pending, Done, then Start at the row's far end (Mor,
-      // 2026-10-07: Pending is a real step, so its own first tap; Later asks
-      // only when; Focus lives on the running card).
       h("div", { className: "now-actions now-row" },
-        action("later", "Later", `choose when to see ${card.task.title} again`,
-          { ariaExpanded: String(state.notNow), onclick: () => { state.notNow = !state.notNow; state.pendAsk = false; state.showAlts = false; render(); } }),
-        action("pending", "Pending", `${card.task.title} is blocked: set it to Pending`,
-          { ariaExpanded: String(state.pendAsk), onclick: () => { state.pendAsk = !state.pendAsk; state.notNow = false; state.showAlts = false; render(); } }),
         doneHold(action("check", "Done", `hold to show how much of ${card.task.title} is done`, {}), card.task),
+        action("more", "More", `Later, Pending or something else instead of ${card.task.title}`,
+          { ariaExpanded: String(open), onclick: () => { state.more = state.notNow = state.pendAsk = state.showAlts = false; state.more = !open; render(); } }),
         start),
+      state.more && h("div", { className: "later-ask more-ask", role: "group", ariaLabel: "More" },
+        chip("Later", only("notNow")),
+        chip("Pending", only("pendAsk")),
+        // Never a dead end while Not now holds tasks (DAISEY_SPEC "Someday comes back").
+        (alts.length || someN) && chip("Something else", only("showAlts"))),
       state.notNow && h("div", { className: "later-ask", role: "group", ariaLabel: "When instead?" },
         ...[["today", "Later today"], ["tomorrow", "Tomorrow"], ["week", "This week"], ["someday", "Not now"]].map(([w, text]) =>
-          h("button", { className: "chip", type: "button", textContent: text, onclick: () => later(card.task, w) }))),
+          chip(text, () => later(card.task, w)))),
       state.pendAsk && pendingAsk(card.task),
-      // Never a dead end while Not now holds tasks (DAISEY_SPEC "Someday comes back").
-      (alts.length || someN) && h("button", { className: "linkish now-else", type: "button", ariaExpanded: String(state.showAlts),
-        textContent: state.showAlts ? "Hide other tasks" : "Something else",
-        onclick: () => { state.showAlts = !state.showAlts; state.notNow = false; state.pendAsk = false; render(); } }),
     ];
   }
 
@@ -1217,7 +1223,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
     // Start is the one loud thing on the tab; the other two stay quiet under it.
     day(...head, deck(taskCard(card, true,
       ...cardActions(card.task, alts, startButton("Start", `Start: ${card.task.title}`, () => begin(card.task)))), asking()),
-      ...altsFor(alts), tip);
+      nextLine(card.task), ...altsFor(alts), tip);
     // One slide-in per step-aside: later snapshots must not replay it.
     if (slideIn) { slideIn = false; if (motionOK()) root.querySelector(".now-card.main")?.classList.add("in"); }
   }

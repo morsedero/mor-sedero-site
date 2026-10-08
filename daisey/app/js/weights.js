@@ -123,7 +123,7 @@ export const ALTERNATIVES = 3;
 export const VARIETY_WITHIN = 15; // points; prefer another area if it scores this close
 
 // Why line
-export const WHY_PARTS = 3; // at most
+export const WHY_PARTS = 2; // at most (Mor, 2026-10-08: max 2 reasons)
 export const WHY_MIN_POINTS = 5; // a factor worth less than this isn't a reason
 // OURS: "offices close at 16:00" isn't a score, but it's worth saying when an
 // office-hours task is up and closing is this close. It ranks in the why

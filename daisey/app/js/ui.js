@@ -93,6 +93,7 @@ const PATHS = {
   play: "M7 4.5v15l13-7.5z", // filled, not stroked (FILLED)
   pause: "M7 5h3.5v14H7zM13.5 5H17v14h-3.5z", // filled
   stop: "M8 6h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2z", // filled
+  more: "M4 12a2 2 0 1 0 4 0 2 2 0 1 0-4 0ZM10 12a2 2 0 1 0 4 0 2 2 0 1 0-4 0ZM16 12a2 2 0 1 0 4 0 2 2 0 1 0-4 0Z", // ⋯, filled
   back: "M15 6l-6 6 6 6",
   inbox: "M4 13l3-8h10l3 8v6H4zM4 13h5l1 2h4l1-2h5",
   chev: "M9 6l6 6-6 6",
@@ -103,7 +104,7 @@ const PATHS = {
   folder: "M3.5 7.5a2 2 0 0 1 2-2h4l2 2.5h7a2 2 0 0 1 2 2v7.5a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2Z",
   someday: "M7 18a4.5 4.5 0 0 1-.6-9A6 6 0 0 1 18 9.5a4 4 0 0 1-1 8.5Z", // a cloud: parked
 };
-const FILLED = new Set(["play", "pause", "stop"]);
+const FILLED = new Set(["play", "pause", "stop", "more"]);
 
 export const icon = (name) => {
   const NS = "http://www.w3.org/2000/svg";
