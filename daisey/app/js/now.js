@@ -660,11 +660,18 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
         ...(p ? [
           heroTop(p.task, [dur(p.task.size), MARK[p.task.stakes]].filter(Boolean).join(" · ")),
           onOpen ? titleButton(p.task) : h("div", { className: "now-title", dir: "auto", textContent: p.task.title }),
-          h("p", { className: "now-why", textContent: first
-            ? `${minText(hrs.start)}, after ${first.title} (${clock(Date.parse(first.start))}–${clock(Date.parse(first.end))})`
-            : `Starts ${minText(hrs.start)}` }),
+          // Before the first event if it fits there, else when it ends. The
+          // title is its own <bdi>, or a Hebrew name drags the times after it
+          // into RTL and prints the range backwards.
+          first ? (() => {
+            const fs = Date.parse(first.start), fe = Date.parse(first.end);
+            const before = morning + (p.task.size || 0) * 60000 <= fs;
+            return h("p", { className: "now-why" },
+              `${before ? minText(hrs.start) : clock(Math.max(morning, fe))}, ${before ? "before" : "after"} `,
+              bdi(first.title), ` (${clock(fs)}–${clock(fe)})`);
+          })() : h("p", { className: "now-why", textContent: `Starts ${minText(hrs.start)}` }),
         ] : [
-          first && h("p", { className: "now-why", textContent: `${clock(Date.parse(first.start))}–${clock(Date.parse(first.end))} ${first.title}` }),
+          first && h("p", { className: "now-why" }, `${clock(Date.parse(first.start))}–${clock(Date.parse(first.end))} `, bdi(first.title)),
           h("p", { className: "now-empty", textContent: "Nothing lined up yet." }),
         ])),
       h("div", { className: "night-foot" },
