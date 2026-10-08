@@ -28,7 +28,7 @@ const writeSeen = (v) => { try { localStorage.setItem(SEEN_KEY, JSON.stringify(v
 
 // One flower, 60 wide: stem up to `height`, petals around the head.
 export function flowerSvg(f){
-  const top = 100 - (14 + f.height * 58), cx = 30, root = svg("svg", { viewBox: "0 0 60 120", class: "bl-svg", "aria-hidden": "true" });
+  const top = 100 - (14 + f.height * 58), cx = 30, root = svg("svg", { viewBox: `0 ${top - 20} 60 ${140 - top}`, class: "bl-svg", "aria-hidden": "true" });
   root.append(svg("path", { d: `M30 118 C30 ${(118 + top) / 2} 30 ${(118 + top) / 2} 30 ${top + 6}`, class: "bl-stem" }),
     svg("path", { d: `M30 ${Math.min(top + 50, 106)} q-12 -2 -15 -12 q12 0 15 12z`, class: "bl-leaf" }));
   const head = svg("g", { class: "bl-head" });
