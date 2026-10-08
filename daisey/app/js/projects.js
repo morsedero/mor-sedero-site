@@ -53,8 +53,10 @@ const plural = (n, one, many = one + "s") => `${n} ${n === 1 ? one : many}`;
 const PALETTE = ["work", "admin", "teal", "social", "job", "home", "orange", "personal", "slate", "brick", "lime"];
 const hash = (s) => [...String(s)].reduce((a, c) => (a * 31 + c.codePointAt(0)) >>> 0, 7);
 export function colorize(ps){
-  const taken = new Set();
-  for (const p of [...ps].sort((a, b) => a.name.localeCompare(b.name))) {
+  // Inbox keeps slate (Mor, 2026-10-08): its own colour, not one a project gets.
+  const taken = new Set(), inbox = ps.find((p) => p.name === INBOX);
+  if (inbox) { inbox.color = "slate"; taken.add("slate"); }
+  for (const p of [...ps].filter((p) => p !== inbox).sort((a, b) => a.name.localeCompare(b.name))) {
     let c = PALETTE.includes(p.area) && !taken.has(p.area) ? p.area : null;
     for (let k = 0, i = hash(p.name); !c && k < PALETTE.length; k++) if (!taken.has(PALETTE[(i + k) % PALETTE.length])) c = PALETTE[(i + k) % PALETTE.length];
     p.color = c || PALETTE[hash(p.name) % PALETTE.length];

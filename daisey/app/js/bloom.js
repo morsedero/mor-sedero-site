@@ -120,10 +120,10 @@ export function mountGrowth(uid, { onChange } = {}){
       flowers: new Map(fl.map((f) => [f.name, f])), line: oneLine({ summary, flowers: fl, routines, period }) };
   }
 
-  // One button, Week <-> Month (Mor, 2026-10-08); Today is gone from the page.
-  const pills = () => { const next = period === "week" ? "month" : "week";
-    return h("button", { type: "button", className: "bl-toggle", ariaLabel: `Showing ${PERIOD_TEXT[period].toLowerCase()}. Switch to ${PERIOD_TEXT[next].toLowerCase()}`, textContent: `${PERIOD_TEXT[period]} ⇄`,
-      onclick: () => { period = next; watchPeriod(); loadEvents(); onChange?.(); } }); };
+  // Week | Month, a sliding switch (Mor, 2026-10-08); Today is gone from the page.
+  const pills = () => h("div", { className: "bl-seg" + (period === "month" ? " month" : ""), role: "radiogroup", ariaLabel: "Period" },
+    ...["week", "month"].map((p) => h("button", { type: "button", className: "bl-seg-b", role: "radio", ariaChecked: String(p === period), textContent: PERIOD_TEXT[p],
+      onclick: () => { if (p === period) return; period = p; watchPeriod(); loadEvents(); onChange?.(); } })));
 
   return {
     read,
@@ -136,11 +136,11 @@ export function mountGrowth(uid, { onChange } = {}){
 
 // The tiles, folded into one line of numbers (Mor, 2026-10-08).
 export function totalsLine(summary){
-  const n = (v, word) => h("span", { className: "bl-tot" }, h("strong", {}, v), " ", word);
-  return h("p", { className: "bl-totals" },
-    n(summary.total ? `${summary.guess ? "~" : ""}${fmtMinutes(summary.total)}` : "0", "focused"),
-    n(String(summary.done), "done"),
-    n(String(summary.days), summary.days === 1 ? "day" : "days"));
+  const tile = (cls, v, word) => h("div", { className: `bl-stat ${cls}` }, h("strong", {}, v), h("span", {}, word));
+  return h("div", { className: "bl-totals" },
+    tile("focus", summary.total ? `${summary.guess ? "~" : ""}${fmtMinutes(summary.total)}` : "0", "focused"),
+    tile("done", String(summary.done), "done"),
+    tile("days", String(summary.days), summary.days === 1 ? "day" : "days"));
 }
 
 export function weekCard(strip){
