@@ -844,7 +844,7 @@ button.now-title:focus-visible { outline: 2px solid var(--aink); outline-offset:
 
 .np-form { display: grid; gap: 10px; margin-block-start: 12px; }
 .np-form .msg:empty { display: none; }
-.pgrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-block-start: 10px; }
+.pgrid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; margin-block-start: 10px; }
 .pcard { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0; align-content: start; padding: 12px; border-radius: 16px; background: var(--tint); border: 1px solid var(--aline); color: var(--ink); font: inherit; text-align: start; cursor: pointer; }
 .pcard-top { display: flex; justify-content: space-between; align-items: center; gap: 6px; }
 .pcard-name { min-inline-size: 0; font-size: 15px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
