@@ -637,7 +637,8 @@ dialog.now:focus { outline: none; }
 .menu-stack { display: grid; gap: 2px; }
 .menu-sub { font-size: 12px; color: var(--ink-2); }
 .menu-sub input { inline-size: 15px; block-size: 15px; }
-.menu-stat { display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--ink-2); }
+.menu-stat { display: grid; grid-template-columns: 96px 64px; align-items: center; gap: 10px; font-size: 13px; color: var(--ink-2); }
+.menu-stat > :first-child { text-align: end; }
 .menu-note { margin: 0; font-size: 12px; color: var(--ink-2); }
 .menu-link { justify-self: start; min-block-size: 32px; padding: 0; border: 0; background: none; font: inherit; font-size: 14px; color: var(--ink); cursor: pointer; }
 .menu-link:hover { text-decoration: underline; }
