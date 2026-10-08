@@ -8,7 +8,7 @@
 export function sortable(list, { onMove, busy }){
   let pid = null, armed = false, hold = 0, dragged = false, row = null;
   let y0 = 0, lastY = 0, off = 0, mid0 = 0, s0 = 0, lo = 0, hi = 0, rh = 0, raf = 0;
-  let snap = [], to = 0, from = 0, marked = null;
+  let snap = [], gaps = [], tasks = [], to = 0, from = 0, marked = null;
   const rows = () => [...list.querySelectorAll(":scope > .pp-drag")];
   // The nearest scrolling ancestor (the page body, usually).
   const scroller = () => { for (let n = list.parentElement; n; n = n.parentElement) { const o = getComputedStyle(n).overflowY; if ((o === "auto" || o === "scroll") && n.scrollHeight > n.clientHeight) return n; } return document.scrollingElement; };
@@ -22,7 +22,12 @@ export function sortable(list, { onMove, busy }){
     const c = centre();
     to = snap.filter((s) => s.mid < c).length;
     unmark();
-    if (to !== from) marked = snap[to] ? [snap[to].el, "pp-ins"] : [snap.at(-1).el, "pp-ins-end"];
+    if (to !== from) {
+      // The line sits above the break too when the pointer is above its middle.
+      let k = to < tasks.length ? gaps.indexOf(tasks[to]) : gaps.length;
+      while (k > 0 && gaps[k - 1].brk && c < gaps[k - 1].mid) k--;
+      marked = gaps[k] ? [gaps[k].el, "pp-ins"] : [gaps.at(-1).el, "pp-ins-end"];
+    }
     if (marked) marked[0].classList.add(marked[1]);
   };
   const tick = () => {
@@ -38,6 +43,8 @@ export function sortable(list, { onMove, busy }){
     const all = rows();
     from = all.indexOf(row);
     snap = all.filter((r) => r !== row).map((el) => { const r = el.getBoundingClientRect(); return { el, mid: (r.top + r.bottom) / 2 + s0 }; });
+    gaps = [...list.children].filter((el) => el !== row).map((el) => { const r = el.getBoundingClientRect(); return { el, mid: (r.top + r.bottom) / 2 + s0, brk: !el.classList.contains("pp-drag") }; });
+    tasks = gaps.filter((g) => !g.brk);
     const r = row.getBoundingClientRect(), mid = (r.top + r.bottom) / 2, l = list.getBoundingClientRect();
     off = mid - y0; mid0 = mid + s0; rh = r.height; to = from;
     lo = l.top + s0 - 40; hi = l.bottom + s0 + 40;
