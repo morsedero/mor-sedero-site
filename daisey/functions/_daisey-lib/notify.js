@@ -19,10 +19,10 @@
 //           the lead before the day starts, so a meeting at 08:00 still gets
 //           its reminder.
 //   miss    a free slot passed with nothing started (app/js/miss.js): the
-//           task that was up, with Start / Shorten buttons; a second slot
-//           ignored in a row (or a first one from 13:00 with nothing done all
-//           day) is the silence check instead — "Rough day?" with Lighter
-//           plan / Not today, once a day. Not when Daisey was on screen since
+//           task that was up, with Start / Shorten buttons; once the misses
+//           add up (two slots in a row, a third of the day's free time, or
+//           today's work no longer fitting) it's the silence check instead —
+//           "Rough day?" with Lighter plan / Not today, once a day. Not when Daisey was on screen since
 //           (its own banner asked), never alongside a gap or booked
 //           suggestion, and not when the calendar can't be read (a meeting
 //           would look like idle time).
@@ -54,7 +54,7 @@ const { effectiveDue } = require("../../app/js/triage.js");
 const { waitingFor, personOf } = require("../../app/js/nudge.js");
 const { EVENT_BUFFER } = require("../../app/js/weights.js");
 const { runState, overruled, eventKey } = require("../../app/js/reality.js");
-const { missState } = require("../../app/js/miss.js");
+const { missState, silenceText } = require("../../app/js/miss.js");
 const { nextPlanned, leftOf } = require("../../app/js/proposal.js");
 const { MISS } = require("../../app/js/weights.js");
 
@@ -206,7 +206,7 @@ function missMessage(st, { rec, tasks, busy, booked, date, end, now, tz }) {
   if (!ready.length) return null;
   if (st.kind === "silence") {
     return { type: "silence", title: "Rough day?", ttl: SILENCE_TTL, tag: `silence-${date}`, url: "./?open=lighter", date,
-      body: `${st.since ? `Nothing's moved since ${clockIn(st.since, tz)}.` : "Nothing's started yet today."} Want a lighter plan for the rest of today?`,
+      body: silenceText(st, (ms) => clockIn(ms, tz)),
       actions: [{ action: "lighter", title: "Lighter plan" }, { action: "quiet", title: "Not today" }] };
   }
   // The task that was up: the approved plan's next one, else the Now card's pick.

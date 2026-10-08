@@ -63,14 +63,26 @@ test("missState: a meeting resets the slot; an approved plan counts as activity"
   assert.equal(st({ tasks, events: [meet], now: at(11, 12), planAt: at(11, 5) }), null);
 });
 
-test("missState: nothing done all day → a first miss from 13:00 is the silence check", () => {
-  const tasks = [t({ touchedAt: at(7) })]; // yesterday-ish: before the day
-  const meet = { id: "m", title: "Workshop", start: il(8), end: il(13), busy: true };
-  const s = st({ tasks, events: [meet], now: at(13, 11) });
-  assert.equal(s.kind, "silence");
-  assert.equal(s.since, null);
-  // A morning with a free first hour: that's a plain miss at 8:10.
-  assert.equal(st({ tasks, now: at(8, 11) }).kind, "miss");
+test("missState: a third of the day's free time ignored → silence after one slot (not a fixed hour)", () => {
+  const tasks = [t({ touchedAt: at(7) })]; // before the day: nothing done today
+  const morning = { id: "m1", title: "Workshop", start: il(8), end: il(12, 30), busy: true };
+  const evening = { id: "m2", title: "Rehearsal", start: il(14), end: il(22), busy: true };
+  // 90 free minutes all day: 11 ignored is a miss, 31 is a third of it.
+  assert.equal(st({ tasks, events: [morning, evening], now: at(12, 41) }).kind, "miss");
+  const s = st({ tasks, events: [morning, evening], now: at(13, 1) });
+  assert.deepEqual([s.kind, s.why, s.since], ["silence", "time", null]);
+  assert.equal(M.silenceText(s, () => "x"), "Nothing's started yet today. Want a lighter plan for the rest of today?");
+  // The same 31 minutes on a day with a free afternoon is still just a miss.
+  assert.equal(st({ tasks, events: [morning], now: at(13, 1) }).kind, "miss");
+});
+
+test("missState: today's work stopped fitting → silence after one slot", () => {
+  const fits = [t({ size: 100, touchedAt: at(20) })]; // 120 free min left at 20:00
+  const s = st({ tasks: fits, now: at(20, 25) }); // 95 left
+  assert.deepEqual([s.kind, s.why, s.since], ["silence", "overload", at(20)]);
+  assert.equal(M.silenceText(s, () => "20:00"), "What's due today doesn't fit any more. Want a lighter plan for the rest of today?");
+  // Never fit to begin with: the miss didn't change that, so it's a plain miss.
+  assert.equal(st({ tasks: [t({ size: 150, touchedAt: at(20) })], now: at(20, 25) }).kind, "miss");
 });
 
 test("proposeDay maxEach: only small tasks, but a deadline due today still comes", () => {

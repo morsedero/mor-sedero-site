@@ -3,9 +3,14 @@
 // the two never overlap:
 //   miss     MISS.after minutes into a free slot with nothing started: the
 //            card's task, with Start / Shorten / Move
-//   silence  a second slot ignored in a row, or a first one from MISS.midday
-//            on with nothing done all day: "Rough day? Lighter plan?" —
-//            once a day; after it, quiet until you do something
+//   silence  "Rough day? Lighter plan?" — once a day; after it, quiet until
+//            you do something. Comes when the misses add up, measured
+//            against the day as it is (Mor, 2026-10-08: not a fixed hour):
+//              slots     a second slot ignored in a row
+//              time      the free time ignored is MISS.share of today's
+//                        (a day of meetings has little to lose)
+//              overload  what's due today fit the free time left at the
+//                        last activity, and doesn't any more
 // A slot starts where a free stretch does (the day's start, a busy event's
 // end) and every MISS.every minutes into a long one, counted from the last
 // thing you did: a Start, a Done, any answer on the card (each one touches
@@ -16,7 +21,8 @@
 // app closed), so both name the same moment. PURE.
 import { MISS } from "./weights.js";
 import { runState, overruled, eventKey } from "./reality.js";
-import { localDate } from "./model.js";
+import { localDate, leftMinutes, notYet } from "./model.js";
+import { effectiveDue } from "./triage.js";
 import { dayStartAt, dayEndAt } from "./day.js";
 
 const MIN = 60000;
@@ -34,6 +40,27 @@ const busyOf = (events, { tasks, run, now }) => {
   return (events || []).filter((e) => !e.allDay && e.busy !== false && e.start && e.end && !over.has(eventKey(e)))
     .map((e) => [ms(e.start), ms(e.end)]).sort((a, b) => a[0] - b[0]);
 };
+
+// Free minutes between a and b, around the busy spans.
+function freeBetween(busy, a, b){
+  let free = 0, cursor = a;
+  for (const [s, e] of busy) {
+    if (e <= cursor) continue;
+    if (s >= b) break;
+    if (s > cursor) free += s - cursor;
+    cursor = Math.max(cursor, e);
+  }
+  if (cursor < b) free += b - cursor;
+  return free / MIN;
+}
+
+// The silence check's line, the same in the app and the notification.
+// fmt: ms → "10:00" in the user's clock.
+export function silenceText(st, fmt){
+  const what = st.why === "overload" ? "What's due today doesn't fit any more."
+    : st.since ? `Nothing's moved since ${fmt(st.since)}.` : "Nothing's started yet today.";
+  return `${what} Want a lighter plan for the rest of today?`;
+}
 
 // The slots ignored since the last activity, oldest first: [{ start, at }],
 // at: when it counted as missed.
@@ -59,8 +86,8 @@ export function missedSlots({ tasks = [], events = [], run = null, now = Date.no
 }
 
 // Where the ladder stands right now: null, { kind: "miss", key, at, start }
-// or { kind: "silence", key, at, since } (since: the last activity, or null
-// when there was none today). silenceOn: the day the silence check was
+// or { kind: "silence", key, at, since, why } (since: the last activity, or
+// null when there was none today; why: "slots" | "time" | "overload"). silenceOn: the day the silence check was
 // answered (settings.silenceOn).
 export function missState({ tasks = [], events = [], run = null, now = Date.now(), hours, planAt = 0, silenceOn = null } = {}){
   if (now < dayStartAt(now, hours) || now >= dayEndAt(now, hours)) return null;
@@ -71,11 +98,16 @@ export function missState({ tasks = [], events = [], run = null, now = Date.now(
   const slots = missedSlots({ tasks, events, run, now, hours, planAt });
   if (!slots.length) return null;
   const today = localDate(now), act = lastActivity(tasks, run, planAt);
-  const quietDay = act < dayStartAt(now, hours);
-  const last = slots[slots.length - 1], noon = new Date(now).setHours(0, MISS.midday, 0, 0);
-  if (slots.length >= 2 || (quietDay && last.at >= noon)) {
+  const dayA = dayStartAt(now, hours), dayB = dayEndAt(now, hours), from = Math.max(act, dayA);
+  const last = slots[slots.length - 1];
+  const need = tasks.filter((t) => t.status === "ready" && !notYet(t, now) && t.due && effectiveDue(t, now) <= today)
+    .reduce((s, t) => s + leftMinutes(t), 0);
+  const why = slots.length >= 2 ? "slots"
+    : freeBetween(busy, from, now) >= MISS.share * freeBetween(busy, dayA, dayB) ? "time"
+    : need > freeBetween(busy, now, dayB) && need <= freeBetween(busy, from, dayB) ? "overload" : null;
+  if (why) {
     if (silenceOn === today) return null;
-    return { kind: "silence", key: `silence|${today}`, at: slots.length >= 2 ? slots[1].at : last.at, since: quietDay ? null : act };
+    return { kind: "silence", key: `silence|${today}`, at: why === "slots" ? slots[1].at : now, since: act >= dayA ? act : null, why };
   }
   // A miss is asked while its slot is still the one you're in: not hours
   // later, and not across a meeting since (the next slot will speak).
