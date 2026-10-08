@@ -2,7 +2,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 process.env.TZ = "Asia/Jerusalem";
-const { proposeDay, timeline, withBreaks, trimBreaks, nextPlanned, parseAsk, planProgress } = await import("../../app/js/proposal.js");
+const { proposeDay, timeline, withBreaks, trimBreaks, nextPlanned, parseAsk, planProgress, refit } = await import("../../app/js/proposal.js");
 
 const at = (h, m = 0) => Date.UTC(2026, 9, 7, h - 3, m);
 const il = (h, m = 0) => new Date(at(h, m)).toISOString();
@@ -117,4 +117,18 @@ test("breaks become plan items once, then stay where they're put", () => {
   // A break after finished work, with nothing laid since, was had.
   const done = tasks.map((x) => (x.id === "a" ? { ...x, status: "done" } : x));
   assert.equal(timeline(items, { ...ctx, tasks: done }).breaks.length, 0);
+});
+
+test("refit: when the day shrinks, what matters least goes, not what's last; the order of what stays is kept", () => {
+  const tasks = [t({ id: "a", size: 60 }), t({ id: "b", size: 60, dateKind: "deadline" }), t({ id: "c", size: 20 })];
+  const items = [{ taskId: "a", minutes: 60 }, { brk: "short", minutes: 10 }, { taskId: "b", minutes: 60 }, { taskId: "c", minutes: 20 }];
+  const ctx = { tasks, events: [], now: at(20) }; // 20:00-22:00 left, 150 min planned
+  assert.deepEqual(refit(items, ctx), { items: [{ taskId: "b", minutes: 60 }, { taskId: "c", minutes: 20 }], cut: ["a"] });
+  // Nothing to do when it all fits.
+  const roomy = { ...ctx, now: at(9) };
+  assert.equal(refit(items, roomy).items, items);
+  // Put back with Undo: never cut again, even when it means something else goes.
+  assert.deepEqual(refit(items, ctx, ["a"]).cut, ["b"]);
+  // The running task never goes.
+  assert.ok(!refit(items, { ...ctx, run: { taskId: "a", startedAt: at(9) } }).cut.includes("a"));
 });

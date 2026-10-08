@@ -16,7 +16,7 @@ import { overruled, eventKey } from "./reality.js";
 import * as deep from "./deep.js";
 import { addTask, watchTasks, watchRun, watchSkips, saveSkips, startRun, extendRun, endRun, startBatch, tickBatch, endBatch, skipNow, blockTask, restoreTask, finishTask, watchSettings, saveSettings, watchMoment, saveMoment, watchLearn, bumpLearn, saveRun, cancelRun, watchDayPlan, saveDayPlan, holdTask, releaseTask } from "./store.js";
 import { sortable } from "./ppdrag.js";
-import { proposeDay, timeline, withBreaks, trimBreaks, isBreak, nextPlanned, planProgress } from "./proposal.js";
+import { proposeDay, timeline, withBreaks, trimBreaks, isBreak, nextPlanned, planProgress, refit } from "./proposal.js";
 import { rethink } from "./rethink.js";
 import { placeNow, workBase } from "./context.js";
 import { watchWhere, setManual, whereAsk } from "./where.js";
@@ -25,7 +25,7 @@ import { focusView, handoffView, elapsedMinutes, targetMinutes, batchFocusView, 
 import { watchCalendar, logDone } from "./calendar.js";
 import { LATER_MINUTES, DRAIN, CANCEL_KEEP_MINUTES } from "./weights.js";
 import { rank, freeWindow, timeBucket, matchProject, dueAt } from "./engine.js";
-import { leftMinutes, toMinutes, progressOf, progressPatch, localDate, skipSnapshot, skipLesson, pendingCheck, notYet, pushedTo, bringBack, againInput } from "./model.js";
+import { leftMinutes, toMinutes, progressOf, progressPatch, localDate, skipSnapshot, skipLesson, pendingCheck, notYet, pushedTo, bringBack, againInput, dayAfter } from "./model.js";
 import { waitingFor, personOf } from "./nudge.js";
 import { dayHours, isNight, nextMorning, dayEndAt, bookings, sameTitle, minText, gapsToday } from "./day.js";
 import { collectNeeds } from "./needs.js";
@@ -940,10 +940,58 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
     });
   }
   const closeProposal = () => { prop.open = false; prop.ask = false; prop.note = ""; render(); };
-  const savePlan = (status, items) => {
-    dayPlan = { date: localDate(), status, items, at: Date.now() };
-    saveDayPlan(uid, { date: dayPlan.date, status, items }).catch(fail);
+  // extra: the refit's record ({ kept, cut }), kept until the plan is saved again.
+  const savePlan = (status, items, extra = {}) => {
+    dayPlan = { date: localDate(), status, items, ...extra, at: Date.now() };
+    saveDayPlan(uid, { date: dayPlan.date, status, items, ...extra }).catch(fail);
   };
+  // The approved plan no longer fits the day (an event added, running late):
+  // Daisey cuts what matters least itself (proposal.refit) and says so under
+  // the card, with Undo (Mor, 2026-10-08). Cut tasks are just back in the
+  // list. cut: { ids, why, before } until seen; kept: after Undo, every task
+  // in the plan, so Daisey leaves that plan alone (cutting something else to
+  // make room for the ones put back would undo the Undo).
+  function refitPlan(){
+    const p = approvedPlan();
+    if (!p || !tasks || cal.status !== "ok" || prop.open || ppDragging) return;
+    const { items, cut } = refit(p.items || [], planCtx(), p.kept || []);
+    if (!cut.length) return;
+    const prev = p.cut && !p.cut.seen ? p.cut : null;
+    savePlan("approved", items, { kept: p.kept || [],
+      cut: { ids: [...(prev?.ids || []), ...cut], why: prev?.why || squeezedBy(p), before: prev?.before || p.items, asked: prev?.asked || [] } });
+  }
+  // What shrank the day: a busy event added or moved since the plan was saved.
+  function squeezedBy(p){
+    const now = Date.now(), ev = cal.events.filter((e) => !e.allDay && e.busy !== false && e.updated
+      && Date.parse(e.updated) > (p.at || 0) && Date.parse(e.end) > now && localDate(Date.parse(e.start)) === localDate())
+      .sort((a, b) => Date.parse(a.start) - Date.parse(b.start))[0];
+    return ev ? { title: ev.title, minutes: Math.round((Date.parse(ev.end) - Date.parse(ev.start)) / 60000) } : { late: true };
+  }
+  const cutSaved = (cut) => savePlan("approved", dayPlan.items, { kept: dayPlan.kept || [], cut });
+  function cutView(){
+    const c = approvedPlan()?.cut;
+    if (!c || c.seen) return null;
+    const gone = c.ids.map((id) => (tasks || []).find((t) => t.id === id)).filter(Boolean);
+    if (!gone.length) return null;
+    const n = gone.length;
+    const cause = c.why?.title ? [bdi(c.why.title), ` takes ${dur(c.why.minutes)}, so I took`] : ["The day's running behind, so I took"];
+    // The follow-up: a real deadline today that no longer fits.
+    const ask = gone.find((t) => t.status === "ready" && t.dateKind === "deadline" && t.due && t.due <= localDate() && !(c.asked || []).includes(t.id));
+    const answer = (patch) => { if (patch) restoreTask(uid, ask.id, patch).catch(fail); cutSaved({ ...c, asked: [...(c.asked || []), ask.id] }); render(); };
+    return h("div", { className: "toast plan-cut", role: "status" },
+      h("div", { className: "toast-row" },
+        h("span", { className: "toast-text" }, ...cause, ` ${n === 1 ? "one task" : `${n} tasks`} off today's plan: `,
+          ...gone.flatMap((t, i) => [i ? ", " : "", bdi(t.title)]), ". They're back in your list."),
+        h("span", { className: "toast-acts" },
+          h("button", { className: "toast-undo", type: "button", textContent: "Undo", ariaLabel: "Undo: put them back in today's plan",
+            onclick: () => { savePlan("approved", c.before, { kept: c.before.filter((it) => it.taskId).map((it) => it.taskId) }); render(); } }),
+          h("button", { className: "toast-undo", type: "button", textContent: "OK", ariaLabel: "OK, got it",
+            onclick: () => { cutSaved({ ...c, seen: true }); render(); } }))),
+      ask && h("div", { className: "toast-why-row", role: "group", ariaLabel: `${ask.title} is due today` },
+        h("span", { className: "toast-text" }, bdi(ask.title), " is due today. Move the deadline?"),
+        h("button", { className: "toast-why", type: "button", textContent: "To tomorrow", onclick: () => answer(pushedTo(ask, { due: dayAfter(1) })) }),
+        h("button", { className: "toast-why", type: "button", textContent: "Keep today", onclick: () => answer(null) })));
+  }
   function approve(){
     const n = prop.items.filter((it) => !isBreak(it)).length;
     savePlan("approved", trimBreaks(prop.items).map(({ taskId, brk, minutes }) => (brk ? { brk, minutes } : { taskId, minutes })));
@@ -1051,7 +1099,8 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
             .sort((a, b) => a.s - b.s).map((x) => (x.b ? breakRow(x.b) : row(x.r, false))),
           ...over.map((r) => row(r, true))))
         : h("p", { className: "now-empty", textContent: "No open task fits the free time left today." }),
-      // An approved plan never changes itself (Mor, 2026-10-07): late in the
+      // Overflow is cut by refitPlan (2026-10-08); what's left here is what
+      // the user put back with Undo. Late in the
       // day it says so and offers a fresh take on what's left.
       over.length > 0 && approved && !prop.busy && h("p", { className: "pp-note pp-late" }, "Running late. ",
         h("button", { type: "button", className: "linkish", textContent: "Rethink for what's left?", onclick: () => doRethink("") })),
@@ -1104,6 +1153,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
     if (!deepOn) deep.leave();
     else if (!deep.isOn()) deep.enter(runKey()); // a reload or the other device: no tap, so no full screen, but awake and counting
     document.body.classList.toggle("focus", deepOn || !!handoff);
+    refitPlan();
     const hrs = dayHours(settings);
     if (!isNight(Date.now(), hrs)) nightFree = false;
     const night = !live && !handoff && tasks != null && isNight(Date.now(), hrs) && !nightFree;
@@ -1192,7 +1242,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
     showing(card?.task.id ?? null);
     // One ask under the card at a time, the most asked-for first.
     // (The calendar offer and the weekly Someday pick moved to Needs you.)
-    const tip = (toast && toastView()) || (sd.open && somedayAsk());
+    const tip = (toast && toastView()) || cutView() || (sd.open && somedayAsk());
     // In a meeting, the meeting IS what's happening now, so the card says
     // which one and how much of it is left (Mor, 2026-10-04) instead of
     // "nothing to pick until it ends", which named nothing and read as if

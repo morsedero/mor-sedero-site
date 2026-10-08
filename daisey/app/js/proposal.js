@@ -198,6 +198,44 @@ export function timeline(items = [], { tasks = [], events = [], now = Date.now()
   return { rows, over, breaks };
 }
 
+// When the day shrinks under an approved plan (an event added, or running
+// late), Daisey refits it itself and says so after (Mor, 2026-10-08: "act on
+// its smartest way behind the scenes, tell the user, ask following
+// questions"). Supersedes "an approved plan never changes itself" for this.
+// What stays is decided by how much it matters, not by position: each task,
+// most important first, stays if the plan still fits with it in; the user's
+// order is kept for what stays. keep: ids that never go (the running task,
+// ones the user put back with Undo). → { items, cut: [taskId] }, cut empty
+// when nothing had to go.
+const DAY = 86400000;
+function weight(t, now){
+  if (!t?.due) return 0;
+  const days = (Date.parse(`${t.due}T23:59`) - now) / DAY;
+  if (t.dateKind === "deadline") return days < 1 ? 4 : days < 3 ? 3 : 1;
+  return days < 1 ? 2 : 0;
+}
+// No break first, last, or right after another one.
+function tidy(items){
+  return trimBreaks(items.filter((it, i) => !(isBreak(it) && isBreak(items[i + 1]))));
+}
+export function refit(items = [], ctx = {}, keep = []){
+  const now = ctx.now ?? Date.now();
+  const byId = new Map((ctx.tasks || []).map((t) => [t.id, t]));
+  const stays = new Set([...keep, ...(ctx.run?.batch || (ctx.run?.taskId ? [ctx.run.taskId] : []))]);
+  const fits = (list) => !timeline(list, ctx).over.some((o) => !stays.has(o.taskId));
+  if (fits(items)) return { items, cut: [] };
+  const open = (it) => byId.get(it.taskId)?.status === "ready";
+  const kept = new Set(items.map((it, i) => (isBreak(it) || !open(it) || stays.has(it.taskId) ? i : -1)).filter((i) => i >= 0));
+  const order = items.map((it, i) => ({ it, i })).filter(({ i }) => !kept.has(i))
+    .sort((a, b) => weight(byId.get(b.it.taskId), now) - weight(byId.get(a.it.taskId), now) || a.i - b.i);
+  const cut = [];
+  for (const { it, i } of order) {
+    kept.add(i);
+    if (!fits(tidy(items.filter((_, k) => kept.has(k))))) { kept.delete(i); cut.push(it.taskId); }
+  }
+  return { items: tidy(items.filter((_, k) => kept.has(k))), cut };
+}
+
 // The approved plan's next item that's still open and allowed now: the card
 // follows it (now.js). null when the plan is done or isn't today's.
 export function nextPlanned(plan, tasks = [], date, now = Date.now()){

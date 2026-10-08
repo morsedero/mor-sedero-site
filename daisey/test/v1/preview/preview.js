@@ -124,6 +124,18 @@ const SCENARIOS = {
       notes: "Waiting on the final mixes from Yuval." },
     { title: "Send invoice to Uri", project: "Admin", size: 5 },
   ] },
+  // An approved plan an event added since squeezes (use with --cal squeeze --at 10:00):
+  // Daisey cuts what matters least and says so under the card (proposal.refit).
+  squeeze: { tasks: [
+    { title: "למלא טופס לרואה חשבון", project: "סידורים", size: 15, due: day(0), dateKind: "deadline" },
+    { title: "Mix review for Reprise", project: "Reprise", size: 90, due: day(3) },
+    { title: "Lesson prep", project: "Teaching", size: 60, due: day(0) },
+    { title: "Tidy sample library", project: "Studio", size: 120 },
+    { title: "Fix the boss loop", project: "Monster Punk", size: 180 },
+  ], dayplan: { date: day(0), status: "approved", at: (() => { const d = new Date(); d.setHours(8, 30, 0, 0); return d.getTime(); })(),
+    items: [{ taskId: "t2", minutes: 90 }, { taskId: "t4", minutes: 120 }, { taskId: "t1", minutes: 15 }, { taskId: "t5", minutes: 180 }, { taskId: "t3", minutes: 60 }] } },
+  // Same, with the deadline too big to fit: the note asks about its date.
+  get "squeeze-due"(){ const s = structuredClone(SCENARIOS.squeeze); s.tasks[0].size = 400; s.dayplan.items[2].minutes = 400; return s; },
   // Nothing active: only waiting and Someday (the calm empty state).
   rest: { tasks: [
     { title: "Waiting on Yuval", project: "Reprise", size: 30, over: { status: "waiting", waitingOn: "Yuval" } },
@@ -161,6 +173,11 @@ const cal = flag("--cal");
 const calReply = !cal ? { status: 404, body: { error: "not_connected" } }
   : cal === "reauth" ? { status: 409, body: { error: "needs_reauth" } }
   : cal === "none" ? { status: 200, body: { events: [] } }
+  : cal === "squeeze" ? { status: 200, body: { events: (() => {
+      const at = (h, m = 0) => { const d = new Date(); d.setHours(h, m, 0, 0); return d.toISOString(); };
+      return [{ id: "e0", calendarId: "primary", editable: true, title: "עבודה על Daisey", start: at(9), end: at(15), busy: true, updated: at(9, 45) },
+        { id: "e1", calendarId: "primary", editable: true, title: "BOBBA", start: at(15), end: at(19), busy: true, updated: at(7) }];
+    })() } }
   : cal === "day" ? { status: 200, body: { events: (() => {
       const at = (h, m = 0) => { const d = new Date(); d.setHours(h, m, 0, 0); return d.toISOString(); };
       const tm = (h) => { const d = new Date(); d.setDate(d.getDate() + 1); d.setHours(h, 0, 0, 0); return d.toISOString(); };
