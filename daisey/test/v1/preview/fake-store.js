@@ -47,6 +47,7 @@ export const watchProjectNames = watch("projects");
 export const saveProjectNames = (uid, names) => { docs.projects = names; return ok("projects"); };
 export const saveProjectRanges = (uid, ranges) => { docs.ranges = ranges; return Promise.resolve(); };
 export const saveProjectOrder = (uid, order) => { docs.projectOrder = order; return Promise.resolve(); };
+export const saveProjectTiers = (uid, tiers) => { docs.projectTiers = tiers; return Promise.resolve(); };
 export const watchMoment = watch("moment");
 export const saveMoment = (uid, f) => { docs.moment = { ...docs.moment, ...f }; return ok("moment"); };
 export const watchLearn = watch("learn");

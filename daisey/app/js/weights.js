@@ -70,10 +70,14 @@ export const DEADLINE = { today: 35, within2: 25, within7: 12 }; // past or toda
 export const DEADLINE_LEAD_PER_DAY = 120;
 export const TARGET = { today: 8, within3: 4 }; // today or past · ≤3 days; never "overdue"
 export const STAKES = { penalty: 15, money: 12, someone: 10, low: 0 };
-// The project's place on the Projects page (Mor, 2026-10-08): the top one
-// gets this, the bottom one 0, evenly between. Under a deadline today (35),
-// over a window fit (12), so the order Mor drags really steers the card.
-export const PRIORITY_MAX = 15;
+// The project's tier on the Projects page (Mor, 2026-10-08). Focus is under
+// a deadline today (35) and over a window fit (12), so the tiers really
+// steer the card. Background scores nothing, and more: it waits behind every
+// other offerable task unless a deadline or target date pulls it up (engine
+// rank). The Inbox isn't a tier anyone drags; its tasks score as "keep".
+export const TIER = { focus: 15, keep: 6, background: 0 };
+export const TIERS = ["focus", "keep", "background"];
+export const FOCUS_MAX = 3; // projects in Focus at once: a cap makes it a choice
 export const AREA_BALANCE_MAX = 12;
 export const NEGLECT_PER_DAY = 1; // per whole day untouched
 export const NEGLECT_MAX = 8;
@@ -105,10 +109,11 @@ export const SKIP_PENALTY = 8; // per skip of this task today
 // Missed slots and the silence check (miss.js; Mor, 2026-10-08), minutes.
 // after: into a free slot with nothing started, it counts as missed. every: a
 // long free stretch holds a new slot this often. min: a stretch shorter than
-// this before an event isn't a slot. midday: a first miss from here on, with
-// nothing done all day, goes straight to the silence check. seen: an app
-// heartbeat this recent means the banner showed, so no notification.
-export const MISS = { after: 10, every: 60, min: 20, midday: 13 * 60, seen: 3 };
+// this before an event isn't a slot. share: ignoring this much of the day's
+// free time goes to the silence check even after one slot (Mor, 2026-10-08:
+// dynamic, not a fixed hour — a meeting-heavy day has little to lose). seen:
+// an app heartbeat this recent means the banner showed, so no notification.
+export const MISS = { after: 10, every: 60, min: 20, share: 1 / 3, seen: 3 };
 // "Lighter plan": a few small tasks (a deadline due today still comes).
 export const LIGHTER = { each: 30 };
 

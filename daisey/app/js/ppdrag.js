@@ -6,13 +6,16 @@
 // list: the <ol>. Rows with .pp-drag drag; others just sit there.
 // onMove(row, before): the dragged row lands before that row (null: last).
 // busy(on): the owner holds its redraws while a drag is live.
-// grid: the rows sit in a multi-column grid (the Projects page): the row
-// follows the pointer both ways and lands before/after the nearest one.
-export function sortable(list, { onMove, busy, grid = false }){
+// grid: the rows sit in a multi-column grid: the row follows the pointer
+// both ways and lands before/after the nearest one.
+// .pp-slot children (the Projects page's tier headers) are places to land
+// around but never drag themselves: `before` can be one. onHover(before):
+// where it would land right now (null: last), live = false once it ends.
+export function sortable(list, { onMove, busy, grid = false, onHover = null }){
   let pid = null, armed = false, hold = 0, dragged = false, row = null;
   let x0 = 0, lastX = 0, cx0 = 0, y0 = 0, lastY = 0, off = 0, mid0 = 0, s0 = 0, lo = 0, hi = 0, rh = 0, raf = 0;
   let snap = [], to = 0, from = 0, push = null;
-  const rows = () => [...list.querySelectorAll(":scope > .pp-drag")];
+  const rows = () => [...list.querySelectorAll(":scope > .pp-drag, :scope > .pp-slot")];
   // The nearest scrolling ancestor (the page body, usually).
   const scroller = () => { for (let n = list.parentElement; n; n = n.parentElement) { const o = getComputedStyle(n).overflowY; if ((o === "auto" || o === "scroll") && n.scrollHeight > n.clientHeight) return n; } return document.scrollingElement; };
   let sc = null;
@@ -33,6 +36,7 @@ export function sortable(list, { onMove, busy, grid = false }){
       to = snap.filter((s) => s.mid < c).length;
     }
     to === from ? push.home() : push.to(snap[to]?.el, snap.at(-1)?.el);
+    onHover?.(to === from ? row.nextElementSibling : snap[to]?.el || null, true);
   };
   const tick = () => {
     const Z = 72, up = top() + Z - lastY, down = lastY - (bottom() - Z);
@@ -83,7 +87,7 @@ export function sortable(list, { onMove, busy, grid = false }){
     if (!live) return;
     try { row.releasePointerCapture(e.pointerId); } catch {}
     cancelAnimationFrame(raf);
-    row.style.transform = ""; row.classList.remove("pp-dragging"); push.done();
+    row.style.transform = ""; row.classList.remove("pp-dragging"); push.done(); onHover?.(null, false);
     const go = e.type === "pointerup" && to !== from;
     busy(false); // lets the owner redraw (its held redraw, or the move's own)
     if (go) onMove(row, snap[to]?.el || null);

@@ -77,7 +77,7 @@ export function matchProject(title, projects){
 //   blockProject    a calendar block named after a project: only its tasks
 //   lastProject     project last started or finished today
 //   recentProjects  projects worked on in the last 2 days
-//   projectRanks    project names in the Projects page's order, top first
+//   projectTiers    { project name: "focus" | "keep" | "background" }
 //   areaDone        { area: tasks worked this week } — area balance
 //   sessionSkips    ids hidden by Not now this session
 //   skipsToday      { id: count } — the skip penalty
@@ -100,7 +100,7 @@ export function readMoment(input = {}){
     spot: W.PLACES.includes(input.place) && input.place === "spot" && input.spot ? String(input.spot) : null,
     lastProject: input.lastProject || null,
     recentProjects: (input.recentProjects || []).map(key),
-    projectRanks: (input.projectRanks || []).map(key).filter((p) => p && p !== "inbox"),
+    projectTiers: Object.fromEntries(Object.entries(input.projectTiers || {}).map(([p, t]) => [key(p), t])),
     areaDone: input.areaDone || {},
     sessionSkips: new Set(input.sessionSkips || []),
     skipsToday: input.skipsToday || {},
@@ -191,13 +191,16 @@ export function areaBalance(task, m, areas){
   return { points: Math.round(W.AREA_BALANCE_MAX * (max - done(a)) / (max - min)), detail: { area: a, done: done(a) } };
 }
 
-// The project's place on the Projects page (Mor, 2026-10-08: the ones on top
-// get more attention): the top one PRIORITY_MAX, the last none, evenly
-// between. The Inbox, a task with no project and a lone project get none.
+// The project's tier on the Projects page (Mor, 2026-10-08): Focus, Keep
+// going, Background (weights TIER). No tier set → keep; the Inbox (or no
+// project) is always keep — it's unsorted tasks, not a project to rank.
+export function tierOf(task, m){
+  const p = key(task.project);
+  return !p || p === "inbox" ? "keep" : W.TIERS.includes(m.projectTiers[p]) ? m.projectTiers[p] : "keep";
+}
 function priority(task, m){
-  const n = m.projectRanks.length, i = m.projectRanks.indexOf(key(task.project));
-  if (n < 2 || i < 0) return { points: 0, detail: null };
-  return { points: Math.round(W.PRIORITY_MAX * (n - 1 - i) / (n - 1)), detail: { rank: i + 1 } };
+  const tier = tierOf(task, m);
+  return { points: W.TIER[tier], detail: { tier } };
 }
 
 // Days since real work (Start, time, Done: workedAt), else since it was
@@ -329,7 +332,7 @@ const PHRASES = {
     : d.kind === "penalty" ? ["there's a penalty if late"]
     : d.kind === "someone" ? (person(s.task.title) ? [{ name: person(s.task.title) }, " is waiting on it"] : ["someone's waiting on it"])
     : null,
-  priority: (s, d) => d.rank === 1 ? [{ name: s.task.project }, " is your top project"] : [{ name: s.task.project }, " is high on your list"],
+  priority: (s, d) => (d.tier === "focus" ? [{ name: s.task.project }, " is in Focus"] : null),
   office: (s, d) => [`offices close at ${d.close}`],
   progress: (s, d) => [d.pct >= 90 ? "almost done, finish it" : d.pct >= 45 && d.pct <= 55 ? "half done, finish it" : `${d.pct}% done, finish it`],
   area: (s, d) => [{ name: LABELS.area[d.area] || d.area }, d.done ? " is behind this week" : " hasn't moved this week"],
@@ -446,7 +449,10 @@ export function rank(tasks, input = {}){
   // being out of reach right now doesn't make the others "even".
   const areas = [...new Set([...offer, ...out.map((o) => o.task)].map((t) => t.area).filter(Boolean))];
   const ctx = { batches: findBatches(offer, m), areas };
-  const ranked = offer.map((t) => scoreTask(t, m, ctx)).sort(compare);
+  // Background waits (Mor, 2026-10-08): behind every other offerable task,
+  // unless a deadline or target date gives it points.
+  const waits = (s) => tierOf(s.task, m) === "background" && !s.parts.deadline && !s.parts.target;
+  const ranked = offer.map((t) => scoreTask(t, m, ctx)).sort((a, b) => waits(a) - waits(b) || compare(a, b));
   const pick = ranked[0] || null;
   const alternatives = somethingElse(ranked);
   assignWhys([...(pick ? [pick] : []), ...alternatives]);

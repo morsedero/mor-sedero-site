@@ -18,13 +18,13 @@ import { addTask, watchTasks, watchRun, watchSkips, saveSkips, startRun, extendR
 import { sortable } from "./ppdrag.js";
 import { proposeDay, timeline, withBreaks, trimBreaks, isBreak, nextPlanned, planProgress, refit } from "./proposal.js";
 import { rethink } from "./rethink.js";
-import { placeNow, workBase, watchProjectRanks } from "./context.js";
+import { placeNow, workBase, watchProjectTiers } from "./context.js";
 import { watchWhere, setManual, whereAsk } from "./where.js";
 import { pickWeekDay } from "./triage.js";
 import { focusView, handoffView, elapsedMinutes, targetMinutes, batchFocusView, batchName, sinceMark, paused, resumed, runCap, bookedMinutes, holdButton, stillOnMinutes, bloomHold } from "./focus.js";
 import { watchCalendar, logDone } from "./calendar.js";
 import { LATER_MINUTES, DRAIN, CANCEL_KEEP_MINUTES, LIGHTER } from "./weights.js";
-import { missState } from "./miss.js";
+import { missState, silenceText } from "./miss.js";
 import { takeQuiet } from "./push.js";
 import { rank, freeWindow, timeBucket, matchProject, dueAt } from "./engine.js";
 import { leftMinutes, toMinutes, progressOf, progressPatch, shrinkPatch, shrunk, localDate, skipSnapshot, skipLesson, pendingCheck, notYet, pushedTo, bringBack, againInput, dayAfter } from "./model.js";
@@ -1038,7 +1038,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
     if (st.kind === "silence") {
       return h("div", { className: "miss-ask silence", role: "status" },
         h("p", { className: "miss-title", textContent: "Rough day?" }),
-        h("p", { className: "miss-text", textContent: `${st.since ? `Nothing's moved since ${clock(st.since)}.` : "Nothing's started yet today."} Want a lighter plan for the rest of today?` }),
+        h("p", { className: "miss-text", textContent: silenceText(st, clock) }),
         h("div", { className: "later-ask" },
           chip("Lighter plan", lighterPlan, "chip on"),
           chip("Not today", () => { silenced(); render(); })));
@@ -1392,7 +1392,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
   const unsubs = [
     watchWhere((v) => { located = v; render(); }),
     watchProjectColors(() => render()),
-    watchProjectRanks(() => render()),
+    watchProjectTiers(() => render()),
     watchTasks(uid, (ts) => { tasks = ts; render(); tryNoticeStart(); }, fail),
     watchCalendar((c) => { cal = c; render(); }),
     watchRun(uid, (r) => { run = r; runKnown = true; if (r) handoff = null; render(); tryNoticeStart(); }, fail),

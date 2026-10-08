@@ -226,7 +226,7 @@ test("gate 3 skip penalty: −8 per skip today; the score is the sum of all part
   const t = task();
   const s = E.scoreTask(t, moment({ skipsToday: { [t.id]: 2 } }));
   assert.equal(s.parts.skips, -16);
-  assert.equal(s.score, 12 /* window */ - 16);
+  assert.equal(s.score, 12 /* window */ + W.TIER.keep /* no tier set */ - 16);
 });
 
 // ---------- ranking ----------
@@ -343,23 +343,25 @@ test("deadline lead: big work left counts the deadline days earlier (2026-10-06)
   assert.match(why(dl("2026-10-09", { size: 360, canSplit: true })), /6 h still to do/);
 });
 
-test("priority: the Projects page order steers the card — top gets PRIORITY_MAX, last none", () => {
-  const ranks = ["Top", "Mid", "Low"];
-  assert.equal(parts(task({ project: "Top" }), { projectRanks: ranks }).priority, W.PRIORITY_MAX);
-  assert.equal(parts(task({ project: "mid" }), { projectRanks: ranks }).priority, Math.round(W.PRIORITY_MAX / 2));
-  assert.equal(parts(task({ project: "Low" }), { projectRanks: ranks }).priority, 0);
-  assert.equal(parts(task({ project: "Inbox" }), { projectRanks: [...ranks, "Inbox"] }).priority, 0);
-  assert.equal(parts(task({ project: "Top" }), { projectRanks: ["Top"] }).priority, 0); // one project: no order
-  const low = task({ project: "Low", title: "Low one" }), top = task({ project: "Top", title: "Top one" });
-  assert.equal(pick([low, top], { projectRanks: ranks }).task.title, "Top one");
-  assert.equal(pick([top, low], { projectRanks: [...ranks].reverse() }).task.title, "Low one");
-  assert.match(why([top], { projectRanks: ranks }), /Top is your top project/);
-  // A deadline today still beats the top project.
-  assert.equal(pick([top, dl("2026-10-05", { project: "Low", title: "Due" })], { projectRanks: ranks }).task.title, "Due");
+test("tiers: Focus scores most, Background waits unless a date pulls it up", () => {
+  const tiers = { Top: "focus", Mid: "keep", Low: "background" };
+  assert.equal(parts(task({ project: "top" }), { projectTiers: tiers }).priority, W.TIER.focus);
+  assert.equal(parts(task({ project: "Mid" }), { projectTiers: tiers }).priority, W.TIER.keep);
+  assert.equal(parts(task({ project: "Low" }), { projectTiers: tiers }).priority, W.TIER.background);
+  assert.equal(parts(task({ project: "New" }), { projectTiers: tiers }).priority, W.TIER.keep); // no tier yet
+  assert.equal(parts(task({ project: "Inbox" }), { projectTiers: { Inbox: "focus" } }).priority, W.TIER.keep); // Inbox isn't ranked
+  const low = task({ project: "Low", title: "Low one", size: 30 }), mid = task({ project: "Mid", title: "Mid one", size: 45, createdAt: NOW + 1 });
+  assert.equal(pick([mid, task({ project: "Top", title: "Top one" })], { projectTiers: tiers }).task.title, "Top one");
+  // Background waits behind any other offerable task, even a worse fit…
+  assert.equal(pick([low, mid], { projectTiers: tiers, skipsToday: { [mid.id]: 3 } }).task.title, "Mid one");
+  // …but leads when it's all there is, or a deadline pulls it up.
+  assert.equal(pick([low], { projectTiers: tiers }).task.title, "Low one");
+  assert.equal(pick([mid, dl("2026-10-05", { project: "Low", title: "Due" })], { projectTiers: tiers }).task.title, "Due");
+  assert.match(why([task({ project: "Top" })], { projectTiers: tiers }), /Top is in Focus/);
 });
 
-test("priority: workBase hands every caller the published order", () => {
-  C.setProjectRanks(["A", "B"]);
-  assert.deepEqual(C.workBase([], NOW).projectRanks, ["A", "B"]);
-  C.setProjectRanks([]);
+test("tiers: workBase hands every caller the published tiers", () => {
+  C.setProjectTiers({ A: "focus" });
+  assert.deepEqual(C.workBase([], NOW).projectTiers, { A: "focus" });
+  C.setProjectTiers({});
 });
