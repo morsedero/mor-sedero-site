@@ -424,3 +424,12 @@ test("progress: done is 100, partial is kept, left shrinks", () => {
   assert.equal(M.completeTask({}).progress, 100);
   assert.ok(M.leftMinutes({ size: 60, progress: 50 }) <= 30);
 });
+
+test("editTask: progress sets the task's % (clamped), no-op when unchanged", () => {
+  const t = M.createTask({ title: "Write report", size: 60 }, opts);
+  const p = M.editTask(t, { progress: 40 }, { now: NOW + 1 });
+  assert.equal(p.progress, 40);
+  assert.equal(M.progressOf({ ...t, ...p }), 40);
+  assert.equal(M.editTask(t, { progress: 150 }, opts).progress, 99);
+  assert.deepEqual(M.editTask({ ...t, ...p }, { progress: 40 }, opts), {});
+});

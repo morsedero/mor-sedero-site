@@ -477,6 +477,8 @@ export function editTask(task, changes, { now = Date.now(), history = [] } = {})
   }
   if (get("status") === "waiting" && !get("checkOn")) set("checkOn", pendingCheck({ due: get("due"), dateKind: get("dateKind") }, now));
   if (has("notes")) set("notes", notesText(changes.notes) || null);
+  // How much is done (the edit sheet's slider): 0-99, Done itself stays 100.
+  if (has("progress")) set("progress", progressPatch(changes.progress, { now }).progress);
 
   const order = GUESSABLE.filter((k) => guessed.has(k));
   if (!same([...order].sort(), [...(task.guessed || [])].sort())) patch.guessed = order;

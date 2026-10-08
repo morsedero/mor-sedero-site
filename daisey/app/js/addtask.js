@@ -23,7 +23,7 @@
 // While typing a new task's title they catch up only once typing stops.
 import { nudgeText, waLink } from "./nudge.js";
 import { watchTasks, addTask, updateTask, removeTask, watchProjectNames } from "./store.js";
-import { durText, guessFields, validField, CHOICES, LABELS, INBOX, localDate, clampDate, outsideRange } from "./model.js";
+import { durText, guessFields, validField, CHOICES, LABELS, INBOX, localDate, clampDate, outsideRange, progressOf } from "./model.js";
 import { h, flash, icon, bdi } from "./ui.js";
 import { projectsOf } from "./projects.js";
 
@@ -129,6 +129,13 @@ export function mountAddTask(dialog, uid, { onStart } = {}){
     paintFoot();
   });
   holdWho.addEventListener("change", () => { if (editing?.onHold || holdSwitch.checked) save({ onHold: { who: holdWho.value, since: editing.onHold?.since } }); });
+  // How much is done: the slider writes the task's % (progressOf), which the
+  // Now card, plans and projects all read.
+  const pctOut = h("output", { className: "pj-pct" });
+  const pctRange = h("input", { type: "range", min: "0", max: "95", step: "5", ariaLabel: "Percent finished" });
+  pctRange.addEventListener("input", () => { pctOut.textContent = `${pctRange.value}%`; });
+  pctRange.addEventListener("change", () => { if (editing) save({ progress: Number(pctRange.value) }); });
+  const pctBox = h("div", { className: "field ts-pct" }, h("label", { textContent: "How much is done?" }), h("div", { className: "ts-pct-row" }, pctRange, pctOut));
   const stateLine = h("p", { className: "ts-state" });
   // What the web check found (research.js): "Daisey checked: online…" / "needs a call…".
   const researchLine = h("p", { className: "ts-state ts-research", dir: "auto" });
@@ -145,7 +152,7 @@ export function mountAddTask(dialog, uid, { onStart } = {}){
     field("Project", projectSel, newProject),
     field("Task", title),
     h("div", { className: "ts-dates" }, start.box, due.box),
-    field("How long?", chipRow), pendBox, holdBox, researchLine, stateLine,
+    field("How long?", chipRow), pctBox, pendBox, holdBox, researchLine, stateLine,
     section("Links & notes", h("div", { className: "ts-group" }, linkRow, notes)),
     worked, startBtn, del, msg);
 
@@ -309,6 +316,11 @@ export function mountAddTask(dialog, uid, { onStart } = {}){
     if (t && document.activeElement !== holdSwitch) holdSwitch.checked = !!t.onHold;
     holdWho.parentElement.hidden = !holdSwitch.checked;
     const done = t?.status === "done";
+    pctBox.hidden = !t || done;
+    if (t && document.activeElement !== pctRange) {
+      pctRange.value = String(Math.min(95, Math.round(progressOf(t) / 5) * 5));
+      pctOut.textContent = `${pctRange.value}%`;
+    }
     stateLine.hidden = !(t && (done || t.status === "someday"));
     stateLine.replaceChildren(...(done
       ? [`Done ${t.doneAt ? new Date(t.doneAt).toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" }) : ""}. `,
