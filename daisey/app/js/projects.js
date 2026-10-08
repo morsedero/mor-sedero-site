@@ -150,9 +150,15 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
   const MOVED = { focus: "More of your time goes to ", keep: "Steady progress for ", background: "To the background: " };
   const tierOf = (name) => (TIERS.includes(tiers[name]) ? tiers[name] : "keep");
   const full = (name, t) => t === "focus" && tierOf(name) !== "focus" && list().filter((p) => p.name !== INBOX && tierOf(p.name) === "focus").length >= FOCUS_MAX;
+  // Landing in Focus glows (Mor, 2026-10-08): the card pulses once in the
+  // accent as it settles, so the move feels like a promotion. A redraw in
+  // the meantime (the save's own snapshot) picks the pulse up where it was.
+  const LANDED_MS = 1400;
+  let landed = null; // { name, at }
   function setTier(name, t, names){
     const was = { tiers, order };
     tiers = { ...tiers, [name]: t }; order = names;
+    landed = t === "focus" ? { name, at: Date.now() } : null;
     render();
     saveProjectOrder(uid, order).catch(fail);
     saveProjectTiers(uid, tiers).catch(fail);
@@ -189,7 +195,8 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
     const inbox = all.find((p) => p.name === INBOX);
     const ps = all.filter((p) => p !== inbox);
     setProjectTiers(Object.fromEntries(ps.map((p) => [p.name, tierOf(p.name)])));
-    const card = (p) => h("button", { type: "button", className: "pcard pp-drag" + colorClass(p), _name: p.name, onclick: () => openProject(p.name) },
+    const glow = (p) => landed?.name === p.name && Date.now() - landed.at < LANDED_MS;
+    const card = (p) => h("button", { type: "button", className: "pcard pp-drag" + colorClass(p) + (glow(p) ? " landed" : ""), style: glow(p) ? `animation-delay:-${Date.now() - landed.at}ms` : "", _name: p.name, onclick: () => openProject(p.name) },
       h("span", { className: "pcard-top", dir: dirOf(p.name) },
         h("span", { className: "pcard-name", dir: "auto", textContent: p.name }), h("span", { className: "pcard-n", textContent: String(p.open.length) })),
       h("span", { className: "pcard-status" }, ...statusLine(p)),

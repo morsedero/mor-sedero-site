@@ -875,6 +875,15 @@ button.now-title:focus-visible { outline: 2px solid var(--aink); outline-offset:
 .pp-zone.on .pp-tier-name { color: var(--ink); }
 .pp-zone.full { background: color-mix(in srgb, var(--danger) 10%, transparent); box-shadow: inset 0 0 0 2px var(--danger); }
 .zone-dragging .pcard.pp-dragging { transition: none; }
+@media (prefers-reduced-motion: no-preference) {
+  .pcard.landed { animation: pp-landed 1.4s ease-out; }
+}
+@media (prefers-reduced-motion: reduce) { .pcard.landed { box-shadow: 0 0 0 2px var(--accent); } }
+@keyframes pp-landed {
+  0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 90%, transparent), 0 0 0 0 color-mix(in srgb, var(--accent) 50%, transparent); scale: 1.03; }
+  35% { box-shadow: 0 0 0 3px var(--accent), 0 0 22px 6px color-mix(in srgb, var(--accent) 45%, transparent); scale: 1; }
+  100% { box-shadow: 0 0 0 0 transparent, 0 0 0 0 transparent; }
+}
 .pcard-name { min-inline-size: 0; font-size: 15px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pcard-n { flex: none; font-size: 12px; color: var(--aink); }
 .pcard-status { margin-block-start: 6px; font-size: 12px; color: color-mix(in srgb, var(--aink) 45%, var(--ink)); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
