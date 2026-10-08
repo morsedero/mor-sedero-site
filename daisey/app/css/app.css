@@ -1174,13 +1174,13 @@ body.focus #side { display: none; }
 @media (hover: none) { .sc-add { opacity: .7; } }
 .sc-row.sc-past { opacity: .5; } /* already over today — still shown, quieter */
 /* The row on right now is one block of its colour, time column included (Mor, 2026-10-08). */
-.sc-row.sc-on:not(.sc-gap) { --rowbg: color-mix(in srgb, var(--ev, #8c8574) 16%, var(--card)); --rowink: color-mix(in srgb, var(--ev, var(--ink-2)) 55%, var(--ink));
+.sc-row.sc-on:not(.sc-gap) { --rowbg: color-mix(in srgb, var(--ev, #8c8574) 34%, var(--card)); --rowline: var(--ev, #8c8574); --rowink: color-mix(in srgb, var(--ev, var(--ink-2)) 55%, var(--ink));
   background: var(--rowbg); margin-inline: -6px; padding: 4px 6px; border-radius: 9px; }
-.sc-row.sc-on[class*="pc-"]:not(.sc-gap), .sc-row.sc-on[class*="area-"]:not(.sc-gap) { --rowbg: var(--tint); --rowink: var(--aink); }
+.sc-row.sc-on[class*="pc-"]:not(.sc-gap), .sc-row.sc-on[class*="area-"]:not(.sc-gap) { --rowbg: color-mix(in srgb, var(--aline) 40%, var(--tint)); --rowline: var(--aline); --rowink: var(--aink); }
 .sc-row.sc-on:not(.sc-gap) .sc-time { color: var(--rowink); }
 /* …and a soft shine sweeps across it now and then (Mor, 2026-10-08). */
-.sc-row.sc-on:not(.sc-gap) { background: linear-gradient(105deg, transparent 42%, rgba(255,255,255,.38) 50%, transparent 58%) no-repeat, var(--rowbg);
-  background-size: 250% 100%, auto; animation: sc-shine 3.6s ease-in-out infinite; }
+.sc-row.sc-on:not(.sc-gap) { background: linear-gradient(105deg, transparent 38%, rgba(255,255,255,.75) 50%, transparent 62%) no-repeat, var(--rowbg);
+  background-size: 250% 100%, auto; box-shadow: 0 0 0 2px var(--rowline), 0 4px 14px -2px color-mix(in srgb, var(--rowline) 60%, transparent); animation: sc-shine 2.6s ease-in-out infinite; }
 @keyframes sc-shine { 0% { background-position: 100% 0, 0 0; } 45%, 100% { background-position: 0% 0, 0 0; } }
 @media (prefers-reduced-motion: reduce) { .sc-row.sc-on:not(.sc-gap) { animation: none; background: var(--rowbg); } }
 .sc-row.sc-on .sc-ev, .sc-row.sc-on .sc-ev.sc-plan { background: none; border-color: transparent; box-shadow: none; color: var(--rowink); }
