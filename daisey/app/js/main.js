@@ -70,6 +70,30 @@ let onGuest = () => {};
 // (now.js onReady). A slow or failed load still lifts it after 12s.
 // It stays at least long enough for all five petals to open, so a fast load
 // doesn't flash it.
+// Slow-changing captions under the daisy: a new line every ~3.5s, fading
+// out and in. Stops when the splash lifts.
+const SPLASH_LINES = [
+  "Waking Daisey up…",
+  "Fluffing the petals…",
+  "Checking your calendar…",
+  "Reading your Trello cards…",
+  "Finding the right next thing…",
+  "Almost there…",
+];
+(function splashLines(){
+  const el = $("#splashMsg");
+  if (!el) return;
+  let i = 0;
+  const t = setInterval(() => {
+    if (!el.isConnected) { clearInterval(t); return; }
+    el.classList.add("fade");
+    setTimeout(() => {
+      i = Math.min(i + 1, SPLASH_LINES.length - 1);
+      el.textContent = SPLASH_LINES[i];
+      el.classList.remove("fade");
+    }, 600);
+  }, 3500);
+})();
 function splashOff(){
   const s = $("#splash");
   if (!s || s.classList.contains("gone")) return;

@@ -1626,7 +1626,9 @@ body.focus .shell { block-size: auto; min-block-size: 100dvh; overflow: visible;
 /* Opening (Mor, 2026-10-08): only the daisy blooming, over everything, until
    the Now card has its tasks, plan and calendar (main.js lifts it). No
    "Loading…" or half-drawn card shows through. */
-.splash { position: fixed; inset: 0; z-index: 1000; display: grid; place-items: center; background: var(--bg); transition: opacity .35s; }
+.splash { position: fixed; inset: 0; z-index: 1000; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 22px; background: var(--bg); transition: opacity .35s; }
+.splash-msg { margin: 0; padding-inline: 24px; max-inline-size: 28ch; min-block-size: 2.6em; text-align: center; color: var(--muted, #8a8578); font-size: 15px; line-height: 1.3; transition: opacity .6s; }
+.splash-msg.fade { opacity: 0; }
 .splash.gone { opacity: 0; pointer-events: none; }
 .splash svg { inline-size: 96px; block-size: 96px; animation: spl-spin 7s linear infinite; }
 .splash .daisy-petals ellipse { transform-box: view-box; transform-origin: 20px 20px; animation: spl-petal 2.4s cubic-bezier(.3, 1.4, .5, 1) infinite backwards; }
