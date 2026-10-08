@@ -794,7 +794,8 @@ a, button{ -webkit-tap-highlight-color:transparent; }
 
 /* Sound Redesign: all cards side by side on one row (stacked list below 1000px). */
 @media (min-width:1000px){
-  .redesign-grid--list{ grid-template-columns:repeat(4, minmax(0,1fr)); gap:18px; align-items:start; }
+  .redesign-grid--list{ grid-template-columns:repeat(4, minmax(0,1fr)); gap:18px; align-items:stretch; }
+  .redesign-grid--list .redesign-info{ flex:1 1 auto; }
   .redesign-grid--list .redesign-card{ flex-direction:column; }
   .redesign-grid--list .redesign-thumb,
   .redesign-grid--list .redesign-video,
