@@ -395,7 +395,7 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onProjects, onW
   // the way slide over to make room (pusher, ppdrag.js).
   function draggable(x, rowEl, slots){
     const dur = x.end - x.start;
-    let y0 = 0, s0 = 0, off = 0, lastY = 0, home = 0, mid0 = 0, lo = 0, hi = 0, snap = [], drop = null, marked = null, timeEl = null, orig = [], raf = 0, push = null;
+    let x0 = 0, y0 = 0, s0 = 0, off = 0, lastY = 0, home = 0, mid0 = 0, lo = 0, hi = 0, snap = [], drop = null, marked = null, timeEl = null, orig = [], raf = 0, push = null;
     let pid = null, armed = false, hold = 0, dragged = false;
     // The dragged row's middle, in page terms: inside its day, and inside what
     // shows of the list (under the sticky bar, above the bottom) give or take
@@ -454,6 +454,7 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onProjects, onW
       raf = requestAnimationFrame(tick);
     };
     const arm = () => {
+      if (swipe?.on) return disarm(); // a sideways swipe over a cube isn't a pickup
       clearTimeout(hold); armed = dragging = dragged = true;
       try { rowEl.setPointerCapture(pid); } catch {}
       rowEl.classList.add("sc-dragging");
@@ -478,7 +479,7 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onProjects, onW
     rowEl.addEventListener("pointerdown", (e) => {
       if (e.button || pid != null) return;
       if (!e.target.closest(".sc-ev")) return; // only the task cube drags, not the time text
-      pid = e.pointerId; y0 = lastY = e.clientY; dragged = false;
+      pid = e.pointerId; x0 = e.clientX; y0 = lastY = e.clientY; dragged = false;
       if (e.pointerType !== "mouse") hold = setTimeout(arm, 350); // a finger: hold still first
     });
     rowEl.addEventListener("pointermove", (e) => {
@@ -486,6 +487,7 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onProjects, onW
       lastY = e.clientY;
       if (armed) return show();
       if (Math.abs(lastY - y0) > 6) e.pointerType === "mouse" ? arm() : disarm(); // a finger moving first is a scroll
+      else if (e.pointerType !== "mouse" && Math.abs(e.clientX - x0) > 6) disarm(); // sideways first is a swipe
     });
     // A finger: once armed, the page mustn't take the move as a scroll.
     rowEl.addEventListener("touchmove", (e) => { if (armed) e.preventDefault(); }, { passive: false });
