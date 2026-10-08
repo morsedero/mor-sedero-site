@@ -24,6 +24,7 @@ import { areaClass, watchProjectColors } from "./look.js";
 import { dayHours, minText } from "./day.js";
 import { localDate, durText } from "./model.js";
 import { h, bdi, nightDivider, icon } from "./ui.js";
+import { pusher } from "./ppdrag.js";
 
 const MIN_FREE = 15; // minutes; a shorter gap isn't worth a box
 const clock = (ms) => new Date(ms).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
@@ -353,10 +354,11 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onProjects, onW
   //   Nothing else moves; the plan flows around it.
   // - a planned task takes that place in the plan's order; the plan re-flows
   //   around the events, so its time follows.
-  // While dragging, the row's time shows where it would land.
+  // While dragging, the row's time shows where it would land, and the rows in
+  // the way slide over to make room (pusher, ppdrag.js).
   function draggable(x, rowEl, slots){
     const dur = x.end - x.start;
-    let y0 = 0, s0 = 0, off = 0, lastY = 0, home = 0, mid0 = 0, lo = 0, hi = 0, snap = [], drop = null, marked = null, timeEl = null, orig = [], raf = 0;
+    let y0 = 0, s0 = 0, off = 0, lastY = 0, home = 0, mid0 = 0, lo = 0, hi = 0, snap = [], drop = null, marked = null, timeEl = null, orig = [], raf = 0, push = null;
     let pid = null, armed = false, hold = 0, dragged = false;
     // The dragged row's middle, in page terms: inside its day, and inside what
     // shows of the list (under the sticky bar, above the bottom) give or take
@@ -396,14 +398,13 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onProjects, onW
     };
     const unmark = () => { marked?.[0].classList.remove(marked[1]); marked = null; };
     const show = () => {
-      rowEl.querySelector(".sc-ev").style.transform = `translateY(${centre() - mid0}px)`;
+      rowEl.style.transform = `translateY(${centre() - mid0}px)`;
       const w = where();
       drop = outcome(w);
       unmark();
-      if (drop) {
-        marked = w.on ? [w.on.el, "sc-target"] : snap[w.i] ? [snap[w.i].p.el, "sc-ins"] : [snap.at(-1).p.el, "sc-ins-end"];
-        marked[0].classList.add(marked[1]);
-      }
+      // Dropped on free time it takes that time: nothing to push, the gap lights up.
+      if (drop && w.on) { marked = [w.on.el, "sc-target"]; marked[0].classList.add(marked[1]); }
+      drop && !w.on ? push.to(snap[w.i]?.p.el, snap.at(-1)?.p.el) : push.home();
       timeEl.replaceChildren(...(!drop ? orig : drop.start == null ? ["Won't fit"] : [`${clock(drop.start)}–${clock(drop.end)}`]));
     };
     // Near the top or bottom edge the page scrolls, so any row can be reached.
@@ -431,6 +432,7 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onProjects, onW
       const EDGE = 56;
       lo = sec.top + s0 - EDGE; hi = sec.bottom + s0 + EDGE;
       timeEl = rowEl.querySelector(".sc-time"); orig = [...timeEl.childNodes];
+      push = pusher(rowEl.parentElement, rowEl);
       navigator.vibrate?.(10);
       raf = requestAnimationFrame(tick);
       show();
@@ -459,8 +461,8 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onProjects, onW
       if (!live) return;
       try { rowEl.releasePointerCapture(e.pointerId); } catch {}
       dragging = false; cancelAnimationFrame(raf);
-      rowEl.querySelector(".sc-ev").style.transform = ""; rowEl.classList.remove("sc-dragging");
-      unmark(); timeEl.replaceChildren(...orig);
+      rowEl.style.transform = ""; rowEl.classList.remove("sc-dragging");
+      unmark(); push.done(); timeEl.replaceChildren(...orig);
       const d = e.type === "pointerup" ? drop : null; drop = null;
       if (!d) { if (stale) { stale = false; render(); } return; }
       stale = false;

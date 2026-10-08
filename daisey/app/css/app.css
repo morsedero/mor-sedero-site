@@ -1325,20 +1325,16 @@ body.focus .shell { block-size: auto; min-block-size: 100dvh; overflow: visible;
 .pp-list { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 6px; }
 .pp-row { display: grid; grid-template-columns: 44px minmax(0, 1fr) auto; align-items: center; gap: 8px; padding: 6px 6px 6px 10px; border-radius: 12px; background: color-mix(in srgb, var(--card) 70%, var(--tint)); border: 1px solid var(--aline); }
 .pp-row.over { border-style: dashed; }
-/* Drag a row to reorder (ppdrag.js); a line marks where it lands */
+/* Drag a row to reorder (ppdrag.js); the rows in the way slide over (pusher) */
+.pushing > :not(.pp-dragging):not(.sc-dragging) { transition: transform .18s ease; }
+@media (prefers-reduced-motion: reduce) { .pushing > * { transition: none; } }
 .pp-row.pp-drag { user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
 .pp-row.pp-dragging { position: relative; z-index: 5; scale: 1.03; background: var(--card); border-style: solid; box-shadow: 0 0 0 2px var(--aline, var(--ink-2)), 0 14px 28px -4px rgba(0,0,0,.45), 0 4px 8px rgba(0,0,0,.25); }
 .pp-row.pp-dragging, .pp-row.pp-dragging * { cursor: grabbing; }
-.pp-row.pp-ins { box-shadow: 0 -5px 0 -2px var(--ink); }
-.pp-row.pp-ins-end { box-shadow: 0 5px 0 -2px var(--ink); }
 .pcard.pp-drag, .pj-swipe.pp-drag { user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
 .pcard.pp-dragging, .pj-swipe.pp-dragging { position: relative; z-index: 5; scale: 1.03; box-shadow: 0 0 0 2px var(--aline, var(--ink-2)), 0 14px 28px -4px rgba(0,0,0,.45), 0 4px 8px rgba(0,0,0,.25); }
 .pj-swipe.pp-dragging { overflow: visible; }
 .pcard.pp-dragging, .pcard.pp-dragging *, .pj-swipe.pp-dragging, .pj-swipe.pp-dragging * { cursor: grabbing; }
-.pj-swipe.pp-ins { box-shadow: 0 -5px 0 -2px var(--ink); }
-.pj-swipe.pp-ins-end { box-shadow: 0 5px 0 -2px var(--ink); }
-.pcard.pp-ins { box-shadow: -6px 0 0 -2px var(--ink); }
-.pcard.pp-ins-end { box-shadow: 6px 0 0 -2px var(--ink); }
 .pp-row.pp-break { background: transparent; border-style: dotted; opacity: .85; }
 .pp-row.over > :not(.pp-fit) { opacity: .65; }
 /* "Shorten to 55 min": a late plan item cut to the time left. */
@@ -1460,8 +1456,6 @@ body.focus .shell { block-size: auto; min-block-size: 100dvh; overflow: visible;
 .sc-row.sc-dragging { position: relative; z-index: 5; }
 .sc-row.sc-dragging, .sc-row.sc-dragging * { cursor: grabbing; }
 .sc-row.sc-target .sc-free { outline: 2px dashed var(--ink-2); outline-offset: 2px; border-radius: 6px; }
-.sc-row.sc-ins { box-shadow: 0 -5px 0 -2px var(--ink); }
-.sc-row.sc-ins-end { box-shadow: 0 5px 0 -2px var(--ink); }
 
 /* Task events (planned, finished) are plain; the project colour is a dot (Mor, 2026-10-08). */
 .sc-dot { flex: none; inline-size: 10px; block-size: 10px; margin-inline: 5px 13px; border-radius: 50%; background: var(--aink); }
