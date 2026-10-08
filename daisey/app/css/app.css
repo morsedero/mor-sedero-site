@@ -1117,7 +1117,7 @@ dialog.tsheet .msg:empty { display: none; }
 .sc-label { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
 .sc-name { font-size: 13px; font-weight: 600; color: color-mix(in srgb, var(--ink) 85%, var(--ink-2)); }
 .sc-date { font-size: 12px; color: var(--ink-2); }
-.sc-row { display: flex; align-items: center; gap: 12px; margin-block-start: 6px; }
+.sc-row { display: flex; align-items: center; gap: 12px; margin-block-start: 4px; }
 .sc-time { flex: none; inline-size: 88px; font-size: 13px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
 .sc-time.strong { color: color-mix(in srgb, var(--ink) 85%, var(--ink-2)); }
 .sc-gap { inline-size: 100%; margin-block: 2px; padding-block: 0; padding-inline: 100px 0; border: 0; background: none; font: inherit; color: inherit; text-align: start; cursor: pointer; }
@@ -1125,9 +1125,9 @@ dialog.tsheet .msg:empty { display: none; }
 .sc-free { flex: 1; min-inline-size: 0; display: flex; align-items: center; gap: 8px; block-size: 22px; font-size: 12px; color: var(--ink-2); opacity: .8; }
 .sc-free::after { content: ""; flex: 1; border-block-start: 1.5px dotted currentColor; opacity: .35; }
 .sc-ev {
-  flex: 1; min-inline-size: 0; display: flex; align-items: center; min-block-size: 40px; padding: 6px 12px; border: 0; border-radius: 10px;
+  flex: 1; min-inline-size: 0; display: flex; align-items: center; min-block-size: 28px; padding: 3px 10px; border: 0; border-radius: 8px;
   background: color-mix(in srgb, var(--ev, #8c8574) 16%, var(--card)); color: color-mix(in srgb, var(--ev, var(--ink-2)) 55%, var(--ink));
-  font: inherit; font-size: 15px; font-weight: 600; text-align: start; cursor: pointer; overflow-wrap: anywhere;
+  font: inherit; font-size: 13px; font-weight: 600; text-align: start; cursor: pointer; overflow-wrap: anywhere;
 }
 .sc-ev[class*="pc-"], .sc-ev[class*="area-"] { background: var(--tint); color: var(--aink); box-shadow: inset 3px 0 0 var(--aline); }
 .wk-ev[class*="pc-"], .wk-ev[class*="area-"] { background: var(--tint); color: var(--aink); box-shadow: inset 2px 0 0 var(--aline); }
