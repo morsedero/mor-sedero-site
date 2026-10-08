@@ -205,12 +205,15 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
     const tierMap = Object.fromEntries(ps.map((p) => [p.name, tierOf(p.name)]));
     setProjectTiers(tierMap);
     const g = growth.read(tasks || [], ps.map((p) => p.name), tierMap);
+    // Sway phase from the clock (Mor, 2026-10-08): a redraw (Week/Month,
+    // a save) rebuilds the flowers mid-sway; they pick up where they were.
+    const swayAt = () => (Date.now() % 5000) / 1000;
     const glow = (p) => landed?.name === p.name && Date.now() - landed.at < LANDED_MS;
     // Bloom in the card (Mor, 2026-10-08): its flower for the period beside
     // it, the period's time by the bar. The bar stays: all-time % done.
     const card = (p, i) => { const f = g.flowers.get(p.name);
       return h("button", { type: "button", className: "pcard pp-drag" + colorClass(p) + (glow(p) ? " landed" : ""), style: glow(p) ? `animation-delay:-${Date.now() - landed.at}ms` : "", _name: p.name, onclick: () => openProject(p.name) },
-        f && h("span", { className: "pcard-fl" + (f.bud ? " bud" : "") + (g.pops.has(p.name) ? " pop" : ""), style: `--d:-${(i * 0.9).toFixed(1)}s` }, flowerSvg(f)),
+        f && h("span", { className: "pcard-fl" + (f.bud ? " bud" : "") + (g.pops.has(p.name) ? " pop" : ""), style: `--d:-${(swayAt() + i * 0.9).toFixed(2)}s` }, flowerSvg(f)),
         h("span", { className: "pcard-body" },
           h("span", { className: "pcard-top", dir: dirOf(p.name) },
             h("span", { className: "pcard-name", dir: "auto", textContent: p.name })),

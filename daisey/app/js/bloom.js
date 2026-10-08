@@ -114,7 +114,9 @@ export function mountGrowth(uid, { onChange } = {}){
     const routines = routineRows(tasks, now);
     // A flower with more done than last time it was seen opens once.
     const seen = readSeen(), pops = new Set();
-    for (const f of fl) if (f.done > (seen[f.name] ?? f.done)) pops.add(f.name);
+    // Pops only on Week, the period `seen` is kept for: Month's bigger counts
+    // would pop every flower on each switch.
+    if (period === "week") for (const f of fl) if (f.done > (seen[f.name] ?? f.done)) pops.add(f.name);
     if (shown && period === "week") writeSeen(Object.fromEntries(fl.map((f) => [f.name, f.done])));
     return { period, summary, routines, pops, strip: weekStrip(list, now),
       flowers: new Map(fl.map((f) => [f.name, f])), line: oneLine({ summary, flowers: fl, routines, period }) };
