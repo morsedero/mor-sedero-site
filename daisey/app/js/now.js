@@ -1105,18 +1105,19 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
     } catch (e) { fail(e); prop.note = "Couldn't rethink it. Try again."; }
     prop.busy = false; render();
   }
-  function rethinkBox(){
-    const input = h("input", { id: "rethinkText", dir: "auto", autocomplete: "off", value: prop.text, oninput: (e) => { prop.text = e.target.value; } });
+  // Rethink takes the action row's slot, one set of controls at a time
+  // (2026-10-08): what to change | No calls | Go | ✕. Blank Go = a fresh take.
+  // Fewer tasks / Quick ones first went: ✕ on a row and drag do those.
+  function rethinkRow(){
+    const close = () => { prop.ask = false; render(); };
+    const input = h("input", { id: "rethinkText", dir: "auto", autocomplete: "off", placeholder: "Change what?", ariaLabel: "What should change? Blank for a fresh take", value: prop.text, oninput: (e) => { prop.text = e.target.value; } });
     const go = () => doRethink(input.value);
-    input.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); go(); } });
-    const chip = (text) => h("button", { type: "button", className: "chip", textContent: text, disabled: prop.busy, onclick: () => doRethink(text) });
+    input.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); go(); } else if (e.key === "Escape") close(); });
     setTimeout(() => { if (!input.isConnected || document.activeElement === input) return; input.focus(); input.setSelectionRange(input.value.length, input.value.length); });
-    return h("div", { className: "pp-ask" },
-      h("label", { htmlFor: "rethinkText", textContent: "What should change? (blank = a fresh take)" }),
-      h("div", { className: "pend-row" }, input,
-        h("button", { className: "btn primary small", type: "button", disabled: prop.busy, textContent: prop.busy ? "Thinking…" : "Rethink", onclick: go })),
-      h("div", { className: "pp-chips" }, chip("Fewer tasks"), chip("Quick ones first"), chip("No calls"),
-        h("button", { type: "button", className: "linkish", textContent: "Never mind", onclick: () => { prop.ask = false; render(); } })));
+    return h("div", { className: "pp-actions pp-ask" }, input,
+      h("button", { type: "button", className: "chip", textContent: "No calls", disabled: prop.busy, onclick: () => doRethink("No calls") }),
+      h("button", { className: "btn primary", type: "button", disabled: prop.busy, textContent: prop.busy ? "…" : "Go", ariaLabel: prop.busy ? "Thinking" : "Rethink", onclick: go }),
+      h("button", { className: "pp-ctl", type: "button", textContent: "✕", title: "Never mind", ariaLabel: "Never mind", onclick: close }));
   }
   // Done today, under the plan (one chip opens both), oldest first. null when empty.
   function doneCard(){
@@ -1172,7 +1173,6 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
       h("div", { className: "hero-top" },
         h("span", { className: "hero-area", textContent: approved ? "Today's plan" : "Proposed for today" }),
         rows.length > 0 && h("span", { className: "hero-side", textContent: `${dur(total)} · until ${clock(last.end)}` })),
-      h("p", { className: "now-why pp-why", textContent: approved ? "Drag to reorder, drop or rethink, then save." : "How I'd use the rest of today. Approve it, or change it first." }),
       rows.length || over.length
         ? dragRows(h("ol", { className: "pp-list" },
           ...[...rows.map((r) => ({ r, s: r.start })), ...breaks.map((b) => ({ b, s: b.start }))]
@@ -1186,11 +1186,10 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
         h("button", { type: "button", className: "linkish", textContent: "Rethink for what's left?", onclick: () => doRethink("") })),
       over.length > 0 && !approved && h("p", { className: "muted pp-note", textContent: `${plural(over.length)[0]} fit today. ${over.some((o) => o.room) ? `Shorten ${plural(over.length)[1]}, move` : "Move"} ${plural(over.length)[1]} up, or take ${plural(over.length)[1]} off.` }),
       prop.note && h("p", { className: "pp-note", role: "status", textContent: prop.note }),
-      prop.ask && rethinkBox(),
-      h("div", { className: "pp-actions" },
+      prop.ask ? rethinkRow() : h("div", { className: "pp-actions" },
         h("button", { className: "btn primary start", type: "button", disabled: !prop.items.some((it) => !isBreak(it)) || prop.busy, onclick: approve },
           icon("check"), h("span", { textContent: approved ? "Save plan" : "Approve" })),
-        !prop.ask && h("button", { className: "btn line", type: "button", ariaExpanded: "false", disabled: prop.busy,
+        h("button", { className: "btn line", type: "button", ariaExpanded: "false", disabled: prop.busy,
           textContent: prop.busy ? "Thinking…" : "Rethink", onclick: () => { prop.ask = true; render(); } }),
         h("button", { className: "btn quiet", type: "button", textContent: approved ? "Close" : "Not today", onclick: approved ? closeProposal : dismiss })));
   }

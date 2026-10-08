@@ -1428,7 +1428,6 @@ body.focus .shell { block-size: auto; min-block-size: 100dvh; overflow: visible;
 /* The proposal on the Now card (now.js proposalCard): a list of the day,
    each row time | task | ↑ ↓ ✕, then Approve / Rethink / Not today. */
 .now-card.main.proposal { min-block-size: 0; }
-.pp-why { white-space: normal !important; }
 .pp-list { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 6px; }
 .pp-row { display: grid; grid-template-columns: 44px minmax(0, 1fr) auto; align-items: center; gap: 8px; padding: 6px 6px 6px 10px; border-radius: 12px; background: color-mix(in srgb, var(--card) 70%, var(--tint)); border: 1px solid var(--aline); }
 .pp-row.over { border-style: dashed; }
@@ -1442,7 +1441,14 @@ body.focus .shell { block-size: auto; min-block-size: 100dvh; overflow: visible;
 .pcard.pp-dragging, .pj-swipe.pp-dragging { position: relative; z-index: 5; scale: 1.03; box-shadow: 0 0 0 2px var(--aline, var(--ink-2)), 0 14px 28px -4px rgba(0,0,0,.45), 0 4px 8px rgba(0,0,0,.25); }
 .pj-swipe.pp-dragging { overflow: visible; }
 .pcard.pp-dragging, .pcard.pp-dragging *, .pj-swipe.pp-dragging, .pj-swipe.pp-dragging * { cursor: grabbing; }
-.pp-row.pp-break { background: transparent; border-style: dotted; opacity: .85; }
+/* A break is a thin line, not a full row (2026-10-08): "11:35 Break · 10 min ┄┄ ✕". */
+.pp-row.pp-break { padding-block: 0; background: transparent; border-color: transparent; color: var(--ink-2); }
+.pp-break .pp-time small { display: none; }
+.pp-break .pp-time { font-weight: 500; }
+.pp-break .pp-task { display: flex; align-items: center; gap: 6px; padding: 0; cursor: default; }
+.pp-break .pp-title, .pp-break .pp-meta { flex: none; font-size: 12px; font-weight: 500; color: var(--ink-2); }
+.pp-break .pp-task::after { content: ""; flex: 1; border-block-start: 1px dashed var(--line); }
+.pp-break .pp-ctl { block-size: 28px; font-size: 13px; }
 .pp-row.over > :not(.pp-fit) { opacity: .65; }
 /* "Shorten to 55 min": a late plan item cut to the time left. */
 .pp-fit { grid-column: 2 / -1; justify-self: start; position: relative; block-size: 30px; padding-inline: 12px; border: 1px solid var(--line); border-radius: 999px; background: var(--card); color: var(--ink); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
@@ -1458,11 +1464,14 @@ body.focus .shell { block-size: auto; min-block-size: 100dvh; overflow: visible;
 .pp-ctl:hover:not(:disabled) { background: var(--aline); color: var(--ink); }
 .pp-ctl:disabled { opacity: .3; cursor: default; }
 .pp-note { margin: 8px 0 0; font-size: 13px; line-height: 1.4; }
-.pp-ask { margin-block-start: 10px; display: grid; gap: 6px; }
-.pp-ask label { font-size: 13px; color: var(--ink-2); }
-.pp-chips { display: flex; flex-wrap: wrap; gap: 6px; }
-.pp-chips .chip { min-block-size: 36px; padding-inline: 12px; font-size: 13px; }
-.pp-actions { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 6px; margin-block-start: 12px; }
+/* The action row stays pinned to the bottom of the scrolling card; Rethink
+   swaps into the same slot (now.js rethinkRow). */
+.pp-actions { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 6px; margin-block-start: 6px; padding-block: 6px 0; position: sticky; inset-block-end: 0; z-index: 2; background: var(--card); }
+.pp-actions.pp-ask { display: flex; align-items: center; }
+.pp-ask input { flex: 1; inline-size: 0; min-inline-size: 0; block-size: 44px; font: inherit; font-size: 16px; padding: 0 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); color: var(--ink); }
+.pp-ask .chip { flex: none; min-block-size: 36px; padding-inline: 11px; font-size: 13px; }
+.now-card.main .pp-actions.pp-ask .btn { flex: none; padding-inline: 16px; }
+.pp-ask .pp-ctl { flex: none; inline-size: 30px; }
 .now-card.main .pp-actions .btn { margin: 0; min-block-size: 44px; block-size: 44px; border-radius: 12px; font-size: 14px; padding-inline: 8px; white-space: nowrap; box-shadow: none; }
 .now-card.main .pp-actions .btn.start { display: inline-flex; align-items: center; justify-content: center; gap: 6px; font-size: 16px; }
 .pp-actions .btn.start svg { inline-size: 18px; block-size: 18px; }
