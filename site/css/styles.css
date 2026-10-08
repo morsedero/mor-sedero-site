@@ -792,6 +792,17 @@ a, button{ -webkit-tap-highlight-color:transparent; }
   .redesign-grid--list .redesign-card.is-playing .redesign-video{ width:100%; flex:none; }
 }
 
+/* Sound Redesign: all cards side by side on one row (stacked list below 1000px). */
+@media (min-width:1000px){
+  .redesign-grid--list{ grid-template-columns:repeat(4, minmax(0,1fr)); gap:18px; align-items:start; }
+  .redesign-grid--list .redesign-card{ flex-direction:column; }
+  .redesign-grid--list .redesign-thumb,
+  .redesign-grid--list .redesign-video,
+  .redesign-grid--list .redesign-card.is-playing .redesign-video{ width:100%; flex:none; }
+  .redesign-grid--list .redesign-info{ justify-content:flex-start; padding:16px 18px; }
+  .redesign-grid--list .redesign-desc{ font-size:.85rem; }
+}
+
 /* ============ BRAND MARQUEE (worked with) ============ */
 .brand-marquee{
   overflow:hidden; border-top:1px solid var(--line); border-bottom:1px solid var(--line); padding:14px 0;
