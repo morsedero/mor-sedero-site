@@ -1093,8 +1093,9 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
     return h("div", { className: "pp-ask" },
       h("label", { htmlFor: "rethinkText", textContent: "What should change? (blank = a fresh take)" }),
       h("div", { className: "pend-row" }, input,
-        h("button", { className: "btn primary small", type: "button", disabled: prop.busy, textContent: "Rethink", onclick: go })),
-      h("div", { className: "pp-chips" }, chip("Lighter"), chip("Fewer tasks"), chip("Quick ones first"), chip("No calls")));
+        h("button", { className: "btn primary small", type: "button", disabled: prop.busy, textContent: prop.busy ? "Thinking…" : "Rethink", onclick: go })),
+      h("div", { className: "pp-chips" }, chip("Lighter"), chip("Fewer tasks"), chip("Quick ones first"), chip("No calls"),
+        h("button", { type: "button", className: "linkish", textContent: "Never mind", onclick: () => { prop.ask = false; render(); } })));
   }
   // Done today, under the plan (one chip opens both), oldest first. null when empty.
   function doneCard(){
@@ -1168,8 +1169,8 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
       h("div", { className: "pp-actions" },
         h("button", { className: "btn primary start", type: "button", disabled: !prop.items.some((it) => !isBreak(it)) || prop.busy, onclick: approve },
           icon("check"), h("span", { textContent: approved ? "Save plan" : "Approve" })),
-        h("button", { className: "btn line", type: "button", ariaExpanded: String(prop.ask), disabled: prop.busy,
-          textContent: prop.busy ? "Thinking…" : prop.ask ? "Cancel" : "Rethink", onclick: () => { prop.ask = !prop.ask; render(); } }),
+        !prop.ask && h("button", { className: "btn line", type: "button", ariaExpanded: "false", disabled: prop.busy,
+          textContent: prop.busy ? "Thinking…" : "Rethink", onclick: () => { prop.ask = true; render(); } }),
         h("button", { className: "btn quiet", type: "button", textContent: approved ? "Close" : "Not today", onclick: approved ? closeProposal : dismiss })));
   }
   // Once a plan is approved, how far along it is goes to the header chip
