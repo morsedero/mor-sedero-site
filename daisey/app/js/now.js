@@ -16,7 +16,7 @@ import { overruled, eventKey } from "./reality.js";
 import * as deep from "./deep.js";
 import { addTask, watchTasks, watchRun, watchSkips, saveSkips, startRun, extendRun, endRun, startBatch, tickBatch, endBatch, skipNow, blockTask, restoreTask, finishTask, watchSettings, saveSettings, watchMoment, saveMoment, watchLearn, bumpLearn, saveRun, cancelRun, watchDayPlan, saveDayPlan, holdTask, releaseTask } from "./store.js";
 import { sortable } from "./ppdrag.js";
-import { proposeDay, timeline, withBreaks, isBreak, nextPlanned, planProgress } from "./proposal.js";
+import { proposeDay, timeline, withBreaks, trimBreaks, isBreak, nextPlanned, planProgress } from "./proposal.js";
 import { rethink } from "./rethink.js";
 import { placeNow, workBase } from "./context.js";
 import { watchWhere, setManual, whereAsk } from "./where.js";
@@ -940,7 +940,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
   };
   function approve(){
     const n = prop.items.filter((it) => !isBreak(it)).length;
-    savePlan("approved", prop.items.map(({ taskId, brk, minutes }) => (brk ? { brk, minutes } : { taskId, minutes })));
+    savePlan("approved", trimBreaks(prop.items).map(({ taskId, brk, minutes }) => (brk ? { brk, minutes } : { taskId, minutes })));
     prop.open = false; prop.ask = false; prop.note = ""; reset();
     render();
     flash(`Plan set: ${n} ${n === 1 ? "task" : "tasks"}. The card follows it.`);
@@ -955,7 +955,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
     const items = [...prop.items];
     const [gone] = items.splice(i, 1);
     if (gone?.taskId) prop.exclude = [...prop.exclude, gone.taskId];
-    prop.items = items; render();
+    prop.items = trimBreaks(items); render();
   }
   async function doRethink(text){
     if (prop.busy) return;
@@ -1002,7 +1002,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
       const it = prop.items[el._i], at = before ? prop.items[before._i] : null;
       const items = prop.items.filter((x) => x !== it);
       items.splice(at ? items.indexOf(at) : items.length, 0, it);
-      prop.items = items; render();
+      prop.items = trimBreaks(items); render();
     } }); return ol; };
   function proposalCard(){
     const { rows, over, breaks } = timeline(prop.items, planCtx());

@@ -111,7 +111,15 @@ export function breakDue({ worked, sinceLong, at, lunchDone, need = 0 }){
 // (breakDue) once, where they'd fall; after that they're the user's and
 // move only when dragged.
 export const isBreak = (it) => !!it?.brk;
+// A plan never starts or ends on a break: those go (Mor, 2026-10-08).
+export function trimBreaks(items = []){
+  let a = 0, z = items.length;
+  while (a < z && isBreak(items[a])) a++;
+  while (z > a && isBreak(items[z - 1])) z--;
+  return a === 0 && z === items.length ? items : items.slice(a, z);
+}
 export function withBreaks(items = [], ctx = {}){
+  items = trimBreaks(items);
   if (items.some(isBreak)) return items;
   const { rows, breaks } = timeline(items, ctx);
   const out = [];
@@ -135,8 +143,10 @@ export function timeline(items = [], { tasks = [], events = [], now = Date.now()
   // Breaks are the plan's own items: none are added here.
   const fixed = items.some(isBreak);
   let afterDone = false; // the last item looked at was finished work
+  const lo = items.findIndex((it) => !isBreak(it)), hi = items.findLastIndex((it) => !isBreak(it));
   for (const [i, it] of items.entries()) {
     if (isBreak(it)) {
+      if (i < lo || i > hi) continue; // never first or last
       // A break right after finished work, with nothing laid since, was had.
       if (afterDone && !rows.length) continue;
       const len = Math.max(5, it.minutes || 10) * MIN;

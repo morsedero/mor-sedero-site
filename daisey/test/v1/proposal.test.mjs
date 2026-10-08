@@ -2,7 +2,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 process.env.TZ = "Asia/Jerusalem";
-const { proposeDay, timeline, withBreaks, nextPlanned, parseAsk, planProgress } = await import("../../app/js/proposal.js");
+const { proposeDay, timeline, withBreaks, trimBreaks, nextPlanned, parseAsk, planProgress } = await import("../../app/js/proposal.js");
 
 const at = (h, m = 0) => Date.UTC(2026, 9, 7, h - 3, m);
 const il = (h, m = 0) => new Date(at(h, m)).toISOString();
@@ -102,15 +102,18 @@ test("breaks become plan items once, then stay where they're put", () => {
   assert.deepEqual(items.map((i) => i.taskId || i.brk), ["a", "short", "b", "c"]);
   assert.equal(withBreaks(items, ctx), items); // already has its breaks
   // Moved: the break goes where it's put, and no rule adds another.
-  const moved = [items[0], items[2], items[3], items[1]];
+  const moved = [items[0], items[2], items[1], items[3]];
   const r = timeline(moved, ctx);
-  assert.deepEqual(r.breaks.map((b) => [b.type, b.i]), [["short", 3]]);
-  assert.equal(r.breaks[0].start, r.rows[2].end);
-  assert.deepEqual(r.rows.map((x) => x.i), [0, 1, 2]);
-  // A break first thing, before any work, stays where it's put too.
+  assert.deepEqual(r.breaks.map((b) => [b.type, b.i]), [["short", 2]]);
+  assert.equal(r.breaks[0].start, r.rows[1].end);
+  assert.deepEqual(r.rows.map((x) => x.i), [0, 1, 3]);
+  // A plan never starts or ends on a break.
+  const edge = [items[1], items[0], items[2], items[1]];
+  assert.deepEqual(trimBreaks(edge).map((i) => i.taskId || i.brk), ["a", "b"]);
   const first = timeline([items[1], items[0]], ctx);
-  assert.equal(first.breaks[0].start, at(9));
-  assert.equal(first.rows[0].start, first.breaks[0].end);
+  assert.equal(first.breaks.length, 0);
+  assert.equal(first.rows[0].start, at(9));
+  assert.equal(timeline([items[0], items[1]], ctx).breaks.length, 0);
   // A break after finished work, with nothing laid since, was had.
   const done = tasks.map((x) => (x.id === "a" ? { ...x, status: "done" } : x));
   assert.equal(timeline(items, { ...ctx, tasks: done }).breaks.length, 0);
