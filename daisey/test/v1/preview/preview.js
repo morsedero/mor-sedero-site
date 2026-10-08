@@ -128,7 +128,7 @@ const SCENARIOS = {
   trip: { tasks: [{ title: "להתאמן להופעות", project: "BOBBA", size: 30 },
     { title: "Mix review for Reprise", project: "Reprise", size: 45, where: "computer" },
     { title: "Laundry", project: "Home", size: 20, where: "home" }],
-  settings: { deadlinesAsked: true, somedayAsked: new Date().toLocaleDateString("en-CA"), trips: { "s:ash": { city: "Ashkelon", mode: "train", min: { train: 110, bus: 125, car: 80 } } } } },
+  settings: { deadlinesAsked: true, somedayAsked: new Date().toLocaleDateString("en-CA"), laptop: true, trips: { "s:ash": { city: "Ashkelon", mode: "train", min: { train: 110, bus: 125, car: 80 } } } } },
   tripask: { tasks: [{ title: "Send invoice to Uri", project: "Admin", size: 5 }], settings: { deadlinesAsked: true, somedayAsked: new Date().toLocaleDateString("en-CA") } },
   long: { tasks: [
     { title: "Follow up with the production company about the revised cue sheet and the delivery deadline", project: "Reprise Productions International", size: 90 },

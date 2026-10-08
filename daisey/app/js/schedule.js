@@ -25,6 +25,7 @@ import { dayHours, minText } from "./day.js";
 import { localDate, durText } from "./model.js";
 import { h, bdi, nightDivider, icon } from "./ui.js";
 import { pusher } from "./ppdrag.js";
+import { withTrips } from "./trips.js";
 
 const MIN_FREE = 15; // minutes; a shorter gap isn't worth a box
 const clock = (ms) => new Date(ms).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
@@ -183,7 +184,10 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onProjects, onW
     const at = focus ? ymdToDate(focus) : today;
     const range = view === "week" ? [addDays(at, -at.getDay()), 7] : [at, 1];
     const from = range[0], to = addDays(from, range[1]);
-    const src = cal.status === "ok" ? eventsFor(from.getTime(), to.getTime()) : cal;
+    const got = cal.status === "ok" ? eventsFor(from.getTime(), to.getTime()) : cal;
+    // With the travel legs (trips.js): the way there and back sits on the day
+    // as its own quiet block, and the plan treats it as the Now card does.
+    const src = got.status === "ok" ? { ...got, events: withTrips(got.events, settings.trips || {}, settings.tripDay || [], settings.laptop ?? null) } : got;
     const note = { loading: "Loading the calendar…", not_connected: "Connect Google Calendar to see your day here, and so Daisey plans around your events.",
       needs_reauth: "The calendar connection expired.", error: "Couldn't load the calendar." }[src.status];
     if (note && cal.status !== "ok") {
@@ -275,10 +279,12 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onProjects, onW
       }
     // Where a drag can land: every timed row (free time too). Timed events and
     // planned blocks are the ones that move.
-    const slots = rows.filter((x) => !x.allDay);
+    const slots = rows.filter((x) => !x.allDay && !x.ev?.trip); // a trip moves with its event, never on its own
     dayCtx = { events, now, hrs, d0: t };
     const out = [];
-    if (t === t0 && now < atMin(today, hrs.start)) out.push(nightDivider(minText(hrs.end), minText(hrs.start)));
+    // Not on the way somewhere (trips.js): on the 06:10 train the day has begun.
+    const riding = events.some((e) => e.trip && Date.parse(e.start) <= now && now < Date.parse(e.end));
+    if (t === t0 && now < atMin(today, hrs.start) && !riding) out.push(nightDivider(minText(hrs.end), minText(hrs.start)));
     const none = h("button", { type: "button", className: "sc-none", onclick: () => onNew?.(ymd) },
       h("span", { textContent: "Nothing scheduled" }), h("span", { className: "sc-add", ariaHidden: "true", textContent: "+ Add" }));
     out.push(h("section", { className: "sc-day", ariaLabel: short(date) }, ...(rows.length ? rows.map((x) => row(x, now, slots)) : [none])));
@@ -341,6 +347,13 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onProjects, onW
         const done = /^✓\s*/u.test(x.ev.title), title = done ? x.ev.title.replace(/^✓\s*/u, "") : x.ev.title;
         const tall = x.e - x.s >= 45, time = `${clock(x.start)}–${clock(x.end)}`;
         const w = 100 / x.lanes;
+        if (x.ev.trip) { // the way there or back: Daisey's, not the calendar's, so nothing to open
+          col.append(h("div", { className: "wk-ev wk-trip" + (x.end <= now ? " past" : x.start <= now ? " on" : ""), role: "img",
+            style: `top:${px(x.s)}px;block-size:${Math.max(18, px(x.e) - px(x.s) - 2)}px;inset-inline-start:${x.lane * w}%;inline-size:calc(${w}% - 2px)`,
+            ariaLabel: `${title}, ${short(c.d)} ${time}` },
+            h("span", { className: "wk-evt", textContent: title }), tall && h("span", { className: "wk-evtime", textContent: clock(x.start) })));
+          continue;
+        }
         col.append(h("button", { type: "button", className: "wk-ev" + (done ? " done" : "") + tone(x.ev) + (x.end <= now ? " past" : x.start <= now ? " on" : ""),
           style: `top:${px(x.s)}px;block-size:${Math.max(18, px(x.e) - px(x.s) - 2)}px;inset-inline-start:${x.lane * w}%;inline-size:calc(${w}% - 2px);${x.ev.color ? `--ev:${x.ev.color}` : ""}`,
           ariaLabel: `${done ? "Finished task: " : ""}${title}, ${short(c.d)} ${time}`, onclick: () => onEvent?.(x.ev) },
@@ -380,6 +393,11 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onProjects, onW
         h("span", { className: "sc-dot" }), bdi(x.task.title)));
       if (slots.includes(x)) { x.el = pe; draggable(x, pe, slots); pe.classList.add("sc-drag"); }
       return pe; }
+    // The way to an event in another city and back (trips.js): Daisey's own
+    // block, not the calendar's, so it doesn't open, drag or delete.
+    if (x.ev?.trip) return x.el = h("div", { className: "sc-row" + (on ? " sc-on" : past ? " sc-past" : ""), style: orbit },
+      h("span", { className: "sc-time strong" }, time, on && h("span", { className: "sc-nowtag", textContent: "Now" })),
+      h("span", { className: "sc-ev sc-trip", ariaLabel: `${x.ev.title}, ${time}` }, h("span", { className: "sc-evi" }, icon("later")), x.ev.title));
     // A finished task is logged as a "✓ title" event (calendar.js logDone).
     const done = /^✓\s*/u.test(x.ev.title), title = done ? x.ev.title.replace(/^✓\s*/u, "") : x.ev.title;
     const rowEl = h("div", { className: "sc-row" + (on ? " sc-on" + tone(x.ev) : past ? " sc-past" : ""), style: orbit + (on && x.ev.color ? `--ev:${x.ev.color}` : "") }, h("span", { className: "sc-time strong" }, time, on && h("span", { className: "sc-nowtag", textContent: "Now" })),

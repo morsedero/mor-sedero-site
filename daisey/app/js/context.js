@@ -16,9 +16,11 @@ export function placeNow({ correction = null, located = null, events = [], now =
   // A trip leg running (trips.js): its mode, unless the phone says otherwise.
   // A ride the phone can't name takes the leg's mode.
   const leg = events.find((e) => e.trip && Date.parse(e.start) <= now && now < Date.parse(e.end));
-  if (leg && located === "ride") return { value: leg.trip.mode, guessed: true, trip: leg.trip };
+  // The leg's place, not its mode: a train without the laptop is a bus.
+  const ride = leg && (leg.trip.place || leg.trip.mode);
+  if (leg && located === "ride") return { value: ride, guessed: true, trip: leg.trip };
   if (W.PLACES.includes(located) && !["anywhere", "spot"].includes(located)) return { value: located, guessed: false, located: true };
-  if (leg) return { value: leg.trip.mode, guessed: true, trip: leg.trip };
+  if (leg) return { value: ride, guessed: true, trip: leg.trip };
   const out = events.some((e) => {
     if (e.allDay || !e.location) return false;
     const start = Date.parse(e.start), end = Date.parse(e.end);

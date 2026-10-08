@@ -1,10 +1,12 @@
 // trips.js: an event in another city → travel legs. PURE.
 import test from "node:test";
 import assert from "node:assert/strict";
-import * as T from "../../app/js/trips.js";
-import { placeNow } from "../../app/js/context.js";
-import { freeWindow, filterOut, readMoment } from "../../app/js/engine.js";
-import { collectNeeds } from "../../app/js/needs-list.js";
+process.env.TZ = "Asia/Jerusalem";
+const T = await import("../../app/js/trips.js");
+const { placeNow } = await import("../../app/js/context.js");
+const { freeWindow, filterOut, readMoment } = await import("../../app/js/engine.js");
+const { collectNeeds } = await import("../../app/js/needs-list.js");
+const { proposeDay, timeline } = await import("../../app/js/proposal.js");
 
 const HOME = { lat: 32.175, lng: 34.907 }; // Kfar Saba
 const at = (hhmm) => Date.parse(`2026-10-09T${hhmm}:00+03:00`);
@@ -79,8 +81,11 @@ test("one day another way, or not going, leaves the answer alone", () => {
 
 test("on the train: the place is train, the ride is the window, laptop fits, home doesn't", () => {
   const trips = { "s:abc": { city: "Ashkelon", mode: "train", min: { train: 110, bus: 125, car: 80 } } };
-  const evs = T.withTrips([ash], trips);
+  const evs = T.withTrips([ash], trips, [], true); // the laptop's with you
   const now = at("06:30");
+  // Without the laptop (or not asked yet), a train is a bus: phone only.
+  assert.equal(placeNow({ events: T.withTrips([ash], trips, [], null), now }).value, "bus");
+  assert.equal(placeNow({ events: T.withTrips([ash], trips, [], false), now }).value, "bus");
   const place = placeNow({ events: evs, now });
   assert.equal(place.value, "train");
   assert.equal(placeNow({ events: evs, now, located: "ride" }).value, "train");
@@ -94,4 +99,26 @@ test("on the train: the place is train, the ride is the window, laptop fits, hom
   assert.equal(filterOut(home, m), "place");
   const car = readMoment({ now, place: "car", window: 60 });
   assert.equal(filterOut(laptop, car), "place");
+});
+
+test("the plan fills the ride with what fits it, and nothing else", () => {
+  const trips = { "s:abc": { city: "Ashkelon", mode: "train", min: { train: 110, bus: 125, car: 80 } } };
+  const t = (o) => ({ status: "ready", type: "deep", size: 30, spentMinutes: 0, createdAt: 0, due: "2026-10-09", dateKind: "target", ...o });
+  const tasks = [t({ id: "home", title: "Laundry", where: "home", size: 20 }),
+    t({ id: "mix", title: "Mix", where: "computer", size: 45 }),
+    t({ id: "call", title: "Call Uri", type: "call", where: "phone", size: 15 })];
+  const now = at("06:20"), hours = { start: 8 * 60, end: 22 * 60 };
+  const plan = (laptop) => {
+    const events = T.withTrips([ash], trips, [], laptop);
+    const items = proposeDay({ tasks, events, now, hours });
+    const { rows } = timeline(items, { tasks, events, now, hours });
+    return Object.fromEntries(rows.map((r) => [r.taskId, { at: hhmm(r.start), ride: r.ride || null }]));
+  };
+  const withLaptop = plan(true);
+  assert.equal(withLaptop.mix.ride, "train", "the laptop task goes on the train");
+  assert.equal(withLaptop.home.ride, null, "laundry waits for home");
+  assert.ok(withLaptop.home.at >= "14:50", `laundry at ${withLaptop.home.at}, after the train back`);
+  const noLaptop = plan(false);
+  assert.notEqual(noLaptop.mix?.ride, "train", "no laptop: the mix isn't on the train");
+  assert.equal(noLaptop.call.ride, "train", "the call still is");
 });

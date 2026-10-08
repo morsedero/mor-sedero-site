@@ -10,6 +10,9 @@
 // nothing is planned into them; while one runs, the place is its mode
 // (context.js placeNow), so a train offers laptop and phone tasks that fit
 // the ride, a car only hands-free calls.
+// settings.laptop: true / false, the last answer to "Laptop with you?" (null:
+// never asked). A train without one is a bus: phone tasks only. Unknown
+// counts as without, so nothing needing a laptop is planned on a guess.
 // settings.tripDay = [{ date, key, mode | "none" }]: one day travelled
 // another way (or not at all), the saved answer untouched. An array, not a
 // map: Firestore's merge would keep an old day's keys inside a map.
@@ -174,6 +177,9 @@ function tripFor(ev, trips, tripDay){
   return { key, mode, minutes, city: a.city };
 }
 
+// What a ride lets you do, as a place (weights.PLACE_BLOCKS).
+export const ridePlace = (mode, laptop) => (mode === "train" && laptop !== true ? "bus" : mode);
+
 // tripDay with one day's way of travelling set (newest 20 kept).
 export const setTripDay = (tripDay, date, key, mode) =>
   [...(Array.isArray(tripDay) ? tripDay : []).filter((d) => !(d.date === date && d.key === key)), { date, key, mode }].slice(-20);
@@ -181,7 +187,7 @@ export const setTripDay = (tripDay, date, key, mode) =>
 // The calendar with the travel legs added. Back-to-back events in the same
 // city share one trip: there before the first, back after the last (a gap
 // shorter than going home and back again doesn't send you home).
-export function withTrips(events = [], trips = {}, tripDay = []){
+export function withTrips(events = [], trips = {}, tripDay = [], laptop = null){
   if (!trips || !Object.keys(trips).length) return events;
   const runs = [];
   for (const ev of events.filter(timed).sort((a, b) => Date.parse(a.start) - Date.parse(b.start))) {
@@ -199,7 +205,7 @@ export function withTrips(events = [], trips = {}, tripDay = []){
     id: `trip:${ev.id}:${dir}`, calendarId: "daisey-trip", title: LEG[t.mode][dir](t.city),
     start: new Date(from).toISOString(), end: new Date(to).toISOString(),
     busy: true, allDay: false, editable: false,
-    trip: { key: t.key, mode: t.mode, city: t.city, dir, minutes: t.minutes, of: ev.title },
+    trip: { key: t.key, mode: t.mode, place: ridePlace(t.mode, laptop), city: t.city, dir, minutes: t.minutes, of: ev.title },
   });
   const legs = runs.flatMap((r) => [
     leg(r.firstEv, r.trip, "to", r.start - r.trip.minutes * MIN, r.start),

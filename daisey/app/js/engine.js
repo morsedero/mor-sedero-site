@@ -118,6 +118,12 @@ export function readMoment(input = {}){
 // task that needs offices open.
 const windowFor = (task, m) => (task.openHours === "office" ? Math.min(m.window, m.officeLeft) : m.window);
 
+// Can the task be done at this place? Not where it was skipped as "Not
+// here", and not where its own place is blocked (PLACE_BLOCKS) — except a
+// call while driving. The plan asks the same of a ride (proposal.js).
+export const fitsPlace = (task, place) => !(task.notAt || []).includes(place)
+  && !((W.PLACE_BLOCKS[place] || []).includes(task.where) && !(place === "car" && W.DRIVING_TYPES.includes(task.type)));
+
 // Why a task can't be offered right now, or null if it can.
 export function filterOut(task, m){
   if (task.status === "done" || task.status === "dropped") return "done";
@@ -139,8 +145,7 @@ export function filterOut(task, m){
   } else if (m.booked[task.id] > m.now) return "booked";
   if (m.sessionSkips.has(task.id)) return "skipped";
   if (m.blockProject && key(task.project) !== m.blockProject) return "block";
-  if ((task.notAt || []).includes(m.place)) return "place"; // said "Not here" on a skip
-  if ((W.PLACE_BLOCKS[m.place] || []).includes(task.where) && !(m.place === "car" && W.DRIVING_TYPES.includes(task.type))) return "place";
+  if (!fitsPlace(task, m.place)) return "place";
   if (task.openHours === "office" && !m.officeOpen) return "office";
   if (task.openHours === "evening" && new Date(m.now).getHours() < W.EVENING_FROM) return "evening";
   const w = windowFor(task, m);

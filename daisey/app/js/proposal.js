@@ -11,7 +11,7 @@
 // user changes the order.
 // PURE: no Firebase, no DOM.
 import { gapsToday, bookings } from "./day.js";
-import { rank } from "./engine.js";
+import { rank, fitsPlace } from "./engine.js";
 import { routineCalendar } from "./routine.js";
 import { workBase } from "./context.js";
 import { overruled, eventKey } from "./reality.js";
@@ -28,24 +28,35 @@ const MORE = 10;
 export const leftOf = (t) => Math.max(5, (t.size || 0) - (t.spentMinutes || 0));
 
 // The free time left today, as gaps, with what reality overruled taken out
-// (a meeting you worked through isn't busy).
-function freeGaps({ tasks, events, now, hours, run }){
+// (a meeting you worked through isn't busy). rides: the trips (trips.js) as
+// gaps too, each with the place it is — only a task that fits it goes there.
+function freeGaps({ tasks, events, now, hours, run, rides = true }){
   const over = overruled(events, { tasks, run, now });
   const evs = events.filter((e) => !over.has(eventKey(e)));
-  return { evs, gaps: gapsToday(evs, now, hours).filter((g) => g.minutes >= WORTH) };
+  const gaps = gapsToday(evs, now, hours).filter((g) => g.minutes >= WORTH);
+  return { evs, gaps: rides ? [...gaps, ...rideGaps(evs, now)].sort((a, b) => a.start - b.start) : gaps };
+}
+// Today's rides still to come (or under way), as gaps with a place. A ride
+// can start before the day hours: on the 06:10 train the day has begun.
+function rideGaps(evs, now){
+  const today = localDate(now);
+  return evs.filter((e) => e.trip && Date.parse(e.end) > now && localDate(Date.parse(e.start)) === today)
+    .map((e) => { const start = Math.max(now, Date.parse(e.start)), end = Date.parse(e.end);
+      return { start, end, minutes: Math.floor((end - start) / MIN), next: null, place: e.trip.place || e.trip.mode, mode: e.trip.mode }; })
+    .filter((g) => g.minutes >= WORTH);
 }
 
 // → [{ taskId, minutes }], in the order Daisey would do them.
 // ask: parseAsk's hints (or {}). exclude: ids the user deleted from the plan.
 export function proposeDay({ tasks = [], events = [], now = Date.now(), hours = W.DAY_HOURS, settings = {}, run = null, ask = {}, exclude = [] } = {}){
-  const { evs, gaps } = freeGaps({ tasks, events, now, hours, run });
-  if (!gaps.length) return [];
+  const { evs, gaps: all } = freeGaps({ tasks, events, now, hours, run });
   const until = Number.isFinite(ask.until) ? atMin(now, ask.until) : Infinity;
-  const usable = gaps.map((g) => ({ ...g, end: Math.min(g.end, until) })).filter((g) => g.end - g.start >= WORTH * MIN);
-  if (!usable.length) return [];
+  const cut = (gs) => gs.map((g) => ({ ...g, end: Math.min(g.end, until) })).filter((g) => g.end - g.start >= WORTH * MIN);
+  const usable = cut(all.filter((g) => !g.place)), rides = cut(all.filter((g) => g.place));
+  if (!usable.length && !rides.length) return [];
   let budget = usable.reduce((s, g) => s + Math.floor((g.end - g.start) / MIN), 0);
   if (Number.isFinite(ask.maxMinutes)) budget = Math.min(budget, ask.maxMinutes);
-  const biggest = Math.max(...usable.map((g) => Math.floor((g.end - g.start) / MIN)));
+  const biggest = usable.length ? Math.max(...usable.map((g) => Math.floor((g.end - g.start) / MIN))) : 0;
   const cap = ask.fewer ? FEWER : ask.more ? MORE : MAX_ITEMS;
   const skipTypes = new Set(ask.skipTypes || []);
   const out = new Set([...exclude, ...(ask.exclude || []), ...(run?.batch || (run?.taskId ? [run.taskId] : []))]);
@@ -64,7 +75,21 @@ export function proposeDay({ tasks = [], events = [], now = Date.now(), hours = 
     const t = pool.find((x) => x.id === id);
     if (t && !out.has(t.id) && t.status === "ready" && !t.onHold && !notYet(t, now) && items.length < cap) take(t);
   }
-  while (items.length < cap && budget >= WORTH) {
+  // Each ride first, filled with what fits it (a train with the laptop:
+  // laptop and phone work; a car: calls), as the card would offer it there.
+  const onRide = [];
+  for (const g of rides) {
+    let room = Math.floor((g.end - g.start) / MIN);
+    while (items.length + onRide.length < cap && room >= WORTH) {
+      const r = rank(pool, { now: g.start, window: room, place: g.place, nextEvent: null, ...workBase(tasks, now),
+        sessionSkips: [...out], booked, routineCal });
+      if (!r.pick) break;
+      const m = Math.min(leftOf(r.pick.task), room);
+      onRide.push({ it: { taskId: r.pick.task.id, minutes: m }, at: g.start });
+      out.add(r.pick.task.id); room -= m;
+    }
+  }
+  while (usable.length && items.length + onRide.length < cap && budget >= WORTH) {
     const r = rank(pool, {
       now: usable[0].start, window: biggest, nextEvent: null, ...workBase(tasks, now),
       sessionSkips: [...out], booked, routineCal,
@@ -73,7 +98,13 @@ export function proposeDay({ tasks = [], events = [], now = Date.now(), hours = 
     take(r.pick.task);
   }
   if (ask.quickFirst) items.sort((a, b) => a.minutes - b.minutes);
-  return items;
+  if (!onRide.length) return items;
+  // In time order, so the timeline lays each where it was meant: the
+  // others where they'd fall without the rides, the ride's own on the ride.
+  const sim = timeline(items, { tasks, events, now, hours, run, rides: false });
+  const at = (i) => sim.rows.find((q) => q.i === i)?.start ?? Infinity;
+  return [...items.map((it, i) => ({ it, at: at(i) })), ...onRide]
+    .map((x, k) => ({ ...x, k })).sort((a, b) => a.at - b.at || a.k - b.k).map((x) => x.it);
 }
 
 // The plan on the clock: each item, in the user's order, in the first free
@@ -137,8 +168,8 @@ export function withBreaks(items = [], ctx = {}){
 }
 
 // Each row and break carries i, its index in items.
-export function timeline(items = [], { tasks = [], events = [], now = Date.now(), hours = W.DAY_HOURS, run = null } = {}){
-  const { evs, gaps } = freeGaps({ tasks, events, now, hours, run });
+export function timeline(items = [], { tasks = [], events = [], now = Date.now(), hours = W.DAY_HOURS, run = null, rides = true } = {}){
+  const { evs, gaps } = freeGaps({ tasks, events, now, hours, run, rides });
   const byId = new Map(tasks.map((t) => [t.id, t]));
   const rows = [], over = [], breaks = [];
   // The first start on a round five minutes: 15:55, not 15:52.
@@ -156,6 +187,7 @@ export function timeline(items = [], { tasks = [], events = [], now = Date.now()
       if (afterDone && !rows.length) continue;
       const len = Math.max(5, it.minutes || 10) * MIN;
       for (let k = gi; k < gaps.length; k++) {
+        if (gaps[k].place) continue; // no break on the train: the ride is one
         const from = Math.max(cursor, gaps[k].start);
         if (gaps[k].end - from < len) continue;
         breaks.push({ kind: "break", type: it.brk, minutes: len / MIN, start: from, end: from + len, i });
@@ -172,12 +204,14 @@ export function timeline(items = [], { tasks = [], events = [], now = Date.now()
     const need = Math.max(5, it.minutes || leftOf(task)) * MIN;
     let placed = false;
     for (let k = gi; k < gaps.length; k++) {
+      // A ride takes only what can be done on it (engine.fitsPlace).
+      if (gaps[k].place && !fitsPlace(task, gaps[k].place)) continue;
       const from = Math.max(cursor, gaps[k].start);
       // Same stretch as the last item, or a fresh one that starts with the
       // meetings just before it.
       const cont = lastEnd != null && from - lastEnd < W.BREAKS.reset * MIN;
       const w = cont ? worked : runBefore(evs, from), sl = cont ? sinceLong : w;
-      const brk = !fixed && breakDue({ worked: w, sinceLong: sl, at: from, lunchDone, need: need / MIN });
+      const brk = !fixed && !gaps[k].place && breakDue({ worked: w, sinceLong: sl, at: from, lunchDone, need: need / MIN });
       const gap = (brk ? brk.minutes * MIN : 0) + need;
       if (gaps[k].end - from >= gap) {
         if (brk) {
@@ -185,7 +219,7 @@ export function timeline(items = [], { tasks = [], events = [], now = Date.now()
           if (brk.type === "lunch") lunchDone = true;
         }
         const s = from + (brk ? brk.minutes * MIN : 0);
-        rows.push({ taskId: it.taskId, task, minutes: need / MIN, start: s, end: s + need, i });
+        rows.push({ taskId: it.taskId, task, minutes: need / MIN, start: s, end: s + need, i, ...(gaps[k].place ? { ride: gaps[k].mode } : {}) });
         worked = (brk ? 0 : w) + need / MIN;
         sinceLong = (brk && brk.type !== "short" ? 0 : sl) + need / MIN;
         lastEnd = s + need;

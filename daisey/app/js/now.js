@@ -59,7 +59,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
   // so every read below — the window, the place, the plan — sees the trips.
   let rawCal = cal;
   const applyTrips = () => {
-    cal = rawCal.status === "ok" ? { ...rawCal, events: withTrips(rawCal.events, settings.trips || {}, settings.tripDay || []) } : rawCal;
+    cal = rawCal.status === "ok" ? { ...rawCal, events: withTrips(rawCal.events, settings.trips || {}, settings.tripDay || [], settings.laptop ?? null) } : rawCal;
   };
   let lastWindow, lastClock;
   let run = null; // the state/now doc while a task is running
@@ -207,7 +207,21 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
         " · ", freeNow(block.start, block.title || block.project)),
       leg && h("p", { className: "freeline" },
         leg === fw.current ? `${TRIP_ON[leg.trip.mode]} until ${clock(leg.end)}` : `Leave ${clock(leg.start)}, ${TRIP_BY[leg.trip.mode]}`,
-        " · ", ...tripSwitch(leg)));
+        " · ", ...tripSwitch(leg)),
+      leg && laptopLine(leg, "freeline"));
+  }
+
+  // On a train, the laptop decides what fits (trips.js ridePlace): asked
+  // once, then the last answer holds, one tap to change (settings.laptop).
+  function laptopLine(leg, cls){
+    if (leg.trip.mode !== "train") return null;
+    const has = settings.laptop;
+    const set = (v) => { settings = { ...settings, laptop: v }; applyTrips(); render(); saveSettings(uid, { laptop: v }).catch(fail); };
+    const btn = (text, aria, v) => h("button", { className: "linkish", type: "button", textContent: text, ariaLabel: aria, onclick: () => set(v) });
+    return h("p", { className: cls },
+      ...(has == null ? ["Laptop with you? ", btn("Yes", "Yes, the laptop is with me", true), " · ", btn("No", "No laptop, phone only", false)]
+        : has ? ["Laptop with you · ", btn("No laptop", "No laptop this time: phone tasks only", false)]
+        : ["Phone only · ", btn("I have the laptop", "The laptop is with me", true)]));
   }
 
   // Today by another way, or not going (settings.tripDay): the saved answer
@@ -215,14 +229,19 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
   const TRIP_ON = { train: "On the train", bus: "On the bus", car: "Driving" };
   const TRIP_BY = { train: "by train", bus: "by bus", car: "driving" };
   const TRIP_INSTEAD = { train: "Train", bus: "Bus", car: "Driving" };
+  const RIDE_ROW = { train: "on the train", bus: "on the bus", car: "while driving" }; // a plan row on a ride
   function tripSwitch(leg){
     const t = leg.trip, date = localDate(new Date(leg.start).getTime());
-    const set = (mode) => {
-      const tripDay = setTripDay(settings.tripDay, date, t.key, mode);
+    const put = (tripDay) => {
       settings = { ...settings, tripDay };
       applyTrips(); render();
       saveSettings(uid, { tripDay }).catch(fail);
-      if (mode === "none") flash(`No trip to ${t.city} that day.`);
+    };
+    const set = (mode) => {
+      const before = settings.tripDay || [];
+      put(setTripDay(before, date, t.key, mode));
+      // "Not going" takes the trip off the card with it: Undo puts it back.
+      if (mode === "none") flash(`No trip to ${t.city} that day.`, null, { undo: () => put(before) });
     };
     const btn = (text, aria, mode) => h("button", { className: "linkish", type: "button", textContent: text, ariaLabel: aria, onclick: () => set(mode) });
     const others = MODES.filter((m) => m !== t.mode);
@@ -679,8 +698,9 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
     // event, the trip back (trips.js chainFrom).
     const chain = first ? chainFrom(first, evs) : null, main = chain?.main;
     const leave = chain?.parts.find((e) => e.trip?.dir === "to"), back = chain?.parts.find((e) => e.trip?.dir === "back");
-    const leaveLine = leave && h("p", { className: "now-why trip-line" },
-      `Leave ${clock(Date.parse(leave.start))}, ${TRIP_BY[leave.trip.mode]} · `, ...tripSwitch(leave));
+    const leaveLine = leave && h("div", {},
+      h("p", { className: "now-why trip-line" }, `Leave ${clock(Date.parse(leave.start))}, ${TRIP_BY[leave.trip.mode]} · `, ...tripSwitch(leave)),
+      laptopLine(leave, "now-why trip-line"));
     const who = name ? `, ${name}` : "";
     const lead = dueTonight.length === 1 ? "One deadline is still open today." : `${dueTonight.length} deadlines are still open today.`;
     return [
@@ -1212,7 +1232,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
           : h("span", { className: "pp-time", ariaLabel: `${clock(r.start)} to ${clock(r.end)}` }, clock(r.start), h("small", { textContent: clock(r.end) })),
         h("button", { type: "button", className: "pp-task", ariaLabel: `Edit ${t.title}`, onclick: () => onOpen?.(t) },
           h("span", { className: "pp-title", dir: "auto", textContent: t.title }),
-          h("span", { className: "pp-meta" }, ...pieces(projectShown(t) ? t.project : "", dur(r.minutes)))),
+          h("span", { className: "pp-meta" }, ...pieces(projectShown(t) ? t.project : "", dur(r.minutes), r.ride ? RIDE_ROW[r.ride] : ""))),
         h("span", { className: "pp-ctls" },
           ctl("✕", "Take off today's plan", false, () => dropItem(i))),
         isOver && r.room > 0 && h("button", { type: "button", className: "pp-fit", ariaLabel: `Shorten ${t.title} to ${dur(r.room)}`, onclick: () => shorten(i, r.room) },
