@@ -19,6 +19,7 @@ self.addEventListener("push", (e) => {
   e.waitUntil(self.registration.showNotification(m.title || "Daisey", {
     body: m.body || "",
     tag: m.tag || "daisey",
+    renotify: true, // same tag replaces the old one; without this it swaps silently, no sound or pop-up
     icon: "icons/daisey-192.png",
     badge: "icons/daisey-192.png",
     data: { url: m.url || "./", taskId: m.taskId || null },
