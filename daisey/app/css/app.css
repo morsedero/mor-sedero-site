@@ -1178,6 +1178,11 @@ body.focus #side { display: none; }
   background: var(--rowbg); margin-inline: -6px; padding: 4px 6px; border-radius: 9px; }
 .sc-row.sc-on[class*="pc-"]:not(.sc-gap), .sc-row.sc-on[class*="area-"]:not(.sc-gap) { --rowbg: var(--tint); --rowink: var(--aink); }
 .sc-row.sc-on:not(.sc-gap) .sc-time { color: var(--rowink); }
+/* …and a soft shine sweeps across it now and then (Mor, 2026-10-08). */
+.sc-row.sc-on:not(.sc-gap) { background: linear-gradient(105deg, transparent 42%, rgba(255,255,255,.38) 50%, transparent 58%) no-repeat, var(--rowbg);
+  background-size: 250% 100%, auto; animation: sc-shine 3.6s ease-in-out infinite; }
+@keyframes sc-shine { 0% { background-position: 100% 0, 0 0; } 45%, 100% { background-position: 0% 0, 0 0; } }
+@media (prefers-reduced-motion: reduce) { .sc-row.sc-on:not(.sc-gap) { animation: none; background: var(--rowbg); } }
 .sc-row.sc-on .sc-ev, .sc-row.sc-on .sc-ev.sc-plan { background: none; border-color: transparent; box-shadow: none; color: var(--rowink); }
 .sc-time .sc-nowtag { display: block; inline-size: fit-content; margin-block-start: 3px; padding: 1px 7px; border-radius: 999px; background: var(--accent); color: var(--on-accent); font-size: 11px; font-weight: 700; }
 /* Day / Week header (2026-10-07): ‹ title › and a Day|Week switch, sticky at
