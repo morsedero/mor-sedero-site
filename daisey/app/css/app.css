@@ -606,8 +606,11 @@ dialog.now:focus { outline: none; }
 .again-made { margin: 12px 0 0; font-size: 14px; color: var(--ink-2); text-align: center; }
 .now-wait { margin: 6px 0 0; font-size: 14px; color: var(--ink-2); }
 .ts-nudge { justify-self: start; font-size: 14px; }
-.menu-kinds { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 12px; padding-inline-start: 8px; }
-.menu-kinds .menu-check { font-size: 13px; white-space: nowrap; }
+/* Kinds sit in their own card, one per row with hairlines, so the five options don't crowd the master switch. */
+.menu-kinds { display: grid; margin-block-start: 2px; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+.menu-kinds .menu-check { justify-content: space-between; flex-direction: row-reverse; min-block-size: 40px; padding-inline: 12px; font-size: 14px; }
+.menu-kinds .menu-check + .menu-check { border-block-start: 1px solid var(--line); }
+#pushTest { margin-block-start: 2px; font-size: 13px; color: var(--ink-2); }
 .menu-ico { flex: none; display: grid; place-items: center; inline-size: 30px; block-size: 30px; border-radius: 10px; background: var(--surface-2, rgba(0,0,0,.05)); color: var(--ink-2); }
 .menu-ico.logo { background: none; }
 .menu-row:has(.menu-ico) .menu-label { margin-inline-end: auto; }
