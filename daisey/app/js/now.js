@@ -952,8 +952,11 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
     prop.items = withBreaks(saved?.items?.length && saved.status !== "dismissed"
       ? stillOpen(saved.items)
       : proposeDay({ ...planCtx(), exclude: prop.exclude }), planCtx());
+    const hadHandoff = !!handoff;
     prop.open = true; prop.ask = false; prop.note = ""; handoff = null;
-    render();
+    // The Now card doesn't change with the plan, so leave it be (a rebuild
+    // nudged its text, Mor 2026-10-08); only a handoff behind it must go.
+    hadHandoff ? render() : paintPlanScreen();
   }
   // A saved plan's open tasks, and its breaks (a break whose work before it
   // is all finished was had, so it goes too).
@@ -966,7 +969,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
       cut = true; return false;
     });
   }
-  const closeProposal = () => { prop.open = false; prop.ask = false; prop.note = ""; render(); };
+  const closeProposal = () => { prop.open = false; prop.ask = false; prop.note = ""; paintPlanScreen(); }; // the Now card stays as is
   // extra: the refit's record ({ kept, cut }), kept until the plan is saved again.
   // approvedAt: when the user last approved it (miss.js counts that as
   // activity; a refit saving the plan isn't), kept across later saves.
