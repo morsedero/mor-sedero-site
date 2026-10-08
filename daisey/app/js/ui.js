@@ -18,6 +18,29 @@ export const h = (tag, props = {}, ...kids) => {
   return el;
 };
 
+// Popups with a text box (Mor, 2026-10-08): on a computer the cursor lands in
+// the box, ready to type; on a phone the box just opens and the keyboard
+// waits for a tap. "Computer" = a mouse that can hover.
+export const typeFirst = () => typeof matchMedia === "function" && matchMedia("(hover: hover) and (pointer: fine)").matches;
+const TEXT = 'input:not([type]), input[type="text"], input[type="url"], input[type="search"], textarea';
+export function focusField(el){
+  if (!typeFirst() || !el?.isConnected || el.disabled || document.activeElement === el) return;
+  el.focus();
+  try { el.setSelectionRange(el.value.length, el.value.length); } catch {}
+}
+// Every dialog: after it opens, the first visible text box (if any) gets the
+// cursor, on a computer only. A frame later so content painted on open is in.
+if (typeof HTMLDialogElement === "function") {
+  const show = HTMLDialogElement.prototype.showModal;
+  HTMLDialogElement.prototype.showModal = function(){
+    show.call(this);
+    if (typeFirst()) requestAnimationFrame(() => {
+      if (!this.open || this.contains(document.activeElement) && document.activeElement.matches(TEXT)) return;
+      focusField([...this.querySelectorAll(TEXT)].find((f) => !f.disabled && f.getClientRects().length));
+    });
+  };
+}
+
 
 // A row of single-choice chips. current = null → none selected.
 export const chips = (label, options, current, pick) => h("div", { className: "now-group", role: "radiogroup", ariaLabel: label },

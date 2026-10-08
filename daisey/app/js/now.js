@@ -33,7 +33,7 @@ import { isRoutine, routineCalendar, eventsToLog, sessionPatch } from "./routine
 import { waitingFor, personOf } from "./nudge.js";
 import { dayHours, isNight, nextMorning, dayEndAt, bookings, sameTitle, minText, gapsToday } from "./day.js";
 import { collectNeeds } from "./needs.js";
-import { h, icon, bdi, pieces, sizeText, sizeChip, progressBar, dur, say, nightDivider, flash, weekDots } from "./ui.js";
+import { h, icon, bdi, pieces, sizeText, sizeChip, progressBar, dur, say, nightDivider, flash, weekDots, focusField } from "./ui.js";
 import { areaClass, areaName, projectShown, doneToday, dirOf, stemDaisy, moonDaisy, watchProjectColors } from "./look.js";
 
 const LATER_MS = LATER_MINUTES * 60000;
@@ -485,7 +485,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
       h("div", { className: "pend-row" }, input,
         h("button", { className: "btn primary small", type: "button", textContent: "Set pending", onclick: go })),
       h("div", { className: "pend-check" }, h("label", { htmlFor: "pendCheck", textContent: "Ask me again" }), check));
-    setTimeout(() => { input.focus(); input.setSelectionRange(input.value.length, input.value.length); });
+    setTimeout(() => focusField(input));
     return box;
   }
 
@@ -952,7 +952,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
     const holdBox = holdAsk && !onHold && (() => {
       const input = h("input", { id: "holdWho", dir: "auto", autocomplete: "off", value: holdText, oninput: (e) => { holdText = e.target.value; } });
       input.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); setHold(); } });
-      setTimeout(() => { if (input.isConnected && document.activeElement !== input) input.focus(); });
+      setTimeout(() => focusField(input));
       return h("div", { className: "pend-ask" },
         h("label", { htmlFor: "holdWho", textContent: "Waiting on who? (optional) The timer keeps running." }),
         h("div", { className: "pend-row" }, input, h("button", { className: "btn primary small", type: "button", textContent: "Wait", onclick: setHold })));
@@ -1173,7 +1173,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
     const input = h("input", { id: "rethinkText", dir: "auto", autocomplete: "off", placeholder: "Other…", ariaLabel: "What should change? Blank for a fresh take", value: prop.text, oninput: (e) => { prop.text = e.target.value; } });
     const go = () => doRethink(input.value);
     input.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); go(); } else if (e.key === "Escape") close(); });
-    setTimeout(() => { if (!input.isConnected || document.activeElement === input) return; input.focus(); input.setSelectionRange(input.value.length, input.value.length); });
+    setTimeout(() => focusField(input));
     return h("div", { className: "pp-actions pp-ask" }, input,
       ...[["Fewer", "Fewer tasks"], ["More", "More tasks"]].map(([label, ask]) => h("button", { type: "button", className: "chip", textContent: label, ariaLabel: ask, disabled: prop.busy, onclick: () => doRethink(ask) })),
       h("button", { className: "btn primary", type: "button", disabled: prop.busy, textContent: prop.busy ? "…" : "Go", ariaLabel: prop.busy ? "Thinking" : "Rethink", onclick: go }),

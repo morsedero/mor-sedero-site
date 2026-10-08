@@ -418,7 +418,7 @@ body.focus .shell { padding-block: max(18px, env(safe-area-inset-top)) max(24px,
 html:has(dialog[open]), html:has(dialog[open]) body { overflow: hidden; }
 html:has(dialog[open]) :is(#board > *, .screen, .ppage) { overflow: hidden !important; }
 dialog.now { overflow-y: auto; overscroll-behavior: contain; }
-/* Sheets open on the dialog itself (autofocus), not a field: no keyboard until a tap. */
+/* Sheets open on the dialog itself (autofocus): no phone keyboard until a tap. On a computer ui.js then moves the cursor into the first text box. */
 dialog.now:focus { outline: none; }
 
 /* Later → "When?": three choices under the card's actions. */

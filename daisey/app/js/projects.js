@@ -270,7 +270,6 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
           h("button", { className: "btn quiet", type: "button", textContent: "Cancel", onclick: () => d.close() }))));
     d.onclick = (e) => { if (e.target === d) d.close(); };
     d.showModal();
-    name.focus();
   }
 
   // Edit project (Mor, 2026-10-07): tap the name on the project screen. The
@@ -324,7 +323,6 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
           del)));
     d.onclick = (e) => { if (e.target === d) d.close(); };
     d.showModal();
-    name.focus();
     name.select();
   }
 
