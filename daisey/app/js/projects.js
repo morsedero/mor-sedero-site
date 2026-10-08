@@ -27,7 +27,7 @@ import { h, bdi, flash, icon, askProgress, sizeChip, progressBar } from "./ui.js
 import { dirOf, setProjectColors } from "./look.js";
 import { setProjectTiers } from "./context.js";
 import { TIERS, FOCUS_MAX } from "./weights.js";
-import { sortable } from "./ppdrag.js";
+import { sortable, zoneSortable } from "./ppdrag.js";
 
 const SWIPE_DONE = 90; // px a task travels right before letting go finishes it
 const SWIPE_PAGE = 70; // px sideways that turns the page to the next project
@@ -141,15 +141,14 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
   // ---------- the Projects page ----------
   // Tiers (Mor, 2026-10-08): Focus, Keep going, Background. The engine
   // scores a project by its tier (engine.js priority, weights TIER); a new
-  // project starts in Keep going. One drag list (ppdrag.js) holds the three
-  // headers (.pp-slot) and every card: a card joins the tier whose header it
-  // lands under; order inside a tier is just how Mor likes to see them. While
-  // a card is dragged, the header it would land under lights up — or says
-  // it's full: Focus holds FOCUS_MAX, so it stays a choice.
+  // project starts in Keep going. Each tier is a drop area (ppdrag.js
+  // zoneSortable): a card dropped in it joins it; order inside a tier is just
+  // how Mor likes to see them. While a card is dragged, the area under it
+  // lights up whole — or turns red when full: Focus holds FOCUS_MAX, so it
+  // stays a choice.
   const TIER_TEXT = { focus: ["Focus", "Most of your time"], keep: ["Keep going", "Steady progress"], background: ["Background", "When there's room"] };
   const MOVED = { focus: "More of your time goes to ", keep: "Steady progress for ", background: "To the background: " };
   const tierOf = (name) => (TIERS.includes(tiers[name]) ? tiers[name] : "keep");
-  const tierAt = (box, before) => { let t = TIERS[0]; for (const k of box.children) { if (k === before) break; if (k._tier) t = k._tier; } return t; };
   const full = (name, t) => t === "focus" && tierOf(name) !== "focus" && list().filter((p) => p.name !== INBOX && tierOf(p.name) === "focus").length >= FOCUS_MAX;
   function setTier(name, t, names){
     const was = { tiers, order };
@@ -160,20 +159,18 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
     flash(MOVED[t], name, { undo: () => { tiers = was.tiers; order = was.order; render();
       saveProjectOrder(uid, order).catch(fail); saveProjectTiers(uid, tiers).catch(fail); } });
   }
-  const dragProjects = (box) => { sortable(box, { busy: hold,
-    onHover: (before, live) => {
-      const el = box.querySelector(".pp-dragging"), t = live && el ? tierAt(box, before) : null;
-      for (const k of box.children) if (k._tier) {
-        k.classList.toggle("on", k._tier === t);
-        k.classList.toggle("full", k._tier === t && full(el._name, t));
+  const dragProjects = (box) => { zoneSortable(box, { busy: hold,
+    onZone: (zone, el) => {
+      for (const z of box.children) {
+        z.classList.toggle("on", z === zone);
+        z.classList.toggle("full", z === zone && full(el._name, z._tier));
       }
     },
-    onMove: (el, before) => {
-      const t = tierAt(box, before);
+    onMove: (el, zone) => {
+      const t = zone._tier;
       if (full(el._name, t)) { flash(`Focus holds ${FOCUS_MAX}. Move one out first.`); render(); return; }
-      const seq = [...box.children].filter((k) => k !== el);
-      seq.splice(before ? seq.indexOf(before) : seq.length, 0, el);
-      const names = seq.filter((k) => k._name).map((k) => k._name);
+      // The DOM already shows where it landed (zoneSortable moved the card).
+      const names = [...box.children].flatMap((z) => [...z.children].filter((k) => k._name).map((k) => k._name));
       if (t !== tierOf(el._name)) return setTier(el._name, t, names);
       order = names; render();
       saveProjectOrder(uid, names).catch(fail);
@@ -198,15 +195,15 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
       h("span", { className: "pcard-status" }, ...statusLine(p)),
       bar(p, "pbar"));
     const tier = (t) => { const ins = ps.filter((p) => tierOf(p.name) === t);
-      return [h("div", { className: `pp-tier pp-slot tier-${t}`, _tier: t },
-        h("span", { className: "pp-tier-name", textContent: TIER_TEXT[t][0] }), h("span", { className: "pp-tier-sub", textContent: TIER_TEXT[t][1] }),
-        !ins.length && h("span", { className: "pp-tier-empty", textContent: "Drag a project here" })), ...ins.map(card)]; };
+      return h("div", { className: `pp-zone tier-${t}`, _tier: t },
+        h("div", { className: "pp-tier" }, h("span", { className: "pp-tier-name", textContent: TIER_TEXT[t][0] }), h("span", { className: "pp-tier-sub", textContent: TIER_TEXT[t][1] })),
+        h("span", { className: "pp-tier-empty", textContent: "Drag a project here" }), ...ins.map(card)); };
     const n = all.reduce((s, p) => s + p.open.length, 0);
     const y = els.grid.scrollTop;
     els.grid.replaceChildren(...[
       h("div", { className: "pp-head" }, h("span", { className: "pp-sum", textContent: `${plural(ps.length, "project")} · ${plural(n, "task")}` }),
         h("button", { type: "button", className: "pp-new", textContent: "+ New", onclick: () => askName() })),
-      ps.length ? dragProjects(h("div", { className: "pgrid" }, ...TIERS.flatMap(tier)))
+      ps.length ? dragProjects(h("div", { className: "pgrid tiers" }, ...TIERS.map(tier)))
         : !inbox && h("p", { className: "muted pp-empty", textContent: "No projects yet. Tell Daisey what's on your plate." }),
       inbox ? h("button", { type: "button", className: "pp-inbox", onclick: () => openProject(INBOX) },
         icon("inbox"), h("span", { className: "pp-inbox-t", textContent: "Inbox" }),

@@ -855,20 +855,26 @@ button.now-title:focus-visible { outline: 2px solid var(--aink); outline-offset:
 .pgrid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; margin-block-start: 10px; }
 .pcard { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0; align-content: start; padding: 12px; border-radius: 16px; background: var(--tint); border: 1px solid var(--aline); color: var(--ink); font: inherit; text-align: start; cursor: pointer; }
 .pcard-top { display: flex; justify-content: space-between; align-items: center; gap: 6px; }
-/* Tiers (Mor, 2026-10-08): headers in the Projects list, between the cards
-   (projects.js). The one a dragged card would land under lights up; red
-   when Focus is full. */
-.pp-tier { position: relative; display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; margin-block-start: 8px; padding: 12px 8px 2px; border-radius: 12px; transition: background-color .15s ease, box-shadow .15s ease; }
-.pp-tier::before { content: ""; position: absolute; inset-inline: 0; inset-block-start: -1px; border-block-start: 1px solid var(--line); } /* straight divider, whatever the radius */
-.pgrid > .pp-tier:first-child { margin-block-start: 0; padding-block-start: 4px; }
-.pgrid > .pp-tier:first-child::before, .pp-tier.on::before { display: none; }
+/* Tiers (Mor, 2026-10-08): three drop areas in the Projects list
+   (projects.js, ppdrag.js zoneSortable). The area a dragged card is over
+   lights up whole; red when Focus is full. The root is positioned so the
+   cards' offsetTop is measured in it. */
+.pgrid.tiers { position: relative; gap: 6px; }
+.pp-zone { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; padding: 8px; margin-inline: -8px; border-radius: 20px; transition: background-color .15s ease, box-shadow .15s ease; }
+.pp-zone + .pp-zone .pp-tier { position: relative; padding-block-start: 12px; }
+.pp-zone + .pp-zone .pp-tier::before { content: ""; position: absolute; inset-inline: 0; inset-block-start: 0; border-block-start: 1px solid var(--line); }
+.pp-tier { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; padding-inline: 8px; }
 .pp-tier-name { font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-2); }
-.pp-tier.tier-focus .pp-tier-name { color: var(--ink); }
+.tier-focus .pp-tier-name { color: var(--ink); }
 .pp-tier-sub { font-size: 12px; color: var(--ink-2); }
-.pp-tier-empty { flex-basis: 100%; margin-block-start: 6px; padding: 14px; border: 1.5px dashed var(--line); border-radius: 14px; text-align: center; font-size: 12px; color: var(--ink-2); }
-.pp-tier.on { background: color-mix(in srgb, var(--accent) 22%, transparent); box-shadow: 0 0 0 2px var(--accent); }
-.pp-tier.on .pp-tier-name { color: var(--ink); }
-.pp-tier.full { background: color-mix(in srgb, var(--danger) 14%, transparent); box-shadow: 0 0 0 2px var(--danger); }
+.pp-tier-empty { display: none; padding: 14px; border: 1.5px dashed var(--line); border-radius: 14px; text-align: center; font-size: 12px; color: var(--ink-2); }
+.pp-zone:not(:has(> .pp-drag)) > .pp-tier-empty { display: block; }
+.zone-dragging .pp-zone:not(.on):not(:has(> .pp-drag)) > .pp-tier-empty { border-color: color-mix(in srgb, var(--ink-2) 45%, transparent); }
+.pp-zone.on { background: color-mix(in srgb, var(--accent) 16%, transparent); box-shadow: inset 0 0 0 2px var(--accent); }
+.pp-zone.on .pp-tier::before { display: none; }
+.pp-zone.on .pp-tier-name { color: var(--ink); }
+.pp-zone.full { background: color-mix(in srgb, var(--danger) 10%, transparent); box-shadow: inset 0 0 0 2px var(--danger); }
+.zone-dragging .pcard.pp-dragging { transition: none; }
 .pcard-name { min-inline-size: 0; font-size: 15px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pcard-n { flex: none; font-size: 12px; color: var(--aink); }
 .pcard-status { margin-block-start: 6px; font-size: 12px; color: color-mix(in srgb, var(--aink) 45%, var(--ink)); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
