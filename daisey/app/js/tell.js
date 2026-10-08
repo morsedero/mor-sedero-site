@@ -214,7 +214,7 @@ export function mountTell(form, input, mic, uid, { openAdd, openTask, guest = fa
       if (a.kind === "add") return addTask(uid, pick(["title", "project", "size", "due", "dateKind", "notBefore"]), tasks);
       if (a.kind === "event") return createEvent({ title: a.title, date: a.date, at: a.time, minutes: a.minutes });
       if (!t && a.kind !== "moment") return null; // gone since
-      if (a.kind === "done") return finishTask(uid, t);
+      if (a.kind === "done") return finishTask(uid, t, { tasks });
       if (a.kind === "update") return updateTask(uid, t, pick(["title", "project", "size", "due", "dateKind", "notBefore"]), tasks);
       if (a.kind === "waiting") return updateTask(uid, t, { status: "waiting", waitingOn: a.waitingOn || "" }, tasks);
       if (a.kind === "drop") return updateTask(uid, t, { status: "dropped" }, tasks);

@@ -14,7 +14,7 @@
 // the same timer.
 import { overruled, eventKey } from "./reality.js";
 import * as deep from "./deep.js";
-import { addTask, watchTasks, watchRun, watchSkips, saveSkips, startRun, extendRun, endRun, startBatch, tickBatch, endBatch, skipNow, blockTask, restoreTask, finishTask, watchSettings, saveSettings, watchMoment, saveMoment, watchLearn, bumpLearn, saveRun, cancelRun, watchDayPlan, saveDayPlan, holdTask, releaseTask } from "./store.js";
+import { addTask, watchTasks, watchRun, watchSkips, saveSkips, startRun, extendRun, endRun, startBatch, tickBatch, endBatch, skipNow, blockTask, restoreTask, finishTask, setDoneMinutes, watchSettings, saveSettings, watchMoment, saveMoment, watchLearn, bumpLearn, saveRun, cancelRun, watchDayPlan, saveDayPlan, holdTask, releaseTask } from "./store.js";
 import { sortable } from "./ppdrag.js";
 import { proposeDay, timeline, withBreaks, trimBreaks, isBreak, nextPlanned, planProgress, refit } from "./proposal.js";
 import { rethink } from "./rethink.js";
@@ -873,9 +873,11 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
   function quickDoneNow(task){
     const before = doneSnapshot(task);
     handoff = { title: task.title, skip: task.id, minutes: 0, ids: [task.id] };
-    finishTask(uid, task).catch(fail);
+    const p = finishTask(uid, task, { tasks: tasks || [], events: cal.status === "ok" ? cal.events : [] });
+    p.catch(fail);
     reset(); render();
-    flash("Done: ", task.title, { undo: () => { handoff = null; restoreTask(uid, task.id, before).catch(fail); render(); } });
+    flash("Done: ", task.title, { undo: () => { handoff = null; restoreTask(uid, task.id, before).catch(fail); render(); },
+      adjust: p.counted.minutes ? { minutes: p.counted.minutes, set: (m) => setDoneMinutes(uid, task.id, m) } : undefined });
   }
 
   // The card while a task runs and the dashboard stays: area and project,

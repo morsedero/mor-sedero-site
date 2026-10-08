@@ -92,14 +92,23 @@ if (typeof MutationObserver !== "undefined" && typeof document !== "undefined"){
 
 export function dismissFlash(){ clearTimeout(liveTimer); livePop?.remove(); livePop = null; }
 
-export function flash(label, title, { undo } = {}){
+// `adjust` { minutes, set(m) }: "Counted ~30 min" with − / + (15 min a tap).
+export function flash(label, title, { undo, adjust } = {}){
   dismissFlash();
+  let mins = adjust?.minutes ?? 0;
+  const count = adjust && h("span", { className: "toast-count" }, `Counted ~${mins} min`);
+  const step = (d) => h("button", { className: "toast-step", type: "button", textContent: d < 0 ? "−" : "+", ariaLabel: `${d < 0 ? "Less" : "More"} time`,
+    onclick: () => {
+      mins = Math.max(0, mins + d); count.textContent = `Counted ${mins} min`; adjust.set(mins);
+      clearTimeout(liveTimer); liveTimer = setTimeout(dismissFlash, UNDO_MS);
+    } });
   livePop = h("div", { className: "toast", role: "status" },
     h("span", { className: "toast-text" }, label, title ? bdi(title) : null),
+    adjust && h("span", { className: "toast-adj" }, step(-15), count, step(15)),
     undo && h("button", { className: "toast-undo", type: "button", textContent: "Undo",
       onclick: () => { dismissFlash(); undo(); } }));
   document.body.append(livePop);
-  liveTimer = setTimeout(dismissFlash, UNDO_MS);
+  liveTimer = setTimeout(dismissFlash, adjust ? UNDO_MS + 3000 : UNDO_MS);
 }
 
 // Inline icons: the card's three quiet actions, and one per guessed field so
@@ -123,6 +132,7 @@ const PATHS = {
   check: "M5 12l5 5 9-10",
   focus: "M4 9V5.5A1.5 1.5 0 0 1 5.5 4H9M15 4h3.5A1.5 1.5 0 0 1 20 5.5V9M20 15v3.5a1.5 1.5 0 0 1-1.5 1.5H15M9 20H5.5A1.5 1.5 0 0 1 4 18.5V15",
   plus: "M12 5v14M5 12h14",
+  bloom: "M12 9.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 1 0 0-5ZM12 9.5c-2-1-2.6-3.6 0-6 2.6 2.4 2 5 0 6ZM14.5 12c1-2 3.6-2.6 6 0-2.4 2.6-5 2-6 0ZM12 14.5c2 1 2.6 3.6 0 6-2.6-2.4-2-5 0-6ZM9.5 12c-1 2-3.6 2.6-6 0 2.4-2.6 5-2 6 0Z",
   edit: "M4 20h4L19 9l-4-4L4 16v4ZM13.5 6.5l4 4", // a pencil: the task's settings
   play: "M7 4.5v15l13-7.5z", // filled, not stroked (FILLED)
   pause: "M7 5h3.5v14H7zM13.5 5H17v14h-3.5z", // filled

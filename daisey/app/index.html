@@ -94,6 +94,7 @@
       <aside id="side" class="side" aria-label="Plan and projects">
         <button id="planChip" class="hchip plan empty" type="button" hidden><span class="hchip-dot" aria-hidden="true"></span><span id="planW" class="hchip-word">Plan my day</span><span id="planN"></span></button>
         <button id="projectsChip" class="hchip plan" type="button" hidden aria-label="Projects" aria-pressed="false"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/></svg><span class="hchip-word">Projects</span></button>
+        <button id="bloomChip" class="hchip plan" type="button" hidden aria-label="Bloom" aria-pressed="false"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 9.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 1 0 0-5ZM12 9.5c-2-1-2.6-3.6 0-6 2.6 2.4 2 5 0 6ZM14.5 12c1-2 3.6-2.6 6 0-2.4 2.6-5 2-6 0ZM12 14.5c2 1 2.6 3.6 0 6-2.6-2.4-2-5 0-6ZM9.5 12c-1 2-3.6 2.6-6 0 2.4-2.6 5-2 6 0Z"/></svg><span class="hchip-word">Bloom</span></button>
       </aside>
     </div>
     <!-- The home panel: the Schedule, or Projects in its place. The Projects
@@ -103,6 +104,8 @@
       <div id="projPage" class="ppage" hidden></div>
       <!-- The plan (now.js proposalCard), in the panel too; the Plan chip toggles it. -->
       <div id="planPage" class="ppage" hidden></div>
+      <!-- Bloom (bloom.js): progress as a garden; the Bloom chip toggles it. -->
+      <div id="bloomPage" class="ppage" hidden></div>
       <!-- One project (projects.js), in the panel too. -->
       <section id="projectview" class="ppage" aria-label="Project" hidden></section>
     </section>

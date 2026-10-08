@@ -37,7 +37,16 @@ export const updateTask = (uid, task, changes) => {
   return ok("tasks");
 };
 export const patchTask = (uid, id, patch) => { const i = tasks.findIndex((t) => t.id === id); tasks[i] = { ...tasks[i], ...patch }; return ok("tasks"); };
-export const finishTask = (uid, task) => patchTask(uid, task.id, completeTask(task));
+export const finishTask = (uid, task) => { const p = patchTask(uid, task.id, completeTask(task)); p.counted = { minutes: 20 }; return p; };
+export const setDoneMinutes = () => Promise.resolve();
+// Bloom: a few entries over the last days so the page has something to draw.
+export const watchLog = (uid, keys, cb) => {
+  const t = Date.now(), d = 864e5;
+  setTimeout(() => cb([
+    { id: "a", t: "x1", p: "Band", m: 90, at: t - 1 * d, d: 1 }, { id: "b", t: "x2", p: "Band", m: 45, at: t - 2 * d },
+    { id: "c", t: "x3", p: "Work", m: 30, at: t - 3 * d, d: 1, g: 1 }]));
+  return () => {};
+};
 export const removeTask = (uid, id) => { tasks = tasks.filter((t) => t.id !== id); return ok("tasks"); };
 export const saveNow = (uid, state) => { docs.now = state; return ok("now"); };
 

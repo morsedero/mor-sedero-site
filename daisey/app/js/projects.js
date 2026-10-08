@@ -20,7 +20,7 @@
 // area when no other project has that one yet, else the next free colour in
 // PALETTE. Names are taken in order, so a colour doesn't move around as
 // counts change. Inbox has none.
-import { watchTasks, finishTask, restoreTask, removeTask, watchProjectNames, saveProjectNames, saveProjectRanges, saveProjectOrder, saveProjectTiers } from "./store.js";
+import { watchTasks, finishTask, setDoneMinutes, restoreTask, removeTask, watchProjectNames, saveProjectNames, saveProjectRanges, saveProjectOrder, saveProjectTiers } from "./store.js";
 import { INBOX, progressOf, progressPatch, leftMinutes, pushedTo, notYet, durText, localDate, bringBack, cleanRange, outsideRange, doneSnapshot } from "./model.js";
 import { isRoutine } from "./routine.js";
 import { dropSeries } from "./slots.js";
@@ -353,8 +353,10 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
     askProgress(t, {
       start: progressOf(t) || 50,
       onFull: () => {
-        finishTask(uid, t).catch(fail);
-        flash("Done: ", t.title, { undo: () => restoreTask(uid, t.id, before).catch(fail) });
+        const p = finishTask(uid, t, { tasks: tasks || [] });
+        p.catch(fail);
+        flash("Done: ", t.title, { undo: () => restoreTask(uid, t.id, before).catch(fail),
+          adjust: p.counted.minutes ? { minutes: p.counted.minutes, set: (m) => setDoneMinutes(uid, t.id, m) } : undefined });
       },
       onPartial: (pct, when) => {
         const day = (n) => { const d = new Date(); d.setDate(d.getDate() + n); let x = localDate(d.getTime()); if (t.dateKind === "deadline" && t.due && t.due < x) x = t.due; return x; };

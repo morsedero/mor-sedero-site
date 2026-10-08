@@ -4,7 +4,8 @@
 // watchTasks, used as history for "similar past tasks" guesses.
 import * as fb from "./firebase.js";
 import { worthChecking, checkOnline } from "./research.js";
-import { createTask, editTask, completeTask, startedTask, workedTask, keptTime, skipTask, skipReason, migrateTask, toDate } from "./model.js";
+import { createTask, editTask, completeTask, startedTask, workedTask, keptTime, skipTask, skipReason, migrateTask, toDate, INBOX } from "./model.js";
+import { logDocKey, guessDoneMinutes } from "./bloom-data.js";
 
 const GUEST_UID = "guest-local";
 const GUEST_KEY = "daisey.guest.data.v1";
@@ -164,8 +165,15 @@ export function migrateTasks(uid){
   return () => unsub?.();
 }
 
-export function finishTask(uid, task){
-  return updateGuestTask(uid, task.id, completeTask(task));
+// Done with no timer. `ctx` ({ tasks, events }) is what the time guess reads
+// (bloom-data guessDoneMinutes). The returned promise carries `counted`, the
+// minutes logged, at once, so the caller's toast can say "Counted ~30 min".
+export function finishTask(uid, task, ctx = {}){
+  const g = guessDoneMinutes(task, ctx);
+  const p = updateGuestTask(uid, task.id, completeTask(task));
+  logWork(uid, task, g.minutes, { at: g.at, done: true, guess: true }).catch(logFail);
+  p.counted = { minutes: g.minutes };
+  return p;
 }
 
 export function removeTask(uid, id){
@@ -188,7 +196,68 @@ export function blockTask(uid, task, waitingOn = "", checkOn = ""){
 }
 
 export function restoreTask(uid, id, fields){
+  // Undoing a Done takes the time it logged back out.
+  if (fields?.status && fields.status !== "done") unlogDone(uid, id);
   return updateGuestTask(uid, id, fields);
+}
+
+// ---------- the work log (bloom-data.js) ----------
+// users/{uid}/state/log-YYYY-MM, { e: { entryId: entry } }: one doc a month,
+// entries merged in by id so two devices never overwrite each other. A removed
+// entry is a null (Firestore merges can't delete a map key without a sentinel).
+const logFail = (e) => console.warn("[daisey] work log", e.message || e);
+const logDoc = (uid, key) => fb.doc(fb.db, "users", uid, "state", key);
+const doneLogged = new Map(); // taskId → { key, id, entry }: this session's Done, for Undo and the −/+ fix
+
+function writeLog(uid, key, id, entry){
+  if (isGuest(uid)) {
+    try {
+      const data = readGuestData(), e = { ...(data.state[key]?.e || {}) };
+      if (entry) e[id] = entry; else delete e[id];
+      data.state[key] = { e };
+      writeGuestData(data);
+      return Promise.resolve(id);
+    } catch (error) { return Promise.reject(error); }
+  }
+  return fb.setDoc(logDoc(uid, key), { e: { [id]: entry } }, { merge: true }).then(() => id);
+}
+
+// `minutes` of real (or guessed) work on a task, ending at `at`. `done`: it
+// finished the task. A 0-minute entry is only kept when it marks a finish.
+export function logWork(uid, task, minutes, { at = Date.now(), done = false, guess = false } = {}){
+  const m = Math.max(0, Math.round(minutes));
+  if (!m && !done) return Promise.resolve(null);
+  const id = `${at}-${task.id}`, key = logDocKey(at);
+  const entry = { t: task.id, p: task.project || INBOX, m, at, ...(done ? { d: 1 } : {}), ...(guess ? { g: 1 } : {}) };
+  if (done) doneLogged.set(task.id, { key, id, entry });
+  return writeLog(uid, key, id, entry);
+}
+export function unlogDone(uid, taskId){
+  const d = doneLogged.get(taskId);
+  if (!d) return Promise.resolve();
+  doneLogged.delete(taskId);
+  return writeLog(uid, d.key, d.id, null).catch(logFail);
+}
+// The "Counted ~30 min" toast's − / +: the Done's minutes, corrected.
+export function setDoneMinutes(uid, taskId, minutes){
+  const d = doneLogged.get(taskId);
+  if (!d) return Promise.resolve();
+  d.entry = { ...d.entry, m: Math.max(0, Math.round(minutes)) };
+  delete d.entry.g; // said by the user now, no longer a guess
+  return writeLog(uid, d.key, d.id, d.entry).catch(logFail);
+}
+
+// cb(entries) with every entry of the given month docs, on every change.
+export function watchLog(uid, keys, cb, onError){
+  const by = new Map();
+  const subs = keys.map((key) => {
+    const got = (v) => {
+      by.set(key, Object.entries(v?.e || {}).filter(([, x]) => x).map(([id, x]) => ({ id, ...x })));
+      cb([...by.values()].flat());
+    };
+    return watchGuestState(uid, key, got, onError) || fb.onSnapshot(logDoc(uid, key), (snap) => got(snap.exists() ? snap.data() : null), onError);
+  });
+  return () => subs.forEach((u) => u?.());
 }
 
 // Today's skips, users/{uid}/state/skips: { date, items: { id: { count, until } } }.
@@ -239,6 +308,7 @@ export function startBatch(uid, tasks){
 
 export function tickBatch(uid, run, task, minutes){
   const now = Date.now();
+  logWork(uid, task, minutes, { at: now, done: true }).catch(logFail);
   return Promise.all([
     saveGuestState(uid, "now", { ...run, done: [...(run.done || []), task.id], mark: now }),
     updateGuestTask(uid, task.id, workedTask(task, minutes, { finished: true })),
@@ -250,6 +320,7 @@ export function tickBatch(uid, run, task, minutes){
 // early is the batch's doing, not a sign any one task is too big.
 export function endBatch(uid, left, minutes){
   const each = left.length ? Math.round(minutes / left.length) : 0;
+  left.forEach((t) => logWork(uid, t, each).catch(logFail));
   return Promise.all([
     removeGuestState(uid, "now"),
     ...left.map((t) => updateGuestTask(uid, t.id, { spentMinutes: (t.spentMinutes || 0) + each, touchedAt: Date.now(), workedAt: Date.now() })),
@@ -260,6 +331,7 @@ export function endBatch(uid, left, minutes){
 // drops it; `minutes` > 0 are kept on the task without counting a stop.
 export const saveRun = (uid, run) => saveGuestState(uid, "now", run);
 export const cancelRun = (uid, task = null, minutes = 0) => Promise.all([
+  task && minutes > 0 ? logWork(uid, task, minutes).catch(logFail) : null,
   removeGuestState(uid, "now"),
   task && minutes > 0 ? updateGuestTask(uid, task.id, keptTime(task, minutes)) : null,
 ]);
@@ -270,6 +342,7 @@ export function extendRun(uid, run, minutes){
 
 // Ends the run and books the time against the task.
 export function endRun(uid, task, minutes, { finished = false } = {}){
+  if (task) logWork(uid, task, minutes, { done: finished }).catch(logFail);
   return Promise.all([
     removeGuestState(uid, "now"),
     task ? updateGuestTask(uid, task.id, workedTask(task, minutes, { finished })) : null,
@@ -295,6 +368,7 @@ export const releaseTask = (uid, task) => updateGuestTask(uid, task.id, { onHold
 // local copy. Calendar and Trello themselves are never touched; their stored
 // connections are dropped separately (reset.js → daisey-now-disconnect).
 const STATE_DOCS = ["now", "skips", "settings", "moment", "learn", "projects", "dayplan"];
+// The work log's month docs (log-YYYY-MM) go too.
 export async function resetAll(uid){
   if(isGuest(uid)){
     try { localStorage.removeItem(GUEST_KEY); localStorage.removeItem("daisey.guest.events.v1"); }
@@ -302,8 +376,10 @@ export async function resetAll(uid){
     return;
   }
   const tasks = await fb.getDocs(tasksCol(uid));
+  const logs = await fb.getDocs(fb.collection(fb.db, "users", uid, "state"));
   await Promise.all([
     ...tasks.docs.map((d) => fb.deleteDoc(d.ref)),
+    ...logs.docs.filter((d) => d.id.startsWith("log-")).map((d) => fb.deleteDoc(d.ref)),
     ...STATE_DOCS.map((k) => fb.deleteDoc(fb.doc(fb.db, "users", uid, "state", k))),
   ]);
 }
