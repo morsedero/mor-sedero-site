@@ -1155,24 +1155,24 @@ dialog.tsheet .msg:empty { display: none; }
 /* Day / Week header (2026-10-07): ‹ title › and a Day|Week switch, sticky at
    the top while the day or week scrolls under it. In Week the weekday
    headings ride in it too. */
-.sc-head { position: sticky; inset-block-start: -12px; z-index: 2; margin: -12px -14px 12px; padding: 10px 14px 8px; background: var(--card); border-block-end: 1px solid var(--line); }
+.sc-head { position: sticky; inset-block-start: -12px; z-index: 2; margin: -12px -14px 8px; padding: 6px 14px 5px; background: var(--card); border-block-end: 1px solid var(--line); }
 .sc-bar { display: flex; align-items: center; gap: 3px; }
-.sc-step { flex: none; display: inline-flex; align-items: center; justify-content: center; inline-size: 28px; block-size: 34px; border: 0; border-radius: 50%; background: none; color: var(--ink-2); cursor: pointer; }
+.sc-step { flex: none; display: inline-flex; align-items: center; justify-content: center; inline-size: 28px; block-size: 28px; border: 0; border-radius: 50%; background: none; color: var(--ink-2); cursor: pointer; }
 .sc-step:hover { background: var(--chip); }
 .sc-step svg { inline-size: 18px; block-size: 18px; }
-.sc-title { flex: 1; min-inline-size: 0; display: flex; align-items: baseline; gap: 8px; padding: 4px 2px; border: 0; background: none; font: inherit; text-align: start; cursor: pointer; white-space: nowrap; overflow: hidden; }
+.sc-title { flex: 1; min-inline-size: 0; display: flex; align-items: baseline; gap: 8px; padding: 1px 2px; border: 0; background: none; font: inherit; text-align: start; cursor: pointer; white-space: nowrap; overflow: hidden; }
 .sc-title .sc-name { overflow: hidden; text-overflow: ellipsis; font-size: 15px; }
 @media (max-width: 420px) { .sc-title .sc-name { font-size: 14px; } }
 .sc-title .sc-date { overflow: hidden; text-overflow: ellipsis; }
-.sc-today { flex: none; padding: 5px 7px; border: 0; border-radius: 999px; background: var(--chip); font: inherit; font-size: 12px; font-weight: 600; color: var(--ink); cursor: pointer; }
+.sc-today { flex: none; padding: 3px 8px; border: 0; border-radius: 999px; background: var(--chip); font: inherit; font-size: 12px; font-weight: 600; color: var(--ink); cursor: pointer; }
 .sc-today.off { visibility: hidden; pointer-events: none; }
-.sc-proj { flex: none; display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-inline-size: 32px; block-size: 32px; padding-inline: 8px; border: 0; border-radius: 999px; background: #5b67ff; color: #fff; font: inherit; font-size: 13px; font-weight: 700; white-space: nowrap; cursor: pointer; }
+.sc-proj { flex: none; display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-inline-size: 32px; block-size: 28px; padding-inline: 8px; border: 0; border-radius: 999px; background: #5b67ff; color: #fff; font: inherit; font-size: 13px; font-weight: 700; white-space: nowrap; cursor: pointer; }
 .sc-proj svg { inline-size: 17px; block-size: 17px; }
 .sc-proj-t, .sc-title .sc-date, .sc-title .sc-name:not(.sc-name-s) { display: none; }
 @media (min-width: 480px) { .sc-proj { padding-inline: 12px; } .sc-proj-t { display: inline; } .sc-title .sc-date, .sc-title .sc-name:not(.sc-name-s) { display: inline; } .sc-title .sc-name-s { display: none; } }
 .sc-proj:hover { background: #4b57ee; }
 .sc-seg { flex: none; display: flex; padding: 2px; border-radius: 10px; background: var(--chip); }
-.sc-seg button { padding: 4px 7px; border: 0; border-radius: 8px; background: none; font: inherit; font-size: 12px; font-weight: 600; color: var(--ink-2); cursor: pointer; }
+.sc-seg button { padding: 2px 7px; border: 0; border-radius: 8px; background: none; font: inherit; font-size: 12px; font-weight: 600; color: var(--ink-2); cursor: pointer; }
 .sc-seg button[aria-checked="true"] { background: var(--card); color: var(--ink); box-shadow: 0 1px 2px rgb(0 0 0 / .12); }
 
 /* Week: an hour column and 7 day columns that always fit — never a sideways
@@ -1330,6 +1330,14 @@ body.focus .shell { block-size: auto; min-block-size: 100dvh; overflow: visible;
 .pp-row.pp-dragging, .pp-row.pp-dragging * { cursor: grabbing; }
 .pp-row.pp-ins { box-shadow: 0 -5px 0 -2px var(--ink); }
 .pp-row.pp-ins-end { box-shadow: 0 5px 0 -2px var(--ink); }
+.pcard.pp-drag, .pj-swipe.pp-drag { user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+.pcard.pp-dragging, .pj-swipe.pp-dragging { position: relative; z-index: 5; scale: 1.03; box-shadow: 0 0 0 2px var(--aline, var(--ink-2)), 0 14px 28px -4px rgba(0,0,0,.45), 0 4px 8px rgba(0,0,0,.25); }
+.pj-swipe.pp-dragging { overflow: visible; }
+.pcard.pp-dragging, .pcard.pp-dragging *, .pj-swipe.pp-dragging, .pj-swipe.pp-dragging * { cursor: grabbing; }
+.pj-swipe.pp-ins { box-shadow: 0 -5px 0 -2px var(--ink); }
+.pj-swipe.pp-ins-end { box-shadow: 0 5px 0 -2px var(--ink); }
+.pcard.pp-ins { box-shadow: -6px 0 0 -2px var(--ink); }
+.pcard.pp-ins-end { box-shadow: 6px 0 0 -2px var(--ink); }
 .pp-row.pp-break { background: transparent; border-style: dotted; opacity: .85; }
 .pp-row.over > :not(.pp-fit) { opacity: .65; }
 /* "Shorten to 55 min": a late plan item cut to the time left. */
