@@ -363,20 +363,44 @@ async function boot(){
         logSwitch.onchange = () => saveSettings(user.uid, { logDone: logSwitch.checked }).catch(fail);
         // Meal breaks (Mor, 2026-10-08): Breakfast, Lunch, Dinner, each on or
         // off, with one time (the plan puts it in the hour from there) and a
-        // length. All three save on any change; a time being typed isn't repainted.
+        // length. The time is a − 13:00 + stepper (Mor, 2026-10-08: not the
+        // browser's clock picker): 15 min a tap, held it repeats; it saves
+        // once the stepping stops, and nothing repaints under a held finger.
         const mealList = $("#mealList"), MEAL_LENS = [15, 20, 30, 45, 60, 90];
         let meals = mealPrefs({});
         const saveMeals = () => saveSettings(user.uid, { meals: meals.map((m) => ({ name: m.name, on: m.on, at: minText(m.at), minutes: m.minutes })) }).catch(fail);
-        const timeIn = (min, label, set) => h("input", { type: "time", className: "meal-time", value: minText(min), step: 300, ariaLabel: label,
-          onchange: (e) => { const v = e.target.value.match(/^(\d\d):(\d\d)$/); if (v) { set(+v[1] * 60 + +v[2]); saveMeals(); } } });
+        const STEP = 15;
+        let stepping = null, stepSave = null;
+        const stepper = (m) => {
+          const read = h("output", { className: "meal-at", textContent: minText(m.at), ariaLive: "polite" });
+          const nudge = (d) => {
+            m.at = Math.max(0, Math.min(1440 - STEP, Math.round((m.at + d * STEP) / STEP) * STEP));
+            read.textContent = minText(m.at);
+            clearTimeout(stepSave); stepSave = setTimeout(() => { stepSave = null; saveMeals(); }, 700);
+          };
+          const btn = (d) => {
+            const b = h("button", { type: "button", className: "meal-step", textContent: d < 0 ? "−" : "+", ariaLabel: `${m.name} ${d < 0 ? "earlier" : "later"}` });
+            // Tap = one step; hold = keeps going. Keyboard Enter/Space = one step.
+            b.addEventListener("pointerdown", (e) => {
+              e.preventDefault(); nudge(d);
+              let wait = 400; const go = () => { nudge(d); wait = Math.max(60, wait * 0.75); stepping = setTimeout(go, wait); };
+              stepping = setTimeout(go, wait);
+            });
+            const stop = () => { clearTimeout(stepping); stepping = null; };
+            ["pointerup", "pointerleave", "pointercancel"].forEach((t) => b.addEventListener(t, stop));
+            b.addEventListener("click", (e) => { if (e.detail === 0) nudge(d); }); // keyboard only; pointer handled above
+            return b;
+          };
+          return h("span", { className: "meal-stepper", role: "group", ariaLabel: `${m.name} time` }, btn(-1), read, btn(1));
+        };
         function paintMeals(s){
-          if (mealList.contains(document.activeElement) && document.activeElement.matches("input[type=time]")) return;
+          if (stepping || stepSave) return; // a later snapshot paints it
           meals = mealPrefs(s);
           mealList.replaceChildren(...meals.map((m) => h("div", { className: "meal-row" + (m.on ? "" : " off") },
             h("label", { className: "menu-check" },
               h("input", { type: "checkbox", checked: m.on, onchange: (e) => { m.on = e.target.checked; saveMeals(); } }), m.name),
             m.on && h("span", { className: "meal-when" },
-              timeIn(m.at, `${m.name} time`, (v) => { m.at = v; }),
+              stepper(m),
               h("select", { className: "menu-select", ariaLabel: `${m.name} length`, onchange: (e) => { m.minutes = +e.target.value; saveMeals(); } },
                 ...[...new Set([...MEAL_LENS, m.minutes])].sort((a, b) => a - b).map((n) => h("option", { value: n, selected: n === m.minutes, textContent: `${n} min` })))))));
         }

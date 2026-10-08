@@ -660,7 +660,11 @@ dialog.settings .now-head + .menu-sec { border-block-start: 0; padding-block-sta
 .meal-row { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 8px; min-block-size: 44px; padding: 6px 10px; border: 1px solid var(--line); border-radius: 12px; }
 .meal-row.off { color: var(--ink-2); }
 .meal-when { display: flex; align-items: center; gap: 6px; }
-.meal-time { padding: 4px 6px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--ink); font: inherit; font-size: 13px; font-variant-numeric: tabular-nums; }
+.meal-stepper { display: inline-flex; align-items: center; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
+.meal-step { inline-size: 32px; block-size: 32px; padding: 0; border: 0; background: none; color: var(--ink-2); font: inherit; font-size: 18px; line-height: 1; cursor: pointer; touch-action: manipulation; user-select: none; -webkit-user-select: none; }
+.meal-step:hover { color: var(--ink); }
+.meal-step:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; border-radius: 8px; }
+.meal-at { min-inline-size: 44px; text-align: center; font-size: 14px; font-variant-numeric: tabular-nums; color: var(--ink); }
 .focus-still-btns { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .focus-took-row { display: inline-flex; gap: 8px; align-items: center; }
 .focus-took-other { width: 72px; min-height: 44px; padding: 0 10px; border-radius: 12px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); font: inherit; }
