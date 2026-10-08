@@ -198,8 +198,8 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
   // says is happening or next) and a QUIET one (nothing to pick). Event and
   // quiet cards share this layout: a small line, a big title, one sentence,
   // optional extras, and at most one action.
-  function plainCard(cls, { meta, title, open, why, extras = [], action }){
-    return h("div", { className: `now-card main hero ${cls}` },
+  function plainCard(cls, { meta, title, open, why, extras = [], action, color }){
+    return h("div", { className: `now-card main hero ${cls}`, style: color ? `--ev:${color}` : "" },
       h("div", { className: "now-meta", textContent: meta }),
       open ? h("button", { type: "button", className: "now-title", dir: "auto", textContent: title, ariaLabel: `Open ${title}`, onclick: open })
         : h("div", { className: "now-title", dir: "auto", textContent: title }),
@@ -227,7 +227,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
   function meetingCard(ev){
     const end = ev.end;
     const left = Math.max(0, Math.round((end - Date.now()) / 60000));
-    return eventCard({ meta: `Now · until ${clock(end)}`, title: ev.title,
+    return eventCard({ meta: `Now · until ${clock(end)}`, title: ev.title, color: ev.color,
       why: left ? `${dur(left)} left. Daisey picks a task again when it ends.` : "Just about done.",
       // With someone a Pending task waits on: worth raising while you're there.
       extras: waitingFor(ev.title, tasks || []).slice(0, 3).map((t) => h("p", { className: "now-wait" },
@@ -669,7 +669,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
   // ev: freeWindow's next (start/end already epoch ms).
   function upcomingCard(ev, r){
     const mins = Math.max(0, Math.round((ev.start - Date.now()) / 60000));
-    return eventCard({ meta: `Coming up · ${clock(ev.start)}`, title: ev.title,
+    return eventCard({ meta: `Coming up · ${clock(ev.start)}`, title: ev.title, color: ev.color,
       open: onEvent ? () => onEvent({ ...ev, start: new Date(ev.start).toISOString(), end: new Date(ev.end).toISOString() }) : null,
       why: mins ? `In ${dur(mins)}. Nothing else fits before it.` : "Starting now.",
       extras: [outLine(r), putOffButton(r)] });
@@ -1251,7 +1251,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
     if (!card && feel().place.value === "car") { day(...head, drivingCard(), toast && toastView()); return; }
     const block = blockOf(fw);
     if (!card && block) {
-      day(...head, eventCard({ meta: `Now · until ${clock(fw.current.end)}`, title: fw.current.title,
+      day(...head, eventCard({ meta: `Now · until ${clock(fw.current.end)}`, title: fw.current.title, color: fw.current.color,
         why: `Nothing in ${block.project} fits right now.`, action: freeNowButton({ start: block.start }, `the ${block.project} block`) }), tip);
       return;
     }
