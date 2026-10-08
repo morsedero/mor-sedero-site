@@ -408,12 +408,14 @@ async function boot(){
         // The home panel: the Schedule, or Projects (the grid or one project)
         // in its place. The Projects button toggles between them (Mor, 2026-10-08).
         const syncPanel = () => {
-          const on = !$("#projPage").hidden || !$("#projectview").hidden;
-          $("#schedPage").hidden = on;
+          const on = !$("#projPage").hidden || !$("#projectview").hidden, plan = !$("#planPage").hidden;
+          $("#schedPage").hidden = on || plan;
           $("#projectsChip").setAttribute("aria-pressed", String(on));
-          $("#panel").setAttribute("aria-label", on ? "Projects" : "Schedule");
+          $("#planChip").setAttribute("aria-pressed", String(plan));
+          $("#panel").setAttribute("aria-label", plan ? "Plan" : on ? "Projects" : "Schedule");
         };
         window.__toggleProjects = () => {
+          if (!$("#planPage").hidden) m.now?.closePlan();
           if (!$("#schedPage").hidden) { m.projects.openAll(); syncPanel(); return; }
           m.projects.closeProject(); m.projects.closeAll(); syncPanel();
           if (history.state?.daisey === "project") history.back();
@@ -439,12 +441,14 @@ async function boot(){
           onScreen: (name) => { if (name) { screens.open("project"); syncPanel(); } else screens.back(); },
         });
         syncPanel();
-        $("#planBack").onclick = () => m.now?.closePlan();
         $("#planChip").onclick = () => m.now?.plan();
         m.now = mountNow($("#nowcard"), user.uid, {
           name: (user.displayName || "").trim().split(/\s+/)[0], onDone: paintDone, onNeedsCount: paintNeeds, onPlanProgress: paintPlan,
           planRoot: $("#planPage"),
-          onPlanScreen: (open) => { $("#planview").hidden = !open; if (open) { $("#planview").scrollTop = 0; screens.open("plan"); } else if (history.state?.daisey === "plan") history.back(); },
+          onPlanScreen: (open) => {
+            if (open) { m.projects?.closeProject(); m.projects?.closeAll(); if (history.state?.daisey === "project") history.back(); }
+            $("#planPage").hidden = !open; if (open) $("#planPage").scrollTop = 0; syncPanel();
+          },
           onCard: (id) => m.projects?.setCurrent(id),
           onOpen: (task) => m.adder.edit(task),
           onProject: (name) => m.projects.openProject(name),

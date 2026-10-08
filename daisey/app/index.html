@@ -85,6 +85,8 @@
     <section id="panel" class="panel" aria-label="Schedule">
       <div id="schedPage" class="ppage"></div>
       <div id="projPage" class="ppage" hidden></div>
+      <!-- The plan (now.js proposalCard), in the panel too; the Plan chip toggles it. -->
+      <div id="planPage" class="ppage" hidden></div>
       <!-- One project (projects.js), in the panel too. -->
       <section id="projectview" class="ppage" aria-label="Project" hidden></section>
     </section>
@@ -114,14 +116,6 @@
       </button>
     </form>
   </div>
-  <!-- The plan, full screen (now.js proposalCard): opened by the Plan button. -->
-  <section id="planview" class="screen" aria-labelledby="planTitle" hidden>
-    <div class="pp-top">
-      <button id="planBack" class="pj-back" type="button" aria-label="Back to home"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button>
-      <h2 id="planTitle" class="pp-title">Plan</h2>
-    </div>
-    <div id="planPage" class="pp-page"></div>
-  </section>
   <!-- The week, full screen (schedule.js mode "week"): opened by the Week button. -->
   <section id="weekview" class="screen wkscreen" aria-labelledby="weekTitle" hidden>
     <div class="pp-top">
