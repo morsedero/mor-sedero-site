@@ -1440,7 +1440,7 @@ body.focus .shell { block-size: auto; min-block-size: 100dvh; overflow: visible;
 
 /* Task events (planned, finished) are plain; the project colour is a dot (Mor, 2026-10-08). */
 .sc-dot { flex: none; inline-size: 10px; block-size: 10px; margin-inline: 5px 13px; border-radius: 50%; background: var(--aink); }
-.sc-ev.sc-plan, .sc-ev.sc-plan[class*="pc-"], .sc-ev.sc-plan[class*="area-"] { background: none; color: var(--ink); box-shadow: none; border: 1.5px dashed var(--line); }
+.sc-ev.sc-plan, .sc-ev.sc-plan[class*="pc-"], .sc-ev.sc-plan[class*="area-"] { background: none; color: var(--ink); box-shadow: none; border: 1.5px dashed var(--line); margin: 0; padding: 2px 9px; border-radius: 7px; }
 .sc-ev.sc-done[class*="pc-"], .sc-ev.sc-done[class*="area-"] { box-shadow: none; }
 .wk-ev.done[class*="pc-"], .wk-ev.done[class*="area-"], .wk-ev.wk-plan[class*="pc-"], .wk-ev.wk-plan[class*="area-"] { background: none; color: var(--ink-2); box-shadow: none; }
 
