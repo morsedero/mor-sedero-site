@@ -138,16 +138,33 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onProjects, onW
   // Drag sideways to change day (week: change week); no arrows.
   let stepBy = () => {}, swipe = null;
   el.style.touchAction = "pan-y"; // keep the horizontal drag ours, or the browser cancels it
-  el.addEventListener("pointerdown", (e) => { swipe = dragging ? null : { x: e.clientX, y: e.clientY }; });
+  // The page follows the finger, then slides off and the next one slides in.
+  const slide = (x, ms) => { el.style.transition = ms ? `transform ${ms}ms ease-out` : "none"; el.style.transform = x ? `translateX(${x}px)` : ""; };
+  el.addEventListener("pointerdown", (e) => { swipe = dragging ? null : { x: e.clientX, y: e.clientY, on: false }; });
+  el.addEventListener("pointermove", (e) => {
+    if (!swipe || dragging) return;
+    const dx = e.clientX - swipe.x, dy = e.clientY - swipe.y;
+    if (!swipe.on && Math.abs(dx) > 10 && Math.abs(dx) > 1.5 * Math.abs(dy)) swipe.on = true;
+    if (swipe.on) slide(dx * 0.9);
+  });
   el.addEventListener("pointerup", (e) => {
     if (!swipe) return;
-    const dx = e.clientX - swipe.x, dy = e.clientY - swipe.y;
+    const dx = e.clientX - swipe.x, dy = e.clientY - swipe.y, on = swipe.on;
     swipe = null;
-    if (dragging || Math.abs(dx) < 60 || Math.abs(dx) < 1.5 * Math.abs(dy)) return;
+    if (!on) return;
+    sawSwipe = true; setTimeout(() => { sawSwipe = false; });
+    if (dragging || Math.abs(dx) < 60 || Math.abs(dx) < 1.5 * Math.abs(dy)) { slide(0, 180); return; }
     const rtl = getComputedStyle(el).direction === "rtl";
-    stepBy((dx < 0) !== rtl ? 1 : -1);
+    const w = el.clientWidth || innerWidth, out = dx < 0 ? -w : w;
+    slide(out, 140);
+    setTimeout(() => {
+      stepBy((dx < 0) !== rtl ? 1 : -1);
+      slide(-out); el.getBoundingClientRect(); slide(0, 180);
+    }, 140);
   });
-  el.addEventListener("pointercancel", () => { swipe = null; });
+  el.addEventListener("pointercancel", () => { if (swipe?.on) slide(0, 180); swipe = null; });
+  let sawSwipe = false; // the lift after a drag is not a tap
+  el.addEventListener("click", (e) => { if (sawSwipe) { e.stopPropagation(); e.preventDefault(); } }, true);
 
   let dragging = false, stale = false; // a redraw mid-drag would drop the dragged row
   let dayCtx = null; // the shown day's { events, now, hrs, d0 }, for a drag's preview
