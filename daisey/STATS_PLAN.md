@@ -86,9 +86,18 @@ Month reads ≤ 31 small docs; fine.
    Sunday "your week" note, and a gentle nudge when a Focus project got no
    time for N days.
 
+## Decided (Mor, 2026-10-08)
+
+- **Week starts Sunday**, same as routines.
+- **Done without a timer → Daisey guesses the time**, never asks. Order of
+  evidence: the task's slot in today's approved plan or its booked calendar
+  slot, if it ended near Done → that slot's length; else time since the last
+  logged work on that day, capped at the task's size; else its size estimate
+  minus `spentMinutes` already logged. Logged with `guess: true`; the flower
+  sheet shows guessed time with a soft "~". Same act-first rule as the rest of
+  the app.
+
 ## Open questions for Mor
 
-1. Name: "Garden"? (or "Progress", "My week")
-2. Done without a timer: count the task's planned size as time, or petals only?
-3. Calendar project blocks (time booked but not timed in Daisey): count them?
-4. Week starts Sunday (matches routines) — OK?
+1. Name — "Garden" is close; candidates in chat.
+2. Calendar time that Daisey never timed: count it? (see chat)
