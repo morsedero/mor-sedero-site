@@ -1770,7 +1770,10 @@ body.focus .shell { block-size: auto; min-block-size: 100dvh; overflow: visible;
 .bl-r-dot { inline-size: 8px; block-size: 8px; border-radius: 50%; background: var(--aink, var(--ink-2)); }
 .bl-r-title { font-size: 14px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .bl-routine.met .bl-r-title { color: var(--ink-2); }
-.bl-dots { color: var(--ink-2); }
+.bl-dots { color: var(--ink-2); display: inline-flex; align-items: center; gap: 8px; }
+.bl-r-n { font-size: 12px; font-variant-numeric: tabular-nums; min-inline-size: 2.2em; text-align: end; }
+.bl-routine.met .bl-r-n { color: var(--ink); font-weight: 600; }
+.bl-h-sub { font-weight: 400; color: var(--ink-2); }
 .bl-dots .wk-dots { gap: 5px; }
 .bl-dots .wk-dots i { inline-size: 9px; block-size: 9px; }
 .bl-bee { font-size: 13px; text-align: center; }

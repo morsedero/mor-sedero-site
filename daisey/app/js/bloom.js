@@ -156,11 +156,14 @@ export function weekCard(strip){
 export function routinesSection(rows, tasks, colors){
   if (!rows.length) return null;
   return h("section", { className: "bl-card bl-routines", ariaLabel: "Routines" },
-    h("h3", { className: "bl-h", textContent: "Routines" }),
+    // Dots alone didn't read when empty (Mor, 2026-10-08): "this week" on the
+    // header, the count in words beside each row's dots.
+    h("h3", { className: "bl-h" }, "Routines", h("span", { className: "bl-h-sub", textContent: " · this week" })),
     ...rows.map((r) => h("div", { className: "bl-routine" + (r.met ? " met" : "") + (colors.get(r.project) ? ` pc-${colors.get(r.project)}` : ""),
       title: `${r.project} · ${r.count} of ${r.per}${r.streak >= 2 ? ` · ${r.streak} weeks in a row` : ""}` },
       h("span", { className: "bl-r-dot", ariaHidden: "true" }),
       h("span", { className: "bl-r-title" }, bdi(r.title)),
-      h("span", { className: "bl-dots", ariaLabel: `${r.count} of ${r.per} this week` }, weekDots(tasks.find((t) => t.id === r.id))),
+      h("span", { className: "bl-dots", ariaLabel: `${r.count} of ${r.per} this week` }, weekDots(tasks.find((t) => t.id === r.id)),
+        h("span", { className: "bl-r-n", ariaHidden: "true", textContent: `${r.count}/${r.per}` })),
       h("span", { className: "bl-bee", ariaHidden: "true" }, r.met ? "🐝" : ""))));
 }
