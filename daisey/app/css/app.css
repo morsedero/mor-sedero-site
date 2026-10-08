@@ -1204,11 +1204,11 @@ body.focus #side { display: none; }
    come from schedule.js; --sc-prog animates over the event's own length. */
 @property --sc-prog { syntax: "<percentage>"; inherits: false; initial-value: 0%; }
 @keyframes sc-prog { to { --sc-prog: 100%; } }
-.sc-row.sc-on:not(.sc-gap) { --rowdeep: color-mix(in srgb, var(--ev, #8c8574) 30%, var(--card));
-  background: linear-gradient(to right, var(--rowdeep) calc(var(--sc-prog) - 56px), var(--rowbg) var(--sc-prog));
+.sc-row.sc-on:not(.sc-gap) { --rowdeep: color-mix(in srgb, var(--ev, #8c8574) 50%, var(--card));
+  background: linear-gradient(to right, var(--rowdeep) calc(var(--sc-prog) - 32px), var(--rowbg) var(--sc-prog));
   animation: sc-prog var(--dur, 1s) linear var(--el, 0s) both; }
-.sc-row.sc-on[class*="pc-"]:not(.sc-gap), .sc-row.sc-on[class*="area-"]:not(.sc-gap) { --rowdeep: color-mix(in srgb, var(--aline) 35%, var(--tint)); }
-.sc-row.sc-on:not(.sc-gap):dir(rtl) { background: linear-gradient(to left, var(--rowdeep) calc(var(--sc-prog) - 56px), var(--rowbg) var(--sc-prog)); }
+.sc-row.sc-on[class*="pc-"]:not(.sc-gap), .sc-row.sc-on[class*="area-"]:not(.sc-gap) { --rowdeep: color-mix(in srgb, var(--aline) 75%, var(--tint)); }
+.sc-row.sc-on:not(.sc-gap):dir(rtl) { background: linear-gradient(to left, var(--rowdeep) calc(var(--sc-prog) - 32px), var(--rowbg) var(--sc-prog)); }
 /* The glint: a deeper shade on light paper (white read as a hole in the ring),
    a lighter one on dark. */
 .sc-row.sc-on:not(.sc-gap) { --glint: color-mix(in srgb, var(--rowline) 80%, #000); }
