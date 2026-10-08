@@ -741,6 +741,7 @@ dialog.settings .now-head + .menu-sec { border-block-start: 0; padding-block-sta
 /* The event name wraps as one piece ("שיעור גיטרה" never splits across lines). */
 .freeline bdi { display: inline-block; }
 .freeline .free-now { font-weight: 600; color: var(--ink); text-underline-offset: 2px; padding-block: 4px; }
+.trip-ok { color: var(--ink); font-weight: 700; } /* an answered trip/laptop question */
 /* The event form's From and To: one quarter-hour picker each. */
 .timepick { inline-size: 100%; min-inline-size: 0; font: inherit; font-size: 16px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--ink); font-variant-numeric: tabular-nums; }
 

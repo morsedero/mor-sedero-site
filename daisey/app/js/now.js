@@ -75,6 +75,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
   // engine.freeWindow reports). Cleared on its own once that event is no
   // longer the one running.
   let freeFrom = null;
+  let tripOpen = null; // the trip/laptop line showing its choices (answered())
   // "I'm free now" at night: plan as if it were day until the night is over.
   let nightFree = false;
   // The Someday pick (DAISEY_SPEC "Someday comes back"). open: Switch asked
@@ -206,8 +207,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
         ...(block.taskId ? [`Booked until ${clock(block.end)}`] : ["Working on ", bdi(block.project), ` until ${clock(block.end)}`]),
         " · ", freeNow(block.start, block.title || block.project)),
       leg && h("p", { className: "freeline" },
-        leg === fw.current ? `${TRIP_ON[leg.trip.mode]} until ${clock(leg.end)}` : `Leave ${clock(leg.start)}, ${TRIP_BY[leg.trip.mode]}`,
-        " · ", ...tripSwitch(leg)),
+        ...tripSwitch(leg, leg === fw.current ? `${TRIP_ON[leg.trip.mode]} until ${clock(leg.end)}` : `Leave ${clock(leg.start)}, ${TRIP_BY[leg.trip.mode]}`)),
       leg && laptopLine(leg, "freeline"));
   }
 
@@ -216,12 +216,21 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
   function laptopLine(leg, cls){
     if (leg.trip.mode !== "train") return null;
     const has = settings.laptop;
-    const set = (v) => { settings = { ...settings, laptop: v }; applyTrips(); render(); saveSettings(uid, { laptop: v }).catch(fail); };
+    const set = (v) => { settings = { ...settings, laptop: v }; tripOpen = null; applyTrips(); render(); saveSettings(uid, { laptop: v }).catch(fail); };
     const btn = (text, aria, v) => h("button", { className: "linkish", type: "button", textContent: text, ariaLabel: aria, onclick: () => set(v) });
     return h("p", { className: cls },
       ...(has == null ? ["Laptop with you? ", btn("Yes", "Yes, the laptop is with me", true), " · ", btn("No", "No laptop, phone only", false)]
-        : has ? ["Laptop with you · ", btn("No laptop", "No laptop this time: phone tasks only", false)]
-        : ["Phone only · ", btn("I have the laptop", "The laptop is with me", true)]));
+        : answered(`laptop:${leg.start}`, has ? "Laptop with you" : "Phone only",
+          [has ? btn("No laptop", "No laptop this time: phone tasks only", false) : btn("I have the laptop", "The laptop is with me", true)])));
+  }
+
+  // An answered question reads as settled (Mor, 2026-10-08: "unclear that I
+  // already answered"): a ✓ and the answer, its other choices behind Change.
+  function answered(key, text, options){
+    const link = (label, aria, open) => h("button", { className: "linkish", type: "button", textContent: label, ariaLabel: aria,
+      onclick: () => { tripOpen = open; render(); } });
+    return tripOpen === key ? [text, " · ", ...options.flatMap((o, i) => [i ? " · " : "", o]), " · ", link("Keep", `Keep: ${text}`, null)]
+      : [h("span", { className: "trip-ok", ariaHidden: "true", textContent: "✓ " }), text, " · ", link("Change", `Change: ${text}`, key)];
   }
 
   // Today by another way, or not going (settings.tripDay): the saved answer
@@ -230,10 +239,10 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
   const TRIP_BY = { train: "by train", bus: "by bus", car: "driving" };
   const TRIP_INSTEAD = { train: "Train", bus: "Bus", car: "Driving" };
   const RIDE_ROW = { train: "on the train", bus: "on the bus", car: "while driving" }; // a plan row on a ride
-  function tripSwitch(leg){
+  function tripSwitch(leg, text){
     const t = leg.trip, date = localDate(new Date(leg.start).getTime());
     const put = (tripDay) => {
-      settings = { ...settings, tripDay };
+      settings = { ...settings, tripDay }; tripOpen = null;
       applyTrips(); render();
       saveSettings(uid, { tripDay }).catch(fail);
     };
@@ -245,8 +254,9 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
     };
     const btn = (text, aria, mode) => h("button", { className: "linkish", type: "button", textContent: text, ariaLabel: aria, onclick: () => set(mode) });
     const others = MODES.filter((m) => m !== t.mode);
-    return [...others.flatMap((m, i) => [i ? " · " : "", btn(TRIP_INSTEAD[m], `${TRIP_INSTEAD[m]} to ${t.city} instead, that day only`, m)]),
-      " · ", btn("Not going", `Not going to ${t.city} that day`, "none")];
+    return answered(`trip:${t.key}:${leg.start}`, text,
+      [...others.map((m) => btn(TRIP_INSTEAD[m], `${TRIP_INSTEAD[m]} to ${t.city} instead, that day only`, m)),
+        btn("Not going", `Not going to ${t.city} that day`, "none")]);
   }
 
   // The card has three shapes (Mor, 2026-10-07: "too many states"): a TASK
@@ -699,7 +709,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
     const chain = first ? chainFrom(first, evs) : null, main = chain?.main;
     const leave = chain?.parts.find((e) => e.trip?.dir === "to"), back = chain?.parts.find((e) => e.trip?.dir === "back");
     const leaveLine = leave && h("div", {},
-      h("p", { className: "now-why trip-line" }, `Leave ${clock(Date.parse(leave.start))}, ${TRIP_BY[leave.trip.mode]} · `, ...tripSwitch(leave)),
+      h("p", { className: "now-why trip-line" }, ...tripSwitch(leave, `Leave ${clock(Date.parse(leave.start))}, ${TRIP_BY[leave.trip.mode]}`)),
       laptopLine(leave, "now-why trip-line"));
     const who = name ? `, ${name}` : "";
     const lead = dueTonight.length === 1 ? "One deadline is still open today." : `${dueTonight.length} deadlines are still open today.`;
