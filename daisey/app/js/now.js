@@ -37,7 +37,7 @@ import { h, icon, bdi, pieces, sizeText, sizeChip, progressBar, dur, say, nightD
 import { areaClass, areaName, projectShown, doneToday, dirOf, stemDaisy, moonDaisy, watchProjectColors } from "./look.js";
 
 const LATER_MS = LATER_MINUTES * 60000;
-const UNDO_MS = 5000;
+const UNDO_MS = 3500;
 const SLIDE_MS = 140; // matches the card-out animation in app.css
 const motionOK = () => !window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 const clock = (ms) => new Date(ms).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
@@ -548,6 +548,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
   function setToast(t){
     clearTimeout(toastTimer);
     toast = t;
+    if (t) t.at = Date.now();
     if (t) toastTimer = setTimeout(() => { toast = null; render(); }, UNDO_MS);
   }
 
@@ -573,7 +574,8 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
   function toastView(){
     const { task } = toast;
     const why = (reason, text, aria) => h("button", { className: "toast-why", type: "button", textContent: text, ariaLabel: aria, onclick: () => teach(reason) });
-    return h("div", { className: "toast", role: "status" },
+    // A re-render rebuilds this node, so start its fade where the last left off.
+    const pop = h("div", { className: "toast timed", role: "status" },
       h("div", { className: "toast-row" },
         h("span", { className: "toast-text" }, toast.label, bdi(task.title)),
         h("button", { className: "toast-undo", type: "button", textContent: "Undo",
@@ -583,6 +585,8 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
         : h("div", { className: "toast-why-row", role: "group", ariaLabel: "Why? (optional)" },
           why("toobig", "Too big", "Too big: offer it in pieces"),
           why("nothere", "Not here", "Not here: don't offer it where I am now"))));
+    pop.style.setProperty("--age", `${Math.min(Date.now() - (toast.at || Date.now()), UNDO_MS)}ms`);
+    return pop;
   }
 
   // The three quiet actions under Start. Icon plus a small word, with the

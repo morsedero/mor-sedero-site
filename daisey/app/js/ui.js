@@ -87,7 +87,7 @@ export const pieces = (...parts) => parts.filter(Boolean)
 // copy inside its render (it needs the toast to survive its re-renders); this
 // one is for callers with no such loop, and it is why nothing in the task
 // list has to fall back to the browser's own confirm().
-export const UNDO_MS = 5000;
+export const UNDO_MS = 3500;
 let livePop = null, liveTimer = null;
 
 // Every .toast is fixed to the same spot (the card's own Undo/why toasts, the
@@ -125,7 +125,7 @@ export function flash(label, title, { undo, adjust } = {}){
       mins = Math.max(0, mins + d); count.textContent = `Counted ${mins} min`; adjust.set(mins);
       clearTimeout(liveTimer); liveTimer = setTimeout(dismissFlash, UNDO_MS);
     } });
-  livePop = h("div", { className: "toast", role: "status" },
+  livePop = h("div", { className: adjust ? "toast" : "toast timed", role: "status" },
     h("span", { className: "toast-text" }, label, title ? bdi(title) : null),
     adjust && h("span", { className: "toast-adj" }, step(-15), count, step(15)),
     undo && h("button", { className: "toast-undo", type: "button", textContent: "Undo",

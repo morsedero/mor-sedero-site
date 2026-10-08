@@ -319,7 +319,12 @@ textarea {
   padding: 12px 14px; border-radius: 14px;
   background: var(--ink); color: var(--card); box-shadow: 0 10px 30px rgb(0 0 0 / .35);
 }
-.toast { display: flex; flex-direction: column; gap: 8px; }
+.toast { display: flex; flex-direction: column; gap: 8px; animation: toast-in .18s ease-out backwards; animation-delay: calc(0ms - var(--age, 0ms)); }
+/* Undo toasts also fade out over the last .3s of their 3.5s (UNDO_MS in ui.js / now.js). */
+.toast.timed { animation: toast-in .18s ease-out backwards, toast-out .3s ease-in 3200ms forwards; animation-delay: calc(0ms - var(--age, 0ms)), calc(3200ms - var(--age, 0ms)); }
+@keyframes toast-in { from { opacity: 0; transform: translateY(8px); } }
+@keyframes toast-out { to { opacity: 0; transform: translateY(8px); } }
+@media (prefers-reduced-motion: reduce) { .toast, .toast.timed { animation: none; } }
 .toast-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .toast-why-row { display: flex; align-items: center; gap: 8px; }
 .toast-why { font: inherit; font-size: 13px; color: var(--card); background: rgb(255 255 255 / .14); border: 0; border-radius: 999px; min-block-size: 32px; padding-inline: 12px; cursor: pointer; }
