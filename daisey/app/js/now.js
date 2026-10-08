@@ -1106,16 +1106,15 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
     prop.busy = false; render();
   }
   // Rethink takes the action row's slot, one set of controls at a time
-  // (2026-10-08): what to change | No calls | Go | ✕. Blank Go = a fresh take.
-  // Fewer tasks / Quick ones first went: ✕ on a row and drag do those.
+  // (2026-10-08): what to change | Fewer | More | Go | ✕. Blank Go = a fresh take.
   function rethinkRow(){
     const close = () => { prop.ask = false; render(); };
-    const input = h("input", { id: "rethinkText", dir: "auto", autocomplete: "off", placeholder: "Change what?", ariaLabel: "What should change? Blank for a fresh take", value: prop.text, oninput: (e) => { prop.text = e.target.value; } });
+    const input = h("input", { id: "rethinkText", dir: "auto", autocomplete: "off", placeholder: "Other…", ariaLabel: "What should change? Blank for a fresh take", value: prop.text, oninput: (e) => { prop.text = e.target.value; } });
     const go = () => doRethink(input.value);
     input.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); go(); } else if (e.key === "Escape") close(); });
     setTimeout(() => { if (!input.isConnected || document.activeElement === input) return; input.focus(); input.setSelectionRange(input.value.length, input.value.length); });
     return h("div", { className: "pp-actions pp-ask" }, input,
-      h("button", { type: "button", className: "chip", textContent: "No calls", disabled: prop.busy, onclick: () => doRethink("No calls") }),
+      ...[["Fewer", "Fewer tasks"], ["More", "More tasks"]].map(([label, ask]) => h("button", { type: "button", className: "chip", textContent: label, ariaLabel: ask, disabled: prop.busy, onclick: () => doRethink(ask) })),
       h("button", { className: "btn primary", type: "button", disabled: prop.busy, textContent: prop.busy ? "…" : "Go", ariaLabel: prop.busy ? "Thinking" : "Rethink", onclick: go }),
       h("button", { className: "pp-ctl", type: "button", textContent: "✕", title: "Never mind", ariaLabel: "Never mind", onclick: close }));
   }
