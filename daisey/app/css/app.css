@@ -863,7 +863,7 @@ body:has(.screen:not([hidden])) { overflow: hidden; }
 /* The project screen. */
 /* The project screen wears its colour: a wash down from the top, a white
    card on it with the numbers, white task rows (restyled 2026-10-06). */
-#projectview { padding: 0 0 32px; background: linear-gradient(180deg, var(--tint) 0, var(--tint) 120px, var(--bg) 360px) no-repeat, var(--bg); }
+#projectview { margin-block-start: -10px; padding: 0 0 32px; background: linear-gradient(180deg, var(--tint) 0, var(--tint) 120px, var(--bg) 360px) no-repeat, var(--bg); }
 .pj-top { display: flex; align-items: center; gap: 4px; padding: 4px 0 0 12px; }
 .pj-back { flex: none; inline-size: 40px; block-size: 40px; display: grid; place-items: center; border: 0; border-radius: 12px; background: none; color: var(--ink); cursor: pointer; }
 .pj-back svg { inline-size: 20px; block-size: 20px; stroke-width: 2; }

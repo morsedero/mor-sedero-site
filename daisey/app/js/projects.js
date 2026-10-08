@@ -422,7 +422,7 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
       : null;
     els.view.replaceChildren(...[
       h("div", { className: "pj-top" },
-        h("button", { type: "button", className: "pj-back", ariaLabel: "Back to home", onclick: () => onScreen?.(null) }, icon("back")), chips),
+        h("button", { type: "button", className: "pj-back", ariaLabel: "Back", onclick: () => onScreen?.(null) }, icon("back")), chips),
       h("div", { className: "pj-card" + (dirOf(p.name) === "rtl" ? " rtl" : "") },
         h("div", { className: "pj-card-top", dir: dirOf(p.name) }, h("h2", { className: "pj-name" + (p.name === INBOX ? "" : " rename"), dir: "auto", textContent: p.name,
           ...(p.name === INBOX ? {} : { role: "button", tabIndex: 0, title: "Edit project", onclick: () => askRename(p.name),
@@ -439,7 +439,7 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
         dragTasks(h("div", { className: "pj-grp" }, ...next), p.next), dragTasks(h("div", { className: "pj-grp" }, ...pending), p.pending),
         h("button", { type: "button", className: "pj-add", textContent: "+ Add a task", onclick: () => onAdd?.(p.name === INBOX ? "" : p.name) })),
       ].filter(Boolean));
-    els.view.className = "screen" + colorClass(p);
+    els.view.className = "ppage" + colorClass(p);
     els.view.scrollTop = y;
     const row = els.view.querySelector(".pj-chips");
     if (x != null) row.scrollLeft = x;
@@ -477,18 +477,26 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
   });
   els.view.addEventListener("pointercancel", () => { page = null; });
 
+  // A project takes the grid's place in the home panel (Mor, 2026-10-08);
+  // closing it brings the grid back if that's where it was opened from.
+  let fromGrid = false;
   function openProject(name){
+    if (shown == null) fromGrid = !els.page.hidden;
     shown = name; drawer = null;
+    els.page.hidden = true;
     els.view.hidden = false;
     els.view.scrollTop = 0;
     paintView();
     onScreen?.(name);
   }
-  function closeProject(){ shown = null; els.view.hidden = true; els.view.replaceChildren(); }
+  function closeProject(){
+    if (shown != null && fromGrid) { els.page.hidden = false; paintGrid(); }
+    shown = null; fromGrid = false; els.view.hidden = true; els.view.replaceChildren();
+  }
   // The Projects grid (Mor, 2026-10-08): sits in the home panel in the
-  // Schedule's place, toggled by the Projects button; a project opens over it.
+  // Schedule's place, toggled by the Projects button.
   function openAll(){ els.page.hidden = false; els.page.scrollTop = 0; paintGrid(); }
-  function closeAll(){ els.page.hidden = true; }
+  function closeAll(){ els.page.hidden = true; fromGrid = false; }
 
   // Every project a task names gets saved, so it stays when its tasks go.
   // Only once both have loaded: saving before the names arrive would
