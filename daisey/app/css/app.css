@@ -327,6 +327,11 @@ textarea {
 .toast-text { font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-inline-size: 0; }
 .toast-text bdi { display: inline; }
 .toast-undo { font: inherit; font-weight: 700; color: var(--accent); background: none; border: 0; cursor: pointer; padding: 6px 2px; }
+/* The plan refit's note: stays until OK, so it wraps instead of clipping. */
+.plan-cut .toast-text { white-space: normal; }
+.plan-cut .toast-row { align-items: flex-start; }
+.plan-cut .toast-why-row { flex-wrap: wrap; }
+.plan-cut .toast-acts { display: flex; gap: 12px; flex: none; }
 @media (prefers-reduced-motion: reduce) { .now-card.main.in, .now-card.main.out { animation: none; } }
 
 /* Focus mode: the task fills the screen, nothing else on it. */
@@ -1091,7 +1096,7 @@ body.focus #side { display: none; }
 .now-card.main .hero-side { font-size: 11px; display: inline-flex; align-items: center; gap: 6px; }
 .hero-side .task-bar { position: static; inline-size: 36px; block-size: 3px; border-radius: 2px; flex: none; }
 .now-card.main .now-title, .now-card.main button.now-title {
-  margin-block-start: 6px; font-size: 18px; line-height: 1.15; letter-spacing: -0.2px;
+  margin-block-start: 2px; font-size: 18px; line-height: 1.15; letter-spacing: -0.2px;
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
 }
 .now-card.main .now-next, .now-card.main .now-why { margin: 3px 0 0; font-size: 13px; line-height: 1.35; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
