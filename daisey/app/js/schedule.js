@@ -371,7 +371,9 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onProjects, onW
     // The row on right now wears its colour edge to edge (Mor, 2026-10-08).
     // Its orbiting light is phased off the wall clock, so a re-render picks it
     // up where it was instead of jumping back to the start (ORBIT_MS = app.css sc-orbit).
-    const orbit = on ? `--orbit:-${Date.now() % ORBIT_MS}ms;` : "";
+    // How far through it you are shows as a deeper fill: a CSS animation as long
+    // as the event, started that far back, so it creeps on with no timer.
+    const orbit = on ? `--orbit:-${Date.now() % ORBIT_MS}ms;--dur:${x.end - x.start}ms;--el:-${Date.now() - x.start}ms;` : "";
     if (x.kind === "plan") { const pe = h("div", { className: "sc-row" + (on ? " sc-on" + areaClass(x.task) : past ? " sc-past" : ""), style: orbit },
       h("span", { className: "sc-time strong" }, time, on && h("span", { className: "sc-nowtag", textContent: "Now" })),
       h("button", { type: "button", className: "sc-ev sc-plan" + areaClass(x.task), ariaLabel: `Planned: ${x.task.title}, ${time}`, onclick: () => onOpen?.(x.task) },
