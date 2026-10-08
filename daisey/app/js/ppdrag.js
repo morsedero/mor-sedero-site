@@ -123,12 +123,18 @@ export function pusher(box, row, grid = false){
 // moves in the DOM to where it would land — its empty place is the gap —
 // while a transform keeps it under the finger; everything else glides to
 // its new place (FLIP). Areas never slide like cards: the one under the
-// finger lights up whole (onZone), and the ones below only shift as it grows.
+// finger lights up whole (onZone) and grows or shrinks smoothly (its height
+// animates), so the ones below just follow. Smoothness (Mor, 2026-10-08:
+// "the other bricks snap too fast"): one slow-out glide for all of it, a
+// card mid-glide is measured where it really is, the target area only
+// changes once the finger is clearly in another, and the card eases into
+// its slot on release instead of jumping.
 // onMove(card, zone, before): it landed in that area, before that card
 // (null: last). onZone(zone | null, card): where it is over, null at the end.
 export function zoneSortable(root, { onMove, busy, onZone }){
   let pid = null, armed = false, hold = 0, dragged = false, card = null, raf = 0, sc = null;
-  let x0 = 0, y0 = 0, lastY = 0, start = 0, home = null, over = null;
+  let x0 = 0, y0 = 0, lastY = 0, start = 0, home = null, over = null, settle = 0, settling = false;
+  const MS = 280, EASE = "cubic-bezier(.2, .8, .2, 1)", STAY = 16; // STAY: px past an area's edge before the target moves on
   const zones = () => [...root.querySelectorAll(":scope .pp-zone")];
   const cardsIn = (z) => [...z.querySelectorAll(":scope > .pp-drag")].filter((c) => c !== card);
   const nextCard = (el) => { let n = el.nextElementSibling; while (n && !n.classList.contains("pp-drag")) n = n.nextElementSibling; return n; };
@@ -138,22 +144,27 @@ export function zoneSortable(root, { onMove, busy, onZone }){
   const scroller = () => { for (let n = root.parentElement; n; n = n.parentElement) { const o = getComputedStyle(n).overflowY; if ((o === "auto" || o === "scroll") && n.scrollHeight > n.clientHeight) return n; } return document.scrollingElement; };
   const follow = () => { card.style.transform = `translateY(${start + (lastY - y0) - (rootTop() + card.offsetTop)}px)`; };
   const flip = (move) => {
-    const els = zones().flatMap((z) => [z, ...z.children]).filter((e) => e !== card);
-    const was = new Map(els.map((e) => [e, e.getBoundingClientRect().top]));
+    const zs = zones(), kids = zs.flatMap((z) => [...z.children]).filter((e) => e !== card);
+    const wasTop = new Map(kids.map((e) => [e, e.getBoundingClientRect().top])); // as seen, mid-glide too
+    const wasH = new Map(zs.map((z) => [z, z.getBoundingClientRect().height]));
     move();
-    // A card's move is net of its area's, which glides on its own.
-    const moved = new Map(els.map((e) => [e, was.get(e) - e.getBoundingClientRect().top]));
-    for (const e of els) {
-      const d = moved.get(e) - (moved.get(e.parentElement) || 0);
-      if (Math.abs(d) < 1) continue;
-      e.style.transition = "none"; e.style.transform = `translateY(${d}px)`;
-      e.getBoundingClientRect();
-      e.style.transition = "transform .18s ease"; e.style.transform = "";
-    }
+    // Where everything ends up: no running glide, natural area heights.
+    for (const e of kids) { e.style.transition = "none"; e.style.transform = ""; }
+    for (const z of zs) { z.style.transition = "none"; z.style.height = ""; }
+    const toH = new Map(zs.map((z) => [z, z.getBoundingClientRect().height]));
+    // Areas start at the height they had, so nothing below moves this frame.
+    for (const z of zs) z.style.height = `${wasH.get(z)}px`;
+    for (const e of kids) { const d = wasTop.get(e) - e.getBoundingClientRect().top; if (Math.abs(d) >= 1) e.style.transform = `translateY(${d}px)`; }
+    root.getBoundingClientRect(); // that start frame is the one painted
+    for (const e of kids) { e.style.transition = `transform ${MS}ms ${EASE}`; e.style.transform = ""; }
+    for (const z of zs) { z.style.transition = `height ${MS}ms ${EASE}, background-color .2s ease, box-shadow .2s ease`; z.style.height = `${toH.get(z)}px`; }
+    clearTimeout(settle);
+    settle = setTimeout(() => zs.forEach((z) => { z.style.height = ""; z.style.transition = ""; }), MS + 30);
   };
   const show = () => {
     const y = lastY - rootTop(), zs = zones();
-    const z = zs.find((a) => y < a.offsetTop + a.offsetHeight) || zs.at(-1);
+    const inside = (a) => y >= a.offsetTop - STAY && y < a.offsetTop + a.offsetHeight + STAY;
+    const z = over && inside(over) ? over : zs.find((a) => y < a.offsetTop + a.offsetHeight) || zs.at(-1);
     const before = cardsIn(z).find((c) => y < c.offsetTop + c.offsetHeight / 2) || null;
     if (card.parentElement !== z || nextCard(card) !== before) flip(() => (before ? z.insertBefore(card, before) : z.append(card)));
     if (z !== over) { over = z; onZone?.(z, card); }
@@ -181,7 +192,7 @@ export function zoneSortable(root, { onMove, busy, onZone }){
   };
   const disarm = () => { clearTimeout(hold); pid = null; };
   root.addEventListener("pointerdown", (e) => {
-    if (e.button || pid != null) return;
+    if (e.button || pid != null || settling) return;
     const c = e.target.closest(".pp-drag");
     if (!c || !root.contains(c)) return;
     card = c; pid = e.pointerId; x0 = e.clientX; y0 = lastY = e.clientY; dragged = false;
@@ -207,10 +218,12 @@ export function zoneSortable(root, { onMove, busy, onZone }){
     const zone = card.parentElement, before = nextCard(card);
     const go = e.type === "pointerup" && (zone !== home.zone || before !== home.before);
     if (!go) flip(() => (home.before ? home.zone.insertBefore(card, home.before) : home.zone.append(card)));
-    card.style.transform = ""; card.classList.remove("pp-dragging"); root.classList.remove("zone-dragging");
-    over = null; onZone?.(null, card);
-    busy(false);
-    if (go) onMove(card, zone, before);
+    over = null; onZone?.(null, card); root.classList.remove("zone-dragging");
+    // Ease into the slot, then let the owner redraw.
+    const c = card; settling = true;
+    c.style.transition = `transform ${MS}ms ${EASE}, scale ${MS}ms ${EASE}, box-shadow ${MS}ms ${EASE}`;
+    c.style.transform = ""; c.classList.remove("pp-dragging");
+    setTimeout(() => { c.style.transition = ""; settling = false; busy(false); if (go) onMove(c, zone, before); }, MS);
   };
   root.addEventListener("pointerup", end);
   root.addEventListener("pointercancel", end);
