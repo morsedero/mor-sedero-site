@@ -525,6 +525,12 @@ dialog.now:focus { outline: none; }
 .now-card.main .now-meta { font-size: 13px; font-weight: 600; text-transform: none; letter-spacing: 0; color: var(--aink); }
 /* An event's header wears its schedule colour (the same mix .sc-ev text uses). */
 .now-card.main.event .now-title { color: color-mix(in srgb, var(--ev, var(--ink-2)) 55%, var(--ink)); }
+/* The whole event card wears the event's colour, not an area's. */
+.now-card.main.event {
+  --tint: color-mix(in srgb, var(--ev, var(--card)) 16%, var(--card));
+  --aline: color-mix(in srgb, var(--ev, var(--line)) 55%, var(--line));
+  --aink: color-mix(in srgb, var(--ev, var(--ink-2)) 55%, var(--ink));
+}
 .btn.start {
   display: flex; align-items: center; justify-content: center; gap: 10px; inline-size: 100%;
   margin-block-start: 14px; min-block-size: 48px; border: none; border-radius: var(--r-btn);
