@@ -20,11 +20,12 @@
 // area when no other project has that one yet, else the next free colour in
 // PALETTE. Names are taken in order, so a colour doesn't move around as
 // counts change. Inbox has none.
-import { watchTasks, finishTask, restoreTask, removeTask, watchProjectNames, saveProjectNames, saveProjectRanges } from "./store.js";
+import { watchTasks, finishTask, restoreTask, removeTask, watchProjectNames, saveProjectNames, saveProjectRanges, saveProjectOrder } from "./store.js";
 import { INBOX, progressOf, progressPatch, leftMinutes, pushedTo, notYet, durText, localDate, bringBack, cleanRange, outsideRange } from "./model.js";
 import { isOverdue } from "./triage.js";
 import { h, bdi, flash, icon, askProgress, sizeChip, progressBar } from "./ui.js";
 import { dirOf, setProjectColors } from "./look.js";
+import { sortable } from "./ppdrag.js";
 
 const SWIPE_DONE = 90; // px a task travels right before letting go finishes it
 const SWIPE_PAGE = 70; // px sideways that turns the page to the next project
@@ -62,7 +63,7 @@ const colorClass = (p) => (p.color ? ` pc-${p.color}` : "");
 // saved project names (state/projects) — every project, not just "+ New"
 // ones, so a project outlives its last task and goes only by Delete project
 // (Mor, 2026-10-06: deleting the last task took the project with it).
-export function projectsOf(tasks = [], onCard = null, made = []){
+export function projectsOf(tasks = [], onCard = null, made = [], order = []){
   const names = [...new Set([...tasks.filter(isOpen).map((t) => t.project || INBOX),
     ...made.filter((n) => n && n !== INBOX)])];
   return colorize(names.map((name) => {
@@ -71,16 +72,21 @@ export function projectsOf(tasks = [], onCard = null, made = []){
     const n = {};
     for (const t of (open.length ? open : all)) if (t.area) n[t.area] = (n[t.area] || 0) + 1;
     const area = Object.entries(n).sort((a, b) => b[1] - a[1])[0]?.[0] || null;
-    const next = open.filter((t) => t.status === "ready").sort(urgency(onCard));
+    const next = open.filter((t) => t.status === "ready").sort(dragged(urgency(onCard)));
     return {
       name, area, open, all,
       next,
-      pending: open.filter((t) => t.status === "waiting").sort((a, b) => String(a.checkOn || "~").localeCompare(String(b.checkOn || "~"))),
+      pending: open.filter((t) => t.status === "waiting").sort(dragged((a, b) => String(a.checkOn || "~").localeCompare(String(b.checkOn || "~")))),
       someday: open.filter((t) => t.status === "someday"),
       done: all.filter((t) => t.status === "done").sort((a, b) => (b.doneAt || 0) - (a.doneAt || 0)),
     };
-  }).sort((a, b) => b.open.length - a.open.length || (a.name === INBOX) - (b.name === INBOX) || a.name.localeCompare(b.name)));
+  }).sort((a, b) => dragRank(order, a.name) - dragRank(order, b.name) || b.open.length - a.open.length || (a.name === INBOX) - (b.name === INBOX) || a.name.localeCompare(b.name)));
 }
+
+// Dragged order (Mor, 2026-10-08): a project or task Mor has dragged keeps
+// that place; what hasn't been dragged yet follows, in the usual order.
+const dragRank = (order, name) => { const i = order.indexOf(name); return i < 0 ? order.length : i; };
+const dragged = (rest) => (a, b) => (a.pos == null) - (b.pos == null) || (a.pos ?? 0) - (b.pos ?? 0) || rest(a, b);
 
 // Next, most urgent first: the card's task, then what can start now, then
 // passed deadlines, then by date, then oldest.
@@ -121,14 +127,32 @@ function dueTone(t){
 // els: { grid, view, dialog }. onOpen(task): the task sheet. onAdd(project):
 // a new task there. onStart(id).
 export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {}){
-  let tasks = null, onCard = null, made = [];
+  let tasks = null, onCard = null, made = [], order = [];
+  let dragging = false, stale = false; // a drag is live: hold the redraws (ppdrag.js)
   let ranges = {}; // name -> { start, due }: the dates a project runs between
   let shown = null; // the project on the project screen
   let drawer = null; // the open drawer in the project card: "done", "someday" or null
   const fail = (e) => console.error("[daisey] projects", e);
-  const list = () => projectsOf(tasks || [], onCard, made);
+  const list = () => projectsOf(tasks || [], onCard, made, order);
+  const hold = (on) => { dragging = on; if (!on && stale) { stale = false; render(); } };
 
   // ---------- the Projects page ----------
+  // Drag a project to put it where you want (ppdrag.js, same drag as the plan's).
+  const dragProjects = (grid, ps) => { sortable(grid, { grid: true, busy: hold,
+    onMove: (el, before) => {
+      const names = ps.map((p) => p.name).filter((n) => n !== el._name);
+      names.splice(before ? names.indexOf(before._name) : names.length, 0, el._name);
+      order = names; render();
+      saveProjectOrder(uid, names).catch(fail);
+    } }); return grid; };
+  // Same for a project's tasks: each group keeps its own order (the task's pos).
+  const dragTasks = (box, group) => { sortable(box, { busy: hold,
+    onMove: (el, before) => {
+      const g = group.filter((t) => t !== el._t);
+      g.splice(before ? g.indexOf(before._t) : g.length, 0, el._t);
+      g.forEach((t, i) => { if (t.pos !== i) { t.pos = i; restoreTask(uid, t.id, { pos: i }).catch(fail); } });
+      render();
+    } }); return box; };
   function paintGrid(){
     const all = list();
     setProjectColors(Object.fromEntries(all.filter((p) => p.color).map((p) => [p.name, p.color])));
@@ -139,11 +163,11 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
     els.grid.replaceChildren(...[
       h("div", { className: "pp-head" }, h("span", { className: "pp-sum", textContent: `${plural(ps.length, "project")} · ${plural(n, "task")}` }),
         h("button", { type: "button", className: "pp-new", textContent: "+ New", onclick: () => askName() })),
-      ps.length ? h("div", { className: "pgrid" }, ...ps.map((p) => h("button", { type: "button", className: "pcard" + colorClass(p),
-        onclick: () => openProject(p.name) },
+      ps.length ? dragProjects(h("div", { className: "pgrid" }, ...ps.map((p) => h("button", { type: "button", className: "pcard pp-drag" + colorClass(p),
+        _name: p.name, onclick: () => openProject(p.name) },
         h("span", { className: "pcard-top", dir: dirOf(p.name) }, h("span", { className: "pcard-name", dir: "auto", textContent: p.name }), h("span", { className: "pcard-n", textContent: String(p.open.length) })),
         h("span", { className: "pcard-status" }, ...statusLine(p)),
-        bar(p, "pbar"))))
+        bar(p, "pbar")))), ps)
         : !inbox && h("p", { className: "muted pp-empty", textContent: "No projects yet. Tell Daisey what's on your plate." }),
       inbox ? h("button", { type: "button", className: "pp-inbox", onclick: () => openProject(INBOX) },
         icon("inbox"), h("span", { className: "pp-inbox-t", textContent: "Inbox" }),
@@ -292,10 +316,11 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
     // The tick does what the swipe does, for whoever doesn't know to swipe.
     const tick = h("button", { type: "button", className: "pj-tick", ariaLabel: `Done: ${t.title}`,
       onclick: () => { tick.classList.add("on"); setTimeout(() => complete(t), motionOK() ? 220 : 0); } }, icon("check"));
-    const wrap = h("div", { className: "pj-swipe" + (t.status === "waiting" ? " wait" : "") }, reveal, card, tick);
+    const wrap = h("div", { className: "pj-swipe pp-drag" + (t.status === "waiting" ? " wait" : ""), _t: t }, reveal, card, tick);
     let s = null, moved = false;
     card.addEventListener("pointerdown", (e) => { s = { x: e.clientX, y: e.clientY, id: e.pointerId, dx: 0 }; moved = false; });
     card.addEventListener("pointermove", (e) => {
+      if (s && wrap.classList.contains("pp-dragging")) s = null; // being dragged, not swiped
       if (!s) return;
       const sign = getComputedStyle(card).direction === "rtl" ? -1 : 1;
       const dx = (e.clientX - s.x) * sign, dy = e.clientY - s.y;
@@ -410,7 +435,8 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
           toggle("done", h("span", { className: "pj-ok", ariaHidden: "true" }, icon("check")), h("span", { className: "pj-tg-t", textContent: `${p.done.length} of ${p.all.length} done` })),
           p.someday.length > 0 && toggle("someday", h("span", { className: "pj-zz", ariaHidden: "true" }), h("span", { className: "pj-tg-t", textContent: `On hold · ${p.someday.length}` }))),
         drawerEl),
-      h("section", { className: "pj-sec pj-one", ariaLabel: "Tasks" }, ...next, ...pending,
+      h("section", { className: "pj-sec pj-one", ariaLabel: "Tasks" },
+        dragTasks(h("div", { className: "pj-grp" }, ...next), p.next), dragTasks(h("div", { className: "pj-grp" }, ...pending), p.pending),
         h("button", { type: "button", className: "pj-add", textContent: "+ Add a task", onclick: () => onAdd?.(p.name === INBOX ? "" : p.name) })),
       ].filter(Boolean));
     els.view.className = "screen" + colorClass(p);
@@ -476,10 +502,10 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
     saveProjectNames(uid, made).catch(fail);
   }
 
-  function render(){ paintGrid(); paintView(); }
+  function render(){ if (dragging) { stale = true; return; } paintGrid(); paintView(); }
   const unsubs = [
     watchTasks(uid, (ts) => { tasks = ts; keepNames(); render(); }, fail),
-    watchProjectNames(uid, (ns, rs) => { made = ns; ranges = rs || {}; namesIn = true; keepNames(); render(); }, fail),
+    watchProjectNames(uid, (ns, rs, od) => { made = ns; ranges = rs || {}; order = od || []; namesIn = true; keepNames(); render(); }, fail),
   ];
   render();
 

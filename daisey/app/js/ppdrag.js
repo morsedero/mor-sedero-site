@@ -5,9 +5,11 @@
 // list: the <ol>. Rows with .pp-drag drag; others just sit there.
 // onMove(row, before): the dragged row lands before that row (null: last).
 // busy(on): the owner holds its redraws while a drag is live.
-export function sortable(list, { onMove, busy }){
+// grid: the rows sit in a multi-column grid (the Projects page): the row
+// follows the pointer both ways and lands before/after the nearest one.
+export function sortable(list, { onMove, busy, grid = false }){
   let pid = null, armed = false, hold = 0, dragged = false, row = null;
-  let y0 = 0, lastY = 0, off = 0, mid0 = 0, s0 = 0, lo = 0, hi = 0, rh = 0, raf = 0;
+  let x0 = 0, lastX = 0, cx0 = 0, y0 = 0, lastY = 0, off = 0, mid0 = 0, s0 = 0, lo = 0, hi = 0, rh = 0, raf = 0;
   let snap = [], to = 0, from = 0, marked = null;
   const rows = () => [...list.querySelectorAll(":scope > .pp-drag")];
   // The nearest scrolling ancestor (the page body, usually).
@@ -18,9 +20,18 @@ export function sortable(list, { onMove, busy }){
   const centre = () => Math.min(hi, bottom() + sc.scrollTop - rh / 2 + 14, Math.max(lo, top() + sc.scrollTop + rh / 2 - 14, lastY + off + sc.scrollTop));
   const unmark = () => { marked?.[0].classList.remove(marked[1]); marked = null; };
   const show = () => {
-    row.style.transform = `translateY(${centre() - mid0}px)`;
-    const c = centre();
-    to = snap.filter((s) => s.mid < c).length;
+    let c = centre();
+    if (grid) {
+      const dy = lastY - y0 + sc.scrollTop - s0, cx = cx0 + lastX - x0, cy = mid0 + dy;
+      row.style.transform = `translate(${lastX - x0}px, ${dy}px)`;
+      let best = -1, d = Infinity;
+      snap.forEach((s, k) => { const e = (s.cx - cx) ** 2 + (s.mid - cy) ** 2; if (e < d) { d = e; best = k; } });
+      const n = snap[best];
+      to = !n ? 0 : best + (Math.abs(cy - n.mid) < n.h / 2 ? (cx > n.cx ? 1 : 0) : (cy > n.mid ? 1 : 0));
+    } else {
+      row.style.transform = `translateY(${c - mid0}px)`;
+      to = snap.filter((s) => s.mid < c).length;
+    }
     unmark();
     if (to !== from) marked = snap[to] ? [snap[to].el, "pp-ins"] : [snap.at(-1).el, "pp-ins-end"];
     if (marked) marked[0].classList.add(marked[1]);
@@ -37,9 +48,9 @@ export function sortable(list, { onMove, busy }){
     sc = scroller(); s0 = sc.scrollTop;
     const all = rows();
     from = all.indexOf(row);
-    snap = all.filter((r) => r !== row).map((el) => { const r = el.getBoundingClientRect(); return { el, mid: (r.top + r.bottom) / 2 + s0 }; });
+    snap = all.filter((r) => r !== row).map((el) => { const r = el.getBoundingClientRect(); return { el, mid: (r.top + r.bottom) / 2 + s0, cx: (r.left + r.right) / 2, h: r.height }; });
     const r = row.getBoundingClientRect(), mid = (r.top + r.bottom) / 2, l = list.getBoundingClientRect();
-    off = mid - y0; mid0 = mid + s0; rh = r.height; to = from;
+    off = mid - y0; mid0 = mid + s0; cx0 = (r.left + r.right) / 2; rh = r.height; to = from;
     lo = l.top + s0 - 40; hi = l.bottom + s0 + 40;
     row.classList.add("pp-dragging");
     navigator.vibrate?.(10);
@@ -50,15 +61,19 @@ export function sortable(list, { onMove, busy }){
   list.addEventListener("pointerdown", (e) => {
     if (e.button || pid != null) return;
     const r = e.target.closest(".pp-drag");
-    if (!r || !list.contains(r) || e.target.closest(".pp-ctls, .pp-fit")) return; // the buttons stay buttons
-    row = r; pid = e.pointerId; y0 = lastY = e.clientY; dragged = false;
+    if (!r || !list.contains(r) || e.target.closest(".pp-ctls, .pp-fit, .pj-tick")) return; // the buttons stay buttons
+    row = r; pid = e.pointerId; x0 = lastX = e.clientX; y0 = lastY = e.clientY; dragged = false;
     if (e.pointerType !== "mouse") hold = setTimeout(arm, 350);
   });
   list.addEventListener("pointermove", (e) => {
     if (e.pointerId !== pid) return;
-    lastY = e.clientY;
+    lastX = e.clientX; lastY = e.clientY;
     if (armed) return show();
-    if (Math.abs(lastY - y0) > 6) e.pointerType === "mouse" ? arm() : disarm();
+    // A mouse drags on a mostly-vertical pull (sideways is a task's swipe to finish);
+    // a finger that moves before the hold is up is scrolling or swiping.
+    const dx = Math.abs(lastX - x0), dy = Math.abs(lastY - y0);
+    if (e.pointerType !== "mouse") { if (dx > 6 || dy > 6) disarm(); }
+    else if (grid ? dx > 6 || dy > 6 : dy > 6 && dy > dx) arm();
   });
   list.addEventListener("touchmove", (e) => { if (armed) e.preventDefault(); }, { passive: false });
   list.addEventListener("contextmenu", (e) => { if (pid != null) e.preventDefault(); });

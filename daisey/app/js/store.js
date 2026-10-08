@@ -317,15 +317,19 @@ const projectsDoc = (uid) => fb.doc(fb.db, "users", uid, "state", "projects");
 
 export function watchProjectNames(uid, cb, onError){
   if(isGuest(uid)){
-    try { return watchGuestState(uid, "projects", (value) => cb(value?.names || [], value?.ranges || {}), onError); }
+    try { return watchGuestState(uid, "projects", (value) => cb(value?.names || [], value?.ranges || {}, value?.order || []), onError); }
     catch(error){ onError?.(error); return () => {}; }
   }
-  return fb.onSnapshot(projectsDoc(uid), (snap) => cb((snap.exists() && snap.data().names) || [], (snap.exists() && snap.data().ranges) || {}), onError);
+  return fb.onSnapshot(projectsDoc(uid), (snap) => cb((snap.exists() && snap.data().names) || [], (snap.exists() && snap.data().ranges) || {}, (snap.exists() && snap.data().order) || []), onError);
 }
 
 // Merged, so saving names never wipes the ranges (and the reverse).
 export function saveProjectNames(uid, names){
   return saveGuestState(uid, "projects", { names }, true);
+}
+// The order Mor dragged the projects into (names, first to last).
+export function saveProjectOrder(uid, order){
+  return saveGuestState(uid, "projects", { order }, true);
 }
 export function saveProjectRanges(uid, ranges){
   return saveGuestState(uid, "projects", { ranges }, true);
