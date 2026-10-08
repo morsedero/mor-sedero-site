@@ -1728,6 +1728,7 @@ body.focus .shell { block-size: auto; min-block-size: 100dvh; overflow: visible;
 .bl-routines { display: flex; flex-direction: column; gap: 8px; }
 .bl-routines > .bl-h { margin-bottom: 0; }
 .bl-routine { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 12px; align-items: center; padding: 12px 14px; border-radius: 16px; background: var(--card); border: 1px solid var(--line); }
+.bl-routine[class*="pc-"], .bl-routine[class*="area-"] { background: var(--tint); border-color: var(--aline); }
 .bl-r-main { display: flex; flex-direction: column; gap: 2px; min-inline-size: 0; }
 .bl-r-title { font-size: 14px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .bl-r-count { font-size: 12px; color: var(--ink-2); }
