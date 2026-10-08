@@ -1,4 +1,4 @@
-# Garden — Daisey's progress page (plan, 2026-10-08)
+# Bloom — Daisey's progress page (plan, 2026-10-08)
 
 A place to see how each project is growing, how routines are going, and a few
 overall numbers. Cute and fun, never a dashboard. Proposal only; nothing built.
@@ -96,8 +96,16 @@ Month reads ≤ 31 small docs; fine.
   minus `spentMinutes` already logged. Logged with `guess: true`; the flower
   sheet shows guessed time with a soft "~". Same act-first rule as the rest of
   the app.
+  **Never more than the task's size.** Done 5h after anything else → the guess
+  is the size estimate (minus logged), not 5h. Wall-clock gap is never trusted
+  past the size: Done late usually means "finished a while ago", not "worked
+  all along". Booked slot already over → logged on the slot's time/day, not at
+  the Done tap. The Done toast says it: "Counted ~30 min" — tap to change
+  (−/+ 15 min). A corrected guess teaches the per-type size learning
+  (model.js typical sizes) like a timed one.
+- **Name: Bloom.** Page `#bloomPage`, files `bloom.js` / `bloom-data.js`,
+  test `bloom.test.mjs` (supersede the garden names below).
 
 ## Open questions for Mor
 
-1. Name — "Garden" is close; candidates in chat.
-2. Calendar time that Daisey never timed: count it? (see chat)
+1. Calendar time that Daisey never timed: count it? (see chat)
