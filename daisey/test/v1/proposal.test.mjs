@@ -24,7 +24,7 @@ test("timeline keeps the user's order and steps around meetings", () => {
   const { rows, over } = timeline([{ taskId: "b", minutes: 30 }, { taskId: "a", minutes: 60 }], { tasks, events, now: at(9, 30) });
   assert.deepEqual(rows.map((r) => r.taskId), ["b", "a"]);
   assert.equal(rows[0].start, at(9, 30));
-  assert.equal(rows[1].start, at(12, 45)); // 9:30-10:00 had room for b only; lunch 12:00-12:45
+  assert.equal(rows[1].start, at(12, 10)); // 9:30-10:00 had room for b only; 2 h of teaching → a 10 min break (lunch waits for 13:00)
   assert.equal(over.length, 0);
 });
 
@@ -84,12 +84,12 @@ test("breaks: back-to-back meetings count as work", () => {
   assert.equal(rows[0].start, breaks[0].end);
 });
 
-test("breaks: lunch 45 min inside 12-14, once; a 15 min idle gap resets the count", () => {
+test("breaks: lunch 45 min inside 13-14, once; a 15 min idle gap resets the count", () => {
   const tasks = [t({ id: "a", size: 30 }), t({ id: "b", size: 30 })];
-  const r = timeline([{ taskId: "a", minutes: 30 }, { taskId: "b", minutes: 30 }], { tasks, events: [], now: at(12, 5) });
+  const r = timeline([{ taskId: "a", minutes: 30 }, { taskId: "b", minutes: 30 }], { tasks, events: [], now: at(13, 5) });
   assert.deepEqual(r.breaks.map((b) => [b.type, b.name]), [["meal", "Lunch"]]);
   assert.equal(r.breaks[0].minutes, 45);
-  assert.equal(r.rows[0].start, at(12, 5)); // not lunch first thing at noon
+  assert.equal(r.rows[0].start, at(13, 5)); // not lunch first thing at one
   assert.equal(r.breaks[0].start, r.rows[0].end);
   const idle = timeline([{ taskId: "a", minutes: 60 }, { taskId: "b", minutes: 60 }], { tasks, events: [ev("X", [10], [10, 20])], now: at(9) });
   assert.equal(idle.breaks.length, 0);

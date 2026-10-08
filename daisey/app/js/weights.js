@@ -177,9 +177,13 @@ export const BREAKS = {
   after: 90, short: 10, // a short break after this much work
   longEvery: 180, long: 30, // a long break after this much work with no long one
   reset: 15, // idle this long counts as a break
-  // Meals when the settings have none of their own (day.js mealsOf): each
-  // goes somewhere inside its from–to window. Settings can change, add or
-  // switch them off (Mor, 2026-10-08).
-  meals: [{ name: "Lunch", from: 12 * 60, to: 14 * 60, minutes: 45 }],
+  // The three meals and their defaults (day.js mealPrefs): each goes
+  // somewhere inside its from–to window. Only Lunch is on unless Settings
+  // says otherwise; Settings changes window, length and on (Mor, 2026-10-08).
+  meals: [
+    { name: "Breakfast", on: false, from: 7 * 60 + 30, to: 9 * 60 + 30, minutes: 30 },
+    { name: "Lunch", on: true, from: 13 * 60, to: 14 * 60, minutes: 45 },
+    { name: "Dinner", on: false, from: 18 * 60 + 30, to: 20 * 60 + 30, minutes: 45 },
+  ],
   lunchAfter: 30, // a meal waits until this much work, unless its window is closing
 };

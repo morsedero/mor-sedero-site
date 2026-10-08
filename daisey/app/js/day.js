@@ -34,21 +34,21 @@ export function dayHours(settings = {}){
   return base;
 }
 
-// Meal breaks from state/settings (Mor, 2026-10-08): settings.meals =
-// [{ name, from, to, minutes }] (times "HH:MM"), each placed somewhere in its
-// window; settings.mealsOff = true means Daisey plans none. Unset → the
-// default Lunch. → [{ name, from, to, minutes }] in minutes, by time.
-export const MEAL_MAX = 4;
-export function mealsOf(settings = {}){
-  if (settings.mealsOff) return [];
-  const list = Array.isArray(settings.meals) ? settings.meals
-    : W.BREAKS.meals.map((m) => ({ ...m, from: minText(m.from), to: minText(m.to) }));
-  return list.slice(0, MEAL_MAX).map((m) => ({
-    name: String(m?.name || "").trim().slice(0, 24) || "Meal",
-    from: toMin(m?.from), to: toMin(m?.to),
-    minutes: Math.max(5, Math.min(Math.round(Number(m?.minutes) || 30), 180)),
-  })).filter((m) => m.from != null && m.to != null && m.to > m.from).sort((a, b) => a.from - b.from);
+// Meal breaks from state/settings (Mor, 2026-10-08): Breakfast, Lunch,
+// Dinner, no others. settings.meals = [{ name, on, from, to, minutes }]
+// (times "HH:MM"); a meal not saved there keeps its default (weights.js).
+// → all three, in minutes; mealsOf → only the ones on.
+export function mealPrefs(settings = {}){
+  const saved = Array.isArray(settings.meals) ? settings.meals : [];
+  return W.BREAKS.meals.map((d) => {
+    const s = saved.find((x) => x?.name === d.name && typeof x.on === "boolean");
+    if (!s) return { ...d };
+    const from = toMin(s.from), to = toMin(s.to), ok = from != null && to != null && to > from;
+    return { name: d.name, on: s.on, from: ok ? from : d.from, to: ok ? to : d.to,
+      minutes: Math.max(5, Math.min(Math.round(Number(s.minutes) || d.minutes), 180)) };
+  });
 }
+export const mealsOf = (settings = {}) => mealPrefs(settings).filter((m) => m.on).map(({ on, ...m }) => m);
 
 const atMin = (ms, min) => new Date(ms).setHours(0, min, 0, 0);
 export const dayStartAt = (now, hours = W.DAY_HOURS) => atMin(now, hours.start);
