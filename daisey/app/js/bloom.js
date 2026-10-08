@@ -120,9 +120,10 @@ export function mountGrowth(uid, { onChange } = {}){
       flowers: new Map(fl.map((f) => [f.name, f])), line: oneLine({ summary, flowers: fl, routines, period }) };
   }
 
-  const pills = () => h("div", { className: "bl-pills", role: "radiogroup", ariaLabel: "Period" },
-    ...PERIODS.map((p) => h("button", { type: "button", className: "bl-pill", role: "radio", ariaChecked: String(p === period), textContent: PERIOD_TEXT[p],
-      onclick: () => { if (p === period) return; period = p; watchPeriod(); loadEvents(); onChange?.(); } })));
+  // One button, Week <-> Month (Mor, 2026-10-08); Today is gone from the page.
+  const pills = () => { const next = period === "week" ? "month" : "week";
+    return h("button", { type: "button", className: "bl-toggle", ariaLabel: `Showing ${PERIOD_TEXT[period].toLowerCase()}. Switch to ${PERIOD_TEXT[next].toLowerCase()}`, textContent: `${PERIOD_TEXT[period]} ⇄`,
+      onclick: () => { period = next; watchPeriod(); loadEvents(); onChange?.(); } }); };
 
   return {
     read,

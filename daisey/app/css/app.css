@@ -1749,6 +1749,8 @@ body.focus .shell { block-size: auto; min-block-size: 100dvh; overflow: visible;
 .bl-cup { fill: none; stroke: #6fa56f; stroke-width: 1.8; stroke-linecap: round; }
 
 .bl-pills { display: inline-flex; padding: 3px; border-radius: 999px; background: var(--chip); }
+.bl-toggle { position: relative; border: 0; border-radius: 999px; background: var(--chip); color: var(--ink); font: inherit; font-size: 13px; font-weight: 600; padding: 7px 14px; cursor: pointer; }
+.bl-toggle::after { content: ""; position: absolute; inset: -7px -1px; } /* 44px to the finger */
 .bl-pill { position: relative; border: 0; background: none; color: var(--ink-2); font: inherit; font-size: 13px; font-weight: 600; padding: 6px 12px; border-radius: 999px; cursor: pointer; }
 .bl-pill::after { content: ""; position: absolute; inset: -7px -1px; } /* 44px to the finger */
 .bl-pill[aria-checked="true"] { background: var(--card); color: var(--ink); box-shadow: 0 1px 3px rgba(0,0,0,.12); }

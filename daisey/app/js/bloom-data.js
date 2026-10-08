@@ -138,7 +138,7 @@ export function weekStrip(entries = [], now = Date.now()){
 export const PETAL_MAX = 12;
 const TIER_ORDER = { focus: 0, keep: 1, background: 2 };
 export function flowers(summary, projectNames = [], tiers = {}){
-  const names = [...new Set([...projectNames.filter((n) => n && n !== INBOX), ...[...summary.projects.keys()].filter((n) => n !== INBOX)])];
+  const names = [...new Set([...projectNames.filter((n) => n), ...summary.projects.keys()])];
   const top = Math.max(1, ...names.map((n) => summary.projects.get(n)?.min || 0));
   return names.map((name) => {
     const p = summary.projects.get(name), tier = TIER_ORDER[tiers[name]] === undefined ? "keep" : tiers[name];

@@ -54,7 +54,7 @@ const PALETTE = ["work", "admin", "teal", "social", "job", "home", "orange", "pe
 const hash = (s) => [...String(s)].reduce((a, c) => (a * 31 + c.codePointAt(0)) >>> 0, 7);
 export function colorize(ps){
   const taken = new Set();
-  for (const p of [...ps].filter((p) => p.name !== INBOX).sort((a, b) => a.name.localeCompare(b.name))) {
+  for (const p of [...ps].sort((a, b) => a.name.localeCompare(b.name))) {
     let c = PALETTE.includes(p.area) && !taken.has(p.area) ? p.area : null;
     for (let k = 0, i = hash(p.name); !c && k < PALETTE.length; k++) if (!taken.has(PALETTE[(i + k) % PALETTE.length])) c = PALETTE[(i + k) % PALETTE.length];
     p.color = c || PALETTE[hash(p.name) % PALETTE.length];
@@ -70,7 +70,7 @@ const colorClass = (p) => (p.color ? ` pc-${p.color}` : "");
 // (Mor, 2026-10-06: deleting the last task took the project with it).
 export function projectsOf(tasks = [], onCard = null, made = [], order = []){
   const names = [...new Set([...tasks.filter(isOpen).map((t) => t.project || INBOX),
-    ...made.filter((n) => n && n !== INBOX)])];
+    ...made.filter((n) => n && n !== INBOX), INBOX])]; // Inbox: the default project, always there
   return colorize(names.map((name) => {
     const all = tasks.filter((t) => (t.project || INBOX) === name && t.status !== "dropped");
     const open = all.filter(isOpen);
@@ -156,7 +156,7 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
   const TIER_TEXT = { focus: ["Focus", "Most of your time"], keep: ["Keep going", "Steady progress"], background: ["Background", "When there's room"] };
   const MOVED = { focus: "More of your time goes to ", keep: "Steady progress for ", background: "To the background: " };
   const tierOf = (name) => (TIERS.includes(tiers[name]) ? tiers[name] : "keep");
-  const full = (name, t) => t === "focus" && tierOf(name) !== "focus" && list().filter((p) => p.name !== INBOX && tierOf(p.name) === "focus").length >= FOCUS_MAX;
+  const full = (name, t) => t === "focus" && tierOf(name) !== "focus" && list().filter((p) => tierOf(p.name) === "focus").length >= FOCUS_MAX;
   // Landing in Focus glows (Mor, 2026-10-08): the card pulses once in the
   // accent as it settles, so the move feels like a promotion. A redraw in
   // the meantime (the save's own snapshot) picks the pulse up where it was.
@@ -199,8 +199,7 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
   function paintGrid(){
     const all = list();
     setProjectColors(Object.fromEntries(all.filter((p) => p.color).map((p) => [p.name, p.color])));
-    const inbox = all.find((p) => p.name === INBOX);
-    const ps = all.filter((p) => p !== inbox);
+    const ps = all;
     const tierMap = Object.fromEntries(ps.map((p) => [p.name, tierOf(p.name)]));
     setProjectTiers(tierMap);
     const g = growth.read(tasks || [], ps.map((p) => p.name), tierMap);
@@ -223,16 +222,12 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
         h("span", { className: "pp-tier-empty", textContent: "Drag a project here" }), ...ins.map(card)); };
     const y = els.grid.scrollTop;
     els.grid.replaceChildren(...[
-      // Top, kept short (Mor, 2026-10-08): the period, the Inbox, + New, then
-      // the period's three numbers. Daisey's sentence went: too much text.
+      // Top, kept short (Mor, 2026-10-08): the Week/Month button, + New, then
+      // the period's three numbers. Inbox is a project card like the rest.
       h("div", { className: "pp-head" }, growth.pills(),
-        h("span", { className: "pp-acts" },
-          inbox && h("button", { type: "button", className: "pp-inbox-chip", ariaLabel: `Inbox: ${plural(inbox.open.length, "task")} with no project`, onclick: () => openProject(INBOX) },
-            icon("inbox"), h("span", { textContent: String(inbox.open.length) })),
-          h("button", { type: "button", className: "pp-new", textContent: "+ New", onclick: () => askName() }))),
+        h("button", { type: "button", className: "pp-new", textContent: "+ New", onclick: () => askName() })),
       totalsLine(g.summary),
-      ps.length ? dragProjects(h("div", { className: "pgrid tiers" }, ...TIERS.map(tier)))
-        : !inbox && h("p", { className: "muted pp-empty", textContent: "No projects yet. Tell Daisey what's on your plate." }),
+      dragProjects(h("div", { className: "pgrid tiers" }, ...TIERS.map(tier))),
       weekCard(g.strip),
       routinesSection(g.routines, tasks || [], new Map(all.map((p) => [p.name, p.color || ""])))].filter(Boolean));
     els.grid.scrollTop = y;
