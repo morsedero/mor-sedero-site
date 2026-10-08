@@ -41,13 +41,22 @@ const PLACE = { home: "Home", out: "Out", anywhere: "Anywhere" };
 // in use, the placeholder turns between "Tell Daisey…" and one thing it really
 // handles, picked for the moment. Only what daisey-now-chat.js understands
 // (its KINDS), never a promise it can't keep, and short enough for a phone.
-const HINTS = ["What's next?", "Plan my afternoon", "I have 30 minutes", "Call Uri tomorrow at 10", "Mix review, 2 h, by Thu", "Done with the invoice",
-  "What's due this week?", "Lunch with Dana at 13:00", "I'm wrecked"];
-export function hintsFor(tasks){
-  const list = [...HINTS];
-  if (!tasks.some((t) => t.status === "ready")) list.unshift("Invoice, stems, call Uri"); // a brain dump first
-  if (tasks.some((t) => t.status === "waiting")) list.splice(1, 0, "What am I waiting on?");
-  return list;
+// 2026-10-08: built from the person's own tasks and projects, so an example
+// is something they could really say now. With nothing yet, everyday ones
+// with no names in them: a made-up "Uri" reads as someone else's data.
+const cut = (s, n = 22) => (s.length > n ? `${s.slice(0, n - 1).trimEnd()}…` : s);
+const START = ["Call the bank tomorrow at 10", "Groceries, laundry, pay rent", "Gym, 1 h, tomorrow", "Dentist Thursday at 9", "I have 30 minutes"];
+export function hintsFor(tasks, hour = new Date().getHours()){
+  const ready = tasks.filter((t) => t.status === "ready");
+  if (!ready.length && !tasks.some((t) => t.status === "waiting")) return START;
+  const own = [];
+  if (ready[0]) own.push(`Done with ${cut(ready[0].title)}`);
+  if (ready[1]) own.push(`Move ${cut(ready[1].title, 18)} to tomorrow`);
+  if (tasks.some((t) => t.status === "waiting")) own.push("What am I waiting on?");
+  const project = ready.find((t) => t.project)?.project;
+  if (project) own.push(`${cut(project, 16)}: new task, 1 h`);
+  if (ready[2]) own.push(`${cut(ready[2].title)} by Friday`);
+  return [...own, "What's next?", hour < 15 ? "Plan my afternoon" : "Plan my evening", "I have 30 minutes", "What's due this week?", "I'm wrecked"];
 }
 const HINT_MS = 4500;
 
@@ -64,7 +73,7 @@ export function mountTell(form, input, mic, uid, { openAdd, openTask, guest = fa
   const plain = input.placeholder;
   let turn = 0;
   const hinting = setInterval(() => {
-    if (input.value || document.activeElement === input || document.hidden) return;
+    if (input.value || rec || document.activeElement === input || document.hidden) return;
     const list = hintsFor(tasks);
     input.placeholder = turn % 2 ? plain : `“${list[Math.floor(turn / 2) % list.length]}”`;
     turn++;
@@ -77,7 +86,10 @@ export function mountTell(form, input, mic, uid, { openAdd, openTask, guest = fa
   async function ask(text){
     if (busy || !text) return;
     busy = true;
-    show(h("p", { className: "tell-thinking", textContent: "Reading…" }));
+    // Sent: the bar empties now, not when the answer lands. Blur first, or an
+    // Android keyboard still composing the last word puts it straight back.
+    if (input.value.trim() === text) { input.blur(); input.value = ""; }
+    show(h("p", { className: "tell-said", dir: "auto", textContent: `“${text}”` }), h("p", { className: "tell-thinking", textContent: "Reading…" }));
     const open = tasks.filter((t) => t.status !== "done" && t.status !== "dropped");
     let res, body;
     try {
@@ -99,7 +111,7 @@ export function mountTell(form, input, mic, uid, { openAdd, openTask, guest = fa
       body = { error: "network" };
     }
     busy = false;
-    if (body.error === "not_configured") { close(); input.value = ""; openAdd(undefined, text); return; } // no AI yet: the old path
+    if (body.error === "not_configured") { close(); openAdd(undefined, text); return; } // no AI yet: the old path
     if (!res?.ok || body.error) {
       const code = body.error || "model";
       show(h("p", { className: "tell-reply", textContent: SAID[code] || SAID.model }),
@@ -109,7 +121,6 @@ export function mountTell(form, input, mic, uid, { openAdd, openTask, guest = fa
           h("button", { className: "btn quiet", type: "button", textContent: "Close", onclick: close })));
       return;
     }
-    input.value = ""; // answered: the message lives on in the cards
     proposal(text, body);
   }
 
@@ -235,21 +246,40 @@ export function mountTell(form, input, mic, uid, { openAdd, openTask, guest = fa
   // ---------- the bar ----------
   form.onsubmit = (e) => { e.preventDefault(); ask(input.value.trim()); };
 
+  // Speaking (2026-10-08): some browsers never end on their own, so Daisey
+  // keeps its own ear. After SILENCE_MS with no new words it sends; a ring on
+  // the mic fills over that pause so the send never comes as a surprise, and
+  // a tap sends at once. Slower than a voice assistant on purpose: a breath
+  // mid-thought must not cut the message off. Silence from the start just
+  // stops listening, with nothing sent.
+  const SILENCE_MS = 2200, NOTHING_MS = 7000, MAX_MS = 45000;
   const Speech = window.SpeechRecognition || window.webkitSpeechRecognition;
-  let rec = null;
-  mic.ariaLabel = Speech ? "Speak to Daisey" : "Type to Daisey";
+  let rec = null, quiet = 0, cap = 0;
+  const idle = Speech ? "Speak to Daisey" : "Type to Daisey";
+  mic.ariaLabel = idle;
+  const settle = () => { mic.classList.remove("settling"); void mic.offsetWidth; mic.classList.add("settling"); };
+  const ended = () => { clearTimeout(quiet); clearTimeout(cap); mic.classList.remove("listening", "settling"); mic.ariaLabel = idle; input.placeholder = plain; rec = null; };
   mic.onclick = () => {
+    if (rec) { rec.stop(); return; } // listening: a tap sends what's heard
     if (input.value.trim()) { ask(input.value.trim()); return; } // text waiting: the mic sends it
     if (!Speech) { input.focus(); return; }
-    if (rec) { rec.stop(); return; }
     rec = new Speech();
     const langs = navigator.languages || [navigator.language];
     rec.lang = langs.some((l) => /^he|^iw/.test(l)) ? "he-IL" : navigator.language || "en-US";
     rec.interimResults = true;
-    rec.onresult = (e) => { input.value = [...e.results].map((r) => r[0].transcript).join(""); };
-    rec.onend = () => { mic.classList.remove("listening"); rec = null; if (input.value.trim()) ask(input.value.trim()); };
-    rec.onerror = () => { mic.classList.remove("listening"); rec = null; };
+    rec.onresult = (e) => {
+      input.value = [...e.results].map((r) => r[0].transcript).join("");
+      clearTimeout(quiet);
+      quiet = setTimeout(() => rec?.stop(), SILENCE_MS);
+      settle();
+    };
+    rec.onend = () => { ended(); if (input.value.trim()) ask(input.value.trim()); };
+    rec.onerror = () => { ended(); };
     mic.classList.add("listening");
+    mic.ariaLabel = "Listening. Tap to send";
+    input.placeholder = "Listening…";
+    quiet = setTimeout(() => rec?.abort(), NOTHING_MS);
+    cap = setTimeout(() => rec?.stop(), MAX_MS);
     rec.start();
   };
 

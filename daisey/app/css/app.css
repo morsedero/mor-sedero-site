@@ -787,6 +787,7 @@ body.focus .tell-panel { display: none; }
 .tell-head { display: flex; align-items: flex-start; gap: 8px; }
 .tell-reply { flex: 1; margin: 0; font-size: 15px; line-height: 1.35; }
 .tell-thinking { margin: 0; color: var(--ink-2); font-size: 14px; }
+.tell-said { margin: 0 0 4px; color: var(--ink); font-size: 15px; }
 .tell-x { flex: none; inline-size: 36px; block-size: 36px; border: none; border-radius: 50%; background: transparent; color: var(--ink-2); font: inherit; font-size: 15px; cursor: pointer; }
 .tell-x:hover { background: var(--chip); }
 .tell-cards { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
@@ -865,7 +866,15 @@ button.now-title:focus-visible { outline: 2px solid var(--aink); outline-offset:
 .plus[aria-expanded="true"] { transform: rotate(45deg); }
 .mic { background: var(--ink); color: var(--bg); }
 .mic.listening { background: var(--accent); color: var(--on-accent); }
-@media (prefers-reduced-motion: no-preference) { .mic.listening { animation: listen 1.2s ease-in-out infinite; } }
+@media (prefers-reduced-motion: no-preference) { .mic.listening:not(.settling) { animation: listen 1.2s ease-in-out infinite; } }
+/* Heard you, sending soon: a ring fills over tell.js SILENCE_MS (2.2s). */
+@property --settle { syntax: "<number>"; inherits: false; initial-value: 0; }
+.mic { position: relative; }
+.mic.settling::after { content: ""; position: absolute; inset: -4px; border-radius: 50%; pointer-events: none;
+  background: conic-gradient(var(--accent) calc(var(--settle) * 1%), transparent 0);
+  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 3px)); mask: radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 3px));
+  animation: settle 2.2s linear forwards; }
+@keyframes settle { to { --settle: 100; } }
 @media (prefers-reduced-motion: reduce) { .plus { transition: none; } }
 .plus-menu { position: absolute; inset-block-end: calc(100% + 10px); inset-inline-start: -6px; z-index: 7; min-inline-size: 160px; display: grid; gap: 2px; padding: 6px; border-radius: 16px; background: var(--card); border: 1px solid var(--line); box-shadow: 0 12px 32px rgb(0 0 0 / .16); }
 @media (prefers-reduced-motion: no-preference) { .plus-menu:not([hidden]) { animation: guess-in .15s ease-out; } }
