@@ -367,7 +367,8 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onProjects, onW
     // No clock times: "30 min break" starts where the event boxes do.
     if (x.kind === "break") return x.el = h("div", { className: "sc-row sc-gap sc-break" + (on ? " sc-on" : past ? " sc-past" : ""), ariaLabel: `${time} break` },
       h("span", { className: "sc-free" }, `${durText((x.end - x.start) / 60000)} ${x.type === "lunch" ? "lunch" : "break"}`));
-    if (x.kind === "plan") { const pe = h("div", { className: "sc-row" + (on ? " sc-on" : past ? " sc-past" : "") },
+    // The row on right now wears its colour edge to edge (Mor, 2026-10-08).
+    if (x.kind === "plan") { const pe = h("div", { className: "sc-row" + (on ? " sc-on" + areaClass(x.task) : past ? " sc-past" : "") },
       h("span", { className: "sc-time strong" }, time, on && h("span", { className: "sc-nowtag", textContent: "Now" })),
       h("button", { type: "button", className: "sc-ev sc-plan" + areaClass(x.task), ariaLabel: `Planned: ${x.task.title}, ${time}`, onclick: () => onOpen?.(x.task) },
         h("span", { className: "sc-dot" }), bdi(x.task.title)));
@@ -375,7 +376,7 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onProjects, onW
       return pe; }
     // A finished task is logged as a "✓ title" event (calendar.js logDone).
     const done = /^✓\s*/u.test(x.ev.title), title = done ? x.ev.title.replace(/^✓\s*/u, "") : x.ev.title;
-    const rowEl = h("div", { className: "sc-row" + (on ? " sc-on" : past ? " sc-past" : "") }, h("span", { className: "sc-time strong" }, time, on && h("span", { className: "sc-nowtag", textContent: "Now" })),
+    const rowEl = h("div", { className: "sc-row" + (on ? " sc-on" + tone(x.ev) : past ? " sc-past" : ""), style: on && x.ev.color ? `--ev:${x.ev.color}` : "" }, h("span", { className: "sc-time strong" }, time, on && h("span", { className: "sc-nowtag", textContent: "Now" })),
       h("button", { type: "button", className: "sc-ev" + (done ? " sc-done" : "") + tone(x.ev), style: x.ev.color ? `--ev:${x.ev.color}` : "",
         ariaLabel: `${done ? "Finished task: " : ""}${on ? "Now: " : ""}${title}, ${time}`, onclick: () => onEvent?.(x.ev) },
         done ? h("span", { className: "sc-dot" }) : h("span", { className: "sc-evi" }, icon("calendar")), bdi(title)));

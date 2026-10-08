@@ -1173,7 +1173,12 @@ body.focus #side { display: none; }
 .sc-none:hover .sc-add, .sc-none:focus-visible .sc-add, .sc-gap:hover .sc-add, .sc-gap:focus-visible .sc-add { opacity: 1; }
 @media (hover: none) { .sc-add { opacity: .7; } }
 .sc-row.sc-past { opacity: .5; } /* already over today — still shown, quieter */
-.sc-row.sc-on .sc-ev { box-shadow: 0 0 0 2px color-mix(in srgb, var(--ev, var(--ink-2)) 70%, var(--card)); }
+/* The row on right now is one block of its colour, time column included (Mor, 2026-10-08). */
+.sc-row.sc-on:not(.sc-gap) { --rowbg: color-mix(in srgb, var(--ev, #8c8574) 16%, var(--card)); --rowink: color-mix(in srgb, var(--ev, var(--ink-2)) 55%, var(--ink));
+  background: var(--rowbg); margin-inline: -6px; padding: 4px 6px; border-radius: 9px; }
+.sc-row.sc-on[class*="pc-"]:not(.sc-gap), .sc-row.sc-on[class*="area-"]:not(.sc-gap) { --rowbg: var(--tint); --rowink: var(--aink); }
+.sc-row.sc-on:not(.sc-gap) .sc-time { color: var(--rowink); }
+.sc-row.sc-on .sc-ev, .sc-row.sc-on .sc-ev.sc-plan { background: none; border-color: transparent; box-shadow: none; color: var(--rowink); }
 .sc-time .sc-nowtag { display: block; inline-size: fit-content; margin-block-start: 3px; padding: 1px 7px; border-radius: 999px; background: var(--accent); color: var(--on-accent); font-size: 11px; font-weight: 700; }
 /* Day / Week header (2026-10-07): ‹ title › and a Day|Week switch, sticky at
    the top while the day or week scrolls under it. In Week the weekday
