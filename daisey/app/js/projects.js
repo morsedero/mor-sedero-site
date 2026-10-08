@@ -462,20 +462,41 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
     go(ps[(i + by + ps.length) % ps.length].name);
   }
   // Sideways anywhere that isn't a task or the chip row turns the page.
-  let page = null;
+  // The page follows the finger, slides off, and the next project slides in
+  // (same as the Schedule's day swipe).
+  let page = null, sawSwipe = false;
+  const slide = (x, ms) => { els.view.style.transition = ms ? `transform ${ms}ms ease-out` : "none"; els.view.style.transform = x ? `translateX(${x}px)` : ""; };
+  const flip = (side, swap) => {
+    const out = side * (els.view.clientWidth || innerWidth);
+    slide(out, 140);
+    setTimeout(() => { swap(); slide(-out); els.view.getBoundingClientRect(); slide(0, 180); }, 140);
+  };
   els.view.addEventListener("pointerdown", (e) => {
-    page = e.target.closest(".pj-swipe, .pj-chips, input, textarea") ? null : { x: e.clientX, y: e.clientY };
+    page = e.target.closest(".pj-swipe, .pj-chips, input, textarea") ? null : { x: e.clientX, y: e.clientY, on: false };
+  });
+  els.view.addEventListener("pointermove", (e) => {
+    if (!page) return;
+    const dx = e.clientX - page.x, dy = e.clientY - page.y;
+    if (!page.on && Math.abs(dx) > 10 && Math.abs(dx) > 1.5 * Math.abs(dy)) {
+      page.on = true;
+      try { els.view.setPointerCapture(e.pointerId); } catch { /* gone already */ }
+    }
+    if (page.on) slide(dx * 0.9);
   });
   els.view.addEventListener("pointerup", (e) => {
     if (!page) return;
-    const dx = e.clientX - page.x, dy = e.clientY - page.y;
+    const dx = e.clientX - page.x, dy = e.clientY - page.y, on = page.on;
     page = null;
+    if (!on) return;
+    sawSwipe = true; setTimeout(() => { sawSwipe = false; });
     if (Math.abs(dx) > SWIPE_PAGE && Math.abs(dx) > 1.5 * Math.abs(dy)) {
       const rtl = getComputedStyle(els.view).direction === "rtl";
-      step((dx < 0) !== rtl ? 1 : -1);
-    }
+      flip(dx < 0 ? -1 : 1, () => step((dx < 0) !== rtl ? 1 : -1));
+    } else slide(0, 180);
   });
-  els.view.addEventListener("pointercancel", () => { page = null; });
+  els.view.addEventListener("pointercancel", () => { if (page?.on) slide(0, 180); page = null; });
+  els.view.addEventListener("lostpointercapture", (e) => { if (e.target === els.view && page?.on) { slide(0, 180); page = null; } });
+  els.view.addEventListener("click", (e) => { if (sawSwipe) { e.stopPropagation(); e.preventDefault(); } }, true);
 
   // A project takes the grid's place in the home panel (Mor, 2026-10-08);
   // closing it brings the grid back if that's where it was opened from.
