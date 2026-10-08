@@ -32,6 +32,8 @@ function shape(e, colors, cal) {
     end: e.end?.dateTime || e.end?.date || null,
     allDay,
     busy: isBusy(e),
+    // Last edit: work logged before it can't overrule the event (reality.js).
+    updated: e.updated || null,
     // Where it happens: an event with a place means you are Out (the Now
     // card's place guess).
     location: e.location || null,

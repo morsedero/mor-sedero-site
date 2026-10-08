@@ -164,6 +164,7 @@ async function write(body){
         color: null,
         busy: true,
         editable: true,
+        updated: new Date().toISOString(),
       };
       saveGuestEvents([...events, created]);
       return created;
@@ -174,7 +175,7 @@ async function write(body){
       return { status: "deleted" };
     }
     if(body.action === "rename") event.title = body.title;
-    if(body.action === "move"){ event.start = body.start; event.end = body.end; }
+    if(body.action === "move"){ event.start = body.start; event.end = body.end; event.updated = new Date().toISOString(); }
     saveGuestEvents(events);
     return event;
   }

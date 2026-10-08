@@ -36,6 +36,9 @@ export function runState(run, tasks, now = Date.now()){
 // behind it, its time counts as free, and its end isn't announced as "X is
 // over". Events still ahead are never overruled: a plan for later is still
 // the best guess about later.
+// Evidence older than the event's last edit (`updated`) doesn't count
+// (Mor, 2026-10-08): an event added or moved onto time already worked says
+// what the user is doing NOW, so it's newer than the work and wins.
 export const eventKey = (e) => `${e.id || e.title}|${ms(e.start)}`;
 export function overruled(events, { tasks = [], run = null, now = Date.now() } = {}){
   const live = runState(run, tasks, now) === "running";
@@ -43,9 +46,9 @@ export function overruled(events, { tasks = [], run = null, now = Date.now() } =
   const out = new Set();
   for (const e of events || []) {
     if (e.allDay || e.busy === false) continue;
-    const s = ms(e.start), end = ms(e.end);
+    const s = ms(e.start), end = ms(e.end), edit = e.updated ? ms(e.updated) || 0 : 0;
     if (!(s <= now)) continue;
-    if ((live && end > now) || (work >= s && work < end)) out.add(eventKey(e));
+    if ((live && end > now && run.startedAt >= edit) || (work >= Math.max(s, edit) && work < end)) out.add(eventKey(e));
   }
   return out;
 }

@@ -39,6 +39,11 @@ test("overruled: work during an event beats the event; the future is never overr
   const run = { taskId: "a", startedAt: at(13, 50), extra: 0 };
   assert.deepEqual([...R.overruled([meet, later], { tasks: [t({ id: "a", size: 60, workedAt: at(13, 50) })], run, now })], [R.eventKey(meet)]);
   assert.equal(R.overruled([{ ...meet, busy: false }], { tasks: [t({ workedAt: at(14, 10) })], now }).size, 0);
+  // An event added after the work (2026-10-08): the newer statement wins.
+  const added = { ...meet, updated: il(14, 20) };
+  assert.equal(R.overruled([added], { tasks: [t({ workedAt: at(14, 10) })], now }).size, 0);
+  assert.equal(R.overruled([added], { tasks: [t({ id: "a", size: 60, workedAt: at(13, 50) })], run, now }).size, 0);
+  assert.equal(R.overruled([added], { tasks: [t({ workedAt: at(14, 25) })], now }).size, 1); // worked after adding it
 });
 
 test("decide: while a task runs, nothing competes with it", () => {
