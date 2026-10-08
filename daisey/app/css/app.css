@@ -1200,13 +1200,25 @@ body.focus #side { display: none; }
 @keyframes sc-orbit { to { --sc-ang: 360deg; } }
 /* Time gone in it fills in deeper, start to end (Mor, 2026-10-08). --dur/--el
    come from schedule.js; --sc-prog animates over the event's own length. */
-@property --sc-prog { syntax: "<percentage>"; inherits: false; initial-value: 0%; }
+@property --sc-prog { syntax: "<percentage>"; inherits: true; initial-value: 0%; }
 @keyframes sc-prog { to { --sc-prog: 100%; } }
 .sc-row.sc-on:not(.sc-gap) { --rowdeep: color-mix(in srgb, var(--ev, #8c8574) 30%, var(--card));
   background: linear-gradient(to right, var(--rowdeep) var(--sc-prog), var(--rowbg) var(--sc-prog));
   animation: sc-prog var(--dur, 1s) linear var(--el, 0s) both; }
 .sc-row.sc-on[class*="pc-"]:not(.sc-gap), .sc-row.sc-on[class*="area-"]:not(.sc-gap) { --rowdeep: color-mix(in srgb, var(--aline) 35%, var(--tint)); }
 .sc-row.sc-on:not(.sc-gap):dir(rtl) { background: linear-gradient(to left, var(--rowdeep) var(--sc-prog), var(--rowbg) var(--sc-prog)); }
+/* The gone part is hatched, and its edge is a lit playhead at "now". Fixed 8px
+   tiles so the stripes sit still while the edge creeps; z-index -1 inside an
+   isolated row keeps it under the text. */
+.sc-row.sc-on:not(.sc-gap) { isolation: isolate; }
+.sc-row.sc-on:not(.sc-gap)::after {
+  content: ""; position: absolute; inset-block: 0; inset-inline-start: 0; inline-size: var(--sc-prog); z-index: -1; pointer-events: none;
+  border-start-start-radius: 9px; border-end-start-radius: 9px; border-inline-end: 2px solid var(--glint);
+  background: linear-gradient(to left, var(--edge), transparent 14px),
+    linear-gradient(45deg, var(--hatch) 25%, transparent 25% 50%, var(--hatch) 50% 75%, transparent 75%) 0 0 / 8px 8px;
+  --hatch: color-mix(in srgb, var(--rowline) 22%, transparent); --edge: color-mix(in srgb, var(--glint) 40%, transparent); }
+.sc-row.sc-on:not(.sc-gap):dir(rtl)::after { background: linear-gradient(to right, var(--edge), transparent 14px),
+  linear-gradient(45deg, var(--hatch) 25%, transparent 25% 50%, var(--hatch) 50% 75%, transparent 75%) 0 0 / 8px 8px; }
 /* The glint: a deeper shade on light paper (white read as a hole in the ring),
    a lighter one on dark. */
 .sc-row.sc-on:not(.sc-gap) { --glint: color-mix(in srgb, var(--rowline) 80%, #000); }
