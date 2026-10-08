@@ -21,7 +21,6 @@ const svg = (tag, attrs = {}, ...kids) => {
   return el;
 };
 const PERIOD_TEXT = { today: "Today", week: "Week", month: "Month" };
-const TIER_TEXT = { focus: "Focus", keep: "Keep going", background: "Background" };
 const SEEN_KEY = "daisey.bloom.seen.v1";
 const readSeen = () => { try { return JSON.parse(localStorage.getItem(SEEN_KEY)) || {}; } catch { return {}; } };
 const writeSeen = (v) => { try { localStorage.setItem(SEEN_KEY, JSON.stringify(v)); } catch { /* private window */ } };
@@ -130,13 +129,11 @@ export function mountBloom(root, uid, { onProject } = {}){
     for (const f of fl) if (f.done > (seen[f.name] ?? f.done)) pops.add(f.name);
     if (period === "week") writeSeen(Object.fromEntries(fl.map((f) => [f.name, f.done])));
 
-    const tierGroups = ["focus", "keep", "background"].map((t) => [t, fl.filter((f) => f.tier === t)]).filter(([, g]) => g.length);
-    const bed = tierGroups.length ? h("section", { className: "bl-bed", ariaLabel: "Your projects" }, ...tierGroups.map(([t, g]) =>
-      h("div", { className: `bl-tier ${t}` },
-        tierGroups.length > 1 ? h("h3", { className: "bl-h", textContent: TIER_TEXT[t] }) : null,
-        h("div", { className: "bl-row" }, ...g.map((f, i) => {
+    // One flowing row, Focus first and biggest: separate rows per tier left a gap.
+    const bed = fl.length ? h("section", { className: "bl-bed", ariaLabel: "Your projects" },
+        h("div", { className: "bl-row" }, ...fl.map((f, i) => {
           const info = colors.get(f.name), cls = info ? ` pc-${info.color}` : "";
-          const btn = h("button", { type: "button", className: `bl-flower${cls}${f.bud ? " bud" : ""}${pops.has(f.name) ? " pop" : ""}${open === f.name ? " on" : ""}`,
+          const btn = h("button", { type: "button", className: `bl-flower ${f.tier}${cls}${f.bud ? " bud" : ""}${pops.has(f.name) ? " pop" : ""}${open === f.name ? " on" : ""}`,
             style: `--d:-${(i * 0.9).toFixed(1)}s`, ariaExpanded: String(open === f.name),
             ariaLabel: `${f.name}: ${f.min ? fmtMinutes(f.min) : "no time yet"}, ${f.done} done`,
             onclick: () => { open = open === f.name ? null : f.name; render(); } },
@@ -144,7 +141,7 @@ export function mountBloom(root, uid, { onProject } = {}){
           h("span", { className: "bl-name" }, bdi(f.name)),
           h("span", { className: "bl-sub" }, f.min ? `${f.guess ? "~" : ""}${fmtMinutes(f.min)}` : "resting", f.more ? ` · +${f.more}` : ""));
           return btn;
-        })))),
+        })),
     open && fl.find((f) => f.name === open) ? detail(fl.find((f) => f.name === open), colors.get(open) && { open: colors.get(open).open, color: colors.get(open).color }) : null)
       : h("p", { className: "bl-note center" }, "Make a project and it plants itself here.");
 

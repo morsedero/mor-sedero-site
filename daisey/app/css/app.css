@@ -1672,8 +1672,8 @@ body.focus .shell { block-size: auto; min-block-size: 100dvh; overflow: visible;
 .bl-row { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 6px 10px; }
 .bl-flower { --tint: #f4efe0; --aline: #cfc4a8; --aink: #8a7d5a; display: grid; justify-items: center; gap: 2px; inline-size: 74px; padding: 4px 2px 6px; border: 1px solid transparent; border-radius: 14px; background: none; color: var(--ink); font: inherit; cursor: pointer; }
 .bl-flower.on { background: var(--card); border-color: var(--aline); }
-.bl-tier.keep .bl-flower { inline-size: 66px; }
-.bl-tier.background .bl-flower { inline-size: 56px; }
+.bl-flower.keep { inline-size: 66px; }
+.bl-flower.background { inline-size: 56px; }
 .bl-svg { inline-size: 100%; block-size: auto; overflow: visible; }
 .bl-stem { stroke: #7fae7f; stroke-width: 2.4; fill: none; stroke-linecap: round; }
 .bl-leaf { fill: #9cc79c; }
