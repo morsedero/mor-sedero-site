@@ -233,7 +233,7 @@ textarea {
 
 /* The Now popup. */
 .now {
-  inline-size: min(480px, calc(100vw - 32px)); max-block-size: calc(100dvh - 32px);
+  inline-size: min(480px, calc(100vw - 18px)); max-block-size: calc(100dvh - 32px);
   padding: 20px; border: 0; border-radius: var(--radius);
   background: var(--card); color: var(--ink); box-shadow: 0 20px 60px rgba(0,0,0,.25);
 }
@@ -601,7 +601,7 @@ dialog.now:focus { outline: none; }
 .focus-still { margin: 12px 0 0; padding: 12px 14px; border-radius: 16px; background: var(--card); border: 1px solid var(--line); display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
 /* The account menu's sections (2026-10-06): a quiet email line, then
    Theme + My day, Notifications, Google Calendar, and plain links last. */
-.acct-menu { min-inline-size: 290px; max-inline-size: calc(100vw - 32px); justify-items: stretch; gap: 0; padding: 12px 16px; }
+.acct-menu { min-inline-size: 290px; max-inline-size: calc(100vw - 18px); justify-items: stretch; gap: 0; padding: 12px 16px; }
 .menu-who { font-size: 12px; color: var(--ink-2); padding-block-end: 8px; }
 .menu-sec { display: grid; gap: 8px; padding-block: 12px; border-block-start: 1px solid var(--line); }
 .menu-h { margin: 0; font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-2); }
@@ -639,7 +639,7 @@ dialog.now:focus { outline: none; }
 .menu-item { display: flex; align-items: center; gap: 10px; min-block-size: 44px; padding: 0 4px; border: 0; background: none; font: inherit; font-size: 15px; color: var(--ink); text-align: start; cursor: pointer; border-block-start: 1px solid var(--line); }
 .menu-item.quiet { color: var(--ink-2); }
 .menu-item:hover { color: var(--ink); text-decoration: underline; }
-dialog.settings { inline-size: min(420px, calc(100vw - 32px)); }
+dialog.settings { inline-size: min(420px, calc(100vw - 18px)); }
 dialog.settings .now-head + .menu-sec { border-block-start: 0; padding-block-start: 4px; }
 .focus-still-btns { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .focus-took-row { display: inline-flex; gap: 8px; align-items: center; }
@@ -1205,10 +1205,10 @@ body.focus #side { display: none; }
 @property --sc-prog { syntax: "<percentage>"; inherits: false; initial-value: 0%; }
 @keyframes sc-prog { to { --sc-prog: 100%; } }
 .sc-row.sc-on:not(.sc-gap) { --rowdeep: color-mix(in srgb, var(--ev, #8c8574) 50%, var(--card));
-  background: linear-gradient(to right, var(--rowdeep) calc(var(--sc-prog) - 32px), var(--rowbg) var(--sc-prog));
+  background: linear-gradient(to right, var(--rowdeep) calc(var(--sc-prog) - 18px), var(--rowbg) var(--sc-prog));
   animation: sc-prog var(--dur, 1s) linear var(--el, 0s) both; }
 .sc-row.sc-on[class*="pc-"]:not(.sc-gap), .sc-row.sc-on[class*="area-"]:not(.sc-gap) { --rowdeep: color-mix(in srgb, var(--aline) 75%, var(--tint)); }
-.sc-row.sc-on:not(.sc-gap):dir(rtl) { background: linear-gradient(to left, var(--rowdeep) calc(var(--sc-prog) - 32px), var(--rowbg) var(--sc-prog)); }
+.sc-row.sc-on:not(.sc-gap):dir(rtl) { background: linear-gradient(to left, var(--rowdeep) calc(var(--sc-prog) - 18px), var(--rowbg) var(--sc-prog)); }
 /* The glint: a deeper shade on light paper (white read as a hole in the ring),
    a lighter one on dark. */
 .sc-row.sc-on:not(.sc-gap) { --glint: color-mix(in srgb, var(--rowline) 80%, #000); }
