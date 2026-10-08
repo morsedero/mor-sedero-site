@@ -59,6 +59,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
   // in the user's order, the ids they deleted, the Rethink box.
   let dayPlan, planKnown = false;
   const prop = { open: false, items: [], exclude: [], ask: false, text: "", busy: false, note: "", auto: null };
+  let ppDragging = false, ppStale = false; // a plan-row drag is live (ppdrag.js)
   let holdAsk = false, holdText = ""; // "Waiting for reply" on the running card
   // The event you said you're free from, as its start time in ms (what
   // engine.freeWindow reports). Cleared on its own once that event is no
@@ -990,7 +991,6 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
             h("button", { type: "button", className: "pj-quiet", onclick: () => onOpen?.(t) }, bdi(t.title)),
             h("span", { className: "pj-meta", dir: "ltr", textContent: new Date(t.doneAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) })))));
   }
-  let ppDragging = false, ppStale = false;
   // Drag a row to reorder the plan (ppdrag.js, same drag as the Schedule's).
   const dragRows = (ol) => sortable(ol, {
     busy: (on) => { ppDragging = on; if (!on && ppStale) { ppStale = false; render(); } },
