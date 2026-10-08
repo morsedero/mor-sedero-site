@@ -1315,6 +1315,12 @@ body.focus .shell { block-size: auto; min-block-size: 100dvh; overflow: visible;
 .pp-list { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 6px; }
 .pp-row { display: grid; grid-template-columns: 44px minmax(0, 1fr) auto; align-items: center; gap: 8px; padding: 6px 6px 6px 10px; border-radius: 12px; background: color-mix(in srgb, var(--card) 70%, var(--tint)); border: 1px solid var(--aline); }
 .pp-row.over { border-style: dashed; }
+/* Drag a row to reorder (ppdrag.js); a line marks where it lands */
+.pp-row.pp-drag { user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+.pp-row.pp-dragging { position: relative; z-index: 5; scale: 1.03; background: var(--card); border-style: solid; box-shadow: 0 0 0 2px var(--aline, var(--ink-2)), 0 14px 28px -4px rgba(0,0,0,.45), 0 4px 8px rgba(0,0,0,.25); }
+.pp-row.pp-dragging, .pp-row.pp-dragging * { cursor: grabbing; }
+.pp-row.pp-ins { box-shadow: 0 -5px 0 -2px var(--ink); }
+.pp-row.pp-ins-end { box-shadow: 0 5px 0 -2px var(--ink); }
 .pp-row.pp-break { background: transparent; border-style: dotted; opacity: .85; }
 .pp-row.over > :not(.pp-fit) { opacity: .65; }
 /* "Shorten to 55 min": a late plan item cut to the time left. */

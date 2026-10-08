@@ -15,7 +15,8 @@
 import { overruled, eventKey } from "./reality.js";
 import * as deep from "./deep.js";
 import { addTask, watchTasks, watchRun, watchSkips, saveSkips, startRun, extendRun, endRun, startBatch, tickBatch, endBatch, skipNow, blockTask, restoreTask, finishTask, watchSettings, saveSettings, watchMoment, saveMoment, watchLearn, bumpLearn, saveRun, cancelRun, watchDayPlan, saveDayPlan, holdTask, releaseTask } from "./store.js";
-import { proposeDay, timeline, nextPlanned, planProgress } from "./proposal.js";
+import { sortable } from "./ppdrag.js";
+import { proposeDay,timeline, nextPlanned, planProgress } from "./proposal.js";
 import { rethink } from "./rethink.js";
 import { placeNow, workBase } from "./context.js";
 import { watchWhere, setManual, whereAsk } from "./where.js";
@@ -989,6 +990,14 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
             h("button", { type: "button", className: "pj-quiet", onclick: () => onOpen?.(t) }, bdi(t.title)),
             h("span", { className: "pj-meta", dir: "ltr", textContent: new Date(t.doneAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) })))));
   }
+  let ppDragging = false, ppStale = false;
+  // Drag a row to reorder the plan (ppdrag.js, same drag as the Schedule's).
+  const dragRows = (ol) => sortable(ol, {
+    busy: (on) => { ppDragging = on; if (!on && ppStale) { ppStale = false; render(); } },
+    onMove: (from, to) => {
+      const items = [...prop.items], [it] = items.splice(from, 1);
+      items.splice(to, 0, it); prop.items = items; render();
+    } });
   function proposalCard(){
     const { rows, over, breaks } = timeline(prop.items, planCtx());
     const approved = !!approvedPlan();
@@ -998,7 +1007,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
     const row = (r, isOver) => {
       const i = pos.get(r.taskId), t = r.task;
       const ctl = (text, label, disabled, onclick) => h("button", { type: "button", className: "pp-ctl", textContent: text, title: label, ariaLabel: `${label}: ${t.title}`, disabled, onclick });
-      return h("li", { className: "pp-row" + areaClass(t) + (isOver ? " over" : "") },
+      return h("li", { className: "pp-row pp-drag" + areaClass(t) + (isOver ? " over" : "") },
         isOver ? h("span", { className: "pp-time", textContent: "No room" })
           : h("span", { className: "pp-time", ariaLabel: `${clock(r.start)} to ${clock(r.end)}` }, clock(r.start), h("small", { textContent: clock(r.end) })),
         h("button", { type: "button", className: "pp-task", ariaLabel: `Edit ${t.title}`, onclick: () => onOpen?.(t) },
@@ -1022,10 +1031,10 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
         rows.length > 0 && h("span", { className: "hero-side", textContent: `${dur(total)} · until ${clock(last.end)}` })),
       h("p", { className: "now-why pp-why", textContent: approved ? "Reorder, drop or rethink, then save." : "How I'd use the rest of today. Approve it, or change it first." }),
       rows.length || over.length
-        ? h("ol", { className: "pp-list" },
+        ? dragRows(h("ol", { className: "pp-list" },
           ...[...rows.map((r) => ({ r, s: r.start })), ...breaks.map((b) => ({ b, s: b.start }))]
             .sort((a, b) => a.s - b.s).map((x) => (x.b ? breakRow(x.b) : row(x.r, false))),
-          ...over.map((r) => row(r, true)))
+          ...over.map((r) => row(r, true))))
         : h("p", { className: "now-empty", textContent: "No open task fits the free time left today." }),
       // An approved plan never changes itself (Mor, 2026-10-07): late in the
       // day it says so and offers a fresh take on what's left.
@@ -1063,6 +1072,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
   let reported = null, reportedNeeds = null, reportedPlan = "";
 
   function render(){
+    if (ppDragging) { ppStale = true; return; } // a redraw mid-drag would drop the dragged row
     const live = !!run; // paused or not
     const deepOn = focusing();
     if (!deepOn) deep.leave();
