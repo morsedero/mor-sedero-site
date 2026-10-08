@@ -342,3 +342,24 @@ test("deadline lead: big work left counts the deadline days earlier (2026-10-06)
   assert.equal(parts(dl("2026-10-09", { size: 360, spentMinutes: 300 })).deadline, W.DEADLINE.within7);
   assert.match(why(dl("2026-10-09", { size: 360, canSplit: true })), /6 h still to do/);
 });
+
+test("priority: the Projects page order steers the card — top gets PRIORITY_MAX, last none", () => {
+  const ranks = ["Top", "Mid", "Low"];
+  assert.equal(parts(task({ project: "Top" }), { projectRanks: ranks }).priority, W.PRIORITY_MAX);
+  assert.equal(parts(task({ project: "mid" }), { projectRanks: ranks }).priority, Math.round(W.PRIORITY_MAX / 2));
+  assert.equal(parts(task({ project: "Low" }), { projectRanks: ranks }).priority, 0);
+  assert.equal(parts(task({ project: "Inbox" }), { projectRanks: [...ranks, "Inbox"] }).priority, 0);
+  assert.equal(parts(task({ project: "Top" }), { projectRanks: ["Top"] }).priority, 0); // one project: no order
+  const low = task({ project: "Low", title: "Low one" }), top = task({ project: "Top", title: "Top one" });
+  assert.equal(pick([low, top], { projectRanks: ranks }).task.title, "Top one");
+  assert.equal(pick([top, low], { projectRanks: [...ranks].reverse() }).task.title, "Low one");
+  assert.match(why([top], { projectRanks: ranks }), /Top is your top project/);
+  // A deadline today still beats the top project.
+  assert.equal(pick([top, dl("2026-10-05", { project: "Low", title: "Due" })], { projectRanks: ranks }).task.title, "Due");
+});
+
+test("priority: workBase hands every caller the published order", () => {
+  C.setProjectRanks(["A", "B"]);
+  assert.deepEqual(C.workBase([], NOW).projectRanks, ["A", "B"]);
+  C.setProjectRanks([]);
+});

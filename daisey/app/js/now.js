@@ -18,7 +18,7 @@ import { addTask, watchTasks, watchRun, watchSkips, saveSkips, startRun, extendR
 import { sortable } from "./ppdrag.js";
 import { proposeDay, timeline, withBreaks, trimBreaks, isBreak, nextPlanned, planProgress, refit } from "./proposal.js";
 import { rethink } from "./rethink.js";
-import { placeNow, workBase } from "./context.js";
+import { placeNow, workBase, watchProjectRanks } from "./context.js";
 import { watchWhere, setManual, whereAsk } from "./where.js";
 import { pickWeekDay } from "./triage.js";
 import { focusView, handoffView, elapsedMinutes, targetMinutes, batchFocusView, batchName, sinceMark, paused, resumed, runCap, bookedMinutes, holdButton, stillOnMinutes, bloomHold } from "./focus.js";
@@ -1334,6 +1334,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
   const unsubs = [
     watchWhere((v) => { located = v; render(); }),
     watchProjectColors(() => render()),
+    watchProjectRanks(() => render()),
     watchTasks(uid, (ts) => { tasks = ts; render(); tryNoticeStart(); }, fail),
     watchCalendar((c) => { cal = c; render(); }),
     watchRun(uid, (r) => { run = r; runKnown = true; if (r) handoff = null; render(); tryNoticeStart(); }, fail),

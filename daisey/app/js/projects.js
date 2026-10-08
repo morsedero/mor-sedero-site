@@ -25,6 +25,7 @@ import { INBOX, progressOf, progressPatch, leftMinutes, pushedTo, notYet, durTex
 import { isOverdue } from "./triage.js";
 import { h, bdi, flash, icon, askProgress, sizeChip, progressBar } from "./ui.js";
 import { dirOf, setProjectColors } from "./look.js";
+import { setProjectRanks } from "./context.js";
 import { sortable } from "./ppdrag.js";
 
 const SWIPE_DONE = 90; // px a task travels right before letting go finishes it
@@ -158,14 +159,21 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
     setProjectColors(Object.fromEntries(all.filter((p) => p.color).map((p) => [p.name, p.color])));
     const inbox = all.find((p) => p.name === INBOX);
     const ps = all.filter((p) => p !== inbox);
+    // The order is the priority (Mor, 2026-10-08): the engine gives the top
+    // project the most points (context.js, engine.js priority), and each card
+    // shows its place — a number, and a stripe that thins down the list.
+    setProjectRanks(ps.map((p) => p.name));
+    const pri = (i) => (ps.length > 1 ? `--pri:${((ps.length - 1 - i) / (ps.length - 1)).toFixed(2)}` : "");
     const n = all.reduce((s, p) => s + p.open.length, 0);
     const y = els.grid.scrollTop;
     els.grid.replaceChildren(...[
       h("div", { className: "pp-head" }, h("span", { className: "pp-sum", textContent: `${plural(ps.length, "project")} · ${plural(n, "task")}` }),
         h("button", { type: "button", className: "pp-new", textContent: "+ New", onclick: () => askName() })),
-      ps.length ? dragProjects(h("div", { className: "pgrid" }, ...ps.map((p) => h("button", { type: "button", className: "pcard pp-drag" + colorClass(p),
-        _name: p.name, onclick: () => openProject(p.name) },
-        h("span", { className: "pcard-top", dir: dirOf(p.name) }, h("span", { className: "pcard-name", dir: "auto", textContent: p.name }), h("span", { className: "pcard-n", textContent: String(p.open.length) })),
+      ps.length > 1 && h("p", { className: "pp-hint", textContent: "Top first: Daisey gives the ones on top more of your time. Drag to reorder." }),
+      ps.length ? dragProjects(h("div", { className: "pgrid" }, ...ps.map((p, i) => h("button", { type: "button", className: "pcard pp-drag" + colorClass(p),
+        _name: p.name, style: pri(i), onclick: () => openProject(p.name) },
+        h("span", { className: "pcard-top", dir: dirOf(p.name) }, ps.length > 1 && h("span", { className: "pcard-rank", title: "Priority", textContent: String(i + 1) }),
+          h("span", { className: "pcard-name", dir: "auto", textContent: p.name }), h("span", { className: "pcard-n", textContent: String(p.open.length) })),
         h("span", { className: "pcard-status" }, ...statusLine(p)),
         bar(p, "pbar")))), ps)
         : !inbox && h("p", { className: "muted pp-empty", textContent: "No projects yet. Tell Daisey what's on your plate." }),

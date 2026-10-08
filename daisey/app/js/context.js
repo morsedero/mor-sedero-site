@@ -22,6 +22,18 @@ export function placeNow({ correction = null, located = null, events = [], now =
   return { value: out ? "out" : "home", guessed: true };
 }
 
+// The projects in the Projects page's order, top first (projects.js
+// publishes it as it paints). Every engine caller gets it through workBase,
+// so the card, the plan and night mode all rank by the same order.
+let ranks = [];
+const rankSubs = new Set();
+export function setProjectRanks(names){
+  if (names.length === ranks.length && names.every((n, i) => n === ranks[i])) return;
+  ranks = names;
+  rankSubs.forEach((cb) => cb());
+}
+export function watchProjectRanks(cb){ rankSubs.add(cb); return () => rankSubs.delete(cb); }
+
 // What the engine needs from the task history, shared by the Now card and
 // night mode so the two can't disagree: momentum (the project last worked
 // on today, those worked on in the last 2 days) and the area balance (tasks
@@ -40,5 +52,6 @@ export function workBase(tasks = [], now = Date.now()){
     lastProject: worked.find((t) => localDate(when(t)) === today)?.project || null,
     recentProjects: worked.filter((t) => now - when(t) < W.MOMENTUM.recentDays * 864e5).map((t) => t.project),
     areaDone,
+    projectRanks: ranks,
   };
 }

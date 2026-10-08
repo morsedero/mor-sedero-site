@@ -70,6 +70,10 @@ export const DEADLINE = { today: 35, within2: 25, within7: 12 }; // past or toda
 export const DEADLINE_LEAD_PER_DAY = 120;
 export const TARGET = { today: 8, within3: 4 }; // today or past · ≤3 days; never "overdue"
 export const STAKES = { penalty: 15, money: 12, someone: 10, low: 0 };
+// The project's place on the Projects page (Mor, 2026-10-08): the top one
+// gets this, the bottom one 0, evenly between. Under a deadline today (35),
+// over a window fit (12), so the order Mor drags really steers the card.
+export const PRIORITY_MAX = 15;
 export const AREA_BALANCE_MAX = 12;
 export const NEGLECT_PER_DAY = 1; // per whole day untouched
 export const NEGLECT_MAX = 8;

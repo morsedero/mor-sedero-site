@@ -21,6 +21,7 @@ import { planView } from "./plan-view.js";
 import { dayHours } from "./day.js";
 import { watchSettings, watchRun, saveSettings } from "./store.js";
 import { rank } from "./engine.js";
+import { workBase } from "./context.js";
 import { effectiveDue } from "./triage.js";
 import { h, bdi, dur, flash } from "./ui.js";
 
@@ -149,7 +150,7 @@ export function mountTell(form, input, mic, uid, { openAdd, openTask, guest = fa
     const open = tasks.filter((t) => t.status === "ready" || t.status === "waiting");
     let rows = [];
     if (q.query === "next") {
-      rows = rank(tasks, { realWindow: false }).ranked.slice(0, 3).map((s) => [s.task.title, s.why]);
+      rows = rank(tasks, { realWindow: false, ...workBase(tasks) }).ranked.slice(0, 3).map((s) => [s.task.title, s.why]);
     } else if (q.query === "due") {
       const until = q.range === "week" ? dayAfter(6) : localDate();
       rows = open.filter((t) => t.due && effectiveDue(t) <= until).sort((a, b) => effectiveDue(a).localeCompare(effectiveDue(b)))
