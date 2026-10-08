@@ -154,7 +154,7 @@ async function boot(){
   // A tap on the dim backdrop closes it, like Escape and ✕.
   const settings = $("#settingsdlg");
   $("#settingsBtn").onclick = () => { setMenu(false); settings.showModal(); };
-  $("#projectsMenuBtn").onclick = () => { setMenu(false); window.__openProjects && window.__openProjects(); };
+  $("#projectsChip").onclick = () => window.__openProjects && window.__openProjects();
   $("#settingsX").onclick = () => settings.close();
   settings.addEventListener("click", (e) => { if (e.target === settings) settings.close(); });
 
@@ -170,6 +170,7 @@ async function boot(){
     paintDone(0);
     avatar.hidden = !user;
     $("#planChip").hidden = !user;
+    $("#projectsChip").hidden = !user;
     if (!user) { show("signedout"); return; }
 
     const displayName = user.displayName || user.email || "Guest";
