@@ -16,7 +16,9 @@ test("where: still at home → home; still 1 km away → out", () => {
 });
 
 test("where: walking under ~10 km/h, a ride over it, even next to home; reported speed wins", () => {
-  assert.equal(placeFrom([fix(0, 0, { acc: 5 }), fix(0.0002, 10000, { acc: 5 })], PLACES), "walk"); // ~22 m in 10 s, 12 m of it past the error
+  assert.equal(placeFrom([fix(0.009, 0, { acc: 5 }), fix(0.0092, 10000, { acc: 5 })], PLACES), "walk"); // ~22 m in 10 s, 12 m of it past the error, 1 km from home
+  assert.equal(placeFrom([fix(0, 0, { acc: 5 }), fix(0.0002, 10000, { acc: 5 })], PLACES), "home"); // same pace inside the house: pacing, not a walk
+  assert.equal(placeFrom([fix(0, 0, { speed: 1.2 }), fix(0, 1000, { speed: 1.4 })], PLACES), "home"); // reported walking speed indoors
   assert.equal(placeFrom([fix(0, 0, { speed: 8 }), fix(0, 1000, { speed: 9 })], PLACES), "ride");
   assert.equal(placeFrom([fix(0, 0, { speed: 0 }), fix(0, 1000, { speed: 0 })], PLACES), "home");
   assert.equal(placeFrom([fix(0, 0, { speed: 1.5 }), fix(0, 1000, { speed: 1.5 })], []), "walk"); // no home needed

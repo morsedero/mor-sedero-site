@@ -68,11 +68,14 @@ export function placeFrom(fixes, places = [], ride = null, now = Date.now()){
   }
   v ??= 0;
   if (v >= WALK_MPS) return ride && now - ride.at < RIDE_MS ? ride.mode : "ride";
-  if (v >= STILL_MPS) return "walk";
   // A place saved from a vague fix gets that much more reach (acc, kept since
   // 2026-10-06; older saves have none).
   const reach = (p) => Math.max(NEAR_M, Math.min(last.acc || 0, 400), Math.min(p.acc || 0, 400));
   const near = places.map((p) => ({ p, d: dist(last, p) })).filter((x) => x.d <= reach(x.p)).sort((a, b) => a.d - b.d)[0];
+  // Walking speed inside a saved place is pacing around the house (or GPS
+  // drift indoors), not a walk (Mor, 2026-10-08). It turns into "walk" only
+  // once you're out past the place's reach.
+  if (v >= STILL_MPS && !near) return "walk";
   if (near) return placeOf(near.p);
   return places.some((p) => isHome(p.name)) ? "out" : null;
 }
