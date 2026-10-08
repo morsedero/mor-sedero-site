@@ -140,6 +140,12 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onProjects, onW
   el.style.touchAction = "pan-y"; // keep the horizontal drag ours, or the browser cancels it
   // The page follows the finger, then slides off and the next one slides in.
   const slide = (x, ms) => { el.style.transition = ms ? `transform ${ms}ms ease-out` : "none"; el.style.transform = x ? `translateX(${x}px)` : ""; };
+  // Slide the page off toward `side` (-1 left, 1 right), swap it, slide the new one in.
+  const flip = (side, swap) => {
+    const out = side * (el.clientWidth || innerWidth);
+    slide(out, 140);
+    setTimeout(() => { swap(); slide(-out); el.getBoundingClientRect(); slide(0, 180); }, 140);
+  };
   el.addEventListener("pointerdown", (e) => { swipe = dragging ? null : { x: e.clientX, y: e.clientY, on: false }; });
   el.addEventListener("pointermove", (e) => {
     if (!swipe || dragging) return;
@@ -158,12 +164,7 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onProjects, onW
     sawSwipe = true; setTimeout(() => { sawSwipe = false; });
     if (dragging || Math.abs(dx) < 60 || Math.abs(dx) < 1.5 * Math.abs(dy)) { slide(0, 180); return; }
     const rtl = getComputedStyle(el).direction === "rtl";
-    const w = el.clientWidth || innerWidth, out = dx < 0 ? -w : w;
-    slide(out, 140);
-    setTimeout(() => {
-      stepBy((dx < 0) !== rtl ? 1 : -1);
-      slide(-out); el.getBoundingClientRect(); slide(0, 180);
-    }, 140);
+    flip(dx < 0 ? -1 : 1, () => stepBy((dx < 0) !== rtl ? 1 : -1));
   });
   el.addEventListener("pointercancel", () => { if (swipe?.on) slide(0, 180); swipe = null; });
   el.addEventListener("lostpointercapture", () => { if (swipe?.on) { slide(0, 180); swipe = null; } }); // capture dropped without an up
@@ -192,6 +193,7 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onProjects, onW
 
     stepBy = (n) => go(localDate(addDays(at, n * range[1]).getTime()));
     const isNow = view === "week" ? from.getTime() === addDays(today, -today.getDay()).getTime() : at.getTime() === today.getTime();
+    const future = (view === "week" ? from : at).getTime() > today.getTime(); // today lies behind (left)
     const late = now >= atMin(today, hrs.end);
     const dayName = (d) => {
       const diff = Math.round((d - today) / 864e5);
@@ -214,7 +216,9 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onProjects, onW
     const bar = h("div", { className: "sc-bar" },
       h("button", { type: "button", className: "sc-title" + (isNow ? "" : " away"), ariaLabel: isNow ? title : `${title} — back to today`, onclick: () => go(null) },
         h("span", { className: "sc-name", textContent: title }), h("span", { className: "sc-name sc-name-s", textContent: narrow }), sub && h("span", { className: "sc-date", textContent: sub })),
-      h("button", { type: "button", className: "sc-today" + (isNow ? " off" : ""), ariaLabel: "Back to today", textContent: "Today", tabIndex: isNow ? -1 : 0, onclick: () => go(null) }),
+      // Arrow points the way today lies; tapping slides there like a swipe.
+      h("button", { type: "button", className: "sc-today" + (isNow ? " off" : ""), ariaLabel: "Back to today", tabIndex: isNow ? -1 : 0,
+        textContent: isNow ? "Today" : future ? "← Today" : "Today →", onclick: () => flip(future ? 1 : -1, () => go(null)) }),
       mode === "home" && onWeek && weekBtn);
     const head = h("div", { className: "sc-head" + (view === "week" ? " wk" : "") }, bar);
 
