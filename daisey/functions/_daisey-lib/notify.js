@@ -49,6 +49,7 @@ const { collectNeeds } = require("../../app/js/needs-list.js");
 const { rank } = require("../../app/js/engine.js");
 const { workBase } = require("../../app/js/context.js");
 const { bookings } = require("../../app/js/day.js");
+const { routineCalendar } = require("../../app/js/routine.js");
 const { localDate, notYet, durText } = require("../../app/js/model.js");
 const { effectiveDue } = require("../../app/js/triage.js");
 const { waitingFor, personOf } = require("../../app/js/nudge.js");
@@ -144,6 +145,7 @@ function decide(rec, events, now = Date.now()) {
           now, window: free, nextEvent: next && localDate(Date.parse(next.start)) === date ? next.title : null,
           ...workBase(tasks, now),
           booked: Object.fromEntries([...booked].map(([id, b]) => [id, b.start])),
+          routineCal: routineCalendar(tasks, evs, now), // routine sessions already on the calendar
         });
         // "After X", not "X is over": the calendar says it ended, not you.
         if (r.pick) out.push({ type: "gap", title: `After ${ended.title}`, taskId: r.pick.task.id, ttl: GAP_TTL,

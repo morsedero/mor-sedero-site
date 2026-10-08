@@ -71,7 +71,10 @@ const CACHE_MAX = 50;
 async function calendarsFor(accessToken, fresh = false, only = null) {
   const all = await allCalendars(accessToken, fresh);
   const chosen = Array.isArray(only) ? only : null;
-  const picked = all.calendars.filter((c) => (chosen ? chosen.includes(c.id) : c.selected)).slice(0, MAX_CALENDARS);
+  // Daisey's own "Daisey" calendar (routines' set days, 2026-10-08) is always
+  // read: it's made after the pick, and its slots are what the app runs on.
+  const own = (c) => c.name === "Daisey" && c.editable;
+  const picked = all.calendars.filter((c) => (chosen ? chosen.includes(c.id) : c.selected) || own(c)).slice(0, MAX_CALENDARS);
   return { colors: all.colors, calendars: picked.length ? picked : (chosen ? [] : [{ id: "primary", color: null, editable: true }]) };
 }
 

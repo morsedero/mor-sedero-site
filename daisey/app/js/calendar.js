@@ -199,6 +199,26 @@ export function retime(ev, start, end){
 
 export const deleteEvent = (ev) => write({ action: "delete", calendarId: ev.calendarId, eventId: ev.id });
 
+// A routine's set days (routine.js): one weekly event in the "Daisey"
+// calendar, from the first of those days on or after today. days: 0 =
+// Sunday; at: "HH:MM"; until: "YYYY-MM-DD" or null. Resolves { id }, or
+// null for a guest (no Google calendar to write to).
+const BYDAY = ["SU", "MO", "TU", "WE", "TH", "FR", "SA"];
+export function createSeries({ title, taskId, days, at, minutes, until }){
+  if(localGuest()) return Promise.resolve(null);
+  const d = new Date();
+  for (let i = 0; i < 7 && !days.includes(d.getDay()); i++) d.setDate(d.getDate() + 1);
+  const [hh, mm] = at.split(":").map(Number);
+  d.setHours(hh, mm, 0, 0);
+  return write({ action: "create", calendarId: "daisey", title, taskId,
+    timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    start: d.toISOString(), end: new Date(d.getTime() + minutes * 60000).toISOString(),
+    recurrence: { days: days.map((n) => BYDAY[n]), until: until || null } });
+}
+// The whole weekly event, every day of it. Already gone counts as done.
+export const deleteSeries = (id) => (localGuest() ? Promise.resolve()
+  : write({ action: "delete", calendarId: "daisey", eventId: id }).catch((e) => { if (e.code !== "gone") throw e; }));
+
 // A new title; times, guests and description stay as they are.
 export const renameEvent = (ev, title) => write({ action: "rename", calendarId: ev.calendarId, eventId: ev.id, title });
 

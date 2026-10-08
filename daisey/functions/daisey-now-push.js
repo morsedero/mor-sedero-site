@@ -53,7 +53,8 @@ const cleanTask = (t) => {
   // A routine (app/js/routine.js): how often, till when, and the last
   // sessions' days — enough for the engine to know how the week stands.
   if (t?.routine && Number(t.routine.per) >= 1) o.routine = { per: Math.min(7, Math.round(Number(t.routine.per))), until: day(t.routine.until),
-    log: (Array.isArray(t.routine.log) ? t.routine.log.slice(-14) : []).map((e) => ({ day: day(e?.day) })).filter((e) => e.day) };
+    log: (Array.isArray(t.routine.log) ? t.routine.log.slice(-14) : []).map((e) => ({ day: day(e?.day) })).filter((e) => e.day),
+    skipped: (Array.isArray(t.routine.skipped) ? t.routine.skipped.slice(-14) : []).map((x) => str(x, 200)).filter(Boolean) };
   o.title ||= "Untitled";
   return o;
 };

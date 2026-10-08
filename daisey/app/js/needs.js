@@ -9,6 +9,7 @@
 //            only reads open tasks and the weekly pick shows one)
 //   cal      a calendar event that reads like a task (caltask.js) — it was
 //            the "Make this a task?" ask under the card
+//   slot     a routine's set-days slot that's over: "Did it?" (routine.js)
 //   pending  a Pending task past its check date (model checkOn): "Still
 //            pending?"
 //   stale    a task put off STALE_SKIPS times without a start: keep, shrink
@@ -27,6 +28,7 @@ import { watchCalendar, deleteEvent, retime } from "./calendar.js";
 import { draftFrom } from "./caltask.js";
 import { pickWeekDay, answer, answerSnapshot, effectiveDue } from "./triage.js";
 import { localDate, pendingCheck, shrunk, shrinkPatch, dayAfter, notYet, pushedTo, bringBack } from "./model.js";
+import { sessionPatch, skipSlotPatch, weekState } from "./routine.js";
 import { dayHours } from "./day.js";
 import { nudgeText, waLink } from "./nudge.js";
 import { daysUntil } from "./engine.js";
@@ -131,6 +133,16 @@ export function mountNeeds(root, uid, { onClose } = {}){
         say: `I can move it to ${clock(mv.start)}.`,
         yes: [`Move it to ${clock(mv.start)}`, () => { retime(c.slot, mv.start, mv.end).catch(fail); next(); }],
         no: ["Keep current plan", () => later(item.key)], noLater: true };
+    }
+    if (item.kind === "slot") {
+      // Did it → one session (with the slot's time). Skipped → the week is
+      // one short again, and Daisey offers it in the next free time.
+      const e = item.slot, s = weekState(t);
+      return { tone: areaClass(t).trim() || "area-personal", ico: "check", q: "Did it?",
+        sub: `${clock(e.start)}–${clock(e.end)}${e.day === localDate() ? " today" : `, ${weekday(e.day)}`}.`, item: t.title,
+        say: s.done ? `${s.done} of ${s.per} this week so far.` : `Your ${s.per}× a week.`,
+        yes: ["Did it", () => { restoreTask(uid, t.id, sessionPatch(t, { ev: e })).catch(fail); next(); }],
+        no: ["Skipped it", () => { restoreTask(uid, t.id, skipSlotPatch(t, e.id)).catch(fail); next(); }] };
     }
     if (item.kind === "wrap") {
       const tomorrow = () => { restoreTask(uid, t.id, pushedTo(t, { due: dayAfter(1) })).catch(fail); next(); };

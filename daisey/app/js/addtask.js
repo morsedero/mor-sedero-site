@@ -26,7 +26,8 @@ import { watchTasks, addTask, updateTask, removeTask, watchProjectNames } from "
 import { durText, guessFields, validField, CHOICES, LABELS, INBOX, localDate, clampDate, outsideRange, progressOf } from "./model.js";
 import { h, flash, icon, bdi } from "./ui.js";
 import { projectsOf } from "./projects.js";
-import { isRoutine, weekLine, PER_MAX } from "./routine.js";
+import { isRoutine, weekLine, PER_MAX, DEFAULT_AT, cleanRoutine } from "./routine.js";
+import { syncSeries, dropSeries } from "./slots.js";
 
 // Every field Daisey guesses, and the one the user sees (Mor, 2026-10-07:
 // "keep only the time the user thinks it's gonna take"). The rest are never
@@ -102,25 +103,56 @@ export function mountAddTask(dialog, uid, { onStart } = {}){
     onclick: () => setPer(Math.min(PER_MAX, Math.max(1, per + d))) });
   const perStep = h("div", { className: "ts-per", role: "group", ariaLabel: "Times a week" },
     stepBtn(-1, "−", "Fewer times a week"), perOut, stepBtn(1, "+", "More times a week"), h("span", { textContent: "times a week" }));
+  // Any days (Daisey finds the time) or Set days (Mor, 2026-10-08): the user
+  // picks the weekdays and one time, and Daisey writes them as a weekly event
+  // in the "Daisey" calendar when the sheet closes (slots.js). The number of
+  // days picked is the times a week.
+  let mode = "any", days = [], at = DEFAULT_AT;
+  const modeBtn = (m, text) => h("button", { type: "button", className: "chip", textContent: text,
+    onclick: () => { if (mode === m) return; mode = m; changed(); } });
+  const modeRow = h("div", { className: "now-chips ts-mode", role: "group", ariaLabel: "Which days" }, modeBtn("any", "Any days"), modeBtn("set", "Set days"));
+  const DAY_LETTER = Array.from({ length: 7 }, (_, i) => new Date(2026, 9, 4 + i).toLocaleDateString(undefined, { weekday: "narrow" }));
+  const DAY_NAME = Array.from({ length: 7 }, (_, i) => new Date(2026, 9, 4 + i).toLocaleDateString(undefined, { weekday: "long" }));
+  const dayRow = h("div", { className: "ts-days", role: "group", ariaLabel: "Days" },
+    ...DAY_LETTER.map((l, i) => h("button", { type: "button", className: "ts-day", textContent: l, ariaLabel: DAY_NAME[i],
+      onclick: () => { days = days.includes(i) ? days.filter((d) => d !== i) : [...days, i].sort(); changed(); } })));
+  const atIn = h("input", { type: "time", className: "ts-input ts-at", value: DEFAULT_AT, ariaLabel: "At what time" });
+  atIn.addEventListener("change", () => { if (/^\d{2}:\d{2}$/.test(atIn.value)) { at = atIn.value; changed(); } });
+  const setBox = h("div", { className: "ts-set" }, dayRow, h("label", { className: "ts-at-row" }, h("span", { textContent: "at" }), atIn),
+    h("p", { className: "ts-hint", textContent: "Daisey puts these in your Daisey calendar." }));
   const oftenRow = h("div", { className: "ts-hold ts-repeat" },
-    h("label", { className: "ts-hold-sw", htmlFor: "tsRepeat" }, repeatSwitch, h("span", { textContent: "Repeats weekly" })), perStep);
+    h("label", { className: "ts-hold-sw", htmlFor: "tsRepeat" }, repeatSwitch, h("span", { textContent: "Repeats weekly" })), modeRow, perStep, setBox);
   const weekNow = h("p", { className: "ts-worked ts-week" });
-  const routineOf = () => (per ? { per, until: until.input.value || null } : null);
+  const setDays = () => mode === "set" && days.length > 0;
+  const routineOf = () => (!per ? null : setDays()
+    ? { per: days.length, days, at, until: until.input.value || null }
+    : { per, days: [], until: until.input.value || null });
+  function changed(){
+    if (setDays()) per = days.length;
+    paintOften();
+    if (editing) save({ routine: routineOf() });
+  }
   function setPer(n){
     if (n === per) return;
     per = n;
     if (per && !until.input.value && rangeNow()?.due) until.input.value = rangeNow().due;
     if (per) due.input.value = ""; // a routine has no due date, only its end
     paintDates(); paintOften();
+    if (!per && editing) dropSeries(editing); // off: its weekly event goes now, while the task still names it
     if (editing) save({ routine: routineOf(), ...(per && editing.due ? { due: "" } : {}) });
   }
   repeatSwitch.addEventListener("change", () => setPer(repeatSwitch.checked ? PER_ON : 0));
   function paintOften(){
     repeatSwitch.checked = !!per;
-    perStep.hidden = !per;
+    modeRow.hidden = !per;
+    for (const b of modeRow.children) b.ariaPressed = String((b.textContent === "Set days") === (mode === "set"));
+    perStep.hidden = !per || mode === "set";
+    setBox.hidden = !per || mode !== "set";
     perOut.textContent = String(per);
     const [less, more] = perStep.querySelectorAll(".ts-step");
     less.disabled = per <= 1; more.disabled = per >= PER_MAX;
+    [...dayRow.children].forEach((b, i) => { b.ariaPressed = String(days.includes(i)); });
+    if (document.activeElement !== atIn) atIn.value = at;
   }
   until.input.addEventListener("change", () => { fenceUntil(); paintDates(); if (editing && per) save({ routine: routineOf() }); });
   due.tag.onclick = (e) => {
@@ -398,6 +430,7 @@ export function mountAddTask(dialog, uid, { onStart } = {}){
     const gone = editing;
     editing = null;
     dialog.close();
+    dropSeries(gone); // its weekly event in the Daisey calendar goes too
     removeTask(uid, gone.id).catch((e) => { fail(e); flash("Couldn't delete ", gone.title); });
     flash("Deleted ", gone.title);
   };
@@ -417,7 +450,10 @@ export function mountAddTask(dialog, uid, { onStart } = {}){
     try {
       // Resolves on server ack, which never comes offline; the list already
       // has it locally, so don't wait.
-      addTask(uid, input, tasks).catch((e) => { fail(e); flash("Couldn't add ", input.title); });
+      const added = addTask(uid, input, tasks);
+      added.catch((e) => { fail(e); flash("Couldn't add ", input.title); });
+      // Set days: the weekly event is written once the task has its id.
+      if (input.routine?.days?.length) added.then((ref) => ref?.id && syncSeries(uid, { id: ref.id, title: input.title.trim(), size: vals.size, routine: cleanRoutine(input.routine) }));
       flash("Added ", input.title);
       dialog.close();
     } catch (e) { msg.textContent = e.message || String(e); }
@@ -429,14 +465,23 @@ export function mountAddTask(dialog, uid, { onStart } = {}){
     vals = {}; mine = new Set(); openChip = null;
     links = []; adding = false; kind = "target";
     title.value = ""; notes.value = ""; newProject.value = ""; waitingOn.value = ""; checkOn.value = "";
-    start.input.value = ""; due.input.value = ""; until.input.value = ""; per = 0;
+    start.input.value = ""; due.input.value = ""; until.input.value = ""; per = 0; mode = "any"; days = []; at = DEFAULT_AT;
     msg.textContent = "";
     disarm();
   }
   function paintAll(){ paintDates(); paintOften(); reguess(); paintLinks(); paintFoot(); } // reguess paints the chips, and fills "How long?" before a title is typed
   const show = () => { if (!dialog.open) dialog.showModal(); requestAnimationFrame(fit); };
 
-  dialog.addEventListener("close", () => { flush(); editing = null; });
+  dialog.addEventListener("close", () => {
+    flush();
+    // The weekly event follows what the sheet now says (slots.js): written,
+    // rewritten or deleted only if its days, time, end, title or length changed.
+    if (editing && (editing.routine?.series || (per && setDays()))) {
+      syncSeries(uid, { ...editing, title: title.value.trim() || editing.title, size: vals.size ?? editing.size,
+        routine: per ? cleanRoutine({ ...editing.routine, ...routineOf() }) : { series: editing.routine?.series } }); // off: only the old event, to delete
+    }
+    editing = null;
+  });
   dialog.addEventListener("click", (e) => {
     if (e.target === dialog) { dialog.close(); return; }
     if (openChip && !e.target.closest(".gchip-wrap")) { openChip = null; paintChips(); }
@@ -492,6 +537,9 @@ export function mountAddTask(dialog, uid, { onStart } = {}){
       due.input.value = task.due || "";
       per = isRoutine(task) ? task.routine.per : 0;
       until.input.value = per ? task.routine.until || "" : "";
+      days = per && task.routine.days ? [...task.routine.days] : [];
+      mode = days.length ? "set" : "any";
+      at = task.routine?.at || DEFAULT_AT;
       fenceDates([]);
       kind = task.dateKind === "deadline" ? "deadline" : "target";
       notes.value = task.notes || "";

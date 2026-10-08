@@ -11,6 +11,17 @@
 //          calendar event that counted as one (Gym on the calendar, done
 //          outside Daisey). Kept to LOG_MAX.
 //
+// Set days (Mor, 2026-10-08: "what if the user wants specific days and
+// hours?"), all optional — without them Daisey finds the time:
+//   days     weekdays, 0 = Sunday ([1, 4] = Mon and Thu); per = how many
+//   at       the time on each, "18:00"
+//   series   the weekly event Daisey wrote for them in the "Daisey"
+//            calendar: { id, sig } (slots.js; sig says what it was made from)
+//   skipped  ids of those events the user said they skipped ("Did it?" → No)
+// A set-days slot is the task's booked slot (day.js bookings): the card and
+// the "booked" push at its start. Once it's over it is NOT counted on its
+// own — a booked slot isn't proof — Needs you asks "Did it?" (slotsToAsk).
+//
 // Done never closes it: it logs a session, clears the time spent on it, and
 // keeps it off the card until tomorrow — or till Sunday once the week is met.
 // A missed week isn't carried over: every Sunday starts again at 0 of per.
@@ -31,16 +42,25 @@ const noon = (day) => { const [y, m, d] = day.split("-").map(Number); return new
 export const addDays = (day, n) => { const d = noon(day); d.setDate(d.getDate() + n); return dayOf(d.getTime()); };
 export const weekStart = (day) => addDays(day, -noon(day).getDay());
 
+const validTime = (v) => typeof v === "string" && /^([01]\d|2[0-3]):[0-5]\d$/.test(v);
+export const DEFAULT_AT = "18:00";
+
 export function cleanRoutine(r){
   if (!r || typeof r !== "object") return null;
-  const per = Math.round(Number(r.per));
+  const days = [...new Set((Array.isArray(r.days) ? r.days : []).map(Number).filter((d) => Number.isInteger(d) && d >= 0 && d <= 6))].sort();
+  const per = days.length || Math.round(Number(r.per));
   if (!(per >= 1)) return null;
   const log = (Array.isArray(r.log) ? r.log : []).filter((e) => e && validDay(e.day)).map((e) => ({
     day: e.day,
     ...(Number(e.min) > 0 ? { min: Math.round(Number(e.min)) } : {}),
     ...(e.ev ? { ev: String(e.ev) } : {}),
   }));
-  return { per: Math.min(PER_MAX, per), until: validDay(r.until) ? r.until : null, log: log.slice(-LOG_MAX) };
+  return {
+    per: Math.min(PER_MAX, per), until: validDay(r.until) ? r.until : null, log: log.slice(-LOG_MAX),
+    ...(days.length ? { days, at: validTime(r.at) ? r.at : DEFAULT_AT } : {}),
+    ...(r.series?.id ? { series: { id: String(r.series.id), sig: String(r.series.sig || "") } } : {}),
+    ...(Array.isArray(r.skipped) && r.skipped.length ? { skipped: r.skipped.map(String).slice(-30) } : {}),
+  };
 }
 
 export const isRoutine = (task) => !!cleanRoutine(task?.routine);
@@ -75,6 +95,7 @@ const alikeOf = (w) => ALIKE.find((g) => g.includes(w)) || null;
 // entries ("✓ Exercise") and all-day events never count.
 export function eventIsRoutine(ev, task){
   if (!ev || ev.allDay || /^\s*✓/.test(ev.title || "")) return false;
+  if (ev.taskId) return ev.taskId === task.id; // Daisey's own block: whose it is, not its title
   const et = tokens(ev.title), tt = tokens(task.title);
   if (!et.length || !tt.length) return false;
   if (tt.every((w) => et.includes(w))) return true;
@@ -83,19 +104,29 @@ export function eventIsRoutine(ev, task){
 
 // This routine's events this week: `past` already over (sessions that
 // happened, to log), `ahead` still to come (planned by the user), and
-// `today` — one of the ahead ones is later today.
+// `today` — one of the ahead ones is later today. `ask`: its own set-days
+// slots that are over but not answered yet ("Did it?"); they count as
+// planned until answered, so Daisey doesn't push a second one meanwhile.
 export function calendarWeek(task, events = [], now = Date.now()){
   const today = dayOf(now), from = weekStart(today), to = addDays(from, 6);
-  const out = { past: [], ahead: 0, today: false };
+  const out = { past: [], ahead: 0, today: false, ask: [] };
+  const log = task.routine?.log || [], skipped = new Set(task.routine?.skipped || []);
   for (const ev of events) {
     if (!eventIsRoutine(ev, task)) continue;
     const start = Date.parse(ev.start), end = Date.parse(ev.end), day = dayOf(start);
     if (!(day >= from && day <= to)) continue;
-    if (end <= now) out.past.push({ id: ev.id, day, min: Math.round((end - start) / 60000) });
-    else { out.ahead++; if (day === today) out.today = true; }
+    const e = { id: ev.id, day, min: Math.round((end - start) / 60000), start, end };
+    if (start > now) { out.ahead++; if (day === today) out.today = true; }
+    else if (end > now) continue; // on now: this is the session, the card offers it
+    else if (!ev.taskId) out.past.push(e);
+    else if (!skipped.has(ev.id) && !log.some((x) => x.ev === ev.id || x.day === day)) { out.ask.push(e); out.ahead++; }
   }
   return out;
 }
+
+// The set-days slots to ask about: over, not answered, no session that day.
+export const slotsToAsk = (task, events, now = Date.now()) =>
+  (isRoutine(task) && task.status === "ready" ? calendarWeek(task, events, now).ask : []);
 
 // The calendar sessions not logged yet. One per day at most, and none on a
 // day that already has a session — Gym on the calendar while the timer ran
@@ -158,6 +189,21 @@ export function sessionPatch(task, { now = Date.now(), minutes = 0, ev = null } 
     skipsSinceStart: 0, stopsUnfinished: 0, onHold: null, touchedAt: now,
     ...(task.steps ? { steps: task.steps.map((s) => ({ ...s, done: false })), nextStep: task.steps[0]?.text || null } : {}),
   };
+}
+
+// "Did it?" → No: that slot is answered, and the week needs one more again
+// (so the engine offers another time).
+export const skipSlotPatch = (task, evId, { now = Date.now() } = {}) => {
+  const r = cleanRoutine(task.routine);
+  return { routine: { ...r, skipped: [...(r.skipped || []), String(evId)].slice(-30) }, touchedAt: now };
+};
+
+// What the weekly event is made from; a change in any means rewriting it.
+// null: no set days, so no event should exist.
+export function seriesSig(task){
+  const r = cleanRoutine(task.routine);
+  if (!r?.days) return null;
+  return JSON.stringify([r.days, r.at, r.until, task.title, Number(task.size) || 30]);
 }
 
 // Making a task a routine, changing how often or till when: the log stays.

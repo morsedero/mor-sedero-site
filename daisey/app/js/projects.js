@@ -23,6 +23,7 @@
 import { watchTasks, finishTask, restoreTask, removeTask, watchProjectNames, saveProjectNames, saveProjectRanges, saveProjectOrder, saveProjectTiers } from "./store.js";
 import { INBOX, progressOf, progressPatch, leftMinutes, pushedTo, notYet, durText, localDate, bringBack, cleanRange, outsideRange, doneSnapshot } from "./model.js";
 import { isRoutine } from "./routine.js";
+import { dropSeries } from "./slots.js";
 import { isOverdue } from "./triage.js";
 import { h, bdi, flash, icon, askProgress, sizeChip, progressBar, weekDots } from "./ui.js";
 import { dirOf, setProjectColors } from "./look.js";
@@ -330,7 +331,7 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
   // Its tasks are deleted with it. No undo: tasks can't be recreated with the same ids.
   function deleteProject(name){
     const gone = (tasks || []).filter((t) => (t.project || INBOX) === name);
-    for (const t of gone) removeTask(uid, t.id).catch(fail);
+    for (const t of gone) { dropSeries(t); removeTask(uid, t.id).catch(fail); } // a routine's weekly event goes too
     made = made.filter((n) => n !== name);
     saveProjectNames(uid, made).catch(fail);
     const { [name]: _gone, ...rest } = ranges; ranges = rest;

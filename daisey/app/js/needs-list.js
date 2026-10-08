@@ -8,6 +8,7 @@ import { localDate, notYet } from "./model.js";
 import { deadlineWithin } from "./engine.js";
 import { STALE_SKIPS, SOMEDAY_DEADLINE_DAYS, PUSHES_ASK } from "./weights.js";
 import { slotClashes } from "./clash.js";
+import { slotsToAsk } from "./routine.js";
 
 const STAKES_FIRST = { penalty: 0, money: 1, someone: 2, low: 3 };
 
@@ -43,6 +44,9 @@ export function collectNeeds({ tasks = [], events = [], calOk = false, settings 
   }
   // A booked slot a meeting ran into, for a real deadline (clash.js): asked once, with the move ready.
   if (calOk) slotClashes(tasks, events, now).forEach((c) => add({ key: c.key, kind: "clash", id: c.task.id, clash: c }));
+  // A routine's set-days slot that's over (routine.js): "Did it?" — a booked
+  // slot isn't counted until the user says so.
+  if (calOk) for (const t of tasks) slotsToAsk(t, events, now).forEach((e) => add({ key: `slot:${e.id}`, kind: "slot", id: t.id, slot: e }));
   const today = localDate(now);
   tasks.filter((t) => t.status === "waiting" && t.checkOn && t.checkOn <= today)
     .sort((a, b) => a.checkOn.localeCompare(b.checkOn))

@@ -20,8 +20,11 @@
 // and carry the task's id, so the calendar-task offer (caltask.js) skips
 // them. The user can turn it off in the account menu.
 //
+// A routine's set days (the user picks the days and the time and Daisey
+// writes them) are the third: one weekly event in the "Daisey" calendar.
+//
 // POST { action: "move" | "delete" | "create" | "rename", calendarId, eventId?, start?,
-// end?, title?, taskId?, note?, timeZone? } with "Authorization: Bearer <Firebase ID token>". `start`
+// end?, title?, taskId?, note?, timeZone?, recurrence? } with "Authorization: Bearer <Firebase ID token>". `start`
 // and `end` are ISO strings with an offset, and only timed events can move.
 //
 // Auth is the read endpoint's: the Firebase sign-in's Google `sub` maps to
@@ -87,12 +90,24 @@ exports.handler = async (event) => {
   const base = `${API}/${encodeURIComponent(calId)}/events`;
   const url = action === "create" ? base : `${base}/${encodeURIComponent(eventId)}`;
   const headers = { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" };
-  const times = { start: { dateTime: start }, end: { dateTime: end } };
+  // A routine's set days (app/js/routine.js, Mor 2026-10-08): one weekly
+  // event, recurrence { days: ["MO", "TH"], until: "YYYY-MM-DD" | null },
+  // into the "Daisey" calendar. Google needs the zone to repeat it at the
+  // same local time across a clock change.
+  const BYDAY = ["SU", "MO", "TU", "WE", "TH", "FR", "SA"];
+  const rec = action === "create" && req.recurrence && typeof req.recurrence === "object" ? req.recurrence : null;
+  const recDays = rec && Array.isArray(rec.days) ? [...new Set(rec.days.filter((d) => BYDAY.includes(d)))] : [];
+  if (rec && (!recDays.length || calendarId !== "daisey")) return fail(400, "bad_request");
+  const recUntil = rec && typeof rec.until === "string" && /^\d{4}-\d{2}-\d{2}$/.test(rec.until) ? `;UNTIL=${rec.until.replace(/-/g, "")}T235959Z` : "";
+  const zone = typeof req.timeZone === "string" && /^[A-Za-z_]+\/[A-Za-z_\/+-]+$/.test(req.timeZone) ? req.timeZone : "Asia/Jerusalem";
+  const times = rec ? { start: { dateTime: start, timeZone: zone }, end: { dateTime: end, timeZone: zone } }
+    : { start: { dateTime: start }, end: { dateTime: end } };
   const res = action === "delete" ? await fetch(url, { method: "DELETE", headers })
     : action === "create" ? await fetch(url, { method: "POST", headers, body: JSON.stringify({
       // A task's event wears a daisy and Banana yellow (colorId 5), so it reads
       // as Daisey's at a glance. Events the user typed (no taskId) stay plain.
       summary: hasTask ? `${DAISY} ${title}` : title, ...times,
+      ...(rec ? { recurrence: [`RRULE:FREQ=WEEKLY;BYDAY=${recDays.join(",")}${recUntil}`] } : {}),
       ...(hasTask ? { colorId: "5" } : {}),
       ...(log ? { transparency: "transparent" } : {}),
       ...(hasTask ? { description: log ? note || "Done with Daisey." : "Planned with Daisey.",
@@ -106,8 +121,10 @@ exports.handler = async (event) => {
   if (res.status === 404 || res.status === 410) return fail(404, "gone");
   if (!res.ok) { console.error("daisey-now-calendar-write", action, res.status, await res.text()); return fail(502, "google"); }
 
-  // 204 on delete; the event itself on move and create, which the client
-  // doesn't need — it refetches the whole agenda so every view agrees.
+  // 204 on delete; the event itself on move and create. Only a created
+  // event's id goes back (a routine keeps its weekly event's, to change or
+  // delete it later); the client refetches the agenda so every view agrees.
+  if (action === "create") { const made = await res.json().catch(() => ({})); return reply(200, { ok: true, id: made.id || null }); }
   return reply(200, { ok: true });
 };
 

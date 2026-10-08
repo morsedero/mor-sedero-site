@@ -130,10 +130,13 @@ export function filterOut(task, m){
   if (task.status === "someday") return "someday";
   if ((task.skipsSinceStart || 0) >= W.STALE_SKIPS && !deadlineWithin(task, m.now, W.STALE_KEEP_DEADLINE_DAYS)) return "stale";
   if (notYet(task, m.now)) return "notyet";
-  if (m.booked[task.id] > m.now) return "booked";
   // A routine whose week is covered by what's done and what's on the
   // calendar, or with a session of its own later today: nothing to add.
-  if (cleanRoutine(task.routine) && (m.routineCal[task.id]?.today || !weekState(task, m.today, m.routineCal[task.id]).need)) return "routine";
+  // Still short beyond its booked slots (one was skipped): offered in any
+  // free time, its next slot notwithstanding.
+  if (cleanRoutine(task.routine)) {
+    if (m.routineCal[task.id]?.today || !weekState(task, m.today, m.routineCal[task.id]).need) return "routine";
+  } else if (m.booked[task.id] > m.now) return "booked";
   if (m.sessionSkips.has(task.id)) return "skipped";
   if (m.blockProject && key(task.project) !== m.blockProject) return "block";
   if ((task.notAt || []).includes(m.place)) return "place"; // said "Not here" on a skip

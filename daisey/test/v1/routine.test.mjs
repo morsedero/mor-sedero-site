@@ -110,3 +110,48 @@ test("engine: not offered when the week is covered or a session is later today",
   assert.equal(rank([gym()], { now: THU, routineCal: { g: { ahead: 1, today: true } } }).out[0].reason, "routine");
   assert.equal(rank([gym({ routine: { per: 3, until: "2026-10-07", log: [] } })], { now: THU }).pick, null); // past its end
 });
+
+// ---------- set days (2026-10-08) ----------
+const own = (day, h, len = 60) => ev("🌼 Exercise", day, h, len, { id: `s_${day}`, taskId: "g" });
+
+test("set days: per is how many days; time defaults", () => {
+  const r = createTask({ title: "Exercise", routine: { days: [4, 1, 1], per: 5 } }).routine;
+  assert.deepEqual(r.days, [1, 4]);
+  assert.equal(r.per, 2);
+  assert.equal(r.at, "18:00");
+});
+
+test("set days: a slot that's over is asked, not counted; counts as planned meanwhile", () => {
+  const t = gym({ routine: { per: 2, days: [1, 4], at: "07:00", until: null, log: [] } });
+  const evs = [own("2026-10-08", 7), own("2026-10-10", 7)];
+  const now = at("2026-10-08", 12);
+  assert.deepEqual(R.eventsToLog(t, evs, now), []); // never logged on its own
+  assert.deepEqual(R.slotsToAsk(t, evs, now).map((e) => e.id), ["s_2026-10-08"]);
+  assert.equal(R.calendarWeek(t, evs, now).ahead, 2); // Saturday + the unanswered one
+  const skipped = { ...t, ...R.skipSlotPatch(t, "s_2026-10-08") };
+  assert.deepEqual(R.slotsToAsk(skipped, evs, now), []);
+  assert.equal(R.calendarWeek(skipped, evs, now).ahead, 1);
+  const did = { ...t, ...R.sessionPatch(t, { ev: R.slotsToAsk(t, evs, now)[0], now }) };
+  assert.deepEqual(R.slotsToAsk(did, evs, now), []);
+});
+
+test("set days: another task's Daisey block never counts, whatever its title", () => {
+  assert.ok(!R.eventIsRoutine({ title: "🌼 Exercise", taskId: "other" }, gym()));
+});
+
+test("engine: a skipped slot → offered now despite the next booked one; a running slot is the card", () => {
+  const t = gym({ routine: { per: 2, days: [1, 4], at: "07:00", until: null, log: [], skipped: ["s_2026-10-08"] } });
+  const evs = [own("2026-10-08", 7), own("2026-10-10", 7)];
+  const now = at("2026-10-08", 12);
+  const m = { now, routineCal: R.routineCalendar([t], evs, now), booked: { g: at("2026-10-10", 7) } };
+  assert.equal(rank([t], m).pick?.task.id, "g");
+  const during = at("2026-10-10", 7, 20), t2 = gym({ routine: { per: 2, days: [1, 4], at: "07:00", until: null, log: [{ day: "2026-10-08" }] } });
+  assert.equal(rank([t2], { now: during, routineCal: R.routineCalendar([t2], evs, during) }).pick?.task.id, "g");
+});
+
+test("seriesSig: null without set days; changes with time or title", () => {
+  assert.equal(R.seriesSig(gym()), null);
+  const t = gym({ routine: { per: 2, days: [1, 4], at: "07:00", log: [] } });
+  assert.notEqual(R.seriesSig(t), R.seriesSig({ ...t, routine: { ...t.routine, at: "08:00" } }));
+  assert.notEqual(R.seriesSig(t), R.seriesSig({ ...t, title: "Gym" }));
+});
