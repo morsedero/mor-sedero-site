@@ -1186,11 +1186,16 @@ body.focus #side { display: none; }
 .sc-row.sc-on:not(.sc-gap)::before {
   content: ""; position: absolute; inset: -2px; padding: 2.5px; border-radius: 11px; pointer-events: none;
   background: conic-gradient(from var(--sc-ang), transparent 66deg, color-mix(in srgb, var(--rowline) 70%, transparent) 80deg,
-    color-mix(in srgb, var(--rowline) 40%, #fff) 90deg, color-mix(in srgb, var(--rowline) 70%, transparent) 100deg, transparent 114deg);
+    var(--glint) 90deg, color-mix(in srgb, var(--rowline) 70%, transparent) 100deg, transparent 114deg);
   -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor;
   mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
   animation: sc-orbit 9s linear var(--orbit, 0s) infinite; } /* 9s = schedule.js ORBIT_MS */
 @keyframes sc-orbit { to { --sc-ang: 360deg; } }
+/* The glint: a deeper shade on light paper (white read as a hole in the ring),
+   a lighter one on dark. */
+.sc-row.sc-on:not(.sc-gap) { --glint: color-mix(in srgb, var(--rowline) 80%, #000); }
+:root[data-theme="dark"] .sc-row.sc-on:not(.sc-gap), :root.night .sc-row.sc-on:not(.sc-gap) { --glint: color-mix(in srgb, var(--rowline) 40%, #fff); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .sc-row.sc-on:not(.sc-gap) { --glint: color-mix(in srgb, var(--rowline) 40%, #fff); } }
 @media (prefers-reduced-motion: reduce) { .sc-row.sc-on:not(.sc-gap)::before { animation: none; } }
 .sc-row.sc-on .sc-ev, .sc-row.sc-on .sc-ev.sc-plan { background: none; border-color: transparent; box-shadow: none; color: var(--rowink); }
 .sc-time .sc-nowtag { display: block; inline-size: fit-content; margin-block-start: 3px; padding: 1px 7px; border-radius: 999px; background: var(--accent); color: var(--on-accent); font-size: 11px; font-weight: 700; }
