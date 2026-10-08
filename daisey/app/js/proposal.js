@@ -129,24 +129,36 @@ function runBefore(evs, t){
 const clockMin = (ms) => { const d = new Date(ms); return d.getHours() * 60 + d.getMinutes(); };
 
 // The break due before the next item, or null. worked: minutes since the last
-// break of any kind; sinceLong: since the last long one or lunch.
-export function breakDue({ worked, sinceLong, at, lunchDone, need = 0 }){
+// break of any kind; sinceLong: since the last long one or meal. meals: the
+// user's (day.js mealsOf); mealsDone: names of those already had today.
+export function breakDue({ worked, sinceLong, at, mealsDone = new Set(), meals = W.BREAKS.meals, need = 0 }){
   const B = W.BREAKS, m = clockMin(at);
-  // Lunch comes once something has been done (never first thing at noon), or
-  // when the next item would carry past the window and lunch would be missed.
-  const late = m + need >= B.lunch.to;
-  if (!lunchDone && m >= B.lunch.from && m < B.lunch.to && (worked >= B.lunchAfter || late)) return { type: "lunch", minutes: B.lunch.minutes };
+  // A meal comes once something has been done (never first thing at noon), or
+  // when the next item would carry past its window and the meal would be missed.
+  for (const meal of meals) {
+    if (mealsDone.has(meal.name) || m < meal.from || m >= meal.to) continue;
+    if (worked >= B.lunchAfter || m + need >= meal.to) return { type: "meal", name: meal.name, minutes: meal.minutes };
+  }
   if (sinceLong >= B.longEvery) return { type: "long", minutes: B.long };
   if (worked >= B.after) return { type: "short", minutes: B.short };
   return null;
 }
 
 // A break in the plan is an item of its own, { brk: "short" | "long" |
-// "lunch", minutes } (Mor, 2026-10-08: so a drag can put a task anywhere,
+// "meal", minutes, name (meals only) } — "lunch" is the old meal, read as one.
+// (Mor, 2026-10-08: so a drag can put a task anywhere,
 // breaks included). A plan with none yet gets them from the rules here
 // (breakDue) once, where they'd fall; after that they're the user's and
 // move only when dragged.
 export const isBreak = (it) => !!it?.brk;
+const isMeal = (it) => it?.brk === "meal" || it?.brk === "lunch";
+// A meal item's name: its own, else the meal whose window it falls in (an old
+// "lunch" item), else Lunch.
+function mealName(it, meals, at){
+  if (it.name) return it.name;
+  const m = clockMin(at);
+  return meals.find((x) => m >= x.from && m < x.to)?.name || "Lunch";
+}
 // A plan never starts or ends on a break: those go (Mor, 2026-10-08).
 export function trimBreaks(items = []){
   let a = 0, z = items.length;
@@ -161,7 +173,7 @@ export function withBreaks(items = [], ctx = {}){
   const out = [];
   items.forEach((it, i) => {
     const r = rows.find((q) => q.i === i), b = r && breaks.find((q) => q.end === r.start);
-    if (b) out.push({ brk: b.type, minutes: b.minutes });
+    if (b) out.push({ brk: b.type, minutes: b.minutes, ...(b.name ? { name: b.name } : {}) });
     out.push(it);
   });
   return out;
@@ -170,12 +182,14 @@ export function withBreaks(items = [], ctx = {}){
 // Each row and break carries i, its index in items.
 export function timeline(items = [], { tasks = [], events = [], now = Date.now(), hours = W.DAY_HOURS, run = null, rides = true } = {}){
   const { evs, gaps } = freeGaps({ tasks, events, now, hours, run, rides });
+  const meals = hours.meals ?? W.BREAKS.meals;
   const byId = new Map(tasks.map((t) => [t.id, t]));
   const rows = [], over = [], breaks = [];
   // The first start on a round five minutes: 15:55, not 15:52.
   let gi = 0, cursor = Math.ceil((gaps[0]?.start ?? now) / (5 * MIN)) * 5 * MIN;
-  // Work since the last break, and since the last long one (lunch counts).
-  let worked = 0, sinceLong = 0, lunchDone = false, lastEnd = null;
+  // Work since the last break, and since the last long one (a meal counts).
+  let worked = 0, sinceLong = 0, lastEnd = null;
+  const mealsDone = new Set();
   // Breaks are the plan's own items: none are added here.
   const fixed = items.some(isBreak);
   let afterDone = false; // the last item looked at was finished work
@@ -183,6 +197,7 @@ export function timeline(items = [], { tasks = [], events = [], now = Date.now()
   for (const [i, it] of items.entries()) {
     if (isBreak(it)) {
       if (i < lo || i > hi) continue; // never first or last
+      if (isMeal(it) && !meals.length) continue; // meals switched off in Settings
       // A break right after finished work, with nothing laid since, was had.
       if (afterDone && !rows.length) continue;
       const len = Math.max(5, it.minutes || 10) * MIN;
@@ -190,9 +205,10 @@ export function timeline(items = [], { tasks = [], events = [], now = Date.now()
         if (gaps[k].place) continue; // no break on the train: the ride is one
         const from = Math.max(cursor, gaps[k].start);
         if (gaps[k].end - from < len) continue;
-        breaks.push({ kind: "break", type: it.brk, minutes: len / MIN, start: from, end: from + len, i });
+        const meal = isMeal(it) ? mealName(it, meals, from) : null;
+        breaks.push({ kind: "break", type: meal ? "meal" : it.brk, minutes: len / MIN, start: from, end: from + len, i, ...(meal ? { name: meal } : {}) });
         worked = 0; if (it.brk !== "short") sinceLong = 0;
-        if (it.brk === "lunch") lunchDone = true;
+        if (meal) mealsDone.add(meal);
         lastEnd = from + len; gi = k; cursor = from + len;
         break;
       }
@@ -211,12 +227,12 @@ export function timeline(items = [], { tasks = [], events = [], now = Date.now()
       // meetings just before it.
       const cont = lastEnd != null && from - lastEnd < W.BREAKS.reset * MIN;
       const w = cont ? worked : runBefore(evs, from), sl = cont ? sinceLong : w;
-      const brk = !fixed && !gaps[k].place && breakDue({ worked: w, sinceLong: sl, at: from, lunchDone, need: need / MIN });
+      const brk = !fixed && !gaps[k].place && breakDue({ worked: w, sinceLong: sl, at: from, mealsDone, meals, need: need / MIN });
       const gap = (brk ? brk.minutes * MIN : 0) + need;
       if (gaps[k].end - from >= gap) {
         if (brk) {
-          breaks.push({ kind: "break", type: brk.type, minutes: brk.minutes, start: from, end: from + brk.minutes * MIN, i: null });
-          if (brk.type === "lunch") lunchDone = true;
+          breaks.push({ kind: "break", type: brk.type, minutes: brk.minutes, start: from, end: from + brk.minutes * MIN, i: null, ...(brk.name ? { name: brk.name } : {}) });
+          if (brk.name) mealsDone.add(brk.name);
         }
         const s = from + (brk ? brk.minutes * MIN : 0);
         rows.push({ taskId: it.taskId, task, minutes: need / MIN, start: s, end: s + need, i, ...(gaps[k].place ? { ride: gaps[k].mode } : {}) });

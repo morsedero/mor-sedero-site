@@ -237,7 +237,7 @@ async function boot(){
     show("signedin"); // no element of its own: just clears loading/sign-in views
 
     Promise.all([import("./now.js"), import("./projects.js"), import("./addtask.js"), import("./needs.js"), import("./import-trello.js"), import("./addevent.js"), import("./store.js"), import("./deadlines.js"), import("./day.js"), import("./calendar.js"), import("./schedule.js"), import("./push.js")])
-      .then(([{ mountNow }, { mountProjects }, { mountAddTask }, { mountNeeds }, { mountImport, connectTrello, finishTrelloConnect, trelloConnected }, { mountAddEvent }, { migrateTasks, watchSettings, saveSettings, watchTasks, watchRun, watchDayPlan, resetAll }, { mountDeadlines }, { dayHours, minText }, { watchCalendar, connectCalendar, setCalendarHint, listCalendars, saveCalendars }, { mountSchedule }, push]) => {
+      .then(([{ mountNow }, { mountProjects }, { mountAddTask }, { mountNeeds }, { mountImport, connectTrello, finishTrelloConnect, trelloConnected }, { mountAddEvent }, { migrateTasks, watchSettings, saveSettings, watchTasks, watchRun, watchDayPlan, resetAll }, { mountDeadlines }, { dayHours, minText, mealsOf, MEAL_MAX }, { watchCalendar, connectCalendar, setCalendarHint, listCalendars, saveCalendars }, { mountSchedule }, push]) => {
         if ((!isGuest && fb.currentUid() !== user.uid) || mounted) return;
         const m = mounted = {};
         setCalendarHint(isGuest ? "" : user.email);
@@ -348,6 +348,7 @@ async function boot(){
           const hrs = dayHours(s || {});
           const usual = dayHours({ ...s, dayEndToday: null }); // the field shows the usual day, not today's stretch
           if (!dayDrag) paintDay(usual.start, usual.end);
+          paintMeals(s || {});
           logSwitch.checked = !isGuest && s?.logDone !== false;
           logSwitch.disabled = isGuest;
           hours = hrs;
@@ -360,6 +361,44 @@ async function boot(){
           snap();
         }, fail);
         logSwitch.onchange = () => saveSettings(user.uid, { logDone: logSwitch.checked }).catch(fail);
+        // Meal breaks (Mor, 2026-10-08): on/off, then each meal's name, window
+        // (the plan puts it somewhere inside) and length. The whole list saves
+        // on any change; a row being typed in isn't repainted under the user.
+        const mealsOn = $("#mealsOn"), mealList = $("#mealList"), mealAdd = $("#mealAdd");
+        const MEAL_LENS = [15, 20, 30, 45, 60, 90];
+        let meals = mealsOf({});
+        const saveMeals = () => saveSettings(user.uid, { meals: meals.map((m) => ({ name: m.name, from: minText(m.from), to: minText(m.to), minutes: m.minutes })) }).catch(fail);
+        const timeIn = (min, label, set) => h("input", { type: "time", className: "meal-time", value: minText(min), step: 300, ariaLabel: label,
+          onchange: (e) => { const v = e.target.value.match(/^(\d\d):(\d\d)$/); if (v) { set(+v[1] * 60 + +v[2]); saveMeals(); } } });
+        function paintMeals(s){
+          const on = !s.mealsOff;
+          mealsOn.checked = on;
+          if (mealList.contains(document.activeElement) && document.activeElement.matches("input")) return;
+          meals = mealsOf({ ...s, mealsOff: false });
+          mealList.hidden = mealAdd.hidden = !on;
+          mealAdd.disabled = meals.length >= MEAL_MAX;
+          mealList.replaceChildren(...meals.map((m, i) => h("div", { className: "meal-row" },
+            h("input", { className: "meal-name", value: m.name, maxLength: 24, ariaLabel: "Meal name",
+              onchange: (e) => { m.name = e.target.value.trim() || "Meal"; saveMeals(); } }),
+            h("button", { type: "button", className: "meal-x", textContent: "✕", ariaLabel: `Remove ${m.name}`, title: `Remove ${m.name}`,
+              onclick: () => { meals.splice(i, 1); saveMeals(); } }),
+            h("span", { className: "meal-when" },
+              timeIn(m.from, `${m.name} earliest`, (v) => { m.from = v; if (m.to <= v) m.to = Math.min(v + 60, 1439); }),
+              h("span", { className: "meal-dash", textContent: "–" }),
+              timeIn(m.to, `${m.name} latest`, (v) => { m.to = v > m.from ? v : Math.min(m.from + 60, 1439); }),
+              h("select", { className: "menu-select", ariaLabel: `${m.name} length`, onchange: (e) => { m.minutes = +e.target.value; saveMeals(); } },
+                ...[...new Set([...MEAL_LENS, m.minutes])].sort((a, b) => a - b).map((n) => h("option", { value: n, selected: n === m.minutes, textContent: `${n} min` })))))));
+          if (!meals.length) mealList.append(h("p", { className: "menu-note", textContent: "No meals yet." }));
+        }
+        mealsOn.onchange = () => saveSettings(user.uid, { mealsOff: !mealsOn.checked }).catch(fail);
+        // A new meal goes after the last one: breakfast-ish if there are none.
+        mealAdd.onclick = () => {
+          if (meals.length >= MEAL_MAX) return;
+          const last = meals[meals.length - 1], from = last ? Math.min(last.to + 180, 1260) : 480;
+          const names = ["Breakfast", "Lunch", "Dinner"].filter((n) => !meals.some((m) => m.name === n));
+          meals.push({ name: (last ? names.find((n) => n !== "Breakfast") : names[0]) || "Snack", from, to: Math.min(from + 120, 1439), minutes: 30 });
+          saveMeals();
+        };
         // My day as one 24h bar with two handles: drag an end (or tap the bar to
         // pull the nearer end there), arrows nudge 15 min (Shift: 1 h). Saves once,
         // on release, not on every pixel.
@@ -452,7 +491,7 @@ async function boot(){
           connectBtn.textContent = c.status === "needs_reauth" ? "Reconnect" : "Connect";
           calNote.textContent = isGuest ? "Sign in first" : calOk ? "Connected" : c.status === "needs_reauth" ? "Expired" : "Not connected";
         });
-        m.menu = { unmount(){ stopSettings(); stopCal(); stopBriefTasks(); stopBriefRun(); stopBriefPlan(); clearInterval(seenTick); document.removeEventListener("visibilitychange", seen); start.onchange = end.onchange = logSwitch.onchange = pushSwitch.onchange = pushTest.onclick = null;
+        m.menu = { unmount(){ stopSettings(); stopCal(); stopBriefTasks(); stopBriefRun(); stopBriefPlan(); clearInterval(seenTick); document.removeEventListener("visibilitychange", seen); start.onchange = end.onchange = logSwitch.onchange = mealsOn.onchange = mealAdd.onclick = pushSwitch.onchange = pushTest.onclick = null;
           kindBoxes.forEach((b) => { b.onchange = null; }); } };
 
         // Full screens (a project, Needs you) sit on the history stack, so the

@@ -30,7 +30,24 @@ export function dayHours(settings = {}){
   const base = s != null && e != null && e > s ? { start: s, end: e } : { ...W.DAY_HOURS };
   const today = settings.dayEndToday, end = toMin(today?.end);
   if (today?.date === localDate() && end != null && end > base.start) base.end = end;
+  base.meals = mealsOf(settings);
   return base;
+}
+
+// Meal breaks from state/settings (Mor, 2026-10-08): settings.meals =
+// [{ name, from, to, minutes }] (times "HH:MM"), each placed somewhere in its
+// window; settings.mealsOff = true means Daisey plans none. Unset → the
+// default Lunch. → [{ name, from, to, minutes }] in minutes, by time.
+export const MEAL_MAX = 4;
+export function mealsOf(settings = {}){
+  if (settings.mealsOff) return [];
+  const list = Array.isArray(settings.meals) ? settings.meals
+    : W.BREAKS.meals.map((m) => ({ ...m, from: minText(m.from), to: minText(m.to) }));
+  return list.slice(0, MEAL_MAX).map((m) => ({
+    name: String(m?.name || "").trim().slice(0, 24) || "Meal",
+    from: toMin(m?.from), to: toMin(m?.to),
+    minutes: Math.max(5, Math.min(Math.round(Number(m?.minutes) || 30), 180)),
+  })).filter((m) => m.from != null && m.to != null && m.to > m.from).sort((a, b) => a.from - b.from);
 }
 
 const atMin = (ms, min) => new Date(ms).setHours(0, min, 0, 0);

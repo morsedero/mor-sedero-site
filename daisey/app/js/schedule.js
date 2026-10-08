@@ -253,7 +253,7 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onProjects, onW
     if (dayPlan?.status !== "approved" || dayPlan.date !== localDate() || !tasks) return [];
     const tl = timeline(dayPlan.items || [], { tasks, events, now, hours: hrs, run });
     return [...tl.rows.map((r) => ({ kind: "plan", start: r.start, end: r.end, task: r.task })),
-      ...tl.breaks.map((b) => ({ kind: "break", start: b.start, end: b.end, type: b.type }))];
+      ...tl.breaks.map((b) => ({ kind: "break", start: b.start, end: b.end, type: b.type, name: b.name }))];
   }
 
   function day(events, date, now, hrs, today){
@@ -380,7 +380,7 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onProjects, onW
     const past = !x.allDay && x.end <= now;
     // No clock times: "30 min break" starts where the event boxes do.
     if (x.kind === "break") return x.el = h("div", { className: "sc-row sc-gap sc-break" + (on ? " sc-on" : past ? " sc-past" : ""), ariaLabel: `${time} break` },
-      h("span", { className: "sc-free" }, `${durText((x.end - x.start) / 60000)} ${x.type === "lunch" ? "lunch" : "break"}`));
+      h("span", { className: "sc-free" }, `${durText((x.end - x.start) / 60000)} ${x.type === "meal" ? (x.name || "meal").toLowerCase() : "break"}`));
     // The row on right now wears its colour edge to edge (Mor, 2026-10-08).
     // Its orbiting light is phased off the wall clock, so a re-render picks it
     // up where it was instead of jumping back to the start (ORBIT_MS = app.css sc-orbit).

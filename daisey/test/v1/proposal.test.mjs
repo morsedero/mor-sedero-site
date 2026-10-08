@@ -87,12 +87,28 @@ test("breaks: back-to-back meetings count as work", () => {
 test("breaks: lunch 45 min inside 12-14, once; a 15 min idle gap resets the count", () => {
   const tasks = [t({ id: "a", size: 30 }), t({ id: "b", size: 30 })];
   const r = timeline([{ taskId: "a", minutes: 30 }, { taskId: "b", minutes: 30 }], { tasks, events: [], now: at(12, 5) });
-  assert.deepEqual(r.breaks.map((b) => b.type), ["lunch"]);
+  assert.deepEqual(r.breaks.map((b) => [b.type, b.name]), [["meal", "Lunch"]]);
   assert.equal(r.breaks[0].minutes, 45);
   assert.equal(r.rows[0].start, at(12, 5)); // not lunch first thing at noon
   assert.equal(r.breaks[0].start, r.rows[0].end);
   const idle = timeline([{ taskId: "a", minutes: 60 }, { taskId: "b", minutes: 60 }], { tasks, events: [ev("X", [10], [10, 20])], now: at(9) });
   assert.equal(idle.breaks.length, 0);
+});
+
+test("meals from settings: own windows and lengths, several, or none", () => {
+  const tasks = [t({ id: "a", size: 60 }), t({ id: "b", size: 60 }), t({ id: "c", size: 60 })];
+  const items = [{ taskId: "a", minutes: 60 }, { taskId: "b", minutes: 60 }, { taskId: "c", minutes: 60 }];
+  const two = { start: 480, end: 1320, meals: [{ name: "Brunch", from: 600, to: 660, minutes: 20 }, { name: "Dinner", from: 690, to: 780, minutes: 60 }] };
+  const r = timeline(items, { tasks, events: [], now: at(9, 30), hours: two });
+  assert.deepEqual(r.breaks.filter((b) => b.type === "meal").map((b) => [b.name, b.minutes]), [["Brunch", 20], ["Dinner", 60]]);
+  const off = timeline(items, { tasks, events: [], now: at(11, 30), hours: { start: 480, end: 1320, meals: [] } });
+  assert.equal(off.breaks.filter((b) => b.type === "meal").length, 0);
+  // Switched off: a meal already in the plan goes too.
+  const kept = timeline([items[0], { brk: "meal", name: "Lunch", minutes: 45 }, items[1]], { tasks, events: [], now: at(11, 30), hours: { start: 480, end: 1320, meals: [] } });
+  assert.equal(kept.breaks.length, 0);
+  // An old "lunch" item still reads as the meal it falls in.
+  const old = timeline([items[0], { brk: "lunch", minutes: 45 }, items[1]], { tasks, events: [], now: at(11, 30) });
+  assert.deepEqual(old.breaks.map((b) => [b.type, b.name]), [["meal", "Lunch"]]);
 });
 
 test("breaks become plan items once, then stay where they're put", () => {

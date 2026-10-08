@@ -97,13 +97,13 @@ const KINDS = ["brief", "wrap", "gap", "booked", "people", "meeting", "miss"];
 // Today's approved plan: its day, when it was saved, its tasks in order.
 const cleanPlan = (p) => (day(p?.date) ? { date: p.date, at: at(p.at) || 0, ids: ids(p.ids) || [] } : null);
 // The saved plan, any status, as the brief reads it: { date, status, items:
-// [{ taskId, minutes } | { brk, minutes }] }.
-const PLAN_STATUS = ["proposed", "approved", "dismissed"], BRKS = ["short", "long", "lunch"];
+// [{ taskId, minutes } | { brk, minutes, name? }] }.
+const PLAN_STATUS = ["proposed", "approved", "dismissed"], BRKS = ["short", "long", "lunch", "meal"];
 const planMins = (v) => (Number.isFinite(v) && v > 0 ? Math.min(Math.round(v), 1440) : undefined);
 const cleanDayPlan = (p) => (day(p?.date) && PLAN_STATUS.includes(p.status) ? {
   date: p.date, status: p.status,
   items: (Array.isArray(p.items) ? p.items : []).slice(0, 30).map((it) => (BRKS.includes(it?.brk)
-    ? { brk: it.brk, minutes: planMins(it.minutes) } : { taskId: str(it?.taskId, 40), minutes: planMins(it?.minutes) }))
+    ? { brk: it.brk, minutes: planMins(it.minutes), ...(it.name ? { name: str(it.name, 24) } : {}) } : { taskId: str(it?.taskId, 40), minutes: planMins(it?.minutes) }))
     .filter((it) => it.brk || it.taskId),
 } : null);
 const cleanNotify =(n) => Object.fromEntries(KINDS.map((k) => [k, n?.[k] !== false]));

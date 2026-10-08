@@ -1136,7 +1136,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
   }
   function approve(){
     const n = prop.items.filter((it) => !isBreak(it)).length;
-    savePlan("approved", trimBreaks(prop.items).map(({ taskId, brk, minutes }) => (brk ? { brk, minutes } : { taskId, minutes })), { approvedAt: Date.now() });
+    savePlan("approved", trimBreaks(prop.items).map(({ taskId, brk, minutes, name }) => (brk ? { brk, minutes, ...(name ? { name } : {}) } : { taskId, minutes })), { approvedAt: Date.now() });
     prop.open = false; prop.ask = false; prop.note = ""; reset();
     render();
     flash(`Plan set: ${n} ${n === 1 ? "task" : "tasks"}. The card follows it.`);
@@ -1275,7 +1275,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
     };
     // A break is the plan's own item: it drags and comes off like a task.
     const breakRow = (b) => {
-      const name = b.type === "lunch" ? "Lunch" : "Break", own = b.i != null;
+      const name = b.type === "meal" ? b.name || "Meal" : "Break", own = b.i != null;
       return h("li", { className: "pp-row pp-break" + (own ? " pp-drag" : ""), _i: b.i },
         h("span", { className: "pp-time", ariaLabel: `${clock(b.start)} to ${clock(b.end)}` }, clock(b.start), h("small", { textContent: clock(b.end) })),
         h("span", { className: "pp-task" }, h("span", { className: "pp-title", textContent: name }),

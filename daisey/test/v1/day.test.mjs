@@ -17,9 +17,9 @@ const task = (o = {}) => ({ id: `t${++seq}`, project: "P", title: "Task", size: 
   openHours: "anytime", stakes: "low", status: "ready", canSplit: false, createdAt: 1, touchedAt: NOW, ...o });
 
 test("day hours: default 08–22, settings override, nonsense falls back", () => {
-  assert.deepEqual(D.dayHours({}), { start: 480, end: 1320 });
-  assert.deepEqual(D.dayHours({ dayStart: "07:30", dayEnd: "23:00" }), { start: 450, end: 1380 });
-  assert.deepEqual(D.dayHours({ dayStart: "23:00", dayEnd: "07:00" }), { start: 480, end: 1320 });
+  { const { start, end } = D.dayHours({}); assert.deepEqual({ start, end }, { start: 480, end: 1320 }); }
+  { const { start, end } = D.dayHours({ dayStart: "07:30", dayEnd: "23:00" }); assert.deepEqual({ start, end }, { start: 450, end: 1380 }); }
+  { const { start, end } = D.dayHours({ dayStart: "23:00", dayEnd: "07:00" }); assert.deepEqual({ start, end }, { start: 480, end: 1320 }); }
   assert.equal(D.isNight(at(5, 1, 19)), true);
   assert.equal(D.isNight(at(5, 8)), false);
   assert.equal(D.isNight(at(5, 22)), true);
@@ -124,4 +124,13 @@ test("dayEndToday stretches today's end only", async () => {
   assert.equal(dayHours({ dayEndToday: { date: localDate(), end: "23:00" } }).end, 23 * 60);
   assert.equal(dayHours({ dayEndToday: { date: "2020-01-01", end: "23:00" } }).end, 22 * 60); // yesterday's is gone
   assert.equal(dayHours({ dayEndToday: { date: localDate(), end: "06:00" } }).end, 22 * 60); // before the start: ignored
+});
+
+test("mealsOf: default Lunch, own list sorted and cleaned, off → none", async () => {
+  const { mealsOf, dayHours } = await import("../../app/js/day.js");
+  assert.deepEqual(mealsOf({}), [{ name: "Lunch", from: 720, to: 840, minutes: 45 }]);
+  assert.deepEqual(mealsOf({ mealsOff: true }), []);
+  assert.deepEqual(mealsOf({ meals: [{ name: "Dinner", from: "19:00", to: "20:30", minutes: 60 }, { name: " ", from: "08:00", to: "09:00", minutes: 2 }, { name: "Bad", from: "14:00", to: "13:00" }] }),
+    [{ name: "Meal", from: 480, to: 540, minutes: 5 }, { name: "Dinner", from: 1140, to: 1230, minutes: 60 }]);
+  assert.deepEqual(dayHours({ mealsOff: true }).meals, []);
 });
