@@ -1724,10 +1724,10 @@ body.focus .shell { block-size: auto; min-block-size: 100dvh; overflow: visible;
 .pp-inbox-chip { position: relative; display: inline-flex; align-items: center; gap: 5px; block-size: 30px; padding-inline: 10px; border: 1px dashed var(--bud); border-radius: 999px; background: none; color: var(--ink); font: inherit; font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums; cursor: pointer; }
 .pp-inbox-chip::after { content: ""; position: absolute; inset: -7px -2px; } /* 44px to the finger */
 .pp-inbox-chip svg { inline-size: 14px; block-size: 14px; color: var(--ink-2); stroke-width: 2; }
-.bl-totals { display: grid; grid-template-columns: 1.4fr 1fr 1fr; gap: 8px; margin: 12px 0 0; font-variant-numeric: tabular-nums; }
-.bl-stat { display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; border-radius: 14px; background: var(--card); border: 1px solid var(--line); border-block-start: 3px solid var(--sc); }
-.bl-stat strong { font-size: 22px; line-height: 1.1; font-weight: 800; letter-spacing: -.02em; color: var(--sc); }
-.bl-stat span { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-2); }
+.bl-totals { display: grid; grid-template-columns: 1.3fr 1fr 1fr; gap: 6px; margin: 8px 0 0; font-variant-numeric: tabular-nums; }
+.bl-stat { display: flex; align-items: baseline; gap: 5px; min-inline-size: 0; padding: 5px 9px; border-radius: 10px; background: var(--card); border: 1px solid var(--line); border-inline-start: 3px solid var(--sc); }
+.bl-stat strong { font-size: 16px; line-height: 1.2; font-weight: 800; letter-spacing: -.01em; color: var(--sc); white-space: nowrap; }
+.bl-stat span { font-size: 11px; font-weight: 600; color: var(--ink-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .bl-stat.focus { --sc: var(--p-teal-ink); }
 .bl-stat.done { --sc: var(--p-lime-ink); }
 .bl-stat.days { --sc: var(--p-orange-ink); }
