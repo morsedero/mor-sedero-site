@@ -436,6 +436,7 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onProjects } = 
     const disarm = () => { clearTimeout(hold); pid = null; };
     rowEl.addEventListener("pointerdown", (e) => {
       if (e.button || pid != null) return;
+      if (!e.target.closest(".sc-ev")) return; // only the task cube drags, not the time text
       pid = e.pointerId; y0 = lastY = e.clientY; dragged = false;
       if (e.pointerType !== "mouse") hold = setTimeout(arm, 350); // a finger: hold still first
     });
