@@ -485,8 +485,8 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
     onScreen?.(name);
   }
   function closeProject(){ shown = null; els.view.hidden = true; els.view.replaceChildren(); }
-  // The Projects page (Mor, 2026-10-07): its own screen, opened from the
-  // Schedule's Projects button; a project opens over it.
+  // The Projects grid (Mor, 2026-10-08): sits in the home panel in the
+  // Schedule's place, toggled by the Projects button; a project opens over it.
   function openAll(){ els.page.hidden = false; els.page.scrollTop = 0; paintGrid(); }
   function closeAll(){ els.page.hidden = true; }
 

@@ -154,7 +154,7 @@ async function boot(){
   // A tap on the dim backdrop closes it, like Escape and ✕.
   const settings = $("#settingsdlg");
   $("#settingsBtn").onclick = () => { setMenu(false); settings.showModal(); };
-  $("#projectsChip").onclick = () => window.__openProjects && window.__openProjects();
+  $("#projectsChip").onclick = () => window.__toggleProjects && window.__toggleProjects();
   $("#settingsX").onclick = () => settings.close();
   settings.addEventListener("click", (e) => { if (e.target === settings) settings.close(); });
 
@@ -399,13 +399,10 @@ async function boot(){
           open(kind){ if (history.state?.daisey !== kind) history.pushState({ daisey: kind }, ""); },
           back(){ if (history.state?.daisey) history.back(); else closeScreens(); },
         };
-        const closeScreens = () => { m.now?.closePlan(); m.projects?.closeProject(); m.projects?.closeAll(); m.needs?.close(); $("#weekview").hidden = true; };
-        // Back from a project lands on the Projects page when that's where it
-        // was opened from (history state "projects" under "project").
+        const closeScreens = () => { m.now?.closePlan(); m.projects?.closeProject(); m.needs?.close(); $("#weekview").hidden = true; };
         const onPop = () => {
           const at = history.state?.daisey;
           if (!at) closeScreens();
-          else if (at === "projects") { m.projects?.closeProject(); m.needs?.close(); }
           else if (at !== "needs") m.needs?.close();
         };
         addEventListener("popstate", onPop);
@@ -415,22 +412,29 @@ async function boot(){
 
         m.adder = mountAddTask($("#addtask"), user.uid, { onStart: startTask });
         m.needs = mountNeeds($("#needsview"), user.uid, { onClose: () => screens.back() });
-        // The home panel is the Schedule, always. Projects is its own page.
+        // The home panel: the Schedule, or Projects in its place. The Projects
+        // button toggles between them (Mor, 2026-10-08).
         m.schedule = mountSchedule($("#schedPage"), user.uid, { onEvent: (ev) => m.event.view(ev), onNew: (date, at) => m.event.open(date, at), onOpen: (task) => m.adder.edit(task), });
-        window.__openProjects = () => { m.projects.openAll(); screens.open("projects"); };
+        const showProjects = (on) => {
+          $("#schedPage").hidden = on;
+          if (on) m.projects.openAll(); else m.projects.closeAll();
+          $("#projectsChip").setAttribute("aria-pressed", String(on));
+          $("#panel").setAttribute("aria-label", on ? "Projects" : "Schedule");
+        };
+        window.__toggleProjects = () => showProjects($("#projPage").hidden);
         // ARCHIVED (Mor, 2026-10-08): the Week page is built but switched off until
         // people ask for it. To bring it back: pass onWeek to the mount above
         //   onWeek: () => { $("#weekview").hidden = false; $("#weekPage").scrollTop = 0; screens.open("week"); }
         // and mount the week page:
         //   m.week = mountSchedule($("#weekPage"), user.uid, { mode: "week", onEvent: (ev) => m.event.view(ev), onNew: (date, at) => m.event.open(date, at), onOpen: (task) => m.adder.edit(task), onDay: (ymd) => { m.schedule.go(ymd); screens.back(); } });
         //   $("#weekBack").onclick = () => screens.back();
-        m.projects = mountProjects({ grid: $("#projPage"), page: $("#projectsview"), view: $("#projectview"), dialog: $("#projdlg") }, user.uid, {
+        m.projects = mountProjects({ grid: $("#projPage"), page: $("#projPage"), view: $("#projectview"), dialog: $("#projdlg") }, user.uid, {
           onOpen: (task) => m.adder.edit(task),
           onAdd: (project) => m.adder.open(project),
           onStart: startTask,
           onScreen: (name) => (name ? screens.open("project") : screens.back()),
         });
-        $("#projectsBack").onclick = () => screens.back();
+        showProjects(false);
         $("#planBack").onclick = () => m.now?.closePlan();
         $("#planChip").onclick = () => m.now?.plan();
         m.now = mountNow($("#nowcard"), user.uid, {
