@@ -35,20 +35,21 @@ export function dayHours(settings = {}){
 }
 
 // Meal breaks from state/settings (Mor, 2026-10-08): Breakfast, Lunch,
-// Dinner, no others. settings.meals = [{ name, on, from, to, minutes }]
-// (times "HH:MM"); a meal not saved there keeps its default (weights.js).
-// → all three, in minutes; mealsOf → only the ones on.
+// Dinner, no others. settings.meals = [{ name, on, at, minutes }] (at:
+// "HH:MM"; an older save's `from` reads as at); a meal not saved there keeps
+// its default (weights.js). → all three, in minutes. mealsOf → only the ones
+// on, each as the window the plan places it in: { name, from, to, minutes }.
 export function mealPrefs(settings = {}){
   const saved = Array.isArray(settings.meals) ? settings.meals : [];
   return W.BREAKS.meals.map((d) => {
     const s = saved.find((x) => x?.name === d.name && typeof x.on === "boolean");
     if (!s) return { ...d };
-    const from = toMin(s.from), to = toMin(s.to), ok = from != null && to != null && to > from;
-    return { name: d.name, on: s.on, from: ok ? from : d.from, to: ok ? to : d.to,
+    return { name: d.name, on: s.on, at: toMin(s.at ?? s.from) ?? d.at,
       minutes: Math.max(5, Math.min(Math.round(Number(s.minutes) || d.minutes), 180)) };
   });
 }
-export const mealsOf = (settings = {}) => mealPrefs(settings).filter((m) => m.on).map(({ on, ...m }) => m);
+export const mealsOf = (settings = {}) => mealPrefs(settings).filter((m) => m.on)
+  .map(({ name, at, minutes }) => ({ name, from: at, to: Math.min(at + W.BREAKS.mealSlack, 1440), minutes }));
 
 const atMin = (ms, min) => new Date(ms).setHours(0, min, 0, 0);
 export const dayStartAt = (now, hours = W.DAY_HOURS) => atMin(now, hours.start);

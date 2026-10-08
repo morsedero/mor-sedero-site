@@ -362,11 +362,11 @@ async function boot(){
         }, fail);
         logSwitch.onchange = () => saveSettings(user.uid, { logDone: logSwitch.checked }).catch(fail);
         // Meal breaks (Mor, 2026-10-08): Breakfast, Lunch, Dinner, each on or
-        // off, with its window (the plan puts it somewhere inside) and length.
-        // All three save on any change; a time being typed isn't repainted.
+        // off, with one time (the plan puts it in the hour from there) and a
+        // length. All three save on any change; a time being typed isn't repainted.
         const mealList = $("#mealList"), MEAL_LENS = [15, 20, 30, 45, 60, 90];
         let meals = mealPrefs({});
-        const saveMeals = () => saveSettings(user.uid, { meals: meals.map((m) => ({ name: m.name, on: m.on, from: minText(m.from), to: minText(m.to), minutes: m.minutes })) }).catch(fail);
+        const saveMeals = () => saveSettings(user.uid, { meals: meals.map((m) => ({ name: m.name, on: m.on, at: minText(m.at), minutes: m.minutes })) }).catch(fail);
         const timeIn = (min, label, set) => h("input", { type: "time", className: "meal-time", value: minText(min), step: 300, ariaLabel: label,
           onchange: (e) => { const v = e.target.value.match(/^(\d\d):(\d\d)$/); if (v) { set(+v[1] * 60 + +v[2]); saveMeals(); } } });
         function paintMeals(s){
@@ -375,12 +375,10 @@ async function boot(){
           mealList.replaceChildren(...meals.map((m) => h("div", { className: "meal-row" + (m.on ? "" : " off") },
             h("label", { className: "menu-check" },
               h("input", { type: "checkbox", checked: m.on, onchange: (e) => { m.on = e.target.checked; saveMeals(); } }), m.name),
-            m.on && h("select", { className: "menu-select", ariaLabel: `${m.name} length`, onchange: (e) => { m.minutes = +e.target.value; saveMeals(); } },
-              ...[...new Set([...MEAL_LENS, m.minutes])].sort((a, b) => a - b).map((n) => h("option", { value: n, selected: n === m.minutes, textContent: `${n} min` }))),
             m.on && h("span", { className: "meal-when" },
-              timeIn(m.from, `${m.name} earliest`, (v) => { m.from = v; if (m.to <= v) m.to = Math.min(v + 60, 1439); }),
-              h("span", { textContent: "–" }),
-              timeIn(m.to, `${m.name} latest`, (v) => { m.to = v > m.from ? v : Math.min(m.from + 60, 1439); })))));
+              timeIn(m.at, `${m.name} time`, (v) => { m.at = v; }),
+              h("select", { className: "menu-select", ariaLabel: `${m.name} length`, onchange: (e) => { m.minutes = +e.target.value; saveMeals(); } },
+                ...[...new Set([...MEAL_LENS, m.minutes])].sort((a, b) => a - b).map((n) => h("option", { value: n, selected: n === m.minutes, textContent: `${n} min` })))))));
         }
         // My day as one 24h bar with two handles: drag an end (or tap the bar to
         // pull the nearer end there), arrows nudge 15 min (Shift: 1 h). Saves once,

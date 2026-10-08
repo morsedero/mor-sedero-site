@@ -655,11 +655,11 @@ dialog.now:focus { outline: none; }
 .menu-item:hover { color: var(--ink); text-decoration: underline; }
 dialog.settings { inline-size: min(420px, calc(100vw - 18px)); }
 dialog.settings .now-head + .menu-sec { border-block-start: 0; padding-block-start: 4px; }
-/* Meal breaks: one card per meal — on/off and length, then its window (only while on). */
+/* Meal breaks: one row per meal — on/off, then its time and length (only while on). */
 .meal-list { display: grid; gap: 8px; }
 .meal-row { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 8px; min-block-size: 44px; padding: 6px 10px; border: 1px solid var(--line); border-radius: 12px; }
 .meal-row.off { color: var(--ink-2); }
-.meal-when { grid-column: 1 / -1; display: flex; align-items: center; gap: 6px; color: var(--ink-2); }
+.meal-when { display: flex; align-items: center; gap: 6px; }
 .meal-time { padding: 4px 6px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--ink); font: inherit; font-size: 13px; font-variant-numeric: tabular-nums; }
 .focus-still-btns { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .focus-took-row { display: inline-flex; gap: 8px; align-items: center; }

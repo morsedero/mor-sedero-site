@@ -10,7 +10,7 @@
 // still the engine's (engine.rank), so the card and the plan agree until the
 // user changes the order.
 // PURE: no Firebase, no DOM.
-import { gapsToday, bookings } from "./day.js";
+import { gapsToday, bookings, mealsOf } from "./day.js";
 import { rank, fitsPlace } from "./engine.js";
 import { routineCalendar } from "./routine.js";
 import { workBase } from "./context.js";
@@ -131,7 +131,7 @@ const clockMin = (ms) => { const d = new Date(ms); return d.getHours() * 60 + d.
 // The break due before the next item, or null. worked: minutes since the last
 // break of any kind; sinceLong: since the last long one or meal. meals: the
 // user's (day.js mealsOf); mealsDone: names of those already had today.
-export function breakDue({ worked, sinceLong, at, mealsDone = new Set(), meals = W.BREAKS.meals.filter((x) => x.on), need = 0 }){
+export function breakDue({ worked, sinceLong, at, mealsDone = new Set(), meals = mealsOf(), need = 0 }){
   const B = W.BREAKS, m = clockMin(at);
   // A meal comes once something has been done (never first thing at noon), or
   // when the next item would carry past its window and the meal would be missed.
@@ -182,7 +182,7 @@ export function withBreaks(items = [], ctx = {}){
 // Each row and break carries i, its index in items.
 export function timeline(items = [], { tasks = [], events = [], now = Date.now(), hours = W.DAY_HOURS, run = null, rides = true } = {}){
   const { evs, gaps } = freeGaps({ tasks, events, now, hours, run, rides });
-  const meals = hours.meals ?? W.BREAKS.meals.filter((x) => x.on);
+  const meals = hours.meals ?? mealsOf();
   const byId = new Map(tasks.map((t) => [t.id, t]));
   const rows = [], over = [], breaks = [];
   // The first start on a round five minutes: 15:55, not 15:52.

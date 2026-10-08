@@ -126,11 +126,11 @@ test("dayEndToday stretches today's end only", async () => {
   assert.equal(dayHours({ dayEndToday: { date: localDate(), end: "06:00" } }).end, 22 * 60); // before the start: ignored
 });
 
-test("meals: Breakfast, Lunch, Dinner; only Lunch on by default, 13-14; saved ones override", async () => {
+test("meals: Breakfast, Lunch, Dinner; only Lunch on by default, 13-14; one time each, saved ones override", async () => {
   const { mealsOf, mealPrefs, dayHours } = await import("../../app/js/day.js");
   assert.deepEqual(mealPrefs({}).map((m) => [m.name, m.on]), [["Breakfast", false], ["Lunch", true], ["Dinner", false]]);
   assert.deepEqual(mealsOf({}), [{ name: "Lunch", from: 780, to: 840, minutes: 45 }]);
-  const s = { meals: [{ name: "Lunch", on: false, from: "13:00", to: "14:00", minutes: 45 }, { name: "Dinner", on: true, from: "19:00", to: "18:00", minutes: 999 }, { name: "Snack", on: true, from: "16:00", to: "17:00", minutes: 10 }] };
-  assert.deepEqual(mealsOf(s), [{ name: "Dinner", from: 1110, to: 1230, minutes: 180 }]); // bad window → default; no other names
+  const s = { meals: [{ name: "Lunch", on: false, at: "13:00", minutes: 45 }, { name: "Dinner", on: true, at: "19:30", minutes: 999 }, { name: "Breakfast", on: true, at: "nope", minutes: 20 }, { name: "Snack", on: true, at: "16:00", minutes: 10 }] };
+  assert.deepEqual(mealsOf(s), [{ name: "Breakfast", from: 480, to: 540, minutes: 20 }, { name: "Dinner", from: 1170, to: 1230, minutes: 180 }]); // bad time → default; no other names
   assert.deepEqual(dayHours(s).meals, mealsOf(s));
 });
