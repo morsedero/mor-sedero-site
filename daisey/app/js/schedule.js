@@ -144,7 +144,10 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onProjects, onW
   el.addEventListener("pointermove", (e) => {
     if (!swipe || dragging) return;
     const dx = e.clientX - swipe.x, dy = e.clientY - swipe.y;
-    if (!swipe.on && Math.abs(dx) > 10 && Math.abs(dx) > 1.5 * Math.abs(dy)) swipe.on = true;
+    if (!swipe.on && Math.abs(dx) > 10 && Math.abs(dx) > 1.5 * Math.abs(dy)) {
+      swipe.on = true;
+      try { el.setPointerCapture(e.pointerId); } catch { /* gone already */ } // a mouse leaving the box still ends the drag
+    }
     if (swipe.on) slide(dx * 0.9);
   });
   el.addEventListener("pointerup", (e) => {
@@ -163,6 +166,7 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onProjects, onW
     }, 140);
   });
   el.addEventListener("pointercancel", () => { if (swipe?.on) slide(0, 180); swipe = null; });
+  el.addEventListener("lostpointercapture", () => { if (swipe?.on) { slide(0, 180); swipe = null; } }); // capture dropped without an up
   let sawSwipe = false; // the lift after a drag is not a tap
   el.addEventListener("click", (e) => { if (sawSwipe) { e.stopPropagation(); e.preventDefault(); } }, true);
 
