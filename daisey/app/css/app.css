@@ -424,13 +424,8 @@ dialog.now:focus { outline: none; }
 /* Later → "When?": three choices under the card's actions. */
 .later-ask { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 5px; margin-block-start: 4px; font-size: 13px; }
 .later-ask .chip { min-block-size: 36px; font-size: 13px; padding-inline: 10px; }
-/* A missed slot / the silence check (miss.js): a note over the card, not a toast. */
-.miss-ask { display: flex; flex-direction: column; align-items: center; gap: 2px; margin-block-end: 10px; padding: 10px 14px;
-  border: 1px solid var(--line); border-radius: 16px; background: var(--surface); text-align: center; }
-.miss-ask p { margin: 0; }
-.miss-ask .miss-title { font-weight: 800; font-size: 16px; }
-.miss-ask .miss-text { font-size: 14px; color: var(--ink-2); }
-.miss-ask .chip.on { background: var(--accent); color: var(--on-accent); border-color: var(--accent); font-weight: 700; }
+/* A missed slot (miss.js): Shorten · Move under the card's line, on the card itself. */
+.now-card.main .miss-row { justify-content: flex-start; margin-block: 6px 2px; }
 
 /* Pending → "Waiting on what?": one optional line under the actions. */
 .pend-ask { display: grid; gap: 4px; margin-block-start: 4px; }

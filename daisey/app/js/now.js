@@ -1031,27 +1031,23 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
     prop.open = true; prop.ask = false; prop.note = ""; handoff = null; reset();
     render();
   }
-  function missView(card){
-    const st = missNow();
-    if (!st) return null;
-    const chip = (text, onclick, cls = "chip") => h("button", { className: cls, type: "button", textContent: text, onclick });
-    if (st.kind === "silence") {
-      return h("div", { className: "miss-ask silence", role: "status" },
-        h("p", { className: "miss-title", textContent: "Rough day?" }),
-        h("p", { className: "miss-text", textContent: silenceText(st, clock) }),
-        h("div", { className: "later-ask" },
-          chip("Lighter plan", lighterPlan, "chip on"),
-          chip("Not today", () => { silenced(); render(); })));
-    }
-    if (!card) return null;
-    const task = card.task;
-    return h("div", { className: "miss-ask", role: "status" },
-      h("p", { className: "miss-text" }, "Up since ", clock(st.start), " and not started."),
-      h("div", { className: "later-ask" },
-        chip("Start", () => begin(task)), // the card's own Start stays the loud one
-        leftMinutes(task) > 5 && chip("Shorten", () => shortenNow(task)),
-        chip("Move", () => { state.more = state.pendAsk = state.showAlts = false; state.notNow = true; render(); })));
+  // Both take the main card's place, never a box pushing it down (Mor,
+  // 2026-10-08). A miss is the task's own card saying so, with Shorten and
+  // Move under its line; the silence check is a card of its own.
+  const missWhy = (card, st) => ({ ...card, whyParts: [`up since ${clock(st.start)} and not started`] });
+  function missRow(task){
+    const chip = (text, onclick) => h("button", { className: "chip", type: "button", textContent: text, onclick });
+    return h("div", { className: "later-ask miss-row", role: "group", ariaLabel: "Missed" },
+      leftMinutes(task) > 5 && chip("Shorten", () => shortenNow(task)),
+      chip("Move", () => { state.more = state.pendAsk = state.showAlts = false; state.notNow = true; render(); }));
   }
+  function roughCard(st){
+    return plainCard("empty quiet rough", { meta: "Rough day?", title: "Want a lighter plan?", why: silenceText(st, clock).replace(/ Want a lighter plan.*$/, ""),
+      action: h("div", { className: "now-actions now-row" },
+        h("button", { className: "btn quiet", type: "button", textContent: "Not today", onclick: () => { silenced(); render(); } }),
+        h("button", { className: "btn primary start", type: "button", onclick: lighterPlan }, h("span", { textContent: "Lighter plan" }))) });
+  }
+
   // A plan item that no longer fits (it's late) can be cut to what's left.
   function shorten(i, minutes){
     prop.items = prop.items.map((it, k) => (k === i ? { ...it, minutes } : it));
@@ -1337,10 +1333,14 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
       return;
     }
 
+    const ms = missNow();
+    if (ms?.kind === "silence") { day(...head, roughCard(ms), tip); return; }
+    const missed = ms?.kind === "miss" ? ms : null;
     if (card === r.pick && r.pick.batch && !state.chosen && !state.single) { day(...head, batchCard(r, r.pick.batch), tip); return; }
     const alts = r.ranked.length > 1 ? [r.pick, ...r.alternatives].filter((s) => s !== card).slice(0, 3) : [];
     // Start is the one loud thing on the tab; the other two stay quiet under it.
-    day(...head, missView(card), deck(taskCard(card, true,
+    day(...head, deck(taskCard(missed ? missWhy(card, missed) : card, true,
+      missed && !asking() && missRow(card.task),
       ...cardActions(card.task, alts, startButton("Start", `Start: ${card.task.title}`, () => begin(card.task)))), asking()),
       nextLine(card.task), ...altsFor(alts), tip);
     // One slide-in per step-aside: later snapshots must not replay it.
