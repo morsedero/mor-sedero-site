@@ -394,7 +394,7 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onProjects } = 
     };
     const unmark = () => { marked?.[0].classList.remove(marked[1]); marked = null; };
     const show = () => {
-      rowEl.style.transform = `translateY(${centre() - mid0}px)`;
+      rowEl.querySelector(".sc-ev").style.transform = `translateY(${centre() - mid0}px)`;
       const w = where();
       drop = outcome(w);
       unmark();
@@ -457,7 +457,7 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onProjects } = 
       if (!live) return;
       try { rowEl.releasePointerCapture(e.pointerId); } catch {}
       dragging = false; cancelAnimationFrame(raf);
-      rowEl.style.transform = ""; rowEl.classList.remove("sc-dragging");
+      rowEl.querySelector(".sc-ev").style.transform = ""; rowEl.classList.remove("sc-dragging");
       unmark(); timeEl.replaceChildren(...orig);
       const d = e.type === "pointerup" ? drop : null; drop = null;
       if (!d) { if (stale) { stale = false; render(); } return; }
