@@ -22,7 +22,7 @@ export async function rethink(text, { tasks, events, now = Date.now(), hours, se
       body: JSON.stringify({
         mode: "plan", text, today: localDate(now), weekday: new Date(now).toLocaleDateString("en", { weekday: "long" }),
         time: new Date(now).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hourCycle: "h23" }),
-        ...(guest ? { guest: true } : {}), freeMinutes, current: current.map((i) => i.taskId),
+        ...(guest ? { guest: true } : {}), freeMinutes, current: current.filter((i) => i.taskId).map((i) => i.taskId),
         tasks: open.map((t) => ({ id: t.id, title: t.title, project: t.project, minutes: leftOf(t), type: t.type, due: t.due || undefined, dateKind: t.dateKind || undefined })),
       }),
     });

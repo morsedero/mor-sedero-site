@@ -16,7 +16,7 @@ import { overruled, eventKey } from "./reality.js";
 import * as deep from "./deep.js";
 import { addTask, watchTasks, watchRun, watchSkips, saveSkips, startRun, extendRun, endRun, startBatch, tickBatch, endBatch, skipNow, blockTask, restoreTask, finishTask, watchSettings, saveSettings, watchMoment, saveMoment, watchLearn, bumpLearn, saveRun, cancelRun, watchDayPlan, saveDayPlan, holdTask, releaseTask } from "./store.js";
 import { sortable } from "./ppdrag.js";
-import { proposeDay,timeline, nextPlanned, planProgress } from "./proposal.js";
+import { proposeDay, timeline, withBreaks, isBreak, nextPlanned, planProgress } from "./proposal.js";
 import { rethink } from "./rethink.js";
 import { placeNow, workBase } from "./context.js";
 import { watchWhere, setManual, whereAsk } from "./where.js";
@@ -916,11 +916,22 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
   const approvedPlan = () => (todaysPlan()?.status === "approved" ? dayPlan : null);
   function openProposal(){
     const saved = todaysPlan();
-    prop.items = saved?.items?.length && saved.status !== "dismissed"
-      ? saved.items.filter((it) => (tasks || []).some((t) => t.id === it.taskId && t.status === "ready"))
-      : proposeDay({ ...planCtx(), exclude: prop.exclude });
+    prop.items = withBreaks(saved?.items?.length && saved.status !== "dismissed"
+      ? stillOpen(saved.items)
+      : proposeDay({ ...planCtx(), exclude: prop.exclude }), planCtx());
     prop.open = true; prop.ask = false; prop.note = ""; handoff = null;
     render();
+  }
+  // A saved plan's open tasks, and its breaks (a break whose work before it
+  // is all finished was had, so it goes too).
+  function stillOpen(items){
+    const open = (it) => (tasks || []).some((t) => t.id === it.taskId && t.status === "ready");
+    let any = false, cut = false;
+    return items.filter((it) => {
+      if (isBreak(it)) return any || !cut;
+      if (open(it)) { any = true; return true; }
+      cut = true; return false;
+    });
   }
   const closeProposal = () => { prop.open = false; prop.ask = false; prop.note = ""; render(); };
   const savePlan = (status, items) => {
@@ -928,8 +939,8 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
     saveDayPlan(uid, { date: dayPlan.date, status, items }).catch(fail);
   };
   function approve(){
-    const n = prop.items.length;
-    savePlan("approved", prop.items.map(({ taskId, minutes }) => ({ taskId, minutes })));
+    const n = prop.items.filter((it) => !isBreak(it)).length;
+    savePlan("approved", prop.items.map(({ taskId, brk, minutes }) => (brk ? { brk, minutes } : { taskId, minutes })));
     prop.open = false; prop.ask = false; prop.note = ""; reset();
     render();
     flash(`Plan set: ${n} ${n === 1 ? "task" : "tasks"}. The card follows it.`);
@@ -943,7 +954,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
   function dropItem(i){
     const items = [...prop.items];
     const [gone] = items.splice(i, 1);
-    if (gone) prop.exclude = [...prop.exclude, gone.taskId];
+    if (gone?.taskId) prop.exclude = [...prop.exclude, gone.taskId];
     prop.items = items; render();
   }
   async function doRethink(text){
@@ -955,7 +966,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
       const r = String(text || "").trim()
         ? await rethink(text, { ...ctx, current: prop.items, exclude: prop.exclude, freeMinutes: free, guest })
         : { items: proposeDay({ ...ctx, exclude: prop.exclude }), note: "" };
-      prop.items = r.items;
+      prop.items = withBreaks(r.items, ctx);
       prop.note = r.note || (r.items.length ? "" : "Nothing fits what's left of today.");
       prop.text = ""; prop.ask = false;
     } catch (e) { fail(e); prop.note = "Couldn't rethink it. Try again."; }
@@ -987,20 +998,21 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
   // Drag a row to reorder the plan (ppdrag.js, same drag as the Schedule's).
   const dragRows = (ol) => { sortable(ol, {
     busy: (on) => { ppDragging = on; if (!on && ppStale) { ppStale = false; render(); } },
-    onMove: (from, to) => {
-      const items = [...prop.items], [it] = items.splice(from, 1);
-      items.splice(to, 0, it); prop.items = items; render();
+    onMove: (el, before) => { // each row's _i: its index in prop.items
+      const it = prop.items[el._i], at = before ? prop.items[before._i] : null;
+      const items = prop.items.filter((x) => x !== it);
+      items.splice(at ? items.indexOf(at) : items.length, 0, it);
+      prop.items = items; render();
     } }); return ol; };
   function proposalCard(){
     const { rows, over, breaks } = timeline(prop.items, planCtx());
     const approved = !!approvedPlan();
     const total = rows.reduce((t, r) => t + r.minutes, 0);
     const last = rows[rows.length - 1];
-    const pos = new Map(prop.items.map((it, i) => [it.taskId, i]));
     const row = (r, isOver) => {
-      const i = pos.get(r.taskId), t = r.task;
+      const i = r.i, t = r.task;
       const ctl = (text, label, disabled, onclick) => h("button", { type: "button", className: "pp-ctl", textContent: text, title: label, ariaLabel: `${label}: ${t.title}`, disabled, onclick });
-      return h("li", { className: "pp-row pp-drag" + areaClass(t) + (isOver ? " over" : "") },
+      return h("li", { className: "pp-row pp-drag" + areaClass(t) + (isOver ? " over" : ""), _i: i },
         isOver ? h("span", { className: "pp-time", textContent: "No room" })
           : h("span", { className: "pp-time", ariaLabel: `${clock(r.start)} to ${clock(r.end)}` }, clock(r.start), h("small", { textContent: clock(r.end) })),
         h("button", { type: "button", className: "pp-task", ariaLabel: `Edit ${t.title}`, onclick: () => onOpen?.(t) },
@@ -1011,10 +1023,16 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
         isOver && r.room > 0 && h("button", { type: "button", className: "pp-fit", ariaLabel: `Shorten ${t.title} to ${dur(r.room)}`, onclick: () => shorten(i, r.room) },
           `Shorten to ${dur(r.room)}`));
     };
-    const breakRow = (b) => h("li", { className: "pp-row pp-break" },
-      h("span", { className: "pp-time", ariaLabel: `${clock(b.start)} to ${clock(b.end)}` }, clock(b.start), h("small", { textContent: clock(b.end) })),
-      h("span", { className: "pp-task" }, h("span", { className: "pp-title", textContent: b.type === "lunch" ? "Lunch" : "Break" }),
-        h("span", { className: "pp-meta", textContent: dur(b.minutes) })));
+    // A break is the plan's own item: it drags and comes off like a task.
+    const breakRow = (b) => {
+      const name = b.type === "lunch" ? "Lunch" : "Break", own = b.i != null;
+      return h("li", { className: "pp-row pp-break" + (own ? " pp-drag" : ""), _i: b.i },
+        h("span", { className: "pp-time", ariaLabel: `${clock(b.start)} to ${clock(b.end)}` }, clock(b.start), h("small", { textContent: clock(b.end) })),
+        h("span", { className: "pp-task" }, h("span", { className: "pp-title", textContent: name }),
+          h("span", { className: "pp-meta", textContent: dur(b.minutes) })),
+        own && h("span", { className: "pp-ctls" },
+          h("button", { type: "button", className: "pp-ctl", textContent: "✕", title: `Take the ${name.toLowerCase()} off`, ariaLabel: `Take the ${name.toLowerCase()} off`, onclick: () => dropItem(b.i) })));
+    };
     const plural = (n) => (n === 1 ? ["One doesn't", "it"] : [`${n} don't`, "them"]);
     return h("section", { className: "now-card main hero proposal", ariaLabel: approved ? "Today's plan" : "Proposed schedule" },
       h("div", { className: "hero-top" },
@@ -1035,7 +1053,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
       prop.note && h("p", { className: "pp-note", role: "status", textContent: prop.note }),
       prop.ask && rethinkBox(),
       h("div", { className: "pp-actions" },
-        h("button", { className: "btn primary start", type: "button", disabled: !prop.items.length || prop.busy, onclick: approve },
+        h("button", { className: "btn primary start", type: "button", disabled: !prop.items.some((it) => !isBreak(it)) || prop.busy, onclick: approve },
           icon("check"), h("span", { textContent: approved ? "Save plan" : "Approve" })),
         h("button", { className: "btn line", type: "button", ariaExpanded: String(prop.ask), disabled: prop.busy,
           textContent: prop.busy ? "Thinking…" : prop.ask ? "Cancel" : "Rethink", onclick: () => { prop.ask = !prop.ask; render(); } }),
@@ -1145,7 +1163,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
     if (!prop.open && planKnown && cal.status !== "loading" && prop.auto !== localDate() && !todaysPlan()) {
       prop.auto = localDate();
       const items = proposeDay({ ...planCtx() });
-      if (items.length >= 2) { prop.items = items; prop.exclude = []; prop.open = true; }
+      if (items.length >= 2) { prop.items = withBreaks(items, planCtx()); prop.exclude = []; prop.open = true; }
     }
     if (prop.open) { showing(null); day(...head, proposalCard(), doneCard(), toast && toastView()); return; }
 

@@ -105,6 +105,25 @@ export function breakDue({ worked, sinceLong, at, lunchDone, need = 0 }){
   return null;
 }
 
+// A break in the plan is an item of its own, { brk: "short" | "long" |
+// "lunch", minutes } (Mor, 2026-10-08: so a drag can put a task anywhere,
+// breaks included). A plan with none yet gets them from the rules here
+// (breakDue) once, where they'd fall; after that they're the user's and
+// move only when dragged.
+export const isBreak = (it) => !!it?.brk;
+export function withBreaks(items = [], ctx = {}){
+  if (items.some(isBreak)) return items;
+  const { rows, breaks } = timeline(items, ctx);
+  const out = [];
+  items.forEach((it, i) => {
+    const r = rows.find((q) => q.i === i), b = r && breaks.find((q) => q.end === r.start);
+    if (b) out.push({ brk: b.type, minutes: b.minutes });
+    out.push(it);
+  });
+  return out;
+}
+
+// Each row and break carries i, its index in items.
 export function timeline(items = [], { tasks = [], events = [], now = Date.now(), hours = W.DAY_HOURS, run = null } = {}){
   const { evs, gaps } = freeGaps({ tasks, events, now, hours, run });
   const byId = new Map(tasks.map((t) => [t.id, t]));
@@ -113,9 +132,28 @@ export function timeline(items = [], { tasks = [], events = [], now = Date.now()
   let gi = 0, cursor = Math.ceil((gaps[0]?.start ?? now) / (5 * MIN)) * 5 * MIN;
   // Work since the last break, and since the last long one (lunch counts).
   let worked = 0, sinceLong = 0, lunchDone = false, lastEnd = null;
-  for (const it of items) {
+  // Breaks are the plan's own items: none are added here.
+  const fixed = items.some(isBreak);
+  let afterDone = false; // the last item looked at was finished work
+  for (const [i, it] of items.entries()) {
+    if (isBreak(it)) {
+      // A break right after finished work, with nothing laid since, was had.
+      if (afterDone && !rows.length) continue;
+      const len = Math.max(5, it.minutes || 10) * MIN;
+      for (let k = gi; k < gaps.length; k++) {
+        const from = Math.max(cursor, gaps[k].start);
+        if (gaps[k].end - from < len) continue;
+        breaks.push({ kind: "break", type: it.brk, minutes: len / MIN, start: from, end: from + len, i });
+        worked = 0; if (it.brk !== "short") sinceLong = 0;
+        if (it.brk === "lunch") lunchDone = true;
+        lastEnd = from + len; gi = k; cursor = from + len;
+        break;
+      }
+      continue;
+    }
     const task = byId.get(it.taskId);
-    if (!task || task.status === "done" || task.status === "dropped") continue;
+    if (!task || task.status === "done" || task.status === "dropped") { afterDone = !!task; continue; }
+    afterDone = false;
     const need = Math.max(5, it.minutes || leftOf(task)) * MIN;
     let placed = false;
     for (let k = gi; k < gaps.length; k++) {
@@ -124,15 +162,15 @@ export function timeline(items = [], { tasks = [], events = [], now = Date.now()
       // meetings just before it.
       const cont = lastEnd != null && from - lastEnd < W.BREAKS.reset * MIN;
       const w = cont ? worked : runBefore(evs, from), sl = cont ? sinceLong : w;
-      const brk = breakDue({ worked: w, sinceLong: sl, at: from, lunchDone, need: need / MIN });
+      const brk = !fixed && breakDue({ worked: w, sinceLong: sl, at: from, lunchDone, need: need / MIN });
       const gap = (brk ? brk.minutes * MIN : 0) + need;
       if (gaps[k].end - from >= gap) {
         if (brk) {
-          breaks.push({ kind: "break", type: brk.type, minutes: brk.minutes, start: from, end: from + brk.minutes * MIN });
+          breaks.push({ kind: "break", type: brk.type, minutes: brk.minutes, start: from, end: from + brk.minutes * MIN, i: null });
           if (brk.type === "lunch") lunchDone = true;
         }
         const s = from + (brk ? brk.minutes * MIN : 0);
-        rows.push({ taskId: it.taskId, task, minutes: need / MIN, start: s, end: s + need });
+        rows.push({ taskId: it.taskId, task, minutes: need / MIN, start: s, end: s + need, i });
         worked = (brk ? 0 : w) + need / MIN;
         sinceLong = (brk && brk.type !== "short" ? 0 : sl) + need / MIN;
         lastEnd = s + need;
@@ -144,7 +182,7 @@ export function timeline(items = [], { tasks = [], events = [], now = Date.now()
       let room = 0;
       for (let k = gi; k < gaps.length; k++) room = Math.max(room, gaps[k].end - Math.max(cursor, gaps[k].start));
       room = Math.floor(room / (5 * MIN)) * 5;
-      over.push({ taskId: it.taskId, task, minutes: need / MIN, room: room >= WORTH ? room : 0 });
+      over.push({ taskId: it.taskId, task, minutes: need / MIN, room: room >= WORTH ? room : 0, i });
     }
   }
   return { rows, over, breaks };

@@ -153,13 +153,14 @@
     <div class="menu-sec">
       <h3 class="menu-h">Notifications</h3>
       <label class="menu-check"><input id="pushBrief" type="checkbox"> On this device</label>
-      <div id="pushKinds" class="menu-kinds" hidden>
+      <details id="pushKinds" class="menu-kinds" hidden>
+        <summary>Choose what to send</summary>
         <label class="menu-check"><input data-kind="brief" type="checkbox" checked> Morning brief</label>
         <label class="menu-check"><input data-kind="wrap" type="checkbox" checked> End of day</label>
         <label class="menu-check"><input data-kind="gap" type="checkbox" checked> Free time</label>
         <label class="menu-check"><input data-kind="booked" type="checkbox" checked> Task starts</label>
         <label class="menu-check"><input data-kind="people" type="checkbox" checked> Before meetings</label>
-      </div>
+      </details>
       <p id="pushNote" class="menu-note" hidden></p>
       <button id="pushTest" class="menu-link" type="button" hidden>Send the brief now</button>
     </div>
