@@ -935,13 +935,6 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
     flash(`Plan set: ${n} ${n === 1 ? "task" : "tasks"}. The card follows it.`);
   }
   function dismiss(){ savePlan("dismissed", []); closeProposal(); }
-  function move(i, by){
-    const j = i + by;
-    if (j < 0 || j >= prop.items.length) return;
-    const items = [...prop.items];
-    [items[i], items[j]] = [items[j], items[i]];
-    prop.items = items; render();
-  }
   // A plan item that no longer fits (it's late) can be cut to what's left.
   function shorten(i, minutes){
     prop.items = prop.items.map((it, k) => (k === i ? { ...it, minutes } : it));
@@ -1014,8 +1007,6 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
           h("span", { className: "pp-title", dir: "auto", textContent: t.title }),
           h("span", { className: "pp-meta" }, ...pieces(projectShown(t) ? t.project : "", dur(r.minutes)))),
         h("span", { className: "pp-ctls" },
-          ctl("↑", "Move earlier", i === 0, () => move(i, -1)),
-          ctl("↓", "Move later", i === prop.items.length - 1, () => move(i, 1)),
           ctl("✕", "Take off today's plan", false, () => dropItem(i))),
         isOver && r.room > 0 && h("button", { type: "button", className: "pp-fit", ariaLabel: `Shorten ${t.title} to ${dur(r.room)}`, onclick: () => shorten(i, r.room) },
           `Shorten to ${dur(r.room)}`));
@@ -1029,7 +1020,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
       h("div", { className: "hero-top" },
         h("span", { className: "hero-area", textContent: approved ? "Today's plan" : "Proposed for today" }),
         rows.length > 0 && h("span", { className: "hero-side", textContent: `${dur(total)} · until ${clock(last.end)}` })),
-      h("p", { className: "now-why pp-why", textContent: approved ? "Reorder, drop or rethink, then save." : "How I'd use the rest of today. Approve it, or change it first." }),
+      h("p", { className: "now-why pp-why", textContent: approved ? "Drag to reorder, drop or rethink, then save." : "How I'd use the rest of today. Approve it, or change it first." }),
       rows.length || over.length
         ? dragRows(h("ol", { className: "pp-list" },
           ...[...rows.map((r) => ({ r, s: r.start })), ...breaks.map((b) => ({ b, s: b.start }))]
