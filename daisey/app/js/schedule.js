@@ -112,6 +112,7 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onProjects, onW
   let dayPlan = null; // today's saved plan doc; approved, it sits in today's gaps
   const view = mode === "week" ? "week" : "day";
   const HOUR_PX = mode === "week" ? 60 : 44; // week grid: one hour's height
+  const ORBIT_MS = 9000; // one lap of the now row's light (app.css sc-orbit)
   let focus = null; // "YYYY-MM-DD" stepped to; null = today
   // Days outside the week calendar.js fetches (today + 7) come from
   // fetchRange, one stretch at a time, kept until the main calendar changes.
@@ -368,7 +369,10 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onProjects, onW
     if (x.kind === "break") return x.el = h("div", { className: "sc-row sc-gap sc-break" + (on ? " sc-on" : past ? " sc-past" : ""), ariaLabel: `${time} break` },
       h("span", { className: "sc-free" }, `${durText((x.end - x.start) / 60000)} ${x.type === "lunch" ? "lunch" : "break"}`));
     // The row on right now wears its colour edge to edge (Mor, 2026-10-08).
-    if (x.kind === "plan") { const pe = h("div", { className: "sc-row" + (on ? " sc-on" + areaClass(x.task) : past ? " sc-past" : "") },
+    // Its orbiting light is phased off the wall clock, so a re-render picks it
+    // up where it was instead of jumping back to the start (ORBIT_MS = app.css sc-orbit).
+    const orbit = on ? `--orbit:-${Date.now() % ORBIT_MS}ms;` : "";
+    if (x.kind === "plan") { const pe = h("div", { className: "sc-row" + (on ? " sc-on" + areaClass(x.task) : past ? " sc-past" : ""), style: orbit },
       h("span", { className: "sc-time strong" }, time, on && h("span", { className: "sc-nowtag", textContent: "Now" })),
       h("button", { type: "button", className: "sc-ev sc-plan" + areaClass(x.task), ariaLabel: `Planned: ${x.task.title}, ${time}`, onclick: () => onOpen?.(x.task) },
         h("span", { className: "sc-dot" }), bdi(x.task.title)));
@@ -376,7 +380,7 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onProjects, onW
       return pe; }
     // A finished task is logged as a "✓ title" event (calendar.js logDone).
     const done = /^✓\s*/u.test(x.ev.title), title = done ? x.ev.title.replace(/^✓\s*/u, "") : x.ev.title;
-    const rowEl = h("div", { className: "sc-row" + (on ? " sc-on" + tone(x.ev) : past ? " sc-past" : ""), style: on && x.ev.color ? `--ev:${x.ev.color}` : "" }, h("span", { className: "sc-time strong" }, time, on && h("span", { className: "sc-nowtag", textContent: "Now" })),
+    const rowEl = h("div", { className: "sc-row" + (on ? " sc-on" + tone(x.ev) : past ? " sc-past" : ""), style: orbit + (on && x.ev.color ? `--ev:${x.ev.color}` : "") }, h("span", { className: "sc-time strong" }, time, on && h("span", { className: "sc-nowtag", textContent: "Now" })),
       h("button", { type: "button", className: "sc-ev" + (done ? " sc-done" : "") + tone(x.ev), style: x.ev.color ? `--ev:${x.ev.color}` : "",
         ariaLabel: `${done ? "Finished task: " : ""}${on ? "Now: " : ""}${title}, ${time}`, onclick: () => onEvent?.(x.ev) },
         done ? h("span", { className: "sc-dot" }) : h("span", { className: "sc-evi" }, icon("calendar")), bdi(title)));

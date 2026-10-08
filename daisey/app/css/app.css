@@ -1185,11 +1185,11 @@ body.focus #side { display: none; }
 @property --sc-ang { syntax: "<angle>"; inherits: false; initial-value: 0deg; }
 .sc-row.sc-on:not(.sc-gap)::before {
   content: ""; position: absolute; inset: -2px; padding: 2.5px; border-radius: 11px; pointer-events: none;
-  background: conic-gradient(from var(--sc-ang), transparent 0deg, color-mix(in srgb, var(--rowline) 70%, transparent) 50deg,
-    color-mix(in srgb, var(--rowline) 40%, #fff) 90deg, color-mix(in srgb, var(--rowline) 70%, transparent) 130deg, transparent 180deg);
+  background: conic-gradient(from var(--sc-ang), transparent 66deg, color-mix(in srgb, var(--rowline) 70%, transparent) 80deg,
+    color-mix(in srgb, var(--rowline) 40%, #fff) 90deg, color-mix(in srgb, var(--rowline) 70%, transparent) 100deg, transparent 114deg);
   -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor;
   mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
-  animation: sc-orbit 9s linear infinite; }
+  animation: sc-orbit 9s linear var(--orbit, 0s) infinite; } /* 9s = schedule.js ORBIT_MS */
 @keyframes sc-orbit { to { --sc-ang: 360deg; } }
 @media (prefers-reduced-motion: reduce) { .sc-row.sc-on:not(.sc-gap)::before { animation: none; } }
 .sc-row.sc-on .sc-ev, .sc-row.sc-on .sc-ev.sc-plan { background: none; border-color: transparent; box-shadow: none; color: var(--rowink); }
