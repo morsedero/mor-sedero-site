@@ -63,7 +63,8 @@ const ACTION_FIELDS = {
   time: str("event only: the start time, HH:MM, 24-hour."),
   query: str("query only: what they ask about.", { enum: ["next", "due", "waiting", "plan"] }),
   range: str("query due only: today or this week.", { enum: ["today", "week"] }),
-  part: str("query plan only: which part of today, or the whole day.", { enum: ["morning", "afternoon", "evening", "day"] }),
+  part: str("query plan only: which part of the day, or the whole day.", { enum: ["morning", "afternoon", "evening", "day"] }),
+  planDate: str("query plan only: YYYY-MM-DD of the day they ask about (\"tomorrow\", \"מחר\", \"Thursday\"). Empty for today."),
 };
 const SCHEMA = {
   type: "OBJECT",
@@ -92,7 +93,7 @@ Kinds:
 - project: the user wants a new project (put its name in project). If they also name tasks for it, add those too, each with that project.
 - done: the user says they finished an existing task ("paid the arnona", "sent the stems").
 - event: something at a fixed time ("dentist Thursday at 15:00", "meeting with Dana tomorrow 10:30"): a calendar event, not a task. Title, eventDate, time; minutes only if said.
-- query: a question about their tasks, changing nothing: "what's next?" → next; "what's due today/this week?" → due with range; "what am I waiting on?" → waiting; "plan my afternoon / my day" → plan with part (morning, afternoon, evening, or day).
+- query: a question about their tasks, changing nothing: "what's next?" → next; "what's due today/this week?" → due with range; "what am I waiting on?" → waiting; "plan my afternoon / my day", "what's my schedule tomorrow?" → plan with part (morning, afternoon, evening, or day) and planDate when it isn't today.
 
 Rules:
 - Each value goes only in its own field. Dates go in dueDate or startDate as YYYY-MM-DD, never in waitingFor or title.
@@ -101,6 +102,7 @@ Rules:
 - If more than one existing task could be the one they mean, return NO action for it; ask a question and give the candidate titles as choices.
 - Fill only what the user said. Never invent minutes, dates or projects.
 - The reply is in the language of the user's message, short and plain, and says what you suggest.
+- Never put a plain " inside a text value. Hebrew abbreviations take ״ or ׳ (לו״ז, ת״א, ג׳ונתן).
 
 Examples (today is Monday 2026-10-05; tasks: t1 "Mix review for Reprise", t4 "Mix review for Lunitales", t2 "ביטוח לחיות", t3 "Pre-attack cue"):
 Message: lesson prep for Thursday, invoices, call Uri 15 min
@@ -128,7 +130,9 @@ Message: רופא שיניים ביום חמישי ב-15:00
 Message: what's due this week?
 {"reply":"Here's what's due this week:","actions":[{"kind":"query","query":"due","range":"week"}]}
 Message: plan my afternoon
-{"reply":"Here's the afternoon:","actions":[{"kind":"query","query":"plan","part":"afternoon"}]}`;
+{"reply":"Here's the afternoon:","actions":[{"kind":"query","query":"plan","part":"afternoon"}]}
+Message: מה הלו״ז שלי מחר?
+{"reply":"הנה הלו״ז למחר:","actions":[{"kind":"query","query":"plan","part":"day","planDate":"2026-10-06"}]}`;
 
 // mode "plan" (2026-10-07): Rethink on the day's proposed schedule. The app
 // sends the open tasks, the free minutes left today, the current order and
@@ -192,7 +196,8 @@ function tidy(out, ids){
     if (kind === "query") {
       if (!["next", "due", "waiting", "plan"].includes(a.query)) return [];
       return [{ kind, query: a.query, ...(a.query === "due" ? { range: a.range === "week" ? "week" : "today" } : {}),
-        ...(a.query === "plan" ? { part: ["morning", "afternoon", "evening"].includes(a.part) ? a.part : "day" } : {}) }];
+        ...(a.query === "plan" ? { part: ["morning", "afternoon", "evening"].includes(a.part) ? a.part : "day",
+          ...(isDay(a.planDate) ? { date: a.planDate } : {}) } : {}) }];
     }
     if (kind === "moment") {
       if (["home", "out", "anywhere"].includes(a.place)) x.place = a.place;

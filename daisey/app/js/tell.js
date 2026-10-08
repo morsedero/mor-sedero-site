@@ -18,7 +18,7 @@ import { localDate, LABELS, dayAfter } from "./model.js";
 import { createEvent, watchCalendar } from "./calendar.js";
 import { planDay } from "./plan.js";
 import { planView } from "./plan-view.js";
-import { dayHours } from "./day.js";
+import { dayHours, dayStartAt } from "./day.js";
 import { watchSettings, watchRun, saveSettings } from "./store.js";
 import { rank } from "./engine.js";
 import { workBase } from "./context.js";
@@ -154,8 +154,14 @@ export function mountTell(form, input, mic, uid, { openAdd, openTask, guest = fa
   // window), what's due today / this week, what's pending on whom.
   function answer(q){
     if (q.query === "plan") {
-      const plan = planDay({ tasks, events: cal.status === "ok" ? cal.events : [], hours: dayHours(settings), settings, run });
-      const v = planView(plan, { only: q.part === "day" ? null : q.part, onOpen: (t) => { close(); openTask?.(t); } });
+      // Another day (2026-10-08, "מה הלו״ז שלי מחר" got today's leftovers):
+      // plan from that day's start. The calendar holds the week ahead.
+      const later = q.date && q.date > localDate() && q.date <= dayAfter(7);
+      const hours = dayHours(later ? { ...settings, dayEndToday: null } : settings);
+      const plan = planDay({ tasks, events: cal.status === "ok" ? cal.events : [], hours, settings,
+        ...(later ? { now: dayStartAt(new Date(`${q.date}T12:00`).getTime(), hours), run: null } : { run }) });
+      const v = planView(plan, { only: q.part === "day" ? null : q.part, title: later ? `Plan for ${day(q.date)}` : null,
+        onOpen: (t) => { close(); openTask?.(t); } });
       return h("div", { className: "tell-answer" }, v || h("p", { className: "tell-reply", textContent: "No free time left there." }));
     }
     const open = tasks.filter((t) => t.status === "ready" || t.status === "waiting");
