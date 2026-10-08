@@ -167,7 +167,9 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onProjects, onW
     flip(dx < 0 ? -1 : 1, () => stepBy((dx < 0) !== rtl ? 1 : -1));
   });
   el.addEventListener("pointercancel", () => { if (swipe?.on) slide(0, 180); swipe = null; });
-  el.addEventListener("lostpointercapture", () => { if (swipe?.on) { slide(0, 180); swipe = null; } }); // capture dropped without an up
+  // Capture dropped without an up. Only el's own: a finger's touched row
+  // loses its implicit capture the moment el takes it, and that bubbles here.
+  el.addEventListener("lostpointercapture", (e) => { if (e.target === el && swipe?.on) { slide(0, 180); swipe = null; } });
   let sawSwipe = false; // the lift after a drag is not a tap
   el.addEventListener("click", (e) => { if (sawSwipe) { e.stopPropagation(); e.preventDefault(); } }, true);
 
