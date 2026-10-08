@@ -1524,3 +1524,8 @@ body.focus .shell { block-size: auto; min-block-size: 100dvh; overflow: visible;
 .sc-weekbtn svg { inline-size: 16px; block-size: 16px; }
 @media (max-width: 479px) { .sc-weekbtn span { display: none; } .sc-weekbtn { inline-size: 32px; padding: 0; justify-content: center; } }
 .screen { overflow-x: clip; }
+
+/* The plan lives in the panel (Mor, 2026-10-08): the panel is the one brick, so
+   the plan/done cards inside drop their own border, fill and padding. */
+#planPage .now-card { background: none; border: 0; box-shadow: none; border-radius: 0; padding: 0; }
+#planPage .now-card + .now-card { margin-block-start: 16px; }
