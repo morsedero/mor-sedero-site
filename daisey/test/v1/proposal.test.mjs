@@ -89,6 +89,8 @@ test("breaks: lunch 45 min inside 12-14, once; a 15 min idle gap resets the coun
   const r = timeline([{ taskId: "a", minutes: 30 }, { taskId: "b", minutes: 30 }], { tasks, events: [], now: at(12, 5) });
   assert.deepEqual(r.breaks.map((b) => b.type), ["lunch"]);
   assert.equal(r.breaks[0].minutes, 45);
+  assert.equal(r.rows[0].start, at(12, 5)); // not lunch first thing at noon
+  assert.equal(r.breaks[0].start, r.rows[0].end);
   const idle = timeline([{ taskId: "a", minutes: 60 }, { taskId: "b", minutes: 60 }], { tasks, events: [ev("X", [10], [10, 20])], now: at(9) });
   assert.equal(idle.breaks.length, 0);
 });

@@ -94,9 +94,12 @@ const clockMin = (ms) => { const d = new Date(ms); return d.getHours() * 60 + d.
 
 // The break due before the next item, or null. worked: minutes since the last
 // break of any kind; sinceLong: since the last long one or lunch.
-export function breakDue({ worked, sinceLong, at, lunchDone }){
+export function breakDue({ worked, sinceLong, at, lunchDone, need = 0 }){
   const B = W.BREAKS, m = clockMin(at);
-  if (!lunchDone && m >= B.lunch.from && m < B.lunch.to) return { type: "lunch", minutes: B.lunch.minutes };
+  // Lunch comes once something has been done (never first thing at noon), or
+  // when the next item would carry past the window and lunch would be missed.
+  const late = m + need >= B.lunch.to;
+  if (!lunchDone && m >= B.lunch.from && m < B.lunch.to && (worked >= B.lunchAfter || late)) return { type: "lunch", minutes: B.lunch.minutes };
   if (sinceLong >= B.longEvery) return { type: "long", minutes: B.long };
   if (worked >= B.after) return { type: "short", minutes: B.short };
   return null;
@@ -121,7 +124,7 @@ export function timeline(items = [], { tasks = [], events = [], now = Date.now()
       // meetings just before it.
       const cont = lastEnd != null && from - lastEnd < W.BREAKS.reset * MIN;
       const w = cont ? worked : runBefore(evs, from), sl = cont ? sinceLong : w;
-      const brk = breakDue({ worked: w, sinceLong: sl, at: from, lunchDone });
+      const brk = breakDue({ worked: w, sinceLong: sl, at: from, lunchDone, need: need / MIN });
       const gap = (brk ? brk.minutes * MIN : 0) + need;
       if (gaps[k].end - from >= gap) {
         if (brk) {
