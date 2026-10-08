@@ -133,12 +133,13 @@ export function mountGrowth(uid, { onChange } = {}){
   };
 }
 
-// The tiles, folded into one line (Mor, 2026-10-08).
+// The tiles, folded into one line of numbers (Mor, 2026-10-08).
 export function totalsLine(summary){
-  const bits = [summary.total ? `${summary.guess ? "~" : ""}${fmtMinutes(summary.total)} focused` : null,
-    `${summary.done} ${summary.done === 1 ? "task" : "tasks"} done`,
-    `${summary.days} ${summary.days === 1 ? "day" : "days"} showed up`].filter(Boolean);
-  return h("p", { className: "bl-totals" }, bits.join(" · "));
+  const n = (v, word) => h("span", { className: "bl-tot" }, h("strong", {}, v), " ", word);
+  return h("p", { className: "bl-totals" },
+    n(summary.total ? `${summary.guess ? "~" : ""}${fmtMinutes(summary.total)}` : "0", "focused"),
+    n(String(summary.done), "done"),
+    n(String(summary.days), summary.days === 1 ? "day" : "days"));
 }
 
 export function weekCard(strip){
@@ -149,17 +150,17 @@ export function weekCard(strip){
         dayDaisy(d.min, peak), h("span", {}, new Date(`${d.day}T12:00`).toLocaleDateString(undefined, { weekday: "narrow" }))))));
 }
 
+// Routines, minimal (Mor, 2026-10-08): one quiet line each in one card —
+// the project's colour dot, the title, the week's dots, a bee once met.
 // colors: project name -> its colour ("" when none).
 export function routinesSection(rows, tasks, colors){
   if (!rows.length) return null;
-  return h("section", { className: "bl-routines", ariaLabel: "Routines" },
+  return h("section", { className: "bl-card bl-routines", ariaLabel: "Routines" },
     h("h3", { className: "bl-h", textContent: "Routines" }),
-    ...rows.map((r) => h("div", { className: "bl-routine" + (r.met ? " met" : "") + (colors.get(r.project) ? ` pc-${colors.get(r.project)}` : "") },
-      h("div", { className: "bl-r-main" },
-        h("span", { className: "bl-r-proj" }, bdi(r.project)),
-        h("span", { className: "bl-r-title" }, bdi(r.title)),
-        h("span", { className: "bl-r-count" }, `${r.count} of ${r.per}`, r.met ? h("span", { className: "bl-bee", role: "img", ariaLabel: "met" }, " 🐝") : null)),
-      // One dot per session the week needs, filling up (the Now card's dots).
-      h("span", { className: "bl-dots" }, weekDots(tasks.find((t) => t.id === r.id))),
-      r.streak >= 2 ? h("div", { className: "bl-streak" }, `${r.streak} weeks in a row`) : null)));
+    ...rows.map((r) => h("div", { className: "bl-routine" + (r.met ? " met" : "") + (colors.get(r.project) ? ` pc-${colors.get(r.project)}` : ""),
+      title: `${r.project} · ${r.count} of ${r.per}${r.streak >= 2 ? ` · ${r.streak} weeks in a row` : ""}` },
+      h("span", { className: "bl-r-dot", ariaHidden: "true" }),
+      h("span", { className: "bl-r-title" }, bdi(r.title)),
+      h("span", { className: "bl-dots", ariaLabel: `${r.count} of ${r.per} this week` }, weekDots(tasks.find((t) => t.id === r.id))),
+      h("span", { className: "bl-bee", ariaHidden: "true" }, r.met ? "🐝" : ""))));
 }

@@ -217,18 +217,22 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
           h("span", { className: "pcard-foot" }, bar(p, "pbar"), flowerTime(f) && h("span", { className: "pcard-time", textContent: flowerTime(f) })))); };
     const tier = (t) => { const ins = ps.filter((p) => tierOf(p.name) === t);
       return h("div", { className: `pp-zone tier-${t}`, _tier: t },
-        h("div", { className: "pp-tier" }, h("span", { className: "pp-tier-name", textContent: TIER_TEXT[t][0] }), h("span", { className: "pp-tier-sub", textContent: TIER_TEXT[t][1] })),
+        // Each tier its own panel, with how many it holds (Mor, 2026-10-08: "make areas more clear").
+        h("div", { className: "pp-tier" }, h("span", { className: "pp-tier-name", textContent: TIER_TEXT[t][0] }), h("span", { className: "pp-tier-sub", textContent: TIER_TEXT[t][1] }),
+          h("span", { className: "pp-tier-n", textContent: t === "focus" ? `${ins.length}/${FOCUS_MAX}` : String(ins.length) })),
         h("span", { className: "pp-tier-empty", textContent: "Drag a project here" }), ...ins.map(card)); };
     const y = els.grid.scrollTop;
     els.grid.replaceChildren(...[
+      // Top, kept short (Mor, 2026-10-08): the period, the Inbox, + New, then
+      // the period's three numbers. Daisey's sentence went: too much text.
       h("div", { className: "pp-head" }, growth.pills(),
-        h("button", { type: "button", className: "pp-new", textContent: "+ New", onclick: () => askName() })),
-      h("div", { className: "pp-grow" }, h("p", { className: "bl-line" }, g.line), totalsLine(g.summary)),
+        h("span", { className: "pp-acts" },
+          inbox && h("button", { type: "button", className: "pp-inbox-chip", ariaLabel: `Inbox: ${plural(inbox.open.length, "task")} with no project`, onclick: () => openProject(INBOX) },
+            icon("inbox"), h("span", { textContent: String(inbox.open.length) })),
+          h("button", { type: "button", className: "pp-new", textContent: "+ New", onclick: () => askName() }))),
+      totalsLine(g.summary),
       ps.length ? dragProjects(h("div", { className: "pgrid tiers" }, ...TIERS.map(tier)))
         : !inbox && h("p", { className: "muted pp-empty", textContent: "No projects yet. Tell Daisey what's on your plate." }),
-      inbox ? h("button", { type: "button", className: "pp-inbox", onclick: () => openProject(INBOX) },
-        icon("inbox"), h("span", { className: "pp-inbox-t", textContent: "Inbox" }),
-        h("span", { className: "pp-inbox-n", textContent: `${inbox.open.length} · no project yet` })) : null,
       weekCard(g.strip),
       routinesSection(g.routines, tasks || [], new Map(all.map((p) => [p.name, p.color || ""])))].filter(Boolean));
     els.grid.scrollTop = y;
