@@ -329,7 +329,7 @@ const PHRASES = {
     : d.kind === "penalty" ? ["there's a penalty if late"]
     : d.kind === "someone" ? (person(s.task.title) ? [{ name: person(s.task.title) }, " is waiting on it"] : ["someone's waiting on it"])
     : null,
-  priority: (s, d) => d.rank === 1 ? [{ name: s.task.project }, " is your top project"] : [{ name: s.task.project }, ` is your #${d.rank} project`],
+  priority: (s, d) => d.rank === 1 ? [{ name: s.task.project }, " is your top project"] : [{ name: s.task.project }, " is high on your list"],
   office: (s, d) => [`offices close at ${d.close}`],
   progress: (s, d) => [d.pct >= 90 ? "almost done, finish it" : d.pct >= 45 && d.pct <= 55 ? "half done, finish it" : `${d.pct}% done, finish it`],
   area: (s, d) => [{ name: LABELS.area[d.area] || d.area }, d.done ? " is behind this week" : " hasn't moved this week"],

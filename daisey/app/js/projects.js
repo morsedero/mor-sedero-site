@@ -161,9 +161,14 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
     const ps = all.filter((p) => p !== inbox);
     // The order is the priority (Mor, 2026-10-08): the engine gives the top
     // project the most points (context.js, engine.js priority), and each card
-    // shows its place — a number, and a stripe that thins down the list.
+    // shows its place — an attention meter (signal bars, no number: a rank
+    // read wrong beside Hebrew names and beside the task count, Mor
+    // 2026-10-08) and a stripe that thins down the list.
     setProjectRanks(ps.map((p) => p.name));
-    const pri = (i) => (ps.length > 1 ? `--pri:${((ps.length - 1 - i) / (ps.length - 1)).toFixed(2)}` : "");
+    const share = (i) => (ps.length - 1 - i) / (ps.length - 1);
+    const pri = (i) => (ps.length > 1 ? `--pri:${share(i).toFixed(2)}` : "");
+    const meter = (i) => { const on = 1 + Math.round(share(i) * 3);
+      return h("span", { className: "pcard-meter", title: on > 2 ? "More of your time" : "Less of your time" }, ...[1, 2, 3, 4].map((k) => h("i", { className: k <= on ? "on" : "" }))); };
     const n = all.reduce((s, p) => s + p.open.length, 0);
     const y = els.grid.scrollTop;
     els.grid.replaceChildren(...[
@@ -172,7 +177,7 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
       ps.length > 1 && h("p", { className: "pp-hint", textContent: "Top first: Daisey gives the ones on top more of your time. Drag to reorder." }),
       ps.length ? dragProjects(h("div", { className: "pgrid" }, ...ps.map((p, i) => h("button", { type: "button", className: "pcard pp-drag" + colorClass(p),
         _name: p.name, style: pri(i), onclick: () => openProject(p.name) },
-        h("span", { className: "pcard-top", dir: dirOf(p.name) }, ps.length > 1 && h("span", { className: "pcard-rank", title: "Priority", textContent: String(i + 1) }),
+        h("span", { className: "pcard-top", dir: dirOf(p.name) }, ps.length > 1 && meter(i),
           h("span", { className: "pcard-name", dir: "auto", textContent: p.name }), h("span", { className: "pcard-n", textContent: String(p.open.length) })),
         h("span", { className: "pcard-status" }, ...statusLine(p)),
         bar(p, "pbar")))), ps)
