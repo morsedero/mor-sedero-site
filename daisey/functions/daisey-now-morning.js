@@ -20,7 +20,9 @@ exports.handler = async () => {
       if (!rec?.subs?.length) continue;
       const tz = rec.tz || "Asia/Jerusalem";
       const { minutes } = localParts(now, tz);
-      if (minutes < (rec.dayStart ?? 480) || minutes >= (rec.dayEnd ?? 1320)) continue; // night: no calendar read either
+      // Night: no calendar read either. Opens a meeting reminder's lead early (notify.js).
+      const early = rec.notify?.meeting === false ? 0 : (rec.meetingLead ?? 10);
+      if (minutes < (rec.dayStart ?? 480) - early || minutes >= (rec.dayEnd ?? 1320)) continue;
       process.env.TZ = tz; // the app's engine reads local time
       const { events, cal } = await readEvents(rec, now);
       const { out, patch } = decide(rec, events, now);

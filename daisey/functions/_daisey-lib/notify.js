@@ -12,6 +12,12 @@
 //   booked  a task's booked slot (day.js bookings) is starting
 //   people  up to 45 minutes before an event that names someone a Pending
 //           task waits on: "You're waiting on Yuval for: …" (app/js/nudge.js)
+//   meeting a calendar event starts in rec.meetingLead minutes (menu, default
+//           10; Mor, 2026-10-08: "didn't send a notification before a
+//           meeting"). Every timed busy event that isn't a task's own slot
+//           (booked covers those). Comes even while a task runs, and from
+//           the lead before the day starts, so a meeting at 08:00 still gets
+//           its reminder.
 //
 // Reality over plan (app/js/reality.js, 2026-10-06): the snapshot carries
 // the running task, and what you're actually doing beats the calendar.
@@ -48,8 +54,9 @@ const GAP_MIN = 30; // free minutes worth a nudge
 const BOOKED_EARLY = 3, BOOKED_LATE = 10; // minutes around a slot's start
 const PEOPLE_BEFORE = 45; // minutes before the meeting
 const PEOPLE_FOCUS = 15; // ...or this close, while a task is running
+const MEETING_LEAD = 10; // minutes before a meeting, unless the menu says otherwise
 const GAP_TTL = 30 * 60, BOOKED_TTL = 15 * 60; // seconds a suggestion stays worth delivering
-const DEFAULT_TYPES = { brief: true, wrap: true, gap: true, booked: true, people: true };
+const DEFAULT_TYPES = { brief: true, wrap: true, gap: true, booked: true, people: true, meeting: true };
 
 const isBusy = (e) => !e.allDay && e.busy !== false && e.start && e.end;
 const clockIn = (ms, tz) => { const m = localParts(ms, tz).minutes; return `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`; };
@@ -63,9 +70,25 @@ function decide(rec, events, now = Date.now()) {
   const { date, minutes } = localParts(now, tz);
   const start = rec.dayStart ?? 480, end = rec.dayEnd ?? 1320;
   const out = [], patch = {};
-  if (minutes < start || minutes >= end) return { out, patch };
   const tasks = rec.tasks || [];
   const evs = events || [];
+
+  const lead = rec.meetingLead ?? MEETING_LEAD;
+  if (types.meeting && minutes >= start - lead && minutes < end) {
+    const sent = new Set(rec.meetingSent || []);
+    const slots = new Set([...bookings(tasks, evs, now)].map(([, b]) => `${b.start}|${b.title}`));
+    for (const e of evs) {
+      if (!isBusy(e) || e.taskId) continue;
+      const s = Date.parse(e.start), k = evKey(e);
+      if (s <= now || s - now > lead * MIN || sent.has(k) || slots.has(`${s}|${e.title}`)) continue;
+      sent.add(k);
+      out.push({ type: "meeting", title: e.title, body: `Starts at ${clockIn(s, tz)}, in ${durText(Math.max(1, Math.round((s - now) / MIN)))}.`,
+        tag: `meeting-${k}`, url: "./", ttl: Math.max(60, Math.round((s - now) / 1000)) });
+    }
+    if (sent.size !== (rec.meetingSent || []).length) patch.meetingSent = [...sent].slice(-50);
+  }
+
+  if (minutes < start || minutes >= end) return { out, patch };
   const focus = runState(rec.run, tasks, now); // "running" | "paused" | null
   const over = overruled(evs, { tasks, run: rec.run, now });
   const busy = evs.filter((e) => isBusy(e) && !over.has(eventKey(e)));
@@ -139,8 +162,11 @@ function decide(rec, events, now = Date.now()) {
       const hits = waitingFor(e.title, tasks);
       if (!hits.length) continue;
       sent.add(k);
-      out.push({ type: "people", title: `${e.title} at ${clockIn(s, tz)}`,
-        body: `You're waiting on ${personOf(hits[0].waitingOn)} for: ${hits.map((t) => t.title).join(", ")}.`, tag: `people-${k}`, url: "./",
+      const body = `You're waiting on ${personOf(hits[0].waitingOn)} for: ${hits.map((t) => t.title).join(", ")}.`;
+      // Its meeting reminder goes this same run: one notification, not two.
+      const same = out.find((m) => m.tag === `meeting-${k}`);
+      if (same) { same.body += ` ${body}`; continue; }
+      out.push({ type: "people", title: `${e.title} at ${clockIn(s, tz)}`, body, tag: `people-${k}`, url: "./",
         ttl: Math.max(60, Math.round((s - now) / 1000)) });
     }
     if (sent.size !== (rec.peopleSent || []).length) patch.peopleSent = [...sent].slice(-50);

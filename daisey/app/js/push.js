@@ -1,8 +1,9 @@
 // Notifications on this device (2026-10-06, Mor: app notifications,
 // Android). The account menu's switch signs this device up for Web Push; the
 // server (daisey-now-morning, every 5 min, inside the day hours) sends the
-// morning brief, the evening wrap, a free gap after an event and a booked
-// slot starting — each kind can be switched off (settings.notify).
+// morning brief, the evening wrap, a free gap after an event, a booked
+// slot starting and a meeting coming up (settings.meetingLead minutes
+// ahead) — each kind can be switched off (settings.notify).
 //
 // The server can't read Firestore, so while notifications are on (settings
 // morningBrief, on any device) the app sends it a snapshot of the open tasks
@@ -81,7 +82,7 @@ export function syncSnapshot(tasks, settings, hours, run = null){
   const s = settings || {};
   const body = { action: "snapshot", tasks: list, tz: tz(), dayStart: hours.start, dayEnd: hours.end,
     settings: { needsLater: s.needsLater || null, calOffered: s.calOffered || [], somedayAsked: s.somedayAsked || null },
-    notify: s.notify || {},
+    notify: s.notify || {}, meetingLead: s.meetingLead ?? null,
     run: run ? Object.fromEntries(RUN_FIELDS.filter((k) => run[k] != null).map((k) => [k, run[k]])) : null };
   const mark = JSON.stringify(body);
   if (mark === lastSent) return;

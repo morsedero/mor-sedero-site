@@ -66,8 +66,10 @@ const cleanRun = (r) => {
   if (ids(r.batch)) { o.batch = ids(r.batch); o.done = ids(r.done) || []; }
   return o;
 };
-const KINDS = ["brief", "wrap", "gap", "booked", "people"];
+const KINDS = ["brief", "wrap", "gap", "booked", "people", "meeting"];
 const cleanNotify = (n) => Object.fromEntries(KINDS.map((k) => [k, n?.[k] !== false]));
+// Minutes before a meeting its reminder goes (the menu offers 5–30).
+const cleanLead = (v) => (Number.isInteger(v) && v >= 5 && v <= 60 ? v : 10);
 const where = (b) => ({
   ...(validTz(b.tz) ? { tz: b.tz } : {}),
   ...(Number.isInteger(b.dayStart) ? { dayStart: mins(b.dayStart, 480) } : {}),
@@ -95,7 +97,7 @@ exports.handler = async (event) => {
     if (!Array.isArray(b.tasks)) return fail(400, "bad_input");
     const tasks = b.tasks.slice(0, MAX_TASKS).map(cleanTask);
     await update(uid, () => ({ sub, tasks, tasksAt: Date.now(), settings: cleanSettings(b.settings), notify: cleanNotify(b.notify),
-      run: cleanRun(b.run), ...where(b) }));
+      meetingLead: cleanLead(b.meetingLead), run: cleanRun(b.run), ...where(b) }));
     return reply(200, { ok: true });
   }
   if (b.action === "unsubscribe") {

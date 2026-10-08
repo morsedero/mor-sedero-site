@@ -162,7 +162,12 @@
         <label class="menu-check"><input data-kind="wrap" type="checkbox" checked> End of day</label>
         <label class="menu-check"><input data-kind="gap" type="checkbox" checked> Free time</label>
         <label class="menu-check"><input data-kind="booked" type="checkbox" checked> Task starts</label>
-        <label class="menu-check"><input data-kind="people" type="checkbox" checked> Before meetings</label>
+        <label class="menu-check"><input data-kind="meeting" type="checkbox" checked> Meetings</label>
+        <label class="menu-check"><select id="meetingLead" class="menu-select">
+          <option value="5">5 min before</option><option value="10" selected>10 min before</option>
+          <option value="15">15 min before</option><option value="30">30 min before</option>
+        </select> Meeting reminder</label>
+        <label class="menu-check"><input data-kind="people" type="checkbox" checked> Waiting on someone</label>
       </details>
       <p id="pushNote" class="menu-note" hidden></p>
       <button id="pushTest" class="menu-link" type="button" hidden>Send the brief now</button>

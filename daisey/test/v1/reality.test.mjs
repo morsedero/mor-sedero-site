@@ -75,7 +75,12 @@ test("decide: a people alert comes only close to the meeting while you're focuse
   const r = rec({ sentOn: "2026-10-06", run, tasks: [t({ id: "a", size: 120 }), t({ id: "c", title: "Pre-attack cue", status: "waiting", waitingOn: "Yuval" })] });
   const ev = { id: "m1", title: "Coffee with Yuval", start: il(14), end: il(15), busy: true };
   assert.equal(N.decide(r, [ev], at(13, 30)).out.length, 0);
-  assert.deepEqual(types(N.decide(r, [ev], at(13, 50)).out), ["people"]);
+  assert.deepEqual(types(N.decide(r, [ev], at(13, 47)).out), ["people"]);
+  // Inside the meeting reminder's lead too: one notification carrying both.
+  const both = N.decide(r, [ev], at(13, 50));
+  assert.deepEqual(types(both.out), ["meeting"]);
+  assert.equal(both.out[0].body, "Starts at 14:00, in 10 min. You're waiting on Yuval for: Pre-attack cue.");
+  assert.ok(both.patch.peopleSent.length && both.patch.meetingSent.length);
 });
 
 test("decide: an event you worked through holds nothing back and isn't announced as over", () => {

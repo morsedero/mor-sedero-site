@@ -128,6 +128,31 @@ test("decide: booked slot starting, once; wrap in the day's last hour", () => {
   assert.equal(N.decide({ ...day, wrapOn: "2026-10-06" }, [], at(21, 10)).out.length, 0);
 });
 
+test("decide: meeting reminder at its lead, once, before the day too; never a task's own slot", () => {
+  const r = rec({ sentOn: "2026-10-06" });
+  const ev = { id: "m1", title: "Producer call", start: il(14), end: il(15), busy: true };
+  assert.equal(N.decide(r, [ev], at(13, 45)).out.length, 0); // 15 min early, lead is 10
+  const d = N.decide(r, [ev], at(13, 52));
+  assert.deepEqual(types(d.out), ["meeting"]);
+  assert.equal(d.out[0].title, "Producer call");
+  assert.equal(d.out[0].body, "Starts at 14:00, in 8 min.");
+  assert.equal(N.decide({ ...r, meetingSent: d.patch.meetingSent }, [ev], at(13, 57)).out.length, 0); // not twice
+  assert.deepEqual(types(N.decide({ ...r, meetingLead: 30 }, [ev], at(13, 35)).out), ["meeting"]); // menu lead
+  assert.equal(N.decide({ ...r, notify: { meeting: false } }, [ev], at(13, 52)).out.length, 0); // switched off
+  // 08:00 meeting, day starts 08:00: the reminder still comes at 07:52 — and nothing else does.
+  const early = { id: "m2", title: "Standup", start: il(8), end: il(8, 30), busy: true };
+  assert.deepEqual(types(N.decide(rec(), [early], at(7, 52)).out), ["meeting"]);
+  assert.equal(N.decide(rec(), [early], at(7, 40)).out.length, 0);
+  // Free, all-day, and a task's own slot (booked handles those): no reminder.
+  assert.equal(N.decide(r, [{ ...ev, busy: false }], at(13, 52)).out.length, 0);
+  assert.equal(N.decide(r, [{ ...ev, allDay: true }], at(13, 52)).out.length, 0);
+  const slot = { id: "s1", title: "Mix review", start: il(14), end: il(15), busy: true };
+  assert.equal(N.decide(rec({ sentOn: "2026-10-06", tasks: [t({ id: "mix", title: "Mix review" })] }), [slot], at(13, 52)).out.length, 0);
+  // While a task runs it still comes: a meeting is a commitment.
+  const run = rec({ sentOn: "2026-10-06", tasks: [t({ id: "w" })], run: { taskId: "w", startedAt: at(13) } });
+  assert.ok(types(N.decide(run, [ev], at(13, 52)).out).includes("meeting"));
+});
+
 // ---------- waiting on people (2026-10-06) ----------
 const Nu = await import("../../app/js/nudge.js");
 test("nudge: the name, the language, the WhatsApp link", () => {
