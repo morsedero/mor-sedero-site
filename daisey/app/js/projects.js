@@ -102,7 +102,7 @@ function statusLine(p){
   const now = p.next.find((t) => !notYet(t));
   if (now) return ["Next: ", bdi(now.title)];
   const parts = [p.pending.length && `${p.pending.length} pending`, p.next.length && `${p.next.length} later`, p.someday.length && `${p.someday.length} on hold`].filter(Boolean);
-  return [parts.join(" · ") || "All done"];
+  return [parts.join(" · ") || (p.all.length ? "All done" : "No tasks yet")];
 }
 // Effort still to do (master spec s.16, 2026-10-06): the sizes of the open
 // tasks less the time already put in, 5 minutes at least each. Pending ones
