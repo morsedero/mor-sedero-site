@@ -1117,7 +1117,7 @@ dialog.tsheet .msg:empty { display: none; }
 .sc-label { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
 .sc-name { font-size: 13px; font-weight: 600; color: color-mix(in srgb, var(--ink) 85%, var(--ink-2)); }
 .sc-date { font-size: 12px; color: var(--ink-2); }
-.sc-row { display: flex; align-items: center; gap: 12px; margin-block-start: 3px; }
+.sc-row { display: flex; align-items: center; gap: 12px; margin-block-start: 6px; }
 .sc-time { flex: none; inline-size: 88px; font-size: 13px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
 .sc-time.strong { color: color-mix(in srgb, var(--ink) 85%, var(--ink-2)); }
 .sc-gap { inline-size: 100%; margin-block: 2px; padding-block: 0; padding-inline: 100px 0; border: 0; background: none; font: inherit; color: inherit; text-align: start; cursor: pointer; }
@@ -1440,7 +1440,7 @@ body.focus .shell { block-size: auto; min-block-size: 100dvh; overflow: visible;
 
 /* Task events (planned, finished) are plain; the project colour is a dot (Mor, 2026-10-08). */
 .sc-dot { flex: none; inline-size: 10px; block-size: 10px; margin-inline: 5px 13px; border-radius: 50%; background: var(--aink); }
-.sc-ev.sc-plan, .sc-ev.sc-plan[class*="pc-"], .sc-ev.sc-plan[class*="area-"] { background: none; color: var(--ink); box-shadow: none; border: 1.5px dashed var(--line); margin: 0; padding: 2px 9px; border-radius: 7px; }
+.sc-ev.sc-plan, .sc-ev.sc-plan[class*="pc-"], .sc-ev.sc-plan[class*="area-"] { background: none; color: var(--ink); box-shadow: none; border: 1.5px dashed var(--line); margin: 0; font-weight: 400; padding: 2px 9px; border-radius: 7px; }
 .sc-ev.sc-done[class*="pc-"], .sc-ev.sc-done[class*="area-"] { box-shadow: none; }
 .wk-ev.done[class*="pc-"], .wk-ev.done[class*="area-"], .wk-ev.wk-plan[class*="pc-"], .wk-ev.wk-plan[class*="area-"] { background: none; color: var(--ink-2); box-shadow: none; }
 
