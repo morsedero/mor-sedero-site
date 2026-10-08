@@ -1397,7 +1397,10 @@ body.focus #side { display: none; }
 .toast { inset-block-end: calc(96px + env(safe-area-inset-bottom)); }
 
 /* Night (the panel steps aside) and focus: the card area takes the space. */
-:root.night #panel { display: none; }
+/* Unless Plan or Projects is open: those pages live in the panel, so hiding it
+   made both chips do nothing at night (Mor, 2026-10-08). */
+:root.night #panel:not(:has(#planPage:not([hidden]), #projPage:not([hidden]), #projectview:not([hidden]))) { display: none; }
+:root.night:has(#planPage:not([hidden]), #projPage:not([hidden]), #projectview:not([hidden])) .nowrow { flex: none; }
 :root.night #nowcard, body.focus #nowcard { flex: 1 1 auto; }
 :root.night .nowrow, body.focus .nowrow { flex: 1 1 auto; align-items: stretch; }
 :root.night .nowrow #nowcard, body.focus .nowrow #nowcard { flex: 1 1 0; }
