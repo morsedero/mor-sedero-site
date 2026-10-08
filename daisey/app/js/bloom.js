@@ -1,17 +1,18 @@
-// Bloom (Mor, 2026-10-08; daisey/STATS_PLAN.md): the progress page. Each
-// project is a flower — taller with the time it got, a petal for every task
-// finished, a closed bud when it got none. Routines under it, three small
-// numbers, the week as seven little daisies. Calm on purpose: no red, no
-// "behind", no goals that aren't the user's own. Read-only.
-import { watchTasks, watchProjectNames, watchLog } from "./store.js";
+// Bloom, inside Projects (Mor, 2026-10-08: "both become one page";
+// daisey/STATS_PLAN.md). The Projects page is the garden now: each project
+// card carries its flower — taller with the time it got this period, a petal
+// for every task finished, a closed bud when it got none — and the page ends
+// with the week as seven little daisies and the routines. This file is the
+// growing half: the work log, the calendar's past events, the period, and the
+// pieces drawn from them. projects.js lays them out. Calm on purpose: no red,
+// no "behind", no goals that aren't the user's own.
+import { watchLog } from "./store.js";
 import { fetchRange } from "./calendar.js";
-import { projectsOf } from "./projects.js";
 import {
   PERIODS, periodRange, monthsOfRange, summarize, flowers, routineRows, weekStrip, fmtMinutes, oneLine,
   estimatedEntries, eventEntries,
 } from "./bloom-data.js";
-import { h, bdi, icon, weekDots } from "./ui.js";
-import { dayOf, addDays } from "./routine.js";
+import { h, bdi, weekDots } from "./ui.js";
 
 const NS = "http://www.w3.org/2000/svg";
 const svg = (tag, attrs = {}, ...kids) => {
@@ -62,23 +63,26 @@ function dayDaisy(min, peak){
   return root;
 }
 
-export function mountBloom(root, uid, { onProject } = {}){
-  let tasks = null, made = [], order = [], tiers = {};
-  let period = "week", entries = [], events = [], open = null, shown = false;
+// A project's time for the period, "" when it got none.
+export const flowerTime = (f) => (f?.min ? `${f.guess ? "~" : ""}${fmtMinutes(f.min)}` : "");
+
+// The growing half. onChange: the log, the events or the period moved, so
+// the page should redraw.
+export function mountGrowth(uid, { onChange } = {}){
+  let period = "week", entries = [], events = [], shown = false;
   let unLog = null, logKey = "", evSeq = 0;
   const evCache = new Map();
   const fail = (e) => console.error("[daisey] bloom", e);
-
-  const colorOf = () => {
-    const m = new Map();
-    for (const p of projectsOf(tasks || [], null, made, order)) m.set(p.name, p);
-    return m;
+  // The period plus this week: the week row shows under any period.
+  const span = () => {
+    const p = periodRange(period), w = periodRange("week");
+    return { from: p.from < w.from ? p.from : w.from, to: p.to > w.to ? p.to : w.to };
   };
 
-  // The calendar's past events for the period (project work Daisey never timed).
-  // At most 9 days a call; kept per period so a tab switch doesn't refetch.
+  // The calendar's past events for the span (project work Daisey never timed).
+  // At most 9 days a call; kept per span so a period switch doesn't refetch.
   async function loadEvents(){
-    const range = periodRange(period), now = Date.now(), key = `${range.from}|${range.to}`, seq = ++evSeq;
+    const range = span(), now = Date.now(), key = `${range.from}|${range.to}`, seq = ++evSeq;
     const cached = evCache.get(key);
     if (cached && now - cached.at < 5 * 60000) { events = cached.events; return; }
     try {
@@ -90,105 +94,72 @@ export function mountBloom(root, uid, { onProject } = {}){
         got.push(...r.events);
       }
       evCache.set(key, { at: now, events: got });
-      if (seq === evSeq) { events = got; render(); }
+      if (seq === evSeq) { events = got; onChange?.(); }
     } catch (e) { fail(e); }
   }
 
   function watchPeriod(){
-    const keys = monthsOfRange(periodRange(period)).map((m) => `log-${m}`);
+    const keys = monthsOfRange(span()).map((m) => `log-${m}`);
     if (keys.join() === logKey) return;
     unLog?.();
     logKey = keys.join();
-    unLog = watchLog(uid, keys, (list) => { entries = list; render(); }, fail);
+    unLog = watchLog(uid, keys, (list) => { entries = list; onChange?.(); }, fail);
   }
 
-  function all(range){
-    const names = [...colorOf().keys()];
-    const real = entries;
-    return [...real, ...estimatedEntries(tasks || [], real), ...eventEntries(events, { projects: names, tasks: tasks || [], logged: real })];
-  }
-
-  function pill(p){
-    return h("button", { type: "button", className: "bl-pill", role: "radio", ariaChecked: String(p === period), textContent: PERIOD_TEXT[p],
-      onclick: () => { if (p === period) return; period = p; open = null; events = []; watchPeriod(); loadEvents(); render(); } });
-  }
-
-  function detail(f, info){
-    const left = info?.open?.length || 0, due = (info?.open || []).map((t) => t.due).filter(Boolean).sort()[0];
-    return h("div", { className: "bl-detail" + (info ? ` pc-${info.color}` : "") },
-      h("div", { className: "bl-detail-top" },
-        h("strong", {}, bdi(f.name)),
-        h("span", { className: "bl-detail-time" }, f.min ? `${f.guess ? "~" : ""}${fmtMinutes(f.min)}` : "No time yet")),
-      f.tasks.length ? h("ul", { className: "bl-tasks" }, ...f.tasks.slice(0, 8).map((t) => h("li", { className: t.done ? "done" : "" },
-        h("span", { className: "bl-tick", "aria-hidden": "true" }, t.done ? "✓" : "·"), bdi(t.title || (tasks || []).find((x) => x.id === t.id)?.title || "Work"),
-        t.min ? h("span", { className: "bl-min" }, fmtMinutes(t.min)) : null)))
-        : h("p", { className: "bl-note" }, "Nothing here yet. Start a task in this project and it grows."),
-      h("p", { className: "bl-note" }, left ? `${left} still open${due ? `, next due ${due}` : ""}.` : "Nothing left open."),
-      onProject ? h("button", { type: "button", className: "bl-link", textContent: "Open project", onclick: () => onProject(f.name) }) : null);
-  }
-
-  function render(){
-    if (!shown || !tasks) return;
-    const range = periodRange(period), now = Date.now(), list = all(range), colors = colorOf();
-    const summary = summarize(list, range), fl = flowers(summary, [...colors.keys()], tiers);
-    const rows = routineRows(tasks, now), strip = weekStrip(list, now), peak = Math.max(1, ...strip.map((d) => d.min));
+  // What the page shows: tasks, the project names, their tiers by name.
+  function read(tasks = [], names = [], tiers = {}){
+    const range = periodRange(period), now = Date.now();
+    const list = [...entries, ...estimatedEntries(tasks, entries), ...eventEntries(events, { projects: names, tasks, logged: entries })];
+    const summary = summarize(list, range), fl = flowers(summary, names, tiers);
+    const routines = routineRows(tasks, now);
+    // A flower with more done than last time it was seen opens once.
     const seen = readSeen(), pops = new Set();
     for (const f of fl) if (f.done > (seen[f.name] ?? f.done)) pops.add(f.name);
-    if (period === "week") writeSeen(Object.fromEntries(fl.map((f) => [f.name, f.done])));
-
-    // One flowing row, Focus first and biggest: separate rows per tier left a gap.
-    const bed = fl.length ? h("section", { className: "bl-bed", ariaLabel: "Your projects" },
-        h("div", { className: "bl-row" }, ...fl.map((f, i) => {
-          const info = colors.get(f.name), cls = info ? ` pc-${info.color}` : "";
-          const btn = h("button", { type: "button", className: `bl-flower t-${f.tier}${cls}${f.bud ? " bud" : ""}${pops.has(f.name) ? " pop" : ""}${open === f.name ? " on" : ""}`,
-            style: `--d:-${(i * 0.9).toFixed(1)}s`, ariaExpanded: String(open === f.name),
-            ariaLabel: `${f.name}: ${f.min ? fmtMinutes(f.min) : "no time yet"}, ${f.done} done`,
-            onclick: () => { open = open === f.name ? null : f.name; render(); } },
-          flowerSvg(f),
-          h("span", { className: "bl-name" }, bdi(f.name)),
-          h("span", { className: "bl-sub" }, f.min ? `${f.guess ? "~" : ""}${fmtMinutes(f.min)}` : "resting", f.more ? ` · +${f.more}` : ""));
-          return btn;
-        })),
-    open && fl.find((f) => f.name === open) ? detail(fl.find((f) => f.name === open), colors.get(open) && { open: colors.get(open).open, color: colors.get(open).color }) : null)
-      : h("p", { className: "bl-note center" }, "Make a project and it plants itself here.");
-
-    const routines = rows.length ? h("section", { className: "bl-routines", ariaLabel: "Routines" },
-      h("h3", { className: "bl-h", textContent: "Routines" }),
-      ...rows.map((r) => h("div", { className: "bl-routine" + (r.met ? " met" : "") + (colors.get(r.project) ? ` pc-${colors.get(r.project).color}` : "") },
-        h("div", { className: "bl-r-main" },
-          h("span", { className: "bl-r-proj" }, bdi(r.project)),
-          h("span", { className: "bl-r-title" }, bdi(r.title)),
-          h("span", { className: "bl-r-count" }, `${r.count} of ${r.per}`, r.met ? h("span", { className: "bl-bee", role: "img", ariaLabel: "met" }, " 🐝") : null)),
-        // One dot per session the week needs, filling up (the Now card's dots).
-        h("span", { className: "bl-dots" }, weekDots(tasks.find((t) => t.id === r.id))),
-        r.streak >= 2 ? h("div", { className: "bl-streak" }, `${r.streak} weeks in a row`) : null))) : null;
-
-    const tiles = h("section", { className: "bl-tiles", ariaLabel: "Totals" },
-      tile(summary.total ? `${summary.guess ? "~" : ""}${fmtMinutes(summary.total)}` : "0", "focused time"),
-      tile(String(summary.done), summary.done === 1 ? "task done" : "tasks done"),
-      tile(String(summary.days), summary.days === 1 ? "day showed up" : "days showed up"));
-    const week = h("div", { className: "bl-week", role: "img", ariaLabel: "This week, day by day" },
-      ...strip.map((d) => h("div", { className: "bl-wd" + (d.today ? " today" : "") + (d.future ? " future" : "") },
-        dayDaisy(d.min, peak), h("span", {}, new Date(`${d.day}T12:00`).toLocaleDateString(undefined, { weekday: "narrow" })))));
-
-    root.replaceChildren(
-      h("div", { className: "bl" },
-        h("div", { className: "bl-top" },
-          h("h2", { className: "bl-title" }, icon("bloom"), "Bloom"),
-          h("div", { className: "bl-pills", role: "radiogroup", ariaLabel: "Period" }, ...PERIODS.map(pill))),
-        h("p", { className: "bl-line" }, oneLine({ summary, flowers: fl, routines: rows, period })),
-        bed, tiles, h("section", { className: "bl-card" }, h("h3", { className: "bl-h", textContent: "This week" }), week), routines));
+    if (shown && period === "week") writeSeen(Object.fromEntries(fl.map((f) => [f.name, f.done])));
+    return { period, summary, routines, pops, strip: weekStrip(list, now),
+      flowers: new Map(fl.map((f) => [f.name, f])), line: oneLine({ summary, flowers: fl, routines, period }) };
   }
-  const tile = (n, label) => h("div", { className: "bl-tile" }, h("strong", {}, n), h("span", {}, label));
 
-  const unsubs = [
-    watchTasks(uid, (ts) => { tasks = ts; render(); }, fail),
-    watchProjectNames(uid, (ns, _rs, od, tr) => { made = ns; order = od || []; tiers = tr || {}; render(); }, fail),
-  ];
+  const pills = () => h("div", { className: "bl-pills", role: "radiogroup", ariaLabel: "Period" },
+    ...PERIODS.map((p) => h("button", { type: "button", className: "bl-pill", role: "radio", ariaChecked: String(p === period), textContent: PERIOD_TEXT[p],
+      onclick: () => { if (p === period) return; period = p; watchPeriod(); loadEvents(); onChange?.(); } })));
 
   return {
-    show(){ shown = true; open = null; watchPeriod(); loadEvents(); render(); },
+    read,
+    pills,
+    show(){ if (shown) return; shown = true; watchPeriod(); loadEvents(); },
     hide(){ shown = false; unLog?.(); unLog = null; logKey = ""; },
-    unmount(){ this.hide(); unsubs.forEach((u) => u()); root.replaceChildren(); },
+    unmount(){ this.hide(); },
   };
+}
+
+// The tiles, folded into one line (Mor, 2026-10-08).
+export function totalsLine(summary){
+  const bits = [summary.total ? `${summary.guess ? "~" : ""}${fmtMinutes(summary.total)} focused` : null,
+    `${summary.done} ${summary.done === 1 ? "task" : "tasks"} done`,
+    `${summary.days} ${summary.days === 1 ? "day" : "days"} showed up`].filter(Boolean);
+  return h("p", { className: "bl-totals" }, bits.join(" · "));
+}
+
+export function weekCard(strip){
+  const peak = Math.max(1, ...strip.map((d) => d.min));
+  return h("section", { className: "bl-card" }, h("h3", { className: "bl-h", textContent: "This week" }),
+    h("div", { className: "bl-week", role: "img", ariaLabel: "This week, day by day" },
+      ...strip.map((d) => h("div", { className: "bl-wd" + (d.today ? " today" : "") + (d.future ? " future" : "") },
+        dayDaisy(d.min, peak), h("span", {}, new Date(`${d.day}T12:00`).toLocaleDateString(undefined, { weekday: "narrow" }))))));
+}
+
+// colors: project name -> its colour ("" when none).
+export function routinesSection(rows, tasks, colors){
+  if (!rows.length) return null;
+  return h("section", { className: "bl-routines", ariaLabel: "Routines" },
+    h("h3", { className: "bl-h", textContent: "Routines" }),
+    ...rows.map((r) => h("div", { className: "bl-routine" + (r.met ? " met" : "") + (colors.get(r.project) ? ` pc-${colors.get(r.project)}` : "") },
+      h("div", { className: "bl-r-main" },
+        h("span", { className: "bl-r-proj" }, bdi(r.project)),
+        h("span", { className: "bl-r-title" }, bdi(r.title)),
+        h("span", { className: "bl-r-count" }, `${r.count} of ${r.per}`, r.met ? h("span", { className: "bl-bee", role: "img", ariaLabel: "met" }, " 🐝") : null)),
+      // One dot per session the week needs, filling up (the Now card's dots).
+      h("span", { className: "bl-dots" }, weekDots(tasks.find((t) => t.id === r.id))),
+      r.streak >= 2 ? h("div", { className: "bl-streak" }, `${r.streak} weeks in a row`) : null)));
 }

@@ -30,6 +30,7 @@ import { dirOf, setProjectColors } from "./look.js";
 import { setProjectTiers } from "./context.js";
 import { TIERS, FOCUS_MAX } from "./weights.js";
 import { sortable, zoneSortable } from "./ppdrag.js";
+import { mountGrowth, flowerSvg, flowerTime, totalsLine, weekCard, routinesSection } from "./bloom.js";
 
 const SWIPE_DONE = 90; // px a task travels right before letting go finishes it
 const SWIPE_PAGE = 70; // px sideways that turns the page to the next project
@@ -141,6 +142,8 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
   const fail = (e) => console.error("[daisey] projects", e);
   const list = () => projectsOf(tasks || [], onCard, made, order);
   const hold = (on) => { dragging = on; if (!on && stale) { stale = false; render(); } };
+  // Bloom lives on this page (bloom.js): the log or the period moved.
+  const growth = mountGrowth(uid, { onChange: () => { if (dragging) { stale = true; return; } paintGrid(); } });
 
   // ---------- the Projects page ----------
   // Tiers (Mor, 2026-10-08): Focus, Keep going, Background. The engine
@@ -198,27 +201,36 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
     setProjectColors(Object.fromEntries(all.filter((p) => p.color).map((p) => [p.name, p.color])));
     const inbox = all.find((p) => p.name === INBOX);
     const ps = all.filter((p) => p !== inbox);
-    setProjectTiers(Object.fromEntries(ps.map((p) => [p.name, tierOf(p.name)])));
+    const tierMap = Object.fromEntries(ps.map((p) => [p.name, tierOf(p.name)]));
+    setProjectTiers(tierMap);
+    const g = growth.read(tasks || [], ps.map((p) => p.name), tierMap);
     const glow = (p) => landed?.name === p.name && Date.now() - landed.at < LANDED_MS;
-    const card = (p) => h("button", { type: "button", className: "pcard pp-drag" + colorClass(p) + (glow(p) ? " landed" : ""), style: glow(p) ? `animation-delay:-${Date.now() - landed.at}ms` : "", _name: p.name, onclick: () => openProject(p.name) },
-      h("span", { className: "pcard-top", dir: dirOf(p.name) },
-        h("span", { className: "pcard-name", dir: "auto", textContent: p.name }), h("span", { className: "pcard-n", textContent: String(p.open.length) })),
-      h("span", { className: "pcard-status" }, ...statusLine(p)),
-      bar(p, "pbar"));
+    // Bloom in the card (Mor, 2026-10-08): its flower for the period beside
+    // it, the period's time by the bar. The bar stays: all-time % done.
+    const card = (p, i) => { const f = g.flowers.get(p.name);
+      return h("button", { type: "button", className: "pcard pp-drag" + colorClass(p) + (glow(p) ? " landed" : ""), style: glow(p) ? `animation-delay:-${Date.now() - landed.at}ms` : "", _name: p.name, onclick: () => openProject(p.name) },
+        f && h("span", { className: "pcard-fl" + (f.bud ? " bud" : "") + (g.pops.has(p.name) ? " pop" : ""), style: `--d:-${(i * 0.9).toFixed(1)}s` }, flowerSvg(f)),
+        h("span", { className: "pcard-body" },
+          h("span", { className: "pcard-top", dir: dirOf(p.name) },
+            h("span", { className: "pcard-name", dir: "auto", textContent: p.name }), h("span", { className: "pcard-n", textContent: String(p.open.length) })),
+          h("span", { className: "pcard-status" }, ...statusLine(p)),
+          h("span", { className: "pcard-foot" }, bar(p, "pbar"), flowerTime(f) && h("span", { className: "pcard-time", textContent: flowerTime(f) })))); };
     const tier = (t) => { const ins = ps.filter((p) => tierOf(p.name) === t);
       return h("div", { className: `pp-zone tier-${t}`, _tier: t },
         h("div", { className: "pp-tier" }, h("span", { className: "pp-tier-name", textContent: TIER_TEXT[t][0] }), h("span", { className: "pp-tier-sub", textContent: TIER_TEXT[t][1] })),
         h("span", { className: "pp-tier-empty", textContent: "Drag a project here" }), ...ins.map(card)); };
-    const n = all.reduce((s, p) => s + p.open.length, 0);
     const y = els.grid.scrollTop;
     els.grid.replaceChildren(...[
-      h("div", { className: "pp-head" }, h("span", { className: "pp-sum", textContent: `${plural(ps.length, "project")} · ${plural(n, "task")}` }),
+      h("div", { className: "pp-head" }, growth.pills(),
         h("button", { type: "button", className: "pp-new", textContent: "+ New", onclick: () => askName() })),
+      h("div", { className: "pp-grow" }, h("p", { className: "bl-line" }, g.line), totalsLine(g.summary)),
       ps.length ? dragProjects(h("div", { className: "pgrid tiers" }, ...TIERS.map(tier)))
         : !inbox && h("p", { className: "muted pp-empty", textContent: "No projects yet. Tell Daisey what's on your plate." }),
       inbox ? h("button", { type: "button", className: "pp-inbox", onclick: () => openProject(INBOX) },
         icon("inbox"), h("span", { className: "pp-inbox-t", textContent: "Inbox" }),
-        h("span", { className: "pp-inbox-n", textContent: `${inbox.open.length} · no project yet` })) : null].filter(Boolean));
+        h("span", { className: "pp-inbox-n", textContent: `${inbox.open.length} · no project yet` })) : null,
+      weekCard(g.strip),
+      routinesSection(g.routines, tasks || [], new Map(all.map((p) => [p.name, p.color || ""])))].filter(Boolean));
     els.grid.scrollTop = y;
   }
 
@@ -579,8 +591,8 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
   }
   // The Projects grid (Mor, 2026-10-08): sits in the home panel in the
   // Schedule's place, toggled by the Projects button.
-  function openAll(){ els.page.hidden = false; els.page.scrollTop = 0; paintGrid(); }
-  function closeAll(){ els.page.hidden = true; fromGrid = false; }
+  function openAll(){ els.page.hidden = false; els.page.scrollTop = 0; growth.show(); paintGrid(); }
+  function closeAll(){ els.page.hidden = true; fromGrid = false; growth.hide(); }
 
   // Every project a task names gets saved, so it stays when its tasks go.
   // Only once both have loaded: saving before the names arrive would
@@ -609,6 +621,6 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
     closeAll,
     // The project on screen, for "+ Task": the open project, else none.
     shownProject: () => shown,
-    unmount(){ unsubs.forEach((u) => u()); closeProject(); els.grid.replaceChildren(); if (els.dialog.open) els.dialog.close(); },
+    unmount(){ unsubs.forEach((u) => u()); growth.unmount(); closeProject(); els.grid.replaceChildren(); if (els.dialog.open) els.dialog.close(); },
   };
 }

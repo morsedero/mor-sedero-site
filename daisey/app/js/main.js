@@ -205,7 +205,6 @@ async function boot(){
   const settings = $("#settingsdlg");
   $("#settingsBtn").onclick = () => { setMenu(false); settings.showModal(); };
   $("#projectsChip").onclick = () => window.__toggleProjects && window.__toggleProjects();
-  $("#bloomChip").onclick = () => window.__toggleBloom && window.__toggleBloom();
   $("#settingsX").onclick = () => settings.close();
   settings.addEventListener("click", (e) => { if (e.target === settings) settings.close(); });
 
@@ -222,7 +221,6 @@ async function boot(){
     avatar.hidden = !user;
     $("#planChip").hidden = !user;
     $("#projectsChip").hidden = !user;
-    $("#bloomChip").hidden = !user;
     if (!user) { show("signedout"); return; }
 
     const displayName = user.displayName || user.email || "Guest";
@@ -238,8 +236,8 @@ async function boot(){
     } else initial();
     show("signedin"); // no element of its own: just clears loading/sign-in views
 
-    Promise.all([import("./now.js"), import("./projects.js"), import("./addtask.js"), import("./needs.js"), import("./import-trello.js"), import("./addevent.js"), import("./store.js"), import("./deadlines.js"), import("./day.js"), import("./calendar.js"), import("./schedule.js"), import("./push.js"), import("./bloom.js")])
-      .then(([{ mountNow }, { mountProjects }, { mountAddTask }, { mountNeeds }, { mountImport, connectTrello, finishTrelloConnect, trelloConnected }, { mountAddEvent }, { migrateTasks, watchSettings, saveSettings, watchTasks, watchRun, watchDayPlan, resetAll }, { mountDeadlines }, { dayHours, minText }, { watchCalendar, connectCalendar, setCalendarHint, listCalendars, saveCalendars }, { mountSchedule }, push, { mountBloom }]) => {
+    Promise.all([import("./now.js"), import("./projects.js"), import("./addtask.js"), import("./needs.js"), import("./import-trello.js"), import("./addevent.js"), import("./store.js"), import("./deadlines.js"), import("./day.js"), import("./calendar.js"), import("./schedule.js"), import("./push.js")])
+      .then(([{ mountNow }, { mountProjects }, { mountAddTask }, { mountNeeds }, { mountImport, connectTrello, finishTrelloConnect, trelloConnected }, { mountAddEvent }, { migrateTasks, watchSettings, saveSettings, watchTasks, watchRun, watchDayPlan, resetAll }, { mountDeadlines }, { dayHours, minText }, { watchCalendar, connectCalendar, setCalendarHint, listCalendars, saveCalendars }, { mountSchedule }, push]) => {
         if ((!isGuest && fb.currentUid() !== user.uid) || mounted) return;
         const m = mounted = {};
         setCalendarHint(isGuest ? "" : user.email);
@@ -463,8 +461,7 @@ async function boot(){
           open(kind){ if (history.state?.daisey !== kind) history.pushState({ daisey: kind }, ""); },
           back(){ if (history.state?.daisey) history.back(); else closeScreens(); },
         };
-        const hideBloom = () => { if (!$("#bloomPage").hidden) { $("#bloomPage").hidden = true; m.bloom?.hide(); } };
-        const closeScreens = () => { hideBloom(); m.now?.closePlan(); m.projects?.closeProject(); m.needs?.close(); $("#weekview").hidden = true; syncPanel(); };
+        const closeScreens = () => { m.now?.closePlan(); m.projects?.closeProject(); m.needs?.close(); $("#weekview").hidden = true; syncPanel(); };
         const onPop = () => {
           const at = history.state?.daisey;
           if (!at) closeScreens();
@@ -473,24 +470,14 @@ async function boot(){
         // The home panel: the Schedule, or Projects (the grid or one project)
         // in its place. The Projects button toggles between them (Mor, 2026-10-08).
         const syncPanel = () => {
-          const on = !$("#projPage").hidden || !$("#projectview").hidden, plan = !$("#planPage").hidden, bloom = !$("#bloomPage").hidden;
-          $("#schedPage").hidden = on || plan || bloom;
+          const on = !$("#projPage").hidden || !$("#projectview").hidden, plan = !$("#planPage").hidden;
+          $("#schedPage").hidden = on || plan;
           $("#projectsChip").setAttribute("aria-pressed", String(on));
           $("#planChip").setAttribute("aria-pressed", String(plan));
-          $("#bloomChip").setAttribute("aria-pressed", String(bloom));
-          $("#panel").setAttribute("aria-label", bloom ? "Bloom" : plan ? "Plan" : on ? "Projects" : "Schedule");
-        };
-        window.__toggleBloom = () => {
-          if ($("#bloomPage").hidden) {
-            m.now?.closePlan(); m.projects?.closeProject(); m.projects?.closeAll();
-            if (history.state?.daisey === "project") history.back();
-            $("#bloomPage").hidden = false; $("#bloomPage").scrollTop = 0; m.bloom.show();
-          } else hideBloom();
-          syncPanel();
+          $("#panel").setAttribute("aria-label", plan ? "Plan" : on ? "Projects" : "Schedule");
         };
         window.__toggleProjects = () => {
           if (!$("#planPage").hidden) m.now?.closePlan();
-          if (!$("#bloomPage").hidden) { hideBloom(); m.projects.openAll(); syncPanel(); return; }
           if (!$("#schedPage").hidden) { m.projects.openAll(); syncPanel(); return; }
           m.projects.closeProject(); m.projects.closeAll(); syncPanel();
           if (history.state?.daisey === "project") history.back();
@@ -515,16 +502,15 @@ async function boot(){
           onStart: startTask,
           onScreen: (name) => { if (name) { screens.open("project"); syncPanel(); } else screens.back(); },
         });
-        m.bloom = mountBloom($("#bloomPage"), user.uid, { onProject: (name) => { hideBloom(); m.projects.openProject(name); } });
         syncPanel();
-        $("#planChip").onclick = () => { hideBloom(); m.now?.plan(); };
+        $("#planChip").onclick = () => m.now?.plan();
         m.now = mountNow($("#nowcard"), user.uid, {
           name: (user.displayName || "").trim().split(/\s+/)[0], onDone: paintDone, onNeedsCount: paintNeeds, onPlanProgress: paintPlan,
           planRoot: $("#planPage"),
           // Two frames so the panel and chips settle under the daisy first.
           onReady: () => requestAnimationFrame(() => requestAnimationFrame(splashOff)),
           onPlanScreen: (open) => {
-            if (open) { hideBloom(); m.projects?.closeProject(); m.projects?.closeAll(); if (history.state?.daisey === "project") history.back(); }
+            if (open) { m.projects?.closeProject(); m.projects?.closeAll(); if (history.state?.daisey === "project") history.back(); }
             $("#planPage").hidden = !open; if (open) $("#planPage").scrollTop = 0; syncPanel();
           },
           onCard: (id) => m.projects?.setCurrent(id),
