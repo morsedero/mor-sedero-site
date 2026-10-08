@@ -1514,3 +1514,4 @@ body.focus .shell { block-size: auto; min-block-size: 100dvh; overflow: visible;
 .sc-weekbtn { flex: none; display: inline-flex; align-items: center; gap: 5px; block-size: 32px; padding-inline: 10px; border: 0; border-radius: 999px; background: var(--chip); font: inherit; font-size: 13px; font-weight: 600; color: var(--ink); cursor: pointer; }
 .sc-weekbtn svg { inline-size: 16px; block-size: 16px; }
 @media (max-width: 479px) { .sc-weekbtn span { display: none; } .sc-weekbtn { inline-size: 32px; padding: 0; justify-content: center; } }
+.screen { overflow-x: clip; }

@@ -465,7 +465,14 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
   // The page follows the finger, slides off, and the next project slides in
   // (same as the Schedule's day swipe).
   let page = null, sawSwipe = false;
-  const slide = (x, ms) => { els.view.style.transition = ms ? `transform ${ms}ms ease-out` : "none"; els.view.style.transform = x ? `translateX(${x}px)` : ""; };
+  // Only the body moves; the header with the project chips stays put.
+  const slide = (x, ms) => {
+    for (const c of els.view.children) {
+      if (c.classList.contains("pj-top")) continue;
+      c.style.transition = ms ? `transform ${ms}ms ease-out` : "none";
+      c.style.transform = x ? `translateX(${x}px)` : "";
+    }
+  };
   const flip = (side, swap) => {
     const out = side * (els.view.clientWidth || innerWidth);
     slide(out, 140);
