@@ -98,6 +98,8 @@ body {
   font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; min-block-size: 30px;
   padding-inline: 12px; border: 0; border-radius: 999px; background: none; color: var(--ink-2);
 }
+.menu-theme { display: flex; margin-block: 4px 10px; }
+.menu-theme .theme-btn { flex: 1; padding-inline: 4px; }
 .theme-btn[aria-checked="true"] { background: var(--card); color: var(--ink); box-shadow: 0 1px 3px rgb(0 0 0 / .12); }
 
 .card {
