@@ -1400,9 +1400,18 @@ body.focus #side { display: none; }
 /* Unless Plan or Projects is open: those pages live in the panel, so hiding it
    made both chips do nothing at night (Mor, 2026-10-08). */
 :root.night #panel:not(:has(#planPage:not([hidden]), #projPage:not([hidden]), #projectview:not([hidden]))) { display: none; }
-:root.night:has(#planPage:not([hidden]), #projPage:not([hidden]), #projectview:not([hidden])) .nowrow { flex: none; }
+/* Night: Plan and Projects sit right under "Late, name." instead of beside the cards;
+   open, their page takes the place of the Tomorrow-first card (Mor, 2026-10-08). */
+:root.night .nowrow { flex-direction: column; gap: 0; }
+:root.night #nowcard { display: contents; }
+:root.night #nowcard > * { order: 3; }
+:root.night #nowcard > .now-greet, :root.night #nowcard > .stars, :root.night #nowcard > .night-hero { order: 0; }
+:root.night #side { order: 1; flex-direction: row; inline-size: auto; align-self: stretch; padding-block: 14px 0; position: relative; z-index: 1; }
+:root.night #side .hchip { flex: 1 1 0; min-block-size: 48px; flex-direction: row; gap: 8px; font-size: 13px; }
+:root.night:has(#planPage:not([hidden]), #projPage:not([hidden]), #projectview:not([hidden])) #nowcard > .now-card, :root.night:has(#planPage:not([hidden]), #projPage:not([hidden]), #projectview:not([hidden])) #nowcard > .night-foot { display: none; }
 :root.night #nowcard, body.focus #nowcard { flex: 1 1 auto; }
 :root.night .nowrow, body.focus .nowrow { flex: 1 1 auto; align-items: stretch; }
+:root.night:has(#planPage:not([hidden]), #projPage:not([hidden]), #projectview:not([hidden])) .nowrow { flex: none; }
 :root.night .nowrow #nowcard, body.focus .nowrow #nowcard { flex: 1 1 0; }
 :root.night .night-foot { margin-block-start: auto; padding-block-start: 20px; }
 :root.night .night-hero { margin-block-start: 12px; }
