@@ -1068,8 +1068,18 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
       const r = String(text || "").trim()
         ? await rethink(text, { ...ctx, current: prop.items, exclude: prop.exclude, freeMinutes: free, guest })
         : { items: proposeDay({ ...ctx, exclude: prop.exclude }), note: "" };
+      const before = prop.items.filter((i) => i.taskId).map((i) => i.taskId);
       prop.items = withBreaks(r.items, ctx);
-      prop.note = r.note || (r.items.length ? "" : "Nothing fits what's left of today.");
+      const after = r.items.filter((i) => i.taskId).map((i) => i.taskId);
+      // Say what actually changed, so a near-identical plan doesn't read as a second copy of the first.
+      const name = (id) => { const t = ctx.tasks.find((x) => x.id === id); return t ? `“${t.title}”` : ""; };
+      const list = (ids) => ids.slice(0, 2).map(name).filter(Boolean).join(", ") + (ids.length > 2 ? ` +${ids.length - 2}` : "");
+      const added = after.filter((id) => !before.includes(id)), gone = before.filter((id) => !after.includes(id));
+      const diff = !after.length ? ""
+        : before.join() === after.join() ? "Same plan. Tell me what to change, like “lighter” or “start with …”."
+        : [added.length && `Added ${list(added)}.`, gone.length && `Removed ${list(gone)}.`,
+           !added.length && !gone.length && "Same tasks, new order."].filter(Boolean).join(" ");
+      prop.note = r.note || diff || (r.items.length ? "" : "Nothing fits what's left of today.");
       prop.text = ""; prop.ask = false;
     } catch (e) { fail(e); prop.note = "Couldn't rethink it. Try again."; }
     prop.busy = false; render();
