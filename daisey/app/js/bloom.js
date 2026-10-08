@@ -156,6 +156,7 @@ export function mountBloom(root, uid, { onProject } = {}){
       h("h3", { className: "bl-h", textContent: "Routines" }),
       ...rows.map((r) => h("div", { className: "bl-routine" + (r.met ? " met" : "") + (colors.get(r.project) ? ` pc-${colors.get(r.project).color}` : "") },
         h("div", { className: "bl-r-main" },
+          h("span", { className: "bl-r-proj" }, bdi(r.project)),
           h("span", { className: "bl-r-title" }, bdi(r.title)),
           h("span", { className: "bl-r-count" }, `${r.count} of ${r.per}`, r.met ? h("span", { className: "bl-bee", role: "img", ariaLabel: "met" }, " 🐝") : null)),
         // One dot per session the week needs, filling up (the Now card's dots).

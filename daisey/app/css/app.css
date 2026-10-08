@@ -1239,6 +1239,10 @@ body.focus #side { display: none; }
 .wk-ev.wk-plan[class*="pc-"], .wk-ev.wk-plan[class*="area-"] { background: var(--tint); color: var(--aink); }
 .sc-ev.sc-plan { background: none; border: 1.5px dashed var(--aline, var(--line)); color: var(--ink); }
 .sc-ev.sc-plan[class*="pc-"], .sc-ev.sc-plan[class*="area-"] { background: var(--tint); color: var(--aink); }
+/* The way to an event in another city and back (trips.js): Daisey's, not the
+   calendar's — a hatched, quiet block that doesn't open. */
+.sc-ev.sc-trip, .wk-ev.wk-trip { background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--ink-2) 9%, var(--card)) 0 6px, var(--card) 6px 12px);
+  color: var(--ink-2); font-weight: 500; cursor: default; box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ink-2) 18%, transparent); }
 .sc-none { display: flex; align-items: center; justify-content: space-between; inline-size: 100%; margin: 4px 0 0; padding: 4px 0; border: 0; background: none; font: inherit; font-size: 14px; color: var(--ink-2); text-align: start; cursor: pointer; }
 .sc-add { font-size: 12px; font-weight: 600; color: var(--ink-2); opacity: 0; transition: opacity .15s; }
 .sc-none:hover .sc-add, .sc-none:focus-visible .sc-add, .sc-gap:hover .sc-add, .sc-gap:focus-visible .sc-add { opacity: 1; }
@@ -1730,6 +1734,7 @@ body.focus .shell { block-size: auto; min-block-size: 100dvh; overflow: visible;
 .bl-routine { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 12px; align-items: center; padding: 12px 14px; border-radius: 16px; background: var(--card); border: 1px solid var(--line); }
 .bl-routine[class*="pc-"], .bl-routine[class*="area-"] { background: var(--tint); border-color: var(--aline); }
 .bl-r-main { display: flex; flex-direction: column; gap: 2px; min-inline-size: 0; }
+.bl-r-proj { font-size: 11px; font-weight: 600; color: var(--aink, var(--ink-2)); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .bl-r-title { font-size: 14px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .bl-r-count { font-size: 12px; color: var(--ink-2); }
 .bl-dots { color: var(--ink-2); }
