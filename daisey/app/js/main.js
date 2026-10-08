@@ -414,13 +414,13 @@ async function boot(){
         m.adder = mountAddTask($("#addtask"), user.uid, { onStart: startTask });
         m.needs = mountNeeds($("#needsview"), user.uid, { onClose: () => screens.back() });
         // The home panel is the Schedule, always. Projects is its own page.
-        m.schedule = mountSchedule($("#schedPage"), user.uid, { onEvent: (ev) => m.event.view(ev), onNew: (date, at) => m.event.open(date, at), onOpen: (task) => m.adder.edit(task), onProjects: () => { m.projects.openAll(); screens.open("projects"); },
-          onWeek: () => { $("#weekview").hidden = false; $("#weekPage").scrollTop = 0; screens.open("week"); } });
-        // The week is its own page (Mor, 2026-10-08): a second mount, week only.
-        // A weekday heading opens that day back on home.
-        m.week = mountSchedule($("#weekPage"), user.uid, { mode: "week", onEvent: (ev) => m.event.view(ev), onNew: (date, at) => m.event.open(date, at), onOpen: (task) => m.adder.edit(task),
-          onDay: (ymd) => { m.schedule.go(ymd); screens.back(); } });
-        $("#weekBack").onclick = () => screens.back();
+        m.schedule = mountSchedule($("#schedPage"), user.uid, { onEvent: (ev) => m.event.view(ev), onNew: (date, at) => m.event.open(date, at), onOpen: (task) => m.adder.edit(task), onProjects: () => { m.projects.openAll(); screens.open("projects"); } });
+        // ARCHIVED (Mor, 2026-10-08): the Week page is built but switched off until
+        // people ask for it. To bring it back: pass onWeek to the mount above
+        //   onWeek: () => { $("#weekview").hidden = false; $("#weekPage").scrollTop = 0; screens.open("week"); }
+        // and mount the week page:
+        //   m.week = mountSchedule($("#weekPage"), user.uid, { mode: "week", onEvent: (ev) => m.event.view(ev), onNew: (date, at) => m.event.open(date, at), onOpen: (task) => m.adder.edit(task), onDay: (ymd) => { m.schedule.go(ymd); screens.back(); } });
+        //   $("#weekBack").onclick = () => screens.back();
         m.projects = mountProjects({ grid: $("#projPage"), page: $("#projectsview"), view: $("#projectview"), dialog: $("#projdlg") }, user.uid, {
           onOpen: (task) => m.adder.edit(task),
           onAdd: (project) => m.adder.open(project),
