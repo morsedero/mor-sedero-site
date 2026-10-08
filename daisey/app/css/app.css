@@ -1080,6 +1080,11 @@ dialog.tsheet .msg:empty { display: none; }
 #side .hchip .hchip-dot { display: none; }
 #side .hchip #planN { font-size: 13px; }
 body.focus #side { display: none; }
+/* The plan replaces the Now card and needs the full width: the buttons become a row above it. */
+.nowrow:has(#nowcard .proposal) { flex-direction: column; align-items: stretch; gap: 0; }
+.nowrow:has(#nowcard .proposal) #nowcard { flex: 0 1 auto; padding-inline-end: 16px; }
+.nowrow:has(#nowcard .proposal) .side { order: -1; inline-size: auto; flex-direction: row; padding-block: 2px 0; }
+.nowrow:has(#nowcard .proposal) #side .hchip { inline-size: auto; flex: 1; min-block-size: 40px; flex-direction: row; gap: 6px; }
 .now-top:empty { display: none; }
 .now-top { margin: 0; }
 
