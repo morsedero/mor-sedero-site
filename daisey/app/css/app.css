@@ -925,7 +925,6 @@ button.now-title:focus-visible { outline: 2px solid var(--aink); outline-offset:
   100% { box-shadow: 0 0 0 0 transparent, 0 0 0 0 transparent; }
 }
 .pcard-name { min-inline-size: 0; font-size: 15px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.pcard-n { flex: none; font-size: 12px; color: var(--aink); }
 .pcard-status { margin-block-start: 6px; font-size: 12px; color: color-mix(in srgb, var(--aink) 45%, var(--ink)); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pbar { display: block; block-size: 4px; margin-block-start: 8px; border-radius: 2px; background: var(--aline); overflow: hidden; }
 .pbar > span { display: block; block-size: 100%; border-radius: inherit; background: var(--aink); }

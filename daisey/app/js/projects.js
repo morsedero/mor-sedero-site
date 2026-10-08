@@ -212,7 +212,7 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
         f && h("span", { className: "pcard-fl" + (f.bud ? " bud" : "") + (g.pops.has(p.name) ? " pop" : ""), style: `--d:-${(i * 0.9).toFixed(1)}s` }, flowerSvg(f)),
         h("span", { className: "pcard-body" },
           h("span", { className: "pcard-top", dir: dirOf(p.name) },
-            h("span", { className: "pcard-name", dir: "auto", textContent: p.name }), h("span", { className: "pcard-n", textContent: String(p.open.length) })),
+            h("span", { className: "pcard-name", dir: "auto", textContent: p.name })),
           h("span", { className: "pcard-status" }, ...statusLine(p)),
           h("span", { className: "pcard-foot" }, bar(p, "pbar"), flowerTime(f) && h("span", { className: "pcard-time", textContent: flowerTime(f) })))); };
     const tier = (t) => { const ins = ps.filter((p) => tierOf(p.name) === t);
