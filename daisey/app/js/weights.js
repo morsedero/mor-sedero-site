@@ -102,6 +102,16 @@ export const LEARNED_MAX = 10;
 export const LEARNED_DAMP = 3;
 export const SKIP_PENALTY = 8; // per skip of this task today
 
+// Missed slots and the silence check (miss.js; Mor, 2026-10-08), minutes.
+// after: into a free slot with nothing started, it counts as missed. every: a
+// long free stretch holds a new slot this often. min: a stretch shorter than
+// this before an event isn't a slot. midday: a first miss from here on, with
+// nothing done all day, goes straight to the silence check. seen: an app
+// heartbeat this recent means the banner showed, so no notification.
+export const MISS = { after: 10, every: 60, min: 20, midday: 13 * 60, seen: 3 };
+// "Lighter plan": a few small tasks (a deadline due today still comes).
+export const LIGHTER = { each: 30 };
+
 // Later: how long a skipped task stays off the card. Long enough that
 // "not now" means something, short enough that it comes back the same day.
 export const LATER_MINUTES = 120;

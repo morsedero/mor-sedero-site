@@ -16,7 +16,16 @@ const ORIGIN = "http://daisey.preview";
 const day = (n) => { const d = new Date(Date.now() + n * 864e5); return d.toLocaleDateString("en-CA"); };
 const ago = (days) => ({ touchedAt: Date.now() - days * 864e5 });
 
+// Last touched this many minutes ago (miss.js counts from it). Run inside the day hours.
+const missTasks = (ago) => [
+  { title: "Mix review for Reprise", project: "Reprise", size: 60, due: day(0), over: { touchedAt: Date.now() - ago * 60000 } },
+  { title: "Send invoice to Uri", project: "Admin", size: 15, due: day(0), over: { touchedAt: Date.now() - ago * 60000 } },
+];
 const SCENARIOS = {
+  // A missed slot (--cal none): nothing done for 25 minutes.
+  miss: { tasks: missTasks(25), dayplan: { date: day(0), status: "dismissed", items: [] } },
+  // Two slots ignored (--cal none): nothing done for 75 minutes.
+  silence: { tasks: missTasks(75), dayplan: { date: day(0), status: "dismissed", items: [] } },
   en: { tasks: [
     { title: "Mix review for Reprise", project: "Reprise", size: 90, due: day(2) },
     { title: "Send invoice to Uri", project: "Admin", size: 5, due: day(0) },
@@ -259,6 +268,8 @@ const FAKES = {
   });
   await page.goto(ORIGIN + "/" + query);
   await page.waitForSelector(".now-card, .focus, .now-empty, .tk-empty");
+  // The opening daisy stays at least 900 ms (main.js splashOff): wait it out.
+  await page.waitForSelector("#splash", { state: "detached", timeout: 3000 }).catch(() => {});
   await page.waitForTimeout(150);
   for (const sel of clicks) {
     // "sel=text" types into a field instead of clicking it.

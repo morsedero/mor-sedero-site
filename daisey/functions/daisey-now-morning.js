@@ -2,7 +2,7 @@
 // for each user signed up in daisey-now-push, inside their day hours and in
 // their own time zone, sends whatever _daisey-lib/notify.js decides is due —
 // the morning brief, the evening wrap, a free gap after an event, a booked
-// slot starting. What was sent is remembered on the record so nothing goes
+// slot starting, a missed slot or the silence check. What was sent is remembered on the record so nothing goes
 // twice. (Named for the morning brief, its first job.)
 const { store, update, readEvents, sendAll, logged } = require("./_daisey-lib/morning");
 const { decide } = require("./_daisey-lib/notify");
@@ -27,8 +27,8 @@ exports.handler = async () => {
       const { events, cal } = await readEvents(rec, now);
       const { out, patch } = decide(rec, events, now);
       let subs = rec.subs;
-      for (const m of out) {
-        const r = await sendAll({ ...rec, subs }, { title: m.title, body: m.body, tag: m.tag, url: m.url, ...(m.taskId ? { taskId: m.taskId } : {}) }, { ttl: m.ttl });
+      for (const { type, ttl, ...m } of out) {
+        const r = await sendAll({ ...rec, subs }, m, { ttl });
         sent += r.sent; subs = r.subs;
       }
       // subs only when a device dropped out: a sign-up that landed mid-run stays.

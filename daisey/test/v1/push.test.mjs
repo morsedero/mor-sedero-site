@@ -80,7 +80,7 @@ test("brief: tomorrow's deadline not started, and Needs you's count", () => {
 
 // ---------- notify.decide: what goes, when ----------
 const at = (h, m = 0) => Date.UTC(2026, 9, 6, h - 3, m); // Israel wall clock, 6 Oct
-const rec = (o = {}) => ({ tz: TZ, dayStart: 480, dayEnd: 1320, subs: [{}], tasks: [], ...o });
+const rec = (o = {}) => ({ tz: TZ, dayStart: 480, dayEnd: 1320, subs: [{}], tasks: [], notify: { miss: false }, ...o }); // miss.test.mjs covers "miss"
 const types = (out) => out.map((m) => m.type);
 
 test("decide: brief once, at day start, never inside an event or at night", () => {

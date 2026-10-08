@@ -18,6 +18,14 @@
 //           (booked covers those). Comes even while a task runs, and from
 //           the lead before the day starts, so a meeting at 08:00 still gets
 //           its reminder.
+//   miss    a free slot passed with nothing started (app/js/miss.js): the
+//           task that was up, with Start / Shorten buttons; a second slot
+//           ignored in a row (or a first one from 13:00 with nothing done all
+//           day) is the silence check instead — "Rough day?" with Lighter
+//           plan / Not today, once a day. Not when Daisey was on screen since
+//           (its own banner asked), never alongside a gap or booked
+//           suggestion, and not when the calendar can't be read (a meeting
+//           would look like idle time).
 //
 // Reality over plan (app/js/reality.js, 2026-10-06): the snapshot carries
 // the running task, and what you're actually doing beats the calendar.
@@ -46,6 +54,9 @@ const { effectiveDue } = require("../../app/js/triage.js");
 const { waitingFor, personOf } = require("../../app/js/nudge.js");
 const { EVENT_BUFFER } = require("../../app/js/weights.js");
 const { runState, overruled, eventKey } = require("../../app/js/reality.js");
+const { missState } = require("../../app/js/miss.js");
+const { nextPlanned, leftOf } = require("../../app/js/proposal.js");
+const { MISS } = require("../../app/js/weights.js");
 
 const BRIEF_WINDOW = 240; // minutes after the day starts the brief may still go
 const WRAP_BEFORE = 60; // the wrap goes in the day's last hour
@@ -56,7 +67,8 @@ const PEOPLE_BEFORE = 45; // minutes before the meeting
 const PEOPLE_FOCUS = 15; // ...or this close, while a task is running
 const MEETING_LEAD = 10; // minutes before a meeting, unless the menu says otherwise
 const GAP_TTL = 30 * 60, BOOKED_TTL = 15 * 60; // seconds a suggestion stays worth delivering
-const DEFAULT_TYPES = { brief: true, wrap: true, gap: true, booked: true, people: true, meeting: true };
+const MISS_TTL = 30 * 60, SILENCE_TTL = 60 * 60;
+const DEFAULT_TYPES = { brief: true, wrap: true, gap: true, booked: true, people: true, meeting: true, miss: true };
 
 const isBusy = (e) => !e.allDay && e.busy !== false && e.start && e.end;
 const clockIn = (ms, tz) => { const m = localParts(ms, tz).minutes; return `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`; };
@@ -154,6 +166,20 @@ function decide(rec, events, now = Date.now()) {
     if (sent.size !== (rec.bookedSent || []).length) patch.bookedSent = [...sent].slice(-50);
   }
 
+  if (types.miss && events && !out.some((m) => m.type === "gap" || m.type === "booked")) {
+    const planAt = rec.plan?.date === date ? rec.plan.at || 0 : 0;
+    const st = missState({ tasks, events: evs, run: rec.run, now, hours: { start, end }, planAt, silenceOn: rec.settings?.silenceOn || null });
+    const sent = new Set(rec.missSent || []);
+    if (st && !sent.has(st.key)) {
+      sent.add(st.key);
+      patch.missSent = [...sent].slice(-20);
+      // Daisey was on screen since it came (or is now): the banner asked.
+      const shown = rec.seenAt && (rec.seenAt >= st.at || now - rec.seenAt < MISS.seen * MIN);
+      const m = !shown && missMessage(st, { rec, tasks, busy, booked, date, end, now, tz });
+      if (m) out.push(m);
+    }
+  }
+
   if (types.people) {
     const sent = new Set(rec.peopleSent || []);
     for (const e of busy) {
@@ -172,6 +198,32 @@ function decide(rec, events, now = Date.now()) {
     if (sent.size !== (rec.peopleSent || []).length) patch.peopleSent = [...sent].slice(-50);
   }
   return { out, patch };
+}
+
+// The miss / silence notification, or null when there's nothing to name.
+function missMessage(st, { rec, tasks, busy, booked, date, end, now, tz }) {
+  const ready = tasks.filter((t) => t.status === "ready" && !notYet(t, now));
+  if (!ready.length) return null;
+  if (st.kind === "silence") {
+    return { type: "silence", title: "Rough day?", ttl: SILENCE_TTL, tag: `silence-${date}`, url: "./?open=lighter", date,
+      body: `${st.since ? `Nothing's moved since ${clockIn(st.since, tz)}.` : "Nothing's started yet today."} Want a lighter plan for the rest of today?`,
+      actions: [{ action: "lighter", title: "Lighter plan" }, { action: "quiet", title: "Not today" }] };
+  }
+  // The task that was up: the approved plan's next one, else the Now card's pick.
+  const plan = rec.plan?.date === date ? { status: "approved", date, items: (rec.plan.ids || []).map((taskId) => ({ taskId })) } : null;
+  let task = tasks.find((t) => t.id === nextPlanned(plan, tasks, date, now));
+  if (!task) {
+    const next = busy.filter((e) => Date.parse(e.start) > now).sort((a, b) => Date.parse(a.start) - Date.parse(b.start))[0];
+    const until = Math.min(next ? Date.parse(next.start) : Infinity, zoned(date, end, tz));
+    const r = rank(tasks, { now, window: Math.max(5, Math.floor((until - now) / MIN)), nextEvent: null, ...workBase(tasks, now),
+      booked: Object.fromEntries([...booked].map(([id, b]) => [id, b.start])) });
+    task = r.pick?.task;
+  }
+  if (!task) return null;
+  const shorter = leftOf(task) > 5;
+  return { type: "miss", title: task.title, taskId: task.id, ttl: MISS_TTL, tag: `miss-${st.start}`, url: "./",
+    body: `Up since ${clockIn(st.start, tz)} and not started. Start it${shorter ? ", shorten it," : ""} or tap to move it.`,
+    actions: [{ action: "start", title: "Start" }, ...(shorter ? [{ action: "shorten", title: "Shorten" }] : [])] };
 }
 
 module.exports = { decide, DEFAULT_TYPES };

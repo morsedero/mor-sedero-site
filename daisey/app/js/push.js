@@ -75,13 +75,15 @@ const FIELDS = ["id", "title", "project", "area", "type", "where", "openHours", 
   "doneAt", "canSplit", "notAt", "waitingOn", "again"];
 const RECENT = 2 * 864e5;
 const RUN_FIELDS = ["taskId", "startedAt", "pausedAt", "extra", "batch", "done"];
-export function syncSnapshot(tasks, settings, hours, run = null){
+// plan: today's approved plan (state/dayplan), or anything else for none.
+export function syncSnapshot(tasks, settings, hours, run = null, plan = null){
   const now = Date.now();
   const list = (tasks || []).filter((t) => ["ready", "waiting", "someday"].includes(t.status) || (t.status === "done" && now - (t.doneAt || 0) < RECENT))
     .map((t) => Object.fromEntries(FIELDS.filter((k) => t[k] != null).map((k) => [k, t[k]])));
   const s = settings || {};
   const body = { action: "snapshot", tasks: list, tz: tz(), dayStart: hours.start, dayEnd: hours.end,
-    settings: { needsLater: s.needsLater || null, calOffered: s.calOffered || [], somedayAsked: s.somedayAsked || null },
+    settings: { needsLater: s.needsLater || null, calOffered: s.calOffered || [], somedayAsked: s.somedayAsked || null, silenceOn: s.silenceOn || null },
+    plan: plan?.status === "approved" && plan.date ? { date: plan.date, at: plan.approvedAt || 0, ids: (plan.items || []).filter((it) => it.taskId).map((it) => it.taskId) } : null,
     notify: s.notify || {}, meetingLead: s.meetingLead ?? null,
     run: run ? Object.fromEntries(RUN_FIELDS.filter((k) => run[k] != null).map((k) => [k, run[k]])) : null };
   const mark = JSON.stringify(body);
@@ -90,4 +92,24 @@ export function syncSnapshot(tasks, settings, hours, run = null){
   timer = setTimeout(() => {
     post(body).then(() => { lastSent = mark; }).catch((e) => console.warn("[daisey] brief snapshot", e.code || e));
   }, 4000);
+}
+
+// Daisey is on screen (notify.js "miss"): a missed slot is asked by the
+// card's banner, so the server holds its notification. At most every 2 min.
+let seenAt = 0;
+export function seen(){
+  if (Date.now() - seenAt < 120000) return;
+  seenAt = Date.now();
+  post({ action: "seen" }).catch(() => { seenAt = 0; });
+}
+
+// "Not today" on the silence check (sw.js): the day it was said, once, or null.
+export async function takeQuiet(){
+  try {
+    const c = await caches.open("daisey-flags");
+    const r = await c.match("quiet");
+    if (!r) return null;
+    await c.delete("quiet");
+    return (await r.text()) || null;
+  } catch (_) { return null; }
 }

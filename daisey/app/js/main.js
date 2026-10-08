@@ -213,7 +213,7 @@ async function boot(){
     show("signedin"); // no element of its own: just clears loading/sign-in views
 
     Promise.all([import("./now.js"), import("./projects.js"), import("./addtask.js"), import("./needs.js"), import("./import-trello.js"), import("./addevent.js"), import("./store.js"), import("./deadlines.js"), import("./day.js"), import("./calendar.js"), import("./schedule.js"), import("./push.js")])
-      .then(([{ mountNow }, { mountProjects }, { mountAddTask }, { mountNeeds }, { mountImport, connectTrello, finishTrelloConnect, trelloConnected }, { mountAddEvent }, { migrateTasks, watchSettings, saveSettings, watchTasks, watchRun, resetAll }, { mountDeadlines }, { dayHours, minText }, { watchCalendar, connectCalendar, setCalendarHint, listCalendars, saveCalendars }, { mountSchedule }, push]) => {
+      .then(([{ mountNow }, { mountProjects }, { mountAddTask }, { mountNeeds }, { mountImport, connectTrello, finishTrelloConnect, trelloConnected }, { mountAddEvent }, { migrateTasks, watchSettings, saveSettings, watchTasks, watchRun, watchDayPlan, resetAll }, { mountDeadlines }, { dayHours, minText }, { watchCalendar, connectCalendar, setCalendarHint, listCalendars, saveCalendars }, { mountSchedule }, push]) => {
         if ((!isGuest && fb.currentUid() !== user.uid) || mounted) return;
         const m = mounted = {};
         setCalendarHint(isGuest ? "" : user.email);
@@ -270,9 +270,14 @@ async function boot(){
         // The morning brief (push.js): this device's switch, a test button,
         // and — while it's on anywhere — the task snapshot the server counts.
         const pushSwitch = $("#pushBrief"), pushNote = $("#pushNote"), pushTest = $("#pushTest"), pushKinds = $("#pushKinds");
-        let briefOn = false, briefTasks = null, hours = dayHours({}), lastSettings = {}, briefRun = null;
+        let briefOn = false, briefTasks = null, hours = dayHours({}), lastSettings = {}, briefRun = null, briefPlan = null;
         // The running task goes too: what you're actually doing beats the plan (reality.js).
-        const snap = () => { if (briefOn && briefTasks) push.syncSnapshot(briefTasks, lastSettings, hours, briefRun); };
+        // And today's approved plan: approving it counts as doing something (miss.js).
+        const snap = () => { if (briefOn && briefTasks) push.syncSnapshot(briefTasks, lastSettings, hours, briefRun, briefPlan); };
+        // On screen: the card's banner asks about a missed slot, so the server doesn't (notify.js "miss").
+        const seen = () => { if (briefOn && !document.hidden) push.seen(); };
+        const seenTick = setInterval(seen, 60000);
+        document.addEventListener("visibilitychange", seen);
         const note = (t) => { pushNote.textContent = t || ""; pushNote.hidden = !t; };
         const paintPush = () => push.deviceOn().catch(() => false).then((on) => { pushSwitch.checked = on; pushTest.hidden = !on; pushKinds.hidden = !on; });
         // Which kinds: one account-wide setting (settings.notify), the server reads it from the snapshot.
@@ -314,6 +319,7 @@ async function boot(){
         };
         const stopBriefTasks = watchTasks(user.uid, (ts) => { briefTasks = ts; snap(); }, fail);
         const stopBriefRun = watchRun(user.uid, (r) => { briefRun = r || null; snap(); }, fail);
+        const stopBriefPlan = watchDayPlan(user.uid, (d) => { briefPlan = d || null; snap(); }, fail);
         const stopSettings = watchSettings(user.uid, (s) => {
           const hrs = dayHours(s || {});
           const usual = dayHours({ ...s, dayEndToday: null }); // the field shows the usual day, not today's stretch
@@ -323,6 +329,7 @@ async function boot(){
           hours = hrs;
           lastSettings = s || {};
           briefOn = !!s?.morningBrief;
+          seen();
           kindBoxes.forEach((b) => { b.checked = s?.notify?.[b.dataset.kind] !== false; });
           leadPick.value = String(s?.meetingLead ?? 10);
           leadPick.disabled = !meetingBox.checked;
@@ -421,7 +428,7 @@ async function boot(){
           connectBtn.textContent = c.status === "needs_reauth" ? "Reconnect" : "Connect";
           calNote.textContent = isGuest ? "Sign in first" : calOk ? "Connected" : c.status === "needs_reauth" ? "Expired" : "Not connected";
         });
-        m.menu = { unmount(){ stopSettings(); stopCal(); stopBriefTasks(); stopBriefRun(); start.onchange = end.onchange = logSwitch.onchange = pushSwitch.onchange = pushTest.onclick = null;
+        m.menu = { unmount(){ stopSettings(); stopCal(); stopBriefTasks(); stopBriefRun(); stopBriefPlan(); clearInterval(seenTick); document.removeEventListener("visibilitychange", seen); start.onchange = end.onchange = logSwitch.onchange = pushSwitch.onchange = pushTest.onclick = null;
           kindBoxes.forEach((b) => { b.onchange = null; }); } };
 
         // Full screens (a project, Needs you) sit on the history stack, so the
@@ -491,9 +498,13 @@ async function boot(){
         $("#needsChip").onclick = () => { m.needs.open(); screens.open("needs"); };
         // A notification's tap: "?open=wrap" on a fresh start, or a message
         // from sw.js when Daisey was already open.
-        const openFrom = (what) => { if (what === "wrap" || what === "needs") { m.needs.open(what); screens.open("needs"); } };
+        // "?open=lighter": the silence check's Lighter plan (notify.js "miss").
+        const openFrom = (what) => {
+          if (what === "wrap" || what === "needs") { m.needs.open(what); screens.open("needs"); }
+          if (what === "lighter") { if (history.state?.daisey) history.back(); closeScreens(); m.now.lighter(); }
+        };
         const params = new URL(location.href).searchParams;
-        const asked = params.get("open"), startId = params.get("start");
+        const asked = params.get("open"), startId = params.get("start"), shortenId = params.get("shorten");
         // Shared into Daisey (manifest share_target, 2026-10-06): read like a Tell message → cards.
         const shared = [...new Set(["title", "text", "url"].map((k) => (params.get(k) || "").trim()).filter(Boolean))].join("\n");
         // Back from Google's consent screen (daisey-auth-google-callback).
@@ -507,14 +518,19 @@ async function boot(){
           flash(ok ? "Trello connected." : "Couldn't connect Trello. Try again.");
           if (ok) { paintTrello(true); m.importer.open(); }
         });
-        if (asked || shared || startId) history.replaceState(history.state, "", location.pathname);
+        if (asked || shared || startId || shortenId) history.replaceState(history.state, "", location.pathname);
         if (asked) openFrom(asked);
         // "Start task" on a notification (sw.js): straight into focus mode.
         const startFrom = (id) => { if (history.state?.daisey) history.back(); closeScreens(); m.now.startFromNotice(id); };
         if (startId) startFrom(startId);
+        // "Shorten" on a missed slot's notification: halve it, then the card.
+        const shortenFrom = (id) => { if (history.state?.daisey) history.back(); closeScreens(); m.now.shortenFromNotice(id); };
+        if (shortenId) shortenFrom(shortenId);
         const onSwMessage = (e) => {
           if (e.data?.daisey === "open") openFrom(e.data.what);
           if (e.data?.daisey === "start" && e.data.id) startFrom(String(e.data.id));
+          if (e.data?.daisey === "shorten" && e.data.id) shortenFrom(String(e.data.id));
+          if (e.data?.daisey === "quiet") m.now.quiet();
         };
         navigator.serviceWorker?.addEventListener("message", onSwMessage);
         m.swMessages = { unmount(){ navigator.serviceWorker?.removeEventListener("message", onSwMessage); } };

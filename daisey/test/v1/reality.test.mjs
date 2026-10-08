@@ -12,7 +12,7 @@ const N = require("../../functions/_daisey-lib/notify.js");
 const at = (h, m = 0) => Date.UTC(2026, 9, 6, h - 3, m); // Israel wall clock, 6 Oct
 const il = (h, m = 0) => new Date(at(h, m)).toISOString();
 const t = (o) => ({ id: String(Math.random()), title: "Task", status: "ready", due: "2026-10-06", dateKind: "target", size: 30, spentMinutes: 0, ...o });
-const rec = (o = {}) => ({ tz: "Asia/Jerusalem", dayStart: 480, dayEnd: 1320, subs: [{}], tasks: [], ...o });
+const rec = (o = {}) => ({ tz: "Asia/Jerusalem", dayStart: 480, dayEnd: 1320, subs: [{}], tasks: [], notify: { miss: false }, ...o }); // miss.test.mjs covers "miss"
 const types = (out) => out.map((m) => m.type);
 
 test("runState: running until the 'Still on it?' point, paused until it's stale", () => {

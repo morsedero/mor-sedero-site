@@ -14,7 +14,7 @@ import { gapsToday, bookings } from "./day.js";
 import { rank } from "./engine.js";
 import { workBase } from "./context.js";
 import { overruled, eventKey } from "./reality.js";
-import { LABELS, notYet } from "./model.js";
+import { LABELS, notYet, localDate } from "./model.js";
 import * as W from "./weights.js";
 
 const MIN = 60000;
@@ -48,7 +48,10 @@ export function proposeDay({ tasks = [], events = [], now = Date.now(), hours = 
   const cap = ask.fewer ? FEWER : ask.more ? MORE : MAX_ITEMS;
   const skipTypes = new Set(ask.skipTypes || []);
   const out = new Set([...exclude, ...(ask.exclude || []), ...(run?.batch || (run?.taskId ? [run.taskId] : []))]);
-  const pool = tasks.filter((t) => !skipTypes.has(t.type));
+  // maxEach: only tasks this small (the lighter plan, miss.js) — a deadline due today still comes.
+  const today = localDate(now);
+  const pool = tasks.filter((t) => !skipTypes.has(t.type)
+    && (!ask.maxEach || leftOf(t) <= ask.maxEach || (t.dateKind === "deadline" && t.due && t.due <= today)));
   const booked = Object.fromEntries([...bookings(tasks, evs, now)].map(([id, b]) => [id, b.start]));
   const items = [];
   const take = (t) => { items.push({ taskId: t.id, minutes: Math.min(leftOf(t), biggest) }); out.add(t.id); budget -= Math.min(leftOf(t), biggest); };

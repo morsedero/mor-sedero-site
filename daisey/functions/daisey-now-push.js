@@ -3,9 +3,12 @@
 // <Firebase ID token>" and { action, … }:
 //   subscribe    { subscription, tz, dayStart, dayEnd } — this device gets it
 //   unsubscribe  { endpoint } — this device stops
-//   snapshot     { tasks, settings, notify, run, tz, dayStart, dayEnd } —
-//                what the notifications count, which kinds are on, and the
-//                running task (app/js/reality.js: it beats the calendar)
+//   snapshot     { tasks, settings, notify, run, plan, tz, dayStart, dayEnd } —
+//                what the notifications count, which kinds are on, the
+//                running task (app/js/reality.js: it beats the calendar) and
+//                today's approved plan ({ date, at, ids }: app/js/miss.js)
+//   seen         Daisey is on screen now: a missed slot is asked in the app,
+//                not as a notification (notify.js "miss")
 //   test         sends today's brief now, to every device signed up; returns
 //                { sent, body, cal } so the menu can show what went
 // State lives in Blobs (_daisey-lib/morning.js); daisey-now-morning sends.
@@ -54,6 +57,7 @@ const cleanSettings = (s) => ({
   needsLater: s?.needsLater && typeof s.needsLater === "object" ? { date: day(s.needsLater.date), keys: (s.needsLater.keys || []).slice(0, 100).map((k) => str(k, 120)) } : null,
   calOffered: Array.isArray(s?.calOffered) ? s.calOffered.slice(-200).map((k) => str(k, 200)) : [],
   somedayAsked: day(s?.somedayAsked),
+  silenceOn: day(s?.silenceOn), // the silence check answered that day (miss.js)
 });
 // The running task (state/now), or null: ids and times only.
 const at = (v) => (Number.isFinite(v) && v > 0 ? v : null);
@@ -66,7 +70,9 @@ const cleanRun = (r) => {
   if (ids(r.batch)) { o.batch = ids(r.batch); o.done = ids(r.done) || []; }
   return o;
 };
-const KINDS = ["brief", "wrap", "gap", "booked", "people", "meeting"];
+const KINDS = ["brief", "wrap", "gap", "booked", "people", "meeting", "miss"];
+// Today's approved plan: its day, when it was saved, its tasks in order.
+const cleanPlan = (p) => (day(p?.date) ? { date: p.date, at: at(p.at) || 0, ids: ids(p.ids) || [] } : null);
 const cleanNotify = (n) => Object.fromEntries(KINDS.map((k) => [k, n?.[k] !== false]));
 // Minutes before a meeting its reminder goes (the menu offers 5–30).
 const cleanLead = (v) => (Number.isInteger(v) && v >= 5 && v <= 60 ? v : 10);
@@ -97,7 +103,11 @@ exports.handler = async (event) => {
     if (!Array.isArray(b.tasks)) return fail(400, "bad_input");
     const tasks = b.tasks.slice(0, MAX_TASKS).map(cleanTask);
     await update(uid, () => ({ sub, tasks, tasksAt: Date.now(), settings: cleanSettings(b.settings), notify: cleanNotify(b.notify),
-      meetingLead: cleanLead(b.meetingLead), run: cleanRun(b.run), ...where(b) }));
+      meetingLead: cleanLead(b.meetingLead), run: cleanRun(b.run), plan: cleanPlan(b.plan), ...where(b) }));
+    return reply(200, { ok: true });
+  }
+  if (b.action === "seen") {
+    await update(uid, () => ({ seenAt: Date.now() }));
     return reply(200, { ok: true });
   }
   if (b.action === "unsubscribe") {

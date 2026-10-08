@@ -23,9 +23,11 @@ import { watchWhere, setManual, whereAsk } from "./where.js";
 import { pickWeekDay } from "./triage.js";
 import { focusView, handoffView, elapsedMinutes, targetMinutes, batchFocusView, batchName, sinceMark, paused, resumed, runCap, bookedMinutes, holdButton, stillOnMinutes, bloomHold } from "./focus.js";
 import { watchCalendar, logDone } from "./calendar.js";
-import { LATER_MINUTES, DRAIN, CANCEL_KEEP_MINUTES } from "./weights.js";
+import { LATER_MINUTES, DRAIN, CANCEL_KEEP_MINUTES, LIGHTER } from "./weights.js";
+import { missState } from "./miss.js";
+import { takeQuiet } from "./push.js";
 import { rank, freeWindow, timeBucket, matchProject, dueAt } from "./engine.js";
-import { leftMinutes, toMinutes, progressOf, progressPatch, localDate, skipSnapshot, skipLesson, pendingCheck, notYet, pushedTo, bringBack, againInput, dayAfter } from "./model.js";
+import { leftMinutes, toMinutes, progressOf, progressPatch, shrinkPatch, shrunk, localDate, skipSnapshot, skipLesson, pendingCheck, notYet, pushedTo, bringBack, againInput, dayAfter } from "./model.js";
 import { waitingFor, personOf } from "./nudge.js";
 import { dayHours, isNight, nextMorning, dayEndAt, bookings, sameTitle, minText, gapsToday } from "./day.js";
 import { collectNeeds } from "./needs.js";
@@ -941,9 +943,12 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
   }
   const closeProposal = () => { prop.open = false; prop.ask = false; prop.note = ""; render(); };
   // extra: the refit's record ({ kept, cut }), kept until the plan is saved again.
+  // approvedAt: when the user last approved it (miss.js counts that as
+  // activity; a refit saving the plan isn't), kept across later saves.
   const savePlan = (status, items, extra = {}) => {
-    dayPlan = { date: localDate(), status, items, ...extra, at: Date.now() };
-    saveDayPlan(uid, { date: dayPlan.date, status, items, ...extra }).catch(fail);
+    const approvedAt = (todaysPlan()?.approvedAt) ?? null;
+    dayPlan = { date: localDate(), status, items, approvedAt, ...extra, at: Date.now() };
+    saveDayPlan(uid, { date: dayPlan.date, status, items, approvedAt, ...extra }).catch(fail);
   };
   // The approved plan no longer fits the day (an event added, running late):
   // Daisey cuts what matters least itself (proposal.refit) and says so under
@@ -994,12 +999,59 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
   }
   function approve(){
     const n = prop.items.filter((it) => !isBreak(it)).length;
-    savePlan("approved", trimBreaks(prop.items).map(({ taskId, brk, minutes }) => (brk ? { brk, minutes } : { taskId, minutes })));
+    savePlan("approved", trimBreaks(prop.items).map(({ taskId, brk, minutes }) => (brk ? { brk, minutes } : { taskId, minutes })), { approvedAt: Date.now() });
     prop.open = false; prop.ask = false; prop.note = ""; reset();
     render();
     flash(`Plan set: ${n} ${n === 1 ? "task" : "tasks"}. The card follows it.`);
   }
   function dismiss(){ savePlan("dismissed", []); closeProposal(); }
+
+  // ---------- Missed slot and the silence check (miss.js, 2026-10-08) ----------
+  // While Daisey is open, a banner over the card asks; closed, the server
+  // sends the same as a notification (notify.js "miss").
+  function missNow(){
+    if (!tasks || cal.status !== "ok" || prop.open || handoff) return null;
+    return missState({ tasks, events: cal.events, run, now: Date.now(), hours: dayHours(settings),
+      planAt: todaysPlan()?.approvedAt || 0, silenceOn: settings.silenceOn || null });
+  }
+  const silenced = (date = localDate()) => { settings = { ...settings, silenceOn: date }; saveSettings(uid, { silenceOn: date }).catch(fail); };
+  // Half the time, on the card's own buckets (model.shrunk); counts as an answer.
+  function shortenNow(task){
+    const to = shrunk(task.size);
+    restoreTask(uid, task.id, shrinkPatch(task)).catch(fail);
+    flash(`${task.title}: now ${dur(to)}.`);
+  }
+  // A few small tasks for the rest of today, as a proposal to approve.
+  function lighterPlan(){
+    silenced();
+    if (run) { flash("Finish or stop the running task first."); return; }
+    const items = proposeDay({ ...planCtx(), ask: { fewer: true, quickFirst: true, maxEach: LIGHTER.each } });
+    if (!items.length) { flash("Nothing small left for today. Take the rest of the day."); render(); return; }
+    prop.items = withBreaks(items, planCtx()); prop.exclude = [];
+    prop.open = true; prop.ask = false; prop.note = ""; handoff = null; reset();
+    render();
+  }
+  function missView(card){
+    const st = missNow();
+    if (!st) return null;
+    const chip = (text, onclick, cls = "chip") => h("button", { className: cls, type: "button", textContent: text, onclick });
+    if (st.kind === "silence") {
+      return h("div", { className: "miss-ask silence", role: "status" },
+        h("p", { className: "miss-title", textContent: "Rough day?" }),
+        h("p", { className: "miss-text", textContent: `${st.since ? `Nothing's moved since ${clock(st.since)}.` : "Nothing's started yet today."} Want a lighter plan for the rest of today?` }),
+        h("div", { className: "later-ask" },
+          chip("Lighter plan", lighterPlan, "chip on"),
+          chip("Not today", () => { silenced(); render(); })));
+    }
+    if (!card) return null;
+    const task = card.task;
+    return h("div", { className: "miss-ask", role: "status" },
+      h("p", { className: "miss-text" }, "Up since ", clock(st.start), " and not started."),
+      h("div", { className: "later-ask" },
+        chip("Start", () => begin(task)), // the card's own Start stays the loud one
+        leftMinutes(task) > 5 && chip("Shorten", () => shortenNow(task)),
+        chip("Move", () => { state.more = state.pendAsk = state.showAlts = false; state.notNow = true; render(); })));
+  }
   // A plan item that no longer fits (it's late) can be cut to what's left.
   function shorten(i, minutes){
     prop.items = prop.items.map((it, k) => (k === i ? { ...it, minutes } : it));
@@ -1149,6 +1201,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
   // and calendar, so main.js can lift the opening daisy.
   let ready = false;
   function render(){
+    if (noticeLighter && tasks != null && planKnown && cal.status !== "loading") { noticeLighter = false; lighterPlan(); }
     renderCard(); paintPlanScreen();
     if (!ready && tasks != null && planKnown && cal.status !== "loading") { ready = true; onReady?.(); }
   }
@@ -1287,7 +1340,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
     if (card === r.pick && r.pick.batch && !state.chosen && !state.single) { day(...head, batchCard(r, r.pick.batch), tip); return; }
     const alts = r.ranked.length > 1 ? [r.pick, ...r.alternatives].filter((s) => s !== card).slice(0, 3) : [];
     // Start is the one loud thing on the tab; the other two stay quiet under it.
-    day(...head, deck(taskCard(card, true,
+    day(...head, missView(card), deck(taskCard(card, true,
       ...cardActions(card.task, alts, startButton("Start", `Start: ${card.task.title}`, () => begin(card.task)))), asking()),
       nextLine(card.task), ...altsFor(alts), tip);
     // One slide-in per step-aside: later snapshots must not replay it.
@@ -1320,8 +1373,13 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
   // already running stays, and its focus screen is what opens; a task done,
   // parked or set Pending since isn't started. A cold start from the
   // notification has neither the tasks nor the run yet, so it waits for both.
-  let noticeStart = null, runKnown = false;
+  let noticeStart = null, runKnown = false, noticeShorten = null, noticeLighter = false;
   const tryNoticeStart = () => {
+    if (noticeShorten && tasks !== null) {
+      const t = tasks.find((x) => x.id === noticeShorten);
+      noticeShorten = null;
+      if (t && t.status === "ready") shortenNow(t);
+    }
     if (!noticeStart || tasks === null || !runKnown) return;
     const id = noticeStart;
     noticeStart = null;
@@ -1354,8 +1412,13 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
       return;
     }
     if (windowMark(calendarNow()) !== lastWindow) render();
+    else if (Date.now() - missAt > 15000) { missAt = Date.now(); const k = missNow()?.key ?? ""; if (k !== missKey) { missKey = k; render(); } }
   }, 1000);
-  const onVisible = () => { if (!document.hidden) render(); };
+  let missAt = 0, missKey = "";
+  // "Not today" on the silence check's notification (sw.js), saved here.
+  const quietCheck = () => takeQuiet().then((d) => { if (d === localDate()) { silenced(d); render(); } });
+  quietCheck();
+  const onVisible = () => { if (!document.hidden) { quietCheck(); render(); } };
   document.addEventListener("visibilitychange", onVisible);
   root.hidden = false;
   render();
@@ -1382,6 +1445,10 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
       begin(task);
     },
     startFromNotice(id){ noticeStart = id; tryNoticeStart(); },
+    // The missed-slot notification's Shorten, and the silence check's two (sw.js).
+    shortenFromNotice(id){ noticeShorten = id; tryNoticeStart(); },
+    lighter(){ noticeLighter = true; render(); },
+    quiet: quietCheck,
     // Tasks finished today, newest first, for the header's done chip.
     doneList(){ return doneToday(tasks || []).sort((a, b) => b.doneAt - a.doneAt); },
     // "Plan my day" from the Schedule: the proposal on the card.
