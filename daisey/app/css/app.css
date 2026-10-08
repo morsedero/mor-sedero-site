@@ -847,7 +847,9 @@ button.now-title:focus-visible { outline: 2px solid var(--aink); outline-offset:
 :where(.pcard, #projectview, .pj-chip, dialog.tsheet, .ny-card) { --tint: var(--card); --aline: var(--line); --aink: var(--ink-2); }
 
 /* Full screens: a project, Needs you. */
-.screen { position: fixed; z-index: 20; inset: 0; overflow-y: auto; overscroll-behavior: contain; background: var(--bg); color: var(--ink); touch-action: pan-y; }
+/* They open under the header, which stays on every page (Mor, 2026-10-08):
+   top = the shell's top padding + the 44px topbar. */
+.screen { position: fixed; z-index: 20; inset: calc(max(16px, env(safe-area-inset-top)) + 44px) 0 0; overflow-y: auto; overscroll-behavior: contain; background: var(--bg); color: var(--ink); touch-action: pan-y; }
 .screen > * { max-inline-size: 560px; margin-inline: auto; }
 body:has(.screen:not([hidden])) { overflow: hidden; }
 
@@ -855,7 +857,7 @@ body:has(.screen:not([hidden])) { overflow: hidden; }
 /* The project screen wears its colour: a wash down from the top, a white
    card on it with the numbers, white task rows (restyled 2026-10-06). */
 #projectview { padding-block-end: max(24px, env(safe-area-inset-bottom)); background: linear-gradient(180deg, var(--tint) 0, var(--tint) 120px, var(--bg) 360px) no-repeat, var(--bg); }
-.pj-top { display: flex; align-items: center; gap: 4px; padding: max(16px, env(safe-area-inset-top)) 0 0 12px; }
+.pj-top { display: flex; align-items: center; gap: 4px; padding: 4px 0 0 12px; }
 .pj-back { flex: none; inline-size: 40px; block-size: 40px; display: grid; place-items: center; border: 0; border-radius: 12px; background: none; color: var(--ink); cursor: pointer; }
 .pj-back svg { inline-size: 20px; block-size: 20px; stroke-width: 2; }
 :dir(rtl) .pj-back svg { transform: scaleX(-1); }
@@ -990,7 +992,7 @@ dialog.tsheet .now-head { margin-block-end: -4px; }
 dialog.tsheet .msg:empty { display: none; }
 
 /* Needs you: one decision at a time. */
-#needsview { display: flex; flex-direction: column; padding: max(18px, env(safe-area-inset-top)) 20px max(24px, env(safe-area-inset-bottom)); }
+#needsview { display: flex; flex-direction: column; padding: 12px 20px max(24px, env(safe-area-inset-bottom)); }
 #needsview[hidden] { display: none; }
 #needsview > * { inline-size: 100%; }
 .ny-top { display: flex; align-items: center; justify-content: space-between; min-block-size: 44px; }
@@ -1035,7 +1037,7 @@ dialog.tsheet .msg:empty { display: none; }
   block-size: var(--app-h, 100dvh); display: flex; flex-direction: column; overflow: hidden; /* --app-h: main.js fitHeight */
   padding: max(16px, env(safe-area-inset-top)) 16px 0;
 }
-.topbar { flex: none; block-size: 44px; min-block-size: 44px; padding-inline: 4px; gap: 8px; }
+.topbar { flex: none; block-size: 44px; min-block-size: 44px; padding-inline: 4px; gap: 8px; position: relative; z-index: 21; /* over .screen, so its menu opens over pages too */ }
 .logo { inline-size: 30px; block-size: 30px; flex: none; }
 .brand { font-size: 21px; letter-spacing: -0.4px; }
 .brand .beta { margin-inline-start: 4px; font-size: 10px; font-weight: 500; letter-spacing: 0; color: var(--ink-2); vertical-align: super; }
@@ -1224,7 +1226,7 @@ body.focus #side { display: none; }
 .ppage .night-div { margin-block: 12px; }
 
 /* The Projects page (its own screen since 2026-10-07). */
-.pp-top { display: flex; align-items: center; gap: 4px; padding: max(16px, env(safe-area-inset-top)) 16px 0 12px; }
+.pp-top { display: flex; align-items: center; gap: 4px; padding: 4px 16px 0 12px; }
 .pp-title { margin: 0; font-size: 22px; font-weight: 600; }
 .pp-page { padding: 12px 20px 32px; }
 
