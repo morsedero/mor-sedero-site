@@ -153,6 +153,13 @@ const SCENARIOS = {
     { title: "לתלות מסך", project: "Home", size: 30, over: { status: "someday", area: "home" } },
     { title: "Learn Wwise", project: "Inbox", size: 60, over: { status: "someday" } },
   ] },
+  // Routines (routine.js): Exercise 3× a week with nothing done yet, and band
+  // practice 2× a week until the show.
+  routine: { tasks: [
+    { title: "Exercise", project: "Health", size: 45, routine: { per: 3 } },
+    { title: "Band practice", project: "Band", size: 60, routine: { per: 2, until: day(30), log: [{ day: day(-30), min: 60 }] } },
+    { title: "Mix review", project: "Reprise", size: 60 },
+  ] },
   waiting: { tasks: [
     { title: "Waiting on Yuval", project: "Reprise", size: 30, over: { status: "waiting", waitingOn: "Yuval" } },
     { title: "Big edit", project: "Reprise", size: 240 },

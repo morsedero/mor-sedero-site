@@ -21,7 +21,8 @@
 // PALETTE. Names are taken in order, so a colour doesn't move around as
 // counts change. Inbox has none.
 import { watchTasks, finishTask, restoreTask, removeTask, watchProjectNames, saveProjectNames, saveProjectRanges, saveProjectOrder, saveProjectTiers } from "./store.js";
-import { INBOX, progressOf, progressPatch, leftMinutes, pushedTo, notYet, durText, localDate, bringBack, cleanRange, outsideRange } from "./model.js";
+import { INBOX, progressOf, progressPatch, leftMinutes, pushedTo, notYet, durText, localDate, bringBack, cleanRange, outsideRange, doneSnapshot } from "./model.js";
+import { isRoutine, weekLine } from "./routine.js";
 import { isOverdue } from "./triage.js";
 import { h, bdi, flash, icon, askProgress, sizeChip, progressBar } from "./ui.js";
 import { dirOf, setProjectColors } from "./look.js";
@@ -111,7 +112,9 @@ function statusLine(p){
 // count: they're still part of the way to done. Not now ones don't.
 export const minutesLeft = (p) => [...p.next, ...p.pending].reduce((n, t) => n + leftMinutes(t), 0);
 // Mean of the tasks' own % (done = 100), so half-finished work counts.
-const progress = (p) => (p.all.length ? p.all.reduce((n, t) => n + progressOf(t), 0) / (100 * p.all.length) : 0);
+// Routines have no %: they recur, so they'd hold the project at 0 forever.
+const progress = (p) => { const ts = p.all.filter((t) => !isRoutine(t) || t.status === "done");
+  return ts.length ? ts.reduce((n, t) => n + progressOf(t), 0) / (100 * ts.length) : 0; };
 const bar = (p, cls) => h("div", { className: cls, role: "img", ariaLabel: `${Math.round(progress(p) * 100)}% done` },
   h("span", { style: `inline-size:${Math.round(progress(p) * 100)}%` }));
 
@@ -338,7 +341,14 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
 
   // ---------- the project screen ----------
   function complete(t){
-    const before = { status: t.status || "ready", doneAt: t.doneAt ?? null, skipsSinceStart: t.skipsSinceStart ?? 0, progress: t.progress ?? 0 };
+    const before = doneSnapshot(t);
+    // A routine has no "how much": the tick is one session done ("Did it"),
+    // even when it was done away from Daisey.
+    if (isRoutine(t)) {
+      finishTask(uid, t).catch(fail);
+      flash("Did it: ", t.title, { undo: () => restoreTask(uid, t.id, before).catch(fail) });
+      return;
+    }
     askProgress(t, {
       start: progressOf(t) || 50,
       onFull: () => {
@@ -398,6 +408,7 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
 
   function nextMeta(t){
     const parts = [sizeChip(t.size ? t : { ...t, size: 30 })];
+    if (isRoutine(t)) parts.push(weekLine(t));
     // Both dates when both apply (Mor, 2026-10-06): the start while it's
     // still ahead (the card is dimmed until then), then the due date.
     // "Starts", not "from": "from" read as the start of a range ending at due.

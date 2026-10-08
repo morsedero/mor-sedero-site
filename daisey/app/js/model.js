@@ -13,12 +13,14 @@
 // - Energy is gone (Mor, 2026-10-07): "no one wants to deal with that".
 // - A date is a Deadline (real) or a Target (wish), never computed. New and
 //   migrated dates are Targets until the user says otherwise.
-// - No repeating tasks.
+// - No repeating tasks — except routines (Mor, 2026-10-08): so many times a
+//   week, see routine.js. Done on one logs a session instead of closing it.
 // - Waiting is set by acting on an existing task, never when adding one.
 //   The UI calls it Pending (Mor, 2026-10-05); the status stays "waiting".
 // - Steps (2026-10-05, layout round 2): a checklist on the task. The first
 //   unticked one is written to nextStep, so the engine and the Now card read
 //   the same field they always did.
+import { cleanRoutine, sessionPatch, routineChange } from "./routine.js";
 
 export const SIZES = [5, 15, 30, 60, 90]; // guess buckets; 90 reads as "90+"
 // someday: parked, never on the card until moved back. dropped: let go in the
@@ -401,6 +403,8 @@ export function createTask(input, { now = Date.now(), history = [] } = {}){
     source: input.source && input.source.app ? { ...input.source } : null,
     // Made by "Again?" after Done: which period it repeats on, if any.
     again: AGAIN.includes(input.again) ? input.again : null,
+    // So many times a week (routine.js), or null for a one-off task.
+    routine: cleanRoutine(input.routine),
     guessed: GUESSABLE.filter((k) => !(k in given)),
     v: TASK_VERSION,
     createdAt: now,
@@ -479,6 +483,7 @@ export function editTask(task, changes, { now = Date.now(), history = [] } = {})
   if (has("notes")) set("notes", notesText(changes.notes) || null);
   // How much is done (the edit sheet's slider): 0-99, Done itself stays 100.
   if (has("progress")) set("progress", progressPatch(changes.progress, { now }).progress);
+  if (has("routine")) set("routine", routineChange(task, changes.routine).routine);
 
   const order = GUESSABLE.filter((k) => guessed.has(k));
   if (!same([...order].sort(), [...(task.guessed || [])].sort())) patch.guessed = order;
@@ -521,8 +526,17 @@ export function migrateTask(task, history = []){
   return patch;
 }
 
-export const completeTask = (task, { now = Date.now() } = {}) =>
-  ({ status: "done", doneAt: now, skipsSinceStart: 0, touchedAt: now, onHold: null, progress: 100 });
+// A routine isn't closed by Done: it logs a session (routine.sessionPatch).
+export const completeTask = (task, { now = Date.now(), minutes = 0 } = {}) =>
+  (cleanRoutine(task.routine) ? sessionPatch(task, { now, minutes })
+    : { status: "done", doneAt: now, skipsSinceStart: 0, touchedAt: now, onHold: null, progress: 100 });
+
+// What Done changes, as it was before: the Undo after a Done.
+export const doneSnapshot = (task) => ({
+  status: task.status || "ready", doneAt: task.doneAt ?? null, skipsSinceStart: task.skipsSinceStart ?? 0, progress: task.progress ?? 0,
+  ...(task.routine ? { routine: task.routine, notBefore: task.notBefore ?? null, spentMinutes: task.spentMinutes ?? 0,
+    stopsUnfinished: task.stopsUnfinished ?? 0, ...(task.steps ? { steps: task.steps, nextStep: task.nextStep ?? null } : {}) } : {}),
+});
 
 // How much of a task is finished (Mor, 2026-10-07): 0-100, asked when Done
 // is pressed. Done is always 100; a project's % is the mean of these.
@@ -635,6 +649,7 @@ export const keptTime = (task, minutes, { now = Date.now() } = {}) =>
 
 export function workedTask(task, minutes, { finished = false, now = Date.now() } = {}){
   const spent = (task.spentMinutes || 0) + Math.max(0, Math.round(minutes));
+  if (finished && cleanRoutine(task.routine)) return { ...completeTask(task, { now, minutes: spent }), workedAt: now };
   return finished
     ? { ...completeTask(task, { now }), spentMinutes: spent, workedAt: now }
     : { spentMinutes: spent, stopsUnfinished: (task.stopsUnfinished || 0) + 1, touchedAt: now, workedAt: now };

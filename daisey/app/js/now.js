@@ -27,7 +27,8 @@ import { LATER_MINUTES, DRAIN, CANCEL_KEEP_MINUTES, LIGHTER } from "./weights.js
 import { missState, silenceText } from "./miss.js";
 import { takeQuiet } from "./push.js";
 import { rank, freeWindow, timeBucket, matchProject, dueAt } from "./engine.js";
-import { leftMinutes, toMinutes, progressOf, progressPatch, shrinkPatch, shrunk, localDate, skipSnapshot, skipLesson, pendingCheck, notYet, pushedTo, bringBack, againInput, dayAfter } from "./model.js";
+import { leftMinutes, toMinutes, progressOf, progressPatch, shrinkPatch, shrunk, localDate, skipSnapshot, skipLesson, pendingCheck, notYet, pushedTo, bringBack, againInput, dayAfter, doneSnapshot } from "./model.js";
+import { isRoutine, routineCalendar, eventsToLog, sessionPatch } from "./routine.js";
 import { waitingFor, personOf } from "./nudge.js";
 import { dayHours, isNight, nextMorning, dayEndAt, bookings, sameTitle, minText, gapsToday } from "./day.js";
 import { collectNeeds } from "./needs.js";
@@ -552,6 +553,24 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
 
   // Booked tasks right now, id → { start, end, title } (day.js).
   const booked = () => (cal.status === "ok" ? bookings(tasks || [], cal.events) : new Map());
+  // Routine sessions the user put on the calendar themselves (routine.js).
+  const routineCal = (at) => (cal.status === "ok" ? routineCalendar(tasks || [], cal.events, at) : {});
+  // A routine's session that happened on the calendar (Gym, 07:00-08:00) is
+  // logged as done once it's over — exercise done outside Daisey still counts.
+  // Deduped by event id and by day (routine.eventsToLog), so the phone and the
+  // laptop writing it at once is harmless.
+  function logRoutineEvents(){
+    if (cal.status !== "ok" || !tasks) return;
+    for (const t of tasks) {
+      if (t.status !== "ready" || !isRoutine(t) || run?.taskId === t.id) continue;
+      let cur = t;
+      for (const ev of eventsToLog(t, cal.events)) {
+        const patch = sessionPatch(cur, { ev });
+        cur = { ...cur, ...patch };
+        restoreTask(uid, t.id, patch).catch(fail);
+      }
+    }
+  }
 
   // "I have 30 minutes" (Tell Daisey, moment.free): the user's own word for
   // how long they have, counting down from when they said it. It only ever
@@ -578,6 +597,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
       spot: f.place.spot,
       learnStats,
       booked: Object.fromEntries([...booked()].map(([id, b]) => [id, b.start])),
+      routineCal: routineCal(now),
     };
   }
 
@@ -611,6 +631,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
       place: "home",
       learnStats,
       booked: Object.fromEntries([...booked()].map(([id, b]) => [id, b.start])),
+      routineCal: routineCal(morning),
     });
     const p = r.pick;
     const day = localDate(morning);
@@ -846,7 +867,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
   // Done on a task that was never started here (already finished, or done
   // elsewhere): finished with no time booked, with an Undo.
   function quickDoneNow(task){
-    const before = { status: task.status || "ready", doneAt: task.doneAt ?? null, skipsSinceStart: task.skipsSinceStart ?? 0 };
+    const before = doneSnapshot(task);
     handoff = { title: task.title, skip: task.id, minutes: 0, ids: [task.id] };
     finishTask(uid, task).catch(fail);
     reset(); render();
@@ -1251,7 +1272,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
       handoff.cheered = true;
       // "Again?" (2026-10-06): one task finished, not a batch → offer next week / next month.
       const finished = handoff.ids?.length === 1 ? (tasks || []).find((t) => t.id === handoff.ids[0]) : null;
-      const again = finished && {
+      const again = finished && !isRoutine(finished) && {
         suggest: finished.again || null,
         made: handoff.againMade || null,
         pick: (period) => {
@@ -1404,8 +1425,8 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
     watchWhere((v) => { located = v; render(); }),
     watchProjectColors(() => render()),
     watchProjectTiers(() => render()),
-    watchTasks(uid, (ts) => { tasks = ts; render(); tryNoticeStart(); }, fail),
-    watchCalendar((c) => { cal = c; render(); }),
+    watchTasks(uid, (ts) => { tasks = ts; render(); tryNoticeStart(); logRoutineEvents(); }, fail),
+    watchCalendar((c) => { cal = c; render(); logRoutineEvents(); }),
     watchRun(uid, (r) => { run = r; runKnown = true; if (r) handoff = null; render(); tryNoticeStart(); }, fail),
     watchSkips(uid, (s) => { skipDoc = s; render(); }, fail),
     watchSettings(uid, (s) => { settings = s || {}; render(); }, fail),

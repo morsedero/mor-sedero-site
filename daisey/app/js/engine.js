@@ -10,11 +10,12 @@ import * as W from "./weights.js";
 import { localDate, durText, notYet, leftMinutes, progressOf, LABELS } from "./model.js";
 import { effectiveDue } from "./triage.js";
 import { officeOpen, officeMinutesLeft } from "./holidays.js";
+import { cleanRoutine, weekState } from "./routine.js";
 
 const MIN = 60000;
 const DAY = 86400000;
 // Every scoring factor, in why-line tie order (earlier wins a tie).
-const FACTORS = ["deadline", "stakes", "office", "progress", "batch", "spot", "priority", "area", "target", "window", "momentum", "neglect", "learned"];
+const FACTORS = ["deadline", "routine", "stakes", "office", "progress", "batch", "spot", "priority", "area", "target", "window", "momentum", "neglect", "learned"];
 const DAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
@@ -106,6 +107,8 @@ export function readMoment(input = {}){
     skipsToday: input.skipsToday || {},
     learnStats: input.learnStats || {},
     booked: input.booked || {},
+    // Routines' sessions already on the calendar (routine.routineCalendar).
+    routineCal: input.routineCal || {},
   };
 }
 
@@ -118,6 +121,8 @@ const windowFor = (task, m) => (task.openHours === "office" ? Math.min(m.window,
 // Why a task can't be offered right now, or null if it can.
 export function filterOut(task, m){
   if (task.status === "done" || task.status === "dropped") return "done";
+  const ends = cleanRoutine(task.routine)?.until;
+  if (ends && ends < m.today) return "done"; // a routine past its last day (the show is over)
   if (task.status === "waiting") return "waiting";
   // Started, then waiting for a reply (2026-10-07): nothing to do on it until
   // the reply comes, so it isn't offered. The running card still shows it.
@@ -126,6 +131,9 @@ export function filterOut(task, m){
   if ((task.skipsSinceStart || 0) >= W.STALE_SKIPS && !deadlineWithin(task, m.now, W.STALE_KEEP_DEADLINE_DAYS)) return "stale";
   if (notYet(task, m.now)) return "notyet";
   if (m.booked[task.id] > m.now) return "booked";
+  // A routine whose week is covered by what's done and what's on the
+  // calendar, or with a session of its own later today: nothing to add.
+  if (cleanRoutine(task.routine) && (m.routineCal[task.id]?.today || !weekState(task, m.today, m.routineCal[task.id]).need)) return "routine";
   if (m.sessionSkips.has(task.id)) return "skipped";
   if (m.blockProject && key(task.project) !== m.blockProject) return "block";
   if ((task.notAt || []).includes(m.place)) return "place"; // said "Not here" on a skip
@@ -174,6 +182,16 @@ function target(task, m){
   if (!task.due || task.dateKind === "deadline") return { points: 0, detail: null };
   const days = daysUntil(effectiveDue(task, m.now), m.now);
   return { points: days <= 0 ? W.TARGET.today : days <= 3 ? W.TARGET.within3 : 0, detail: { days } };
+}
+
+// A routine: how far behind its week is (W.ROUTINE).
+function routine(task, m){
+  if (!cleanRoutine(task.routine)) return { points: 0, detail: null };
+  const s = weekState(task, m.today, m.routineCal[task.id]);
+  if (!s.need) return { points: 0, detail: null };
+  const R = W.ROUTINE;
+  // The week's count is the reason a routine is up, so it always leads the why.
+  return { points: s.need >= s.daysLeft ? R.last : s.need * 2 >= s.daysLeft ? R.behind : R.due, why: R.why, detail: s };
 }
 
 function stakes(task){
@@ -288,7 +306,7 @@ function progress(task){
 // depends on the other tasks (batches, areas in play).
 export function scoreTask(task, m, ctx = { batches: new Map(), areas: [] }){
   const f = {
-    deadline: deadline(task, m), target: target(task, m), stakes: stakes(task), priority: priority(task, m), area: areaBalance(task, m, ctx.areas), neglect: neglect(task, m),
+    deadline: deadline(task, m), routine: routine(task, m), target: target(task, m), stakes: stakes(task), priority: priority(task, m), area: areaBalance(task, m, ctx.areas), neglect: neglect(task, m),
     window: windowFit(task, m), momentum: momentum(task, m), batch: batch(task, ctx.batches), learned: learned(task, m),
     office: office(task, m), spot: spot(task, m), progress: progress(task),
   };
@@ -327,6 +345,10 @@ const PHRASES = {
   deadline: (s, d) => d.passed || d.days < 0 ? ["deadline passed"]
     : d.lead > 0 ? [`deadline ${dateWords(s.task.due, d.days)}, ${durText(d.left)} still to do`]
     : [`deadline ${dateWords(s.task.due, d.days)}`],
+  // "1 of 3 this week", or "2 more this week, 2 days left" once every day counts.
+  routine: (s, d) => d.need >= d.daysLeft && d.daysLeft <= 3
+    ? [d.daysLeft === 1 ? `last day to make ${d.per} this week` : `${d.need} more this week, ${d.daysLeft} days left`]
+    : [`${d.done} of ${d.per} this week`],
   target: (s, d) => [`planned for ${d.days <= 0 ? "today" : dateWords(effectiveDue(s.task), d.days)}`],
   stakes: (s, d) => d.kind === "money" ? ["costs money if late"]
     : d.kind === "penalty" ? ["there's a penalty if late"]

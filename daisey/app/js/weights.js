@@ -69,6 +69,12 @@ export const DEADLINE = { today: 35, within2: 25, within7: 12 }; // past or toda
 // this a 6-hour job due in 10 days scored nothing until 7 days out.
 export const DEADLINE_LEAD_PER_DAY = 120;
 export const TARGET = { today: 8, within3: 4 }; // today or past · ≤3 days; never "overdue"
+// A routine (routine.js) by how its week stands. last: every day left this
+// week is needed — miss today and the week can't be met (as strong as a
+// deadline in 2 days). behind: half the days left or more are needed. due:
+// still on pace, but this is one of them (a reason, just over WHY_MIN_POINTS).
+// why: its rank among the reasons (not points) — the week's count leads.
+export const ROUTINE = { last: 25, behind: 14, due: 6, why: 30 };
 export const STAKES = { penalty: 15, money: 12, someone: 10, low: 0 };
 // The project's tier on the Projects page (Mor, 2026-10-08). Focus is under
 // a deadline today (35) and over a window fit (12), so the tiers really

@@ -10,6 +10,7 @@
 // PURE: no Firebase, no DOM.
 import { gapsToday, bookings } from "./day.js";
 import { rank } from "./engine.js";
+import { routineCalendar } from "./routine.js";
 import { workBase } from "./context.js";
 import { overruled, eventKey } from "./reality.js";
 import * as W from "./weights.js";
@@ -34,6 +35,7 @@ export function planDay({ tasks = [], events = [], now = Date.now(), hours = W.D
   const evs = events.filter((e) => !over.has(eventKey(e)));
   const gaps = gapsToday(evs, now, hours).filter((g) => g.minutes >= WORTH);
   const booked = Object.fromEntries([...bookings(tasks, evs, now)].map(([id, b]) => [id, b.start]));
+  const routineCal = routineCalendar(tasks, evs, now); // routine sessions already on the calendar
   const taken = new Set(run?.batch || (run?.taskId ? [run.taskId] : []));
   const out = [];
   for (const part of PARTS) {
@@ -49,7 +51,7 @@ export function planDay({ tasks = [], events = [], now = Date.now(), hours = W.D
     while (picks.length < MAX_PICKS && room >= WORTH) {
       const r = rank(tasks, {
         now: at, window: biggest, nextEvent: null, ...workBase(tasks, now),
-        sessionSkips: [...taken], booked,
+        sessionSkips: [...taken], booked, routineCal,
       });
       if (!r.pick) break;
       const t = r.pick.task, need = Math.min(left(t), biggest);

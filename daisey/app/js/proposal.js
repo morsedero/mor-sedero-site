@@ -12,6 +12,7 @@
 // PURE: no Firebase, no DOM.
 import { gapsToday, bookings } from "./day.js";
 import { rank } from "./engine.js";
+import { routineCalendar } from "./routine.js";
 import { workBase } from "./context.js";
 import { overruled, eventKey } from "./reality.js";
 import { LABELS, notYet, localDate } from "./model.js";
@@ -53,6 +54,7 @@ export function proposeDay({ tasks = [], events = [], now = Date.now(), hours = 
   const pool = tasks.filter((t) => !skipTypes.has(t.type)
     && (!ask.maxEach || leftOf(t) <= ask.maxEach || (t.dateKind === "deadline" && t.due && t.due <= today)));
   const booked = Object.fromEntries([...bookings(tasks, evs, now)].map(([id, b]) => [id, b.start]));
+  const routineCal = routineCalendar(tasks, evs, now); // routine sessions already on the calendar
   const items = [];
   const take = (t) => { items.push({ taskId: t.id, minutes: Math.min(leftOf(t), biggest) }); out.add(t.id); budget -= Math.min(leftOf(t), biggest); };
 
@@ -65,7 +67,7 @@ export function proposeDay({ tasks = [], events = [], now = Date.now(), hours = 
   while (items.length < cap && budget >= WORTH) {
     const r = rank(pool, {
       now: usable[0].start, window: biggest, nextEvent: null, ...workBase(tasks, now),
-      sessionSkips: [...out], booked,
+      sessionSkips: [...out], booked, routineCal,
     });
     if (!r.pick) break;
     take(r.pick.task);

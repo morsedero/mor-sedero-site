@@ -26,6 +26,7 @@ import { watchTasks, addTask, updateTask, removeTask, watchProjectNames } from "
 import { durText, guessFields, validField, CHOICES, LABELS, INBOX, localDate, clampDate, outsideRange, progressOf } from "./model.js";
 import { h, flash, icon, bdi } from "./ui.js";
 import { projectsOf } from "./projects.js";
+import { isRoutine, weekLine } from "./routine.js";
 
 // Every field Daisey guesses, and the one the user sees (Mor, 2026-10-07:
 // "keep only the time the user thinks it's gonna take"). The rest are never
@@ -87,6 +88,28 @@ export function mountAddTask(dialog, uid, { onStart } = {}){
   }
   const start = dateBox("Start", "Any time");
   const due = dateBox("Due", "No date");
+  // A routine (routine.js, Mor 2026-10-08): so many times a week. Its end
+  // ("Until", the show) takes the Due box's place: a routine has no due date.
+  // Made in a project with a due date, it runs until that date.
+  const until = dateBox("Until", "No end");
+  let per = 0;
+  const OFTEN = [[0, "Once"], [1, "1×"], [2, "2×"], [3, "3×"], [4, "4×"], [5, "5×"], [7, "7×"]];
+  const oftenRow = h("div", { className: "now-chips ts-often", role: "group", ariaLabel: "How many times a week" });
+  const weekNow = h("p", { className: "ts-worked ts-week" });
+  const routineOf = () => (per ? { per, until: until.input.value || null } : null);
+  function paintOften(){
+    oftenRow.replaceChildren(...OFTEN.map(([n, label]) => h("button", { type: "button", className: "chip", textContent: label,
+      ariaPressed: String(per === n), ariaLabel: n ? (n === 7 ? "Every day" : `${n} times a week`) : "Once, no repeat",
+      onclick: () => {
+        if (per === n) return;
+        per = n;
+        if (per && !until.input.value && rangeNow()?.due) until.input.value = rangeNow().due;
+        paintDates(); paintOften();
+        if (per) due.input.value = ""; // a routine has no due date, only its end
+        if (editing) save({ routine: routineOf(), ...(per && editing.due ? { due: "" } : {}) });
+      } })));
+  }
+  until.input.addEventListener("change", () => { fenceUntil(); paintDates(); if (editing && per) save({ routine: routineOf() }); });
   due.tag.onclick = (e) => {
     e.preventDefault();
     kind = kind === "deadline" ? "target" : "deadline";
@@ -94,7 +117,8 @@ export function mountAddTask(dialog, uid, { onStart } = {}){
     if (editing) save({ dateKind: kind });
   };
   function paintDates(){
-    start.paint(); due.paint();
+    start.paint(); due.paint(); until.paint();
+    due.box.hidden = !!per; until.box.hidden = !per;
     due.tag.hidden = !due.input.value;
     due.tag.textContent = kind === "deadline" ? "Deadline" : "Target";
     due.tag.className = "ts-kind " + kind;
@@ -151,8 +175,8 @@ export function mountAddTask(dialog, uid, { onStart } = {}){
   dialog.replaceChildren(h("div", { className: "now-head" }, heading, closeX),
     field("Project", projectSel, newProject),
     field("Task", title),
-    h("div", { className: "ts-dates" }, start.box, due.box),
-    field("How long?", chipRow), pctBox, pendBox, holdBox, researchLine, stateLine,
+    h("div", { className: "ts-dates" }, start.box, due.box, until.box),
+    field("How long?", chipRow), field("How often? (a week)", oftenRow), weekNow, pctBox, pendBox, holdBox, researchLine, stateLine,
     section("Links & notes", h("div", { className: "ts-group" }, linkRow, notes)),
     worked, startBtn, del, msg);
 
@@ -209,8 +233,9 @@ export function mountAddTask(dialog, uid, { onStart } = {}){
     paintArea();
     if (!newProject.hidden) { fenceDates([]); newProject.focus(); return; }
     const c = fenceDates(["notBefore", "due"]);
+    if (per) { if (!until.input.value && rangeNow()?.due) until.input.value = rangeNow().due; fenceUntil(); }
     paintDates();
-    if (editing) save({ project: projectOf(), ...c }); else reguess();
+    if (editing) save({ project: projectOf(), ...c, ...(per ? { routine: routineOf() } : {}) }); else reguess();
   });
   newProject.addEventListener("change", () => { if (editing && newProject.value.trim()) save({ project: newProject.value.trim() }); else reguess(); });
 
@@ -245,6 +270,15 @@ export function mountAddTask(dialog, uid, { onStart } = {}){
       }
     }
     return out;
+  }
+  // The routine's end stays inside the project's dates too.
+  function fenceUntil(){
+    const r = rangeNow();
+    until.input.min = r?.start || ""; until.input.max = r?.due || "";
+    if (r && outsideRange(r, until.input.value)) {
+      until.input.value = clampDate(r, until.input.value);
+      msg.textContent = `Until kept inside the project dates (${rangeText(r)}).`;
+    }
   }
   start.input.addEventListener("change", () => { const c = fenceDates(["notBefore"]); paintDates(); if (editing) save({ notBefore: start.input.value, ...c }); });
   due.input.addEventListener("change", () => { const c = fenceDates(["due"]); paintDates(); if (editing) save({ due: due.input.value, dateKind: kind, ...c }); });
@@ -310,13 +344,21 @@ export function mountAddTask(dialog, uid, { onStart } = {}){
     const n = t?.starts || 0, m = Math.round(t?.spentMinutes || 0);
     worked.hidden = !t || (!n && !m);
     worked.textContent = `Worked ${n} session${n === 1 ? "" : "s"} · ${workedText(m)} so far`;
+    // A routine: where this week stands, and every session it has had.
+    const rt = isRoutine(t) ? t.routine : null;
+    weekNow.hidden = !rt;
+    if (rt) {
+      const all = rt.log.length, mins = rt.log.reduce((s, e) => s + (e.min || 0), 0);
+      weekNow.textContent = `${weekLine(t)}${all ? ` · ${all} session${all === 1 ? "" : "s"} in all${mins ? `, ${workedText(mins)}` : ""}` : ""}`;
+      worked.hidden = true;
+    }
     pendBox.hidden = t?.status !== "waiting";
     // Only for an open task that isn't already Pending.
     holdBox.hidden = !t || t.status !== "ready";
     if (t && document.activeElement !== holdSwitch) holdSwitch.checked = !!t.onHold;
     holdWho.parentElement.hidden = !holdSwitch.checked;
     const done = t?.status === "done";
-    pctBox.hidden = !t || done;
+    pctBox.hidden = !t || done || !!rt; // a routine's sessions are whole: no %
     if (t && document.activeElement !== pctRange) {
       pctRange.value = String(Math.min(95, Math.round(progressOf(t) / 5) * 5));
       pctOut.textContent = `${pctRange.value}%`;
@@ -354,7 +396,8 @@ export function mountAddTask(dialog, uid, { onStart } = {}){
     fenceDates(["notBefore", "due"]);
     const input = { title: title.value, project: projectOf() };
     if (start.input.value) input.notBefore = start.input.value;
-    if (due.input.value) { input.due = due.input.value; input.dateKind = kind; }
+    if (per) { fenceUntil(); input.routine = routineOf(); }
+    else if (due.input.value) { input.due = due.input.value; input.dateKind = kind; }
     if (notes.value.trim()) input.notes = notes.value;
     if (links.length) input.links = links;
     for (const k of mine) input[k] = vals[k];
@@ -373,11 +416,11 @@ export function mountAddTask(dialog, uid, { onStart } = {}){
     vals = {}; mine = new Set(); openChip = null;
     links = []; adding = false; kind = "target";
     title.value = ""; notes.value = ""; newProject.value = ""; waitingOn.value = ""; checkOn.value = "";
-    start.input.value = ""; due.input.value = "";
+    start.input.value = ""; due.input.value = ""; until.input.value = ""; per = 0;
     msg.textContent = "";
     disarm();
   }
-  function paintAll(){ paintDates(); reguess(); paintLinks(); paintFoot(); } // reguess paints the chips, and fills "How long?" before a title is typed
+  function paintAll(){ paintDates(); paintOften(); reguess(); paintLinks(); paintFoot(); } // reguess paints the chips, and fills "How long?" before a title is typed
   const show = () => { if (!dialog.open) dialog.showModal(); requestAnimationFrame(fit); };
 
   dialog.addEventListener("close", () => { flush(); editing = null; });
@@ -434,6 +477,8 @@ export function mountAddTask(dialog, uid, { onStart } = {}){
       title.value = task.title;
       start.input.value = task.notBefore || "";
       due.input.value = task.due || "";
+      per = isRoutine(task) ? task.routine.per : 0;
+      until.input.value = per ? task.routine.until || "" : "";
       fenceDates([]);
       kind = task.dateKind === "deadline" ? "deadline" : "target";
       notes.value = task.notes || "";
