@@ -174,7 +174,7 @@ The engine picks like a secretary, in three gates, every time the card is shown:
 
 **Something else** shows the next 2–3 by score and forces variety across areas: no two from the same area if another area scores within 15 points.
 
-**Stale tasks.** A task skipped 5 times without starting stops being suggested, unless it has a real deadline within 7 days. Needs you asks: "Still want this?" Shrink · Keep · Let it go. Setting a task Pending is not a skip.
+**Stale tasks.** A task skipped 5 times without starting stops being suggested, unless it has a real deadline within 7 days. Needs you asks: "Still want this?" Shrink · Keep · Delete task. Setting a task Pending is not a skip.
 
 **Building the why line.** Take the two or three factors that added the most points and turn each into a short phrase, in first person ("I'd do this now: …"):
 
@@ -291,7 +291,7 @@ Daisey speaks first (Mor, Oct 6, 2026; Android, app notifications; no daily limi
 | Kind | When | Says |
 | --- | --- | --- |
 | Morning brief | First check after the day starts that isn't inside a calendar event (up to 4 h late) | "9 h 55 min free today. 4 open, about 3 fit. Deadline today: Pay arnona. Deadline tomorrow, not started: Send stems. 2 things need you. First: Teaching at 10:00." |
-| End of the day | The day's last hour, not inside an event | "Done today: 4. Still open for today: 2, deadline: X. Tap to sort them." The tap opens the wrap: one question per task (deadline: I'll do it tonight · Move it to tomorrow · Let it go; target: Move to tomorrow · Not now · Let it go) |
+| End of the day | The day's last hour, not inside an event | "Done today: 4. Still open for today: 2, deadline: X. Tap to sort them." The tap opens the wrap: one question per task (deadline: I'll do it tonight · Move it to tomorrow · Delete task; target: Move to tomorrow · Not now · Delete task) |
 | Free time after a meeting | A busy event ended in the last 10 min and 30+ free min follow, nothing is running, and you didn't work through the event | "After Teaching. 1 h 25 min free. Next: Send invoice to Uri. <why>" (the Now card's own pick for that window), with **Start task** |
 | Booked task starting | A booked slot starts (within a few minutes), nothing else running | "Mix review, booked 14:00–15:30.", with **Start task** |
 | Missed task | 10 min into a free slot with nothing started (see below) | "<task> — Up since 14:00 and not started.", with **Start** and **Shorten** (a tap opens the card's Start · Shorten · Move) |
@@ -420,7 +420,7 @@ A fixed split screen: nothing pulls up, nothing scrolls but the panel's pages. O
 **Needs you** (`needs.js`, mockup 10)
 - Full screen, one decision at a time, progress dots at the top, close X (phone Back closes it too).
 - A big card in a soft tint with an icon, a plain question, the item, and Daisey's suggestion in one line. Big buttons: the primary answer (amber), the secondary answer, "Ask me later" (hides it for the rest of the day).
-- Sources, in order: a task in Not now whose real deadline is 3 days away or passed ("Deadline coming up": Bring it back · Let it go), calendar events that read like tasks ("Is this a task?" → then "Keep the event?"), Pending tasks past their check date ("Still pending?"; the check date is 3 days on, or the day before a real deadline if that's sooner), tasks put off 5 times ("Still want this?"), the weekly Someday pick ("Bring one back?"), and old dates ("Still doing this?": today · this week · Someday · let it go — this replaced the Old dates sheet).
+- Sources, in order: a task in Not now whose real deadline is 3 days away or passed ("Deadline coming up": Bring it back · Delete task), calendar events that read like tasks ("Is this a task?" → then "Keep the event?"), Pending tasks past their check date ("Still pending?"; the check date is 3 days on, or the day before a real deadline if that's sooner), tasks put off 5 times ("Still want this?"), the weekly Someday pick ("Bring one back?"), and old dates ("Still doing this?": today · this week · Someday · let it go — this replaced the Old dates sheet).
 - After the last one: "That's everything. Nothing else needs you."
 
 Built (round 2, Oct 5; round 3, Oct 6, 2026):

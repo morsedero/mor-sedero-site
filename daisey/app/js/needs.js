@@ -23,7 +23,8 @@
 // "Ask me later" hides one for the rest of the day (settings.needsLater).
 // The list is fixed when the screen opens, so answering one never reshuffles
 // the dots.
-import { watchTasks, watchSettings, saveSettings, restoreTask, addTask } from "./store.js";
+import { watchTasks, watchSettings, saveSettings, restoreTask, addTask, removeTask } from "./store.js";
+import { dropSeries } from "./slots.js";
 import { watchCalendar, deleteEvent, retime } from "./calendar.js";
 import { draftFrom } from "./caltask.js";
 import { pickWeekDay, answer, answerSnapshot, effectiveDue } from "./triage.js";
@@ -49,7 +50,7 @@ const clock = (ms) => new Date(ms).toLocaleTimeString([], { hour: "2-digit", min
 // The evening wrap (2026-10-06): opened from the end-of-day notification
 // (?open=wrap). Each ready task still dated today or earlier, deadlines
 // first: a deadline asks "tonight, or move it?", a target "tomorrow, or not
-// now?". Both can be let go.
+// now?". Both can be deleted.
 export function wrapList(tasks = [], now = Date.now()){
   const today = localDate(now);
   return tasks.filter((t) => t.status === "ready" && t.due && !notYet(t, now) && effectiveDue(t, now) <= today)
@@ -82,6 +83,10 @@ export function mountNeeds(root, uid, { onClose } = {}){
     settings = { ...settings, somedayAsked: localDate() };
     saveSettings(uid, { somedayAsked: localDate() }).catch(fail);
   };
+  // Delete (Mor, 2026-10-10): "Let it go" read as unclear, so it says what it
+  // does and does what the task sheet's Delete does — the task is gone, its
+  // weekly event in the Daisey calendar with it.
+  const del = (t) => ["Delete task", () => { dropSeries(t); removeTask(uid, t.id).catch(fail); flash("Deleted ", t.title); next(); }];
   const sweep = (t, kind) => {
     const now = Date.now();
     const week = kind === "week" ? pickWeekDay(t, { events: cal.events || [], tasks, now, hours: dayHours(settings) }) : null;
@@ -189,7 +194,7 @@ export function mountNeeds(root, uid, { onClose } = {}){
     }
     if (item.kind === "wrap") {
       const tomorrow = () => { restoreTask(uid, t.id, pushedTo(t, { due: dayAfter(1) })).catch(fail); next(); };
-      const drop = ["Let it go", () => { restoreTask(uid, t.id, { status: "dropped", droppedAt: Date.now(), touchedAt: Date.now() }).catch(fail); next(); }];
+      const drop = del(t);
       if (t.dateKind === "deadline") {
         const past = t.due < localDate();
         return { tone: "area-job", ico: "later", q: past ? "Deadline passed" : "Deadline today",
@@ -205,18 +210,18 @@ export function mountNeeds(root, uid, { onClose } = {}){
       const days = daysUntil(t.due, Date.now());
       return { tone: "area-job", ico: "someday", q: "Deadline coming up",
         sub: `It's in Not now. ${days < 0 ? "The deadline was" : "The deadline is"} ${days === 0 ? "today" : days === 1 ? "tomorrow" : shortDay(t.due)}.`,
-        item: t.title, say: days < 0 ? "Bring it back, or let it go?" : "I'd bring it back before it's too late.",
+        item: t.title, say: days < 0 ? "Bring it back, or delete it?" : "I'd bring it back before it's too late.",
         yes: ["Bring it back", () => { restoreTask(uid, t.id, { status: "ready", notBefore: null, touchedAt: Date.now() }).catch(fail); next(); }],
-        no: ["Let it go", () => { restoreTask(uid, t.id, { status: "dropped", droppedAt: Date.now(), touchedAt: Date.now() }).catch(fail); next(); }] };
+        no: del(t) };
     }
     if (item.kind === "stale") {
       const small = shrunk(t.size);
       const keep = ["Keep it", () => { restoreTask(uid, t.id, { skipsSinceStart: 0, touchedAt: Date.now() }).catch(fail); next(); }];
-      const drop = ["Let it go", () => { restoreTask(uid, t.id, { status: "dropped", droppedAt: Date.now(), touchedAt: Date.now() }).catch(fail); next(); }];
+      const drop = del(t);
       const canShrink = small < (t.size || 0);
       return { tone: areaClass(t).trim() || "area-work", ico: "later", q: "Still want this?",
         sub: `Put off ${t.skipsSinceStart} times without starting.`,
-        item: t.title, say: canShrink ? `I'd make it a ${sizeWords(small)} task: a first piece is easier to start.` : "Keep it, or let it go?",
+        item: t.title, say: canShrink ? `I'd make it a ${sizeWords(small)} task: a first piece is easier to start.` : "Keep it, or delete it?",
         ...(canShrink
           ? { yes: [`Shrink to ${dur(small)}`, () => { restoreTask(uid, t.id, shrinkPatch(t)).catch(fail); next(); }], no: keep, more: [drop] }
           : { yes: keep, no: drop }) };
@@ -225,11 +230,11 @@ export function mountNeeds(root, uid, { onClose } = {}){
       const small = shrunk(t.size);
       const canShrink = small < (t.size || 0);
       const keep = ["Keep it", () => { restoreTask(uid, t.id, { pushes: 0, touchedAt: Date.now() }).catch(fail); next(); }];
-      const drop = ["Let it go", () => { restoreTask(uid, t.id, { status: "dropped", droppedAt: Date.now(), touchedAt: Date.now() }).catch(fail); next(); }];
+      const drop = del(t);
       const park = ["Not now", () => { restoreTask(uid, t.id, { status: "someday", pushes: 0, touchedAt: Date.now() }).catch(fail); next(); }];
       return { tone: areaClass(t).trim() || "area-work", ico: "later", q: "Keeps sliding",
         sub: `Pushed to a later day ${t.pushes} times.`, item: t.title,
-        say: canShrink ? `I'd make it a ${sizeWords(small)} first piece, so it's easy to start.` : "Keep it, park it, or let it go?",
+        say: canShrink ? `I'd make it a ${sizeWords(small)} first piece, so it's easy to start.` : "Keep it, park it, or delete it?",
         ...(canShrink
           ? { yes: [`Shrink to ${dur(small)}`, () => { restoreTask(uid, t.id, { ...shrinkPatch(t), pushes: 0 }).catch(fail); next(); }], no: keep, more: [park, drop] }
           : { yes: keep, no: park, more: [drop] }) };
@@ -258,7 +263,7 @@ export function mountNeeds(root, uid, { onClose } = {}){
       item: t.title, say: `I'd move it to ${weekday(week)}, the roomiest day this week.`,
       yes: ["Do it today", () => sweep(t, "today")],
       no: [`Move to ${weekday(week)}`, () => sweep(t, "week")],
-      more: [["Not now", () => sweep(t, "someday")], ["Let it go", () => sweep(t, "drop")]] };
+      more: [["Not now", () => sweep(t, "someday")], del(t)] };
   }
 
   const big = (text, cls, onclick) => h("button", { className: `btn ${cls}`, type: "button", textContent: text, onclick });
