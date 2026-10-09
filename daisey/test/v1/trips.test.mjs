@@ -142,3 +142,20 @@ test("passenger on a drive: the drive under way takes phone tasks, the way back 
   const rows = timeline(items, { tasks, events: rode, now, hours }).rows;
   assert.ok(rows.every((r, i) => !i || rows[i - 1].start <= r.start), "rows in time order");
 });
+
+test("\"I'm a passenger\" turns the drive into a ride for the day: renamed, phone tasks, no laptop", () => {
+  const trips = { "s:abc": { city: "Ashkelon", mode: "car", min: { train: 110, bus: 125, car: 80 } } };
+  const drive = T.withTrips([ash], trips, [], true);
+  // Left early: 12:40, the drive back is due at 13:00. It's the next one today.
+  const day = T.asPassenger(drive, [], at("12:40"));
+  assert.deepEqual(day, [{ date: "2026-10-09", key: "s:abc", mode: "car", passenger: ["back"] }]);
+  const legs = T.withTrips([ash], trips, day, true).filter((e) => e.trip);
+  assert.deepEqual(legs.map((e) => e.title), ["Drive to Ashkelon", "Riding back from Ashkelon"]);
+  assert.deepEqual(legs.map((e) => e.trip.place), ["car", "bus"], "riding: phone yes, laptop no (even with it along)");
+  assert.equal(placeNow({ events: legs, now: at("13:30"), located: null }).value, "bus", "no driving card on the ride");
+  assert.equal(T.asPassenger(T.withTrips([ash], trips, day, true), day, at("12:40")), null, "already a ride: nothing to mark");
+  assert.equal(T.asPassenger(drive, [], at("15:00")), null, "no drive left today");
+  // Another day is untouched.
+  const next = { ...ash, start: "2026-10-16T05:00:00.000Z", end: "2026-10-16T10:00:00.000Z" };
+  assert.equal(T.withTrips([next], trips, day, true).find((e) => e.trip?.dir === "back").title, "Drive back from Ashkelon");
+});

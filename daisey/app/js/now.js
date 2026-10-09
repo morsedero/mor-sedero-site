@@ -20,7 +20,7 @@ import { proposeDay, timeline, withBreaks, trimBreaks, isBreak, nextPlanned, pla
 import { rethink } from "./rethink.js";
 import { placeNow, workBase, watchProjectTiers } from "./context.js";
 import { watchWhere, setManual, setStill, saveSpot, whereAsk, homeAt } from "./where.js";
-import { withTrips, ridingAs, chainFrom, setTripDay, MODES } from "./trips.js";
+import { withTrips, ridingAs, asPassenger, chainFrom, setTripDay, MODES } from "./trips.js";
 import { pickWeekDay } from "./triage.js";
 import { focusView, handoffView, elapsedMinutes, targetMinutes, batchFocusView, batchName, sinceMark, paused, resumed, runCap, bookedMinutes, holdButton, stillOnMinutes, bloomHold } from "./focus.js";
 import { watchCalendar, logDone } from "./calendar.js";
@@ -210,7 +210,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
       block && h("p", { className: "freeline" },
         ...(block.taskId ? [`Booked until ${clock(block.end)}`] : ["Working on ", bdi(block.project), ` until ${clock(block.end)}`]),
         " · ", freeNow(block.start, block.title || block.project)),
-      leg && tripChips(leg, leg === fw.current ? `${TRIP_ON[leg.trip.mode]} until ${clock(leg.end)}` : `Leave ${clock(leg.start)} ${TRIP_BY[leg.trip.mode]}`));
+      leg && tripChips(leg, leg === fw.current ? `${TRIP_ON[howOf(leg.trip)]} until ${clock(leg.end)}` : `Leave ${clock(leg.start)} ${TRIP_BY[howOf(leg.trip)]}`));
   }
   const tripChips = (leg, text) => h("div", { className: "trip-chips" }, tripSwitch(leg, text), laptopLine(leg));
 
@@ -267,8 +267,9 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
 
   // Today by another way, or not going (settings.tripDay): the saved answer
   // stays for every other week.
-  const TRIP_ON = { train: "On the train", bus: "On the bus", car: "Driving" };
-  const TRIP_BY = { train: "by train", bus: "by bus", car: "driving" };
+  const TRIP_ON = { train: "On the train", bus: "On the bus", car: "Driving", passenger: "Riding" };
+  const TRIP_BY = { train: "by train", bus: "by bus", car: "driving", passenger: "as a passenger" };
+  const howOf = (t) => (t.passenger ? "passenger" : t.mode);
   const TRIP_INSTEAD = { train: "Train", bus: "Bus", car: "Driving" };
   const RIDE_ROW = { train: "on the train", bus: "on the bus", car: "while driving", passenger: "as a passenger" }; // a plan row on a ride
   function tripSwitch(leg, text){
@@ -312,9 +313,18 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
   // fits, Mor 2026-10-05): just this. "I'm a passenger" counts as a bus
   // ride (sitting, phone in hand), held by hand: a car trip on the calendar
   // or a lost location would otherwise put the driving card straight back.
+  // The drive on the calendar becomes "Riding back from…" for the day
+  // (trips.asPassenger), so the plan puts phone tasks on it.
+  function passenger(){
+    setManual("bus");
+    const tripDay = cal.status === "ok" && asPassenger(cal.events, settings.tripDay || []);
+    if (!tripDay) return;
+    settings = { ...settings, tripDay }; applyTrips(); render();
+    saveSettings(uid, { tripDay }).catch(fail);
+  }
   function drivingCard(){
     return quietCard({ meta: "Driving", title: "Eyes on the road", why: "I'll have something ready when you stop.",
-      action: h("button", { className: "btn quiet", type: "button", textContent: "I'm a passenger", onclick: () => setManual("bus") }) });
+      action: h("button", { className: "btn quiet", type: "button", textContent: "I'm a passenger", onclick: passenger }) });
   }
   // The calendar's answer to "what now": the event that's running, when it
   // ends and what's left of it. Same card as a task's, so the top of the
@@ -744,7 +754,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
     // event, the trip back (trips.js chainFrom).
     const chain = first ? chainFrom(first, evs) : null, main = chain?.main;
     const leave = chain?.parts.find((e) => e.trip?.dir === "to"), back = chain?.parts.find((e) => e.trip?.dir === "back");
-    const leaveLine = leave && tripChips(leave, `Leave ${clock(Date.parse(leave.start))} ${TRIP_BY[leave.trip.mode]}`);
+    const leaveLine = leave && tripChips(leave, `Leave ${clock(Date.parse(leave.start))} ${TRIP_BY[howOf(leave.trip)]}`);
     const who = name ? `, ${name}` : "";
     const lead = dueTonight.length === 1 ? "One deadline is still open today." : `${dueTonight.length} deadlines are still open today.`;
     return [

@@ -25,6 +25,7 @@ import { workBase } from "./context.js";
 import { effectiveDue } from "./triage.js";
 import { h, bdi, dur, flash } from "./ui.js";
 import { setManual, RIDES } from "./where.js";
+import { withTrips, asPassenger } from "./trips.js";
 
 const URL_ = "/.netlify/functions/daisey-now-chat";
 const SAID = {
@@ -238,7 +239,14 @@ export function mountTell(form, input, mic, uid, { openAdd, openTask, guest = fa
       if (a.kind === "drop") return updateTask(uid, t, { status: "dropped" }, tasks);
       // A ride ("I'm a passenger" = bus) is held in where.js, as the Driving
       // card's button does, not in the moment doc (home/out/anywhere only).
-      if (a.kind === "moment" && RIDES.includes(a.place)) { setManual(a.place); a = { ...a, place: null }; }
+      if (a.kind === "moment" && RIDES.includes(a.place)) {
+        setManual(a.place);
+        // A passenger: the drive on the calendar becomes a ride (trips.asPassenger).
+        const legs = a.place === "bus" && cal.status === "ok" ? withTrips(cal.events, settings.trips || {}, settings.tripDay || [], settings.laptop ?? null) : [];
+        const tripDay = legs.length && asPassenger(legs, settings.tripDay || []);
+        if (tripDay) saveSettings(uid, { tripDay }).catch(() => {});
+        a = { ...a, place: null };
+      }
       if (a.kind === "moment") return Promise.all([a.dayEnd ? saveSettings(uid, { dayEndToday: { date: localDate(), end: a.dayEnd } }) : null, (a.place || a.minutes) ? saveMoment(uid, { ...(a.place ? { place: { value: a.place, at: now } } : {}), ...(a.minutes ? { free: { minutes: a.minutes, at: now } } : {}) }) : null]);
       return null;
     }).filter(Boolean);

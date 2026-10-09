@@ -13,8 +13,10 @@
 // settings.laptop: true / false, the last answer to "Laptop with you?" (null:
 // never asked). A train without one is a bus: phone tasks only. Unknown
 // counts as without, so nothing needing a laptop is planned on a guess.
-// settings.tripDay = [{ date, key, mode | "none" }]: one day travelled
-// another way (or not at all), the saved answer untouched. An array, not a
+// settings.tripDay = [{ date, key, mode | "none", passenger? }]: one day
+// travelled another way (or not at all), the saved answer untouched.
+// passenger: ["to" | "back"], the car legs that day you ride, not drive
+// (Mor, 2026-10-09): "Riding back from…", phone tasks, no laptop. An array, not a
 // map: Firestore's merge would keep an old day's keys inside a map.
 
 const MIN = 60000;
@@ -164,17 +166,18 @@ const LEG = {
   bus: { to: (c) => `Bus to ${c}`, back: (c) => `Bus back from ${c}` },
   car: { to: (c) => `Drive to ${c}`, back: (c) => `Drive back from ${c}` },
 };
+const RIDER = { to: (c) => `Riding to ${c}`, back: (c) => `Riding back from ${c}` };
 
 // The mode and minutes for one event: the day's override, else the answer.
 function tripFor(ev, trips, tripDay){
   const key = tripKey(ev), a = trips?.[key];
   if (!a || a.mode === "none" || !a.min) return null;
   const date = dateOf(Date.parse(ev.start));
-  const day = (Array.isArray(tripDay) ? tripDay : []).find((d) => d.date === date && d.key === key)?.mode;
-  const mode = day || a.mode;
+  const day = (Array.isArray(tripDay) ? tripDay : []).find((d) => d.date === date && d.key === key);
+  const mode = day?.mode || a.mode;
   if (mode === "none" || !MODES.includes(mode)) return null;
   const minutes = a.min[mode] || five(a.min[a.mode] * RATIO[mode] / RATIO[a.mode]);
-  return { key, mode, minutes, city: a.city };
+  return { key, mode, minutes, city: a.city, passenger: mode === "car" ? day?.passenger || [] : [] };
 }
 
 // What a ride lets you do, as a place (weights.PLACE_BLOCKS).
@@ -188,8 +191,20 @@ export const ridingAs = (events, mode, now = Date.now()) => (!MODES.includes(mod
     ? { ...e, trip: { ...e.trip, place: mode } } : e)));
 
 // tripDay with one day's way of travelling set (newest 20 kept).
-export const setTripDay = (tripDay, date, key, mode) =>
-  [...(Array.isArray(tripDay) ? tripDay : []).filter((d) => !(d.date === date && d.key === key)), { date, key, mode }].slice(-20);
+export const setTripDay = (tripDay, date, key, mode, extra = {}) =>
+  [...(Array.isArray(tripDay) ? tripDay : []).filter((d) => !(d.date === date && d.key === key)), { date, key, mode, ...extra }].slice(-20);
+
+// "I'm a passenger": the drive under way, else today's next one, becomes a
+// ride (RIDER) for that day. → the new tripDay, or null with no drive to mark.
+export function asPassenger(events = [], tripDay = [], now = Date.now()){
+  const today = dateOf(now);
+  const leg = events.filter((e) => e.trip?.mode === "car" && !e.trip.passenger && Date.parse(e.end) > now && dateOf(Date.parse(e.start)) === today)
+    .sort((a, b) => Date.parse(a.start) - Date.parse(b.start))[0];
+  if (!leg) return null;
+  const t = leg.trip, date = dateOf(Date.parse(leg.start));
+  const had = (Array.isArray(tripDay) ? tripDay : []).find((d) => d.date === date && d.key === t.key)?.passenger || [];
+  return setTripDay(tripDay, date, t.key, "car", { passenger: [...new Set([...had, t.dir])] });
+}
 
 // The calendar with the travel legs added. Back-to-back events in the same
 // city share one trip: there before the first, back after the last (a gap
@@ -208,12 +223,15 @@ export function withTrips(events = [], trips = {}, tripDay = [], laptop = null){
     runs.push({ city: t.city, start: s, end: e, firstEv: ev, lastEv: ev, trip: t, back: t });
   }
   if (!runs.length) return events;
-  const leg = (ev, t, dir, from, to) => ({
-    id: `trip:${ev.id}:${dir}`, calendarId: "daisey-trip", title: LEG[t.mode][dir](t.city),
-    start: new Date(from).toISOString(), end: new Date(to).toISOString(),
-    busy: true, allDay: false, editable: false,
-    trip: { key: t.key, mode: t.mode, place: ridePlace(t.mode, laptop), city: t.city, dir, minutes: t.minutes, of: ev.title },
-  });
+  const leg = (ev, t, dir, from, to) => {
+    const rider = t.passenger.includes(dir); // in the car, not driving it: a bus, as far as what fits
+    return {
+      id: `trip:${ev.id}:${dir}`, calendarId: "daisey-trip", title: (rider ? RIDER : LEG[t.mode])[dir](t.city),
+      start: new Date(from).toISOString(), end: new Date(to).toISOString(),
+      busy: true, allDay: false, editable: false,
+      trip: { key: t.key, mode: t.mode, place: rider ? "bus" : ridePlace(t.mode, laptop), city: t.city, dir, minutes: t.minutes, of: ev.title, ...(rider ? { passenger: true } : {}) },
+    };
+  };
   const legs = runs.flatMap((r) => [
     leg(r.firstEv, r.trip, "to", r.start - r.trip.minutes * MIN, r.start),
     leg(r.lastEv, r.back, "back", r.end, r.end + r.back.minutes * MIN),
