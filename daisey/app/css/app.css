@@ -1476,6 +1476,13 @@ body.focus #side { display: none; }
 :root.night .nowrow #nowcard, body.focus .nowrow #nowcard { flex: 1 1 0; }
 :root.night .night-foot { margin-block-start: auto; padding-block-start: 20px; }
 :root.night .night-hero { margin-block-start: 12px; }
+/* The night hero takes the main card's footprint (Mor, 2026-10-09): full
+   width, the same min height, radius and padding; drawing and type sized down
+   to fit inside it. */
+:root.night .night-hero { align-self: stretch; justify-content: center; min-block-size: 150px; padding: 12px 15px 13px; border-radius: 20px; background: var(--card); border: 1px solid var(--line); }
+:root.night .night-hero .moon-daisy { inline-size: 56px; block-size: 56px; }
+:root.night .night-h { margin: 8px 0 2px; font-size: 20px; }
+:root.night .night-p { font-size: 13px; }
 :root.night .now-card.main.night { margin-block-start: 20px; }
 body.focus .shell { block-size: auto; min-block-size: 100dvh; overflow: visible; }
 
