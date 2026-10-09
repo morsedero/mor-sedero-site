@@ -20,7 +20,7 @@ import { proposeDay, timeline, withBreaks, trimBreaks, isBreak, nextPlanned, pla
 import { rethink } from "./rethink.js";
 import { placeNow, workBase, watchProjectTiers } from "./context.js";
 import { watchWhere, setManual, setStill, saveSpot, whereAsk, homeAt } from "./where.js";
-import { withTrips, ridingAs, asPassenger, chainFrom, setTripDay, MODES } from "./trips.js";
+import { withTrips, ridingAs, stillRiding, asPassenger, chainFrom, setTripDay, MODES } from "./trips.js";
 import { pickWeekDay } from "./triage.js";
 import { focusView, handoffView, elapsedMinutes, targetMinutes, batchFocusView, batchName, sinceMark, paused, resumed, runCap, bookedMinutes, holdButton, stillOnMinutes, bloomHold } from "./focus.js";
 import { watchCalendar, logDone } from "./calendar.js";
@@ -58,10 +58,11 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
   let cal = { status: "loading", events: [] };
   // The calendar as fetched; cal is it with the travel legs added (trips.js),
   // so every read below — the window, the place, the plan — sees the trips.
-  // The leg under way takes the ride you're on (ridingAs).
+  // The leg under way takes the ride you're on (ridingAs); the way back
+  // runs on while you're still moving (stillRiding).
   let rawCal = cal;
   const applyTrips = () => {
-    cal = rawCal.status === "ok" ? { ...rawCal, events: ridingAs(withTrips(rawCal.events, settings.trips || {}, settings.tripDay || [], settings.laptop ?? null), located) } : rawCal;
+    cal = rawCal.status === "ok" ? { ...rawCal, events: ridingAs(stillRiding(withTrips(rawCal.events, settings.trips || {}, settings.tripDay || [], settings.laptop ?? null), located), located) } : rawCal;
   };
   let lastWindow, lastClock;
   let run = null; // the state/now doc while a task is running
@@ -208,6 +209,10 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
     // today go another way.
     const leg = fw?.current?.trip ? fw.current : fw?.next?.trip?.dir === "to" ? fw.next : null;
     return h("div", { className: "now-top" },
+      // The way back running past its planned end (trips.stillRiding): one
+      // tap says you're there, before the location catches up.
+      leg?.trip.late && h("p", { className: "freeline" }, `Still on the way, past ${clock(leg.trip.late)} · `,
+        h("button", { className: "linkish", type: "button", textContent: "I've arrived", onclick: () => setStill() })),
       block && h("p", { className: "freeline" },
         ...(block.taskId ? [`Booked until ${clock(block.end)}`] : ["Working on ", bdi(block.project), ` until ${clock(block.end)}`]),
         " · ", freeNow(block.start, block.title || block.project)),
@@ -334,11 +339,12 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
   // ride only; Mor, 2026-10-09: there was no answer for "nothing").
   let restRide = null;
   function rideCard(leg, r){
-    const meta = `${TRIP_ON[riderOf(leg)]} · until ${clock(leg.end)}`;
+    const meta = leg.trip.late ? `${TRIP_ON[riderOf(leg)]} · past ${clock(leg.trip.late)}` : `${TRIP_ON[riderOf(leg)]} · until ${clock(leg.end)}`;
     if (restRide === leg.id) return eventCard({ meta, title: leg.title, why: "Rest. Daisey picks again when you arrive.",
       action: h("button", { className: "btn quiet", type: "button", textContent: "Show tasks again", onclick: () => { restRide = null; render(); } }) });
     return eventCard({ meta, title: leg.title,
-      why: "Nothing fits the rest of the ride.", extras: [outLine(r), phoneOk(r, leg), putOffButton(r)] });
+      why: leg.trip.late ? "Still on the way. The plan waits until you're there." : "Nothing fits the rest of the ride.",
+      extras: [outLine(r), phoneOk(r, leg), putOffButton(r)] });
   }
   // What's left after the phone search (phoneNow) found nothing that fits:
   // one tap says this one works on the phone, and it's offered.
@@ -1733,6 +1739,10 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
   // re-renders when the free window's minute changes.
   const tick = setInterval(() => {
     if (document.hidden) return;
+    // A way back still running (trips.stillRiding) is stretched from now:
+    // lay it again each minute so it keeps ahead of the clock.
+    const m = Math.floor(Date.now() / 60000);
+    if (m !== tripMin) { tripMin = m; applyTrips(); }
     if (run && !run.pausedAt) {
       const c = Math.floor(elapsedMinutes(run) * 60);
       if (c !== lastClock) { lastClock = c; if (focusing()) render(); else paintInlineClock(); }
@@ -1741,7 +1751,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
     if (windowMark(calendarNow()) !== lastWindow) render();
     else if (Date.now() - missAt > 15000) { missAt = Date.now(); const k = missNow()?.key ?? ""; if (k !== missKey) { missKey = k; render(); } }
   }, 1000);
-  let missAt = 0, missKey = "";
+  let missAt = 0, missKey = "", tripMin = 0;
   // "Not today" on the silence check's notification (sw.js), saved here.
   const quietCheck = () => takeQuiet().then((d) => { if (d === localDate()) { silenced(d); render(); } });
   quietCheck();

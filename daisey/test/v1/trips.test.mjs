@@ -173,3 +173,22 @@ test("a ride ahead in the plan takes Computer tasks the phone can do (phone.js)"
   const picked = proposeDay({ tasks, events: rode, now, hours, phoneOk: new Set(["mail"]) });
   assert.ok(picked.some((i) => i.taskId === "mail"), "proposeDay offers it for the ride");
 });
+
+test("still moving after the way back's planned end: the drive runs on and the plan waits", () => {
+  const trips = { "s:abc": { city: "Ashkelon", mode: "car", min: { train: 110, bus: 125, car: 80 } } };
+  const drive = T.withTrips([ash], trips, [], null); // back: 13:00–14:20
+  const now = at("14:23");
+  const late = T.stillRiding(drive, "car", now);
+  const back = late.find((e) => e.trip?.dir === "back");
+  assert.equal(back.trip.late, at("14:20"), "remembers the planned end");
+  assert.equal(Date.parse(back.end), at("14:35"), "runs on 10+ min, to a whole 5");
+  assert.equal(T.stillRiding(drive, "home", now), drive, "stopped: nothing changes");
+  assert.equal(T.stillRiding(drive, "walk", now), drive, "walking: nothing changes");
+  assert.equal(T.stillRiding(drive, "car", at("17:30")), drive, "3h+ past: not that drive any more");
+  assert.equal(T.stillRiding(drive, "car", at("13:30")), drive, "a leg under way: nothing to stretch");
+  assert.equal(T.stillRiding(drive, "ride", now).find((e) => e.trip?.dir === "back").trip.late, at("14:20"), "an unanswered ride counts");
+  const t = (o) => ({ status: "ready", type: "deep", size: 30, spentMinutes: 0, createdAt: 0, due: "2026-10-09", dateKind: "target", ...o });
+  const tasks = [t({ id: "mix", title: "Mix", where: "computer", size: 45 })];
+  const rows = timeline([{ taskId: "mix", minutes: 45 }], { tasks, events: late, now, hours: { start: 8 * 60, end: 22 * 60 } }).rows;
+  assert.ok(rows[0].start >= at("14:35"), "the plan starts after the stretched drive");
+});

@@ -190,6 +190,24 @@ export const ridingAs = (events, mode, now = Date.now()) => (!MODES.includes(mod
   : events.map((e) => (e.trip && e.trip.place !== mode && Date.parse(e.start) <= now && now < Date.parse(e.end)
     ? { ...e, trip: { ...e.trip, place: mode } } : e)));
 
+// Still on the road after the way back's planned end (Mor, 2026-10-09: the
+// drive back from Ashkelon "ended" at 13:20, at 13:23 he was still driving
+// and the plan had moved on). While the phone says you're riding (where.js:
+// train · bus · car · ride), the leg back that just ended runs on to
+// STRETCH_MIN past now, so the plan waits for you, for up to STRETCH_MAX past
+// its end. A stop (the location, or "I've arrived") ends it. trip.late: the
+// planned end, in ms.
+export const STRETCH_MIN = 10, STRETCH_MAX = 180;
+export function stillRiding(events, place, now = Date.now()){
+  if (![...MODES, "ride"].includes(place)) return events;
+  if (events.some((e) => e.trip && Date.parse(e.start) <= now && now < Date.parse(e.end))) return events;
+  const leg = events.filter((e) => e.trip?.dir === "back" && Date.parse(e.end) <= now && now - Date.parse(e.end) < STRETCH_MAX * MIN)
+    .sort((a, b) => Date.parse(b.end) - Date.parse(a.end))[0];
+  if (!leg) return events;
+  const end = Math.ceil((now + STRETCH_MIN * MIN) / (5 * MIN)) * 5 * MIN; // whole 5 minutes, so the plan doesn't shift every minute
+  return events.map((e) => (e === leg ? { ...e, end: new Date(end).toISOString(), trip: { ...e.trip, late: Date.parse(e.end) } } : e));
+}
+
 // tripDay with one day's way of travelling set (newest 20 kept).
 export const setTripDay = (tripDay, date, key, mode, extra = {}) =>
   [...(Array.isArray(tripDay) ? tripDay : []).filter((d) => !(d.date === date && d.key === key)), { date, key, mode, ...extra }].slice(-20);
