@@ -20,7 +20,7 @@ import { proposeDay, timeline, withBreaks, trimBreaks, isBreak, nextPlanned, pla
 import { rethink } from "./rethink.js";
 import { placeNow, workBase, watchProjectTiers } from "./context.js";
 import { watchWhere, setManual, setStill, saveSpot, whereAsk, homeAt } from "./where.js";
-import { withTrips, chainFrom, setTripDay, MODES } from "./trips.js";
+import { withTrips, ridingAs, chainFrom, setTripDay, MODES } from "./trips.js";
 import { pickWeekDay } from "./triage.js";
 import { focusView, handoffView, elapsedMinutes, targetMinutes, batchFocusView, batchName, sinceMark, paused, resumed, runCap, bookedMinutes, holdButton, stillOnMinutes, bloomHold } from "./focus.js";
 import { watchCalendar, logDone } from "./calendar.js";
@@ -57,9 +57,10 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
   let cal = { status: "loading", events: [] };
   // The calendar as fetched; cal is it with the travel legs added (trips.js),
   // so every read below — the window, the place, the plan — sees the trips.
+  // The leg under way takes the ride you're on (ridingAs).
   let rawCal = cal;
   const applyTrips = () => {
-    cal = rawCal.status === "ok" ? { ...rawCal, events: withTrips(rawCal.events, settings.trips || {}, settings.tripDay || [], settings.laptop ?? null) } : rawCal;
+    cal = rawCal.status === "ok" ? { ...rawCal, events: ridingAs(withTrips(rawCal.events, settings.trips || {}, settings.tripDay || [], settings.laptop ?? null), located) } : rawCal;
   };
   let lastWindow, lastClock;
   let run = null; // the state/now doc while a task is running
@@ -269,7 +270,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
   const TRIP_ON = { train: "On the train", bus: "On the bus", car: "Driving" };
   const TRIP_BY = { train: "by train", bus: "by bus", car: "driving" };
   const TRIP_INSTEAD = { train: "Train", bus: "Bus", car: "Driving" };
-  const RIDE_ROW = { train: "on the train", bus: "on the bus", car: "while driving" }; // a plan row on a ride
+  const RIDE_ROW = { train: "on the train", bus: "on the bus", car: "while driving", passenger: "as a passenger" }; // a plan row on a ride
   function tripSwitch(leg, text){
     const t = leg.trip, date = localDate(new Date(leg.start).getTime());
     const put = (tripDay) => {
@@ -1651,7 +1652,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
   };
   deep.watch(() => { if (focusing()) render(); }); // came back from another app: the away line
   const unsubs = [
-    watchWhere((v) => { located = v; render(); }),
+    watchWhere((v) => { located = v; applyTrips(); render(); }),
     watchProjectColors(() => render()),
     watchProjectTiers(() => render()),
     watchTasks(uid, (ts) => { tasks = ts; render(); tryNoticeStart(); logRoutineEvents(); }, fail),

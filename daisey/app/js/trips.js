@@ -180,6 +180,13 @@ function tripFor(ev, trips, tripDay){
 // What a ride lets you do, as a place (weights.PLACE_BLOCKS).
 export const ridePlace = (mode, laptop) => (mode === "train" && laptop !== true ? "bus" : mode);
 
+// A leg under way, ridden another way than planned ("I'm a passenger" on a
+// drive, where.js): it takes that place, so the plan fills it with what fits
+// there (Mor, 2026-10-09: passenger, and the drive stayed empty).
+export const ridingAs = (events, mode, now = Date.now()) => (!MODES.includes(mode) ? events
+  : events.map((e) => (e.trip && e.trip.place !== mode && Date.parse(e.start) <= now && now < Date.parse(e.end)
+    ? { ...e, trip: { ...e.trip, place: mode } } : e)));
+
 // tripDay with one day's way of travelling set (newest 20 kept).
 export const setTripDay = (tripDay, date, key, mode) =>
   [...(Array.isArray(tripDay) ? tripDay : []).filter((d) => !(d.date === date && d.key === key)), { date, key, mode }].slice(-20);

@@ -110,7 +110,10 @@ export function proposeDay({ tasks = [], events = [], now = Date.now(), hours = 
 // The plan on the clock: each item, in the user's order, in the first free
 // gap from where the previous one ended that holds all of it. Order wins over
 // packing — a gap left too short for the next item stays empty rather than
-// pulling a later item forward. → { rows: [{ taskId, task, minutes, start,
+// pulling a later item forward. A ride is the exception: it's a side slot,
+// and any item that fits it goes there when that's sooner than its place in
+// order (Mor, 2026-10-09: a laptop task first sent the whole plan past the
+// ride and left it empty). Rows come back in time order. → { rows: [{ taskId, task, minutes, start,
 // end }], over: [{ taskId, task, minutes, room }] } (over: doesn't fit today;
 // room: the most minutes a shorter version could still have today, on a round
 // five, when that's at least WORTH — the plan offers to shorten it to that).
@@ -189,7 +192,7 @@ export function timeline(items = [], { tasks = [], events = [], now = Date.now()
   let gi = 0, cursor = Math.ceil((gaps[0]?.start ?? now) / (5 * MIN)) * 5 * MIN;
   // Work since the last break, and since the last long one (a meal counts).
   let worked = 0, sinceLong = 0, lastEnd = null;
-  const mealsDone = new Set();
+  const mealsDone = new Set(), rideAt = {}; // rideAt: where each ride's next task starts
   // Breaks are the plan's own items: none are added here.
   const fixed = items.some(isBreak);
   let afterDone = false; // the last item looked at was finished work
@@ -219,10 +222,13 @@ export function timeline(items = [], { tasks = [], events = [], now = Date.now()
     afterDone = false;
     const need = Math.max(5, it.minutes || leftOf(task)) * MIN;
     let placed = false;
+    // The soonest ride that fits it (engine.fitsPlace) and still has room.
+    const ride = gaps.map((g, k) => ({ g, k, from: rideAt[k] ?? Math.ceil(g.start / (5 * MIN)) * 5 * MIN }))
+      .find(({ g, from }) => g.place && fitsPlace(task, g.place) && g.end - from >= need);
     for (let k = gi; k < gaps.length; k++) {
-      // A ride takes only what can be done on it (engine.fitsPlace).
-      if (gaps[k].place && !fitsPlace(task, gaps[k].place)) continue;
+      if (gaps[k].place) continue; // rides: above
       const from = Math.max(cursor, gaps[k].start);
+      if (ride && ride.from <= from) break;
       // Same stretch as the last item, or a fresh one that starts with the
       // meetings just before it.
       const cont = lastEnd != null && from - lastEnd < W.BREAKS.reset * MIN;
@@ -235,13 +241,19 @@ export function timeline(items = [], { tasks = [], events = [], now = Date.now()
           if (brk.name) mealsDone.add(brk.name);
         }
         const s = from + (brk ? brk.minutes * MIN : 0);
-        rows.push({ taskId: it.taskId, task, minutes: need / MIN, start: s, end: s + need, i, ...(gaps[k].place ? { ride: gaps[k].mode } : {}) });
+        rows.push({ taskId: it.taskId, task, minutes: need / MIN, start: s, end: s + need, i });
         worked = (brk ? 0 : w) + need / MIN;
         sinceLong = (brk && brk.type !== "short" ? 0 : sl) + need / MIN;
         lastEnd = s + need;
         gi = k; cursor = s + need; placed = true;
         break;
       }
+    }
+    // On the ride: its own clock, and the rest of the plan carries on as if
+    // it weren't there (no break on a ride: the ride is one).
+    if (!placed && ride) {
+      rows.push({ taskId: it.taskId, task, minutes: need / MIN, start: ride.from, end: ride.from + need, i, ride: ride.g.mode === "car" && ride.g.place !== "car" ? "passenger" : ride.g.mode });
+      rideAt[ride.k] = ride.from + need; placed = true;
     }
     if (!placed) {
       let room = 0;
@@ -250,7 +262,7 @@ export function timeline(items = [], { tasks = [], events = [], now = Date.now()
       over.push({ taskId: it.taskId, task, minutes: need / MIN, room: room >= WORTH ? room : 0, i });
     }
   }
-  return { rows, over, breaks };
+  return { rows: rows.sort((a, b) => a.start - b.start), over, breaks };
 }
 
 // When the day shrinks under an approved plan (an event added, or running
@@ -356,7 +368,7 @@ export function daySig(events = [], hours = W.DAY_HOURS, now = Date.now()){
   const today = localDate(now);
   const spans = events.filter((e) => !e.allDay && e.busy !== false
     && (localDate(Date.parse(e.start)) === today || localDate(Date.parse(e.end)) === today))
-    .map((e) => `${Date.parse(e.start)}-${Date.parse(e.end)}`).sort();
+    .map((e) => `${Date.parse(e.start)}-${Date.parse(e.end)}${e.trip ? `@${e.trip.place}` : ""}`).sort(); // a ride's place counts: passenger opens it up
   const s = `${hours.start}-${hours.end}|${JSON.stringify(hours.meals ?? null)}|${spans.join(",")}`;
   let h = 5381;
   for (let i = 0; i < s.length; i++) h = ((h * 33) ^ s.charCodeAt(i)) >>> 0;

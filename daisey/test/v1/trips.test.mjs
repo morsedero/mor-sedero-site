@@ -122,3 +122,23 @@ test("the plan fills the ride with what fits it, and nothing else", () => {
   assert.notEqual(noLaptop.mix?.ride, "train", "no laptop: the mix isn't on the train");
   assert.equal(noLaptop.call.ride, "train", "the call still is");
 });
+
+test("passenger on a drive: the drive under way takes phone tasks, the way back stays a drive", () => {
+  const trips = { "s:abc": { city: "Ashkelon", mode: "car", min: { train: 110, bus: 125, car: 80 } } };
+  const t = (o) => ({ status: "ready", type: "deep", size: 30, spentMinutes: 0, createdAt: 0, due: "2026-10-09", dateKind: "target", ...o });
+  const tasks = [t({ id: "mix", title: "Mix", where: "computer", size: 45 }),
+    t({ id: "read", title: "Read notes", where: "phone", size: 20 }),
+    t({ id: "msg", title: "Reply to Dana", where: "phone", size: 15 })];
+  const now = at("06:50"), hours = { start: 8 * 60, end: 22 * 60 };
+  const drive = T.withTrips([ash], trips, [], null);
+  const rode = T.ridingAs(drive, "bus", now);
+  assert.deepEqual(rode.filter((e) => e.trip).map((e) => e.trip.place), ["bus", "car"]);
+  assert.equal(T.ridingAs(drive, "home", now), drive, "not a ride: nothing changes");
+  // The laptop task first in the plan: the phone ones still go on the ride.
+  const items = tasks.map((x) => ({ taskId: x.id, minutes: x.size }));
+  const lay = (events) => Object.fromEntries(timeline(items, { tasks, events, now, hours }).rows.map((r) => [r.taskId, r.ride || null]));
+  assert.deepEqual(lay(drive), { mix: null, read: null, msg: null }, "driving: nothing on the drive");
+  assert.deepEqual(lay(rode), { mix: null, read: "passenger", msg: "passenger" }, "passenger: the phone tasks ride along");
+  const rows = timeline(items, { tasks, events: rode, now, hours }).rows;
+  assert.ok(rows.every((r, i) => !i || rows[i - 1].start <= r.start), "rows in time order");
+});
