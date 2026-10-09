@@ -27,6 +27,7 @@ import { watchCalendar, logDone } from "./calendar.js";
 import { LATER_MINUTES, DRAIN, CANCEL_KEEP_MINUTES, LIGHTER } from "./weights.js";
 import { missState, silenceText } from "./miss.js";
 import { takeQuiet } from "./push.js";
+import { findPhoneTasks, phoneOkIds, searching } from "./phone.js";
 import { rank, freeWindow, timeBucket, matchProject, dueAt } from "./engine.js";
 import { leftMinutes, toMinutes, progressOf, progressPatch, shrinkPatch, shrunk, localDate, skipSnapshot, skipLesson, pendingCheck, notYet, pushedTo, bringBack, againInput, dayAfter, doneSnapshot } from "./model.js";
 import { isRoutine, routineCalendar, eventsToLog, sessionPatch } from "./routine.js";
@@ -333,9 +334,10 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
     return eventCard({ meta: `${TRIP_ON[riderOf(leg)]} · until ${clock(leg.end)}`, title: leg.title,
       why: "Nothing fits the rest of the ride.", extras: [outLine(r), phoneOk(r), putOffButton(r)] });
   }
-  // Most tasks are guessed Computer (model.guessWhere), so a ride shuts them
-  // all out. One tap says this one works on the phone, and it's offered.
+  // What's left after the phone search (phoneNow) found nothing that fits:
+  // one tap says this one works on the phone, and it's offered.
   function phoneOk(r){
+    if (searching()) return h("p", { className: "muted", textContent: "Looking through your tasks for phone ones…" });
     const can = r.out.filter((o) => o.reason === "place" && o.task.where === "computer").slice(0, 3);
     if (!can.length) return null;
     return h("div", { className: "ride-ask phone-ok", role: "group", ariaLabel: "Doable on the phone?" },
@@ -733,7 +735,15 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
       learnStats,
       booked: Object.fromEntries([...booked()].map(([id, b]) => [id, b.start])),
       routineCal: routineCal(now),
+      phoneOk: phoneNow(f.place.value),
     };
+  }
+  // On a bus or in the passenger seat, the Computer tasks a phone can do
+  // count too (phone.js): asked about once, then read from memory.
+  function phoneNow(place){
+    if (!["bus", "ride"].includes(place) || !tasks) return [];
+    findPhoneTasks(tasks, { guest }).then((changed) => changed && render()).catch(fail);
+    return [...phoneOkIds(tasks)];
   }
 
   // Night mode (DAISEY_SPEC "Day hours"): outside the day hours the card

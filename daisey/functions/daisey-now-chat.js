@@ -153,6 +153,18 @@ const PLAN_SYSTEM = `You re-plan the rest of today for the user of Daisey, a day
 You get the open tasks (id, title, project, minutes, type, due, dateKind), how many free minutes are left today, the current proposed order, and the user's instruction.
 Return the task ids to do today, in order, following the instruction. Keep the total minutes at or under the free minutes. Keep hard deadlines due today or earlier unless the user explicitly says to drop them. Never invent ids. If the instruction is unclear, return the current order with a note asking what to change.`;
 
+// mode "phone" (2026-10-09): on a ride (bus, passenger seat) only phone tasks
+// fit, and most tasks are guessed Computer. The app sends its Computer tasks;
+// the answer is the ids a phone can do start to finish.
+const PHONE_SCHEMA = {
+  type: "OBJECT",
+  properties: { ids: { type: "ARRAY", items: { type: "STRING" }, description: "Ids of the tasks a smartphone alone can do start to finish. Only ids from the list." } },
+  required: ["ids"],
+};
+const PHONE_SYSTEM = `You sort tasks for the user of Daisey, a day-planning app. They are on a bus or a passenger in a car, with only their smartphone.
+You get tasks (id, title, project, type). Return the ids of the ones a phone alone can do start to finish: messages, emails, calls, short replies, booking, ordering, paying, renewing, signing up, reading, listening, quick lookups, simple forms.
+Leave out anything that needs a computer (coding, audio or video editing, design, long writing, spreadsheets, building or testing software), a particular place, or being there in person. When unsure, leave it out. Never invent ids.`;
+
 const clean = (s, n = 200) => String(s ?? "").replace(/\s+/g, " ").trim().slice(0, n);
 const isDay = (s) => /^\d{4}-\d{2}-\d{2}$/.test(String(s || ""));
 // Something that reads as a date, not a person ("Thursday", "2026-10-08", "יום רביעי").
@@ -292,11 +304,22 @@ exports.handler = async (event) => {
   if (!key) return fail(503, "not_configured");
 
   const text = clean(body.text, MAX_TEXT);
-  if (!text || !isDay(body.today)) return fail(400, "bad_input");
+  if ((!text && body.mode !== "phone") || !isDay(body.today)) return fail(400, "bad_input");
   const rateDay = guest ? new Date().toISOString().slice(0, 10) : body.today;
   const allowed = await bump(rateId, rateDay, guest);
   if (allowed === null) return fail(503, "guest_limit_unavailable");
   if (!allowed) return fail(429, "daily_cap");
+
+  if (body.mode === "phone") {
+    const list = (Array.isArray(body.tasks) ? body.tasks : []).slice(0, MAX_TASKS)
+      .map((t) => ({ id: clean(t.id, 60), title: clean(t.title, 120), project: clean(t.project, 60), type: clean(t.type, 12) }))
+      .filter((t) => t.id && t.title);
+    const ids = new Set(list.map((t) => t.id));
+    const prompt = `Tasks: ${JSON.stringify(list)}`;
+    const out = (await ask(key, prompt, PHONE_SYSTEM, PHONE_SCHEMA)) || (await ask(key, prompt, PHONE_SYSTEM, PHONE_SCHEMA));
+    if (!out) return fail(502, "model");
+    return reply(200, { ids: [...new Set((Array.isArray(out.ids) ? out.ids : []).map((x) => clean(x, 60)).filter((x) => ids.has(x)))] });
+  }
 
   if (body.mode === "plan") {
     const open = (Array.isArray(body.tasks) ? body.tasks : []).slice(0, MAX_TASKS)

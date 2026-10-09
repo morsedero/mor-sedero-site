@@ -84,6 +84,7 @@ export function matchProject(title, projects){
 //   skipsToday      { id: count } — the skip penalty
 //   learnStats      { "type|bucket": { starts, skips } } — learned fit
 //   booked          { id: slot start ms } — booked tasks wait for their slot
+//   phoneOk         ids of Computer tasks the phone can do (phone.js)
 export function readMoment(input = {}){
   const now = input.now ?? Date.now();
   const w = Number(input.window);
@@ -109,6 +110,7 @@ export function readMoment(input = {}){
     booked: input.booked || {},
     // Routines' sessions already on the calendar (routine.routineCalendar).
     routineCal: input.routineCal || {},
+    phoneOk: new Set(input.phoneOk || []),
   };
 }
 
@@ -121,8 +123,10 @@ const windowFor = (task, m) => (task.openHours === "office" ? Math.min(m.window,
 // Can the task be done at this place? Not where it was skipped as "Not
 // here", and not where its own place is blocked (PLACE_BLOCKS) — except a
 // call while driving. The plan asks the same of a ride (proposal.js).
-export const fitsPlace = (task, place) => !(task.notAt || []).includes(place)
-  && !((W.PLACE_BLOCKS[place] || []).includes(task.where) && !(place === "car" && W.DRIVING_TYPES.includes(task.type)));
+// phoneOk: Computer tasks the phone can do too (phone.js), counted as Phone.
+export const fitsPlace = (task, place, phoneOk = null) => !(task.notAt || []).includes(place)
+  && !((W.PLACE_BLOCKS[place] || []).includes(task.where === "computer" && phoneOk?.has(task.id) ? "phone" : task.where)
+    && !(place === "car" && W.DRIVING_TYPES.includes(task.type)));
 
 // Why a task can't be offered right now, or null if it can.
 export function filterOut(task, m){
@@ -145,7 +149,7 @@ export function filterOut(task, m){
   } else if (m.booked[task.id] > m.now) return "booked";
   if (m.sessionSkips.has(task.id)) return "skipped";
   if (m.blockProject && key(task.project) !== m.blockProject) return "block";
-  if (!fitsPlace(task, m.place)) return "place";
+  if (!fitsPlace(task, m.place, m.phoneOk)) return "place";
   if (task.openHours === "office" && !m.officeOpen) return "office";
   if (task.openHours === "evening" && new Date(m.now).getHours() < W.EVENING_FROM) return "evening";
   const w = windowFor(task, m);

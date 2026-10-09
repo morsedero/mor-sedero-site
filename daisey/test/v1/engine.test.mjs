@@ -364,3 +364,12 @@ test("tiers: workBase hands every caller the published tiers", () => {
   assert.deepEqual(C.workBase([], NOW).projectTiers, { A: "focus" });
   C.setProjectTiers({});
 });
+
+// On a ride, a Computer task the phone can do (phone.js) fits; the rest don't.
+test("phoneOk: a phone-able Computer task fits a bus, not a car", () => {
+  const t = { id: "a", where: "computer", type: "admin" };
+  assert.equal(E.fitsPlace(t, "bus"), false);
+  assert.equal(E.fitsPlace(t, "bus", new Set(["a"])), true);
+  assert.equal(E.fitsPlace(t, "car", new Set(["a"])), false, "driving: still no phone");
+  assert.equal(E.fitsPlace({ ...t, where: "home" }, "bus", new Set(["a"])), false, "only Computer is lifted");
+});
