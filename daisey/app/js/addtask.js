@@ -22,7 +22,7 @@
 // sheet, "Daisey guesses" hands a field back, dashed = a guess, solid = yours.
 // While typing a new task's title they catch up only once typing stops.
 import { nudgeText, waLink } from "./nudge.js";
-import { watchTasks, addTask, updateTask, removeTask, watchProjectNames } from "./store.js";
+import { watchTasks, addTask, updateTask, removeTask, watchProjectNames, watchSettings } from "./store.js";
 import { durText, guessFields, validField, CHOICES, LABELS, INBOX, localDate, clampDate, outsideRange, progressOf } from "./model.js";
 import { h, flash, icon, bdi } from "./ui.js";
 import { projectsOf } from "./projects.js";
@@ -120,6 +120,14 @@ export function mountAddTask(dialog, uid, { onStart } = {}){
   atIn.addEventListener("change", () => { if (/^\d{2}:\d{2}$/.test(atIn.value)) { at = atIn.value; changed(); } });
   const setBox = h("div", { className: "ts-set" }, dayRow, h("label", { className: "ts-at-row" }, h("span", { textContent: "at" }), atIn),
     h("p", { className: "ts-hint", textContent: "Daisey puts these in your Daisey calendar." }));
+  // "Needs laptop" (Mor, 2026-10-09): a switch over the guessed where, shown
+  // only when Settings turns it on (settings.askLaptop, off by default). On =
+  // where "computer"; off = "anywhere". Ticked by itself when Daisey already
+  // guesses a laptop task.
+  const laptopSwitch = h("input", { type: "checkbox", id: "tsLaptop" });
+  const laptopRow = h("div", { className: "ts-hold ts-laptop", hidden: true },
+    h("label", { className: "ts-hold-sw", htmlFor: "tsLaptop" }, laptopSwitch, h("span", { textContent: "Needs laptop" })));
+  laptopSwitch.addEventListener("change", () => pick("where", laptopSwitch.checked ? "computer" : "anywhere"));
   const oftenRow = h("div", { className: "ts-hold ts-repeat" },
     h("label", { className: "ts-hold-sw", htmlFor: "tsRepeat" }, repeatSwitch, h("span", { textContent: "Repeats weekly" })), modeRow, perStep, setBox);
   const weekNow = h("p", { className: "ts-worked ts-week" });
@@ -221,7 +229,7 @@ export function mountAddTask(dialog, uid, { onStart } = {}){
     field("Project", projectSel, newProject),
     field("Task", title),
     h("div", { className: "ts-dates" }, start.box, due.box, until.box),
-    field("How long?", chipRow), oftenRow, weekNow, pctBox, pendBox, holdBox, researchLine, stateLine,
+    field("How long?", chipRow), laptopRow, oftenRow, weekNow, pctBox, pendBox, holdBox, researchLine, stateLine,
     section("Links & notes", h("div", { className: "ts-group" }, linkRow, notes)),
     worked, startBtn, del, msg);
 
@@ -350,6 +358,7 @@ export function mountAddTask(dialog, uid, { onStart } = {}){
       textContent: "Daisey guesses", onclick: () => pick(k, null) }));
   function paintChips(){
     paintArea();
+    laptopSwitch.checked = vals.where === "computer";
     chipRow.replaceChildren(...SHOWN.filter((k) => vals[k] != null).map((k) => {
       const own = mine.has(k);
       const chip = h("button", { type: "button", className: "gchip" + (own ? " mine" : ""), ariaHasPopup: "listbox", ariaExpanded: String(openChip === k),
@@ -496,6 +505,7 @@ export function mountAddTask(dialog, uid, { onStart } = {}){
     fillProjects([...new Set([...(tasks || []).map((t) => t.project), ...made])].filter((p) => p && p !== INBOX).sort((a, b) => a.localeCompare(b)));
   };
   const unsubNames = watchProjectNames(uid, (ns, rs) => { made = ns; ranges = rs || {}; refill(); fenceDates([]); }, fail);
+  const unsubSettings = watchSettings(uid, (st) => { laptopRow.hidden = st?.askLaptop !== true; }, fail);
   const unsub = watchTasks(uid, (ts) => {
     tasks = ts;
     refill();
@@ -554,6 +564,6 @@ export function mountAddTask(dialog, uid, { onStart } = {}){
       paintAll();
       show();
     },
-    unmount(){ clearTimeout(settle); unsub(); unsubNames(); if (dialog.open) dialog.close(); dialog.replaceChildren(); },
+    unmount(){ clearTimeout(settle); unsub(); unsubNames(); unsubSettings(); if (dialog.open) dialog.close(); dialog.replaceChildren(); },
   };
 }

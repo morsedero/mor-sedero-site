@@ -291,6 +291,7 @@ async function boot(){
         const start = $("#dayStart"), end = $("#dayEnd");
         // Finished tasks into the "Daisey log" calendar (now.js logFinished): on unless switched off.
         const logSwitch = $("#logDone");
+        const laptopAsk = $("#askLaptop");
         // The morning brief (push.js): this device's switch, a test button,
         // and — while it's on anywhere — the task snapshot the server counts.
         const pushSwitch = $("#pushBrief"), pushNote = $("#pushNote"), pushTest = $("#pushTest"), pushKinds = $("#pushKinds");
@@ -352,6 +353,7 @@ async function boot(){
           paintMeals(s || {});
           logSwitch.checked = !isGuest && s?.logDone !== false;
           logSwitch.disabled = isGuest;
+          laptopAsk.checked = s?.askLaptop === true;
           hours = hrs;
           lastSettings = s || {};
           briefOn = !!s?.morningBrief;
@@ -362,6 +364,7 @@ async function boot(){
           snap();
         }, fail);
         logSwitch.onchange = () => saveSettings(user.uid, { logDone: logSwitch.checked }).catch(fail);
+        laptopAsk.onchange = () => saveSettings(user.uid, { askLaptop: laptopAsk.checked }).catch(fail);
         // Meal breaks (Mor, 2026-10-08): Breakfast, Lunch, Dinner, each on or
         // off, with one time (the plan puts it in the hour from there) and a
         // length. The time is a − 13:00 + stepper (Mor, 2026-10-08: not the
@@ -500,7 +503,7 @@ async function boot(){
           connectBtn.textContent = c.status === "needs_reauth" ? "Reconnect" : "Connect";
           calNote.textContent = isGuest ? "Sign in first" : calOk ? "Connected" : c.status === "needs_reauth" ? "Expired" : "Not connected";
         });
-        m.menu = { unmount(){ stopSettings(); stopCal(); stopBriefTasks(); stopBriefRun(); stopBriefPlan(); clearInterval(seenTick); document.removeEventListener("visibilitychange", seen); start.onchange = end.onchange = logSwitch.onchange = pushSwitch.onchange = pushTest.onclick = null;
+        m.menu = { unmount(){ stopSettings(); stopCal(); stopBriefTasks(); stopBriefRun(); stopBriefPlan(); clearInterval(seenTick); document.removeEventListener("visibilitychange", seen); start.onchange = end.onchange = logSwitch.onchange = laptopAsk.onchange = pushSwitch.onchange = pushTest.onclick = null;
           kindBoxes.forEach((b) => { b.onchange = null; }); } };
 
         // Full screens (a project, Needs you) sit on the history stack, so the
