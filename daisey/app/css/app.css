@@ -1178,6 +1178,7 @@ dialog.tsheet .msg:empty { display: none; }
 .ny-btns .btn.line.big { min-block-size: 52px; font-size: 16px; }
 .ny-btns .btn.quiet { min-block-size: 44px; font-size: 14px; }
 .ny-more { display: flex; justify-content: center; gap: 8px; }
+.ny-btns .btn.arm { color: var(--danger); border-color: var(--danger); background: color-mix(in srgb, var(--danger) 12%, transparent); font-weight: 700; }
 .ny-end { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 6px; text-align: center; }
 .ny-end h2 { margin: 0; font-size: 28px; font-weight: 600; }
 .ny-end p { margin: 0 0 24px; font-size: 15px; color: var(--ink-2); }

@@ -86,7 +86,9 @@ export function mountNeeds(root, uid, { onClose } = {}){
   // Delete (Mor, 2026-10-10): "Let it go" read as unclear, so it says what it
   // does and does what the task sheet's Delete does — the task is gone, its
   // weekly event in the Daisey calendar with it.
-  const del = (t) => ["Delete task", () => { dropSeries(t); removeTask(uid, t.id).catch(fail); flash("Deleted ", t.title); next(); }];
+  // Asks twice (Mor, 2026-10-10), as the sheet does: the third entry is
+  // what the button says once armed (answer() below).
+  const del = (t) => ["Delete task", () => { dropSeries(t); removeTask(uid, t.id).catch(fail); flash("Deleted ", t.title); next(); }, "Really delete?"];
   const sweep = (t, kind) => {
     const now = Date.now();
     const week = kind === "week" ? pickWeekDay(t, { events: cal.events || [], tasks, now, hours: dayHours(settings) }) : null;
@@ -301,13 +303,23 @@ export function mountNeeds(root, uid, { onClose } = {}){
       q.field && (field = h("input", { id: q.field.id, className: "ny-field", dir: "auto", autocomplete: "off", enterkeyhint: "done", placeholder: q.field.placeholder, ariaLabel: q.field.placeholder || q.sub,
         ...(q.field.inputmode ? { inputMode: q.field.inputmode } : {}) })));
     if (field) field.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); q.yes[1](field.value); } });
+    // [text, go, again]: with `again`, the first tap only arms the button
+    // ("Really delete?") and the second one answers.
+    const answer = ([text, go, again], cls) => {
+      let armed = false;
+      const b = big(text, cls, () => {
+        if (again && !armed) { armed = true; b.textContent = again; b.classList.add("arm"); return; }
+        go(field?.value);
+      });
+      return b;
+    };
     root.replaceChildren(top,
       h("div", { className: "ny-stack" + (left > 1 ? " two" : left ? " one" : "") }, card),
       h("div", { className: "ny-spacer" }),
       h("div", { className: "ny-btns" },
         big(q.yes[0], "primary big", () => q.yes[1](field?.value)),
-        q.no && big(q.no[0], "line big", () => q.no[1](field?.value)),
-        q.more && h("div", { className: "ny-more" }, ...q.more.map(([text, go]) => big(text, "quiet", () => go(field?.value)))),
+        q.no && answer(q.no, "line big"),
+        q.more && h("div", { className: "ny-more" }, ...q.more.map((a) => answer(a, "quiet"))),
         !q.noLater && big("Ask me later", "quiet", () => later(list[i].key))));
   }
 
