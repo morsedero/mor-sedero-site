@@ -68,8 +68,8 @@ export const flowerTime = (f) => (f?.min ? `${f.guess ? "~" : ""}${fmtMinutes(f.
 
 // The growing half. onChange: the log, the events or the period moved, so
 // the page should redraw.
-export function mountGrowth(uid, { onChange } = {}){
-  let period = "week", entries = [], events = [], shown = false;
+export function mountGrowth(uid, { onChange, period: first = "week" } = {}){
+  let period = first, entries = [], events = [], shown = false;
   let unLog = null, logKey = "", evSeq = 0;
   const evCache = new Map();
   const fail = (e) => console.error("[daisey] bloom", e);
@@ -119,6 +119,7 @@ export function mountGrowth(uid, { onChange } = {}){
     if (period === "week") for (const f of fl) if (f.done > (seen[f.name] ?? f.done)) pops.add(f.name);
     if (shown && period === "week") writeSeen(Object.fromEntries(fl.map((f) => [f.name, f.done])));
     return { period, summary, routines, pops, strip: weekStrip(list, now),
+      week: period === "week" ? summary : summarize(list, periodRange("week")),
       flowers: new Map(fl.map((f) => [f.name, f])), line: oneLine({ summary, flowers: fl, routines, period }) };
   }
 
@@ -143,6 +144,21 @@ export function totalsLine(summary){
     tile("st-focus", summary.total ? `${summary.guess ? "~" : ""}${fmtMinutes(summary.total)}` : "0", "focused"),
     tile("st-done", String(summary.done), "done"),
     tile("st-days", String(summary.days), summary.days === 1 ? "day" : "days"));
+}
+
+// Stats moved off the Projects page into the avatar menu (Mor, 2026-10-10:
+// "projects page feels too much like a stats page"). g: read() of a
+// Month-period growth, so it carries the month and, as g.week, the week.
+export function statsCard(g){
+  const best = g.routines.filter((r) => r.streak >= 2).sort((a, b) => b.streak - a.streak)[0];
+  const top = [...g.summary.projects.values()].sort((a, b) => b.min - a.min)[0];
+  const line = (icon, ...kids) => h("p", { className: "ms-line" }, h("span", { ariaHidden: "true", textContent: icon }), ...kids);
+  return [
+    h("p", { className: "ms-h", textContent: "This week" }), totalsLine(g.week),
+    h("p", { className: "ms-h", textContent: "This month" }), totalsLine(g.summary),
+    top?.min ? line("🌼", "Most time: ", bdi(top.name), ` · ${top.guess ? "~" : ""}${fmtMinutes(top.min)}`) : null,
+    best ? line("🐝", bdi(best.title), ` · ${best.streak} weeks in a row`) : null,
+  ].filter(Boolean);
 }
 
 export function weekCard(strip){

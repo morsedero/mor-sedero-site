@@ -191,7 +191,11 @@ async function boot(){
   };
   // Account menu under the avatar.
   const menu = $("#acctMenu"), avatar = $("#avatar");
-  const setMenu = (open) => { menu.hidden = !open; avatar.setAttribute("aria-expanded", String(open)); };
+  const setMenu = (open) => { menu.hidden = !open; avatar.setAttribute("aria-expanded", String(open));
+    // Stats in the menu (Mor, 2026-10-10): painted by projects.js while open.
+    const box = $("#acctStats"), stats = mounted?.projects?.stats;
+    box.hidden = !open || !stats;
+    stats?.(open ? box : null); };
   avatar.onclick = (e) => { e.stopPropagation(); setMenu(menu.hidden); };
   document.addEventListener("click", (e) => { if (!menu.hidden && !menu.contains(e.target)) setMenu(false); });
   document.addEventListener("keydown", (e) => { if (e.key === "Escape") setMenu(false); });

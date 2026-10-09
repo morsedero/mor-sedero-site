@@ -1773,6 +1773,14 @@ body.focus .shell { block-size: auto; min-block-size: 100dvh; overflow: visible;
 .bl-stat.st-focus { --sc: var(--p-teal-ink); }
 .bl-stat.st-done { --sc: var(--p-lime-ink); }
 .bl-stat.st-days { --sc: var(--p-orange-ink); }
+/* The stats in the avatar menu (2026-10-10). */
+.menu-stats { padding-block-end: 10px; }
+.menu-stats .bl-totals { margin-block-start: 4px; grid-template-columns: 1.7fr 1fr 1fr; }
+.menu-stats .bl-stat { flex-direction: column; align-items: flex-start; gap: 0; padding: 4px 8px; }
+.menu-stats .bl-stat strong { font-size: 15px; }
+.menu-stats .ms-h { font-size: 11px; font-weight: 700; color: var(--ink-2); margin-block-start: 8px; }
+.menu-stats .ms-h:first-child { margin-block-start: 0; }
+.menu-stats .ms-line { display: flex; gap: 6px; font-size: 12px; margin-block-start: 8px; }
 #projPage > .bl-card, #projPage > .bl-routines { margin-block-start: 14px; }
 
 /* The card: flower standing on its bottom edge, the rest beside it. */

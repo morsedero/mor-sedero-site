@@ -30,7 +30,7 @@ import { dirOf, setProjectColors } from "./look.js";
 import { setProjectTiers } from "./context.js";
 import { TIERS, FOCUS_MAX } from "./weights.js";
 import { sortable, zoneSortable } from "./ppdrag.js";
-import { mountGrowth, flowerSvg, flowerTime, totalsLine, weekCard, routinesSection } from "./bloom.js";
+import { mountGrowth, flowerSvg, flowerTime, statsCard, weekCard, routinesSection } from "./bloom.js";
 
 const SWIPE_DONE = 90; // px a task travels right before letting go finishes it
 const SWIPE_PAGE = 70; // px sideways that turns the page to the next project
@@ -146,6 +146,11 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
   const hold = (on) => { dragging = on; if (!on && stale) { stale = false; render(); } };
   // Bloom lives on this page (bloom.js): the log or the period moved.
   const growth = mountGrowth(uid, { onChange: () => { if (dragging) { stale = true; return; } paintGrid(); } });
+  // The numbers live in the avatar menu now (Mor, 2026-10-10): a Month
+  // growth of their own, watched only while the menu is open.
+  let statsBox = null;
+  const statsGrowth = mountGrowth(uid, { period: "month", onChange: () => paintStats() });
+  function paintStats(){ if (statsBox) statsBox.replaceChildren(...statsCard(statsGrowth.read(tasks || [], list().map((p) => p.name)))); }
 
   // ---------- the Projects page ----------
   // Tiers (Mor, 2026-10-08): Focus, Keep going, Background. The engine
@@ -227,11 +232,10 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
         h("span", { className: "pp-tier-empty", textContent: "Drag a project here" }), ...ins.map(card)); };
     const y = els.grid.scrollTop;
     els.grid.replaceChildren(...[
-      // Top, kept short (Mor, 2026-10-08): the Week/Month button, + New, then
-      // the period's three numbers. Inbox is a project card like the rest.
+      // Top, kept short (Mor, 2026-10-08): the Week/Month button and + New.
+      // The period's numbers moved to the avatar menu (2026-10-10).
       h("div", { className: "pp-head" }, growth.pills(),
         h("button", { type: "button", className: "pp-new", textContent: "+ New", onclick: () => askName() })),
-      totalsLine(g.summary),
       dragProjects(h("div", { className: "pgrid tiers" }, ...TIERS.map(tier))),
       weekCard(g.strip),
       routinesSection(g.routines, tasks || [], new Map(all.map((p) => [p.name, p.color || ""])))].filter(Boolean));
@@ -610,7 +614,7 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
     saveProjectNames(uid, made).catch(fail);
   }
 
-  function render(){ if (dragging) { stale = true; return; } paintGrid(); paintView(); }
+  function render(){ if (dragging) { stale = true; return; } paintGrid(); paintView(); paintStats(); }
   const unsubs = [
     watchTasks(uid, (ts) => { tasks = ts; keepNames(); render(); }, fail),
     watchProjectNames(uid, (ns, rs, od, tr) => { made = ns; ranges = rs || {}; order = od || []; tiers = tr || {}; namesIn = true; keepNames(); render(); }, fail),
@@ -625,6 +629,8 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
     closeAll,
     // The project on screen, for "+ Task": the open project, else none.
     shownProject: () => shown,
-    unmount(){ unsubs.forEach((u) => u()); growth.unmount(); closeProject(); els.grid.replaceChildren(); if (els.dialog.open) els.dialog.close(); },
+    // The avatar menu's stats: a box to paint into while open, null on close.
+    stats(box){ statsBox = box; if (box) { statsGrowth.show(); paintStats(); } else statsGrowth.hide(); },
+    unmount(){ unsubs.forEach((u) => u()); growth.unmount(); statsGrowth.unmount(); closeProject(); els.grid.replaceChildren(); if (els.dialog.open) els.dialog.close(); },
   };
 }
