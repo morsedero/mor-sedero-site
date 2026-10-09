@@ -184,11 +184,12 @@ export function mountAddEvent(dialog, { localOnly = false } = {}){
   }
 
   // Google's event details: what it is, when it is, and the two things you can
-  // do to it. The name is the sheet's heading; under it one card of rows,
-  // Google's way: when, where (a tap opens it in Maps, for the ride), and
-  // Repeats only when it does (Mor, 2026-10-09).
-  // DOM replaceChildren, unlike h(), writes false as text: hence the filter. Read-only events (someone else's calendar) show no buttons —
-  // Google greys them out the same way.
+  // do to it. The name is the sheet's heading; under it a few rows straight
+  // on the sheet, no card in the card (Mor, 2026-10-09): when, where (a tap
+  // opens it in Maps, for the ride), and Repeats only when it does.
+  // Read-only events (someone else's calendar) show no buttons — Google
+  // greys them out the same way.
+  // DOM replaceChildren, unlike h(), writes false as text: hence the filter.
   function showDetails(ev){
     const start = Date.parse(ev.start), end = Date.parse(ev.end || ev.start);
     const when = ev.allDay ? "All day" : `${hhmm(start)} – ${hhmm(end)}`;
