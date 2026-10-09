@@ -1439,7 +1439,7 @@ body.focus #side { display: none; }
 /* Projects: summary + New, the grid, the Inbox row. */
 .pp-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .pp-sum { font-size: 13px; font-weight: 600; color: color-mix(in srgb, var(--ink) 85%, var(--ink-2)); }
-.pp-new { position: relative; padding: 0; border: 0; background: none; font: inherit; font-size: 13px; font-weight: 500; color: var(--a-work-ink); cursor: pointer; }
+.pp-new { position: relative; padding: 0; border: 0; background: none; font: inherit; font-size: 13px; font-weight: 500; color: var(--a-work-ink); cursor: pointer; margin-inline-start: auto; }
 .pp-new::after { content: ""; position: absolute; inset: -14px -10px; }
 .pp-empty { margin: 10px 0 0; }
 .pcard .pbar { margin-block-start: 10px; }
@@ -1767,21 +1767,15 @@ body.focus .shell { block-size: auto; min-block-size: 100dvh; overflow: visible;
 .pp-inbox-chip { position: relative; display: inline-flex; align-items: center; gap: 5px; block-size: 30px; padding-inline: 10px; border: 1px dashed var(--bud); border-radius: 999px; background: none; color: var(--ink); font: inherit; font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums; cursor: pointer; }
 .pp-inbox-chip::after { content: ""; position: absolute; inset: -7px -2px; } /* 44px to the finger */
 .pp-inbox-chip svg { inline-size: 14px; block-size: 14px; color: var(--ink-2); stroke-width: 2; }
-.bl-totals { display: grid; grid-template-columns: 1.3fr 1fr 1fr; gap: 6px; margin: 8px 0 0; font-variant-numeric: tabular-nums; }
-.bl-stat { display: flex; align-items: baseline; gap: 5px; min-inline-size: 0; padding: 5px 9px; border-radius: 10px; background: var(--card); border: 1px solid var(--line); border-inline-start: 3px solid var(--sc); }
-.bl-stat strong { font-size: 16px; line-height: 1.2; font-weight: 800; letter-spacing: -.01em; color: var(--sc); white-space: nowrap; }
-.bl-stat span { font-size: 11px; font-weight: 600; color: var(--ink-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.bl-stat.st-focus { --sc: var(--p-teal-ink); }
-.bl-stat.st-done { --sc: var(--p-lime-ink); }
-.bl-stat.st-days { --sc: var(--p-orange-ink); }
-/* The stats in the avatar menu (2026-10-10). */
+/* The week's numbers in the avatar menu (2026-10-10): one box like the theme switch. */
 .menu-stats { padding-block-end: 10px; }
-.menu-stats .bl-totals { margin-block-start: 4px; grid-template-columns: 1.7fr 1fr 1fr; }
-.menu-stats .bl-stat { flex-direction: column; align-items: flex-start; gap: 0; padding: 4px 8px; }
-.menu-stats .bl-stat strong { font-size: 15px; }
-.menu-stats .ms-h { font-size: 11px; font-weight: 700; color: var(--ink-2); margin-block-start: 8px; }
-.menu-stats .ms-h:first-child { margin-block-start: 0; }
-.menu-stats .ms-line { display: flex; gap: 6px; font-size: 12px; margin-block-start: 8px; }
+.menu-stats .ms-h { font-size: 12px; color: var(--ink-2); margin-block-end: 6px; }
+.ms-figs { display: grid; grid-template-columns: 1.6fr 1fr 1fr; padding: 8px 6px; border-radius: 16px; background: var(--bg); border: 1px solid var(--line); font-variant-numeric: tabular-nums; }
+.ms-fig { display: grid; justify-items: center; gap: 1px; min-inline-size: 0; }
+.ms-fig + .ms-fig { border-inline-start: 1px solid var(--line); }
+.ms-fig strong { font-size: 16px; font-weight: 800; letter-spacing: -.01em; color: var(--ink); white-space: nowrap; }
+.ms-fig span { font-size: 11px; color: var(--ink-2); }
+.menu-stats .ms-line { display: flex; gap: 6px; font-size: 12px; color: var(--ink-2); margin-block-start: 8px; }
 #projPage > .bl-card, #projPage > .bl-routines { margin-block-start: 14px; }
 
 /* The card: flower standing on its bottom edge, the rest beside it. */
@@ -1805,14 +1799,7 @@ body.focus .shell { block-size: auto; min-block-size: 100dvh; overflow: visible;
 .bl-cup { fill: none; stroke: #6fa56f; stroke-width: 1.8; stroke-linecap: round; }
 
 .bl-pills { display: inline-flex; padding: 3px; border-radius: 999px; background: var(--chip); }
-.bl-seg { position: relative; display: inline-grid; grid-template-columns: 1fr 1fr; padding: 3px; border-radius: 999px; background: var(--chip); isolation: isolate; }
-.bl-seg::before { content: ""; position: absolute; z-index: -1; inset-block: 3px; inset-inline-start: 3px; inline-size: calc(50% - 3px); border-radius: 999px; background: var(--card); box-shadow: 0 1px 3px rgba(0,0,0,.18); transition: transform .22s cubic-bezier(.3,.9,.4,1); }
-.bl-seg.month::before { transform: translateX(100%); }
-.bl-seg-b { position: relative; border: 0; background: none; color: var(--ink-2); font: inherit; font-size: 13px; font-weight: 600; padding: 6px 16px; border-radius: 999px; cursor: pointer; transition: color .2s; }
-.bl-seg-b::after { content: ""; position: absolute; inset: -7px -1px; } /* 44px to the finger */
-.bl-seg-b[aria-checked="true"] { color: var(--ink); }
-@media (prefers-reduced-motion: reduce) { .bl-seg::before, .bl-seg-b { transition: none; } }
-.bl-pill { position: relative; border: 0; background: none; color: var(--ink-2); font: inherit; font-size: 13px; font-weight: 600; padding: 6px 12px; border-radius: 999px; cursor: pointer; }
+@media (prefers-reduced-motion: reduce) { .bl-pill { position: relative; border: 0; background: none; color: var(--ink-2); font: inherit; font-size: 13px; font-weight: 600; padding: 6px 12px; border-radius: 999px; cursor: pointer; }
 .bl-pill::after { content: ""; position: absolute; inset: -7px -1px; } /* 44px to the finger */
 .bl-pill[aria-checked="true"] { background: var(--card); color: var(--ink); box-shadow: 0 1px 3px rgba(0,0,0,.12); }
 .bl-line { margin: -4px 0 0; font-size: 15px; line-height: 1.45; color: var(--ink); }

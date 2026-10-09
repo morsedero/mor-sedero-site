@@ -146,10 +146,10 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
   const hold = (on) => { dragging = on; if (!on && stale) { stale = false; render(); } };
   // Bloom lives on this page (bloom.js): the log or the period moved.
   const growth = mountGrowth(uid, { onChange: () => { if (dragging) { stale = true; return; } paintGrid(); } });
-  // The numbers live in the avatar menu now (Mor, 2026-10-10): a Month
-  // growth of their own, watched only while the menu is open.
+  // The week's numbers live in the avatar menu (Mor, 2026-10-10): a growth
+  // of their own, watched only while the menu is open.
   let statsBox = null;
-  const statsGrowth = mountGrowth(uid, { period: "month", onChange: () => paintStats() });
+  const statsGrowth = mountGrowth(uid, { onChange: () => paintStats() });
   function paintStats(){ if (statsBox) statsBox.replaceChildren(...statsCard(statsGrowth.read(tasks || [], list().map((p) => p.name)))); }
 
   // ---------- the Projects page ----------
@@ -232,9 +232,8 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
         h("span", { className: "pp-tier-empty", textContent: "Drag a project here" }), ...ins.map(card)); };
     const y = els.grid.scrollTop;
     els.grid.replaceChildren(...[
-      // Top, kept short (Mor, 2026-10-08): the Week/Month button and + New.
-      // The period's numbers moved to the avatar menu (2026-10-10).
-      h("div", { className: "pp-head" }, growth.pills(),
+      // Top: just + New (Mor, 2026-10-10: no Week/Month, numbers in the avatar menu).
+      h("div", { className: "pp-head" },
         h("button", { type: "button", className: "pp-new", textContent: "+ New", onclick: () => askName() })),
       dragProjects(h("div", { className: "pgrid tiers" }, ...TIERS.map(tier))),
       weekCard(g.strip),
