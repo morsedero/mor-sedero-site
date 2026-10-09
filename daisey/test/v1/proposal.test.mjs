@@ -2,7 +2,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 process.env.TZ = "Asia/Jerusalem";
-const { proposeDay, timeline, withBreaks, trimBreaks, nextPlanned, parseAsk, planProgress, refit } = await import("../../app/js/proposal.js");
+const { proposeDay, timeline, withBreaks, trimBreaks, nextPlanned, parseAsk, planProgress, refit, topUp, daySig } = await import("../../app/js/proposal.js");
 
 const at = (h, m = 0) => Date.UTC(2026, 9, 7, h - 3, m);
 const il = (h, m = 0) => new Date(at(h, m)).toISOString();
@@ -147,4 +147,31 @@ test("refit: when the day shrinks, what matters least goes, not what's last; the
   assert.deepEqual(refit(items, ctx, ["a"]).cut, ["b"]);
   // The running task never goes.
   assert.ok(!refit(items, { ...ctx, run: { taskId: "a", startedAt: at(9) } }).cut.includes("a"));
+});
+
+test("topUp: when the day opens up, fresh picks go on the end; what's there stays in order and in today", () => {
+  const tasks = [t({ id: "a", size: 60 }), t({ id: "b", size: 30 }), t({ id: "c", size: 30 }), t({ id: "d", size: 45 })];
+  const items = [{ taskId: "b", minutes: 30 }, { taskId: "a", minutes: 60 }];
+  // 19:30-22:00 left: 90 planned, a break, room for one 30 more.
+  const { items: out, added } = topUp(items, { tasks, events: [], now: at(19, 30) });
+  assert.deepEqual(out.slice(0, 2), items);
+  assert.equal(added.length, 1);
+  assert.ok(["c", "d"].includes(added[0]));
+  assert.ok(!timeline(out, { tasks, events: [], now: at(19, 30) }).over.length);
+  // A full day adds nothing and hands the same list back.
+  const full = topUp(items, { tasks, events: [ev("Gig", [21], [22])], now: at(19, 30) });
+  assert.deepEqual(full, { items, added: [] });
+  // skip (taken off with Undo) never comes back; the running task never goes in.
+  const r = topUp(items, { tasks, events: [], now: at(9), run: { taskId: "d", startedAt: at(9) } }, ["c"]);
+  assert.deepEqual(r.added, []);
+});
+
+test("daySig: changes with busy events and hours, not with the clock or free events", () => {
+  const evs = [ev("Teaching", [10], [12])];
+  const s = daySig(evs, { start: 480, end: 1320 }, at(9));
+  assert.equal(daySig(evs, { start: 480, end: 1320 }, at(15)), s);
+  assert.equal(daySig([...evs, { ...ev("Lunch", [13], [14]), busy: false }], { start: 480, end: 1320 }, at(9)), s);
+  assert.notEqual(daySig([ev("Teaching", [10], [11])], { start: 480, end: 1320 }, at(9)), s);
+  assert.notEqual(daySig([], { start: 480, end: 1320 }, at(9)), s);
+  assert.notEqual(daySig(evs, { start: 480, end: 1380 }, at(9)), s);
 });

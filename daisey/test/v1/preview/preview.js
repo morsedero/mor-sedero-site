@@ -152,6 +152,14 @@ const SCENARIOS = {
     items: [{ taskId: "t2", minutes: 90 }, { taskId: "t4", minutes: 120 }, { taskId: "t1", minutes: 15 }, { taskId: "t5", minutes: 180 }, { taskId: "t3", minutes: 60 }] } },
   // Same, with the deadline too big to fit: the note asks about its date.
   get "squeeze-due"(){ const s = structuredClone(SCENARIOS.squeeze); s.tasks[0].size = 400; s.dayplan.items[2].minutes = 400; return s; },
+  // An approved plan laid against a busier day (sig "was"), now an empty
+  // calendar (--cal none --at 10:00 --clock-run 61000): a minute later Daisey
+  // adds what fits on the end and says so (proposal.topUp).
+  openup: { tasks: [
+    { title: "Mix review for Reprise", project: "Reprise", size: 60, due: day(0) },
+    { title: "Lesson prep", project: "Teaching", size: 45, due: day(0) },
+    { title: "Send invoice to Uri", project: "Admin", size: 15, due: day(1) },
+  ], dayplan: { date: day(0), status: "approved", sig: "was", items: [{ taskId: "t1", minutes: 60 }] } },
   // Nothing active: only waiting and Someday (the calm empty state).
   rest: { tasks: [
     { title: "Waiting on Yuval", project: "Reprise", size: 30, over: { status: "waiting", waitingOn: "Yuval" } },
@@ -193,6 +201,7 @@ const query = flag("--query") || ""; // e.g. "?open=wrap": what a notification t
 const evalJs = flag("--eval"); // run this in the page at the end and print what it returns
 const holdSel = flag("--hold");
 const chatFlag = flag("--chat"); // "off": Tell Daisey answers as if no Gemini key were set // press and hold it for 1.5 s (Hold to finish)
+const clockRun = flag("--clock-run"); // with --at: run the fake clock this many ms after load
 const speedFlag = flag("--speed"); // fake GPS reporting this speed in m/s (where.js): 1.5 walk, 15 a ride
 for (let c; (c = flag("--click"));) clicks.push(c);
 const wide = args.includes("--wide"), tasksTab = args.includes("--tasks");
@@ -299,6 +308,7 @@ const FAKES = {
   // The opening daisy stays at least 900 ms (main.js splashOff): wait it out.
   await page.waitForSelector("#splash", { state: "detached", timeout: 3000 }).catch(() => {});
   await page.waitForTimeout(150);
+  if (clockRun && atFlag) { await page.clock.runFor(Number(clockRun)); await page.waitForTimeout(300); }
   for (const sel of clicks) {
     // "sel=text" types into a field instead of clicking it.
     const eq = sel.indexOf("=");

@@ -291,6 +291,45 @@ export function refit(items = [], ctx = {}, keep = []){
   return { items: tidy(items.filter((_, k) => kept.has(k))), cut };
 }
 
+// The other half of refit (Mor, 2026-10-09): the day opened up (a meeting
+// gone, the day made longer), so fresh picks go on the end of the plan —
+// never before or between what's there, so nothing already in it moves
+// later, and nothing in it is pushed out of today. The timeline lays the
+// plan from now, so freed time earlier in the day is already used by the
+// items after it and what's left is at the end. skip: ids never to add (the
+// user took them off with Undo). → { items, added: [taskId] }.
+export function topUp(items = [], ctx = {}, skip = []){
+  const byId = new Map((ctx.tasks || []).map((t) => [t.id, t]));
+  const open = items.filter((it) => !isBreak(it) && byId.get(it.taskId)?.status === "ready").length;
+  const room = MAX_ITEMS - open;
+  if (room <= 0) return { items, added: [] };
+  const overBefore = timeline(items, ctx).over.length;
+  const picks = proposeDay({ ...ctx, exclude: [...items.filter((it) => it.taskId).map((it) => it.taskId), ...skip] });
+  let out = items;
+  const added = [];
+  for (const p of picks) {
+    if (added.length >= room) break;
+    const next = [...out, p];
+    if (timeline(next, ctx).over.length > overBefore) continue; // doesn't fit, or pushes one out
+    out = next; added.push(p.taskId);
+  }
+  return { items: out, added };
+}
+
+// What the plan was laid against: today's busy events and the day's hours,
+// as a short key. The plan is redone (refit / topUp) when it changes, not
+// when the clock moves; renames and free events don't count.
+export function daySig(events = [], hours = W.DAY_HOURS, now = Date.now()){
+  const today = localDate(now);
+  const spans = events.filter((e) => !e.allDay && e.busy !== false
+    && (localDate(Date.parse(e.start)) === today || localDate(Date.parse(e.end)) === today))
+    .map((e) => `${Date.parse(e.start)}-${Date.parse(e.end)}`).sort();
+  const s = `${hours.start}-${hours.end}|${JSON.stringify(hours.meals ?? null)}|${spans.join(",")}`;
+  let h = 5381;
+  for (let i = 0; i < s.length; i++) h = ((h * 33) ^ s.charCodeAt(i)) >>> 0;
+  return h.toString(36);
+}
+
 // The approved plan's next item that's still open and allowed now: the card
 // follows it (now.js). null when the plan is done or isn't today's.
 export function nextPlanned(plan, tasks = [], date, now = Date.now()){

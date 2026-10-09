@@ -16,7 +16,7 @@ import { overruled, eventKey } from "./reality.js";
 import * as deep from "./deep.js";
 import { addTask, watchTasks, watchRun, watchSkips, saveSkips, startRun, extendRun, endRun, startBatch, tickBatch, endBatch, skipNow, blockTask, restoreTask, finishTask, setDoneMinutes, watchSettings, saveSettings, watchMoment, saveMoment, watchLearn, bumpLearn, saveRun, cancelRun, watchDayPlan, saveDayPlan, holdTask, releaseTask } from "./store.js";
 import { sortable } from "./ppdrag.js";
-import { proposeDay, timeline, withBreaks, trimBreaks, isBreak, nextPlanned, planProgress, refit } from "./proposal.js";
+import { proposeDay, timeline, withBreaks, trimBreaks, isBreak, nextPlanned, planProgress, refit, topUp, daySig } from "./proposal.js";
 import { rethink } from "./rethink.js";
 import { placeNow, workBase, watchProjectTiers } from "./context.js";
 import { watchWhere, setManual, whereAsk, homeAt } from "./where.js";
@@ -68,7 +68,10 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
   // (state/dayplan). prop: the proposal on the card while it's open — items
   // in the user's order, the ids they deleted, the Rethink box.
   let dayPlan, planKnown = false;
-  const prop = { open: false, items: [], exclude: [], ask: false, text: "", busy: false, note: "", auto: null };
+  // touched: the user changed the items (drop, drag, shorten, rethink);
+  // sig: the day they were laid against (proposal.daySig); askOpts: the ask
+  // they came from (the lighter plan's), so a fresh take keeps it.
+  const prop = { open: false, items: [], exclude: [], ask: false, text: "", busy: false, note: "", auto: null, touched: false, sig: null, askOpts: null };
   let ppDragging = false, ppStale = false; // a plan-row drag is live (ppdrag.js)
   let holdAsk = false, holdText = ""; // "Waiting for reply" on the running card
   // The event you said you're free from, as its start time in ms (what
@@ -1065,6 +1068,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
     prop.items = withBreaks(saved?.items?.length && saved.status !== "dismissed"
       ? stillOpen(saved.items)
       : proposeDay({ ...planCtx(), exclude: prop.exclude }), planCtx());
+    prop.touched = false; prop.sig = null; prop.askOpts = null;
     const hadHandoff = !!handoff;
     prop.open = true; prop.ask = false; prop.note = ""; handoff = null;
     // The Now card doesn't change with the plan, so leave it be (a rebuild
@@ -1086,11 +1090,18 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
   // extra: the refit's record ({ kept, cut }), kept until the plan is saved again.
   // approvedAt: when the user last approved it (miss.js counts that as
   // activity; a refit saving the plan isn't), kept across later saves.
+  // declined: ids taken off with the top-up's Undo, never added again today.
+  // sig: the day the plan was saved against (proposal.daySig); topUpLater
+  // compares it with the calendar now.
   const savePlan = (status, items, extra = {}) => {
-    const approvedAt = (todaysPlan()?.approvedAt) ?? null;
-    dayPlan = { date: localDate(), status, items, approvedAt, ...extra, at: Date.now() };
-    saveDayPlan(uid, { date: dayPlan.date, status, items, approvedAt, ...extra }).catch(fail);
+    const was = todaysPlan();
+    const approvedAt = was?.approvedAt ?? null, declined = was?.declined || [];
+    const sig = cal.status === "ok" ? daySig(cal.events, dayHours(settings)) : null;
+    dayPlan = { date: localDate(), status, items, approvedAt, declined, sig, ...extra, at: Date.now() };
+    saveDayPlan(uid, { date: dayPlan.date, status, items, approvedAt, declined, sig, ...extra }).catch(fail);
   };
+  // An unseen notice survives a save made for another reason.
+  const unseen = (p, key) => (p?.[key] && !p[key].seen ? { [key]: p[key] } : {});
   // The approved plan no longer fits the day (an event added, running late):
   // Daisey cuts what matters least itself (proposal.refit) and says so under
   // the card, with Undo (Mor, 2026-10-08). Cut tasks are just back in the
@@ -1103,7 +1114,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
     const { items, cut } = refit(p.items || [], planCtx(), p.kept || []);
     if (!cut.length) return;
     const prev = p.cut && !p.cut.seen ? p.cut : null;
-    savePlan("approved", items, { kept: p.kept || [],
+    savePlan("approved", items, { kept: p.kept || [], ...unseen(p, "added"),
       cut: { ids: [...(prev?.ids || []), ...cut], why: prev?.why || squeezedBy(p), before: prev?.before || p.items, asked: prev?.asked || [] } });
   }
   // What shrank the day: a busy event added or moved since the plan was saved.
@@ -1113,7 +1124,75 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
       .sort((a, b) => Date.parse(a.start) - Date.parse(b.start))[0];
     return ev ? { title: ev.title, minutes: Math.round((Date.parse(ev.end) - Date.parse(ev.start)) / 60000) } : { late: true };
   }
-  const cutSaved = (cut) => savePlan("approved", dayPlan.items, { kept: dayPlan.kept || [], cut });
+  const cutSaved = (cut) => savePlan("approved", dayPlan.items, { kept: dayPlan.kept || [], ...unseen(dayPlan, "added"), cut });
+
+  // The other way round (Mor, 2026-10-09): the day opened up — a meeting
+  // gone or shorter, the day made longer — so a minute after the calendar
+  // or the hours change (a burst of edits is one change), Daisey adds what
+  // fits on the end of the approved plan (proposal.topUp) and says so under
+  // the card, with Undo. Never the running task or the next one: those stay
+  // where they are. A plan saved before this just takes today's sig quietly.
+  const SETTLE = 60000;
+  let upTimer = null, upFor = null;
+  const markSig = (sig) => { dayPlan = { ...dayPlan, sig }; const { at, ...doc } = dayPlan; saveDayPlan(uid, doc).catch(fail); };
+  function topUpLater(){
+    const p = approvedPlan();
+    if (!p || !tasks || cal.status !== "ok") return;
+    const sig = daySig(cal.events, dayHours(settings));
+    if (!p.sig) { markSig(sig); return; }
+    if (p.sig === sig) { clearTimeout(upTimer); upTimer = upFor = null; return; }
+    if (upFor === sig) return;
+    clearTimeout(upTimer); upFor = sig;
+    upTimer = setTimeout(() => { upTimer = upFor = null; topUpNow(); }, SETTLE);
+  }
+  function topUpNow(){
+    const p = approvedPlan();
+    if (!p || !tasks || cal.status !== "ok" || prop.open || ppDragging) return; // the next render asks again
+    const ctx = planCtx(), sig = daySig(ctx.events, ctx.hours);
+    if (p.sig === sig) return;
+    const { items, added } = topUp(p.items || [], ctx, p.declined || []);
+    if (!added.length) { markSig(sig); return; }
+    const prev = p.added && !p.added.seen ? p.added.ids : [];
+    savePlan("approved", items, { kept: p.kept || [], ...unseen(p, "cut"), added: { ids: [...prev, ...added] } });
+    render();
+  }
+  function addedView(){
+    const p = approvedPlan(), a = p?.added;
+    if (!a || a.seen) return null;
+    const inPlan = new Set((p.items || []).map((it) => it.taskId));
+    const got = a.ids.filter((id) => inPlan.has(id)).map((id) => (tasks || []).find((t) => t.id === id)).filter(Boolean);
+    if (!got.length) return null;
+    const keep = { kept: p.kept || [], ...unseen(p, "cut") };
+    const undo = () => {
+      const ids = got.map((t) => t.id);
+      savePlan("approved", trimBreaks((p.items || []).filter((it) => !ids.includes(it.taskId))), { ...keep, declined: [...(p.declined || []), ...ids] });
+      render();
+    };
+    return h("div", { className: "toast plan-cut", role: "status" },
+      h("div", { className: "toast-row" },
+        h("span", { className: "toast-text" }, "Your day opened up, so I added ",
+          ...got.flatMap((t, i) => [i ? (i === got.length - 1 ? " and " : ", ") : "", bdi(t.title)]), " to today's plan."),
+        h("span", { className: "toast-acts" },
+          h("button", { className: "toast-undo", type: "button", textContent: "Undo", ariaLabel: "Undo: take them off today's plan", onclick: undo }),
+          h("button", { className: "toast-undo", type: "button", textContent: "OK", ariaLabel: "OK, got it",
+            onclick: () => { savePlan("approved", p.items, { ...keep, added: { ...a, seen: true } }); render(); } }))));
+  }
+  // The proposal on screen, not yet approved, follows the day too: when the
+  // calendar or the hours change, a fresh take if the user hasn't touched
+  // it; if they have, what no longer fits comes off and new time is filled
+  // on the end, their order and drops kept.
+  function freshenProposal(){
+    if (!prop.open || approvedPlan() || prop.busy || ppDragging || !tasks || cal.status !== "ok") return;
+    const ctx = { ...planCtx(), ask: prop.askOpts || {} }, sig = daySig(ctx.events, ctx.hours);
+    if (prop.sig == null || prop.sig === sig) { prop.sig = sig; return; }
+    prop.sig = sig;
+    const ids = () => prop.items.filter((it) => it.taskId).map((it) => it.taskId).join();
+    const before = ids();
+    prop.items = prop.touched
+      ? topUp(refit(prop.items, ctx).items, ctx, prop.exclude).items
+      : withBreaks(proposeDay({ ...ctx, exclude: prop.exclude }), ctx);
+    if (ids() !== before) prop.note = "Your day changed, so I updated the plan.";
+  }
   function cutView(){
     const c = approvedPlan()?.cut;
     if (!c || c.seen) return null;
@@ -1169,6 +1248,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
     const items = proposeDay({ ...planCtx(), ask: { fewer: true, quickFirst: true, maxEach: LIGHTER.each } });
     if (!items.length) { flash("Nothing small left for today. Take the rest of the day."); render(); return; }
     prop.items = withBreaks(items, planCtx()); prop.exclude = [];
+    prop.touched = false; prop.sig = null; prop.askOpts = { fewer: true, quickFirst: true, maxEach: LIGHTER.each };
     prop.open = true; prop.ask = false; prop.note = ""; handoff = null; reset();
     render();
   }
@@ -1192,13 +1272,13 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
   // A plan item that no longer fits (it's late) can be cut to what's left.
   function shorten(i, minutes){
     prop.items = prop.items.map((it, k) => (k === i ? { ...it, minutes } : it));
-    render();
+    prop.touched = true; render();
   }
   function dropItem(i){
     const items = [...prop.items];
     const [gone] = items.splice(i, 1);
     if (gone?.taskId) prop.exclude = [...prop.exclude, gone.taskId];
-    prop.items = trimBreaks(items); render();
+    prop.items = trimBreaks(items); prop.touched = true; render();
   }
   async function doRethink(text){
     if (prop.busy) return;
@@ -1210,7 +1290,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
         ? await rethink(text, { ...ctx, current: prop.items, exclude: prop.exclude, freeMinutes: free, guest })
         : { items: proposeDay({ ...ctx, exclude: prop.exclude }), note: "" };
       const before = prop.items.filter((i) => i.taskId).map((i) => i.taskId);
-      prop.items = withBreaks(r.items, ctx);
+      prop.items = withBreaks(r.items, ctx); prop.touched = true;
       const after = r.items.filter((i) => i.taskId).map((i) => i.taskId);
       // Say what actually changed, so a near-identical plan doesn't read as a second copy of the first.
       const name = (id) => { const t = ctx.tasks.find((x) => x.id === id); return t ? `“${t.title}”` : ""; };
@@ -1256,7 +1336,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
       const it = prop.items[el._i], at = before ? prop.items[before._i] : null;
       const items = prop.items.filter((x) => x !== it);
       items.splice(at ? items.indexOf(at) : items.length, 0, it);
-      prop.items = trimBreaks(items); render();
+      prop.items = trimBreaks(items); prop.touched = true; render();
     } }); return ol; };
   function proposalCard(){
     const { rows, over, breaks } = timeline(prop.items, planCtx());
@@ -1348,6 +1428,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
   let ready = false;
   function render(){
     if (noticeLighter && tasks != null && planKnown && cal.status !== "loading") { noticeLighter = false; lighterPlan(); }
+    freshenProposal(); topUpLater();
     renderCard(); paintPlanScreen();
     if (!ready && tasks != null && planKnown && cal.status !== "loading") { ready = true; onReady?.(); }
   }
@@ -1437,7 +1518,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
     if (!prop.open && planKnown && cal.status !== "loading" && prop.auto !== localDate() && !todaysPlan()) {
       prop.auto = localDate();
       const items = proposeDay({ ...planCtx() });
-      if (items.length >= 2) { prop.items = withBreaks(items, planCtx()); prop.exclude = []; prop.open = true; }
+      if (items.length >= 2) { prop.items = withBreaks(items, planCtx()); prop.exclude = []; prop.touched = false; prop.sig = null; prop.askOpts = null; prop.open = true; }
     }
 
     const r = rank(tasks, momentInput(fw));
@@ -1449,7 +1530,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
     showing(card?.task.id ?? null);
     // One ask under the card at a time, the most asked-for first.
     // (The calendar offer and the weekly Someday pick moved to Needs you.)
-    const tip = (toast && toastView()) || cutView() || (sd.open && somedayAsk());
+    const tip = (toast && toastView()) || cutView() || addedView() || (sd.open && somedayAsk());
     // In a meeting, the meeting IS what's happening now, so the card says
     // which one and how much of it is left (Mor, 2026-10-04) instead of
     // "nothing to pick until it ends", which named nothing and read as if
@@ -1609,6 +1690,6 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
     // "Plan my day" from the Schedule: the proposal on the card.
     closePlan(){ if (prop.open) closeProposal(); },
     plan(){ if (prop.open) { closeProposal(); return; } if (run) { flash("Finish or stop the running task first."); return; } openProposal(); },
-    unmount(){ deep.leave(); deep.watch(() => {}); showing(null); clearTimeout(toastTimer); document.body.classList.remove("focus"); document.documentElement.classList.remove("night"); unsubs.forEach((u) => u()); clearInterval(tick); document.removeEventListener("visibilitychange", onVisible); root.replaceChildren(); planRoot?.replaceChildren(); root.hidden = true; },
+    unmount(){ deep.leave(); deep.watch(() => {}); showing(null); clearTimeout(toastTimer); clearTimeout(upTimer); document.body.classList.remove("focus"); document.documentElement.classList.remove("night"); unsubs.forEach((u) => u()); clearInterval(tick); document.removeEventListener("visibilitychange", onVisible); root.replaceChildren(); planRoot?.replaceChildren(); root.hidden = true; },
   };
 }
