@@ -12,6 +12,7 @@
 // PURE: no Firebase, no DOM.
 import { gapsToday, bookings, mealsOf } from "./day.js";
 import { rank, fitsPlace } from "./engine.js";
+import { phoneOkIds } from "./phone.js";
 import { routineCalendar } from "./routine.js";
 import { workBase } from "./context.js";
 import { overruled, eventKey } from "./reality.js";
@@ -48,7 +49,9 @@ function rideGaps(evs, now){
 
 // → [{ taskId, minutes }], in the order Daisey would do them.
 // ask: parseAsk's hints (or {}). exclude: ids the user deleted from the plan.
-export function proposeDay({ tasks = [], events = [], now = Date.now(), hours = W.DAY_HOURS, settings = {}, run = null, ask = {}, exclude = [] } = {}){
+// phoneOk: Computer tasks the phone can do (phone.js) — on a bus or in the
+// passenger seat they fit the ride.
+export function proposeDay({ tasks = [], events = [], now = Date.now(), hours = W.DAY_HOURS, settings = {}, run = null, ask = {}, exclude = [], phoneOk = phoneOkIds(tasks) } = {}){
   const { evs, gaps: all } = freeGaps({ tasks, events, now, hours, run });
   const until = Number.isFinite(ask.until) ? atMin(now, ask.until) : Infinity;
   const cut = (gs) => gs.map((g) => ({ ...g, end: Math.min(g.end, until) })).filter((g) => g.end - g.start >= WORTH * MIN);
@@ -82,7 +85,7 @@ export function proposeDay({ tasks = [], events = [], now = Date.now(), hours = 
     let room = Math.floor((g.end - g.start) / MIN);
     while (items.length + onRide.length < cap && room >= WORTH) {
       const r = rank(pool, { now: g.start, window: room, place: g.place, nextEvent: null, ...workBase(tasks, now),
-        sessionSkips: [...out], booked, routineCal });
+        sessionSkips: [...out], booked, routineCal, phoneOk: [...phoneOk] });
       if (!r.pick) break;
       const m = Math.min(leftOf(r.pick.task), room);
       onRide.push({ it: { taskId: r.pick.task.id, minutes: m }, at: g.start });
@@ -183,7 +186,7 @@ export function withBreaks(items = [], ctx = {}){
 }
 
 // Each row and break carries i, its index in items.
-export function timeline(items = [], { tasks = [], events = [], now = Date.now(), hours = W.DAY_HOURS, run = null, rides = true } = {}){
+export function timeline(items = [], { tasks = [], events = [], now = Date.now(), hours = W.DAY_HOURS, run = null, rides = true, phoneOk = phoneOkIds(tasks) } = {}){
   const { evs, gaps } = freeGaps({ tasks, events, now, hours, run, rides });
   const meals = hours.meals ?? mealsOf();
   const byId = new Map(tasks.map((t) => [t.id, t]));
@@ -224,7 +227,7 @@ export function timeline(items = [], { tasks = [], events = [], now = Date.now()
     let placed = false;
     // The soonest ride that fits it (engine.fitsPlace) and still has room.
     const ride = gaps.map((g, k) => ({ g, k, from: rideAt[k] ?? Math.ceil(g.start / (5 * MIN)) * 5 * MIN }))
-      .find(({ g, from }) => g.place && fitsPlace(task, g.place) && g.end - from >= need);
+      .find(({ g, from }) => g.place && fitsPlace(task, g.place, phoneOk) && g.end - from >= need);
     for (let k = gi; k < gaps.length; k++) {
       if (gaps[k].place) continue; // rides: above
       const from = Math.max(cursor, gaps[k].start);

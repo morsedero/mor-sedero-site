@@ -159,3 +159,17 @@ test("\"I'm a passenger\" turns the drive into a ride for the day: renamed, phon
   const next = { ...ash, start: "2026-10-16T05:00:00.000Z", end: "2026-10-16T10:00:00.000Z" };
   assert.equal(T.withTrips([next], trips, day, true).find((e) => e.trip?.dir === "back").title, "Drive back from Ashkelon");
 });
+
+test("a ride ahead in the plan takes Computer tasks the phone can do (phone.js)", () => {
+  const trips = { "s:abc": { city: "Ashkelon", mode: "car", min: { train: 110, bus: 125, car: 80 } } };
+  const t = (o) => ({ status: "ready", type: "deep", size: 30, spentMinutes: 0, createdAt: 0, due: "2026-10-09", dateKind: "target", ...o });
+  const tasks = [t({ id: "mix", title: "Mix", where: "computer", size: 45 }), t({ id: "mail", title: "Draft the venue email", where: "computer", size: 20 })];
+  const now = at("06:50"), hours = { start: 8 * 60, end: 22 * 60 };
+  const rode = T.ridingAs(T.withTrips([ash], trips, [], null), "bus", now);
+  const items = tasks.map((x) => ({ taskId: x.id, minutes: x.size }));
+  const lay = (phoneOk) => Object.fromEntries(timeline(items, { tasks, events: rode, now, hours, phoneOk }).rows.map((r) => [r.taskId, r.ride || null]));
+  assert.deepEqual(lay(new Set()), { mix: null, mail: null }, "Computer tasks: not on the ride");
+  assert.deepEqual(lay(new Set(["mail"])), { mix: null, mail: "passenger" }, "the phone-able one rides along");
+  const picked = proposeDay({ tasks, events: rode, now, hours, phoneOk: new Set(["mail"]) });
+  assert.ok(picked.some((i) => i.taskId === "mail"), "proposeDay offers it for the ride");
+});

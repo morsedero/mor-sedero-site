@@ -1112,7 +1112,19 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
   // The day a plan on screen is laid against, taken when it's laid: taken
   // later, at the first render, a change made in between went unnoticed.
   const daySigNow = () => (cal.status === "ok" ? daySig(cal.events, dayHours(settings)) : null);
-  const planCtx = () => ({ tasks: tasks || [], events: cal.status === "ok" ? cal.events : [], now: Date.now(), hours: dayHours(settings), settings, run });
+  const planCtx = () => { phoneAhead(); return { tasks: tasks || [], events: cal.status === "ok" ? cal.events : [], now: Date.now(), hours: dayHours(settings), settings, run }; };
+  // A bus or passenger ride still to come today: look for phone tasks now
+  // (phone.js), so the plan can put them on it. A proposal nobody has
+  // touched yet is laid again with the answer.
+  function phoneAhead(){
+    const now = Date.now();
+    if (!tasks || cal.status !== "ok" || !cal.events.some((e) => ["bus", "ride"].includes(e.trip?.place) && Date.parse(e.end) > now && localDate(Date.parse(e.start)) === localDate(now))) return;
+    findPhoneTasks(tasks, { guest }).then((changed) => {
+      if (!changed) return;
+      if (prop.open && !prop.touched && !prop.busy && !todaysPlan()?.items?.length) prop.items = withBreaks(proposeDay({ ...planCtx(), exclude: prop.exclude }), planCtx());
+      render();
+    }).catch(fail);
+  }
   const todaysPlan = () => (dayPlan?.date === localDate() ? dayPlan : null);
   const approvedPlan = () => (todaysPlan()?.status === "approved" ? dayPlan : null);
   function openProposal(){

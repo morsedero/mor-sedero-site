@@ -5,7 +5,8 @@
 // Asked once per task title: the server's Gemini (daisey-now-chat, mode
 // "phone"), remembered on this device. With no answer (offline, no key,
 // cap hit) a word list stands in, and the server is tried again later.
-import { idToken } from "./firebase.js";
+// Firebase loads only when asking, so the planner (proposal.js) can read the
+// answers without it.
 import { localDate } from "./model.js";
 
 const URL_ = "/.netlify/functions/daisey-now-chat";
@@ -38,7 +39,7 @@ export async function findPhoneTasks(tasks = [], { guest = false } = {}){
   try {
     const headers = { "Content-Type": "application/json" };
     if (guest) headers["X-Daisey-Guest"] = "1";
-    else headers.Authorization = `Bearer ${await idToken()}`;
+    else headers.Authorization = `Bearer ${await (await import("./firebase.js")).idToken()}`;
     const res = await fetch(URL_, {
       method: "POST", headers,
       body: JSON.stringify({ mode: "phone", today: localDate(),
