@@ -330,21 +330,28 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
   // (momentInput), so no "I'm free now": that only ignored the ride and asked
   // again (Mor, 2026-10-09: passenger → free now → "Ignoring Drive back…").
   const riderOf = (leg) => leg.trip.mode === "car" && leg.trip.place !== "car" ? "passenger" : howOf(leg.trip);
+  // "None of these": the ride is a rest, and the card stops asking (this
+  // ride only; Mor, 2026-10-09: there was no answer for "nothing").
+  let restRide = null;
   function rideCard(leg, r){
-    return eventCard({ meta: `${TRIP_ON[riderOf(leg)]} · until ${clock(leg.end)}`, title: leg.title,
-      why: "Nothing fits the rest of the ride.", extras: [outLine(r), phoneOk(r), putOffButton(r)] });
+    const meta = `${TRIP_ON[riderOf(leg)]} · until ${clock(leg.end)}`;
+    if (restRide === leg.id) return eventCard({ meta, title: leg.title, why: "Rest. Daisey picks again when you arrive.",
+      action: h("button", { className: "btn quiet", type: "button", textContent: "Show tasks again", onclick: () => { restRide = null; render(); } }) });
+    return eventCard({ meta, title: leg.title,
+      why: "Nothing fits the rest of the ride.", extras: [outLine(r), phoneOk(r, leg), putOffButton(r)] });
   }
   // What's left after the phone search (phoneNow) found nothing that fits:
   // one tap says this one works on the phone, and it's offered.
-  function phoneOk(r){
+  function phoneOk(r, leg){
     if (searching()) return h("p", { className: "muted", textContent: "Looking through your tasks for phone ones…" });
     const can = r.out.filter((o) => o.reason === "place" && o.task.where === "computer").slice(0, 3);
-    if (!can.length) return null;
+    const rest = h("button", { type: "button", className: "chip", textContent: can.length ? "None of these" : "Just rest",
+      onclick: () => { restRide = leg.id; render(); } });
     return h("div", { className: "ride-ask phone-ok", role: "group", ariaLabel: "Doable on the phone?" },
-      h("span", { className: "muted", textContent: "Doable on the phone?" }),
+      h("span", { className: "muted", textContent: can.length ? "Doable on the phone?" : "Nothing here works on the phone." }),
       ...can.map((o) => h("button", { type: "button", className: "chip", dir: "auto", textContent: o.task.title,
         ariaLabel: `${o.task.title} works on the phone`,
-        onclick: () => updateTask(uid, o.task, { where: "phone" }, tasks || []).catch(fail) })));
+        onclick: () => updateTask(uid, o.task, { where: "phone" }, tasks || []).catch(fail) })), rest);
   }
   function drivingCard(){
     return quietCard({ meta: "Driving", title: "Eyes on the road", why: "I'll have something ready when you stop.",
