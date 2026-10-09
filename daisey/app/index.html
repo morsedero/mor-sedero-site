@@ -57,12 +57,12 @@
       </svg>
       <!-- Icon only (Mor, 2026-10-09); the name stays for screen readers. -->
       <h1 class="brand sr-only">Daisey</h1>
+      <!-- Clock and date, beside the daisy (Mor, 2026-10-09); main.js ticks it. -->
+      <div id="hdrClock" class="hdr-clock" aria-hidden="true"><time id="hdrTime" class="hdr-time"></time><span id="hdrDate" class="hdr-date"></span></div>
     </div>
     <div class="hdr-end">
       <!-- Needs you: amber, only when something does (now.js counts, main.js paints). -->
       <button id="needsChip" class="hchip needs" type="button" hidden><span class="hchip-dot" aria-hidden="true"></span><span id="needsN">0</span><span id="needsW" class="hchip-word"></span></button>
-      <!-- Clock and date, right beside the avatar (Mor, 2026-10-08); main.js ticks it. -->
-      <div id="hdrClock" class="hdr-clock" aria-hidden="true"><time id="hdrTime" class="hdr-time"></time><span id="hdrDate" class="hdr-date"></span></div>
       <!-- Account: Google-style avatar; tap for email + sign out. -->
       <div class="acct">
         <button id="avatar" class="avatar" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="acctMenu" hidden></button>

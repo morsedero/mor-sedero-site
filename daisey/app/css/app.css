@@ -1171,10 +1171,10 @@ dialog.tsheet .msg:empty { display: none; }
 :root.night .logo .daisy-heart { fill: var(--accent); }
 .hdr-end { display: flex; align-items: center; gap: 8px; margin-inline-start: auto; }
 /* Clock + date between brand and the chips: time over a small spaced date. */
-/* The clock sits in the right group, just left of the avatar. */
+/* The clock sits beside the daisy, left-aligned (Mor, 2026-10-09). */
 .topbar > .brandrow { flex: 1 1 0; }
 .topbar > .hdr-end { flex: none; justify-content: flex-end; }
-.hdr-clock { flex: none; display: flex; flex-direction: column; align-items: flex-end; justify-content: center; line-height: 1; overflow: hidden; white-space: nowrap; }
+.hdr-clock { flex: none; margin-inline-start: 4px; display: flex; flex-direction: column; align-items: flex-start; justify-content: center; line-height: 1; overflow: hidden; white-space: nowrap; }
 .hdr-time { font-size: 18px; font-weight: 600; letter-spacing: -0.3px; font-variant-numeric: tabular-nums; color: var(--ink); }
 .hdr-date { margin-block-start: 3px; font-size: 10px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-2); }
 .hdr-end .acct { margin-inline-start: 0; display: flex; align-items: center; }
@@ -1191,7 +1191,6 @@ dialog.tsheet .msg:empty { display: none; }
 /* On a phone the word goes; the count and the dot say it (the wordmark needs the room). */
 /* Both chips on a phone: "Needs you" drops to its count too, so the wordmark and (beta) stay whole. */
 @media (max-width: 429px) { .hdr-end:has(#planChip:not([hidden])) #needsChip .hchip-word { display: none; } }
-@media (max-width: 429px) { .brand .beta { display: none; } }
 @media (max-width: 429px) { .hchip.plan:not(.empty) .hchip-word, .hchip.plan .hchip-dot { display: none; } .hchip.plan { padding-inline: 9px; } .hdr-end { gap: 6px; } }
 #status { margin-block-start: 16px; }
 
