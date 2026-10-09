@@ -389,6 +389,9 @@ body.focus .shell { padding-block: max(18px, env(safe-area-inset-top)) max(24px,
 .ev-when { margin: 0; font-size: 13px; color: var(--ink-2); }
 .ev-name { margin: 0; font-size: 20px; font-weight: 700; overflow-wrap: anywhere; }
 .ev-time { margin: 0 0 6px; font-size: 15px; font-variant-numeric: tabular-nums; }
+.ev-place { margin: -4px 0 6px; font-size: 14px; color: var(--ink-2); overflow-wrap: anywhere; }
+.ev-place::before { content: "📍 "; }
+.ev-hint { margin: 4px 0 0; font-size: 13px; }
 .ev-acts { display: flex; gap: 8px; align-items: center; margin-block-start: 6px; padding-block-start: 12px; border-block-start: 1px solid var(--line); }
 .ev-acts .btn.danger { margin-inline-start: auto; color: var(--danger); }
 /* A repeating event's question (Google's three choices), before Save or Remove. */

@@ -73,10 +73,13 @@ exports.handler = async (event) => {
   try { req = JSON.parse(event.body || "{}"); } catch (e) { return fail(400, "bad_request"); }
   const { action, calendarId, eventId, start, end } = req;
   const title = typeof req.title === "string" ? req.title.trim().replace(/\s+/g, " ").slice(0, 300) : "";
+  // Where it happens (Mor, 2026-10-09): trips.js reads the city from it to
+  // plan the ride there and back. On edit, "" clears it and absent keeps it.
+  const place = typeof req.location === "string" ? req.location.trim().replace(/\s+/g, " ").slice(0, 300) : null;
   if (!["move", "delete", "create", "rename", "edit"].includes(action)) return fail(400, "bad_request");
   const scope = action !== "create" && ["following", "all"].includes(req.scope) ? req.scope : "one";
   const timed = action === "create" || action === "move" || (action === "edit" && (start || end));
-  if (action === "edit" && !title && !timed) return fail(400, "bad_request");
+  if (action === "edit" && !title && !timed && place === null) return fail(400, "bad_request");
   if (!calendarId) return fail(400, "bad_request");
   if (action !== "create" && !eventId) return fail(400, "bad_request");
   if ((action === "create" || action === "rename") && !title) return fail(400, "bad_request");
@@ -113,13 +116,14 @@ exports.handler = async (event) => {
   const times = rec ? { start: { dateTime: start, timeZone: zone }, end: { dateTime: end, timeZone: zone } }
     : { start: { dateTime: start }, end: { dateTime: end } };
   const series = scope === "one" ? null : await changeSeries({ base, headers, eventId, scope,
-    title: action === "rename" || action === "edit" ? title : "", ...(timed ? { start, end } : {}), remove: action === "delete" });
+    title: action === "rename" || action === "edit" ? title : "", ...(timed ? { start, end } : {}),
+    location: action === "edit" ? place : null, remove: action === "delete" });
   const res = series ? series.res
     : action === "delete" ? await fetch(url, { method: "DELETE", headers })
     : action === "create" ? await fetch(url, { method: "POST", headers, body: JSON.stringify({
       // A task's event wears a daisy and Banana yellow (colorId 5), so it reads
       // as Daisey's at a glance. Events the user typed (no taskId) stay plain.
-      summary: hasTask ? `${DAISY} ${title}` : title, ...times,
+      summary: hasTask ? `${DAISY} ${title}` : title, ...times, ...(place ? { location: place } : {}),
       ...(rec ? { recurrence: [`RRULE:FREQ=WEEKLY;BYDAY=${recDays.join(",")}${recUntil}`] } : {}),
       ...(hasTask ? { colorId: "5" } : {}),
       ...(log ? { transparency: "transparent" } : {}),
@@ -128,7 +132,7 @@ exports.handler = async (event) => {
     // PATCH, so nothing but the times (or the title) is touched — guests,
     // description and colour stay exactly as the user left them.
     : await fetch(url, { method: "PATCH", headers, body: JSON.stringify(action === "rename" ? { summary: title }
-      : action === "edit" ? { ...(title ? { summary: title } : {}), ...(timed ? times : {}) } : times) });
+      : action === "edit" ? { ...(title ? { summary: title } : {}), ...(timed ? times : {}), ...(place !== null ? { location: place } : {}) } : times) });
 
   if (res.status === 401) return fail(409, "needs_reauth");
   if (res.status === 403) return fail(403, "read_only");

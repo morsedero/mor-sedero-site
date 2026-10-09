@@ -52,11 +52,12 @@ const check = (name, pass, got) => { results.push({ pass }); console.log(`${pass
       const body = route.request().postDataJSON();
       writes.push(body);
       const ev = events.find((e) => e.id === body.eventId); // behave like the real thing: apply it
-      if (ev && body.action === "move") { ev.start = body.start; ev.end = body.end; }
+      if (ev && (body.action === "move" || body.action === "edit") && body.start) { ev.start = body.start; ev.end = body.end; }
+      if (ev && body.action === "edit" && typeof body.location === "string") ev.location = body.location || null;
       if (ev && (body.action === "rename" || body.action === "edit") && body.title) ev.title = body.title;
       if (ev && body.action === "delete") events = events.filter((e) => e !== ev);
       if (body.action === "create") events = [...events, { id: "new" + writes.length, calendarId: body.calendarId, editable: true,
-        title: body.title, start: body.start, end: body.end, allDay: false, busy: true }];
+        title: body.title, start: body.start, end: body.end, location: body.location || null, allDay: false, busy: true }];
       return route.fulfill({ status: 200, contentType: "application/json", body: '{"ok":true}' });
     }
     if (rel === ".netlify/functions/daisey-now-calendar") return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ events }) });
@@ -102,10 +103,10 @@ const check = (name, pass, got) => { results.push({ pass }); console.log(`${pass
   await sheet.getByRole("button", { name: "Save" }).click();
   await page.waitForTimeout(400);
   let w = writes.at(-1);
-  check("saving a new start moves the event", w && w.action === "move" && hhmm(w.start) === "17:00" && hhmm(w.end) === "19:00",
+  check("saving a new start moves the event", w && w.action === "edit" && hhmm(w.start) === "17:00" && hhmm(w.end) === "19:00",
     w && `${w.action} ${hhmm(w.start)}–${hhmm(w.end)}`);
-  check("the title wasn't rewritten when only the time changed", !writes.some((x) => x.action === "rename"),
-    "a rename went out too");
+  check("the title and place weren't rewritten when only the time changed", w && !w.title && !("location" in w),
+    w && JSON.stringify(w));
   check("the sheet closes on save", !(await sheet.evaluate((el) => el.open)), "still open");
   check("the change can be undone", await page.locator(".toast-undo").count() === 1, "no undo offered");
 
@@ -113,7 +114,7 @@ const check = (name, pass, got) => { results.push({ pass }); console.log(`${pass
   await page.click(".toast-undo");
   await page.waitForTimeout(400);
   w = writes.at(-1);
-  check("Undo restores the old times", w && w.action === "move" && hhmm(w.start) === "16:00" && hhmm(w.end) === "18:00",
+  check("Undo restores the old times", w && w.action === "edit" && hhmm(w.start) === "16:00" && hhmm(w.end) === "18:00",
     w && `${hhmm(w.start)}–${hhmm(w.end)}`);
 
   // ---- renaming goes through the same Save.
@@ -121,12 +122,31 @@ const check = (name, pass, got) => { results.push({ pass }); console.log(`${pass
   await page.waitForTimeout(200);
   await sheet.getByText("Edit", { exact: true }).click();
   await page.waitForTimeout(150);
-  await sheet.locator('input[dir="auto"]').fill("Mix night");
+  await sheet.getByLabel("Event", { exact: true }).fill("Mix night");
   await sheet.getByRole("button", { name: "Save" }).click();
   await page.waitForTimeout(400);
   w = writes.at(-1);
-  check("saving a new name renames it", w && w.action === "rename" && w.title === "Mix night", w && JSON.stringify(w));
+  check("saving a new name renames it", w && w.action === "edit" && w.title === "Mix night" && !w.start, w && JSON.stringify(w));
   check("the row shows the new name", await day.locator(".sc-row", { hasText: "Mix night" }).count() === 1, "the list didn't catch up");
+
+  // ---- a place goes through the same Save, and shows on the details.
+  await day.locator(".sc-row", { hasText: "Mix night" }).locator(".sc-ev").click();
+  await page.waitForTimeout(200);
+  await sheet.getByText("Edit", { exact: true }).click();
+  await page.waitForTimeout(150);
+  await sheet.getByLabel("Place", { exact: true }).fill("Ashkelon, Herzl 5");
+  check("the place names the city it found", (await sheet.locator(".ev-hint").textContent()).startsWith("Ashkelon"),
+    await sheet.locator(".ev-hint").textContent());
+  await sheet.getByRole("button", { name: "Save" }).click();
+  await page.waitForTimeout(400);
+  w = writes.at(-1);
+  check("saving a place writes only the place", w && w.action === "edit" && w.location === "Ashkelon, Herzl 5" && !w.title && !w.start,
+    w && JSON.stringify(w));
+  await day.locator(".sc-row", { hasText: "Mix night" }).locator(".sc-ev").click();
+  await page.waitForTimeout(200);
+  check("the details show the place", (await sheet.locator(".ev-place").textContent()) === "Ashkelon, Herzl 5",
+    await sheet.locator(".ev-detail").innerText());
+  await sheet.getByRole("button", { name: "Close" }).click();
 
   // ---- someone else's event opens read-only.
   await day.locator(".sc-row", { hasText: "Someone else" }).locator(".sc-ev").click();
@@ -167,7 +187,7 @@ const check = (name, pass, got) => { results.push({ pass }); console.log(`${pass
   await page.waitForTimeout(200);
   await sheet.getByText("Edit", { exact: true }).click();
   await page.waitForTimeout(150);
-  await sheet.locator('input[dir="auto"]').fill("Weekly review");
+  await sheet.getByLabel("Event", { exact: true }).fill("Weekly review");
   await sheet.getByRole("button", { name: "Save" }).click();
   await page.waitForTimeout(200);
   const opts = await sheet.locator(".ev-scope-opt").allInnerTexts();
@@ -204,8 +224,15 @@ const check = (name, pass, got) => { results.push({ pass }); console.log(`${pass
   await page.click("#plus"); await page.click("#plusEvent");
   await page.waitForTimeout(200);
   check("+ opens a new event with an empty name",
-    await sheet.evaluate((el) => el.open) && (await sheet.locator('input[dir="auto"]').inputValue()) === "",
+    await sheet.evaluate((el) => el.open) && (await sheet.getByLabel("Event", { exact: true }).inputValue()) === ""
+      && (await sheet.getByLabel("Place", { exact: true }).inputValue()) === "",
     "the new-event form didn't come up empty");
+  await sheet.getByLabel("Event", { exact: true }).fill("Workshop");
+  await sheet.getByLabel("Place", { exact: true }).fill("Haifa");
+  await sheet.getByRole("button", { name: "Add to calendar" }).click();
+  await page.waitForTimeout(400);
+  w = writes.at(-1);
+  check("a new event carries its place", w && w.action === "create" && w.title === "Workshop" && w.location === "Haifa", w && JSON.stringify(w));
 
   await page.screenshot({ path: path.join(require("os").tmpdir(), "daisey-sheet-check.png"), fullPage: true });
   await browser.close();

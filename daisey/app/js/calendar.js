@@ -160,6 +160,7 @@ async function write(body){
         title: body.title,
         start: body.start,
         end: body.end,
+        ...(body.location ? { location: body.location } : {}),
         calendarId: "guest-local",
         color: null,
         busy: true,
@@ -175,6 +176,7 @@ async function write(body){
       return { status: "deleted" };
     }
     if(body.title && (body.action === "rename" || body.action === "edit")) event.title = body.title;
+    if(typeof body.location === "string" && body.action === "edit") event.location = body.location || null;
     if(body.start && (body.action === "move" || body.action === "edit")){ event.start = body.start; event.end = body.end; event.updated = new Date().toISOString(); }
     saveGuestEvents(events);
     return event;
@@ -201,10 +203,12 @@ export function retime(ev, start, end){
 // Google's own three choices, carried out on Google's side.
 export const deleteEvent = (ev, scope = "one") => write({ action: "delete", calendarId: ev.calendarId, eventId: ev.id, scope });
 
-// Title and/or times in one write (title "" keeps it; start/end in ms, or
-// null to keep them), so a repeating event is split at most once.
-export const editEvent = (ev, { title, start, end, scope = "one" }) => write({ action: "edit", calendarId: ev.calendarId, eventId: ev.id, scope,
-  ...(title ? { title } : {}), ...(start != null ? { start: new Date(start).toISOString(), end: new Date(end).toISOString() } : {}) });
+// Title, times and/or place in one write (title "" keeps it; start/end in
+// ms, or null to keep them; location a string, "" to clear, or undefined to
+// keep it), so a repeating event is split at most once.
+export const editEvent = (ev, { title, start, end, location, scope = "one" }) => write({ action: "edit", calendarId: ev.calendarId, eventId: ev.id, scope,
+  ...(title ? { title } : {}), ...(start != null ? { start: new Date(start).toISOString(), end: new Date(end).toISOString() } : {}),
+  ...(typeof location === "string" ? { location } : {}) });
 
 // A routine's set days (routine.js): one weekly event in the "Daisey"
 // calendar, from the first of those days on or after today. days: 0 =
@@ -249,10 +253,11 @@ export function logDone({ title, minutes, taskId, note, end = Date.now() }){
 //
 // calendarId and taskId are for the undo behind Remove (addevent.js), which
 // puts a removed event back where it was rather than in the main calendar.
-export function createEvent({ title, date, at, minutes, calendarId = "primary", taskId }){
+// location: where it happens (trips.js plans the ride from its city).
+export function createEvent({ title, date, at, minutes, calendarId = "primary", taskId, location }){
   const [y, m, d] = date.split("-").map(Number);
   const [hh, mm] = at.split(":").map(Number);
   const start = new Date(y, m - 1, d, hh, mm, 0, 0);
   const end = new Date(start.getTime() + minutes * 60000);
-  return write({ action: "create", calendarId, title, ...(taskId ? { taskId } : {}), start: start.toISOString(), end: end.toISOString() });
+  return write({ action: "create", calendarId, title, ...(taskId ? { taskId } : {}), ...(location ? { location } : {}), start: start.toISOString(), end: end.toISOString() });
 }

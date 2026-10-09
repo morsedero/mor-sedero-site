@@ -52,8 +52,9 @@ const KEEP = ["summary", "description", "location", "colorId", "transparency", "
   "extendedProperties", "attendees", "guestsCanModify", "guestsCanInviteOthers", "guestsCanSeeOtherGuests", "source"];
 
 // scope: "following" | "all". change: { title?, start?, end?, remove? },
-// start/end ISO with an offset, both or neither.
-async function changeSeries({ base, headers, eventId, scope, title, start, end, remove }){
+// start/end ISO with an offset, both or neither. location: a string sets it
+// ("" clears), null keeps it.
+async function changeSeries({ base, headers, eventId, scope, title, start, end, location = null, remove }){
   const at = (id) => `${base}/${encodeURIComponent(id)}`;
   let res = await fetch(at(eventId), { headers });
   if (!res.ok) return { res };
@@ -70,7 +71,7 @@ async function changeSeries({ base, headers, eventId, scope, title, start, end, 
 
   if (scope === "all") {
     if (remove) return { res: await fetch(at(master.id), { method: "DELETE", headers }) };
-    const patch = title ? { summary: title } : {};
+    const patch = { ...(title ? { summary: title } : {}), ...(location !== null ? { location } : {}) };
     if (start) {
       const from = Date.parse(master.start.dateTime) + Date.parse(start) - Date.parse(inst.start.dateTime);
       const to = from + Date.parse(end) - Date.parse(start);
@@ -91,6 +92,7 @@ async function changeSeries({ base, headers, eventId, scope, title, start, end, 
     const to = start ? Date.parse(end) : Date.parse(inst.end.dateTime);
     const copy = Object.fromEntries(KEEP.filter((k) => master[k] !== undefined).map((k) => [k, master[k]]));
     if (title) copy.summary = title;
+    if (location !== null) copy.location = location;
     copy.start = { dateTime: new Date(from).toISOString(), ...(tz ? { timeZone: tz } : {}) };
     copy.end = { dateTime: new Date(to).toISOString(), ...(tz ? { timeZone: tz } : {}) };
     copy.recurrence = rules(master.recurrence, { shift: weekday(from, tz) - weekday(was, tz), noCount: true });

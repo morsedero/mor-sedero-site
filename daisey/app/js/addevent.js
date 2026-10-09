@@ -9,8 +9,10 @@
 // in a popup rather than on the row is what let the schedule go back to being
 // a plain list: nothing is dragged, so nothing has to be grabbed.
 //
-// Four fields, because that is the whole of a meeting as Daisey needs it:
-// what, which day, from, to. No guests, no description, no recurrence, no
+// Five fields, because that is the whole of a meeting as Daisey needs it:
+// what, which day, from, to, and where (Mor, 2026-10-09: the place is what
+// lets Daisey plan the ride there and back — trips.js reads its city, and
+// the line under the field says whether it found one). No guests, no description, no recurrence, no
 // calendar picker — those are Google Calendar's job, and the event lands
 // there to be opened if any of them are wanted. From–to rather than a length
 // (Mor, 2026-10-05): To starts an hour after From, and moving From carries
@@ -29,8 +31,10 @@
 // A new event opens on the day the Schedule panel is showing, with the time
 // rounded up to the next quarter hour, so adding something to Thursday from
 // Thursday's page needs the title and nothing else.
-import { createEvent, retime, renameEvent, deleteEvent, editEvent } from "./calendar.js";
+import { createEvent, deleteEvent, editEvent } from "./calendar.js";
 import { localDate } from "./model.js";
+import { cityIn, isLocal } from "./trips.js";
+import { homeAt } from "./where.js";
 import { h, bdi, flash } from "./ui.js";
 
 const DEFAULT_LENGTH = 60;
@@ -107,7 +111,20 @@ export function mountAddEvent(dialog, { localOnly = false } = {}){
     date: h("input", { type: "date", required: true }),
     at: timePick("From"),
     to: timePick("To"),
+    place: h("input", { dir: "auto", autocomplete: "off", placeholder: "City or address" }),
   };
+  // What Daisey makes of the place, under the field, as it's typed.
+  const placeHint = h("p", { className: "muted ev-hint" });
+  const hintPlace = () => {
+    const v = f.place.value.trim(), city = cityIn(v);
+    placeHint.textContent = !v ? "A city lets Daisey plan the ride there and back."
+      : !city ? "Add the city too, so Daisey can plan the ride."
+      : isLocal(city, homeAt()) ? `${city.name}: close to home, no ride to plan.`
+      : `${city.name}: Daisey plans the ride there and back.`;
+  };
+  f.place.addEventListener("input", hintPlace);
+  const placeField = field("Place", f.place, true);
+  placeField.append(placeHint);
   const msg = h("p", { className: "msg", role: "alert" });
   const submit = h("button", { className: "btn primary", type: "submit", textContent: localOnly ? "Add event" : "Add to calendar" });
   const form = h("form", { className: "form-grid ev-grid" },
@@ -115,6 +132,7 @@ export function mountAddEvent(dialog, { localOnly = false } = {}){
     field("Day", f.date, true),
     field("From", f.at),
     field("To", f.to),
+    placeField,
     submit);
   const note = h("p", { className: "muted ev-note", textContent: localOnly
     ? "Saved on this device only."
@@ -185,7 +203,7 @@ export function mountAddEvent(dialog, { localOnly = false } = {}){
       if (!scope) return;
       working(true);
       const was = { title: ev.title, calendarId: ev.calendarId, taskId: ev.taskId,
-        date: localDate(start), at: hhmm(start), minutes: Math.max(5, Math.round((end - start) / MIN)) };
+        date: localDate(start), at: hhmm(start), minutes: Math.max(5, Math.round((end - start) / MIN)), location: ev.location || "" };
       try {
         await deleteEvent(ev, scope);
         dialog.close();
@@ -201,6 +219,7 @@ export function mountAddEvent(dialog, { localOnly = false } = {}){
       h("p", { className: "ev-when", textContent: longDay(start) }),
       h("h3", { className: "ev-name", dir: "auto" }, bdi(ev.title)),
       h("p", { className: "ev-time", textContent: when }),
+      ev.location && h("p", { className: "ev-place", dir: "auto" }, bdi(ev.location)),
       mine && ev.recurring && h("p", { className: "muted ev-rep", textContent: "Repeats" }),
       mine
         ? h("div", { className: "ev-acts" },
@@ -228,7 +247,9 @@ export function mountAddEvent(dialog, { localOnly = false } = {}){
       setTimes(hhmm(start), Math.max(5, Math.round((end - start) / MIN)));
       f.to.value = hhmm(end); // the event's own end, unclamped
       f.to.relabel(f.at.value);
+      f.place.value = ev.location || "";
     }
+    hintPlace();
   }
 
   form.onsubmit = async (ev) => {
@@ -240,7 +261,7 @@ export function mountAddEvent(dialog, { localOnly = false } = {}){
     if (!mins) { msg.textContent = "It has to end after it starts."; return; }
     // What changed, worked out before anything is asked or written: Google
     // asks a repeating event's question only when there is a change to make.
-    const was = target && { title: target.title, start: Date.parse(target.start), end: Date.parse(target.end) };
+    const was = target && { title: target.title, start: Date.parse(target.start), end: Date.parse(target.end), place: target.location || "" };
     const [y, m, d] = f.date.value.split("-").map(Number);
     const [hh, mm] = f.at.value.split(":").map(Number);
     const start = new Date(y, m - 1, d, hh, mm, 0, 0).getTime();
@@ -248,7 +269,9 @@ export function mountAddEvent(dialog, { localOnly = false } = {}){
     const title = f.title.value.trim();
     const renamed = !!(target && title && title !== was.title);
     const moved = !!(target && (start !== was.start || end !== was.end));
-    if (target && !renamed && !moved) { dialog.close(); return; }
+    const place = f.place.value.trim().replace(/\s+/g, " ");
+    const placed = !!(target && place !== was.place);
+    if (target && !renamed && !moved && !placed) { dialog.close(); return; }
     const scope = target?.recurring ? await askScope(false) : "one";
     if (!scope) return;
     working(true);
@@ -256,25 +279,22 @@ export function mountAddEvent(dialog, { localOnly = false } = {}){
       if (target && scope !== "one") {
         // A series change goes as one write, so "this and following" splits
         // the series once, not once for the title and again for the times.
-        await editEvent(target, { scope, title: renamed ? title : "", start: moved ? start : null, end });
+        await editEvent(target, { scope, title: renamed ? title : "", start: moved ? start : null, end, location: placed ? place : undefined });
         dialog.close();
         flash(scope === "all" ? "Saved every " : "Saved from here on: ", title || was.title);
       } else if (target) {
-        // What Google's Save does: whatever changed, in one go. Title and
-        // times are two different writes here, so only the ones that moved go.
-        if (renamed) await renameEvent(target, title);
-        if (moved) await retime(target, start, end);
+        // What Google's Save does: whatever changed, in one write. Only what
+        // moved goes, so nothing else on the event is touched.
+        await editEvent(target, { title: renamed ? title : "", start: moved ? start : null, end, location: placed ? place : undefined });
         dialog.close();
         flash("Saved ", title || was.title, {
-          undo: async () => {
-            if (renamed) await renameEvent(target, was.title);
-            if (moved) await retime(target, was.start, was.end);
-          },
+          undo: () => editEvent(target, { title: renamed ? was.title : "", start: moved ? was.start : null, end: was.end,
+            location: placed ? was.place : undefined }),
         });
       } else {
         // Unlike a task, this one waits: the calendar is somebody else's
         // database, and "it's in" has to mean Google said so.
-        await createEvent({ title: f.title.value, date: f.date.value, at: f.at.value, minutes: mins });
+        await createEvent({ title: f.title.value, date: f.date.value, at: f.at.value, minutes: mins, location: place });
         dialog.close();
       }
     } catch (e) {
