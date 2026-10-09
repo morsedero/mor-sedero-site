@@ -19,10 +19,17 @@
 // Delete is one tap called Remove, undone from the toast (Mor, 2026-10-05:
 // "a 1 click remove", instead of a delete and a check after).
 //
+// A repeating event asks Google's question before Save or Remove goes out
+// (Mor, 2026-10-09): This event / This and following events / All events,
+// "This event" picked. The answer is carried out in Google Calendar itself
+// (functions/_daisey-lib/gcal-series.js). Only "This event" has an Undo: a
+// series change can split or end the series, and writing it back is not
+// one step.
+//
 // A new event opens on the day the Schedule panel is showing, with the time
 // rounded up to the next quarter hour, so adding something to Thursday from
 // Thursday's page needs the title and nothing else.
-import { createEvent, retime, renameEvent, deleteEvent } from "./calendar.js";
+import { createEvent, retime, renameEvent, deleteEvent, editEvent } from "./calendar.js";
 import { localDate } from "./model.js";
 import { h, bdi, flash } from "./ui.js";
 
@@ -115,6 +122,7 @@ export function mountAddEvent(dialog, { localOnly = false } = {}){
   const heading = h("h2", { id: "evTitle", textContent: "New event" });
   const close = h("button", { className: "now-x", type: "button", ariaLabel: "Close", textContent: "✕", onclick: () => dialog.close() });
   const details = h("div", { className: "ev-detail" });
+  const scopeBox = h("div", { className: "ev-scope", hidden: true });
 
   const working = (on, label) => { busy = on; submit.disabled = on; submit.textContent = on ? "Saving…" : label; };
 
@@ -129,6 +137,33 @@ export function mountAddEvent(dialog, { localOnly = false } = {}){
   // The length the form says, or null when To isn't after From.
   const formLength = () => { const m = toMin(f.to.value) - toMin(f.at.value); return m > 0 ? m : null; };
 
+  // Google's question for a repeating event, in place of whatever the sheet
+  // was showing. Resolves "one" | "following" | "all", or null for Cancel
+  // (the sheet goes back to what it was showing).
+  function askScope(remove){
+    return new Promise((done) => {
+      const was = { details: details.hidden, form: form.hidden, note: note.hidden, heading: heading.textContent };
+      const opt = (value, label) => h("label", { className: "ev-scope-opt" },
+        h("input", { type: "radio", name: "evScope", value, checked: value === "one" }), h("span", { textContent: label }));
+      const back = (v) => {
+        scopeBox.hidden = true;
+        details.hidden = was.details; form.hidden = was.form; note.hidden = was.note;
+        heading.textContent = was.heading;
+        done(v);
+      };
+      scopeBox.replaceChildren(
+        opt("one", "This event"), opt("following", "This and following events"), opt("all", "All events"),
+        h("div", { className: "ev-acts" },
+          h("button", { className: "btn quiet", type: "button", textContent: "Cancel", onclick: () => back(null) }),
+          h("button", { className: "btn primary", type: "button", textContent: "OK",
+            onclick: () => back(scopeBox.querySelector("input:checked").value) })));
+      heading.textContent = remove ? "Delete recurring event" : "Edit recurring event";
+      details.hidden = form.hidden = note.hidden = true;
+      msg.textContent = "";
+      scopeBox.hidden = false;
+    });
+  }
+
   // Google's event details: what it is, when it is, and the two things you can
   // do to it. Read-only events (someone else's calendar) show no buttons —
   // Google greys them out the same way.
@@ -141,17 +176,21 @@ export function mountAddEvent(dialog, { localOnly = false } = {}){
     // makes that safe — the same bargain as Later and Pending on the card.
     // It is a real Google delete; Undo writes the event back, on the calendar
     // it came from, so what returns is the event Daisey could see (guests and
-    // a repeat rule, which Daisey never held, do not come back).
+    // a repeat rule, which Daisey never held, do not come back). A repeating
+    // event asks which days first.
     const del = h("button", { className: "btn quiet danger", type: "button", textContent: "Remove" });
     del.onclick = async () => {
       if (busy) return;
+      const scope = ev.recurring ? await askScope(true) : "one";
+      if (!scope) return;
       working(true);
       const was = { title: ev.title, calendarId: ev.calendarId, taskId: ev.taskId,
         date: localDate(start), at: hhmm(start), minutes: Math.max(5, Math.round((end - start) / MIN)) };
       try {
-        await deleteEvent(ev);
+        await deleteEvent(ev, scope);
         dialog.close();
-        flash("Removed ", ev.title, { undo: () => createEvent(was).catch((e) => console.error("[daisey] undo remove", e)) });
+        flash(scope === "one" ? "Removed " : scope === "all" ? "Removed every " : "Removed from here on: ", ev.title,
+          scope === "one" ? { undo: () => createEvent(was).catch((e) => console.error("[daisey] undo remove", e)) } : {});
       } catch (e) {
         console.error("[daisey] delete event", e);
         msg.textContent = ERROR[e.code] || "Couldn't remove it.";
@@ -162,12 +201,13 @@ export function mountAddEvent(dialog, { localOnly = false } = {}){
       h("p", { className: "ev-when", textContent: longDay(start) }),
       h("h3", { className: "ev-name", dir: "auto" }, bdi(ev.title)),
       h("p", { className: "ev-time", textContent: when }),
-      mine && ev.recurring && h("p", { className: "muted ev-rep", textContent: "Repeats — a change here is for this day only." }),
+      mine && ev.recurring && h("p", { className: "muted ev-rep", textContent: "Repeats" }),
       mine
         ? h("div", { className: "ev-acts" },
           h("button", { className: "btn", type: "button", textContent: "Edit", onclick: () => showForm(ev) }), del)
         : h("p", { className: "muted", textContent: "This one is read-only — open it in Google Calendar to change it." }));
     details.hidden = false;
+    scopeBox.hidden = true;
     form.hidden = true;
     note.hidden = true;
     heading.textContent = "Event";
@@ -176,6 +216,7 @@ export function mountAddEvent(dialog, { localOnly = false } = {}){
   // The same sheet as a form: new, or the event's own values filled in.
   function showForm(ev){
     details.hidden = true;
+    scopeBox.hidden = true;
     form.hidden = false;
     note.hidden = !!ev;
     heading.textContent = ev ? "Edit event" : "New event";
@@ -197,24 +238,37 @@ export function mountAddEvent(dialog, { localOnly = false } = {}){
     msg.textContent = "";
     const mins = formLength();
     if (!mins) { msg.textContent = "It has to end after it starts."; return; }
+    // What changed, worked out before anything is asked or written: Google
+    // asks a repeating event's question only when there is a change to make.
+    const was = target && { title: target.title, start: Date.parse(target.start), end: Date.parse(target.end) };
+    const [y, m, d] = f.date.value.split("-").map(Number);
+    const [hh, mm] = f.at.value.split(":").map(Number);
+    const start = new Date(y, m - 1, d, hh, mm, 0, 0).getTime();
+    const end = start + mins * MIN;
+    const title = f.title.value.trim();
+    const renamed = !!(target && title && title !== was.title);
+    const moved = !!(target && (start !== was.start || end !== was.end));
+    if (target && !renamed && !moved) { dialog.close(); return; }
+    const scope = target?.recurring ? await askScope(false) : "one";
+    if (!scope) return;
     working(true);
     try {
-      if (target) {
+      if (target && scope !== "one") {
+        // A series change goes as one write, so "this and following" splits
+        // the series once, not once for the title and again for the times.
+        await editEvent(target, { scope, title: renamed ? title : "", start: moved ? start : null, end });
+        dialog.close();
+        flash(scope === "all" ? "Saved every " : "Saved from here on: ", title || was.title);
+      } else if (target) {
         // What Google's Save does: whatever changed, in one go. Title and
         // times are two different writes here, so only the ones that moved go.
-        const was = { title: target.title, start: Date.parse(target.start), end: Date.parse(target.end) };
-        const [y, m, d] = f.date.value.split("-").map(Number);
-        const [hh, mm] = f.at.value.split(":").map(Number);
-        const start = new Date(y, m - 1, d, hh, mm, 0, 0).getTime();
-        const end = start + mins * MIN;
-        const title = f.title.value.trim();
-        if (title && title !== was.title) await renameEvent(target, title);
-        if (start !== was.start || end !== was.end) await retime(target, start, end);
+        if (renamed) await renameEvent(target, title);
+        if (moved) await retime(target, start, end);
         dialog.close();
         flash("Saved ", title || was.title, {
           undo: async () => {
-            if (title && title !== was.title) await renameEvent(target, was.title);
-            if (start !== was.start || end !== was.end) await retime(target, was.start, was.end);
+            if (renamed) await renameEvent(target, was.title);
+            if (moved) await retime(target, was.start, was.end);
           },
         });
       } else {
@@ -230,7 +284,7 @@ export function mountAddEvent(dialog, { localOnly = false } = {}){
     working(false, target ? "Save" : localOnly ? "Add event" : "Add to calendar");
   };
 
-  dialog.replaceChildren(h("div", { className: "now-head" }, heading, close), details, form, msg, note);
+  dialog.replaceChildren(h("div", { className: "now-head" }, heading, close), details, scopeBox, form, msg, note);
   dialog.addEventListener("click", (e) => { if (e.target === dialog) dialog.close(); });
 
   return {

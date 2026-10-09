@@ -23,8 +23,14 @@
 // A routine's set days (the user picks the days and the time and Daisey
 // writes them) are the third: one weekly event in the "Daisey" calendar.
 //
-// POST { action: "move" | "delete" | "create" | "rename", calendarId, eventId?, start?,
-// end?, title?, taskId?, note?, timeZone?, recurrence? } with "Authorization: Bearer <Firebase ID token>". `start`
+// A repeating event's day can be changed for that day, that day and the
+// following ones, or every one (Mor, 2026-10-09: Google's own question):
+// `scope` "one" (default) | "following" | "all", on move, rename, delete and
+// edit. "edit" is title and/or times in one write, so a split for "this and
+// following" happens once rather than once per field (_daisey-lib/gcal-series.js).
+//
+// POST { action: "move" | "delete" | "create" | "rename" | "edit", calendarId, eventId?, start?,
+// end?, title?, taskId?, note?, timeZone?, recurrence?, scope? } with "Authorization: Bearer <Firebase ID token>". `start`
 // and `end` are ISO strings with an offset, and only timed events can move.
 //
 // Auth is the read endpoint's: the Firebase sign-in's Google `sub` maps to
@@ -37,6 +43,7 @@
 const { verifyIdToken } = require("./_daisey-lib/firebase-auth");
 const { openStore } = require("./_daisey-lib/blobs");
 const { getGoogleAccessToken } = require("./_daisey-lib/tokens");
+const { changeSeries } = require("./_daisey-lib/gcal-series");
 
 const DAISY = "🌼";
 const API ="https://www.googleapis.com/calendar/v3/calendars";
@@ -66,11 +73,14 @@ exports.handler = async (event) => {
   try { req = JSON.parse(event.body || "{}"); } catch (e) { return fail(400, "bad_request"); }
   const { action, calendarId, eventId, start, end } = req;
   const title = typeof req.title === "string" ? req.title.trim().replace(/\s+/g, " ").slice(0, 300) : "";
-  if (!["move", "delete", "create", "rename"].includes(action)) return fail(400, "bad_request");
+  if (!["move", "delete", "create", "rename", "edit"].includes(action)) return fail(400, "bad_request");
+  const scope = action !== "create" && ["following", "all"].includes(req.scope) ? req.scope : "one";
+  const timed = action === "create" || action === "move" || (action === "edit" && (start || end));
+  if (action === "edit" && !title && !timed) return fail(400, "bad_request");
   if (!calendarId) return fail(400, "bad_request");
   if (action !== "create" && !eventId) return fail(400, "bad_request");
   if ((action === "create" || action === "rename") && !title) return fail(400, "bad_request");
-  if ((action === "create" || action === "move") && !(isoWithOffset(start) && isoWithOffset(end) && Date.parse(end) > Date.parse(start))) {
+  if (timed && !(isoWithOffset(start) && isoWithOffset(end) && Date.parse(end) > Date.parse(start))) {
     return fail(400, "bad_request");
   }
 
@@ -102,7 +112,10 @@ exports.handler = async (event) => {
   const zone = typeof req.timeZone === "string" && /^[A-Za-z_]+\/[A-Za-z_\/+-]+$/.test(req.timeZone) ? req.timeZone : "Asia/Jerusalem";
   const times = rec ? { start: { dateTime: start, timeZone: zone }, end: { dateTime: end, timeZone: zone } }
     : { start: { dateTime: start }, end: { dateTime: end } };
-  const res = action === "delete" ? await fetch(url, { method: "DELETE", headers })
+  const series = scope === "one" ? null : await changeSeries({ base, headers, eventId, scope,
+    title: action === "rename" || action === "edit" ? title : "", ...(timed ? { start, end } : {}), remove: action === "delete" });
+  const res = series ? series.res
+    : action === "delete" ? await fetch(url, { method: "DELETE", headers })
     : action === "create" ? await fetch(url, { method: "POST", headers, body: JSON.stringify({
       // A task's event wears a daisy and Banana yellow (colorId 5), so it reads
       // as Daisey's at a glance. Events the user typed (no taskId) stay plain.
@@ -114,7 +127,8 @@ exports.handler = async (event) => {
         extendedProperties: { private: { daiseyTask: req.taskId.slice(0, 100), ...(log ? { daiseyLog: "1" } : {}) } } } : {}) }) })
     // PATCH, so nothing but the times (or the title) is touched — guests,
     // description and colour stay exactly as the user left them.
-    : await fetch(url, { method: "PATCH", headers, body: JSON.stringify(action === "rename" ? { summary: title } : times) });
+    : await fetch(url, { method: "PATCH", headers, body: JSON.stringify(action === "rename" ? { summary: title }
+      : action === "edit" ? { ...(title ? { summary: title } : {}), ...(timed ? times : {}) } : times) });
 
   if (res.status === 401) return fail(409, "needs_reauth");
   if (res.status === 403) return fail(403, "read_only");
@@ -124,6 +138,7 @@ exports.handler = async (event) => {
   // 204 on delete; the event itself on move and create. Only a created
   // event's id goes back (a routine keeps its weekly event's, to change or
   // delete it later); the client refetches the agenda so every view agrees.
+  if (series?.id) return reply(200, { ok: true, id: series.id });
   if (action === "create") { const made = await res.json().catch(() => ({})); return reply(200, { ok: true, id: made.id || null }); }
   return reply(200, { ok: true });
 };

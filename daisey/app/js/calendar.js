@@ -174,8 +174,8 @@ async function write(body){
       saveGuestEvents(events.filter((item) => item.id !== event.id));
       return { status: "deleted" };
     }
-    if(body.action === "rename") event.title = body.title;
-    if(body.action === "move"){ event.start = body.start; event.end = body.end; event.updated = new Date().toISOString(); }
+    if(body.title && (body.action === "rename" || body.action === "edit")) event.title = body.title;
+    if(body.start && (body.action === "move" || body.action === "edit")){ event.start = body.start; event.end = body.end; event.updated = new Date().toISOString(); }
     saveGuestEvents(events);
     return event;
   }
@@ -197,7 +197,14 @@ export function retime(ev, start, end){
     start: new Date(start).toISOString(), end: new Date(end).toISOString() });
 }
 
-export const deleteEvent = (ev) => write({ action: "delete", calendarId: ev.calendarId, eventId: ev.id });
+// scope, for a repeating event: "one" (this day), "following" or "all" —
+// Google's own three choices, carried out on Google's side.
+export const deleteEvent = (ev, scope = "one") => write({ action: "delete", calendarId: ev.calendarId, eventId: ev.id, scope });
+
+// Title and/or times in one write (title "" keeps it; start/end in ms, or
+// null to keep them), so a repeating event is split at most once.
+export const editEvent = (ev, { title, start, end, scope = "one" }) => write({ action: "edit", calendarId: ev.calendarId, eventId: ev.id, scope,
+  ...(title ? { title } : {}), ...(start != null ? { start: new Date(start).toISOString(), end: new Date(end).toISOString() } : {}) });
 
 // A routine's set days (routine.js): one weekly event in the "Daisey"
 // calendar, from the first of those days on or after today. days: 0 =

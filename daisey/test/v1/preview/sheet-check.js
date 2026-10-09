@@ -23,6 +23,7 @@ const hhmm = (iso) => new Date(iso).toLocaleTimeString([], { hour: "2-digit", mi
 let events = [
   { id: "e1", calendarId: "primary", editable: true, allDay: false, busy: true, title: "Studio session", start: at(16), end: at(18), color: "#e67c73" },
   { id: "e2", calendarId: "primary", editable: false, allDay: false, busy: true, title: "Someone else's meeting", start: at(9), end: at(9, 30), color: "#7986cb" },
+  { id: "w1_x", series: "w1", recurring: true, calendarId: "primary", editable: true, allDay: false, busy: true, title: "Weekly sync", start: at(12), end: at(13) },
 ];
 const writes = [];
 
@@ -52,7 +53,7 @@ const check = (name, pass, got) => { results.push({ pass }); console.log(`${pass
       writes.push(body);
       const ev = events.find((e) => e.id === body.eventId); // behave like the real thing: apply it
       if (ev && body.action === "move") { ev.start = body.start; ev.end = body.end; }
-      if (ev && body.action === "rename") ev.title = body.title;
+      if (ev && (body.action === "rename" || body.action === "edit") && body.title) ev.title = body.title;
       if (ev && body.action === "delete") events = events.filter((e) => e !== ev);
       if (body.action === "create") events = [...events, { id: "new" + writes.length, calendarId: body.calendarId, editable: true,
         title: body.title, start: body.start, end: body.end, allDay: false, busy: true }];
@@ -150,6 +151,54 @@ const check = (name, pass, got) => { results.push({ pass }); console.log(`${pass
   check("undoing a Remove writes it back to its own calendar",
     w.action === "create" && w.title === "Mix night" && w.calendarId === "primary", w && JSON.stringify(w));
   check("the row is back", await day.locator(".sc-row", { hasText: "Mix night" }).count() === 1, "the event didn't come back");
+
+  // ---- a repeating event asks Google's question before Save and Remove.
+  const weekly = () => day.locator(".sc-row", { hasText: "Weekly" }).locator(".sc-ev");
+  await weekly().click();
+  await page.waitForTimeout(200);
+  await sheet.getByText("Edit", { exact: true }).click();
+  await page.waitForTimeout(150);
+  let n = writes.length;
+  await sheet.getByRole("button", { name: "Save" }).click();
+  await page.waitForTimeout(200);
+  check("saving nothing changed asks nothing and writes nothing", writes.length === n && !(await sheet.evaluate((el) => el.open)),
+    `${writes.length - n} write(s), open ${await sheet.evaluate((el) => el.open)}`);
+  await weekly().click();
+  await page.waitForTimeout(200);
+  await sheet.getByText("Edit", { exact: true }).click();
+  await page.waitForTimeout(150);
+  await sheet.locator('input[dir="auto"]').fill("Weekly review");
+  await sheet.getByRole("button", { name: "Save" }).click();
+  await page.waitForTimeout(200);
+  const opts = await sheet.locator(".ev-scope-opt").allInnerTexts();
+  check("Save on a repeating event asks which events",
+    opts.join("|") === "This event|This and following events|All events" && writes.length === n,
+    `${JSON.stringify(opts)}, ${writes.length - n} write(s) already`);
+  check("This event is picked to start", await sheet.locator(".ev-scope input:checked").getAttribute("value") === "one", "another option was picked");
+  await sheet.getByRole("button", { name: "Cancel" }).click();
+  await page.waitForTimeout(150);
+  check("Cancel goes back to the form and writes nothing", await sheet.locator("form:visible").count() === 1 && writes.length === n,
+    `${writes.length - n} write(s)`);
+  await sheet.getByRole("button", { name: "Save" }).click();
+  await page.waitForTimeout(150);
+  await sheet.getByText("All events", { exact: true }).click();
+  await sheet.getByRole("button", { name: "OK" }).click();
+  await page.waitForTimeout(400);
+  w = writes.at(-1);
+  check("All events sends one edit with the scope", writes.length === n + 1 && w.action === "edit" && w.scope === "all" && w.title === "Weekly review" && !w.start,
+    w && JSON.stringify(w));
+  check("a series change offers no undo", await page.locator(".toast-undo").count() === 0, "an undo was offered");
+  await weekly().click();
+  await page.waitForTimeout(200);
+  n = writes.length;
+  await sheet.getByRole("button", { name: "Remove" }).click();
+  await page.waitForTimeout(150);
+  await sheet.getByText("This and following events", { exact: true }).click();
+  await sheet.getByRole("button", { name: "OK" }).click();
+  await page.waitForTimeout(400);
+  w = writes.at(-1);
+  check("Remove on a repeating event asks, then deletes with the scope", writes.length === n + 1 && w.action === "delete" && w.scope === "following",
+    w && JSON.stringify(w));
 
   // ---- the pill's + → Event still opens an empty new event.
   await page.click("#plus"); await page.click("#plusEvent");
