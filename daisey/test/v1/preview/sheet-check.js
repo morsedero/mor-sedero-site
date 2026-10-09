@@ -144,8 +144,11 @@ const check = (name, pass, got) => { results.push({ pass }); console.log(`${pass
     w && JSON.stringify(w));
   await day.locator(".sc-row", { hasText: "Mix night" }).locator(".sc-ev").click();
   await page.waitForTimeout(200);
-  check("the details show the place", (await sheet.locator(".ev-place").textContent()) === "Ashkelon, Herzl 5",
+  check("the details show the place", (await sheet.locator(".ev-place b").textContent()) === "Ashkelon, Herzl 5",
     await sheet.locator(".ev-detail").innerText());
+  check("a one-off event says nothing about repeating", await sheet.locator(".ev-rep").count() === 0 && !(await sheet.locator(".ev-detail").innerText()).includes("false"),
+    await sheet.locator(".ev-detail").innerText());
+  await page.screenshot({ path: path.join(require("os").tmpdir(), "daisey-details.png") });
   await sheet.getByRole("button", { name: "Close" }).click();
 
   // ---- someone else's event opens read-only.

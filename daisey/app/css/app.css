@@ -385,12 +385,23 @@ body.focus .shell { padding-block: max(18px, env(safe-area-inset-top)) max(24px,
 .imp-actions { display: flex; gap: 8px; justify-content: flex-end; }
 
 /* The event sheet (addevent.js): Google's details-then-edit, in one dialog. */
-.ev-detail { display: grid; gap: 4px; }
-.ev-when { margin: 0; font-size: 13px; color: var(--ink-2); }
-.ev-name { margin: 0; font-size: 20px; font-weight: 700; overflow-wrap: anywhere; }
-.ev-time { margin: 0 0 6px; font-size: 15px; font-variant-numeric: tabular-nums; }
-.ev-place { margin: -4px 0 6px; font-size: 14px; color: var(--ink-2); overflow-wrap: anywhere; }
-.ev-place::before { content: "📍 "; }
+/* Details: the name is the heading, then one card of rows (when · where ·
+   repeats), then Edit and Remove side by side. */
+.ev-detail { display: grid; gap: 14px; }
+.now-head:has(.ev-name) { align-items: flex-start; }
+.now-head h2.ev-name { font-size: 24px; line-height: 1.25; overflow-wrap: anywhere; padding-block-start: 4px; }
+.ev-info { display: grid; padding: 2px 14px; background: var(--surface); border: 1px solid var(--line); border-radius: 16px; }
+.ev-row { display: grid; grid-template-columns: 20px minmax(0, 1fr); gap: 12px; align-items: start; padding: 12px 0; color: var(--ink); text-decoration: none; }
+.ev-row + .ev-row { border-block-start: 1px solid var(--line); }
+.ev-row svg { inline-size: 20px; block-size: 20px; margin-block-start: 1px; color: var(--ink-2); }
+.ev-row b { display: block; font-size: 16px; font-weight: 600; overflow-wrap: anywhere; }
+.ev-row small { display: block; margin-block-start: 2px; font-size: 14px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+a.ev-place small { text-decoration: underline; text-underline-offset: 3px; }
+.ev-detail .ev-acts { display: grid; grid-template-columns: 1fr 1fr; margin: 0; padding: 0; border: 0; }
+.ev-detail .ev-acts .btn { inline-size: 100%; justify-content: center; }
+.ev-detail .ev-acts .btn.danger { margin-inline-start: 0; }
+.ev-ro { margin: 0; font-size: 14px; }
+#eventdlg .msg:empty { display: none; }
 .ev-hint { margin: 4px 0 0; font-size: 13px; }
 .ev-acts { display: flex; gap: 8px; align-items: center; margin-block-start: 6px; padding-block-start: 12px; border-block-start: 1px solid var(--line); }
 .ev-acts .btn.danger { margin-inline-start: auto; color: var(--danger); }

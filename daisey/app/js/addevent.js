@@ -35,7 +35,7 @@ import { createEvent, deleteEvent, editEvent } from "./calendar.js";
 import { localDate } from "./model.js";
 import { cityIn, isLocal } from "./trips.js";
 import { homeAt } from "./where.js";
-import { h, bdi, flash } from "./ui.js";
+import { h, bdi, flash, icon } from "./ui.js";
 
 const DEFAULT_LENGTH = 60;
 const MIN = 60000;
@@ -160,13 +160,13 @@ export function mountAddEvent(dialog, { localOnly = false } = {}){
   // (the sheet goes back to what it was showing).
   function askScope(remove){
     return new Promise((done) => {
-      const was = { details: details.hidden, form: form.hidden, note: note.hidden, heading: heading.textContent };
+      const was = { details: details.hidden, form: form.hidden, note: note.hidden, heading: [...heading.childNodes], cls: heading.className };
       const opt = (value, label) => h("label", { className: "ev-scope-opt" },
         h("input", { type: "radio", name: "evScope", value, checked: value === "one" }), h("span", { textContent: label }));
       const back = (v) => {
         scopeBox.hidden = true;
         details.hidden = was.details; form.hidden = was.form; note.hidden = was.note;
-        heading.textContent = was.heading;
+        heading.replaceChildren(...was.heading); heading.className = was.cls;
         done(v);
       };
       scopeBox.replaceChildren(
@@ -176,6 +176,7 @@ export function mountAddEvent(dialog, { localOnly = false } = {}){
           h("button", { className: "btn primary", type: "button", textContent: "OK",
             onclick: () => back(scopeBox.querySelector("input:checked").value) })));
       heading.textContent = remove ? "Delete recurring event" : "Edit recurring event";
+      heading.className = "";
       details.hidden = form.hidden = note.hidden = true;
       msg.textContent = "";
       scopeBox.hidden = false;
@@ -183,7 +184,10 @@ export function mountAddEvent(dialog, { localOnly = false } = {}){
   }
 
   // Google's event details: what it is, when it is, and the two things you can
-  // do to it. Read-only events (someone else's calendar) show no buttons —
+  // do to it. The name is the sheet's heading; under it one card of rows,
+  // Google's way: when, where (a tap opens it in Maps, for the ride), and
+  // Repeats only when it does (Mor, 2026-10-09).
+  // DOM replaceChildren, unlike h(), writes false as text: hence the filter. Read-only events (someone else's calendar) show no buttons —
   // Google greys them out the same way.
   function showDetails(ev){
     const start = Date.parse(ev.start), end = Date.parse(ev.end || ev.start);
@@ -215,21 +219,27 @@ export function mountAddEvent(dialog, { localOnly = false } = {}){
       }
       working(false, "Save");
     };
-    details.replaceChildren(
-      h("p", { className: "ev-when", textContent: longDay(start) }),
-      h("h3", { className: "ev-name", dir: "auto" }, bdi(ev.title)),
-      h("p", { className: "ev-time", textContent: when }),
-      ev.location && h("p", { className: "ev-place", dir: "auto" }, bdi(ev.location)),
-      mine && ev.recurring && h("p", { className: "muted ev-rep", textContent: "Repeats" }),
+    const row = (tag, ico, cls, main, sub, props = {}) => h(tag, { className: `ev-row ${cls}`, ...props }, icon(ico),
+      h("div", {}, h("b", {}, main), sub && h("small", { textContent: sub })));
+    const mins = Math.round((end - start) / MIN);
+    const info = h("div", { className: "ev-info" },
+      row("div", "calendar", "ev-time", longDay(start), ev.allDay ? "All day" : `${when} · ${lenText(mins)}`),
+      ev.location && row("a", "pin", "ev-place", bdi(ev.location), "Open in Maps",
+        { href: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(ev.location)}`, target: "_blank", rel: "noopener" }),
+      ev.recurring && row("div", "repeat", "ev-rep", "Repeats", ""));
+    details.replaceChildren(...[
+      info,
       mine
         ? h("div", { className: "ev-acts" },
           h("button", { className: "btn", type: "button", textContent: "Edit", onclick: () => showForm(ev) }), del)
-        : h("p", { className: "muted", textContent: "This one is read-only — open it in Google Calendar to change it." }));
+        : h("p", { className: "muted ev-ro", textContent: "Read-only. Open it in Google Calendar to change it." }),
+    ].filter(Boolean));
     details.hidden = false;
     scopeBox.hidden = true;
     form.hidden = true;
     note.hidden = true;
-    heading.textContent = "Event";
+    heading.replaceChildren(bdi(ev.title));
+    heading.className = "ev-name";
   }
 
   // The same sheet as a form: new, or the event's own values filled in.
@@ -239,6 +249,7 @@ export function mountAddEvent(dialog, { localOnly = false } = {}){
     form.hidden = false;
     note.hidden = !!ev;
     heading.textContent = ev ? "Edit event" : "New event";
+    heading.className = "";
     submit.textContent = ev ? "Save" : localOnly ? "Add event" : "Add to calendar";
     if (ev) {
       const start = Date.parse(ev.start), end = Date.parse(ev.end);
