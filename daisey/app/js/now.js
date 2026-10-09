@@ -14,7 +14,7 @@
 // the same timer.
 import { overruled, eventKey } from "./reality.js";
 import * as deep from "./deep.js";
-import { addTask, watchTasks, watchRun, watchSkips, saveSkips, startRun, extendRun, endRun, startBatch, tickBatch, endBatch, skipNow, blockTask, restoreTask, finishTask, setDoneMinutes, watchSettings, saveSettings, watchMoment, saveMoment, watchLearn, bumpLearn, saveRun, cancelRun, watchDayPlan, saveDayPlan, holdTask, releaseTask } from "./store.js";
+import { addTask, updateTask, watchTasks, watchRun, watchSkips, saveSkips, startRun, extendRun, endRun, startBatch, tickBatch, endBatch, skipNow, blockTask, restoreTask, finishTask, setDoneMinutes, watchSettings, saveSettings, watchMoment, saveMoment, watchLearn, bumpLearn, saveRun, cancelRun, watchDayPlan, saveDayPlan, holdTask, releaseTask } from "./store.js";
 import { sortable } from "./ppdrag.js";
 import { proposeDay, timeline, withBreaks, trimBreaks, isBreak, nextPlanned, planProgress, refit, topUp, daySig, relayMeals } from "./proposal.js";
 import { rethink } from "./rethink.js";
@@ -210,7 +210,10 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
       block && h("p", { className: "freeline" },
         ...(block.taskId ? [`Booked until ${clock(block.end)}`] : ["Working on ", bdi(block.project), ` until ${clock(block.end)}`]),
         " · ", freeNow(block.start, block.title || block.project)),
-      leg && tripChips(leg, leg === fw.current ? `${TRIP_ON[howOf(leg.trip)]} until ${clock(leg.end)}` : `Leave ${clock(leg.start)} ${TRIP_BY[howOf(leg.trip)]}`));
+      // Once under way, how you go is settled (Mor, 2026-10-09): only the
+      // train's laptop question stays.
+      leg && (leg === fw.current ? laptopLine(leg) && h("div", { className: "trip-chips" }, laptopLine(leg))
+        : tripChips(leg, `Leave ${clock(leg.start)} ${TRIP_BY[howOf(leg.trip)]}`)));
   }
   const tripChips = (leg, text) => h("div", { className: "trip-chips" }, tripSwitch(leg, text), laptopLine(leg));
 
@@ -328,7 +331,18 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
   const riderOf = (leg) => leg.trip.mode === "car" && leg.trip.place !== "car" ? "passenger" : howOf(leg.trip);
   function rideCard(leg, r){
     return eventCard({ meta: `${TRIP_ON[riderOf(leg)]} · until ${clock(leg.end)}`, title: leg.title,
-      why: "Nothing fits the rest of the ride.", extras: [outLine(r), putOffButton(r)] });
+      why: "Nothing fits the rest of the ride.", extras: [outLine(r), phoneOk(r), putOffButton(r)] });
+  }
+  // Most tasks are guessed Computer (model.guessWhere), so a ride shuts them
+  // all out. One tap says this one works on the phone, and it's offered.
+  function phoneOk(r){
+    const can = r.out.filter((o) => o.reason === "place" && o.task.where === "computer").slice(0, 3);
+    if (!can.length) return null;
+    return h("div", { className: "ride-ask phone-ok", role: "group", ariaLabel: "Doable on the phone?" },
+      h("span", { className: "muted", textContent: "Doable on the phone?" }),
+      ...can.map((o) => h("button", { type: "button", className: "chip", dir: "auto", textContent: o.task.title,
+        ariaLabel: `${o.task.title} works on the phone`,
+        onclick: () => updateTask(uid, o.task, { where: "phone" }, tasks || []).catch(fail) })));
   }
   function drivingCard(){
     return quietCard({ meta: "Driving", title: "Eyes on the road", why: "I'll have something ready when you stop.",
