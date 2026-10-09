@@ -64,6 +64,7 @@ const cleanSettings = (s) => ({
   calOffered: Array.isArray(s?.calOffered) ? s.calOffered.slice(-200).map((k) => str(k, 200)) : [],
   somedayAsked: day(s?.somedayAsked),
   silenceOn: day(s?.silenceOn), // the silence check answered that day (miss.js)
+  restDay: day(s?.restDay), // "Done for today" (now.js): nothing more sent that day
   // How you get to events in other cities (app/js/trips.js): the travel legs
   // count as busy here too, and "starts in 15 min" names the train, not the meeting.
   trips: cleanTrips(s?.trips),

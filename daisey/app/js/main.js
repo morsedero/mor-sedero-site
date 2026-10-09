@@ -568,6 +568,7 @@ async function boot(){
           onOpen: (task) => m.adder.edit(task),
           onProject: (name) => m.projects.openProject(name),
           onEvent: (ev) => m.event.view(ev),
+          onWrap: () => { m.needs.open("wrap"); screens.open("needs"); },
           guest: isGuest,
         });
         $("#needsChip").onclick = () => { m.needs.open(); screens.open("needs"); };

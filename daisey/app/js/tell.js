@@ -48,8 +48,12 @@ const PLACE = { home: "Home", out: "Out", anywhere: "Anywhere", train: "On a tra
 // with no names in them: a made-up "Uri" reads as someone else's data.
 const cut = (s, n = 22) => (s.length > n ? `${s.slice(0, n - 1).trimEnd()}…` : s);
 const START = ["Call the bank tomorrow at 10", "Groceries, laundry, pay rent", "Gym, 1 h, tomorrow", "Dentist Thursday at 9", "I have 30 minutes"];
-export function hintsFor(tasks, hour = new Date().getHours()){
+export function hintsFor(tasks, hour = new Date().getHours(), night = false){
   const ready = tasks.filter((t) => t.status === "ready");
+  // At night (Mor, 2026-10-10): the bar is for emptying your head before
+  // sleep, not for planning more — tomorrow things and quick dumps only.
+  if (night) return [...(ready[0] ? [`Move ${cut(ready[0].title, 18)} to tomorrow`, `Done with ${cut(ready[0].title)}`] : []),
+    "Call the bank tomorrow at 10", "Groceries, laundry, pay rent"];
   if (!ready.length && !tasks.some((t) => t.status === "waiting")) return START;
   const own = [];
   if (ready[0]) own.push(`Done with ${cut(ready[0].title)}`);
@@ -76,8 +80,9 @@ export function mountTell(form, input, mic, uid, { openAdd, openTask, guest = fa
   let turn = 0;
   const hinting = setInterval(() => {
     if (input.value || rec || document.activeElement === input || document.hidden) return;
-    const list = hintsFor(tasks);
-    input.placeholder = turn % 2 ? plain : `“${list[Math.floor(turn / 2) % list.length]}”`;
+    const night = document.documentElement.classList.contains("night");
+    const list = hintsFor(tasks, new Date().getHours(), night);
+    input.placeholder = turn % 2 ? (night ? "On your mind? Tell Daisey…" : plain) : `“${list[Math.floor(turn / 2) % list.length]}”`;
     turn++;
   }, HINT_MS);
 

@@ -33,7 +33,7 @@ import { leftMinutes, toMinutes, progressOf, progressPatch, shrinkPatch, shrunk,
 import { isRoutine, routineCalendar, eventsToLog, sessionPatch } from "./routine.js";
 import { waitingFor, personOf } from "./nudge.js";
 import { dayHours, isNight, nextMorning, dayEndAt, bookings, sameTitle, minText, gapsToday } from "./day.js";
-import { collectNeeds } from "./needs.js";
+import { collectNeeds, wrapList } from "./needs.js";
 import { h, icon, bdi, pieces, sizeText, sizeChip, progressBar, dur, say, nightDivider, flash, weekDots, focusField } from "./ui.js";
 import { areaClass, areaName, projectShown, doneToday, dirOf, stemDaisy, moonDaisy, watchProjectColors } from "./look.js";
 
@@ -49,7 +49,8 @@ const clock = (ms) => new Date(ms).toLocaleTimeString([], { hour: "2-digit", min
 // card's title is the way in. onEvent(ev): an event's details. name: the first name for the night screen. onDone(n):
 // how many tasks are done today, for the header's chip. onNeedsCount(n):
 // how many decisions Needs you holds, for the amber chip.
-export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name = "", onDone, onNeedsCount, onPlanProgress, planRoot, onPlanScreen, onReady, guest = false } = {}){
+// onWrap(): the evening wrap (Needs you: each task still open for today).
+export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap, name = "", onDone, onNeedsCount, onPlanProgress, planRoot, onPlanScreen, onReady, guest = false } = {}){
   let tasks = null; // null until the first snapshot
   let settings = {}; // state/settings: when the sweep was last offered
   let momentDoc = {}; // state/moment: place corrections
@@ -801,13 +802,26 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
     const leave = chain?.parts.find((e) => e.trip?.dir === "to"), back = chain?.parts.find((e) => e.trip?.dir === "back");
     const leaveLine = leave && tripChips(leave, `Leave ${clock(Date.parse(leave.start))} ${TRIP_BY[howOf(leave.trip)]}`);
     const who = name ? `, ${name}` : "";
+    // The day behind you (Mor, 2026-10-10): what got done, and what's still
+    // open for today with one way to sort it — the evening wrap (needs.js),
+    // the same one the end-of-day notification opens. Nothing done and
+    // nothing open: no section, and never a "0 done".
+    const done = early ? [] : doneToday(tasks || []), loose = early ? [] : wrapList(tasks || []);
+    const todayView = (done.length > 0 || (loose.length > 0 && onWrap)) && h("section", { className: "night-today", ariaLabel: "Today" },
+      done.length > 0 && h("div", { className: "night-label", textContent: `Done today · ${done.length}` }),
+      done.length > 0 && h("ul", { className: "night-done" }, ...done.slice(0, 4).map((t) => h("li", {}, bdi(t.title))),
+        done.length > 4 && h("li", { className: "more", textContent: `and ${done.length - 4} more` })),
+      loose.length > 0 && onWrap && h("div", { className: "night-loose" },
+        h("span", { textContent: loose.length === 1 ? "1 still open for today" : `${loose.length} still open for today` }),
+        h("button", { className: "pill-btn", type: "button", textContent: "Sort them", ariaLabel: "Sort what's still open for today", onclick: () => onWrap() })));
     const lead = dueTonight.length === 1 ? "One deadline is still open today." : `${dueTonight.length} deadlines are still open today.`;
     return [
       h("div", { className: "stars", ariaHidden: "true" }, ...[0, 1, 2, 3].map(() => h("span"))),
       h("div", { className: "night-hero" }, moonDaisy(),
-        h("h2", { className: "night-h", textContent: early ? `Early${who}.` : `Late${who}.` }),
+        h("h2", { className: "night-h", textContent: early ? `Early${who}.` : rested() ? `Done for today${who}.` : `Late${who}.` }),
         h("p", { className: "night-p", textContent: early ? "Nothing needs you yet. Here's your day."
           : dueTonight.length ? lead : "Nothing needs you tonight. Here's tomorrow." })),
+      todayView,
       // Both cards wear the main card's design (Mor, 2026-10-07): hero top row,
       // big title, why line, the same actions. The label is the eyebrow above.
       dueTonight.length > 0 && h("section", { className: "now-card main hero night" + areaClass(dueTonight[0]), ariaLabel: "Due today" },
@@ -1537,10 +1551,11 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
     document.body.classList.toggle("focus", deepOn || !!handoff);
     refitPlan();
     const hrs = dayHours(settings);
-    if (!isNight(Date.now(), hrs)) nightFree = false;
+    const dark = isNight(Date.now(), hrs) || rested();
+    if (!dark) nightFree = false;
     // On the way somewhere (trips.js) the day has started, whatever the hours say.
     const riding = cal.status === "ok" && cal.events.some((e) => e.trip && Date.parse(e.start) <= Date.now() && Date.now() < Date.parse(e.end));
-    const night = !live && !handoff && tasks != null && isNight(Date.now(), hrs) && !nightFree && !riding;
+    const night = !live && !handoff && tasks != null && dark && !nightFree && !riding;
     document.documentElement.classList.toggle("night", night);
     const n = doneCount();
     if (n !== reported) { reported = n; onDone?.(n); }
@@ -1699,7 +1714,24 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
   // The day screens: the card and what's under it. (After this and the
   // Needs you row went with round 3: the panel's Schedule page and the
   // header's chip hold them now.)
-  const day = fill;
+  const day = (...kids) => fill(...kids, restButton());
+  // "Done for today" (Mor, 2026-10-10): from the evening on, one quiet pill
+  // under the day's card closes the day early: the night screen now, and no
+  // notifications until morning (settings.restDay, sent to the server with
+  // the snapshot, push.js). "I'm free now" on the night screen undoes it for
+  // this visit. From 18:00, or the last 3 h of a day that ends sooner.
+  const rested = () => settings.restDay === localDate();
+  function restButton(){
+    const d = new Date(), m = d.getHours() * 60 + d.getMinutes();
+    if (m < Math.min(18 * 60, dayHours(settings).end - 180)) return null;
+    return h("div", { className: "rest-foot" }, h("button", { className: "pill-btn", type: "button", textContent: "Done for today",
+      ariaLabel: "Done for today: close the day", onclick: () => {
+        const restDay = localDate();
+        if (prop.open) closeProposal(); // the night has no plan screen
+        settings = { ...settings, restDay }; nightFree = false; render();
+        saveSettings(uid, { restDay }).catch(fail);
+      } }));
+  }
   const fail = (e) => console.error("[daisey] now", e);
   // "Start task" on a notification (sw.js → ?start=<id>). The suggestion was
   // made minutes ago; what happened since wins (reality.js). Something
