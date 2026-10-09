@@ -24,7 +24,7 @@ import { rank } from "./engine.js";
 import { workBase } from "./context.js";
 import { effectiveDue } from "./triage.js";
 import { h, bdi, dur, flash } from "./ui.js";
-import { setRide, RIDES } from "./where.js";
+import { setManual, RIDES } from "./where.js";
 
 const URL_ = "/.netlify/functions/daisey-now-chat";
 const SAID = {
@@ -236,9 +236,9 @@ export function mountTell(form, input, mic, uid, { openAdd, openTask, guest = fa
       if (a.kind === "update") return updateTask(uid, t, pick(["title", "project", "size", "due", "dateKind", "notBefore"]), tasks);
       if (a.kind === "waiting") return updateTask(uid, t, { status: "waiting", waitingOn: a.waitingOn || "" }, tasks);
       if (a.kind === "drop") return updateTask(uid, t, { status: "dropped" }, tasks);
-      // A ride ("I'm a passenger" = bus) goes where the ride question's
-      // answer goes (where.js), not the moment doc: only that holds for the ride.
-      if (a.kind === "moment" && RIDES.includes(a.place)) { setRide(a.place); a = { ...a, place: null }; }
+      // A ride ("I'm a passenger" = bus) is held in where.js, as the Driving
+      // card's button does, not in the moment doc (home/out/anywhere only).
+      if (a.kind === "moment" && RIDES.includes(a.place)) { setManual(a.place); a = { ...a, place: null }; }
       if (a.kind === "moment") return Promise.all([a.dayEnd ? saveSettings(uid, { dayEndToday: { date: localDate(), end: a.dayEnd } }) : null, (a.place || a.minutes) ? saveMoment(uid, { ...(a.place ? { place: { value: a.place, at: now } } : {}), ...(a.minutes ? { free: { minutes: a.minutes, at: now } } : {}) }) : null]);
       return null;
     }).filter(Boolean);

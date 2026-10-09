@@ -19,7 +19,7 @@ import { sortable } from "./ppdrag.js";
 import { proposeDay, timeline, withBreaks, trimBreaks, isBreak, nextPlanned, planProgress, refit, topUp, daySig, relayMeals } from "./proposal.js";
 import { rethink } from "./rethink.js";
 import { placeNow, workBase, watchProjectTiers } from "./context.js";
-import { watchWhere, setManual, whereAsk, homeAt } from "./where.js";
+import { watchWhere, setManual, setStill, saveSpot, whereAsk, homeAt } from "./where.js";
 import { withTrips, chainFrom, setTripDay, MODES } from "./trips.js";
 import { pickWeekDay } from "./triage.js";
 import { focusView, handoffView, elapsedMinutes, targetMinutes, batchFocusView, batchName, sinceMark, paused, resumed, runCap, bookedMinutes, holdButton, stillOnMinutes, bloomHold } from "./focus.js";
@@ -309,10 +309,11 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
 
   // Driving and no call to make (hands-free calls are the one thing that
   // fits, Mor 2026-10-05): just this. "I'm a passenger" counts as a bus
-  // ride (sitting, phone in hand).
+  // ride (sitting, phone in hand), held by hand: a car trip on the calendar
+  // or a lost location would otherwise put the driving card straight back.
   function drivingCard(){
     return quietCard({ meta: "Driving", title: "Eyes on the road", why: "I'll have something ready when you stop.",
-      action: h("button", { className: "btn quiet", type: "button", textContent: "I'm a passenger", onclick: () => setRide("bus") }) });
+      action: h("button", { className: "btn quiet", type: "button", textContent: "I'm a passenger", onclick: () => setManual("bus") }) });
   }
   // The calendar's answer to "what now": the event that's running, when it
   // ends and what's left of it. Same card as a task's, so the top of the
