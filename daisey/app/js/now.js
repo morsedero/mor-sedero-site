@@ -322,6 +322,14 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
     settings = { ...settings, tripDay }; applyTrips(); render();
     saveSettings(uid, { tripDay }).catch(fail);
   }
+  // On a ride with nothing that fits it. The ride is already the free time
+  // (momentInput), so no "I'm free now": that only ignored the ride and asked
+  // again (Mor, 2026-10-09: passenger → free now → "Ignoring Drive back…").
+  const riderOf = (leg) => leg.trip.mode === "car" && leg.trip.place !== "car" ? "passenger" : howOf(leg.trip);
+  function rideCard(leg, r){
+    return eventCard({ meta: `${TRIP_ON[riderOf(leg)]} · until ${clock(leg.end)}`, title: leg.title,
+      why: "Nothing fits the rest of the ride.", extras: [outLine(r), putOffButton(r)] });
+  }
   function drivingCard(){
     return quietCard({ meta: "Driving", title: "Eyes on the road", why: "I'll have something ready when you stop.",
       action: h("button", { className: "btn quiet", type: "button", textContent: "I'm a passenger", onclick: passenger }) });
@@ -846,7 +854,10 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
   // here: if it's being asked, the saved Home is off or missing.
   const PLACE_SAID = { out: "out", walk: "walking", ride: "on the move", train: "on a train", bus: "on a bus", car: "driving" };
   function placeFix(m){
-    const where = m.place === "spot" ? `at ${m.spot}` : PLACE_SAID[m.place] || m.place;
+    // In the car, not driving: "a passenger", not the bus it counts as.
+    const now = Date.now(), rider = m.place === "bus" && cal.status === "ok"
+      && cal.events.some((e) => e.trip?.mode === "car" && e.trip.place === "bus" && Date.parse(e.start) <= now && now < Date.parse(e.end));
+    const where = rider ? "a passenger" : m.place === "spot" ? `at ${m.spot}` : PLACE_SAID[m.place] || m.place;
     const chip = (text, onclick) => h("button", { type: "button", className: "chip", textContent: text, onclick });
     const moving = ["walk", "ride", "train", "bus", "car"].includes(m.place);
     return h("div", { className: "ride-ask place-fix", role: "group", ariaLabel: "Where are you?" },
@@ -1579,6 +1590,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
         why: `Nothing in ${block.project} fits right now.`, action: freeNowButton({ start: block.start }, `the ${block.project} block`) }), tip);
       return;
     }
+    if (!card && fw?.current?.trip) { day(...head, rideCard(fw.current, r), tip); return; }
     if (!card && fw?.current) { day(...head, meetingCard(fw.current), tip); return; }
     const bk = !card && r.out.filter((o) => o.reason === "booked").map((o) => ({ task: o.task, ...booked().get(o.task.id) }))
       .filter((b) => b.start).sort((a, b) => a.start - b.start)[0];
