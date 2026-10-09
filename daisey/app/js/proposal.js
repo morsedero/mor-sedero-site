@@ -316,6 +316,39 @@ export function topUp(items = [], ctx = {}, skip = []){
   return { items: out, added };
 }
 
+// A meal answered in Needs you (meals.js, Mor 2026-10-09: "it asked, but
+// didn't rearrange my schedule"). A plan's breaks are its own items and
+// don't move by themselves, so the answer moves them, once per answer:
+// "there" takes that meal out; a new time puts it before the first item
+// that would start at or after that time (a break right before it goes,
+// the meal is one). laid: { [name]: answer } already done on this plan, so a
+// later drag isn't undone. → { items, laid }, the same items when nothing to do.
+export function relayMeals(items = [], ctx = {}, laid = {}){
+  const now = ctx.now ?? Date.now(), today = localDate(now);
+  const said = ctx.settings?.mealToday?.date === today ? ctx.settings.mealToday : {};
+  const meals = ctx.hours?.meals ?? mealsOf(ctx.settings);
+  let out = items;
+  const done = { ...laid };
+  for (const [name, answer] of Object.entries(said)) {
+    if (name === "date" || done[name] === answer) continue;
+    done[name] = answer;
+    const ours = (it) => isMeal(it) && (it.name === name || (!it.name && name === "Lunch"));
+    const old = out.find(ours);
+    out = out.filter((it) => !ours(it));
+    const meal = meals.find((m) => m.name === name);
+    if (answer === "there" || !meal) continue;
+    const from = atMin(now, meal.from);
+    const { rows } = timeline(out, ctx);
+    let k = rows.filter((r) => r.start >= from).sort((a, b) => a.start - b.start)[0]?.i;
+    if (k == null) continue; // the plan's over by then: no meal in it
+    let j = k;
+    while (j > 0 && isBreak(out[j - 1])) j--;
+    out = [...out.slice(0, j), { brk: "meal", minutes: old?.minutes || meal.minutes, name }, ...out.slice(k)];
+  }
+  out = trimBreaks(out);
+  return { items: out.length === items.length && out.every((it, j) => it === items[j]) ? items : out, laid: done };
+}
+
 // What the plan was laid against: today's busy events and the day's hours,
 // as a short key. The plan is redone (refit / topUp) when it changes, not
 // when the clock moves; renames and free events don't count.

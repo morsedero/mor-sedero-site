@@ -40,3 +40,21 @@ test("the answer is today's only: moved → the plan's window moves; there → n
   assert.deepEqual(mealsToday({ mealToday: { date: "2026-10-08", Lunch: "14:20" } }, NOW), [{ name: "Lunch", from: 780, to: 840, minutes: 45 }]);
   assert.ok(Array.isArray(dayHours(moved).meals));
 });
+
+test("the answer rearranges a plan that already has its breaks: lunch moves to 14:20, or goes", async () => {
+  const { timeline, relayMeals } = await import("../../app/js/proposal.js");
+  const tasks = ["a", "b", "c"].map((id) => ({ id, title: id, status: "ready", size: 60 }));
+  const now = at(7), events = [job, drive];
+  // Laid before the answer: no room for lunch, so the plan has none, only a long break after the drive.
+  const items = [{ taskId: "a", minutes: 30 }, { brk: "long", minutes: 30 }, { taskId: "b", minutes: 60 }, { brk: "short", minutes: 10 }, { taskId: "c", minutes: 60 }];
+  const settings = { mealToday: { date: "2026-10-09", Lunch: "14:20" } };
+  const ctx = { tasks, events, now, settings, hours: dayHours(settings) };
+  const re = relayMeals(items, ctx);
+  assert.deepEqual(re.items.map((it) => it.taskId || it.brk), ["a", "meal", "b", "short", "c"]); // the meal takes the long break's place
+  const brk = timeline(re.items, ctx).breaks.find((b) => b.type === "meal");
+  assert.equal(brk.start, at(14, 20));
+  assert.deepEqual(re.laid, { Lunch: "14:20" });
+  assert.equal(relayMeals(re.items, ctx, re.laid).items, re.items); // once per answer: a later drag stays
+  const gone = { mealToday: { date: "2026-10-09", Lunch: "there" } };
+  assert.ok(!relayMeals(re.items, { ...ctx, settings: gone, hours: dayHours(gone) }).items.some((it) => it.brk === "meal"));
+});

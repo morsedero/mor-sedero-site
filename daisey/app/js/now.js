@@ -16,7 +16,7 @@ import { overruled, eventKey } from "./reality.js";
 import * as deep from "./deep.js";
 import { addTask, watchTasks, watchRun, watchSkips, saveSkips, startRun, extendRun, endRun, startBatch, tickBatch, endBatch, skipNow, blockTask, restoreTask, finishTask, setDoneMinutes, watchSettings, saveSettings, watchMoment, saveMoment, watchLearn, bumpLearn, saveRun, cancelRun, watchDayPlan, saveDayPlan, holdTask, releaseTask } from "./store.js";
 import { sortable } from "./ppdrag.js";
-import { proposeDay, timeline, withBreaks, trimBreaks, isBreak, nextPlanned, planProgress, refit, topUp, daySig } from "./proposal.js";
+import { proposeDay, timeline, withBreaks, trimBreaks, isBreak, nextPlanned, planProgress, refit, topUp, daySig, relayMeals } from "./proposal.js";
 import { rethink } from "./rethink.js";
 import { placeNow, workBase, watchProjectTiers } from "./context.js";
 import { watchWhere, setManual, whereAsk, homeAt } from "./where.js";
@@ -1060,14 +1060,16 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
   // today: approve it, reorder it, drop items, open one to edit it, or ask
   // for a rethink. On demand from the plan line, the Free row or Schedule's
   // "Plan my day". Approved, the card follows it in order.
+  // Today's answers to the meal question (meals.js): { [name]: "HH:MM" | "there" }.
+  const mealAnswers = () => { const m = settings.mealToday; if (m?.date !== localDate()) return {}; const { date, ...rest } = m; return rest; };
   const planCtx = () => ({ tasks: tasks || [], events: cal.status === "ok" ? cal.events : [], now: Date.now(), hours: dayHours(settings), settings, run });
   const todaysPlan = () => (dayPlan?.date === localDate() ? dayPlan : null);
   const approvedPlan = () => (todaysPlan()?.status === "approved" ? dayPlan : null);
   function openProposal(){
-    const saved = todaysPlan();
-    prop.items = withBreaks(saved?.items?.length && saved.status !== "dismissed"
-      ? stillOpen(saved.items)
-      : proposeDay({ ...planCtx(), exclude: prop.exclude }), planCtx());
+    const saved = todaysPlan(), ctx = planCtx(), reuse = saved?.items?.length && saved.status !== "dismissed";
+    const re = reuse ? relayMeals(stillOpen(saved.items), ctx, saved.mealsLaid || {}) : null;
+    prop.items = withBreaks(reuse ? re.items : proposeDay({ ...ctx, exclude: prop.exclude }), ctx);
+    prop.mealsLaid = reuse ? re.laid : mealAnswers();
     prop.touched = false; prop.sig = null; prop.askOpts = null;
     const hadHandoff = !!handoff;
     prop.open = true; prop.ask = false; prop.note = ""; handoff = null;
@@ -1092,13 +1094,14 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
   // activity; a refit saving the plan isn't), kept across later saves.
   // declined: ids taken off with the top-up's Undo, never added again today.
   // sig: the day the plan was saved against (proposal.daySig); topUpLater
-  // compares it with the calendar now.
+  // compares it with the calendar now. mealsLaid: the meal answers already
+  // laid into it (proposal.relayMeals), kept across later saves.
   const savePlan = (status, items, extra = {}) => {
     const was = todaysPlan();
-    const approvedAt = was?.approvedAt ?? null, declined = was?.declined || [];
+    const approvedAt = was?.approvedAt ?? null, declined = was?.declined || [], mealsLaid = was?.mealsLaid || {};
     const sig = cal.status === "ok" ? daySig(cal.events, dayHours(settings)) : null;
-    dayPlan = { date: localDate(), status, items, approvedAt, declined, sig, ...extra, at: Date.now() };
-    saveDayPlan(uid, { date: dayPlan.date, status, items, approvedAt, declined, sig, ...extra }).catch(fail);
+    dayPlan = { date: localDate(), status, items, approvedAt, declined, mealsLaid, sig, ...extra, at: Date.now() };
+    saveDayPlan(uid, { date: dayPlan.date, status, items, approvedAt, declined, mealsLaid, sig, ...extra }).catch(fail);
   };
   // An unseen notice survives a save made for another reason.
   const unseen = (p, key) => (p?.[key] && !p[key].seen ? { [key]: p[key] } : {});
@@ -1135,9 +1138,18 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
   const SETTLE = 60000;
   let upTimer = null, upFor = null;
   const markSig = (sig) => { dayPlan = { ...dayPlan, sig }; const { at, ...doc } = dayPlan; saveDayPlan(uid, doc).catch(fail); };
+  // Today's meal answer (Needs you, meals.js) moves the plan's meal right
+  // away, no settling: the user asked for it.
   function topUpLater(){
-    const p = approvedPlan();
+    let p = approvedPlan();
     if (!p || !tasks || cal.status !== "ok") return;
+    if (!prop.open && !ppDragging) {
+      const re = relayMeals(p.items || [], planCtx(), p.mealsLaid || {});
+      if (re.items !== p.items || JSON.stringify(re.laid) !== JSON.stringify(p.mealsLaid || {})) {
+        savePlan("approved", re.items, { kept: p.kept || [], ...unseen(p, "cut"), ...unseen(p, "added"), mealsLaid: re.laid });
+        p = approvedPlan();
+      }
+    }
     const sig = daySig(cal.events, dayHours(settings));
     if (!p.sig) { markSig(sig); return; }
     if (p.sig === sig) { clearTimeout(upTimer); upTimer = upFor = null; return; }
@@ -1189,8 +1201,9 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
     const ids = () => prop.items.filter((it) => it.taskId).map((it) => it.taskId).join();
     const before = ids();
     prop.items = prop.touched
-      ? topUp(refit(prop.items, ctx).items, ctx, prop.exclude).items
+      ? topUp(refit(relayMeals(prop.items, ctx, prop.mealsLaid || {}).items, ctx).items, ctx, prop.exclude).items
       : withBreaks(proposeDay({ ...ctx, exclude: prop.exclude }), ctx);
+    prop.mealsLaid = mealAnswers(); // a fresh take already lays them
     if (ids() !== before) prop.note = "Your day changed, so I updated the plan.";
   }
   function cutView(){
@@ -1219,7 +1232,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
   }
   function approve(){
     const n = prop.items.filter((it) => !isBreak(it)).length;
-    savePlan("approved", trimBreaks(prop.items).map(({ taskId, brk, minutes, name }) => (brk ? { brk, minutes, ...(name ? { name } : {}) } : { taskId, minutes })), { approvedAt: Date.now() });
+    savePlan("approved", trimBreaks(prop.items).map(({ taskId, brk, minutes, name }) => (brk ? { brk, minutes, ...(name ? { name } : {}) } : { taskId, minutes })), { approvedAt: Date.now(), mealsLaid: mealAnswers() });
     prop.open = false; prop.ask = false; prop.note = ""; reset();
     render();
     flash(`Plan set: ${n} ${n === 1 ? "task" : "tasks"}. The card follows it.`);
