@@ -24,6 +24,7 @@ import { rank } from "./engine.js";
 import { workBase } from "./context.js";
 import { effectiveDue } from "./triage.js";
 import { h, bdi, dur, flash } from "./ui.js";
+import { setRide, RIDES } from "./where.js";
 
 const URL_ = "/.netlify/functions/daisey-now-chat";
 const SAID = {
@@ -35,7 +36,7 @@ const SAID = {
   guest_limit_unavailable: "Tell Daisey is temporarily unavailable. Try again shortly.",
 };
 const day = (s) => new Date(`${s}T12:00`).toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" });
-const PLACE = { home: "Home", out: "Out", anywhere: "Anywhere" };
+const PLACE = { home: "Home", out: "Out", anywhere: "Anywhere", train: "On a train", bus: "Passenger", car: "Driving" };
 
 // Examples in the bar (master spec §13, 2026-10-06): while it's empty and not
 // in use, the placeholder turns between "Tell Daisey…" and one thing it really
@@ -235,6 +236,9 @@ export function mountTell(form, input, mic, uid, { openAdd, openTask, guest = fa
       if (a.kind === "update") return updateTask(uid, t, pick(["title", "project", "size", "due", "dateKind", "notBefore"]), tasks);
       if (a.kind === "waiting") return updateTask(uid, t, { status: "waiting", waitingOn: a.waitingOn || "" }, tasks);
       if (a.kind === "drop") return updateTask(uid, t, { status: "dropped" }, tasks);
+      // A ride ("I'm a passenger" = bus) goes where the ride question's
+      // answer goes (where.js), not the moment doc: only that holds for the ride.
+      if (a.kind === "moment" && RIDES.includes(a.place)) { setRide(a.place); a = { ...a, place: null }; }
       if (a.kind === "moment") return Promise.all([a.dayEnd ? saveSettings(uid, { dayEndToday: { date: localDate(), end: a.dayEnd } }) : null, (a.place || a.minutes) ? saveMoment(uid, { ...(a.place ? { place: { value: a.place, at: now } } : {}), ...(a.minutes ? { free: { minutes: a.minutes, at: now } } : {}) }) : null]);
       return null;
     }).filter(Boolean);

@@ -58,7 +58,7 @@ const ACTION_FIELDS = {
   startDate: str("YYYY-MM-DD before which the task shouldn't come up (\"next week\", \"after Sunday\")."),
   waitingFor: str("waiting only: the person or thing it waits on, never a date."),
   dayEnd: str("moment only: HH:MM, 24-hour, when the user says their day runs until a different time today (\"I can work until 11pm\")."),
-  place: str("moment only: where the user is right now.", { enum: ["home", "out", "anywhere"] }),
+  place: str("moment only: where the user is right now. On the move: train, bus (also a passenger in a car or taxi), car (driving).", { enum: ["home", "out", "anywhere", "train", "bus", "car"] }),
   eventDate: str("event only: YYYY-MM-DD the event happens."),
   time: str("event only: the start time, HH:MM, 24-hour."),
   query: str("query only: what they ask about.", { enum: ["next", "due", "waiting", "plan"] }),
@@ -89,7 +89,7 @@ Kinds:
 - update: change an existing task's dueDate, startDate, title, project or minutes.
 - waiting: an existing task is blocked on someone or something.
 - drop: the user no longer wants an existing task.
-- moment: where the user is right now (place), or how long they have free right now (minutes: "I have 30 minutes", "free for an hour"), or that their day runs later or earlier today (dayEnd: "my day can go until 11 pm"). Changes no task.
+- moment: where the user is right now (place; "I'm a passenger", "in a taxi", "on the bus" → bus; "driving" → car; "on the train" → train), or how long they have free right now (minutes: "I have 30 minutes", "free for an hour"), or that their day runs later or earlier today (dayEnd: "my day can go until 11 pm"). Changes no task.
 - project: the user wants a new project (put its name in project). If they also name tasks for it, add those too, each with that project.
 - done: the user says they finished an existing task ("paid the arnona", "sent the stems").
 - event: something at a fixed time ("dentist Thursday at 15:00", "meeting with Dana tomorrow 10:30"): a calendar event, not a task. Title, eventDate, time; minutes only if said.
@@ -119,6 +119,8 @@ Message: new project חתונה: book the DJ, send invites
 {"reply":"פרויקט חדש חתונה, עם 2 משימות?","actions":[{"kind":"project","project":"חתונה"},{"kind":"add","title":"Book the DJ","project":"חתונה"},{"kind":"add","title":"Send invites","project":"חתונה"}]}
 Message: I'm wrecked and out
 {"reply":"Out. Got it?","actions":[{"kind":"moment","place":"out"}]}
+Message: I am passenger
+{"reply":"Passenger. Got it?","actions":[{"kind":"moment","place":"bus"}]}
 Message: I have 30 minutes
 {"reply":"30 minutes free. Got it?","actions":[{"kind":"moment","minutes":30}]}
 Message: my day can extend to 11 pm today
@@ -200,7 +202,7 @@ function tidy(out, ids){
           ...(isDay(a.planDate) ? { date: a.planDate } : {}) } : {}) }];
     }
     if (kind === "moment") {
-      if (["home", "out", "anywhere"].includes(a.place)) x.place = a.place;
+      if (["home", "out", "anywhere", "train", "bus", "car"].includes(a.place)) x.place = a.place;
       const free = Number.isFinite(a.minutes) ? Math.round(a.minutes) : 0;
       if (free >= 5 && free <= 240) x.minutes = free;
       if (/^([01]\d|2[0-3]):[0-5]\d$/.test(String(a.dayEnd || ""))) x.dayEnd = a.dayEnd;

@@ -78,3 +78,8 @@ test("guest chat requires the explicit guest marker and Netlify client IP", asyn
   assert.equal(noGuestFlag.statusCode, 401);
   assert.deepEqual(JSON.parse(noGuestFlag.body), { error: "no_session" });
 });
+
+test("a moment can be a ride: \"I'm a passenger\" is a bus", () => {
+  const out = tidy({ reply: "", actions: [{ kind: "moment", place: "bus" }, { kind: "moment", place: "car" }, { kind: "moment", place: "train" }, { kind: "moment", place: "walk" }] }, ids);
+  assert.deepEqual(out.actions, [{ kind: "moment", place: "bus" }, { kind: "moment", place: "car" }, { kind: "moment", place: "train" }]);
+});
