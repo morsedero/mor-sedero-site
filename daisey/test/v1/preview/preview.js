@@ -160,6 +160,11 @@ const SCENARIOS = {
     { title: "Lesson prep", project: "Teaching", size: 45, due: day(0) },
     { title: "Send invoice to Uri", project: "Admin", size: 15, due: day(1) },
   ], dayplan: { date: day(0), status: "approved", sig: "was", items: [{ taskId: "t1", minutes: 60 }] } },
+  // The day ends 11:30 with one task planned (--cal none --at 10:00); --eval
+  // moves the end to 22:00 as Settings would, and the plan should grow at
+  // once, no minute's wait (2026-10-09).
+  get hours(){ const s = structuredClone(SCENARIOS.openup); delete s.dayplan.sig;
+    s.settings = { deadlinesAsked: true, somedayAsked: day(0), dayStart: "08:00", dayEnd: "11:30" }; return s; },
   // Nothing active: only waiting and Someday (the calm empty state).
   rest: { tasks: [
     { title: "Waiting on Yuval", project: "Reprise", size: 30, over: { status: "waiting", waitingOn: "Yuval" } },

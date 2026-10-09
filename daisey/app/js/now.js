@@ -1062,6 +1062,9 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
   // "Plan my day". Approved, the card follows it in order.
   // Today's answers to the meal question (meals.js): { [name]: "HH:MM" | "there" }.
   const mealAnswers = () => { const m = settings.mealToday; if (m?.date !== localDate()) return {}; const { date, ...rest } = m; return rest; };
+  // The day a plan on screen is laid against, taken when it's laid: taken
+  // later, at the first render, a change made in between went unnoticed.
+  const daySigNow = () => (cal.status === "ok" ? daySig(cal.events, dayHours(settings)) : null);
   const planCtx = () => ({ tasks: tasks || [], events: cal.status === "ok" ? cal.events : [], now: Date.now(), hours: dayHours(settings), settings, run });
   const todaysPlan = () => (dayPlan?.date === localDate() ? dayPlan : null);
   const approvedPlan = () => (todaysPlan()?.status === "approved" ? dayPlan : null);
@@ -1070,7 +1073,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
     const re = reuse ? relayMeals(stillOpen(saved.items), ctx, saved.mealsLaid || {}) : null;
     prop.items = withBreaks(reuse ? re.items : proposeDay({ ...ctx, exclude: prop.exclude }), ctx);
     prop.mealsLaid = reuse ? re.laid : mealAnswers();
-    prop.touched = false; prop.sig = null; prop.askOpts = null;
+    prop.touched = false; prop.sig = daySigNow(); prop.askOpts = null;
     const hadHandoff = !!handoff;
     prop.open = true; prop.ask = false; prop.note = ""; handoff = null;
     // The Now card doesn't change with the plan, so leave it be (a rebuild
@@ -1135,8 +1138,10 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
   // fits on the end of the approved plan (proposal.topUp) and says so under
   // the card, with Undo. Never the running task or the next one: those stay
   // where they are. A plan saved before this just takes today's sig quietly.
+  // Day hours changed in Settings (Mor, 2026-10-09: "it doesn't adapt right
+  // away"): one deliberate change, so no settling, the plan follows at once.
   const SETTLE = 60000;
-  let upTimer = null, upFor = null;
+  let upTimer = null, upFor = null, lastHours = null;
   const markSig = (sig) => { dayPlan = { ...dayPlan, sig }; const { at, ...doc } = dayPlan; saveDayPlan(uid, doc).catch(fail); };
   // Today's meal answer (Needs you, meals.js) moves the plan's meal right
   // away, no settling: the user asked for it.
@@ -1151,13 +1156,16 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
       }
     }
     const sig = daySig(cal.events, dayHours(settings));
+    const hk = JSON.stringify(dayHours(settings)), hoursMoved = lastHours != null && hk !== lastHours;
+    if (!prop.open) lastHours = hk; // the plan screen follows by itself (freshenProposal); the saved plan catches up once it closes
     if (!p.sig) { markSig(sig); return; }
     if (p.sig === sig) { clearTimeout(upTimer); upTimer = upFor = null; return; }
+    if (hoursMoved) { clearTimeout(upTimer); upTimer = upFor = null; topUpNow(false); return; }
     if (upFor === sig) return;
     clearTimeout(upTimer); upFor = sig;
     upTimer = setTimeout(() => { upTimer = upFor = null; topUpNow(); }, SETTLE);
   }
-  function topUpNow(){
+  function topUpNow(redraw = true){
     const p = approvedPlan();
     if (!p || !tasks || cal.status !== "ok" || prop.open || ppDragging) return; // the next render asks again
     const ctx = planCtx(), sig = daySig(ctx.events, ctx.hours);
@@ -1166,7 +1174,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
     if (!added.length) { markSig(sig); return; }
     const prev = p.added && !p.added.seen ? p.added.ids : [];
     savePlan("approved", items, { kept: p.kept || [], ...unseen(p, "cut"), added: { ids: [...prev, ...added] } });
-    render();
+    if (redraw) render();
   }
   function addedView(){
     const p = approvedPlan(), a = p?.added;
@@ -1192,15 +1200,18 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
   // The proposal on screen, not yet approved, follows the day too: when the
   // calendar or the hours change, a fresh take if the user hasn't touched
   // it; if they have, what no longer fits comes off and new time is filled
-  // on the end, their order and drops kept.
+  // on the end, their order and drops kept. The approved plan open on the
+  // plan screen follows too (it used to stay frozen until closed, since the
+  // saved plan's refit and top-up wait while the screen is open): never a
+  // fresh take for it, only the same cut and top-up.
   function freshenProposal(){
-    if (!prop.open || approvedPlan() || prop.busy || ppDragging || !tasks || cal.status !== "ok") return;
+    if (!prop.open || prop.busy || ppDragging || !tasks || cal.status !== "ok") return;
     const ctx = { ...planCtx(), ask: prop.askOpts || {} }, sig = daySig(ctx.events, ctx.hours);
     if (prop.sig == null || prop.sig === sig) { prop.sig = sig; return; }
     prop.sig = sig;
     const ids = () => prop.items.filter((it) => it.taskId).map((it) => it.taskId).join();
     const before = ids();
-    prop.items = prop.touched
+    prop.items = prop.touched || approvedPlan()
       ? topUp(refit(relayMeals(prop.items, ctx, prop.mealsLaid || {}).items, ctx).items, ctx, prop.exclude).items
       : withBreaks(proposeDay({ ...ctx, exclude: prop.exclude }), ctx);
     prop.mealsLaid = mealAnswers(); // a fresh take already lays them
@@ -1261,7 +1272,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
     const items = proposeDay({ ...planCtx(), ask: { fewer: true, quickFirst: true, maxEach: LIGHTER.each } });
     if (!items.length) { flash("Nothing small left for today. Take the rest of the day."); render(); return; }
     prop.items = withBreaks(items, planCtx()); prop.exclude = [];
-    prop.touched = false; prop.sig = null; prop.askOpts = { fewer: true, quickFirst: true, maxEach: LIGHTER.each };
+    prop.touched = false; prop.sig = daySigNow(); prop.askOpts = { fewer: true, quickFirst: true, maxEach: LIGHTER.each };
     prop.open = true; prop.ask = false; prop.note = ""; handoff = null; reset();
     render();
   }
@@ -1531,7 +1542,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, name =
     if (!prop.open && planKnown && cal.status !== "loading" && prop.auto !== localDate() && !todaysPlan()) {
       prop.auto = localDate();
       const items = proposeDay({ ...planCtx() });
-      if (items.length >= 2) { prop.items = withBreaks(items, planCtx()); prop.exclude = []; prop.touched = false; prop.sig = null; prop.askOpts = null; prop.open = true; }
+      if (items.length >= 2) { prop.items = withBreaks(items, planCtx()); prop.exclude = []; prop.touched = false; prop.sig = daySigNow(); prop.askOpts = null; prop.open = true; }
     }
 
     const r = rank(tasks, momentInput(fw));

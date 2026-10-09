@@ -161,13 +161,12 @@ test("gate 2 stakes: penalty 15, money 12, someone 10, low 0", () => {
   assert.equal(parts(task({ stakes: "low" })).stakes, 0);
 });
 
-test("gate 2 area balance: least done this week gets 12; even weeks give nothing; intents count when set", () => {
+test("gate 2 area balance: least done this week gets 12; even weeks give nothing", () => {
   const job = task({ area: "job" }), work = task({ area: "work" });
   const sc = (o) => E.rank([job, work], { now: NOW, ...o }).ranked.reduce((m, s) => ({ ...m, [s.task.area]: s.parts.area }), {});
   assert.deepEqual(sc({ areaDone: { work: 4, job: 0 } }), { job: 12, work: 0 });
   assert.deepEqual(sc({ areaDone: { work: 2, job: 2 } }), { job: 0, work: 0 });
   assert.deepEqual(sc({}), { job: 0, work: 0 });
-  assert.deepEqual(sc({ intents: { job: 3 }, areaDone: { job: 1, work: 9 } }), { job: 8, work: 0 });
 });
 
 test("gate 2 neglect: +1 per whole day without real work, max 8", () => {

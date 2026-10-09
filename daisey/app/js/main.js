@@ -348,6 +348,7 @@ async function boot(){
           const hrs = dayHours(s || {});
           const usual = dayHours({ ...s, dayEndToday: null }); // the field shows the usual day, not today's stretch
           if (!dayDrag) paintDay(usual.start, usual.end);
+          $("#dayTrack").dataset.end = usual.end; // saveHours: did the end move?
           paintMeals(s || {});
           logSwitch.checked = !isGuest && s?.logDone !== false;
           logSwitch.disabled = isGuest;
@@ -418,7 +419,10 @@ async function boot(){
           start.setAttribute("aria-valuenow", s); start.setAttribute("aria-valuetext", minText(s));
           end.setAttribute("aria-valuenow", e); end.setAttribute("aria-valuetext", minText(e));
         }
-        const saveHours = () => saveSettings(user.uid, { dayStart: minText(dayS), dayEnd: minText(Math.min(dayE, 1439)) }).catch(fail);
+        // Moving the end here wins over today's stretch from Tell Daisey ("until
+        // 23:00 today"), which would otherwise keep today's end where it was.
+        const saveHours = () => saveSettings(user.uid, { dayStart: minText(dayS), dayEnd: minText(Math.min(dayE, 1439)),
+          ...(String(dayE) !== track.dataset.end ? { dayEndToday: null } : {}) }).catch(fail);
         // Move one end, keeping at least an hour between them.
         const setEnd = (which, m) => {
           m = Math.round(m / SNAP) * SNAP;
