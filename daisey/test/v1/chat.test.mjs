@@ -41,12 +41,14 @@ test("done, event and query (2026-10-06)", () => {
     { kind: "event", title: "Dentist", eventDate: "2026-10-08", time: "15:00" },
     { kind: "event", title: "Bad time", eventDate: "2026-10-08", time: "25:00" },
     { kind: "event", title: "Long", eventDate: "2026-10-08", time: "09:30", minutes: 90 },
+    { kind: "event", title: "Dinner", eventDate: "2026-10-09", time: "20:00", location: "  Haifa  " },
     { kind: "query", query: "due", range: "week" }, { kind: "query", query: "next" }, { kind: "query", query: "weather" },
   ] }, ids);
   assert.deepEqual(r.actions, [
     { kind: "done", taskId: "t1" },
     { kind: "event", title: "Dentist", date: "2026-10-08", time: "15:00", minutes: 60 },
     { kind: "event", title: "Long", date: "2026-10-08", time: "09:30", minutes: 90 },
+    { kind: "event", title: "Dinner", date: "2026-10-09", time: "20:00", minutes: 60, location: "Haifa" },
     { kind: "query", query: "due", range: "week" }, { kind: "query", query: "next" },
   ]);
 });

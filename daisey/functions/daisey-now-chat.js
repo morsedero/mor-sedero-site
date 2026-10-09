@@ -61,6 +61,7 @@ const ACTION_FIELDS = {
   place: str("moment only: where the user is right now. On the move: train, bus (also a passenger in a car or taxi), car (driving).", { enum: ["home", "out", "anywhere", "train", "bus", "car"] }),
   eventDate: str("event only: YYYY-MM-DD the event happens."),
   time: str("event only: the start time, HH:MM, 24-hour."),
+  location: str("event only: where it happens, when the user names a place (\"at Assuta\", \"in Haifa\", \"בתל אביב\"). Never put it in title."),
   query: str("query only: what they ask about.", { enum: ["next", "due", "waiting", "plan"] }),
   range: str("query due only: today or this week.", { enum: ["today", "week"] }),
   part: str("query plan only: which part of the day, or the whole day.", { enum: ["morning", "afternoon", "evening", "day"] }),
@@ -92,7 +93,7 @@ Kinds:
 - moment: where the user is right now (place; "I'm a passenger", "in a taxi", "on the bus" → bus; "driving" → car; "on the train" → train), or how long they have free right now (minutes: "I have 30 minutes", "free for an hour"), or that their day runs later or earlier today (dayEnd: "my day can go until 11 pm"). Changes no task.
 - project: the user wants a new project (put its name in project). If they also name tasks for it, add those too, each with that project.
 - done: the user says they finished an existing task ("paid the arnona", "sent the stems").
-- event: something at a fixed time ("dentist Thursday at 15:00", "meeting with Dana tomorrow 10:30"): a calendar event, not a task. Title, eventDate, time; minutes only if said.
+- event: something at a fixed time ("dentist Thursday at 15:00", "meeting with Dana tomorrow 10:30"): a calendar event, not a task. Title, eventDate, time; minutes only if said; location when a place is named ("dentist at Assuta Thursday 15:00" → title "Dentist", location "Assuta"), kept out of the title.
 - query: a question about their tasks, changing nothing: "what's next?" → next; "what's due today/this week?" → due with range; "what am I waiting on?" → waiting; "plan my afternoon / my day", "what's my schedule tomorrow?" → plan with part (morning, afternoon, evening, or day) and planDate when it isn't today.
 
 Rules:
@@ -205,7 +206,8 @@ function tidy(out, ids){
       const title = clean(a.title), date = a.eventDate ?? a.startDate ?? a.dueDate, time = String(a.time || "");
       if (!title || !isDay(date) || !/^([01]\d|2[0-3]):[0-5]\d$/.test(time)) return [];
       const size = a.minutes ?? a.size;
-      return [{ kind, title, date, time, minutes: Number.isFinite(size) && size > 0 && size <= 24 * 60 ? Math.round(size) : 60 }];
+      const location = clean(a.location, 300);
+      return [{ kind, title, date, time, minutes: Number.isFinite(size) && size > 0 && size <= 24 * 60 ? Math.round(size) : 60, ...(location ? { location } : {}) }];
     }
     if (kind === "query") {
       if (!["next", "due", "waiting", "plan"].includes(a.query)) return [];
