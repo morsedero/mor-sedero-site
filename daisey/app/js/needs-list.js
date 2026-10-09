@@ -9,7 +9,8 @@ import { deadlineWithin } from "./engine.js";
 import { STALE_SKIPS, SOMEDAY_DEADLINE_DAYS, PUSHES_ASK } from "./weights.js";
 import { slotClashes } from "./clash.js";
 import { slotsToAsk } from "./routine.js";
-import { tripAsks } from "./trips.js";
+import { tripAsks, withTrips } from "./trips.js";
+import { mealAsks } from "./meals.js";
 
 const STAKES_FIRST = { penalty: 0, money: 1, someone: 2, low: 3 };
 
@@ -38,6 +39,13 @@ export function collectNeeds({ tasks = [], events = [], calOk = false, settings 
   // series. home: this device's Home, to skip a city next door (the server
   // has none, so it may count one the phone won't ask).
   if (calOk) tripAsks(events, settings.trips || {}, { now, home }).forEach((a) => add({ key: `trip:${a.key}`, kind: "trip", ...a }));
+  // A meal the day's events leave no room for (meals.js): eat there, or
+  // move it? With the trips' ways there and back (now.js's events have them
+  // already; Needs you's and the server's don't).
+  if (calOk) {
+    const evs = events.some((e) => e.trip) ? events : withTrips(events, settings.trips || {}, settings.tripDay || [], settings.laptop ?? null);
+    mealAsks(evs, settings, now).forEach((a) => add({ key: a.key, kind: "meal", meal: a }));
+  }
   if (calOk) {
     const offered = [...(settings.calOffered || [])];
     for (let i = 0; i < 5; i++) {

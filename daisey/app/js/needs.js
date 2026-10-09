@@ -29,7 +29,7 @@ import { draftFrom } from "./caltask.js";
 import { pickWeekDay, answer, answerSnapshot, effectiveDue } from "./triage.js";
 import { localDate, pendingCheck, shrunk, shrinkPatch, dayAfter, notYet, pushedTo, bringBack } from "./model.js";
 import { sessionPatch, skipSlotPatch, weekState } from "./routine.js";
-import { dayHours } from "./day.js";
+import { dayHours, minText } from "./day.js";
 import { nudgeText, waLink } from "./nudge.js";
 import { daysUntil } from "./engine.js";
 import { collectNeeds, somedayDue } from "./needs-list.js";
@@ -149,6 +149,23 @@ export function mountNeeds(root, uid, { onClose } = {}){
         field: { id: "tripMin", placeholder: est ? "Minutes each way (optional)" : "Minutes each way", inputmode: "numeric" },
         yes: ["Train", go("train")], no: ["Driving", go("car")],
         more: [["Bus", go("bus")], ["It's not a trip", () => save(noTrip(item.city))]] };
+    }
+    // A meal the calendar leaves no room for (meals.js): today only.
+    if (item.kind === "meal") {
+      const m = item.meal, low = m.name.toLowerCase();
+      const setMeal = (v) => {
+        const today = localDate();
+        const mealToday = { ...(settings.mealToday?.date === today ? settings.mealToday : {}), date: today, [m.name]: v };
+        settings = { ...settings, mealToday };
+        saveSettings(uid, { mealToday }).catch(fail);
+        next();
+      };
+      const there = ["I'll eat there", () => setMeal("there")];
+      return { tone: "area-home", ico: "calendar", q: `${m.name} at ${m.at}?`,
+        sub: m.by.slice(0, 2).map((e) => `${e.title} ${clock(Date.parse(e.start))}–${clock(Date.parse(e.end))}`).join(", ") + ".",
+        item: "", say: m.move != null ? `No free time to eat then. Eating there, or ${low} at ${minText(m.move)}?` : "No free time to eat then, or near it.",
+        ...(m.move != null ? { yes: [`Move ${low} to ${minText(m.move)}`, () => setMeal(minText(m.move))], no: there }
+          : { yes: there, no: [`Skip ${low} today`, () => setMeal("there")] }) };
     }
     const t = find(item.id);
     if (!t) return null; // deleted since: skip it

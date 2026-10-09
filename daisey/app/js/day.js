@@ -30,7 +30,7 @@ export function dayHours(settings = {}){
   const base = s != null && e != null && e > s ? { start: s, end: e } : { ...W.DAY_HOURS };
   const today = settings.dayEndToday, end = toMin(today?.end);
   if (today?.date === localDate() && end != null && end > base.start) base.end = end;
-  base.meals = mealsOf(settings);
+  base.meals = mealsToday(settings);
   return base;
 }
 
@@ -50,6 +50,19 @@ export function mealPrefs(settings = {}){
 }
 export const mealsOf = (settings = {}) => mealPrefs(settings).filter((m) => m.on)
   .map(({ name, at, minutes }) => ({ name, from: at, to: Math.min(at + W.BREAKS.mealSlack, 1440), minutes }));
+
+// Today's answer to the meal question (meals.js, Mor 2026-10-09):
+// settings.mealToday = { date, [name]: "HH:MM" (moved, today only) | "there"
+// (eaten at the event, so the plan adds none) }. Tomorrow it's gone, like
+// dayEndToday.
+export function mealsToday(settings = {}, now = Date.now()){
+  const t = settings.mealToday?.date === localDate(now) ? settings.mealToday : {};
+  return mealsOf(settings).flatMap((m) => {
+    if (t[m.name] === "there") return [];
+    const at = toMin(t[m.name]);
+    return at == null ? [m] : [{ ...m, from: at, to: Math.min(at + W.BREAKS.mealSlack, 1440) }];
+  });
+}
 
 const atMin = (ms, min) => new Date(ms).setHours(0, min, 0, 0);
 export const dayStartAt = (now, hours = W.DAY_HOURS) => atMin(now, hours.start);
