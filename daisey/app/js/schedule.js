@@ -391,9 +391,10 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onProjects, onW
     // as the event, started that far back, so it creeps on with no timer.
     const orbit = on ? `--orbit:-${Date.now() % ORBIT_MS}ms;--dur:${x.end - x.start}ms;--el:-${Date.now() - x.start}ms;` : "";
     // Planned and never started isn't "over" (Mor, 2026-10-10): not dimmed
-    // like what happened, marked "Didn't happen" until it's re-planned.
+    // like what happened, and not red either ("negative"): a quiet "?" until
+    // it's re-planned.
     if (x.kind === "plan") { const pe = h("div", { className: "sc-row" + (x.missed ? " sc-missed" : on ? " sc-on" + areaClass(x.task) : past ? " sc-past" : ""), style: orbit },
-      h("span", { className: "sc-time strong" }, time, x.missed ? h("span", { className: "sc-misstag", textContent: "Didn't happen" }) : on && h("span", { className: "sc-nowtag", textContent: "Now" })),
+      h("span", { className: "sc-time strong" }, time, x.missed ? h("span", { className: "sc-misstag", textContent: "?", title: "Planned, not started", ariaLabel: "Planned, not started" }) : on && h("span", { className: "sc-nowtag", textContent: "Now" })),
       h("button", { type: "button", className: "sc-ev sc-plan" + areaClass(x.task), ariaLabel: `Planned: ${x.task.title}, ${time}`, onclick: () => onOpen?.(x.task) },
         h("span", { className: "sc-dot" }), bdi(x.task.title)));
       if (slots.includes(x)) { x.el = pe; draggable(x, pe, slots); pe.classList.add("sc-drag"); }

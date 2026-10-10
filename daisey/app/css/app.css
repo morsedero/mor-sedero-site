@@ -1337,10 +1337,12 @@ body.focus #side { display: none; }
 .sc-none:hover .sc-add, .sc-none:focus-visible .sc-add, .sc-gap:hover .sc-add, .sc-gap:focus-visible .sc-add { opacity: 1; }
 @media (hover: none) { .sc-add { opacity: .7; } }
 .sc-row.sc-past { opacity: .5; } /* already over today — still shown, quieter */
-/* Planned, its time gone, never started: not quieter like what happened. */
-.sc-row.sc-missed .sc-ev.sc-plan, .wk-ev.wk-plan.missed { background: none; border-color: var(--danger); color: var(--ink-2); text-decoration: line-through; text-decoration-color: var(--danger); }
-.sc-time .sc-misstag { display: block; inline-size: fit-content; margin-block-start: 3px; padding: 1px 7px; border-radius: 999px; border: 1px solid var(--danger); color: var(--danger); font-size: 11px; font-weight: 700; }
-.pp-row.missed .pp-time { color: var(--danger); text-decoration: line-through; }
+/* Planned, its time gone, never started: not faded like what happened, not
+   red either. Its own dashed block and a soft "?" (Mor, 2026-10-10). */
+.sc-row.sc-missed .sc-ev.sc-plan, .wk-ev.wk-plan.missed { background: none; border-color: var(--line); color: var(--ink-2); }
+.sc-time .sc-misstag { display: grid; place-items: center; inline-size: 20px; block-size: 20px; margin-block-start: 3px; border-radius: 50%; background: var(--chip); color: var(--ink-2); font-size: 12px; font-weight: 700; }
+.wk-ev.wk-plan.missed::before { content: "? "; font-weight: 700; }
+.pp-row.missed .pp-time { color: var(--ink-2); }
 /* The row on right now is one block of its colour, time column included (Mor, 2026-10-08). */
 .sc-row.sc-on:not(.sc-gap) { --rowbg: color-mix(in srgb, var(--ev, #8c8574) 16%, var(--card)); --rowline: var(--ev, #8c8574); --rowink: color-mix(in srgb, var(--ev, var(--ink-2)) 55%, var(--ink));
   position: relative; background: var(--rowbg); margin-inline: -6px; padding: 4px 6px; border-radius: 9px;

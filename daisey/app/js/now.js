@@ -1222,13 +1222,12 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     const b = behindNow();
     if (!b) return null;
     const { p, missed } = b, gone = b.cut.map((id) => tasks.find((t) => t.id === id)).filter(Boolean);
-    const list = (ts) => ts.flatMap((t, i) => [i ? (i === ts.length - 1 ? " and " : ", ") : "", bdi(t.title)]);
-    const why = b.why?.title ? [bdi(b.why.title), ` takes ${dur(b.why.minutes)}. `] : !missed.length ? ["The day's running behind. "] : [];
-    const text = [
-      ...(missed.length ? [...list(missed), " didn't happen. "] : []),
-      ...why,
-      ...(gone.length ? ["To fit the rest of today I'd take off ", ...list(gone), "."] : ["Re-plan the rest of today from now?"]),
-    ];
+    // One short line (Mor, 2026-10-10: the notices were too dense to read);
+    // the names are on the Today list, Edit shows the rest.
+    const text = missed.length && gone.length ? [`${missed.length} didn't happen, ${gone.length} won't fit.`]
+      : missed.length === 1 ? [bdi(missed[0].title), " didn't happen."]
+      : missed.length ? [`${missed.length} planned tasks didn't happen.`]
+      : [`Running behind: ${gone.length} won't fit.`];
     const replan = () => {
       savePlan("approved", b.items, { kept: p.kept || [], ...unseen(p, "added"), approvedAt: Date.now(), behindNo: null,
         ...(gone.length ? { cut: { ids: b.cut, ok: true, before: p.items, asked: [] } } : {}) });
@@ -1240,9 +1239,9 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
         h("span", { className: "toast-text" }, ...text),
         h("span", { className: "toast-acts" },
           h("button", { className: "toast-undo", type: "button", textContent: "Re-plan", ariaLabel: "Re-plan the rest of today from now", onclick: replan }),
-          h("button", { className: "toast-undo", type: "button", textContent: "Review", ariaLabel: "Open today's plan to change it",
+          h("button", { className: "toast-undo", type: "button", textContent: "Edit", ariaLabel: "Open today's plan, laid from now, to change it",
             onclick: () => { prop.replan = true; openProposal(); } }),
-          h("button", { className: "toast-undo", type: "button", textContent: "Not now", ariaLabel: "Not now",
+          h("button", { className: "toast-undo", type: "button", textContent: "Later", ariaLabel: "Not now",
             onclick: () => { savePlan("approved", p.items, { kept: p.kept || [], ...unseen(p, "cut"), ...unseen(p, "added"), behindNo: b.key }); render(); } }))));
   }
   // What shrank the day: a busy event added or moved since the plan was saved.
@@ -1306,8 +1305,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
       const keep = { kept: p.kept || [], ...unseen(p, "cut") };
       return h("div", { className: "toast plan-cut", role: "status" },
         h("div", { className: "toast-row" },
-          h("span", { className: "toast-text" }, "Your day opened up. Add ",
-            ...got.flatMap((t, i) => [i ? (i === got.length - 1 ? " and " : ", ") : "", bdi(t.title)]), " to today's plan?"),
+          h("span", { className: "toast-text" }, ...(got.length === 1 ? ["Time opened up. Add ", bdi(got[0].title), "?"] : [`Time opened up. Add ${got.length} tasks?`])),
           h("span", { className: "toast-acts" },
             h("button", { className: "toast-undo", type: "button", textContent: "Add", ariaLabel: "Add them to today's plan",
               onclick: () => { savePlan("approved", [...(p.items || []), ...offered], { ...keep, offer: null }); render(); } }),
@@ -1327,8 +1325,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     };
     return h("div", { className: "toast plan-cut", role: "status" },
       h("div", { className: "toast-row" },
-        h("span", { className: "toast-text" }, "Your day opened up, so I added ",
-          ...got.flatMap((t, i) => [i ? (i === got.length - 1 ? " and " : ", ") : "", bdi(t.title)]), " to today's plan."),
+        h("span", { className: "toast-text" }, ...(got.length === 1 ? ["Added ", bdi(got[0].title), " to the plan."] : [`Added ${got.length} tasks to the plan.`])),
         h("span", { className: "toast-acts" },
           h("button", { className: "toast-undo", type: "button", textContent: "Undo", ariaLabel: "Undo: take them off today's plan", onclick: undo }),
           h("button", { className: "toast-undo", type: "button", textContent: "OK", ariaLabel: "OK, got it",
@@ -1360,28 +1357,26 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     const gone = c.ids.map((id) => (tasks || []).find((t) => t.id === id)).filter(Boolean);
     if (!gone.length) return null;
     const n = gone.length;
-    const cause = c.why?.title ? [bdi(c.why.title), ` takes ${dur(c.why.minutes)}, so I took`] : ["The day's running behind, so I took"];
     // The follow-up: a real deadline today that no longer fits.
     const ask = gone.find((t) => t.status === "ready" && t.dateKind === "deadline" && t.due && t.due <= localDate() && !(c.asked || []).includes(t.id));
     const answer = (patch) => { if (patch) restoreTask(uid, ask.id, patch).catch(fail); cutSaved({ ...c, asked: [...(c.asked || []), ask.id] }); render(); };
     // A cut the user approved (behindView): only the deadline question is left.
     if (c.ok) return ask ? h("div", { className: "toast plan-cut", role: "status" },
       h("div", { className: "toast-why-row", role: "group", ariaLabel: `${ask.title} is due today` },
-        h("span", { className: "toast-text" }, bdi(ask.title), " is due today and came off the plan. Move the deadline?"),
-        h("button", { className: "toast-why", type: "button", textContent: "To tomorrow", onclick: () => answer(pushedTo(ask, { due: dayAfter(1) })) }),
+        h("span", { className: "toast-text" }, bdi(ask.title), " is due today. Move it?"),
+        h("button", { className: "toast-why", type: "button", textContent: "Tomorrow", onclick: () => answer(pushedTo(ask, { due: dayAfter(1) })) }),
         h("button", { className: "toast-why", type: "button", textContent: "Keep today", onclick: () => answer(null) }))) : null;
     return h("div", { className: "toast plan-cut", role: "status" },
       h("div", { className: "toast-row" },
-        h("span", { className: "toast-text" }, ...cause, ` ${n === 1 ? "one task" : `${n} tasks`} off today's plan: `,
-          ...gone.flatMap((t, i) => [i ? ", " : "", bdi(t.title)]), ". They're back in your list."),
+        h("span", { className: "toast-text" }, ...(n === 1 ? ["Took ", bdi(gone[0].title), " off the plan."] : [`Took ${n} tasks off the plan.`])),
         h("span", { className: "toast-acts" },
           h("button", { className: "toast-undo", type: "button", textContent: "Undo", ariaLabel: "Undo: put them back in today's plan",
             onclick: () => { savePlan("approved", c.before, { kept: c.before.filter((it) => it.taskId).map((it) => it.taskId) }); render(); } }),
           h("button", { className: "toast-undo", type: "button", textContent: "OK", ariaLabel: "OK, got it",
             onclick: () => { cutSaved({ ...c, seen: true }); render(); } }))),
       ask && h("div", { className: "toast-why-row", role: "group", ariaLabel: `${ask.title} is due today` },
-        h("span", { className: "toast-text" }, bdi(ask.title), " is due today. Move the deadline?"),
-        h("button", { className: "toast-why", type: "button", textContent: "To tomorrow", onclick: () => answer(pushedTo(ask, { due: dayAfter(1) })) }),
+        h("span", { className: "toast-text" }, bdi(ask.title), " is due today. Move it?"),
+        h("button", { className: "toast-why", type: "button", textContent: "Tomorrow", onclick: () => answer(pushedTo(ask, { due: dayAfter(1) })) }),
         h("button", { className: "toast-why", type: "button", textContent: "Keep today", onclick: () => answer(null) })));
   }
   function approve(){
@@ -1543,7 +1538,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
           : h("span", { className: "pp-time", ariaLabel: `${clock(r.start)} to ${clock(r.end)}` }, clock(r.start), h("small", { textContent: clock(r.end) })),
         h("button", { type: "button", className: "pp-task", ariaLabel: `Edit ${t.title}`, onclick: () => onOpen?.(t) },
           h("span", { className: "pp-title", dir: "auto", textContent: t.title }),
-          h("span", { className: "pp-meta" }, ...pieces(projectShown(t) ? t.project : "", dur(r.minutes), r.ride ? RIDE_ROW[r.ride] : "", isOver ? "" : r.missed ? "didn't happen" : late?.taskId === r.taskId ? "not started" : ""))),
+          h("span", { className: "pp-meta" }, ...pieces(projectShown(t) ? t.project : "", dur(r.minutes), r.ride ? RIDE_ROW[r.ride] : "", isOver ? "" : r.missed ? "did it happen?" : late?.taskId === r.taskId ? "not started" : ""))),
         h("span", { className: "pp-ctls" },
           ctl("✕", "Take off today's plan", false, () => dropItem(i))),
         isOver && r.room > 0 && h("button", { type: "button", className: "pp-fit", ariaLabel: `Shorten ${t.title} to ${dur(r.room)}`, onclick: () => shorten(i, r.room) },
