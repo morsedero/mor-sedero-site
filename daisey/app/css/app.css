@@ -1915,19 +1915,12 @@ body.focus .shell { block-size: auto; min-block-size: 100dvh; overflow: visible;
   .pcard.pp-dragging .bl-svg { animation: none; }
 }
 
-/* Focus mode's card fills the screen (Mor, 2026-10-10): area and length at
-   the top, the title big in the middle, the actions along the bottom, larger.
-   Same card, same actions; only the room changes. Not at night (the night
-   view keeps its own layout). */
+/* Focus mode (Mor, 2026-10-10): the card alone, a little roomier, resting
+   just above the middle of the screen. Same card, same actions. Not at
+   night (the night view keeps its own layout). */
 :root:not(.night) body.focus-mode .nowrow { flex: 1 1 auto; }
-:root:not(.night) body.focus-mode #nowcard { flex: 1 1 0; padding-block-end: max(16px, env(safe-area-inset-bottom)); }
-:root:not(.night) body.focus-mode #nowcard > .deck { flex: 1 0 auto; display: flex; flex-direction: column; }
-:root:not(.night) body.focus-mode .deck > .now-card.main { flex: 1 0 auto; display: flex; flex-direction: column; gap: 6px; padding: 18px 18px 16px; border-radius: 22px; }
-:root:not(.night) body.focus-mode .now-card.main .hero-top { font-size: 15px; }
-:root:not(.night) body.focus-mode .now-card.main .hero-area { font-size: 15px; }
-:root:not(.night) body.focus-mode .now-card.main .now-title { margin-block-start: auto; font-size: clamp(28px, 8vw, 40px); line-height: 1.15; letter-spacing: -0.02em; }
-:root:not(.night) body.focus-mode .now-card.main .now-why { font-size: 17px; }
-:root:not(.night) body.focus-mode .now-card.main .now-row { margin-block-start: auto; padding-block-start: 18px; gap: 10px; }
-:root:not(.night) body.focus-mode .now-card.main .now-row .iconbtn { inline-size: 64px; min-inline-size: 64px; block-size: 64px; min-block-size: 64px; border-radius: 16px; font-size: 12px; gap: 3px; }
-:root:not(.night) body.focus-mode .now-card.main .now-row .iconbtn svg { inline-size: 22px; block-size: 22px; }
-:root:not(.night) body.focus-mode .now-card.main .now-row .btn.start { block-size: 64px; min-block-size: 64px; border-radius: 16px; font-size: 20px; }
+:root:not(.night) body.focus-mode #nowcard { flex: 1 1 0; justify-content: center; padding-block-end: max(12vh, env(safe-area-inset-bottom)); }
+:root:not(.night) body.focus-mode .deck > .now-card.main { padding: 18px 18px 14px; border-radius: 20px; }
+:root:not(.night) body.focus-mode .now-card.main .now-title { margin-block-start: 6px; font-size: 23px; line-height: 1.2; letter-spacing: -0.01em; }
+:root:not(.night) body.focus-mode .now-card.main .now-why { font-size: 15px; }
+:root:not(.night) body.focus-mode .now-card.main .now-row { padding-block-start: 16px; }

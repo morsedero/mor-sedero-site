@@ -872,6 +872,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
   // Someday, stakes first; tap to select, then bring them back in one go.
   // "Just rest" closes it for the day, the same as the Someday ask's Not now.
   const QUIET = new Set(["waiting", "someday", "notyet", "stale"]);
+  const SWITCH_TOO = new Set(["size", "block", "place", "office", "evening", "booked"]);
   function restState(){
     const list = somedaySorted().slice(0, 3);
     const rested = settings.somedayAsked === localDate();
@@ -1709,7 +1710,12 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     const planRow = pn?.row && !(fw?.current && !fw.current.trip && pn.row.start > Date.now()) ? pn.row : null;
     const asCard = (id, task, whyParts) => ({ ...(r.ranked.find((s) => s.task.id === id) || { task }), whyParts });
     const firstProposed = !pn && prop.open && !approvedPlan() ? prop.items.find((it) => !isBreak(it) && (tasks || []).some((t) => t.id === it.taskId && t.status === "ready")) : null;
-    const card = (state.chosen && r.ranked.find((s) => s.task.id === state.chosen))
+    // Switch offers the rest of what's open too (Mor, 2026-10-10: not only
+    // On hold when nothing else fits): what the moment filters out (too long
+    // for the gap, office hours, another place, its own slot later) is still
+    // yours to pick. Put off today (skipped) and the quiet ones stay out.
+    const picked = (id) => r.out.find((o) => o.task.id === id && SWITCH_TOO.has(o.reason));
+    const card = (state.chosen && (r.ranked.find((s) => s.task.id === state.chosen) || (picked(state.chosen) && asCard(state.chosen, picked(state.chosen).task, ["your pick"]))))
       || (planned && r.ranked.find((s) => s.task.id === planned))
       || (planRow && asCard(planRow.taskId, planRow.task, planWhy(planRow)))
       || (firstProposed && asCard(firstProposed.taskId, tasks.find((t) => t.id === firstProposed.taskId), [focusOn() ? "first in your plan" : "first in the plan below"]))
@@ -1763,7 +1769,8 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     // Needs you is already asking about the slipped plan: the card doesn't too.
     const due = !behind && planDue(), dueNow = due?.taskId === card.task.id ? due : null;
     const missed = !dueNow && ms?.kind === "miss" ? ms : null;
-    const alts = r.ranked.length > 1 ? [r.pick, ...r.alternatives].filter((s) => s && s.task.id !== card.task.id).slice(0, 3) : [];
+    const alts = [...new Map([r.pick, ...r.alternatives, ...r.ranked, ...r.out.filter((o) => SWITCH_TOO.has(o.reason))]
+      .filter((s) => s && s.task.id !== card.task.id).map((s) => [s.task.id, { task: s.task }])).values()].slice(0, 5);
     // Done is the one loud thing on the tab; Switch, Pending and Later stay quiet beside it.
     const lead = missed ? missLead(card.task) : [];
     day(...head, deck(taskCard(dueNow ? dueWhy(card, dueNow) : missed ? missWhy(card, missed) : card, true,
