@@ -191,11 +191,7 @@ async function boot(){
   };
   // Account menu under the avatar.
   const menu = $("#acctMenu"), avatar = $("#avatar");
-  const setMenu = (open) => { menu.hidden = !open; avatar.setAttribute("aria-expanded", String(open));
-    // Stats in the menu (Mor, 2026-10-10): painted by projects.js while open.
-    const box = $("#acctStats"), stats = mounted?.projects?.stats;
-    box.hidden = !open || !stats;
-    stats?.(open ? box : null); };
+  const setMenu = (open) => { menu.hidden = !open; avatar.setAttribute("aria-expanded", String(open)); };
   avatar.onclick = (e) => { e.stopPropagation(); setMenu(menu.hidden); };
   document.addEventListener("click", (e) => { if (!menu.hidden && !menu.contains(e.target)) setMenu(false); });
   document.addEventListener("keydown", (e) => { if (e.key === "Escape") setMenu(false); });
@@ -209,6 +205,7 @@ async function boot(){
   const settings = $("#settingsdlg");
   $("#settingsBtn").onclick = () => { setMenu(false); settings.showModal(); };
   $("#projectsChip").onclick = () => window.__toggleProjects && window.__toggleProjects();
+  $("#weekChip").onclick = () => window.__toggleStats && window.__toggleStats();
   $("#settingsX").onclick = () => settings.close();
   settings.addEventListener("click", (e) => { if (e.target === settings) settings.close(); });
 
@@ -225,6 +222,7 @@ async function boot(){
     avatar.hidden = !user;
     $("#planChip").hidden = !user;
     $("#projectsChip").hidden = !user;
+    $("#weekChip").hidden = !user;
     if (!user) { show("signedout"); return; }
 
     const displayName = user.displayName || user.email || "Guest";
@@ -525,13 +523,24 @@ async function boot(){
         // The home panel: the Schedule, or Projects (the grid or one project)
         // in its place. The Projects button toggles between them (Mor, 2026-10-08).
         const syncPanel = () => {
-          const on = !$("#projPage").hidden || !$("#projectview").hidden, plan = !$("#planPage").hidden;
-          $("#schedPage").hidden = on || plan;
+          const on = !$("#projPage").hidden || !$("#projectview").hidden, plan = !$("#planPage").hidden, wk = !$("#statsPage").hidden;
+          $("#schedPage").hidden = on || plan || wk;
           $("#projectsChip").setAttribute("aria-pressed", String(on));
           $("#planChip").setAttribute("aria-pressed", String(plan));
-          $("#panel").setAttribute("aria-label", plan ? "Plan" : on ? "Projects" : "Schedule");
+          $("#weekChip").setAttribute("aria-pressed", String(wk));
+          $("#panel").setAttribute("aria-label", plan ? "Plan" : on ? "Projects" : wk ? "This week" : "Schedule");
+        };
+        // The Week page (Mor, 2026-10-10): the week's numbers and all
+        // routines, in the panel like Projects; projects.js paints it.
+        const closeStats = () => { if ($("#statsPage").hidden) return; $("#statsPage").hidden = true; m.projects?.stats(null); syncPanel(); };
+        window.__toggleStats = () => {
+          if (!$("#statsPage").hidden) return closeStats();
+          m.now?.closePlan(); m.projects.closeProject(); m.projects.closeAll();
+          if (history.state?.daisey === "project") history.back();
+          const box = $("#statsPage"); box.hidden = false; box.scrollTop = 0; m.projects.stats(box); syncPanel();
         };
         window.__toggleProjects = () => {
+          closeStats();
           if (!$("#planPage").hidden) m.now?.closePlan();
           if (!$("#schedPage").hidden) { m.projects.openAll(); syncPanel(); return; }
           m.projects.closeProject(); m.projects.closeAll(); syncPanel();
@@ -565,7 +574,7 @@ async function boot(){
           // Two frames so the panel and chips settle under the daisy first.
           onReady: () => requestAnimationFrame(() => requestAnimationFrame(splashOff)),
           onPlanScreen: (open) => {
-            if (open) { m.projects?.closeProject(); m.projects?.closeAll(); if (history.state?.daisey === "project") history.back(); }
+            if (open) { closeStats(); m.projects?.closeProject(); m.projects?.closeAll(); if (history.state?.daisey === "project") history.back(); }
             $("#planPage").hidden = !open; if (open) $("#planPage").scrollTop = 0; syncPanel();
           },
           onCard: (id) => m.projects?.setCurrent(id),

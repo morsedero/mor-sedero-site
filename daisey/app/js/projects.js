@@ -146,15 +146,16 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
   const hold = (on) => { dragging = on; if (!on && stale) { stale = false; render(); } };
   // Bloom lives on this page (bloom.js): the log or the period moved.
   const growth = mountGrowth(uid, { onChange: () => { if (dragging) { stale = true; return; } paintGrid(); } });
-  // The week's numbers live in the avatar menu (Mor, 2026-10-10): a growth
-  // of their own, watched only while the menu is open.
+  // The week's numbers live on the Week page (Mor, 2026-10-10): a growth
+  // of their own, watched only while it's open.
   let statsBox = null;
   const statsGrowth = mountGrowth(uid, { onChange: () => paintStats() });
-  // All routines sit under the numbers (Mor, 2026-10-10): the menu is the
-  // place for stats; the Projects page is for deciding.
+  // All routines sit under the numbers (Mor, 2026-10-10): the Week page is
+  // the place for stats; the Projects page is for deciding.
   function paintStats(){ if (!statsBox) return;
     const all = list(), g = statsGrowth.read(tasks || [], all.map((p) => p.name));
-    statsBox.replaceChildren(...statsCard(g), routinesSection(g.routines, tasks || [], new Map(all.map((p) => [p.name, p.color || ""]))) || ""); }
+    statsBox.replaceChildren(...statsCard(g), routinesSection(g.routines, tasks || [], new Map(all.map((p) => [p.name, p.color || ""])))
+      || h("p", { className: "bl-note", textContent: "No routines yet." })); }
 
   // ---------- the Projects page ----------
   // Tiers (Mor, 2026-10-08): Focus, Keep going, Background. The engine

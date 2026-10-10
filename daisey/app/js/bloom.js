@@ -2,7 +2,7 @@
 // daisey/STATS_PLAN.md). The Projects page is the garden now: each project
 // card carries its flower — taller with the time it got this period, a petal
 // for every task finished, a closed bud when it got none — the routines
-// and the week's numbers sit in the avatar menu. This file is the
+// and the week's numbers sit on the Week page. This file is the
 // growing half: the work log, the calendar's past events, the period, and the
 // pieces drawn from them. projects.js lays them out. Calm on purpose: no red,
 // no "behind", no goals that aren't the user's own.
@@ -123,7 +123,7 @@ export function mountGrowth(uid, { onChange } = {}){
   };
 }
 
-// The week's numbers, in the avatar menu (Mor, 2026-10-10: off the Projects
+// The week's numbers, on the Week page (Mor, 2026-10-10: off the Projects
 // page, week only). Three quiet figures in one box, like the theme switch
 // beside them; a bee line once a routine has a streak.
 export function statsCard(g){
