@@ -1627,7 +1627,6 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     // around it (CSS body.focus-mode). Done goes straight to the next card.
     const fm = focusOn();
     if (fm && handoff) handoff = null;
-    document.body.classList.toggle("focus-mode", fm);
     if (fm !== reportedFocus) { reportedFocus = fm; onFocusMode?.(fm); }
     document.body.classList.toggle("focus", !!handoff);
     const hrs = dayHours(settings);
@@ -1637,6 +1636,9 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     const riding = cal.status === "ok" && cal.events.some((e) => e.trip && Date.parse(e.start) <= Date.now() && Date.now() < Date.parse(e.end));
     const night = !handoff && tasks != null && dark && !nightFree && !riding;
     document.documentElement.classList.toggle("night", night);
+    // Not on the late/early pages (Mor, 2026-10-11): no card to focus on, so
+    // the mode waits (the setting stays) and its chip hides (CSS :root.night).
+    document.body.classList.toggle("focus-mode", fm && !night);
     const n = doneCount();
     if (n !== reported) { reported = n; onDone?.(n); }
     const pp = planProgressNow(), ppKey = pp ? `${pp.done}/${pp.total}` : "";

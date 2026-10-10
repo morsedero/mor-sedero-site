@@ -1554,6 +1554,7 @@ body.focus #side { display: none; }
    open, their page takes the place of the Tomorrow-first card (Mor, 2026-10-08). */
 :root.night .nowrow { flex-direction: column; gap: 0; }
 :root.night #nowcard { display: contents; }
+:root.night #focusChip { display: none; } /* no Focus on the late/early pages */
 :root.night #nowcard > * { order: 3; }
 :root.night #nowcard > .now-greet, :root.night #nowcard > .stars, :root.night #nowcard > .night-hero { order: 0; }
 /* Night's top as the main page's (Mor, 2026-10-11, "make it as main card and
