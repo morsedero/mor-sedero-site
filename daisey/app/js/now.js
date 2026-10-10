@@ -1477,17 +1477,31 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
         own && h("span", { className: "pp-ctls" },
           h("button", { type: "button", className: "pp-ctl", textContent: "✕", title: `Take the ${name.toLowerCase()} off`, ariaLabel: `Take the ${name.toLowerCase()} off`, onclick: () => dropItem(b.i) })));
     };
+    // Today's events still to come, as the Schedule draws them (Mor,
+    // 2026-10-10): the plan is laid around them. A tap opens the event like
+    // on the Schedule; they're not the plan's, so they don't drag or come off.
+    const evRow = (ev) => {
+      const s = Date.parse(ev.start), e = Date.parse(ev.end), t = ev.taskId && tasks?.find((x) => x.id === ev.taskId);
+      const tone = t ? areaClass(t) : "", time = h("span", { className: "pp-time", ariaLabel: `${clock(s)} to ${clock(e)}` }, clock(s), h("small", { textContent: clock(e) }));
+      if (ev.trip) return h("li", { className: "pp-row pp-event" }, time,
+        h("span", { className: "sc-ev sc-trip", ariaLabel: `${ev.title}, ${clock(s)} to ${clock(e)}` }, h("span", { className: "sc-evi" }, icon("later")), ev.title));
+      return h("li", { className: "pp-row pp-event" }, time,
+        h("button", { type: "button", className: "sc-ev" + tone, style: ev.color ? `--ev:${ev.color}` : "", ariaLabel: `${ev.title}, ${clock(s)} to ${clock(e)}`,
+          onclick: () => onEvent?.(ev) }, h("span", { className: "sc-evi" }, icon("calendar")), bdi(ev.title)));
+    };
+    const night = new Date(); night.setHours(24, 0, 0, 0);
+    const evs = cal.status !== "ok" ? [] : cal.events.filter((e) => !e.allDay && !/^✓\s*/u.test(e.title || "")
+      && Date.parse(e.end) > Date.now() && Date.parse(e.start) < night.getTime());
     const plural = (n) => (n === 1 ? ["One doesn't", "it"] : [`${n} don't`, "them"]);
     return h("section", { className: "now-card main hero proposal", ariaLabel: approved ? "Today's plan" : "Proposed schedule" },
       h("div", { className: "hero-top" },
         h("span", { className: "hero-area", textContent: approved ? "Today's plan" : "Proposed for today" }),
         rows.length > 0 && h("span", { className: "hero-side", textContent: `${dur(total)} · until ${clock(last.end)}` })),
-      rows.length || over.length
-        ? dragRows(h("ol", { className: "pp-list" },
-          ...[...rows.map((r) => ({ r, s: r.start })), ...breaks.map((b) => ({ b, s: b.start }))]
-            .sort((a, b) => a.s - b.s).map((x) => (x.b ? breakRow(x.b) : row(x.r, false))),
-          ...over.map((r) => row(r, true))))
-        : h("p", { className: "now-empty", textContent: "No open task fits the free time left today." }),
+      (rows.length || over.length || evs.length) > 0 && dragRows(h("ol", { className: "pp-list" },
+          ...[...rows.map((r) => ({ r, s: r.start })), ...breaks.map((b) => ({ b, s: b.start })), ...evs.map((ev) => ({ ev, s: Date.parse(ev.start) }))]
+            .sort((a, b) => a.s - b.s).map((x) => (x.ev ? evRow(x.ev) : x.b ? breakRow(x.b) : row(x.r, false))),
+          ...over.map((r) => row(r, true)))),
+      !rows.length && !over.length && h("p", { className: "now-empty", textContent: "No open task fits the free time left today." }),
       // Overflow is cut by refitPlan (2026-10-08); what's left here is what
       // the user put back with Undo. Late in the
       // day it says so and offers a fresh take on what's left.

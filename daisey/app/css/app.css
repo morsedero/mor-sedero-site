@@ -1561,6 +1561,9 @@ body.focus .shell { block-size: auto; min-block-size: 100dvh; overflow: visible;
 .pp-list { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 6px; }
 .pp-row { display: grid; grid-template-columns: 44px minmax(0, 1fr) auto; align-items: center; gap: 8px; padding: 6px 6px 6px 10px; border-radius: 12px; background: color-mix(in srgb, var(--card) 70%, var(--tint)); border: 1px solid var(--aline); }
 .pp-row.over { border-style: dashed; }
+/* A calendar event in the plan (2026-10-10): the Schedule's own block, no row box; taps open it, never drags. */
+.pp-row.pp-event { background: none; border-color: transparent; padding-block: 0; padding-inline-end: 0; }
+.pp-event .sc-ev { grid-column: 2 / -1; min-block-size: 32px; font-size: 13.5px; }
 /* Drag a row to reorder (ppdrag.js); the rows in the way slide over (pusher) */
 .pushing > :not(.pp-dragging):not(.sc-dragging) { transition: transform .18s ease; }
 @media (prefers-reduced-motion: reduce) { .pushing > * { transition: none; } }
