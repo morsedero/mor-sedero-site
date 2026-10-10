@@ -323,7 +323,8 @@ textarea {
   position: fixed; z-index: 7; inset-block-end: max(20px, env(safe-area-inset-bottom));
   inset-inline: 16px; margin-inline: auto; inline-size: fit-content; max-inline-size: 360px;
   padding: 6px 8px 6px 14px; border-radius: 12px;
-  background: var(--ink); color: var(--card); box-shadow: 0 6px 18px rgb(0 0 0 / .3);
+  background: color-mix(in srgb, var(--ink) 72%, transparent); color: var(--card);
+  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); box-shadow: 0 4px 14px rgb(0 0 0 / .18);
 }
 .toast { display: flex; flex-direction: column; gap: 4px; animation: toast-in .18s ease-out backwards; animation-delay: calc(0ms - var(--age, 0ms)); }
 /* Undo toasts also fade out over the last .3s of their 3.5s (UNDO_MS in ui.js / now.js). */
