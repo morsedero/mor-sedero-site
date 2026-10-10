@@ -93,8 +93,5 @@ export function freeDur(min){
   return `${Math.floor(m / 60)} h${m % 60 ? ` ${m % 60}` : ""}`;
 }
 
-// Which way a piece of text reads, from its first strong letter — for rows
-// that have to flip as a whole (checkbox on the right for Hebrew). dir=auto
-// can't do it there: it skips <bdi>, which is where the titles live.
-const RTL_FIRST = /^[^\p{L}]*[֐-ࣿיִ-﷿ﹰ-﻿]/u;
-export const dirOf = (text) => (RTL_FIRST.test(String(text || "")) ? "rtl" : "ltr");
+// No row flips for Hebrew any more (Mor, 2026-10-10): every name starts at
+// the left edge; app.css [dir="auto"] keeps the text itself reading right.

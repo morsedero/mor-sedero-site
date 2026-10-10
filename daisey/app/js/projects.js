@@ -26,7 +26,7 @@ import { isRoutine } from "./routine.js";
 import { dropSeries } from "./slots.js";
 import { isOverdue } from "./triage.js";
 import { h, bdi, flash, icon, askProgress, sizeChip, progressBar, weekDots } from "./ui.js";
-import { dirOf, setProjectColors } from "./look.js";
+import { setProjectColors } from "./look.js";
 import { setProjectTiers } from "./context.js";
 import { TIERS, FOCUS_MAX } from "./weights.js";
 // How many projects Focus holds: Settings, 1–5 (Mor, 2026-10-10); FOCUS_MAX (3) until set.
@@ -230,7 +230,7 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
       return h("button", { type: "button", className: "pcard pp-drag" + colorClass(p) + (glow(p) ? " landed" : ""), style: glow(p) ? `animation-delay:-${Date.now() - landed.at}ms` : "", _name: p.name, onclick: () => openProject(p.name) },
         f && h("span", { className: "pcard-fl" + (f.bud ? " bud" : "") + (g.pops.has(p.name) ? " pop" : ""), style: `--d:-${(swayAt() + i * 0.9).toFixed(2)}s` }, flowerSvg(f)),
         h("span", { className: "pcard-body" },
-          h("span", { className: "pcard-top", dir: dirOf(p.name) },
+          h("span", { className: "pcard-top" },
             h("span", { className: "pcard-name", dir: "auto", textContent: p.name })),
           h("span", { className: "pcard-row" },
             h("span", { className: "pcard-status" }, ...statusLine(p))),
@@ -449,7 +449,7 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
     }
     return parts.flatMap((x, i) => (i ? [" · ", x] : [x]));
   }
-  const taskBtn = (t, kids) => h("button", { type: "button", className: "pj-task" + (notYet(t) ? " later" : ""), dir: dirOf(t.title),
+  const taskBtn = (t, kids) => h("button", { type: "button", className: "pj-task" + (notYet(t) ? " later" : ""),
     ariaLabel: `Open ${t.title}`, onclick: () => onOpen?.(t) }, ...kids);
 
   // A done task's tick reopens it; Bring back takes one out of Not now.
@@ -466,10 +466,10 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
   }
   const toggle = (key, ...kids) => h("button", { type: "button", className: "pj-tg", ariaExpanded: String(drawer === key),
     onclick: () => { drawer = drawer === key ? null : key; paintView(); } }, ...kids, h("span", { className: "pj-car", ariaHidden: "true", textContent: "▸" }));
-  const doneRow = (t) => h("div", { className: "pj-drow", dir: dirOf(t.title) },
+  const doneRow = (t) => h("div", { className: "pj-drow" },
     h("button", { type: "button", className: "pj-tick on", ariaLabel: `Reopen: ${t.title}`, onclick: () => reopen(t) }, icon("check")),
     h("button", { type: "button", className: "pj-quiet done", onclick: () => onOpen?.(t) }, bdi(t.title)));
-  const notNowRow = (t) => h("div", { className: "pj-drow", dir: dirOf(t.title) },
+  const notNowRow = (t) => h("div", { className: "pj-drow" },
     h("button", { type: "button", className: "pj-quiet", onclick: () => onOpen?.(t) }, bdi(t.title)),
     h("button", { type: "button", className: "pj-bring", textContent: "Bring back", onclick: () => bringBackTask(t) }));
 
@@ -506,8 +506,8 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
     els.view.replaceChildren(...[
       h("div", { className: "pj-top" },
         h("button", { type: "button", className: "pj-back", ariaLabel: "Back", onclick: () => onScreen?.(null) }, icon("back")), chips),
-      h("div", { className: "pj-card" + (dirOf(p.name) === "rtl" ? " rtl" : "") },
-        h("div", { className: "pj-card-top", dir: dirOf(p.name) }, h("h2", { className: "pj-name" + (p.name === INBOX ? "" : " rename"), dir: "auto", textContent: p.name,
+      h("div", { className: "pj-card" },
+        h("div", { className: "pj-card-top" }, h("h2", { className: "pj-name" + (p.name === INBOX ? "" : " rename"), dir: "auto", textContent: p.name,
           ...(p.name === INBOX ? {} : { role: "button", tabIndex: 0, title: "Edit project", onclick: () => askRename(p.name),
             onkeydown: (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); askRename(p.name); } } }) }),
           h("span", { className: "pj-pct", textContent: `${Math.round(progress(p) * 100)}%` })),

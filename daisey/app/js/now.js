@@ -36,7 +36,7 @@ import { waitingFor, personOf } from "./nudge.js";
 import { dayHours, isNight, nextMorning, dayEndAt, bookings, sameTitle, minText, gapsToday } from "./day.js";
 import { collectNeeds, wrapList } from "./needs.js";
 import { h, icon, bdi, pieces, sizeText, sizeChip, progressBar, dur, say, nightDivider, flash, weekDots, focusField } from "./ui.js";
-import { areaClass, areaName, projectShown, doneToday, dirOf, moonDaisy, watchProjectColors } from "./look.js";
+import { areaClass, areaName, projectShown, doneToday, moonDaisy, watchProjectColors } from "./look.js";
 
 const LATER_MS = LATER_MINUTES * 60000;
 const UNDO_MS = 3500;
@@ -1014,7 +1014,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
       h("ul", { className: "sd-pick" }, ...list.map((t) => {
         const on = sd.sel.includes(t.id);
         const meta = [areaName(t) || projectShown(t), dur(t.size)].filter(Boolean).join(" · ");
-        return h("li", {}, h("button", { type: "button", className: "sd-row" + (on ? " on" : ""), dir: dirOf(t.title),
+        return h("li", {}, h("button", { type: "button", className: "sd-row" + (on ? " on" : ""),
           ariaPressed: String(on), ariaLabel: `Bring back ${t.title}${MARK[t.stakes] ? ` (${MARK[t.stakes]})` : ""}`,
           onclick: () => { sd.sel = on ? sd.sel.filter((id) => id !== t.id) : [...sd.sel, t.id]; render(); } },
         h("span", { className: "sd-text" },

@@ -68,6 +68,10 @@ body {
   color: var(--ink);
   min-block-size: 100dvh;
 }
+/* One anchor for every name, Hebrew or English (Mor, 2026-10-10): text
+   keeps its own direction (dir="auto") but starts at the left edge like the
+   rest of the app. Fields keep their natural side while typing. */
+[dir="auto"]:not(input):not(textarea) { text-align: left; }
 
 .shell {
   max-inline-size: 520px;
@@ -611,7 +615,6 @@ dialog.now:focus { outline: none; }
 .sd-text { flex: 1; min-inline-size: 0; display: grid; gap: 4px; }
 .sd-title { font-size: 16px; font-weight: 600; overflow-wrap: anywhere; }
 .sd-meta { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-size: 12px; color: var(--ink-2); }
-.sd-row[dir="rtl"] .sd-meta { justify-content: flex-end; }
 .tag { font-size: 12px; font-weight: 500; color: #8a4b00; background: #fff1cc; border-radius: 999px; padding: 2px 8px; }
 :root[data-theme="dark"] .tag, :root.night .tag { color: #f0c35a; background: #2a2210; }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .tag { color: #f0c35a; background: #2a2210; } }
@@ -999,7 +1002,6 @@ body:has(.screen:not([hidden])) { overflow: hidden; }
 /* Children of .screen keep its centring (margin-inline: auto): the 20px
    gutter is a narrower width, not a side margin, or wide screens pin them left. */
 .pj-card { margin: 8px max(20px, (100% - 520px) / 2) 0 max(20px, (100% - 520px) / 2); margin-right: auto; inline-size: 67%; max-inline-size: 373px; padding: 11px 14px 10px; border-radius: 16px; background: var(--surface); border: 1px solid var(--aline); box-shadow: 0 6px 20px color-mix(in srgb, var(--aink) 12%, transparent); }
-.pj-card.rtl { margin-left: auto; margin-right: max(20px, (100% - 520px) / 2); } /* Hebrew name: card hugs the right, English the left (Mor, 2026-10-08). */
 .pj-card-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .pj-name { margin: 0; min-inline-size: 0; font-size: 18px; font-weight: 700; letter-spacing: -0.3px; line-height: 1.15; overflow-wrap: anywhere; }
 .pj-name.rename { cursor: pointer; flex: 1 1 auto; padding-block: 10px; margin-block: -10px; }
@@ -1052,7 +1054,6 @@ body:has(.screen:not([hidden])) { overflow: hidden; }
 .pj-date.soon { color: var(--p-orange-ink); font-weight: 600; }
 .pj-date.over { color: var(--danger); font-weight: 700; }
 /* Meta is English chrome: ltr keeps "1h · from Wed" in order, aligned to an RTL title's side. */
-.pj-task[dir="rtl"] .pj-meta { text-align: right; }
 .pj-who { flex: none; display: grid; place-items: center; inline-size: 24px; block-size: 24px; border-radius: 50%; background: var(--chip); color: var(--ink); font-size: 11px; font-weight: 600; }
 .pj-del { display: block; margin: 20px auto 0; min-block-size: 36px; padding-inline: 14px; border: 0; border-radius: 10px; background: none; color: var(--danger); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
 .pj-add { inline-size: 100%; min-block-size: 36px; margin-block-start: 6px; padding-inline: 12px; border: 1px solid var(--aline); border-radius: 12px; background: color-mix(in srgb, var(--tint) 60%, var(--surface)); color: var(--aink); font: inherit; font-size: 13px; font-weight: 600; text-align: start; cursor: pointer; }
