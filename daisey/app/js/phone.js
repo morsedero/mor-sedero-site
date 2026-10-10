@@ -8,6 +8,7 @@
 // Firebase loads only when asking, so the planner (proposal.js) can read the
 // answers without it.
 import { localDate } from "./model.js";
+const FIREBASE = "./firebase.js";
 
 const URL_ = "/.netlify/functions/daisey-now-chat";
 const KEY = "daisey.phoneOk.v1";
@@ -39,7 +40,10 @@ export async function findPhoneTasks(tasks = [], { guest = false } = {}){
   try {
     const headers = { "Content-Type": "application/json" };
     if (guest) headers["X-Daisey-Guest"] = "1";
-    else headers.Authorization = `Bearer ${await (await import("./firebase.js")).idToken()}`;
+    // A name in a variable, so the server's bundler (esbuild, for notify.js via
+    // brief → proposal → here) never pulls the browser-only firebase.js in; its
+    // top-level await broke the push function's bundle (2026-10-10).
+    else headers.Authorization = `Bearer ${await (await import(FIREBASE)).idToken()}`;
     const res = await fetch(URL_, {
       method: "POST", headers,
       body: JSON.stringify({ mode: "phone", today: localDate(),

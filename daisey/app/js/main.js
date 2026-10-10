@@ -280,23 +280,25 @@ async function boot(){
         // Connect Trello (import-trello.js): whether it's linked is asked once
         // here, and again each time Settings opens. A guest has no Google
         // account to link it to.
-        const trelloBtn = $("#connectTrello"), trelloNote = $("#trelloNote");
+        // Laid out like Google's row (Mor, 2026-10-10): status on the right,
+        // what you can do with it (Import cards…) under the name.
+        const trelloBtn = $("#connectTrello"), trelloNote = $("#trelloNote"), importBtn = $("#importTrello");
+        trelloBtn.onclick = connectTrello;
+        importBtn.onclick = () => { $("#settingsdlg").close(); m.importer.open(); };
         const paintTrello = (on) => {
-          trelloBtn.hidden = isGuest;
-          trelloBtn.textContent = on ? "Import" : "Connect";
-          trelloBtn.onclick = on ? () => { $("#settingsdlg").close(); m.importer.open(); } : connectTrello;
-          connNote(trelloNote, isGuest ? "Sign in first" : on ? "" : "Not connected");
+          trelloBtn.hidden = isGuest || on;
+          importBtn.hidden = isGuest || !on;
+          connNote(trelloNote, isGuest ? "Sign in first" : on ? "Connected" : "Not connected");
         };
         const checkTrello = () => { if (!isGuest) trelloConnected().then(paintTrello); else paintTrello(false); };
         $("#settingsBtn").addEventListener("click", checkTrello);
         checkTrello();
         const fail = (e) => console.error("[daisey] menu", e);
-        // Connected is a green dot; anything else says what's wrong (Mor, 2026-10-10).
+        // Status is a dot (Mor, 2026-10-10): green connected, amber expired,
+        // grey not connected; the words are its label, and the button beside it acts.
         function connNote(el, text){
-          el.textContent = text;
-          el.className = text ? "" : "conn-dot";
-          if (text) { el.removeAttribute("role"); el.removeAttribute("aria-label"); el.removeAttribute("title"); }
-          else { el.setAttribute("role", "img"); el.setAttribute("aria-label", "Connected"); el.title = "Connected"; }
+          el.className = "conn-dot " + ({ Connected: "on", Expired: "expired" }[text] || "off");
+          el.setAttribute("role", "img"); el.setAttribute("aria-label", text); el.title = text;
         }
         // Day hours in the account menu (DAISEY_SPEC "Day hours"), saved on change.
         const start = $("#dayStart"), end = $("#dayEnd");
@@ -423,7 +425,10 @@ async function boot(){
               ? h("span", { className: "meal-when" },
                   stepper(m),
                   h("select", { className: "menu-select", ariaLabel: `${m.name} length`, onchange: (e) => { m.minutes = +e.target.value; saveMeals(); } },
-                    ...[...new Set([...MEAL_LENS, m.minutes])].sort((a, b) => a - b).map((n) => h("option", { value: n, selected: n === m.minutes, textContent: `${n} min` }))))
+                    ...[...new Set([...MEAL_LENS, m.minutes])].sort((a, b) => a - b).map((n) => h("option", { value: n, selected: n === m.minutes, textContent: `${n} min` }))),
+                  // Done: folds back to its line (Mor, 2026-10-10: an edit needs an end).
+                  h("button", { type: "button", className: "meal-ok", ariaLabel: `Done with ${m.name}`, title: "Done",
+                    onclick: () => { mealOpen = null; drawMeals(); } }, icon("check")))
               : h("button", { type: "button", className: "meal-sum", textContent: `${minText(m.at)} · ${m.minutes} min`, ariaLabel: `${m.name} at ${minText(m.at)}, ${m.minutes} minutes. Change`,
                   onclick: () => { mealOpen = m.name; drawMeals(); } })))));
         }
@@ -526,7 +531,7 @@ async function boot(){
           pickBtn.hidden = isGuest || !calOk;
           connectBtn.hidden = isGuest || calOk;
           connectBtn.textContent = c.status === "needs_reauth" ? "Reconnect" : "Connect";
-          connNote(calNote, isGuest ? "Sign in first" : calOk ? "" : c.status === "needs_reauth" ? "Expired" : "Not connected");
+          connNote(calNote, isGuest ? "Sign in first" : calOk ? "Connected" : c.status === "needs_reauth" ? "Expired" : "Not connected");
         });
         m.menu = { unmount(){ stopSettings(); stopCal(); stopBriefTasks(); stopBriefRun(); stopBriefPlan(); clearInterval(seenTick); document.removeEventListener("visibilitychange", seen); settingsDlg.removeEventListener("click", foldMeal); settingsDlg.removeEventListener("close", shutMeal); start.onchange = end.onchange = logSwitch.onchange = laptopAsk.onchange = pushSwitch.onchange = pushTest.onclick = null;
           kindBoxes.forEach((b) => { b.onchange = null; }); } };
