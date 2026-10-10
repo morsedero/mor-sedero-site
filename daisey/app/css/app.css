@@ -1556,8 +1556,13 @@ body.focus #side { display: none; }
 :root.night #nowcard { display: contents; }
 :root.night #nowcard > * { order: 3; }
 :root.night #nowcard > .now-greet, :root.night #nowcard > .stars, :root.night #nowcard > .night-hero { order: 0; }
-:root.night #side { order: 1; flex-direction: row; inline-size: auto; align-self: stretch; padding-block: 14px 0; position: relative; z-index: 1; }
-:root.night #side .hchip { flex: 1 1 0; min-block-size: 48px; flex-direction: row; gap: 6px; font-size: 12px; }
+/* Night's top as the main page's (Mor, 2026-10-11, "make it as main card and
+   those 3 buttons, like in main page"): the hero at the Now card's 150px, the
+   three chips in the day's right column beside it. The column still sits in
+   .nowrow's flex column (the foot needs margin-top:auto), pulled up beside
+   the hero by its own height. */
+:root.night #side { order: 1; align-self: flex-end; block-size: 150px; padding-block: 0; margin-block-start: -150px; position: relative; z-index: 1; }
+:root.night #panel { margin-block-start: 15px; } /* the day's gap under the card (#side's 15px) */
 :root.night:has(#planPage:not([hidden]), #projPage:not([hidden]), #projectview:not([hidden])) #nowcard > .now-card, :root.night:has(#planPage:not([hidden]), #projPage:not([hidden]), #projectview:not([hidden])) #nowcard > .night-foot, :root.night:has(#planPage:not([hidden]), #projPage:not([hidden]), #projectview:not([hidden])) #nowcard > .night-today { display: none; }
 :root.night #nowcard, body.focus #nowcard { flex: 1 1 auto; }
 :root.night .nowrow, body.focus .nowrow { flex: 1 1 auto; align-items: stretch; }
@@ -1565,12 +1570,12 @@ body.focus #side { display: none; }
 :root.night .nowrow #nowcard, body.focus .nowrow #nowcard { flex: 1 1 0; }
 :root.night .night-foot { margin-block-start: auto; padding-block-start: 20px; }
 :root.night .night-hero { margin-block-start: 12px; }
-/* The night hero: one short row, the moon beside the words (Mor, 2026-10-10:
-   "make the top smaller"; it was the main card's 150px footprint). */
-:root.night .night-hero { align-self: stretch; flex-direction: row; align-items: center; justify-content: flex-start; gap: 12px; text-align: start; padding: 10px 14px; border-radius: 20px; background: var(--card); border: 1px solid var(--line); }
-:root.night .night-hero .moon-daisy { inline-size: 36px; block-size: 36px; flex: none; }
-:root.night .night-h { margin: 0 0 2px; font-size: 17px; }
-:root.night .night-p { font-size: 13px; }
+/* The night hero at the main card's size and padding, the moon above the words
+   (was one short row, 2026-10-10; back to the main card's footprint 10-11). */
+:root.night .night-hero { align-self: stretch; box-sizing: border-box; block-size: 150px; margin-inline-end: 82px; flex-direction: column; align-items: flex-start; justify-content: center; gap: 6px; text-align: start; padding: 8px 15px 13px; border-radius: 20px; background: var(--card); border: 1px solid var(--line); }
+:root.night .night-hero .moon-daisy { inline-size: 40px; block-size: 40px; flex: none; }
+:root.night .night-h { margin: 0 0 2px; font-size: 18px; }
+:root.night .night-p { font-size: 13px; line-height: 1.35; }
 :root.night .now-card.main.night { margin-block-start: 20px; }
 :root.night .night-today { margin-block-start: 20px; }
 /* Today's wrap at the main page's sizes (Mor, 2026-10-11): the .glance box
