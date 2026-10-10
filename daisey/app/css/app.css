@@ -1612,6 +1612,8 @@ body.focus .shell { block-size: auto; min-block-size: 100dvh; overflow: visible;
 .now-card.main .pp-actions .btn.start { display: inline-flex; align-items: center; justify-content: center; gap: 6px; font-size: 16px; }
 .pp-actions .btn.start svg { inline-size: 18px; block-size: 18px; }
 .done-list .pp-actions { grid-template-columns: 1fr; }
+/* "No plan" (was "Not today", 2026-10-10): a soft brick tint, so declining reads as a choice, not an alarm. */
+.now-card.main .pp-actions .btn.no-plan { background: var(--p-brick-tint); border: 1px solid var(--p-brick-line); color: var(--p-brick-ink); font-weight: 600; }
 @media (max-width: 359px) { .pp-ctl { inline-size: 28px; } }
 /* Once approved: one quiet line above the card. */
 .plan-line { display: flex; align-items: center; gap: 8px; inline-size: 100%; min-block-size: 36px; padding: 0 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--card); font: inherit; font-size: 13px; color: var(--ink); text-align: start; cursor: pointer; }

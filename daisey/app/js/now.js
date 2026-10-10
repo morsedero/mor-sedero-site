@@ -1500,7 +1500,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
           icon("check"), h("span", { textContent: approved ? "Save plan" : "Approve" })),
         h("button", { className: "btn line", type: "button", ariaExpanded: "false", disabled: prop.busy,
           textContent: prop.busy ? "Thinking…" : "Rethink", onclick: () => { prop.ask = true; render(); } }),
-        h("button", { className: "btn quiet", type: "button", textContent: approved ? "Close" : "Not today", onclick: approved ? closeProposal : dismiss })));
+        h("button", { className: approved ? "btn quiet" : "btn no-plan", type: "button", textContent: approved ? "Close" : "No plan", onclick: approved ? closeProposal : dismiss })));
   }
   // Once a plan is approved, how far along it is goes to the header chip
   // (next to Needs you); tapping it reopens the plan to change it.
