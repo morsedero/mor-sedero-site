@@ -28,6 +28,16 @@ export function localParts(ms, tz) {
   return { date: `${p.year}-${p.month}-${p.day}`, minutes: Number(p.hour) * 60 + Number(p.minute) };
 }
 
+// The day's clock when the day can run past midnight (dayEnd up to 1679 =
+// 03:59, app day.js dayHours; night owls, Mor 2026-10-11): after midnight,
+// until that end, it's still yesterday, at 24:00 and on.
+export function dayParts(ms, tz, dayEnd = 1320) {
+  const p = localParts(ms, tz);
+  if (dayEnd <= 1440 || p.minutes >= dayEnd - 1440) return p;
+  const [y, m, d] = p.date.split("-").map(Number);
+  return { date: new Date(Date.UTC(y, m - 1, d - 1)).toISOString().slice(0, 10), minutes: p.minutes + 1440 };
+}
+
 // Epoch ms of `minutes` after midnight on `date` in `tz` (checked twice, so a
 // DST change that day lands right).
 export function zoned(date, minutes, tz) {

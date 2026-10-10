@@ -6,7 +6,7 @@
 // twice. (Named for the morning brief, its first job.)
 const { store, update, readEvents, sendAll, logged } = require("./_daisey-lib/morning");
 const { decide } = require("./_daisey-lib/notify");
-const { localParts } = require("../app/js/brief.js");
+const { dayParts } = require("../app/js/brief.js");
 const { configured } = require("./_daisey-lib/webpush");
 
 exports.handler = async () => {
@@ -19,7 +19,7 @@ exports.handler = async () => {
       const rec = await store().get(key, { type: "json" });
       if (!rec?.subs?.length) continue;
       const tz = rec.tz || "Asia/Jerusalem";
-      const { date, minutes } = localParts(now, tz);
+      const { date, minutes } = dayParts(now, tz, rec.dayEnd ?? 1320); // a day past midnight is still on
       // "Done for today" (now.js restButton): quiet until tomorrow.
       if (rec.settings?.restDay === date) continue;
       // Night: no calendar read either. Opens a meeting reminder's lead early (notify.js).

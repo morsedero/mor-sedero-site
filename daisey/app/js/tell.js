@@ -18,7 +18,7 @@ import { localDate, logicalDate, LATE_HOUR, LABELS, dayAfter } from "./model.js"
 import { createEvent, watchCalendar } from "./calendar.js";
 import { planDay } from "./plan.js";
 import { planView } from "./plan-view.js";
-import { dayHours, dayStartAt, toMin } from "./day.js";
+import { dayHours, dayStartAt, toMin, usualHours } from "./day.js";
 import { watchSettings, watchRun, saveSettings } from "./store.js";
 import { rank } from "./engine.js";
 import { workBase } from "./context.js";
@@ -139,7 +139,7 @@ export function mountTell(form, input, mic, uid, { openAdd, openTask, guest = fa
     // "Until 1am" runs past midnight (day.js dayHours), up to LATE_HOUR; an
     // end between that and the day's start ("until 6am") can't be, so it
     // stops at the latest one and says so.
-    const endOk = (m) => m < LATE_HOUR * 60 || m > dayHours({ ...settings, dayEndToday: null }).start;
+    const endOk = (m) => m < LATE_HOUR * 60 || m > usualHours(settings).start;
     const list = actions.map((a) => (a.kind === "moment" && a.dayEnd && toMin(a.dayEnd) != null && !endOk(toMin(a.dayEnd))
       ? { ...a, dayEnd: `0${LATE_HOUR - 1}:59`, latest: true } : a));
     const draw = () => {
@@ -172,7 +172,7 @@ export function mountTell(form, input, mic, uid, { openAdd, openTask, guest = fa
       // Another day (2026-10-08, "מה הלו״ז שלי מחר" got today's leftovers):
       // plan from that day's start. The calendar holds the week ahead.
       const later = q.date && q.date > localDate() && q.date <= dayAfter(7);
-      const hours = dayHours(later ? { ...settings, dayEndToday: null } : settings);
+      const hours = later ? usualHours(settings) : dayHours(settings);
       const plan = planDay({ tasks, events: cal.status === "ok" ? cal.events : [], hours, settings,
         ...(later ? { now: dayStartAt(new Date(`${q.date}T12:00`).getTime(), hours), run: null } : { run }) });
       const v = planView(plan, { only: q.part === "day" ? null : q.part, title: later ? `Plan for ${day(q.date)}` : null,

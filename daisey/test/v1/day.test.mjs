@@ -190,3 +190,9 @@ test("meals: Breakfast, Lunch, Dinner; only Lunch on by default, 13-14; one time
   assert.deepEqual(mealsOf(s), [{ name: "Breakfast", from: 480, to: 540, minutes: 20 }, { name: "Dinner", from: 1170, to: 1230, minutes: 180 }]); // bad time → default; no other names
   assert.deepEqual(dayHours(s).meals, mealsOf(s));
 });
+
+test("usualHours: the usual day, never the after-midnight form, whatever the time (Settings bar)", async () => {
+  const { usualHours } = await import("../../app/js/day.js");
+  const u = usualHours({ dayStart: "10:00", dayEnd: "03:00", dayEndToday: { date: "2026-10-10", end: "23:00" } });
+  assert.equal(u.start, 600); assert.equal(u.end, 27 * 60); assert.equal(u.late, undefined);
+});

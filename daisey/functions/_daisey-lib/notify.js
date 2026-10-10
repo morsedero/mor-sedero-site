@@ -47,7 +47,7 @@
 // them; netlify.toml), so the server and the Now card can't disagree. The
 // engine reads local time, so the caller sets process.env.TZ to the user's
 // zone first.
-const { brief, localParts, zoned, MIN } = require("../../app/js/brief.js");
+const { brief, localParts, dayParts, zoned, MIN } = require("../../app/js/brief.js");
 const { collectNeeds } = require("../../app/js/needs-list.js");
 const { rank } = require("../../app/js/engine.js");
 const { workBase } = require("../../app/js/context.js");
@@ -85,8 +85,8 @@ const evKey = (e) => `${e.id || e.title}|${e.end}`;
 function decide(rec, events, now = Date.now()) {
   const tz = rec.tz || "Asia/Jerusalem";
   const types = { ...DEFAULT_TYPES, ...(rec.notify || {}) };
-  const { date, minutes } = localParts(now, tz);
   const start = rec.dayStart ?? 480, end = rec.dayEnd ?? 1320;
+  const { date, minutes } = dayParts(now, tz, end); // past midnight in a late day: yesterday, 24:xx
   const out = [], patch = {};
   const tasks = rec.tasks || [];
   // With the travel legs (trips.js): "starts in 15 min" names the train to
@@ -123,7 +123,7 @@ function decide(rec, events, now = Date.now()) {
 
   if (types.wrap && rec.wrapOn !== date && minutes >= end - WRAP_BEFORE && !current && !focus) {
     patch.wrapOn = date;
-    const done = tasks.filter((t) => t.status === "done" && t.doneAt && localDate(t.doneAt) === date).length;
+    const done = tasks.filter((t) => t.status === "done" && t.doneAt && dayParts(t.doneAt, tz, end).date === date).length;
     const open = tasks.filter((t) => t.status === "ready" && t.due && !notYet(t, now) && effectiveDue(t, now) <= date);
     const dl = open.filter((t) => t.dateKind === "deadline");
     if (done || open.length) {

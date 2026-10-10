@@ -51,6 +51,10 @@ export function dayHours(settings = {}, now = Date.now()){
   return base;
 }
 
+// The usual day, without today's stretch and not in its after-midnight form
+// ({ start: 0, late }): what Settings shows and other days use. Read at noon.
+export const usualHours = (settings = {}) => dayHours({ ...settings, dayEndToday: null }, new Date().setHours(12, 0, 0, 0));
+
 // Meal breaks from state/settings (Mor, 2026-10-08): Breakfast, Lunch,
 // Dinner, no others. settings.meals = [{ name, on, at, minutes }] (at:
 // "HH:MM"; an older save's `from` reads as at); a meal not saved there keeps

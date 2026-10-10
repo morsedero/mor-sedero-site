@@ -30,7 +30,7 @@ import { draftFrom } from "./caltask.js";
 import { pickWeekDay, answer, answerSnapshot, effectiveDue } from "./triage.js";
 import { localDate, logicalDate, pendingCheck, shrunk, shrinkPatch, dayAfter, notYet, pushedTo, bringBack } from "./model.js";
 import { sessionPatch, skipSlotPatch, weekState } from "./routine.js";
-import { dayHours, minText } from "./day.js";
+import { dayHours, minText, usualHours } from "./day.js";
 import { nudgeText, waLink } from "./nudge.js";
 import { daysUntil } from "./engine.js";
 import { collectNeeds, somedayDue } from "./needs-list.js";
@@ -94,7 +94,7 @@ export function mountNeeds(root, uid, { onClose, extra } = {}){
   const del = (t) => ["Delete task", () => { dropSeries(t); removeTask(uid, t.id).catch(fail); flash("Deleted ", t.title); next(); }, "Really delete?"];
   const sweep = (t, kind) => {
     const now = Date.now();
-    const week = kind === "week" ? pickWeekDay(t, { events: cal.events || [], tasks, now, hours: dayHours({ ...settings, dayEndToday: null }) }) : null;
+    const week = kind === "week" ? pickWeekDay(t, { events: cal.events || [], tasks, now, hours: usualHours(settings) }) : null;
     restoreTask(uid, t.id, { ...answerSnapshot(t), ...answer(kind, t, { now, week }) }).catch(fail);
     next();
   };
@@ -263,7 +263,7 @@ export function mountNeeds(root, uid, { onClose, extra } = {}){
         no: ["Leave it there", () => { somedayDone(); next(); }] };
     }
     // sweep
-    const week = pickWeekDay(t, { events: cal.events || [], tasks, hours: dayHours({ ...settings, dayEndToday: null }) });
+    const week = pickWeekDay(t, { events: cal.events || [], tasks, hours: usualHours(settings) });
     return { tone: "area-job", ico: "later", q: "Still doing this?",
       sub: `${t.dateKind === "deadline" ? "The deadline was" : "It was planned for"} ${shortDay(t.due)}.`,
       item: t.title, say: `I'd move it to ${weekday(week)}, the roomiest day this week.`,
