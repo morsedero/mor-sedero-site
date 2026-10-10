@@ -1158,7 +1158,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
 
   // Switch's row, under the card like Later's and Pending's (Mor,
   // 2026-10-10): the other tasks as small cards in the main card's look
-  // (area colour, project, the plan's time for it, title), one row as tall
+  // (area colour, how long it takes, project, title), one row as tall
   // as Later's open row that scrolls and drags sideways (ui.js dragScroll),
   // keeping its place across redraws; or the way into On hold when there
   // are none.
@@ -1166,27 +1166,24 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     if (!alts.length) return h("div", { className: "later-ask", role: "group", ariaLabel: "Other tasks" },
       h("span", { className: "muted", textContent: "Nothing else is active." }),
       h("button", { className: "chip", type: "button", textContent: "Pick from On hold", onclick: () => { sd.open = true; state.showAlts = false; render(); } }));
-    const at = slotTimes();
     const row = dragScroll(h("div", { className: "later-ask switch-ask", role: "group", ariaLabel: "Other tasks" }, ...alts.map(({ task: t }) => h("button", {
-      type: "button", className: "alt-card" + areaClass(t), ariaLabel: `Put ${t.title} on the card instead${at.has(t.id) ? `, planned ${clock(at.get(t.id))}` : ""}`,
+      type: "button", className: "alt-card" + areaClass(t), ariaLabel: `Put ${t.title} on the card instead, ${howLong(t)}`,
       onclick: () => { state.chosen = t.id; state.showAlts = false; state.altX = 0; render(); },
     }, h("span", { className: "hero-top" },
         h("span", { className: "hero-area" },
-          // The time first, so a long project name is what gets cut short.
-          at.has(t.id) && h("span", { className: "alt-at", textContent: clock(at.get(t.id)) }),
+          // How long first, so a long project name is what gets cut short.
+          h("span", { className: "alt-at", textContent: howLong(t) }),
           h("span", { className: "hero-where" }, projectShown(t) ? bdi(t.project) : areaName(t) || "Inbox"))),
       h("span", { className: "alt-t", dir: "auto", textContent: t.title })))));
     row.addEventListener("scroll", () => { state.altX = row.scrollLeft; }, { passive: true });
     if (state.altX) requestAnimationFrame(() => { row.scrollLeft = state.altX; });
     return row;
   }
-  // When the plan on screen has each task: the open proposal's order, else
-  // the approved plan's. taskId -> start (ms).
-  function slotTimes(){
-    const ap = approvedPlan(), items = prop.open && prop.items.length ? prop.items : ap?.items;
-    if (!items?.length) return new Map();
-    const { rows } = timeline(items, { ...planCtx(), ...(ap && !prop.touched ? { since: planSince() } : {}) });
-    return new Map(rows.filter((r) => r.taskId).map((r) => [r.taskId, r.start]));
+  // How long a Switch card's task takes: what's left once some is done
+  // (Mor, 2026-10-10: not its time in the plan).
+  function howLong(t){
+    const left = leftMinutes(t), size = toMinutes(t.size) ?? left;
+    return left < size ? `${dur(left)} left` : dur(size);
   }
 
   // ---------- The day's proposed schedule (proposal.js, 2026-10-07) ----------
