@@ -1473,7 +1473,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
       return h("li", { className: "pp-row pp-break" + (own ? " pp-drag" : ""), _i: b.i },
         h("span", { className: "pp-time", ariaLabel: `${clock(b.start)} to ${clock(b.end)}` }, clock(b.start), h("small", { textContent: clock(b.end) })),
         h("span", { className: "pp-task" }, h("span", { className: "pp-title", textContent: name }),
-          h("span", { className: "pp-meta", textContent: dur(b.minutes) })),
+          h("span", { className: "pp-meta", textContent: dur(Math.round((b.end - b.start) / 60000)) })),
         own && h("span", { className: "pp-ctls" },
           h("button", { type: "button", className: "pp-ctl", textContent: "✕", title: `Take the ${name.toLowerCase()} off`, ariaLabel: `Take the ${name.toLowerCase()} off`, onclick: () => dropItem(b.i) })));
     };

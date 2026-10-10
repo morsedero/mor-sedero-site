@@ -135,6 +135,17 @@ test("breaks become plan items once, then stay where they're put", () => {
   assert.equal(timeline(items, { ...ctx, tasks: done }).breaks.length, 0);
 });
 
+test("a break runs on through free time to the next item, up to a meeting; its own minutes stay", () => {
+  const tasks = [t({ id: "a", size: 60 }), t({ id: "b", size: 90 })];
+  const items = [{ taskId: "a", minutes: 60 }, { brk: "short", minutes: 10 }, { taskId: "b", minutes: 90 }];
+  // b doesn't fit 10:10-11:00, so it goes after the meeting: the break holds to 11:00.
+  const r = timeline(items, { tasks, events: [ev("Call", [11], [12])], now: at(9) });
+  assert.deepEqual([r.breaks[0].start, r.breaks[0].end, r.breaks[0].minutes], [at(10), at(11), 10]);
+  assert.equal(r.rows[1].start, at(12));
+  // Nothing in the way: the break is its own length.
+  assert.equal(timeline(items, { tasks, events: [], now: at(9) }).breaks[0].end, at(10, 10));
+});
+
 test("refit: when the day shrinks, what matters least goes, not what's last; the order of what stays is kept", () => {
   const tasks = [t({ id: "a", size: 60 }), t({ id: "b", size: 60, dateKind: "deadline" }), t({ id: "c", size: 20 })];
   const items = [{ taskId: "a", minutes: 60 }, { brk: "short", minutes: 10 }, { taskId: "b", minutes: 60 }, { taskId: "c", minutes: 20 }];

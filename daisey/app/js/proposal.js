@@ -196,6 +196,7 @@ export function timeline(items = [], { tasks = [], events = [], now = Date.now()
   // Work since the last break, and since the last long one (a meal counts).
   let worked = 0, sinceLong = 0, lastEnd = null;
   const mealsDone = new Set(), rideAt = {}; // rideAt: where each ride's next task starts
+  const gapEnd = new Map(); // each break → the end of the free gap it's in
   // Breaks are the plan's own items: none are added here.
   const fixed = items.some(isBreak);
   let afterDone = false; // the last item looked at was finished work
@@ -213,6 +214,7 @@ export function timeline(items = [], { tasks = [], events = [], now = Date.now()
         if (gaps[k].end - from < len) continue;
         const meal = isMeal(it) ? mealName(it, meals, from) : null;
         breaks.push({ kind: "break", type: meal ? "meal" : it.brk, minutes: len / MIN, start: from, end: from + len, i, ...(meal ? { name: meal } : {}) });
+        gapEnd.set(breaks[breaks.length - 1], gaps[k].end);
         worked = 0; if (it.brk !== "short") sinceLong = 0;
         if (meal) mealsDone.add(meal);
         lastEnd = from + len; gi = k; cursor = from + len;
@@ -241,6 +243,7 @@ export function timeline(items = [], { tasks = [], events = [], now = Date.now()
       if (gaps[k].end - from >= gap) {
         if (brk) {
           breaks.push({ kind: "break", type: brk.type, minutes: brk.minutes, start: from, end: from + brk.minutes * MIN, i: null, ...(brk.name ? { name: brk.name } : {}) });
+          gapEnd.set(breaks[breaks.length - 1], gaps[k].end);
           if (brk.name) mealsDone.add(brk.name);
         }
         const s = from + (brk ? brk.minutes * MIN : 0);
@@ -264,6 +267,15 @@ export function timeline(items = [], { tasks = [], events = [], now = Date.now()
       room = Math.floor(room / (5 * MIN)) * 5;
       over.push({ taskId: it.taskId, task, minutes: need / MIN, room: room >= WORTH ? room : 0, i });
     }
+  }
+  // A break runs on to whatever comes next, up to the next meeting: free time
+  // after it is part of it, not a hole (Mor, 2026-10-10: "break shows 10 min
+  // although there's a free hour there"). end moves; minutes stays the
+  // item's own length, so saving the plan doesn't grow the break.
+  const starts = [...rows.filter((r) => !r.ride).map((r) => r.start), ...breaks.map((b) => b.start)];
+  for (const b of breaks) {
+    const next = Math.min(gapEnd.get(b), ...starts.filter((s) => s >= b.end));
+    if (next > b.end) b.end = next;
   }
   return { rows: rows.sort((a, b) => a.start - b.start), over, breaks };
 }
