@@ -1242,8 +1242,10 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     if (p.sig === sig) return;
     const { items, added } = topUp(p.items || [], ctx, p.declined || []);
     if (!added.length) { markSig(sig); return; }
-    // Asked, not added (Mor, 2026-10-10: always ask): addedView.
-    savePlan("approved", p.items || [], { kept: p.kept || [], ...unseen(p, "cut"), ...unseen(p, "added"), offer: { ids: added, add: items.slice((p.items || []).length) } });
+    // Asked, not added (Mor, 2026-10-10: always ask): addedView. One task
+    // just goes in, said with Undo (Mor, same day: "it's just one task").
+    if (added.length === 1) savePlan("approved", items, { kept: p.kept || [], ...unseen(p, "cut"), added: { ids: added } });
+    else savePlan("approved", p.items || [], { kept: p.kept || [], ...unseen(p, "cut"), ...unseen(p, "added"), offer: { ids: added, add: items.slice((p.items || []).length) } });
     if (redraw) render();
   }
   function addedView(){
@@ -1281,7 +1283,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     };
     return h("div", { className: "toast plan-cut", role: "status" },
       h("div", { className: "toast-row" },
-        h("span", { className: "toast-text" }, ...(got.length === 1 ? ["Added ", bdi(got[0].title), " to the plan."] : [`Added ${got.length} tasks to the plan.`])),
+        h("span", { className: "toast-text" }, ...(got.length === 1 ? ["Time opened up: added ", bdi(got[0].title), " to the end of your plan."] : [`Added ${got.length} tasks to the end of your plan.`])),
         h("span", { className: "toast-acts" },
           h("button", { className: "toast-undo", type: "button", textContent: "Undo", ariaLabel: "Undo: take them off today's plan", onclick: undo }),
           h("button", { className: "toast-undo", type: "button", textContent: "OK", ariaLabel: "OK, got it",
