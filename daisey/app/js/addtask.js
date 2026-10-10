@@ -47,7 +47,7 @@ const boxDate = (s) => new Date(`${s}T12:00`).toLocaleDateString(undefined, { we
 // "1 h 40", "25 min": the worked line is short on purpose.
 const workedText = (m) => (m < 60 ? `${m} min` : `${Math.floor(m / 60)} h${m % 60 ? ` ${m % 60}` : ""}`);
 
-// onStart(id): close the sheet and start the task (now.js start).
+// onStart(id): close the sheet and start the task in Deep Focus (now.js start).
 export function mountAddTask(dialog, uid, { onStart } = {}){
   let tasks = [];
   let editing = null; // the open task (kept fresh from the snapshot), or null for a new one
@@ -421,12 +421,12 @@ export function mountAddTask(dialog, uid, { onStart } = {}){
     stateLine.replaceChildren(...(done
       ? [`Done ${t.doneAt ? new Date(t.doneAt).toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" }) : ""}. `,
         h("button", { type: "button", className: "linkish", textContent: "Reopen", onclick: () => save({ status: "ready" }) })]
-      : ["On hold. Start brings it back."]));
+      : ["On hold. Focus brings it back."]));
     const r = t?.research;
     researchLine.hidden = !r || r.online === "unsure" || !r.why;
     researchLine.textContent = r ? `${r.online === "yes" ? "Daisey checked: can be done online" : "Daisey checked: needs a call or a visit"}${r.why ? ` — ${r.why}` : ""}` : "";
     startBtn.hidden = done;
-    startBtn.replaceChildren(icon(t ? "play" : "plus"), h("span", { textContent: t ? "Start" : "Add task" }));
+    startBtn.replaceChildren(icon(t ? "focus" : "plus"), h("span", { textContent: t ? "Focus" : "Add task" }));
     del.hidden = !t;
   }
   startBtn.onclick = () => {

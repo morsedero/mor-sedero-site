@@ -872,7 +872,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
         onOpen ? titleButton(dueTonight[0]) : h("div", { className: "now-title", dir: "auto", textContent: dueTonight[0].title }),
         h("p", { className: "now-why", textContent: dur(Math.max(5, (dueTonight[0].size || 0) - (dueTonight[0].spentMinutes || 0))) + " left" }),
         dueTonight.length > 1 && h("p", { className: "now-why", textContent: "Also due: " + dueTonight.slice(1).map((t) => t.title).join(", ") }),
-        ...cardActions(dueTonight[0], [], startButton("Start", `Start: ${dueTonight[0].title}`, () => begin(dueTonight[0])))),
+        ...cardActions(dueTonight[0], [])),
       h("section", { className: "now-card main hero night" + (p ? areaClass(p.task) : ""), ariaLabel: early ? "First today" : "Tomorrow first" },
         h("div", { className: "night-label", textContent: early ? "First today" : "Tomorrow first" }),
         ...(p ? [
@@ -912,7 +912,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
       heroTop(b.task, `Booked for ${when}`),
       onOpen ? titleButton(b.task) : h("div", { className: "now-title", dir: "auto", textContent: b.task.title }),
       h("p", { className: "now-why", textContent: "Nothing else fits right now, so this is next." }),
-      ...cardActions(b.task, [], startButton("Start now", `Start ${b.task.title} now, before its slot`, () => begin(b.task))), outLine(r), putOffButton(r));
+      ...cardActions(b.task, []), outLine(r), putOffButton(r));
   }
 
   // Nothing fits before the next calendar event: the event is the card —
@@ -1054,41 +1054,34 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
         h("button", { className: "chip quiet", type: "button", textContent: sd.picked.length ? "Done" : "Not now", onclick: close })));
   }
 
-  // Start, then Later · Switch · Pending as 50px squares, all on one row
-  // (round 3), and what each opens, for any card that holds one task — the
-  // pick, or a booked task shown early (Mor, 2026-10-05: a booked card with
-  // only "Start now" left nowhere to go).
-  // lead: [text, onclick] answers a planned or missed card asks (In 10 min,
-  // Shorten). They head the More menu, and it opens by itself until More is
-  // tapped shut (Mor, 2026-10-10: one row of buttons on every card, no extra
-  // row; Move was Later twice). leadKey: which ask, so a new one opens again.
-  function cardActions(task, alts, start, lead = [], leadKey = null){
-    const card = { task };
+  // Switch · Pending · Later, then Done at the row's far end: the one loud
+  // button (Mor, 2026-10-10: no Start on the card. The plan already says
+  // what's on, so the loop is Done, Done, Later; Focus lives in the task
+  // sheet). Each opens its own row under the card; a second tap shuts it.
+  // lead: [text, onclick], a missed card's asks (Shorten), on their own row
+  // while nothing else is open (missed plans get their own pass later).
+  function cardActions(task, alts, lead = []){
     const someN = somedayTasks().length;
-    // Done, More, then Start at the row's far end (Mor, 2026-10-08: two
-    // buttons and Start). Later, Pending and Something else live behind
-    // More; a second tap on More closes whatever it opened.
-    const sub = state.notNow || state.pendAsk || state.showAlts;
-    const more = state.more || (lead.length > 0 && !sub && state.shutFor !== leadKey);
-    const open = more || sub;
-    const only = (key) => () => { state.more = state.notNow = state.pendAsk = state.showAlts = false; state[key] = true; render(); };
+    const toggle = (key) => () => { const was = state[key]; state.more = state.notNow = state.pendAsk = state.showAlts = false; state[key] = !was; render(); };
     const chip = (text, onclick) => h("button", { className: "chip", type: "button", textContent: text, onclick });
+    // In 10 min moves the task's slot in the approved plan, so only then.
+    const inPlan = approvedPlan()?.items.some((it) => it.taskId === task.id);
+    const done = h("button", { className: "btn primary start", type: "button", ariaLabel: `Done: hold to show how much of ${task.title} is done` },
+      icon("check"), h("span", { textContent: "Done" }));
     return [
       h("div", { className: "now-actions now-row" },
-        doneHold(action("check", "Done", `hold to show how much of ${card.task.title} is done`, {}), card.task),
-        action("more", "More", `Later, Pending or something else instead of ${card.task.title}`,
-          { ariaExpanded: String(open), onclick: () => { state.more = state.notNow = state.pendAsk = state.showAlts = false; if (open) state.shutFor = leadKey; else state.more = true; render(); } }),
-        start),
-      more && h("div", { className: "later-ask more-ask", role: "group", ariaLabel: "More" },
-        ...lead.map(([text, onclick]) => chip(text, onclick)),
-        chip("Later", only("notNow")),
-        chip("Pending", only("pendAsk")),
         // Never a dead end while Not now holds tasks (DAISEY_SPEC "Someday comes back").
-        (alts.length || someN) && chip("Something else", only("showAlts"))),
-      state.notNow && h("div", { className: "later-ask", role: "group", ariaLabel: "When instead?" },
+        (alts.length || someN) && action("switch", "Switch", `something else instead of ${task.title}`, { ariaExpanded: String(state.showAlts), onclick: toggle("showAlts") }),
+        action("pending", "Pending", `${task.title} is waiting on something`, { ariaExpanded: String(state.pendAsk), onclick: toggle("pendAsk") }),
+        action("later", "Later", `come back to ${task.title} later`, { ariaExpanded: String(state.notNow), onclick: toggle("notNow") }),
+        doneHold(done, task)),
+      lead.length > 0 && !asking() && h("div", { className: "later-ask", role: "group", ariaLabel: "Missed" },
+        ...lead.map(([text, onclick]) => chip(text, onclick))),
+      state.notNow && h("div", { className: "later-ask", role: "group", ariaLabel: "Come back when?" },
+        inPlan && chip("In 10 min", () => { state.notNow = false; later10(task); render(); }),
         ...[["today", "Later today"], ["tomorrow", "Tomorrow"], ["week", "This week"], ["someday", "Not now"]].map(([w, text]) =>
-          chip(text, () => later(card.task, w)))),
-      state.pendAsk && pendingAsk(card.task),
+          chip(text, () => later(task, w)))),
+      state.pendAsk && pendingAsk(task),
     ];
   }
 
@@ -1517,7 +1510,6 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     restoreTask(uid, task.id, { touchedAt: Date.now() }).catch(fail);
     flash(`${task.title}: at ${clock(at)}.`);
   }
-  const dueLead = (task) => [["In 10 min", () => { state.more = false; later10(task); }]];
   function roughCard(st){
     return plainCard("empty quiet rough", { meta: "Rough day?", title: "Want a lighter plan?", why: silenceText(st, clock).replace(/ Want a lighter plan.*$/, ""),
       action: h("div", { className: "now-actions now-row" },
@@ -1867,11 +1859,10 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     const missed = !dueNow && ms?.kind === "miss" ? ms : null;
     if (card === r.pick && r.pick.batch && !state.chosen && !state.single) { day(...head, batchCard(r, r.pick.batch), tip); return; }
     const alts = r.ranked.length > 1 ? [r.pick, ...r.alternatives].filter((s) => s && s.task.id !== card.task.id).slice(0, 3) : [];
-    // Start is the one loud thing on the tab; the other two stay quiet under it.
-    const lead = dueNow ? dueLead(card.task) : missed ? missLead(card.task) : [];
-    const leadKey = lead.length ? `${card.task.id}:${(dueNow || missed).start}` : null;
+    // Done is the one loud thing on the tab; Switch, Pending and Later stay quiet beside it.
+    const lead = missed ? missLead(card.task) : [];
     day(...head, deck(taskCard(dueNow ? dueWhy(card, dueNow) : missed ? missWhy(card, missed) : card, true,
-      ...cardActions(card.task, alts, startButton("Start", `Start: ${card.task.title}`, () => begin(card.task)), lead, leadKey)), asking()),
+      ...cardActions(card.task, alts, lead)), asking()),
       nextLine(card.task), ...altsFor(alts), tip);
     // One slide-in per step-aside: later snapshots must not replay it.
     if (slideIn) { slideIn = false; if (motionOK()) { const c = root.querySelector(".now-card.main"); if (c) { c.style.animationDelay = ""; c.classList.add("in"); } } }
@@ -1977,12 +1968,12 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     },
     // Start a task from elsewhere (the task sheet, a project).
     // A parked or pending task starting is back in play.
-    start(id){
+    start(id, mode){
       const task = (tasks || []).find((t) => t.id === id);
       if (!task) return;
       if (task.status !== "ready") restoreTask(uid, id, { status: "ready", waitingOn: null, checkOn: null, notBefore: null, touchedAt: Date.now() }).catch(fail);
       skips.delete(id);
-      begin(task);
+      begin(task, mode);
     },
     startFromNotice(id){ noticeStart = id; tryNoticeStart(); },
     // The missed-slot notification's Shorten, and the silence check's two (sw.js).

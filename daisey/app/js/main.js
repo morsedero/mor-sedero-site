@@ -551,7 +551,9 @@ async function boot(){
         addEventListener("popstate", onPop);
         m.history = { unmount(){ removeEventListener("popstate", onPop); } };
         // Start from anywhere: back to home first, then focus mode.
-        const startTask = (id) => { if (history.state?.daisey) history.back(); closeScreens(); m.now?.start(id); };
+        // The task sheet's and a project's Start is Focus: the card has no Start
+        // (Mor, 2026-10-10), so starting a task from elsewhere is Deep Focus.
+        const startTask = (id) => { if (history.state?.daisey) history.back(); closeScreens(); m.now?.start(id, "focus"); };
 
         m.adder = mountAddTask($("#addtask"), user.uid, { onStart: startTask });
         m.needs = mountNeeds($("#needsview"), user.uid, { onClose: () => screens.back() });
