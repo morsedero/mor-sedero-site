@@ -321,11 +321,11 @@ textarea {
 /* Undo + the reasons, for five seconds after Not now. */
 .toast {
   position: fixed; z-index: 7; inset-block-end: max(20px, env(safe-area-inset-bottom));
-  inset-inline: 16px; margin-inline: auto; max-inline-size: 420px;
-  padding: 12px 14px; border-radius: 14px;
-  background: var(--ink); color: var(--card); box-shadow: 0 10px 30px rgb(0 0 0 / .35);
+  inset-inline: 16px; margin-inline: auto; inline-size: fit-content; max-inline-size: 360px;
+  padding: 6px 8px 6px 14px; border-radius: 12px;
+  background: var(--ink); color: var(--card); box-shadow: 0 6px 18px rgb(0 0 0 / .3);
 }
-.toast { display: flex; flex-direction: column; gap: 8px; animation: toast-in .18s ease-out backwards; animation-delay: calc(0ms - var(--age, 0ms)); }
+.toast { display: flex; flex-direction: column; gap: 4px; animation: toast-in .18s ease-out backwards; animation-delay: calc(0ms - var(--age, 0ms)); }
 /* Undo toasts also fade out over the last .3s of their 3.5s (UNDO_MS in ui.js / now.js). */
 .toast.timed { animation: toast-in .18s ease-out backwards, toast-out .3s ease-in 3200ms forwards; animation-delay: calc(0ms - var(--age, 0ms)), calc(3200ms - var(--age, 0ms)); }
 @keyframes toast-in { from { opacity: 0; transform: translateY(8px); } }
@@ -333,9 +333,11 @@ textarea {
 @media (prefers-reduced-motion: reduce) { .toast, .toast.timed { animation: none; } }
 .toast-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .toast-why-row { display: flex; align-items: center; gap: 8px; }
-.toast-why { font: inherit; font-size: 13px; color: var(--card); background: rgb(255 255 255 / .14); border: 0; border-radius: 999px; min-block-size: 32px; padding-inline: 12px; cursor: pointer; }
-.toast-thanks { font-size: 13px; opacity: .75; }
-.toast-text { font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-inline-size: 0; }
+.toast-why { font: inherit; font-size: 12px; color: var(--card); background: rgb(255 255 255 / .14); border: 0; border-radius: 999px; min-block-size: 26px; padding-inline: 10px; cursor: pointer; }
+.toast-thanks { font-size: 12px; opacity: .75; }
+/* A plain flash (ui.js) is one line: text, then Undo beside it, not under it. */
+.toast.flash { flex-direction: row; flex-wrap: wrap; align-items: center; column-gap: 12px; }
+.toast-text { font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-inline-size: 0; }
 .toast-text bdi { display: inline; }
 .toast-undo { font: inherit; font-weight: 700; color: var(--accent); background: none; border: 0; cursor: pointer; padding: 6px 2px; }
 /* The plan refit's note: stays until OK, so it wraps instead of clipping. */

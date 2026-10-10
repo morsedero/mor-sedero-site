@@ -125,7 +125,7 @@ export function flash(label, title, { undo, adjust } = {}){
       mins = Math.max(0, mins + d); count.textContent = `Counted ${mins} min`; adjust.set(mins);
       clearTimeout(liveTimer); liveTimer = setTimeout(dismissFlash, UNDO_MS);
     } });
-  livePop = h("div", { className: adjust ? "toast" : "toast timed", role: "status" },
+  livePop = h("div", { className: adjust ? "toast flash" : "toast flash timed", role: "status" },
     h("span", { className: "toast-text" }, label, title ? bdi(title) : null),
     adjust && h("span", { className: "toast-adj" }, step(-15), count, step(15)),
     undo && h("button", { className: "toast-undo", type: "button", textContent: "Undo",
