@@ -20,7 +20,7 @@ import { proposeDay, timeline, withBreaks, trimBreaks, isBreak, nextPlanned, pla
 import { rethink } from "./rethink.js";
 import { placeNow, workBase, watchProjectTiers } from "./context.js";
 import { watchWhere, setManual, setStill, saveSpot, whereAsk, homeAt } from "./where.js";
-import { withTrips, ridingAs, stillRiding, asPassenger, chainFrom, setTripDay, MODES } from "./trips.js";
+import { withTrips, ridingAs, stillRiding, asPassenger, chainFrom, setTripDay, MODES, tripAsks, answer as tripAnswer, noTrip } from "./trips.js";
 import { pickWeekDay } from "./triage.js";
 import { focusView, handoffView, elapsedMinutes, targetMinutes, batchFocusView, batchName, sinceMark, paused, resumed, runCap, bookedMinutes, holdButton, stillOnMinutes, bloomHold } from "./focus.js";
 import { watchCalendar, logDone } from "./calendar.js";
@@ -35,7 +35,7 @@ import { waitingFor, personOf } from "./nudge.js";
 import { dayHours, isNight, nextMorning, dayEndAt, bookings, sameTitle, minText, gapsToday } from "./day.js";
 import { collectNeeds, wrapList } from "./needs.js";
 import { h, icon, bdi, pieces, sizeText, sizeChip, progressBar, dur, say, nightDivider, flash, weekDots, focusField } from "./ui.js";
-import { areaClass, areaName, projectShown, doneToday, dirOf, stemDaisy, moonDaisy, watchProjectColors } from "./look.js";
+import { areaClass, areaName, projectShown, doneToday, dirOf, moonDaisy, watchProjectColors } from "./look.js";
 
 const LATER_MS = LATER_MINUTES * 60000;
 const UNDO_MS = 3500;
@@ -222,6 +222,22 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
       leg && (leg === fw.current ? laptopLine(leg) && h("div", { className: "trip-chips" }, laptopLine(leg))
         : tripChips(leg, `Leave ${clock(leg.start)} ${TRIP_BY[howOf(leg.trip)]}`)));
   }
+  // How you get to a city nobody answered for yet (the Needs you trip
+  // question, needs.js), as a trip chip. No estimate from Home: the minutes
+  // field is in Needs you.
+  function tripAskChip(a){
+    const save = (mode) => {
+      const ans = mode === "none" ? noTrip(a.city) : tripAnswer(a.city, mode, { home: homeAt(), minutes: null });
+      if (!ans) { tripOpen = null; flash("How many minutes each way? Answer it in Needs you."); render(); return; }
+      const trips = { ...(settings.trips || {}), [a.key]: ans };
+      settings = { ...settings, trips }; tripOpen = null;
+      applyTrips(); render();
+      saveSettings(uid, { trips }).catch(fail);
+    };
+    return answered(`tripask:${a.key}`, "", `How do you get to ${a.city.name}?`, [
+      ...MODES.map((m) => ({ label: TRIP_INSTEAD[m], aria: `${TRIP_INSTEAD[m]} to ${a.city.name}, every time`, on: false, pick: () => save(m) })),
+      { label: "It's not a trip", aria: `${a.city.name} isn't a trip`, on: false, pick: () => save("none") }]);
+  }
   const tripChips = (leg, text) => h("div", { className: "trip-chips" }, tripSwitch(leg, text), laptopLine(leg));
 
   // On a train, the laptop decides what fits (trips.js ridePlace): asked
@@ -306,9 +322,13 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
   // says is happening or next) and a QUIET one (nothing to pick). Event and
   // quiet cards share this layout: a small line, a big title, one sentence,
   // optional extras, and at most one action.
-  function plainCard(cls, { meta, title, open, why, extras = [], action, color }){
+  // Busy and empty cards wear the task card's top line (Mor, 2026-10-10:
+  // one layout for every card): dot and label, the time on the far side.
+  function plainCard(cls, { meta, side, title, open, why, extras = [], action, color }){
     return h("div", { className: `now-card main hero ${cls}`, style: color ? `--ev:${color}` : "" },
-      h("div", { className: "now-meta", textContent: meta }),
+      h("div", { className: "hero-top" },
+        h("span", { className: "hero-area" }, h("span", { className: "dot", ariaHidden: "true" }), h("span", { className: "hero-where", textContent: meta })),
+        side && h("span", { className: "hero-side", textContent: side })),
       open ? h("button", { type: "button", className: "now-title", dir: "auto", textContent: title, ariaLabel: `Open ${title}`, onclick: open })
         : h("div", { className: "now-title", dir: "auto", textContent: title }),
       why && h("p", { className: "now-why", textContent: why }),
@@ -340,10 +360,10 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
   // ride only; Mor, 2026-10-09: there was no answer for "nothing").
   let restRide = null;
   function rideCard(leg, r){
-    const meta = leg.trip.late ? `${TRIP_ON[riderOf(leg)]} · past ${clock(leg.trip.late)}` : `${TRIP_ON[riderOf(leg)]} · until ${clock(leg.end)}`;
-    if (restRide === leg.id) return eventCard({ meta, title: leg.title, why: "Rest. Daisey picks again when you arrive.",
+    const meta = TRIP_ON[riderOf(leg)], side = leg.trip.late ? `past ${clock(leg.trip.late)}` : `until ${clock(leg.end)}`;
+    if (restRide === leg.id) return eventCard({ meta, side, title: leg.title, why: "Rest. Daisey picks again when you arrive.",
       action: h("button", { className: "btn quiet", type: "button", textContent: "Show tasks again", onclick: () => { restRide = null; render(); } }) });
-    return eventCard({ meta, title: leg.title,
+    return eventCard({ meta, side, title: leg.title,
       why: leg.trip.late ? "Still on the way. The plan waits until you're there." : "Nothing fits the rest of the ride.",
       extras: [outLine(r), phoneOk(r, leg), putOffButton(r)] });
   }
@@ -373,7 +393,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
   function meetingCard(ev){
     const end = ev.end;
     const left = Math.max(0, Math.round((end - Date.now()) / 60000));
-    return eventCard({ meta: `Now · until ${clock(end)}`, title: ev.title, color: ev.color,
+    return eventCard({ meta: "Now", side: `until ${clock(end)}`, title: ev.title, color: ev.color,
       why: left ? `${dur(left)} left. Daisey picks a task again when it ends.` : "Just about done.",
       // With someone a Pending task waits on: worth raising while you're there.
       extras: waitingFor(ev.title, tasks || []).slice(0, 3).map((t) => h("p", { className: "now-wait" },
@@ -522,15 +542,19 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     const list = r.ranked.filter((s) => b.ids.includes(s.task.id)).map((s) => s.task);
     const name = batchName(b.type, list.length);
     const office = r.moment.officeOpen && list.some((t) => t.openHours === "office");
+    // The task card's shape (Mor, 2026-10-10): the tasks named in the why
+    // line, Start starts them all, "Just one" behind More.
+    const open = !!state.more;
     return h("div", { className: "now-card main hero batch" + areaClass(list[0]) },
-      heroTop(list[0], `Batch · ~${dur(b.minutes)}`, false),
+      heroTop(list[0], `${list.length} tasks · ~${dur(b.minutes)}`),
       h("div", { className: "now-title", textContent: name }),
-      h("p", { className: "now-why", textContent: `${office ? "Offices are open: " : ""}${name}, ~${dur(b.minutes)}. Together?` }),
-      h("ul", { className: "batch-preview" }, ...list.map((t) => h("li", {}, bdi(t.title), h("span", { className: "muted", textContent: ` · ${dur(t.size)}` })))),
-      startButton("Start all", `Start all ${list.length} as one checklist`, () => beginBatch(list)),
-      h("div", { className: "now-actions" },
-        h("button", { className: "btn quiet", type: "button", textContent: "Just one",
-          ariaLabel: `Just one: show only ${list[0].title}`, onclick: () => { state.single = true; render(); } })));
+      h("p", { className: "now-why" }, office ? "Offices are open: " : "", ...list.flatMap((t, i) => [i ? ", " : "", bdi(t.title)]), "."),
+      h("div", { className: "now-actions now-row" },
+        action("more", "More", `Just one instead of all ${list.length}`, { ariaExpanded: String(open), onclick: () => { state.more = !open; render(); } }),
+        startButton("Start all", `Start all ${list.length} as one checklist`, () => beginBatch(list))),
+      open && h("div", { className: "later-ask more-ask", role: "group", ariaLabel: "More" },
+        h("button", { className: "chip", type: "button", textContent: "Just one", ariaLabel: `Just one: show only ${list[0].title}`,
+          onclick: () => { state.more = false; state.single = true; render(); } })));
   }
 
   // Later and Pending both move the card on: it slides out, the next slides
@@ -800,7 +824,13 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     // event, the trip back (trips.js chainFrom).
     const chain = first ? chainFrom(first, evs) : null, main = chain?.main;
     const leave = chain?.parts.find((e) => e.trip?.dir === "to"), back = chain?.parts.find((e) => e.trip?.dir === "back");
-    const leaveLine = leave && tripChips(leave, `Leave ${clock(Date.parse(leave.start))} ${TRIP_BY[howOf(leave.trip)]}`);
+    // The first thing is in another city nobody has said how to reach yet
+    // (trips.tripAsks): asked right here. It was only in Needs you, under
+    // "Nothing needs you yet", the morning you'd have to leave (2026-10-10).
+    const ask = !leave && first && cal.status === "ok"
+      && tripAsks(cal.events, settings.trips || {}, { now, home: homeAt(), days: 2 }).find((a) => localDate(Date.parse(a.ev.start)) === day);
+    const leaveLine = leave ? tripChips(leave, `Leave ${clock(Date.parse(leave.start))} ${TRIP_BY[howOf(leave.trip)]}`)
+      : ask && h("div", { className: "trip-chips" }, tripAskChip(ask));
     const who = name ? `, ${name}` : "";
     // The day behind you (Mor, 2026-10-10): what got done, and what's still
     // open for today with one way to sort it — the evening wrap (needs.js),
@@ -817,10 +847,11 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     const lead = dueTonight.length === 1 ? "One deadline is still open today." : `${dueTonight.length} deadlines are still open today.`;
     return [
       h("div", { className: "stars", ariaHidden: "true" }, ...[0, 1, 2, 3].map(() => h("span"))),
-      h("div", { className: "night-hero" }, moonDaisy(),
+      h("div", { className: "night-hero" }, moonDaisy(), h("div", { className: "night-txt" },
         h("h2", { className: "night-h", textContent: early ? `Early${who}.` : rested() ? `Done for today${who}.` : `Late${who}.` }),
-        h("p", { className: "night-p", textContent: early ? "Nothing needs you yet. Here's your day."
-          : dueTonight.length ? lead : "Nothing needs you tonight. Here's tomorrow." })),
+        h("p", { className: "night-p", textContent: ask ? `One question about ${early ? "today" : "tomorrow"}.`
+          : early ? "Nothing needs you yet. Here's your day."
+          : dueTonight.length ? lead : "Nothing needs you tonight. Here's tomorrow." }))),
       todayView,
       // Both cards wear the main card's design (Mor, 2026-10-07): hero top row,
       // big title, why line, the same actions. The label is the eyebrow above.
@@ -878,7 +909,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
   // ev: freeWindow's next (start/end already epoch ms).
   function upcomingCard(ev, r){
     const mins = Math.max(0, Math.round((ev.start - Date.now()) / 60000));
-    return eventCard({ meta: `Coming up · ${clock(ev.start)}`, title: ev.title, color: ev.color,
+    return eventCard({ meta: "Coming up", side: clock(ev.start), title: ev.title, color: ev.color,
       open: onEvent ? () => onEvent({ ...ev, start: new Date(ev.start).toISOString(), end: new Date(ev.end).toISOString() }) : null,
       why: mins ? `In ${dur(mins)}. Nothing else fits before it.` : "Starting now.",
       extras: [outLine(r), putOffButton(r)] });
@@ -951,12 +982,8 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     const rested = settings.somedayAsked === localDate();
     const offer = list.length > 0 && !rested;
     sd.sel = sd.sel.filter((id) => list.some((t) => t.id === id));
-    const card = h("div", { className: "now-card main hero empty rest" },
-      stemDaisy(),
-      h("h2", { className: "rest-h", textContent: "Nothing active right now" }),
-      h("p", { className: "rest-p", textContent: offer ? "You have time. Want to bring 1–2 back from Not now?"
-        : rested ? "Rest it is. Everything else is waiting or set for later."
-        : "You have time. Everything else is waiting or set for later." }));
+    const card = quietCard({ meta: "Nothing active", title: rested ? "Rest it is" : "You have time",
+      why: offer ? "Everything open is waiting or set for later. Bring 1–2 back from Not now?" : "Everything open is waiting or set for later." });
     if (!offer) return [card];
     const n = sd.sel.length;
     const bring = () => {
@@ -1020,22 +1047,29 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
   // (round 3), and what each opens, for any card that holds one task — the
   // pick, or a booked task shown early (Mor, 2026-10-05: a booked card with
   // only "Start now" left nowhere to go).
-  function cardActions(task, alts, start){
+  // lead: [text, onclick] answers a planned or missed card asks (In 10 min,
+  // Shorten). They head the More menu, and it opens by itself until More is
+  // tapped shut (Mor, 2026-10-10: one row of buttons on every card, no extra
+  // row; Move was Later twice). leadKey: which ask, so a new one opens again.
+  function cardActions(task, alts, start, lead = [], leadKey = null){
     const card = { task };
     const someN = somedayTasks().length;
     // Done, More, then Start at the row's far end (Mor, 2026-10-08: two
     // buttons and Start). Later, Pending and Something else live behind
     // More; a second tap on More closes whatever it opened.
-    const open = state.more || state.notNow || state.pendAsk || state.showAlts;
+    const sub = state.notNow || state.pendAsk || state.showAlts;
+    const more = state.more || (lead.length > 0 && !sub && state.shutFor !== leadKey);
+    const open = more || sub;
     const only = (key) => () => { state.more = state.notNow = state.pendAsk = state.showAlts = false; state[key] = true; render(); };
     const chip = (text, onclick) => h("button", { className: "chip", type: "button", textContent: text, onclick });
     return [
       h("div", { className: "now-actions now-row" },
         doneHold(action("check", "Done", `hold to show how much of ${card.task.title} is done`, {}), card.task),
         action("more", "More", `Later, Pending or something else instead of ${card.task.title}`,
-          { ariaExpanded: String(open), onclick: () => { state.more = state.notNow = state.pendAsk = state.showAlts = false; state.more = !open; render(); } }),
+          { ariaExpanded: String(open), onclick: () => { state.more = state.notNow = state.pendAsk = state.showAlts = false; if (open) state.shutFor = leadKey; else state.more = true; render(); } }),
         start),
-      state.more && h("div", { className: "later-ask more-ask", role: "group", ariaLabel: "More" },
+      more && h("div", { className: "later-ask more-ask", role: "group", ariaLabel: "More" },
+        ...lead.map(([text, onclick]) => chip(text, onclick)),
         chip("Later", only("notNow")),
         chip("Pending", only("pendAsk")),
         // Never a dead end while Not now holds tasks (DAISEY_SPEC "Someday comes back").
@@ -1418,12 +1452,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
   // 2026-10-08). A miss is the task's own card saying so, with Shorten and
   // Move under its line; the silence check is a card of its own.
   const missWhy = (card, st) => ({ ...card, whyParts: [`up since ${clock(st.start)} and not started`] });
-  function missRow(task){
-    const chip = (text, onclick) => h("button", { className: "chip", type: "button", textContent: text, onclick });
-    return h("div", { className: "later-ask miss-row", role: "group", ariaLabel: "Missed" },
-      leftMinutes(task) > 5 && chip("Shorten", () => shortenNow(task)),
-      chip("Move", () => { state.more = state.pendAsk = state.showAlts = false; state.notNow = true; render(); }));
-  }
+  const missLead = (task) => (leftMinutes(task) > 5 ? [["Shorten", () => shortenNow(task)]] : []);
   // The approved plan holds its times (proposal.timeline, 2026-10-10): when
   // the next task's start comes with nothing started, the card asks right
   // then (Mor: "more proactive"), before any miss would. → { taskId, start }
@@ -1443,12 +1472,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     restoreTask(uid, task.id, { touchedAt: Date.now() }).catch(fail);
     flash(`${task.title}: at ${clock(at)}.`);
   }
-  function dueRow(task){
-    const chip = (text, onclick) => h("button", { className: "chip", type: "button", textContent: text, onclick });
-    return h("div", { className: "later-ask miss-row", role: "group", ariaLabel: "Planned now" },
-      chip("In 10 min", () => later10(task)),
-      chip("Move", () => { state.more = state.pendAsk = state.showAlts = false; state.notNow = true; render(); }));
-  }
+  const dueLead = (task) => [["In 10 min", () => { state.more = false; later10(task); }]];
   function roughCard(st){
     return plainCard("empty quiet rough", { meta: "Rough day?", title: "Want a lighter plan?", why: silenceText(st, clock).replace(/ Want a lighter plan.*$/, ""),
       action: h("div", { className: "now-actions now-row" },
@@ -1740,7 +1764,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     if (!card && feel().place.value === "car") { day(...head, drivingCard(), toast && toastView()); return; }
     const block = blockOf(fw);
     if (!card && block) {
-      day(...head, eventCard({ meta: `Now · until ${clock(fw.current.end)}`, title: fw.current.title, color: fw.current.color,
+      day(...head, eventCard({ meta: "Now", side: `until ${clock(fw.current.end)}`, title: fw.current.title, color: fw.current.color,
         why: `Nothing in ${block.project} fits right now.`, action: freeNowButton({ start: block.start }, `the ${block.project} block`) }), tip);
       return;
     }
@@ -1775,9 +1799,10 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     if (card === r.pick && r.pick.batch && !state.chosen && !state.single) { day(...head, batchCard(r, r.pick.batch), tip); return; }
     const alts = r.ranked.length > 1 ? [r.pick, ...r.alternatives].filter((s) => s !== card).slice(0, 3) : [];
     // Start is the one loud thing on the tab; the other two stay quiet under it.
+    const lead = dueNow ? dueLead(card.task) : missed ? missLead(card.task) : [];
+    const leadKey = lead.length ? `${card.task.id}:${(dueNow || missed).start}` : null;
     day(...head, deck(taskCard(dueNow ? dueWhy(card, dueNow) : missed ? missWhy(card, missed) : card, true,
-      dueNow && !asking() && dueRow(card.task), missed && !asking() && missRow(card.task),
-      ...cardActions(card.task, alts, startButton("Start", `Start: ${card.task.title}`, () => begin(card.task)))), asking()),
+      ...cardActions(card.task, alts, startButton("Start", `Start: ${card.task.title}`, () => begin(card.task)), lead, leadKey)), asking()),
       nextLine(card.task), ...altsFor(alts), tip);
     // One slide-in per step-aside: later snapshots must not replay it.
     if (slideIn) { slideIn = false; if (motionOK()) { const c = root.querySelector(".now-card.main"); if (c) { c.style.animationDelay = ""; c.classList.add("in"); } } }

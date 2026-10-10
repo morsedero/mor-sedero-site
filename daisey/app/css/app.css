@@ -449,7 +449,6 @@ dialog.now:focus { outline: none; }
 .later-ask { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 5px; margin-block-start: 4px; font-size: 13px; }
 .later-ask .chip { min-block-size: 36px; font-size: 13px; padding-inline: 10px; }
 /* A missed slot (miss.js): Shorten · Move under the card's line, on the card itself. */
-.now-card.main .miss-row { justify-content: flex-start; margin-block: 6px 2px; }
 
 /* Pending → "Waiting on what?": one optional line under the actions. */
 .pend-ask { display: grid; gap: 4px; margin-block-start: 4px; }
@@ -463,8 +462,6 @@ dialog.now:focus { outline: none; }
 .now-proj { font: inherit; letter-spacing: inherit; text-transform: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; text-decoration: underline dotted; text-underline-offset: 3px; }
 
 /* Batches: the offer on the card, and the checklist in focus mode. */
-.batch-preview { list-style: none; margin: 4px 0 6px; padding: 0; display: grid; gap: 2px; font-size: 15px; }
-.batch-preview li { overflow-wrap: anywhere; }
 .batch-list { list-style: none; margin: 18px 0; padding: 0; display: grid; gap: 6px; inline-size: min(100%, 420px); }
 .batch-item { font: inherit; font-size: 17px; display: flex; align-items: center; gap: 12px; inline-size: 100%; min-block-size: 52px; padding: 8px 14px;
   border: 1px solid var(--line); border-radius: 14px; background: var(--surface); color: var(--ink); cursor: pointer; text-align: start; }
@@ -575,7 +572,6 @@ dialog.now:focus { outline: none; }
 .now-card.main.meeting .btn, .now-card.main.empty .btn.quiet { justify-self: start; margin-block-start: 10px; }
 .now-card.main.empty { box-shadow: none; }
 .now-card.main.empty .now-empty { margin: 0; font-size: 17px; }
-.now-card.main.batch .batch-preview { margin-block-start: 10px; color: var(--sub); }
 .now-out { margin: 10px 0 0; }
 
 /* The deck: just the hero now (the NEXT peek gave its place to the day). */
@@ -591,15 +587,12 @@ dialog.now:focus { outline: none; }
 .now-alt .now-card .now-meta { color: var(--aink); text-transform: none; letter-spacing: 0; font-size: 12px; }
 
 /* Nothing active: the calm card, then up to three from Someday. */
-.now-card.main.rest { justify-items: center; text-align: center; padding: 22px 20px; }
 .stem-daisy { transform-origin: 32px 74px; }
 .stem-daisy .stem { stroke: #7fae7f; stroke-width: 2; fill: none; stroke-linecap: round; }
 .stem-daisy .leaf { fill: #9cc79c; }
 .stem-daisy .daisy-petals ellipse { stroke-width: .8; }
 @keyframes sway { 0%, 100% { transform: rotate(-4deg); } 50% { transform: rotate(4deg); } }
 @media (prefers-reduced-motion: no-preference) { .stem-daisy { animation: sway 4s ease-in-out infinite; } }
-.rest-h { margin: 12px 0 4px; font-size: 22px; font-weight: 600; }
-.rest-p { margin: 0; font-size: 15px; line-height: 1.4; color: var(--ink-2); }
 .sd-head { margin: 18px 0 8px; font-size: 12px; font-weight: 600; letter-spacing: .6px; text-transform: uppercase; color: var(--ink-2); }
 .sd-pick { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
 .sd-row {
@@ -1277,10 +1270,6 @@ body.focus #side { display: none; }
 .now-next-out { margin: 10px 0 0; padding-inline: 4px; font-size: 13px; color: var(--sub); text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .now-card.main.meeting, .now-card.main.empty, .now-card.main.night { min-block-size: 0; }
 /* Nothing active: same footprint as a task's card, not taller (Mor, 2026-10-06). */
-.now-card.main.rest { block-size: 150px; min-block-size: 150px; align-items: center; justify-content: center; padding: 10px 15px; overflow: hidden; }
-.now-card.main.rest .stem-daisy { inline-size: 32px; block-size: 38px; flex: none; }
-.now-card.main.rest .rest-h { margin: 4px 0 2px; font-size: 18px; line-height: 1.2; }
-.now-card.main.rest .rest-p { font-size: 13px; line-height: 1.35; }
 .now-card.main.batch .btn.start { margin-block-start: auto; }
 
 /* The panel: the Schedule, always (Mor, 2026-10-07: the [Schedule |
@@ -1510,12 +1499,11 @@ body.focus #side { display: none; }
 :root.night .nowrow #nowcard, body.focus .nowrow #nowcard { flex: 1 1 0; }
 :root.night .night-foot { margin-block-start: auto; padding-block-start: 20px; }
 :root.night .night-hero { margin-block-start: 12px; }
-/* The night hero takes the main card's footprint (Mor, 2026-10-09): full
-   width, the same min height, radius and padding; drawing and type sized down
-   to fit inside it. */
-:root.night .night-hero { align-self: stretch; justify-content: center; min-block-size: 150px; padding: 12px 15px 13px; border-radius: 20px; background: var(--card); border: 1px solid var(--line); }
-:root.night .night-hero .moon-daisy { inline-size: 56px; block-size: 56px; }
-:root.night .night-h { margin: 8px 0 2px; font-size: 20px; }
+/* The night hero: one short row, the moon beside the words (Mor, 2026-10-10:
+   "make the top smaller"; it was the main card's 150px footprint). */
+:root.night .night-hero { align-self: stretch; flex-direction: row; align-items: center; justify-content: flex-start; gap: 12px; text-align: start; padding: 10px 14px; border-radius: 20px; background: var(--card); border: 1px solid var(--line); }
+:root.night .night-hero .moon-daisy { inline-size: 36px; block-size: 36px; flex: none; }
+:root.night .night-h { margin: 0 0 2px; font-size: 17px; }
 :root.night .night-p { font-size: 13px; }
 :root.night .now-card.main.night { margin-block-start: 20px; }
 :root.night .night-today { margin-block-start: 20px; }
