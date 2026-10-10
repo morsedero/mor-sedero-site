@@ -15,7 +15,7 @@ import { rank, fitsPlace } from "./engine.js";
 import { phoneOkIds } from "./phone.js";
 import { routineCalendar } from "./routine.js";
 import { workBase } from "./context.js";
-import { overruled, eventKey } from "./reality.js";
+import { overruled, eventKey, runState } from "./reality.js";
 import { LABELS, notYet, localDate } from "./model.js";
 import * as W from "./weights.js";
 
@@ -186,7 +186,27 @@ export function withBreaks(items = [], ctx = {}){
 }
 
 // Each row and break carries i, its index in items.
-export function timeline(items = [], { tasks = [], events = [], now = Date.now(), hours = W.DAY_HOURS, run = null, rides = true, phoneOk = phoneOkIds(tasks) } = {}){
+//
+// An approved plan holds its times (Mor, 2026-10-10: "when task time arrives
+// the task moves 5 minutes forward"). Laid from now, a task you haven't
+// started slid forward with the clock forever. ctx.since: when you last did
+// anything (miss.lastActivity). The plan is laid from then; when its next
+// task's start has come with nothing started, it stays there, the whole plan
+// with it, and the result says late: { taskId, start } so the card can ask
+// (Start / In 10 min / Move). Any activity lays it from now again. While a
+// task runs the plan follows the clock as before. An item's at (ms): not
+// before then ("In 10 min").
+const up5 = (ms) => Math.ceil(ms / (5 * MIN)) * 5 * MIN;
+export function timeline(items = [], ctx = {}){
+  const now = ctx.now ?? Date.now();
+  if (ctx.since == null || runState(ctx.run, ctx.tasks || [], now)) return lay(items, ctx);
+  const from = Math.min(now, up5(ctx.since));
+  const held = from < now ? lay(items, { ...ctx, now: from }) : null;
+  const head = held?.rows.filter((r) => !r.ride).sort((a, b) => a.i - b.i)[0];
+  if (!head || head.start >= now) return lay(items, ctx);
+  return { ...held, late: { taskId: head.taskId, start: head.start } };
+}
+function lay(items = [], { tasks = [], events = [], now = Date.now(), hours = W.DAY_HOURS, run = null, rides = true, phoneOk = phoneOkIds(tasks) } = {}){
   const { evs, gaps } = freeGaps({ tasks, events, now, hours, run, rides });
   const meals = hours.meals ?? mealsOf();
   const byId = new Map(tasks.map((t) => [t.id, t]));
@@ -232,7 +252,7 @@ export function timeline(items = [], { tasks = [], events = [], now = Date.now()
       .find(({ g, from }) => g.place && fitsPlace(task, g.place, phoneOk) && g.end - from >= need);
     for (let k = gi; k < gaps.length; k++) {
       if (gaps[k].place) continue; // rides: above
-      const from = Math.max(cursor, gaps[k].start);
+      const from = Math.max(cursor, gaps[k].start, up5(it.at || 0));
       if (ride && ride.from <= from) break;
       // Same stretch as the last item, or a fresh one that starts with the
       // meetings just before it.

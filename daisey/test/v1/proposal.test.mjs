@@ -186,3 +186,28 @@ test("daySig: changes with busy events and hours, not with the clock or free eve
   assert.notEqual(daySig([], { start: 480, end: 1320 }, at(9)), s);
   assert.notEqual(daySig(evs, { start: 480, end: 1380 }, at(9)), s);
 });
+
+// An approved plan holds its times (Mor, 2026-10-10): idle past the next
+// task's start, it stays there and the plan says it's late; activity lays it
+// from now again; a running task follows the clock; "In 10 min" (at) holds it.
+test("held plan: the next task's start doesn't slide while you're idle", () => {
+  const tasks = [t({ id: "a", size: 30 }), t({ id: "b", size: 30 })];
+  const items = [{ taskId: "a", minutes: 30 }, { taskId: "b", minutes: 30 }];
+  const ctx = { tasks, events: [], hours: { start: 480, end: 1320 }, since: at(9, 2) };
+  const before = timeline(items, { ...ctx, now: at(9, 3) });
+  assert.equal(before.rows[0].start, at(9, 5)); assert.equal(before.late, undefined);
+  const idle = timeline(items, { ...ctx, now: at(9, 17) });
+  assert.equal(idle.rows[0].start, at(9, 5)); assert.equal(idle.rows[1].start, at(9, 35));
+  assert.deepEqual(idle.late, { taskId: "a", start: at(9, 5) });
+  // Old behaviour, no since: laid from now.
+  assert.equal(timeline(items, { ...ctx, since: undefined, now: at(9, 17) }).rows[0].start, at(9, 20));
+  // Something done since: from then again.
+  assert.equal(timeline(items, { ...ctx, since: at(9, 16), now: at(9, 17) }).late, undefined);
+  // A task running: follows the clock.
+  const run = { taskId: "b", startedAt: at(9, 10) };
+  assert.equal(timeline(items, { ...ctx, run, now: at(9, 17) }).late, undefined);
+  // In 10 min: not before its at, late again once that passes.
+  const later = [{ ...items[0], at: at(9, 30) }, items[1]];
+  assert.equal(timeline(later, { ...ctx, since: at(9, 20), now: at(9, 21) }).rows[0].start, at(9, 30));
+  assert.equal(timeline(later, { ...ctx, since: at(9, 20), now: at(9, 31) }).late.start, at(9, 30));
+});

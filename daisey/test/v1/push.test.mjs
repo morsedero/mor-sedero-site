@@ -203,3 +203,15 @@ test("decide: people — before a meeting with someone you wait on, once; gap le
   const g = N.decide(rec({ sentOn: "2026-10-06", tasks: [t({ title: "Send invoice", size: 15 })] }), evs, at(11, 5));
   assert.match(g.out[0].body, /^1 h 15 min free\./);
 });
+
+test("decide: the approved plan's next task, its time come with nothing started, is asked once", () => {
+  const a = t({ id: "a", title: "Write intro", touchedAt: at(9, 2) });
+  const r = (o = {}) => rec({ sentOn: "2026-10-06", tasks: [a, t({ id: "b" })], dayplan: { date: "2026-10-06", status: "approved", items: [{ taskId: "a", minutes: 30 }, { taskId: "b", minutes: 30 }] }, ...o });
+  assert.deepEqual(types(N.decide(r(), [], at(9, 3)).out), []); // not yet: 09:05
+  const d = N.decide(r(), [], at(9, 6));
+  const m = d.out.find((x) => x.title === "Time for Write intro");
+  assert.ok(m && m.taskId === "a" && /09:05/.test(m.body));
+  assert.equal(N.decide(r({ planSent: d.patch.planSent }), [], at(9, 8)).out.filter((x) => x.taskId === "a").length, 0); // once
+  assert.equal(N.decide(r({ run: { taskId: "b", startedAt: at(9, 4) } }), [], at(9, 6)).out.filter((x) => x.taskId === "a").length, 0); // busy on b
+  assert.equal(N.decide(r({ notify: { miss: false, booked: false } }), [], at(9, 6)).out.length, 0); // "Task starts" off
+});

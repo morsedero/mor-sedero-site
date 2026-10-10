@@ -104,7 +104,7 @@ const planMins = (v) => (Number.isFinite(v) && v > 0 ? Math.min(Math.round(v), 1
 const cleanDayPlan = (p) => (day(p?.date) && PLAN_STATUS.includes(p.status) ? {
   date: p.date, status: p.status,
   items: (Array.isArray(p.items) ? p.items : []).slice(0, 30).map((it) => (BRKS.includes(it?.brk)
-    ? { brk: it.brk, minutes: planMins(it.minutes), ...(it.name ? { name: str(it.name, 24) } : {}) } : { taskId: str(it?.taskId, 40), minutes: planMins(it?.minutes) }))
+    ? { brk: it.brk, minutes: planMins(it.minutes), ...(it.name ? { name: str(it.name, 24) } : {}) } : { taskId: str(it?.taskId, 40), minutes: planMins(it?.minutes), ...(at(it?.at) ? { at: it.at } : {}) }))
     .filter((it) => it.brk || it.taskId),
 } : null);
 const cleanNotify =(n) => Object.fromEntries(KINDS.map((k) => [k, n?.[k] !== false]));

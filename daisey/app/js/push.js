@@ -86,7 +86,7 @@ export function syncSnapshot(tasks, settings, hours, run = null, plan = null){
       trips: s.trips || {}, tripDay: s.tripDay || null }, // trips.js: travel legs count on the server too
     plan: plan?.status === "approved" && plan.date ? { date: plan.date, at: plan.approvedAt || 0, ids: (plan.items || []).filter((it) => it.taskId).map((it) => it.taskId) } : null,
     // The whole saved plan, any status, for the brief (brief.js planLine).
-    dayplan: plan?.date ? { date: plan.date, status: plan.status, items: (plan.items || []).map((it) => (it.brk ? { brk: it.brk, minutes: it.minutes, ...(it.name ? { name: it.name } : {}) } : { taskId: it.taskId, minutes: it.minutes })) } : null,
+    dayplan: plan?.date ? { date: plan.date, status: plan.status, items: (plan.items || []).map((it) => (it.brk ? { brk: it.brk, minutes: it.minutes, ...(it.name ? { name: it.name } : {}) } : { taskId: it.taskId, minutes: it.minutes, ...(it.at ? { at: it.at } : {}) })) } : null,
     notify: s.notify || {}, meetingLead: s.meetingLead ?? null,
     run: run ? Object.fromEntries(RUN_FIELDS.filter((k) => run[k] != null).map((k) => [k, run[k]])) : null };
   const mark = JSON.stringify(body);

@@ -25,7 +25,7 @@ import { pickWeekDay } from "./triage.js";
 import { focusView, handoffView, elapsedMinutes, targetMinutes, batchFocusView, batchName, sinceMark, paused, resumed, runCap, bookedMinutes, holdButton, stillOnMinutes, bloomHold } from "./focus.js";
 import { watchCalendar, logDone } from "./calendar.js";
 import { LATER_MINUTES, DRAIN, CANCEL_KEEP_MINUTES, LIGHTER } from "./weights.js";
-import { missState, silenceText } from "./miss.js";
+import { missState, silenceText, lastActivity } from "./miss.js";
 import { takeQuiet } from "./push.js";
 import { findPhoneTasks, phoneOkIds, searching } from "./phone.js";
 import { rank, freeWindow, timeBucket, matchProject, dueAt } from "./engine.js";
@@ -1372,6 +1372,31 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
       leftMinutes(task) > 5 && chip("Shorten", () => shortenNow(task)),
       chip("Move", () => { state.more = state.pendAsk = state.showAlts = false; state.notNow = true; render(); }));
   }
+  // The approved plan holds its times (proposal.timeline, 2026-10-10): when
+  // the next task's start comes with nothing started, the card asks right
+  // then (Mor: "more proactive"), before any miss would. → { taskId, start }
+  // or null. In 10 min: that item's at, and a touch (an answer).
+  const planSince = () => lastActivity(tasks || [], run, todaysPlan()?.approvedAt || 0);
+  function planDue(){
+    const p = approvedPlan();
+    if (!p || !tasks || cal.status !== "ok" || prop.open || handoff) return null;
+    return timeline(p.items || [], { ...planCtx(), since: planSince() }).late || null;
+  }
+  const dueWhy = (card, due) => ({ ...card, whyParts: [Date.now() - due.start < 2 * 60000 ? `planned for ${clock(due.start)}` : `planned for ${clock(due.start)}, not started`] });
+  function later10(task){
+    const at = Math.ceil((Date.now() + 10 * 60000) / 300000) * 300000;
+    const p = approvedPlan();
+    if (!p) return;
+    savePlan("approved", p.items.map((it) => (it.taskId === task.id ? { ...it, at } : it)), { kept: p.kept || [], ...unseen(p, "cut"), ...unseen(p, "added") });
+    restoreTask(uid, task.id, { touchedAt: Date.now() }).catch(fail);
+    flash(`${task.title}: at ${clock(at)}.`);
+  }
+  function dueRow(task){
+    const chip = (text, onclick) => h("button", { className: "chip", type: "button", textContent: text, onclick });
+    return h("div", { className: "later-ask miss-row", role: "group", ariaLabel: "Planned now" },
+      chip("In 10 min", () => later10(task)),
+      chip("Move", () => { state.more = state.pendAsk = state.showAlts = false; state.notNow = true; render(); }));
+  }
   function roughCard(st){
     return plainCard("empty quiet rough", { meta: "Rough day?", title: "Want a lighter plan?", why: silenceText(st, clock).replace(/ Want a lighter plan.*$/, ""),
       action: h("div", { className: "now-actions now-row" },
@@ -1449,8 +1474,8 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
       prop.items = trimBreaks(items); prop.touched = true; render();
     } }); return ol; };
   function proposalCard(){
-    const { rows, over, breaks } = timeline(prop.items, planCtx());
     const approved = !!approvedPlan();
+    const { rows, over, breaks, late } = timeline(prop.items, { ...planCtx(), ...(approved && !prop.touched ? { since: planSince() } : {}) });
     const total = rows.reduce((t, r) => t + r.minutes, 0);
     const last = rows[rows.length - 1];
     const row = (r, isOver) => {
@@ -1461,7 +1486,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
           : h("span", { className: "pp-time", ariaLabel: `${clock(r.start)} to ${clock(r.end)}` }, clock(r.start), h("small", { textContent: clock(r.end) })),
         h("button", { type: "button", className: "pp-task", ariaLabel: `Edit ${t.title}`, onclick: () => onOpen?.(t) },
           h("span", { className: "pp-title", dir: "auto", textContent: t.title }),
-          h("span", { className: "pp-meta" }, ...pieces(projectShown(t) ? t.project : "", dur(r.minutes), r.ride ? RIDE_ROW[r.ride] : ""))),
+          h("span", { className: "pp-meta" }, ...pieces(projectShown(t) ? t.project : "", dur(r.minutes), r.ride ? RIDE_ROW[r.ride] : "", late?.taskId === r.taskId && !isOver ? "not started" : ""))),
         h("span", { className: "pp-ctls" },
           ctl("✕", "Take off today's plan", false, () => dropItem(i))),
         isOver && r.room > 0 && h("button", { type: "button", className: "pp-fit", ariaLabel: `Shorten ${t.title} to ${dur(r.room)}`, onclick: () => shorten(i, r.room) },
@@ -1694,12 +1719,13 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
 
     const ms = missNow();
     if (ms?.kind === "silence") { day(...head, roughCard(ms), tip); return; }
-    const missed = ms?.kind === "miss" ? ms : null;
+    const due = planDue(), dueNow = due?.taskId === card.task.id ? due : null;
+    const missed = !dueNow && ms?.kind === "miss" ? ms : null;
     if (card === r.pick && r.pick.batch && !state.chosen && !state.single) { day(...head, batchCard(r, r.pick.batch), tip); return; }
     const alts = r.ranked.length > 1 ? [r.pick, ...r.alternatives].filter((s) => s !== card).slice(0, 3) : [];
     // Start is the one loud thing on the tab; the other two stay quiet under it.
-    day(...head, deck(taskCard(missed ? missWhy(card, missed) : card, true,
-      missed && !asking() && missRow(card.task),
+    day(...head, deck(taskCard(dueNow ? dueWhy(card, dueNow) : missed ? missWhy(card, missed) : card, true,
+      dueNow && !asking() && dueRow(card.task), missed && !asking() && missRow(card.task),
       ...cardActions(card.task, alts, startButton("Start", `Start: ${card.task.title}`, () => begin(card.task)))), asking()),
       nextLine(card.task), ...altsFor(alts), tip);
     // One slide-in per step-aside: later snapshots must not replay it.
@@ -1795,7 +1821,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
       return;
     }
     if (windowMark(calendarNow()) !== lastWindow) render();
-    else if (Date.now() - missAt > 15000) { missAt = Date.now(); const k = missNow()?.key ?? ""; if (k !== missKey) { missKey = k; render(); } }
+    else if (Date.now() - missAt > 15000) { missAt = Date.now(); const d = planDue(), k = `${missNow()?.key ?? ""}|${d ? `${d.taskId}|${d.start}` : ""}`; if (k !== missKey) { missKey = k; render(); } }
   }, 1000);
   let missAt = 0, missKey = "", tripMin = 0;
   // "Not today" on the silence check's notification (sw.js), saved here.

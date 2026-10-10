@@ -9,7 +9,10 @@
 //           Tapping it opens Daisey's wrap questions (?open=wrap)
 //   gap     a busy event just ended and 30+ free minutes follow: the task
 //           the Now card would pick for that window, with its why
-//   booked  a task's booked slot (day.js bookings) is starting
+//   booked  a task's booked slot (day.js bookings) is starting; also the
+//           approved plan's next task when its time comes with nothing
+//           started (app/js/proposal.js timeline late; Mor, 2026-10-10:
+//           ask at the time, don't let it slide). Same switch, "Task starts"
 //   people  up to 45 minutes before an event that names someone a Pending
 //           task waits on: "You're waiting on Yuval for: …" (app/js/nudge.js)
 //   meeting a calendar event starts in rec.meetingLead minutes (menu, default
@@ -55,9 +58,10 @@ const { effectiveDue } = require("../../app/js/triage.js");
 const { waitingFor, personOf } = require("../../app/js/nudge.js");
 const { EVENT_BUFFER } = require("../../app/js/weights.js");
 const { runState, overruled, eventKey } = require("../../app/js/reality.js");
-const { missState, silenceText } = require("../../app/js/miss.js");
+const { missState, silenceText, lastActivity } = require("../../app/js/miss.js");
 const { nextPlanned, leftOf } = require("../../app/js/proposal.js");
 const { MISS } = require("../../app/js/weights.js");
+const { timeline } = require("../../app/js/proposal.js");
 const { withTrips } = require("../../app/js/trips.js");
 
 const BRIEF_WINDOW = 240; // minutes after the day starts the brief may still go
@@ -169,6 +173,22 @@ function decide(rec, events, now = Date.now()) {
         ...(t && t.status === "ready" ? { taskId: id } : {}), ttl: BOOKED_TTL });
     }
     if (sent.size !== (rec.bookedSent || []).length) patch.bookedSent = [...sent].slice(-50);
+  }
+
+  // The plan's next task, its time come and nothing started: ask now, not
+  // once it counts as a miss. Not when Daisey is on screen (the card asks).
+  const dp = rec.dayplan?.date === date && rec.dayplan.status === "approved" ? rec.dayplan : null;
+  if (types.booked && events && dp && !focus && !current && !out.some((m) => m.type === "gap" || m.type === "booked")) {
+    const planAt = rec.plan?.date === date ? rec.plan.at || 0 : 0;
+    const late = timeline(dp.items || [], { tasks, events: evs, now, hours: { start, end }, run: rec.run, since: lastActivity(tasks, rec.run, planAt) }).late;
+    const k = late && `plan|${late.taskId}|${late.start}`, sent = new Set(rec.planSent || []);
+    if (late && now - late.start <= BOOKED_LATE * MIN && !sent.has(k)) {
+      sent.add(k); patch.planSent = [...sent].slice(-20);
+      const t = tasks.find((x) => x.id === late.taskId);
+      const shown = rec.seenAt && now - rec.seenAt < MISS.seen * MIN;
+      if (t && !shown) out.push({ type: "booked", title: `Time for ${t.title}`, body: `Planned for ${clockIn(late.start, tz)}.`, tag: `plan-${k}`, url: "./",
+        ...(t.status === "ready" ? { taskId: t.id } : {}), ttl: BOOKED_TTL });
+    }
   }
 
   if (types.miss && events && !out.some((m) => m.type === "gap" || m.type === "booked")) {
