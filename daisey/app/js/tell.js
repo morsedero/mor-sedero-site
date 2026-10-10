@@ -108,6 +108,9 @@ export function mountTell(form, input, mic, uid, { openAdd, openTask, guest = fa
         headers,
         body: JSON.stringify({
           text, today: localDate(), weekday: new Date().toLocaleDateString("en", { weekday: "long" }),
+          // Still up past midnight: the day they mean is the one they wake into, so
+          // "tomorrow" is today's date, not the day after (the chat function says so).
+          ...(logicalDate() !== localDate() ? { upLate: logicalDate() } : {}),
           ...(guest ? { guest: true } : {}),
           tasks: open.map((t) => ({ id: t.id, title: t.title, project: t.project, due: t.due || undefined, status: t.status })),
           projects: [...new Set(open.map((t) => t.project))],

@@ -277,6 +277,11 @@ async function ask(key, prompt, system = SYSTEM, schema = SCHEMA){
   }
 }
 
+// Said after midnight before sleeping (tell.js upLate: the day they're still
+// in): "tomorrow" is the day they wake into, which is already today's date.
+const upLateLine = (body) => (isDay(body.upLate) && isDay(body.today) && body.upLate < body.today
+  ? `\nIt is after midnight and the user is still up from ${body.upLate}. "Tomorrow" (מחר) means ${body.today}, the day they wake into, not the day after; "today" and "tonight" also mean ${body.today}.` : "");
+
 exports.handler = async (event) => {
   // GET: is it set up? Says only whether a key is present, never the key.
   if (event.httpMethod === "GET") return reply(200, { configured: !!process.env.GEMINI_API_KEY, model: MODEL });
@@ -346,7 +351,8 @@ Instruction: ${text}`;
     .map((t) => ({ id: clean(t.id, 60), title: clean(t.title, 120), project: clean(t.project, 60), due: isDay(t.due) ? t.due : undefined, status: clean(t.status, 12) }))
     .filter((t) => t.id && t.title);
   const projects = (Array.isArray(body.projects) ? body.projects : []).map((p) => clean(p, 60)).filter(Boolean).slice(0, 60);
-  const prompt = `Today: ${clean(body.weekday, 12)} ${body.today}.\nProjects: ${JSON.stringify(projects)}\nTasks: ${JSON.stringify(tasks)}\n\nMessage: ${text}`;
+  const late = upLateLine(body);
+  const prompt = `Today: ${clean(body.weekday, 12)} ${body.today}.${late}\nProjects: ${JSON.stringify(projects)}\nTasks: ${JSON.stringify(tasks)}\n\nMessage: ${text}`;
 
   const out = (await ask(key, prompt)) || (await ask(key, prompt)); // one retry
   if (!out) return fail(502, "model");
@@ -354,3 +360,4 @@ Instruction: ${text}`;
 };
 
 exports.tidy = tidy; // for the tests
+exports.upLateLine = upLateLine;

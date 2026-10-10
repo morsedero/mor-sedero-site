@@ -52,8 +52,10 @@ reading the code, none fixed yet. Ranked by harm.
   yesterday's date (`now.js dayKey`). Tell saves the stretch on the logical
   day; "until 6am" (between 04:00 and the day start) stops at 03:59 and says
   so. Later → Tomorrow before 04:00 is the coming day. Preview `latenight`
-  (--at 00:30 day on, --at 01:30 night). Still by design: Settings' usual day
-  ends by 23:59; Tell's "tomorrow" after midnight is still the calendar's.
+  (--at 00:30 day on, --at 01:30 night). Tell before 04:00 sends `upLate`
+  and the chat function tells the model "tomorrow" (and "today") means the
+  day you wake into (`upLateLine`, chat.test). Still by design: Settings'
+  usual day ends by 23:59.
 
 ## 5. Reopen then Done counts twice
 - Sheet **Reopen** (`addtask.js:423`) sets status ready but doesn't remove the
