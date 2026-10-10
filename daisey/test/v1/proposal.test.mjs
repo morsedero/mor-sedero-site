@@ -44,6 +44,13 @@ test("approved plan: the card follows it in order, skipping what's done or on ho
   assert.deepEqual(planProgress(plan, tasks), { done: 1, total: 3 });
 });
 
+test("plan progress: a routine with a session logged on the plan's day counts as done", () => {
+  const tasks = [t({ id: "r", routine: { per: 3, log: [{ day: "2026-10-10" }] }, notBefore: "2026-10-11" }), t({ id: "c" })];
+  const plan = { date: "2026-10-10", status: "approved", items: [{ taskId: "r" }, { taskId: "c" }] };
+  assert.deepEqual(planProgress(plan, tasks), { done: 1, total: 2 });
+  assert.deepEqual(planProgress({ ...plan, date: "2026-10-11" }, tasks), { done: 0, total: 2 });
+});
+
 test("rethink in plain words", () => {
   const tasks = [t({ id: "mix", title: "Mix review", project: "Reprise" }), t({ id: "inv", title: "Send invoice", type: "admin" }), t({ id: "call", title: "Call Dana", type: "call" })];
   assert.deepEqual(parseAsk("no calls", tasks).skipTypes, ["call"]);

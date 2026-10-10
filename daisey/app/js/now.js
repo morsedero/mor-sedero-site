@@ -1340,9 +1340,12 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
         h("button", { className: "toast-why", type: "button", textContent: "Tomorrow", onclick: () => answer(pushedTo(ask, { due: dayAfter(1) })) }),
         h("button", { className: "toast-why", type: "button", textContent: "Keep today", onclick: () => answer(null) })));
   }
+  // A Later today hold (it.hold) and an "In 10 min" (it.at) survive Save plan:
+  // dropped, the Today list put a Later'd task back at its old time while the
+  // card, honouring the Later, skipped it (2026-10-11).
   function approve(){
     const n = prop.items.filter((it) => !isBreak(it)).length;
-    savePlan("approved", trimBreaks(prop.items).map(({ taskId, brk, minutes, name }) => (brk ? { brk, minutes, ...(name ? { name } : {}) } : { taskId, minutes })), { approvedAt: Date.now(), mealsLaid: mealAnswers(), behindNo: null, offer: null });
+    savePlan("approved", trimBreaks(prop.items).map(({ taskId, brk, minutes, name, at, hold }) => (brk ? { brk, minutes, ...(name ? { name } : {}) } : { taskId, minutes, ...(at ? { at } : {}), ...(hold ? { hold } : {}) })), { approvedAt: Date.now(), mealsLaid: mealAnswers(), behindNo: null, offer: null });
     prop.open = false; prop.replan = false; prop.ask = false; prop.note = ""; reset();
     render();
     flash(`Plan set: ${n} ${n === 1 ? "task" : "tasks"}. The card follows it.`);

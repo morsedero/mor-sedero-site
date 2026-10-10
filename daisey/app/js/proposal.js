@@ -455,7 +455,11 @@ export function nextPlanned(plan, tasks = [], date, now = Date.now()){
 export function planProgress(plan, tasks = []){
   const byId = new Map(tasks.map((t) => [t.id, t]));
   const items = (plan?.items || []).filter((it) => byId.has(it.taskId));
-  return { done: items.filter((it) => byId.get(it.taskId).status === "done").length, total: items.length };
+  // A routine isn't closed by Done (routine.sessionPatch): it's back to ready
+  // with a session logged for the day, so that counts too (2026-10-11: two
+  // routines done, the chip read 0/5).
+  const done = (t) => t.status === "done" || (!!plan?.date && (t.routine?.log || []).some((l) => l.day === plan.date));
+  return { done: items.filter((it) => done(byId.get(it.taskId))).length, total: items.length };
 }
 
 // "Rethink" in plain words, read here so it works offline and for guests;
