@@ -301,10 +301,10 @@ export function focusView(run, task, cb){
 // of the same handoff stay still.
 // done: { title, minutes, count }.
 const DRIFT = [[-130, -120, -30, 0], [120, -140, 40, .2], [-150, 40, 80, .4], [150, 30, -70, .1], [-60, -170, 10, .6], [70, 110, 150, .3]];
-// Every option the Now card has sits on the Next card too (Mor, 2026-10-07):
-// Start, Deep Focus, Done already, Later, Switch, Pending, and the task
-// itself (open it). Any callback left out hides its button.
-export function handoffView(done, next, { onStart, onSkip, onFocus, onDone, onLater, onSwitch, onPending, onOpen, onPlan, cheer }){
+// The Next card asks one thing: do it? (Mor, 2026-10-11: "so cluttered",
+// was every option the Now card has.) Do it, or Switch / Not now quietly
+// under it; the rest is on the Now card once it's there.
+export function handoffView(done, next, { onStart, onSkip, onSwitch, cheer }){
   const n = done.count || 0;
   const petals = cheer && h("div", { className: "drift", ariaHidden: "true" }, ...DRIFT.map(([dx, dy, r, d]) => {
     const p = h("span", { className: "petal" });
@@ -332,24 +332,13 @@ export function handoffView(done, next, { onStart, onSkip, onFocus, onDone, onLa
           h("span", { className: "next-kind", textContent: [LABELS.type[t.type], dur(t.size)].filter(Boolean).join(" · ") })),
         h("div", { className: "next-title", dir: "auto", textContent: t.title }),
         next.why && h("p", { className: "next-why", textContent: next.why }),
-        h("div", { className: "next-btns" },
-          h("button", { className: "btn primary start", type: "button", textContent: "Do it",
-            ariaLabel: `Do it: ${t.title} on the card`, onclick: () => onStart(t) }),
-          onFocus && h("button", { className: "btn line", type: "button", textContent: "Focus",
-            ariaLabel: `${t.title} on the card, in Focus mode`, onclick: () => onFocus(t) })),
-        h("div", { className: "next-more", role: "group", ariaLabel: "Other options" },
-          ...[[onDone, "check", "Done", `${t.title} is already done`],
-            [onLater, "later", "Later", `choose when to see ${t.title} again`],
-            [onSwitch, "switch", "Switch", "something else instead"],
-            [onPending, "pending", "Pending", `${t.title} is blocked: set it to Pending`],
-            [onOpen, "edit", "Open", `open ${t.title} to edit it`],
-            [() => onSkip(t), "close", "Not now", `not now: skip ${t.title} for a while`]]
-            .filter(([fn]) => fn).map(([fn, ic, text, aria]) => fn === onDone && !isRoutine(t)
-              ? bloomHold(h("button", { className: "next-opt", type: "button", ariaLabel: `${text}: hold to show how much of ${t.title} is done` },
-                icon(ic), h("span", { textContent: text })), (p) => onDone(t, p))
-              : h("button", { className: "next-opt", type: "button", ariaLabel: `${text}: ${aria}`, onclick: () => (fn === onDone ? fn(t, 100) : fn(t)) },
-                icon(ic), h("span", { textContent: text })))),
-        onPlan && h("button", { className: "linkish next-plan", type: "button", textContent: "Plan the rest of my day", onclick: onPlan }))
+        h("button", { className: "btn primary start", type: "button", textContent: "Do it",
+          ariaLabel: `Do it: ${t.title} on the card`, onclick: () => onStart(t) }),
+        h("div", { className: "next-more" },
+          onSwitch && h("button", { className: "linkish", type: "button", textContent: "Switch",
+            ariaLabel: "Switch: something else instead", onclick: () => onSwitch(t) }),
+          h("button", { className: "linkish", type: "button", textContent: "Not now",
+            ariaLabel: `Not now: skip ${t.title} for a while`, onclick: () => onSkip(t) })))
       : h("div", { className: "next-card none" },
         h("p", { className: "next-why", textContent: "Nothing else fits right now. Take the break." }),
         h("button", { className: "btn line", type: "button", textContent: "Back", onclick: () => onSkip(null) })));

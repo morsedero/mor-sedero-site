@@ -766,9 +766,9 @@ dialog.settings .now-head + .menu-sec { border-block-start: 0; padding-block-sta
 .next-kind { font-size: 13px; color: var(--sub); }
 .next-title { font-size: 24px; font-weight: 600; line-height: 1.2; overflow-wrap: anywhere; }
 .next-why { margin: 0; font-size: 14px; line-height: 1.4; color: var(--sub); }
-.next-btns { display: grid; grid-template-columns: 2fr 1fr; gap: 8px; margin-block-start: 4px; }
-.next-btns .btn.start { margin: 0; min-block-size: 52px; font-size: 17px; }
-.next-btns .btn.line { min-block-size: 52px; border-color: var(--aline); }
+.next-card .btn.start { margin: 4px 0 0; min-block-size: 52px; font-size: 17px; }
+.next-more { display: flex; justify-content: center; gap: 28px; }
+.next-more .linkish { font-size: 15px; padding: 8px 4px; }
 
 /* Night: dark whatever the theme (.night on <html>), stars, the moon. */
 .stars { position: fixed; inset: 0; pointer-events: none; z-index: 0; }
@@ -1691,10 +1691,6 @@ body.focus .shell { block-size: auto; min-block-size: 100dvh; overflow: visible;
 .sc-task { flex: 1; min-inline-size: 0; min-block-size: 36px; padding: 4px 10px; border: 0; border-radius: 10px; background: var(--card); color: var(--ink); font: inherit; font-size: 14px; font-weight: 600; text-align: start; cursor: pointer; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* After Done: every option, not just Start / Not now. */
-.next-more { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
-.next-opt { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; min-block-size: 50px; border: 1px solid var(--aline); border-radius: 12px; background: color-mix(in srgb, var(--card) 60%, var(--tint)); color: var(--ink); font: inherit; font-size: 12px; font-weight: 500; cursor: pointer; }
-.next-opt svg { inline-size: 16px; block-size: 16px; stroke-width: 2; }
-.next-plan { align-self: center; font-size: 13px; }
 
 /* Running, waiting for a reply: on hold, the clock still going. */
 .now-card.running.on-hold { background: repeating-linear-gradient(-45deg, var(--tint) 0 12px, color-mix(in srgb, var(--tint) 70%, var(--card)) 12px 24px); }

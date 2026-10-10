@@ -1652,9 +1652,8 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
       const r = rank(tasks || [], { ...m, sessionSkips: [...m.sessionSkips, handoff.skip] });
       const pr = planNow([handoff.skip])?.row;
       const nextPick = pr ? (r.ranked.find((s) => s.task.id === pr.taskId) || { task: pr.task, whyParts: [] }) : r.pick;
-      // Every option the card has, right here (Mor, 2026-10-07: not just
-      // Start / Not now). Later, Switch and Pending open the card on that
-      // task with the same ask already open.
+      // Do it, Switch, Not now (Mor, 2026-10-11: the full set was clutter).
+      // Switch opens the card on that task with its alternatives showing.
       const onCardWith = (task, open) => { handoff = null; reset(); state.chosen = task.id; state.notNow = true; Object.assign(state, open); render(); };
       const cheer = !handoff.cheered; // the petals once, not on every re-render
       handoff.cheered = true;
@@ -1673,13 +1672,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
       fill(handoffView({ title: handoff.title, minutes: handoff.minutes || 0, count: n, again }, nextPick, {
         cheer,
         onStart: (task) => onCardWith(task, { notNow: false }),
-        onFocus: (task) => { setFocus(true); onCardWith(task, { notNow: false }); },
-        onDone: (task, p) => { handoff = null; if (p >= 100) quickDoneNow(task); else partDone(task, p); },
-        onLater: (task) => onCardWith(task, {}),
         onSwitch: (task) => onCardWith(task, { notNow: false, showAlts: true }),
-        onPending: (task) => onCardWith(task, { notNow: false, pendAsk: true }),
-        onOpen: onOpen ? (task) => onOpen(task) : null,
-        onPlan: () => openProposal(),
         onSkip: (task) => { if (task) skips.add(task.id); handoff = null; showing(null); render(); },
       }));
       if (cheer) navigator.vibrate?.(15);
