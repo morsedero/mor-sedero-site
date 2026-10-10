@@ -255,7 +255,7 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onProjects, onW
     // Held like the Now card's (proposal.timeline since): a task you haven't
     // started stays at its time, it doesn't slide with the clock.
     const tl = timeline(dayPlan.items || [], { tasks, events, now, hours: hrs, run, since: lastActivity(tasks, run, dayPlan.approvedAt || 0) });
-    return [...tl.rows.map((r) => ({ kind: "plan", start: r.start, end: r.end, task: r.task })),
+    return [...tl.rows.map((r) => ({ kind: "plan", start: r.start, end: r.end, task: r.task, missed: !!r.missed })),
       ...tl.breaks.map((b) => ({ kind: "break", start: b.start, end: b.end, type: b.type, name: b.name }))];
   }
 
@@ -341,7 +341,7 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onProjects, onW
       for (const x of c.timed) {
         if (x.plan) {
           const w = 100 / x.lanes, time = `${clock(x.start)}–${clock(x.end)}`;
-          col.append(h("button", { type: "button", className: "wk-ev wk-plan" + areaClass(x.plan.task) + (x.end <= now ? " past" : x.start <= now ? " on" : ""),
+          col.append(h("button", { type: "button", className: "wk-ev wk-plan" + areaClass(x.plan.task) + (x.plan.missed ? " missed" : x.end <= now ? " past" : x.start <= now ? " on" : ""),
             style: `top:${px(x.s)}px;block-size:${Math.max(18, px(x.e) - px(x.s) - 2)}px;inset-inline-start:${x.lane * w}%;inline-size:calc(${w}% - 2px)`,
             ariaLabel: `Planned: ${x.plan.task.title}, ${short(c.d)} ${time}`, onclick: () => onOpen?.(x.plan.task) },
             h("span", { className: "wk-evt" }, bdi(x.plan.task.title)), x.e - x.s >= 45 && h("span", { className: "wk-evtime", textContent: clock(x.start) })));
@@ -390,8 +390,10 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onProjects, onW
     // How far through it you are shows as a deeper fill: a CSS animation as long
     // as the event, started that far back, so it creeps on with no timer.
     const orbit = on ? `--orbit:-${Date.now() % ORBIT_MS}ms;--dur:${x.end - x.start}ms;--el:-${Date.now() - x.start}ms;` : "";
-    if (x.kind === "plan") { const pe = h("div", { className: "sc-row" + (on ? " sc-on" + areaClass(x.task) : past ? " sc-past" : ""), style: orbit },
-      h("span", { className: "sc-time strong" }, time, on && h("span", { className: "sc-nowtag", textContent: "Now" })),
+    // Planned and never started isn't "over" (Mor, 2026-10-10): not dimmed
+    // like what happened, marked "Didn't happen" until it's re-planned.
+    if (x.kind === "plan") { const pe = h("div", { className: "sc-row" + (x.missed ? " sc-missed" : on ? " sc-on" + areaClass(x.task) : past ? " sc-past" : ""), style: orbit },
+      h("span", { className: "sc-time strong" }, time, x.missed ? h("span", { className: "sc-misstag", textContent: "Didn't happen" }) : on && h("span", { className: "sc-nowtag", textContent: "Now" })),
       h("button", { type: "button", className: "sc-ev sc-plan" + areaClass(x.task), ariaLabel: `Planned: ${x.task.title}, ${time}`, onclick: () => onOpen?.(x.task) },
         h("span", { className: "sc-dot" }), bdi(x.task.title)));
       if (slots.includes(x)) { x.el = pe; draggable(x, pe, slots); pe.classList.add("sc-drag"); }

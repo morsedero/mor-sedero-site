@@ -211,3 +211,12 @@ test("held plan: the next task's start doesn't slide while you're idle", () => {
   assert.equal(timeline(later, { ...ctx, since: at(9, 20), now: at(9, 21) }).rows[0].start, at(9, 30));
   assert.equal(timeline(later, { ...ctx, since: at(9, 20), now: at(9, 31) }).late.start, at(9, 30));
 });
+
+test("held plan: a planned task whose whole time passed unstarted is missed, not over", () => {
+  const tasks = [t({ id: "a", size: 30 }), t({ id: "b", size: 30 }), t({ id: "c", size: 30 })];
+  const items = tasks.map((x) => ({ taskId: x.id, minutes: 30 }));
+  const tl = timeline(items, { tasks, events: [], hours: { start: 480, end: 1320 }, since: at(9, 2), now: at(10, 10) });
+  assert.deepEqual(tl.missed, ["a", "b"]); // 09:05–09:35, 09:35–10:05
+  assert.deepEqual(tl.rows.map((r) => !!r.missed), [true, true, false]);
+  assert.equal(timeline(items, { tasks, events: [], hours: { start: 480, end: 1320 }, since: at(10, 9), now: at(10, 10) }).missed, undefined);
+});

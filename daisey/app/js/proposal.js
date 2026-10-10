@@ -193,7 +193,8 @@ export function withBreaks(items = [], ctx = {}){
 // anything (miss.lastActivity). The plan is laid from then; when its next
 // task's start has come with nothing started, it stays there, the whole plan
 // with it, and the result says late: { taskId, start } so the card can ask
-// (Start / In 10 min / Move). Any activity lays it from now again. While a
+// (Start / In 10 min / Move); once a planned row's whole time has passed
+// it's missed. Any activity lays it from now again. While a
 // task runs the plan follows the clock as before. An item's at (ms): not
 // before then ("In 10 min").
 const up5 = (ms) => Math.ceil(ms / (5 * MIN)) * 5 * MIN;
@@ -204,7 +205,11 @@ export function timeline(items = [], ctx = {}){
   const held = from < now ? lay(items, { ...ctx, now: from }) : null;
   const head = held?.rows.filter((r) => !r.ride).sort((a, b) => a.i - b.i)[0];
   if (!head || head.start >= now) return lay(items, ctx);
-  return { ...held, late: { taskId: head.taskId, start: head.start } };
+  // Planned, its time over, never started (Mor, 2026-10-10: not "as if they
+  // happened"): row.missed, and missed lists their ids in plan order.
+  const missed = held.rows.filter((r) => !r.ride && r.end <= now).sort((a, b) => a.i - b.i);
+  for (const r of missed) r.missed = true;
+  return { ...held, late: { taskId: head.taskId, start: head.start }, missed: missed.map((r) => r.taskId) };
 }
 function lay(items = [], { tasks = [], events = [], now = Date.now(), hours = W.DAY_HOURS, run = null, rides = true, phoneOk = phoneOkIds(tasks) } = {}){
   const { evs, gaps } = freeGaps({ tasks, events, now, hours, run, rides });
@@ -301,9 +306,9 @@ function lay(items = [], { tasks = [], events = [], now = Date.now(), hours = W.
 }
 
 // When the day shrinks under an approved plan (an event added, or running
-// late), Daisey refits it itself and says so after (Mor, 2026-10-08: "act on
-// its smartest way behind the scenes, tell the user, ask following
-// questions"). Supersedes "an approved plan never changes itself" for this.
+// late), this is what Daisey proposes to cut; since 2026-10-10 it asks
+// first and saves only on approval (now.js behindView: "it needs to always
+// ask and get approval", superseding 2026-10-08's cut-then-tell).
 // What stays is decided by how much it matters, not by position: each task,
 // most important first, stays if the plan still fits with it in; the user's
 // order is kept for what stays. keep: ids that never go (the running task,

@@ -1177,7 +1177,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
       cut = true; return false;
     });
   }
-  const closeProposal = () => { prop.open = false; prop.ask = false; prop.note = ""; paintPlanScreen(); }; // the Now card stays as is
+  const closeProposal = () => { prop.replan = false; prop.open = false; prop.ask = false; prop.note = ""; paintPlanScreen(); }; // the Now card stays as is
   // extra: the refit's record ({ kept, cut }), kept until the plan is saved again.
   // approvedAt: when the user last approved it (miss.js counts that as
   // activity; a refit saving the plan isn't), kept across later saves.
@@ -1185,29 +1185,65 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
   // sig: the day the plan was saved against (proposal.daySig); topUpLater
   // compares it with the calendar now. mealsLaid: the meal answers already
   // laid into it (proposal.relayMeals), kept across later saves.
+  // behindNo / offer: the behind ask's "Not now" and the top-up's open
+  // question (behindView, addedView), kept across later saves too.
   const savePlan = (status, items, extra = {}) => {
     const was = todaysPlan();
     const approvedAt = was?.approvedAt ?? null, declined = was?.declined || [], mealsLaid = was?.mealsLaid || {};
+    extra = { ...(was?.behindNo ? { behindNo: was.behindNo } : {}), ...(was?.offer ? { offer: was.offer } : {}), ...extra };
     const sig = cal.status === "ok" ? daySig(cal.events, dayHours(settings)) : null;
     dayPlan = { date: localDate(), status, items, approvedAt, declined, mealsLaid, sig, ...extra, at: Date.now() };
     saveDayPlan(uid, { date: dayPlan.date, status, items, approvedAt, declined, mealsLaid, sig, ...extra }).catch(fail);
   };
   // An unseen notice survives a save made for another reason.
   const unseen = (p, key) => (p?.[key] && !p[key].seen ? { [key]: p[key] } : {});
-  // The approved plan no longer fits the day (an event added, running late):
-  // Daisey cuts what matters least itself (proposal.refit) and says so under
-  // the card, with Undo (Mor, 2026-10-08). Cut tasks are just back in the
-  // list. cut: { ids, why, before } until seen; kept: after Undo, every task
-  // in the plan, so Daisey leaves that plan alone (cutting something else to
-  // make room for the ones put back would undo the Undo).
-  function refitPlan(){
+  // The approved plan no longer fits the day (an event added, running late),
+  // or planned tasks' time came and went with nothing started: Daisey says
+  // so under the card and ASKS (Mor, 2026-10-10: "it needs to always ask and
+  // get approval"; supersedes 2026-10-08's cut-it-myself-and-say-so). What it
+  // would take off is still proposal.refit's pick, what matters least.
+  // Re-plan: that cut, and the rest laid from now. Review: the plan screen,
+  // laid from now, to change by hand. Not now: quiet until what's missed or
+  // what it would cut changes (behindNo). cut { ids, ok, before, asked }: an
+  // approved cut, kept for the deadline question (cutView).
+  function behindNow(){
     const p = approvedPlan();
-    if (!p || !tasks || cal.status !== "ok" || prop.open || ppDragging) return;
-    const { items, cut } = refit(p.items || [], planCtx(), p.kept || []);
-    if (!cut.length) return;
-    const prev = p.cut && !p.cut.seen ? p.cut : null;
-    savePlan("approved", items, { kept: p.kept || [], ...unseen(p, "added"),
-      cut: { ids: [...(prev?.ids || []), ...cut], why: prev?.why || squeezedBy(p), before: prev?.before || p.items, asked: prev?.asked || [] } });
+    if (!p || !tasks || cal.status !== "ok" || prop.open || ppDragging || handoff) return null;
+    const ctx = planCtx(), held = timeline(p.items || [], { ...ctx, since: planSince() });
+    if (held.late && !held.missed.length) return null; // the card is asking about the next task
+    const { items, cut } = refit(p.items || [], ctx, p.kept || []);
+    const missed = (held.missed || []).map((id) => tasks.find((t) => t.id === id)).filter(Boolean);
+    if (!missed.length && !cut.length) return null;
+    const key = [...missed.map((t) => t.id), "|", ...cut].join(",");
+    if (p.behindNo === key) return null;
+    return { p, missed, cut, items, key, why: squeezedBy(p) };
+  }
+  function behindView(){
+    const b = behindNow();
+    if (!b) return null;
+    const { p, missed } = b, gone = b.cut.map((id) => tasks.find((t) => t.id === id)).filter(Boolean);
+    const list = (ts) => ts.flatMap((t, i) => [i ? (i === ts.length - 1 ? " and " : ", ") : "", bdi(t.title)]);
+    const why = b.why?.title ? [bdi(b.why.title), ` takes ${dur(b.why.minutes)}. `] : !missed.length ? ["The day's running behind. "] : [];
+    const text = [
+      ...(missed.length ? [...list(missed), " didn't happen. "] : []),
+      ...why,
+      ...(gone.length ? ["To fit the rest of today I'd take off ", ...list(gone), "."] : ["Re-plan the rest of today from now?"]),
+    ];
+    const replan = () => {
+      savePlan("approved", b.items, { kept: p.kept || [], ...unseen(p, "added"), approvedAt: Date.now(), behindNo: null,
+        ...(gone.length ? { cut: { ids: b.cut, ok: true, before: p.items, asked: [] } } : {}) });
+      flash(gone.length ? `Re-planned from now. ${gone.length === 1 ? "One task" : `${gone.length} tasks`} back in your list.` : "Re-planned from now.");
+      render();
+    };
+    return h("div", { className: "toast plan-cut", role: "status" },
+      h("div", { className: "toast-row" },
+        h("span", { className: "toast-text" }, ...text),
+        h("span", { className: "toast-acts" },
+          h("button", { className: "toast-undo", type: "button", textContent: "Re-plan", ariaLabel: "Re-plan the rest of today from now", onclick: replan }),
+          h("button", { className: "toast-undo", type: "button", textContent: "Review", ariaLabel: "Open today's plan to change it",
+            onclick: () => { prop.replan = true; openProposal(); } }),
+          h("button", { className: "toast-undo", type: "button", textContent: "Not now", ariaLabel: "Not now",
+            onclick: () => { savePlan("approved", p.items, { kept: p.kept || [], ...unseen(p, "cut"), ...unseen(p, "added"), behindNo: b.key }); render(); } }))));
   }
   // What shrank the day: a busy event added or moved since the plan was saved.
   function squeezedBy(p){
@@ -1258,12 +1294,27 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     if (p.sig === sig) return;
     const { items, added } = topUp(p.items || [], ctx, p.declined || []);
     if (!added.length) { markSig(sig); return; }
-    const prev = p.added && !p.added.seen ? p.added.ids : [];
-    savePlan("approved", items, { kept: p.kept || [], ...unseen(p, "cut"), added: { ids: [...prev, ...added] } });
+    // Asked, not added (Mor, 2026-10-10: always ask): addedView.
+    savePlan("approved", p.items || [], { kept: p.kept || [], ...unseen(p, "cut"), ...unseen(p, "added"), offer: { ids: added, add: items.slice((p.items || []).length) } });
     if (redraw) render();
   }
   function addedView(){
-    const p = approvedPlan(), a = p?.added;
+    const p = approvedPlan(), o = p?.offer;
+    const offered = (o?.add || []).filter((it) => (tasks || []).some((t) => t.id === it.taskId && t.status === "ready") && !(p.items || []).some((x) => x.taskId === it.taskId));
+    if (offered.length) {
+      const got = offered.map((it) => tasks.find((t) => t.id === it.taskId));
+      const keep = { kept: p.kept || [], ...unseen(p, "cut") };
+      return h("div", { className: "toast plan-cut", role: "status" },
+        h("div", { className: "toast-row" },
+          h("span", { className: "toast-text" }, "Your day opened up. Add ",
+            ...got.flatMap((t, i) => [i ? (i === got.length - 1 ? " and " : ", ") : "", bdi(t.title)]), " to today's plan?"),
+          h("span", { className: "toast-acts" },
+            h("button", { className: "toast-undo", type: "button", textContent: "Add", ariaLabel: "Add them to today's plan",
+              onclick: () => { savePlan("approved", [...(p.items || []), ...offered], { ...keep, offer: null }); render(); } }),
+            h("button", { className: "toast-undo", type: "button", textContent: "No", ariaLabel: "No, leave the plan as it is",
+              onclick: () => { savePlan("approved", p.items || [], { ...keep, offer: null, declined: [...(p.declined || []), ...o.ids] }); render(); } }))));
+    }
+    const a = p?.added;
     if (!a || a.seen) return null;
     const inPlan = new Set((p.items || []).map((it) => it.taskId));
     const got = a.ids.filter((id) => inPlan.has(id)).map((id) => (tasks || []).find((t) => t.id === id)).filter(Boolean);
@@ -1313,6 +1364,12 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     // The follow-up: a real deadline today that no longer fits.
     const ask = gone.find((t) => t.status === "ready" && t.dateKind === "deadline" && t.due && t.due <= localDate() && !(c.asked || []).includes(t.id));
     const answer = (patch) => { if (patch) restoreTask(uid, ask.id, patch).catch(fail); cutSaved({ ...c, asked: [...(c.asked || []), ask.id] }); render(); };
+    // A cut the user approved (behindView): only the deadline question is left.
+    if (c.ok) return ask ? h("div", { className: "toast plan-cut", role: "status" },
+      h("div", { className: "toast-why-row", role: "group", ariaLabel: `${ask.title} is due today` },
+        h("span", { className: "toast-text" }, bdi(ask.title), " is due today and came off the plan. Move the deadline?"),
+        h("button", { className: "toast-why", type: "button", textContent: "To tomorrow", onclick: () => answer(pushedTo(ask, { due: dayAfter(1) })) }),
+        h("button", { className: "toast-why", type: "button", textContent: "Keep today", onclick: () => answer(null) }))) : null;
     return h("div", { className: "toast plan-cut", role: "status" },
       h("div", { className: "toast-row" },
         h("span", { className: "toast-text" }, ...cause, ` ${n === 1 ? "one task" : `${n} tasks`} off today's plan: `,
@@ -1329,8 +1386,8 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
   }
   function approve(){
     const n = prop.items.filter((it) => !isBreak(it)).length;
-    savePlan("approved", trimBreaks(prop.items).map(({ taskId, brk, minutes, name }) => (brk ? { brk, minutes, ...(name ? { name } : {}) } : { taskId, minutes })), { approvedAt: Date.now(), mealsLaid: mealAnswers() });
-    prop.open = false; prop.ask = false; prop.note = ""; reset();
+    savePlan("approved", trimBreaks(prop.items).map(({ taskId, brk, minutes, name }) => (brk ? { brk, minutes, ...(name ? { name } : {}) } : { taskId, minutes })), { approvedAt: Date.now(), mealsLaid: mealAnswers(), behindNo: null, offer: null });
+    prop.open = false; prop.replan = false; prop.ask = false; prop.note = ""; reset();
     render();
     flash(`Plan set: ${n} ${n === 1 ? "task" : "tasks"}. The card follows it.`);
   }
@@ -1475,18 +1532,18 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     } }); return ol; };
   function proposalCard(){
     const approved = !!approvedPlan();
-    const { rows, over, breaks, late } = timeline(prop.items, { ...planCtx(), ...(approved && !prop.touched ? { since: planSince() } : {}) });
+    const { rows, over, breaks, late } = timeline(prop.items, { ...planCtx(), ...(approved && !prop.touched && !prop.replan ? { since: planSince() } : {}) });
     const total = rows.reduce((t, r) => t + r.minutes, 0);
     const last = rows[rows.length - 1];
     const row = (r, isOver) => {
       const i = r.i, t = r.task;
       const ctl = (text, label, disabled, onclick) => h("button", { type: "button", className: "pp-ctl", textContent: text, title: label, ariaLabel: `${label}: ${t.title}`, disabled, onclick });
-      return h("li", { className: "pp-row pp-drag" + areaClass(t) + (isOver ? " over" : ""), _i: i },
+      return h("li", { className: "pp-row pp-drag" + areaClass(t) + (isOver ? " over" : r.missed ? " missed" : ""), _i: i },
         isOver ? h("span", { className: "pp-time", textContent: "No room" })
           : h("span", { className: "pp-time", ariaLabel: `${clock(r.start)} to ${clock(r.end)}` }, clock(r.start), h("small", { textContent: clock(r.end) })),
         h("button", { type: "button", className: "pp-task", ariaLabel: `Edit ${t.title}`, onclick: () => onOpen?.(t) },
           h("span", { className: "pp-title", dir: "auto", textContent: t.title }),
-          h("span", { className: "pp-meta" }, ...pieces(projectShown(t) ? t.project : "", dur(r.minutes), r.ride ? RIDE_ROW[r.ride] : "", late?.taskId === r.taskId && !isOver ? "not started" : ""))),
+          h("span", { className: "pp-meta" }, ...pieces(projectShown(t) ? t.project : "", dur(r.minutes), r.ride ? RIDE_ROW[r.ride] : "", isOver ? "" : r.missed ? "didn't happen" : late?.taskId === r.taskId ? "not started" : ""))),
         h("span", { className: "pp-ctls" },
           ctl("✕", "Take off today's plan", false, () => dropItem(i))),
         isOver && r.room > 0 && h("button", { type: "button", className: "pp-fit", ariaLabel: `Shorten ${t.title} to ${dur(r.room)}`, onclick: () => shorten(i, r.room) },
@@ -1527,9 +1584,9 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
             .sort((a, b) => a.s - b.s).map((x) => (x.ev ? evRow(x.ev) : x.b ? breakRow(x.b) : row(x.r, false))),
           ...over.map((r) => row(r, true)))),
       !rows.length && !over.length && h("p", { className: "now-empty", textContent: "No open task fits the free time left today." }),
-      // Overflow is cut by refitPlan (2026-10-08); what's left here is what
-      // the user put back with Undo. Late in the
-      // day it says so and offers a fresh take on what's left.
+      // Overflow: Daisey asks before cutting anything (behindView,
+      // 2026-10-10), so until it's answered, what doesn't fit shows here.
+      // Late in the day it says so and offers a fresh take on what's left.
       over.length > 0 && approved && !prop.busy && h("p", { className: "pp-note pp-late" }, "Running late. ",
         h("button", { type: "button", className: "linkish", textContent: "Rethink for what's left?", onclick: () => doRethink("") })),
       over.length > 0 && !approved && h("p", { className: "muted pp-note", textContent: `${plural(over.length)[0]} fit today. ${over.some((o) => o.room) ? `Shorten ${plural(over.length)[1]}, move` : "Move"} ${plural(over.length)[1]} up, or take ${plural(over.length)[1]} off.` }),
@@ -1588,7 +1645,6 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     if (!deepOn) deep.leave();
     else if (!deep.isOn()) deep.enter(runKey()); // a reload or the other device: no tap, so no full screen, but awake and counting
     document.body.classList.toggle("focus", deepOn || !!handoff);
-    refitPlan();
     const hrs = dayHours(settings);
     const dark = isNight(Date.now(), hrs) || rested();
     if (!dark) nightFree = false;
@@ -1680,7 +1736,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     showing(card?.task.id ?? null);
     // One ask under the card at a time, the most asked-for first.
     // (The calendar offer and the weekly Someday pick moved to Needs you.)
-    const tip = (toast && toastView()) || cutView() || addedView() || (sd.open && somedayAsk());
+    const tip = (toast && toastView()) || cutView() || behindView() || addedView() || (sd.open && somedayAsk());
     // In a meeting, the meeting IS what's happening now, so the card says
     // which one and how much of it is left (Mor, 2026-10-04) instead of
     // "nothing to pick until it ends", which named nothing and read as if
