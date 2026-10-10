@@ -30,7 +30,7 @@ import { dirOf, setProjectColors } from "./look.js";
 import { setProjectTiers } from "./context.js";
 import { TIERS, FOCUS_MAX } from "./weights.js";
 import { sortable, zoneSortable } from "./ppdrag.js";
-import { mountGrowth, flowerSvg, flowerTime, statsCard, weekCard, routinesSection } from "./bloom.js";
+import { mountGrowth, flowerSvg, flowerTime, statsCard, routinesSection } from "./bloom.js";
 
 const SWIPE_DONE = 90; // px a task travels right before letting go finishes it
 const SWIPE_PAGE = 70; // px sideways that turns the page to the next project
@@ -214,16 +214,20 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
     // a save) rebuilds the flowers mid-sway; they pick up where they were.
     const swayAt = () => (Date.now() % 5000) / 1000;
     const glow = (p) => landed?.name === p.name && Date.now() - landed.at < LANDED_MS;
-    // Bloom in the card (Mor, 2026-10-08): its flower for the period beside
-    // it, the period's time by the bar. The bar stays: all-time % done.
+    // Bloom in the card (Mor, 2026-10-08): its flower for the week beside it.
+    // Compact and labelled (Mor, 2026-10-10): name and "% done" on one row,
+    // the next task and "time this week" on the other, a thin bar under.
     const card = (p, i) => { const f = g.flowers.get(p.name);
       return h("button", { type: "button", className: "pcard pp-drag" + colorClass(p) + (glow(p) ? " landed" : ""), style: glow(p) ? `animation-delay:-${Date.now() - landed.at}ms` : "", _name: p.name, onclick: () => openProject(p.name) },
         f && h("span", { className: "pcard-fl" + (f.bud ? " bud" : "") + (g.pops.has(p.name) ? " pop" : ""), style: `--d:-${(swayAt() + i * 0.9).toFixed(2)}s` }, flowerSvg(f)),
         h("span", { className: "pcard-body" },
           h("span", { className: "pcard-top", dir: dirOf(p.name) },
-            h("span", { className: "pcard-name", dir: "auto", textContent: p.name })),
-          h("span", { className: "pcard-status" }, ...statusLine(p)),
-          h("span", { className: "pcard-foot" }, bar(p, "pbar"), flowerTime(f) && h("span", { className: "pcard-time", textContent: flowerTime(f) })))); };
+            h("span", { className: "pcard-name", dir: "auto", textContent: p.name }),
+            p.all.length > 0 && h("span", { className: "pcard-pct", textContent: `${Math.round(progress(p) * 100)}% done` })),
+          h("span", { className: "pcard-row" },
+            h("span", { className: "pcard-status" }, ...statusLine(p)),
+            flowerTime(f) && h("span", { className: "pcard-time", textContent: `${flowerTime(f)} this week` })),
+          bar(p, "pbar"))); };
     const tier = (t) => { const ins = ps.filter((p) => tierOf(p.name) === t);
       return h("div", { className: `pp-zone tier-${t}`, _tier: t },
         // Each tier a header with how many it holds; no box (Mor, 2026-10-08).
@@ -231,10 +235,10 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
           h("span", { className: "pp-tier-n", textContent: t === "focus" ? `${ins.length}/${FOCUS_MAX}` : String(ins.length) })),
         h("span", { className: "pp-tier-empty", textContent: "Drag a project here" }), ...ins.map(card)); };
     const y = els.grid.scrollTop;
+    // Routines on top, no week daisies (Mor, 2026-10-10).
     els.grid.replaceChildren(...[
-      dragProjects(h("div", { className: "pgrid tiers" }, ...TIERS.map(tier))),
-      weekCard(g.strip),
-      routinesSection(g.routines, tasks || [], new Map(all.map((p) => [p.name, p.color || ""])))].filter(Boolean));
+      routinesSection(g.routines, tasks || [], new Map(all.map((p) => [p.name, p.color || ""]))),
+      dragProjects(h("div", { className: "pgrid tiers" }, ...TIERS.map(tier)))].filter(Boolean));
     els.grid.scrollTop = y;
   }
 

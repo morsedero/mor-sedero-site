@@ -1,15 +1,15 @@
 // Bloom, inside Projects (Mor, 2026-10-08: "both become one page";
 // daisey/STATS_PLAN.md). The Projects page is the garden now: each project
 // card carries its flower — taller with the time it got this period, a petal
-// for every task finished, a closed bud when it got none — and the page ends
-// with the week as seven little daisies and the routines. This file is the
+// for every task finished, a closed bud when it got none — and the routines
+// sit above the tiers. This file is the
 // growing half: the work log, the calendar's past events, the period, and the
 // pieces drawn from them. projects.js lays them out. Calm on purpose: no red,
 // no "behind", no goals that aren't the user's own.
 import { watchLog } from "./store.js";
 import { fetchRange } from "./calendar.js";
 import {
-  PERIODS, periodRange, monthsOfRange, summarize, flowers, routineRows, weekStrip, fmtMinutes, oneLine,
+  PERIODS, periodRange, monthsOfRange, summarize, flowers, routineRows, fmtMinutes, oneLine,
   estimatedEntries, eventEntries,
 } from "./bloom-data.js";
 import { h, bdi, weekDots } from "./ui.js";
@@ -51,14 +51,6 @@ export function flowerSvg(f){
       svg("path", { d: `M${cx - 7} ${top + 1} q7 7 14 0`, class: "bl-cup" }));
   }
   root.append(head);
-  return root;
-}
-
-// A day's little daisy in the week row: size is that day's time.
-function dayDaisy(min, peak){
-  const r = min ? 5 + 7 * (min / peak) : 3.2, root = svg("svg", { viewBox: "0 0 32 32", class: "bl-day-svg" + (min ? "" : " none"), "aria-hidden": "true" });
-  if (min) for (let i = 0; i < 6; i++) root.append(svg("ellipse", { cx: 16, cy: 16 - r * 0.62, rx: r * 0.34, ry: r * 0.6, class: "bl-petal", transform: `rotate(${i * 60} 16 16)` }));
-  root.append(svg("circle", { cx: 16, cy: 16, r: min ? Math.max(2.2, r * 0.28) : r, class: min ? "bl-heart" : "bl-seed" }));
   return root;
 }
 
@@ -119,7 +111,7 @@ export function mountGrowth(uid, { onChange } = {}){
     // would pop every flower on each switch.
     if (period === "week") for (const f of fl) if (f.done > (seen[f.name] ?? f.done)) pops.add(f.name);
     if (shown && period === "week") writeSeen(Object.fromEntries(fl.map((f) => [f.name, f.done])));
-    return { period, summary, routines, pops, strip: weekStrip(list, now),
+    return { period, summary, routines, pops,
       flowers: new Map(fl.map((f) => [f.name, f])), line: oneLine({ summary, flowers: fl, routines, period }) };
   }
 
@@ -145,14 +137,6 @@ export function statsCard(g){
       fig(String(s.days), s.days === 1 ? "day" : "days")),
     best && h("p", { className: "ms-line" }, h("span", { ariaHidden: "true", textContent: "🐝" }), bdi(best.title), ` · ${best.streak} weeks in a row`),
   ].filter(Boolean);
-}
-
-export function weekCard(strip){
-  const peak = Math.max(1, ...strip.map((d) => d.min));
-  return h("section", { className: "bl-card" }, h("h3", { className: "bl-h", textContent: "This week" }),
-    h("div", { className: "bl-week", role: "img", ariaLabel: "This week, day by day" },
-      ...strip.map((d) => h("div", { className: "bl-wd" + (d.today ? " today" : "") + (d.future ? " future" : "") },
-        dayDaisy(d.min, peak), h("span", {}, new Date(`${d.day}T12:00`).toLocaleDateString(undefined, { weekday: "narrow" }))))));
 }
 
 // Routines, minimal (Mor, 2026-10-08): one quiet line each in one card —

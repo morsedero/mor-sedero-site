@@ -122,14 +122,6 @@ export function summarize(entries = [], range){
 }
 
 // Minutes per day of the week holding `now`, Sunday first.
-export function weekStrip(entries = [], now = Date.now()){
-  const from = weekStart(dayOf(now)), today = dayOf(now);
-  return Array.from({ length: 7 }, (_, i) => {
-    const day = addDays(from, i);
-    return { day, today: day === today, future: day > today, min: entries.filter((e) => dayOf(e.at) === day).reduce((s, e) => s + (e.m || 0), 0) };
-  });
-}
-
 // One flower per project, Focus first, then Keep going, then Background; by
 // time within a tier. height 0-1 against the biggest project of the period,
 // petals = tasks finished (cap PETAL_MAX, the rest in `more`). No time and no
