@@ -216,7 +216,7 @@ export function askProgress(task, { onFull, onPartial, start = 50 }){
     oninput: () => { out.textContent = `${range.value}%`; } });
   const when = (pct) => {
     d.replaceChildren(head("Back to it when?"),
-      h("div", { className: "now-chips" }, ...[["today", "Later today"], ["tomorrow", "Tomorrow"], ["week", "This week"], ["someday", "Not now"]].map(([w, text]) =>
+      h("div", { className: "now-chips" }, ...[["today", "Later today"], ["tomorrow", "Tomorrow"], ["week", "This week"], ["someday", "On hold"]].map(([w, text]) =>
         h("button", { className: "chip", type: "button", textContent: text, onclick: () => { close(); onPartial(pct, w); } }))));
   };
   d.replaceChildren(head("How much is done?"),

@@ -206,12 +206,12 @@ export function mountNeeds(root, uid, { onClose } = {}){
       return { tone: areaClass(t).trim() || "area-home", ico: "later", q: "Still for today?",
         sub: t.due < localDate() ? `It was planned for ${shortDay(t.due)}.` : "It was planned for today.", item: t.title,
         say: "I'd move it to tomorrow.", yes: ["Move to tomorrow", tomorrow],
-        no: ["Not now", () => { restoreTask(uid, t.id, { status: "someday", touchedAt: Date.now() }).catch(fail); next(); }], more: [drop], noLater: true };
+        no: ["On hold", () => { restoreTask(uid, t.id, { status: "someday", touchedAt: Date.now() }).catch(fail); next(); }], more: [drop], noLater: true };
     }
     if (item.kind === "parked") {
       const days = daysUntil(t.due, Date.now());
       return { tone: "area-job", ico: "someday", q: "Deadline coming up",
-        sub: `It's in Not now. ${days < 0 ? "The deadline was" : "The deadline is"} ${days === 0 ? "today" : days === 1 ? "tomorrow" : shortDay(t.due)}.`,
+        sub: `It's on hold. ${days < 0 ? "The deadline was" : "The deadline is"} ${days === 0 ? "today" : days === 1 ? "tomorrow" : shortDay(t.due)}.`,
         item: t.title, say: days < 0 ? "Bring it back, or delete it?" : "I'd bring it back before it's too late.",
         yes: ["Bring it back", () => { restoreTask(uid, t.id, { status: "ready", notBefore: null, touchedAt: Date.now() }).catch(fail); next(); }],
         no: del(t) };
@@ -233,7 +233,7 @@ export function mountNeeds(root, uid, { onClose } = {}){
       const canShrink = small < (t.size || 0);
       const keep = ["Keep it", () => { restoreTask(uid, t.id, { pushes: 0, touchedAt: Date.now() }).catch(fail); next(); }];
       const drop = del(t);
-      const park = ["Not now", () => { restoreTask(uid, t.id, { status: "someday", pushes: 0, touchedAt: Date.now() }).catch(fail); next(); }];
+      const park = ["On hold", () => { restoreTask(uid, t.id, { status: "someday", pushes: 0, touchedAt: Date.now() }).catch(fail); next(); }];
       return { tone: areaClass(t).trim() || "area-work", ico: "later", q: "Keeps sliding",
         sub: `Pushed to a later day ${t.pushes} times.`, item: t.title,
         say: canShrink ? `I'd make it a ${sizeWords(small)} first piece, so it's easy to start.` : "Keep it, park it, or delete it?",
@@ -253,7 +253,7 @@ export function mountNeeds(root, uid, { onClose } = {}){
           restoreTask(uid, t.id, { checkOn: pendingCheck(t), touchedAt: Date.now() }).catch(fail); next(); }]] };
     }
     if (item.kind === "someday") {
-      return { tone: "area-home", ico: "someday", q: "Bring one back?", sub: "From Not now, for this week.",
+      return { tone: "area-home", ico: "someday", q: "Bring one back?", sub: "From On hold, for this week.",
         item: t.title, say: MARK[t.stakes] || `It's ${dur(t.size)}, and the week has room.`,
         yes: ["Bring it back", () => { somedayDone(); restoreTask(uid, t.id, bringBack(t)).catch(fail); next(); }],
         no: ["Leave it there", () => { somedayDone(); next(); }] };
@@ -265,7 +265,7 @@ export function mountNeeds(root, uid, { onClose } = {}){
       item: t.title, say: `I'd move it to ${weekday(week)}, the roomiest day this week.`,
       yes: ["Do it today", () => sweep(t, "today")],
       no: [`Move to ${weekday(week)}`, () => sweep(t, "week")],
-      more: [["Not now", () => sweep(t, "someday")], del(t)] };
+      more: [["On hold", () => sweep(t, "someday")], del(t)] };
   }
 
   const big = (text, cls, onclick) => h("button", { className: `btn ${cls}`, type: "button", textContent: text, onclick });

@@ -605,7 +605,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
       const label = new Date(`${day}T12:00`).toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" });
       stepAside(task, { label: `This week (${label}): `, lesson: true, write: () => Promise.all([restoreTask(uid, task.id, { ...pushedTo(task, { notBefore: day }), ...extra }), declined(task)]) });
     } else if (when === "someday") {
-      stepAside(task, { label: "Not now: ", lesson: true, write: () => Promise.all([restoreTask(uid, task.id, { status: "someday", touchedAt: Date.now(), ...extra }), declined(task)]) });
+      stepAside(task, { label: "On hold: ", lesson: true, write: () => Promise.all([restoreTask(uid, task.id, { status: "someday", touchedAt: Date.now(), ...extra }), declined(task)]) });
     }
   }
   // Pending asks what it's waiting on (Mor, 2026-10-04); the reason is
@@ -994,7 +994,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     const offer = list.length > 0 && !rested;
     sd.sel = sd.sel.filter((id) => list.some((t) => t.id === id));
     const card = quietCard({ meta: "Nothing active", title: rested ? "Rest it is" : "You have time",
-      why: offer ? "Everything open is waiting or set for later. Bring 1–2 back from Not now?" : "Everything open is waiting or set for later." });
+      why: offer ? "Everything open is waiting or set for later. Bring 1–2 back from On hold?" : "Everything open is waiting or set for later." });
     if (!offer) return [card];
     const n = sd.sel.length;
     const bring = () => {
@@ -1010,7 +1010,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
       saveSettings(uid, { somedayAsked: localDate() }).catch(fail);
     };
     return [card,
-      h("h3", { className: "sd-head", textContent: "From Not now" }),
+      h("h3", { className: "sd-head", textContent: "From On hold" }),
       h("ul", { className: "sd-pick" }, ...list.map((t) => {
         const on = sd.sel.includes(t.id);
         const meta = [areaName(t) || projectShown(t), dur(t.size)].filter(Boolean).join(" · ");
@@ -1043,8 +1043,8 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
       restoreTask(uid, t.id, bringBack(t)).catch(fail);
       if (sd.picked.length >= 2) close(); else render();
     };
-    return h("div", { className: "learn-ask someday-ask", role: "group", ariaLabel: "Pick from Not now" },
-      h("p", { className: "muted", textContent: sd.picked.length ? "One more, or that's the week?" : "Pick 1–2 from Not now for this week." }),
+    return h("div", { className: "learn-ask someday-ask", role: "group", ariaLabel: "Pick from On hold" },
+      h("p", { className: "muted", textContent: sd.picked.length ? "One more, or that's the week?" : "Pick 1–2 from On hold for this week." }),
       h("div", { className: "someday-list" }, ...shownList.map((t) => h("button", { type: "button", className: "someday-item",
         ariaLabel: `Move ${t.title} to this week${MARK[t.stakes] ? ` (${MARK[t.stakes]})` : ""}`, onclick: () => pick(t) },
         bdi(t.title), MARK[t.stakes] && h("span", { className: "someday-mark", textContent: MARK[t.stakes] })))),
@@ -1070,7 +1070,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
       icon("check"), h("span", { textContent: "Done" }));
     return [
       h("div", { className: "now-actions now-row" },
-        // Never a dead end while Not now holds tasks (DAISEY_SPEC "Someday comes back").
+        // Never a dead end while On hold holds tasks (DAISEY_SPEC "Someday comes back").
         (alts.length || someN) && action("switch", "Switch", `something else instead of ${task.title}`, { ariaExpanded: String(state.showAlts), onclick: toggle("showAlts") }),
         action("pending", "Pending", `${task.title} is waiting on something`, { ariaExpanded: String(state.pendAsk), onclick: toggle("pendAsk") }),
         action("later", "Later", `come back to ${task.title} later`, { ariaExpanded: String(state.notNow), onclick: toggle("notNow") }),
@@ -1079,7 +1079,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
         ...lead.map(([text, onclick]) => chip(text, onclick))),
       state.notNow && h("div", { className: "later-ask", role: "group", ariaLabel: "Come back when?" },
         inPlan && chip("In 10 min", () => { state.notNow = false; later10(task); render(); }),
-        ...[["today", "Later today"], ["tomorrow", "Tomorrow"], ["week", "This week"], ["someday", "Not now"]].map(([w, text]) =>
+        ...[["today", "Later today"], ["tomorrow", "Tomorrow"], ["week", "This week"], ["someday", "On hold"]].map(([w, text]) =>
           chip(text, () => later(task, w)))),
       state.pendAsk && pendingAsk(task),
       state.showAlts && switchRow(alts),
@@ -1133,7 +1133,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
         h("div", { className: "pend-row" }, input, h("button", { className: "btn primary small", type: "button", textContent: "Wait", onclick: setHold })));
     })();
     return h("div", { className: "now-card main hero running" + (onHold ? " on-hold" : "") + areaClass(task) },
-      task ? heroTop(task, onHold ? "On hold" : "Running") : h("div", { className: "now-meta", textContent: "Running" }),
+      task ? heroTop(task, onHold ? "Waiting" : "Running") : h("div", { className: "now-meta", textContent: "Running" }),
       task && onOpen ? titleButton(task) : h("div", { className: "now-title", dir: "auto", textContent: task?.title || "That task is gone" }),
       h("p", { className: "now-why inl-clock" }, h("b", { className: "inl-time", textContent: clockText(mins) }), target ? ` of ${dur(target)}` : "", paused_ ? " · paused" : ""),
       waitLine,
@@ -1155,17 +1155,21 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
   }
 
   // Switch's row, under the card like Later's and Pending's (Mor,
-  // 2026-10-10: three full cards beside the side buttons stretched them):
-  // each other task as one chip, title and size; or the way into Someday
-  // when there are none.
+  // 2026-10-10): the other tasks as small cards in the main card's look
+  // (area colour, project, title, size), one row that scrolls sideways,
+  // as tall as Later's open row; or the way into On hold when there are none.
   function switchRow(alts){
     if (!alts.length) return h("div", { className: "later-ask", role: "group", ariaLabel: "Other tasks" },
       h("span", { className: "muted", textContent: "Nothing else is active." }),
-      h("button", { className: "chip", type: "button", textContent: "Pick from Not now", onclick: () => { sd.open = true; state.showAlts = false; render(); } }));
-    return h("div", { className: "later-ask switch-ask", role: "group", ariaLabel: "Other tasks" }, ...alts.map((s) => h("button", {
-      type: "button", className: "chip alt", ariaLabel: `Put ${s.task.title} on the card instead`,
-      onclick: () => { state.chosen = s.task.id; state.showAlts = false; render(); },
-    }, h("span", { className: "alt-t", dir: "auto", textContent: s.task.title }), h("span", { className: "alt-s", textContent: sizeChip(s.task) }))));
+      h("button", { className: "chip", type: "button", textContent: "Pick from On hold", onclick: () => { sd.open = true; state.showAlts = false; render(); } }));
+    return h("div", { className: "later-ask switch-ask", role: "group", ariaLabel: "Other tasks" }, ...alts.map(({ task: t }) => h("button", {
+      type: "button", className: "alt-card" + areaClass(t), ariaLabel: `Put ${t.title} on the card instead`,
+      onclick: () => { state.chosen = t.id; state.showAlts = false; render(); },
+    }, h("span", { className: "hero-top" },
+        h("span", { className: "hero-area" }, h("span", { className: "dot", ariaHidden: "true" }),
+          h("span", { className: "hero-where" }, projectShown(t) ? bdi(t.project) : areaName(t) || "Inbox")),
+        h("span", { className: "alt-s", textContent: sizeChip(t) })),
+      h("span", { className: "alt-t", dir: "auto", textContent: t.title }))));
   }
 
   // ---------- The day's proposed schedule (proposal.js, 2026-10-07) ----------
