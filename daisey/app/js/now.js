@@ -1218,8 +1218,9 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
         h("button", { className: "now-x", type: "button", ariaLabel: "Close", textContent: "✕", onclick: () => dlg.close() })),
       h("p", { className: "miss-task", dir: "auto", textContent: task.title }),
       h("div", { className: "miss-acts" },
-        h("button", { className: "btn line", type: "button", onclick: act(() => quickDoneNow(task)) }, icon("check"), h("span", { textContent: "I did it" })),
-        h("button", { className: "btn primary", type: "button", onclick: act(() => switchTo(id)) }, icon("play"), h("span", { textContent: "Do it now" }))),
+        // Yellow with a check is Done, as on the card (Mor, 2026-10-10).
+        h("button", { className: "btn primary", type: "button", onclick: act(() => quickDoneNow(task)) }, icon("check"), h("span", { textContent: "I did it" })),
+        h("button", { className: "btn line", type: "button", onclick: act(() => switchTo(id)) }, icon("play"), h("span", { textContent: "Do it now" }))),
       h("div", { className: "later-ask", role: "group", ariaLabel: "Or later" },
         ...[["today", "Later today"], ["tomorrow", "Tomorrow"], ["week", "This week"]].map(([w, text]) => chip(text, () => later(task, w))),
         h("button", { className: "hold-opt", type: "button", ariaLabel: `Put ${task.title} on hold: no date, in the project's On hold list`, onclick: act(() => later(task, "someday")) },
