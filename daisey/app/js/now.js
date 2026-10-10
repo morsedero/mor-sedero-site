@@ -1712,7 +1712,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     const card = (state.chosen && r.ranked.find((s) => s.task.id === state.chosen))
       || (planned && r.ranked.find((s) => s.task.id === planned))
       || (planRow && asCard(planRow.taskId, planRow.task, planWhy(planRow)))
-      || (firstProposed && asCard(firstProposed.taskId, tasks.find((t) => t.id === firstProposed.taskId), ["first in the plan below"]))
+      || (firstProposed && asCard(firstProposed.taskId, tasks.find((t) => t.id === firstProposed.taskId), [focusOn() ? "first in your plan" : "first in the plan below"]))
       || (pn ? null : r.pick);
     showing(card?.task.id ?? null);
     // One ask under the card at a time, the most asked-for first.

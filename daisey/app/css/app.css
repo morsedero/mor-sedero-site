@@ -351,7 +351,6 @@ body.focus #board { display: block; }
 /* Focus mode (Mor, 2026-10-10): the same Now card and its actions, nothing
    around it. The header keeps the daisy, the clock and the Focus toggle. */
 body.focus-mode :is(#side, #panel, .dock, .tell-panel, .now-greet, .now-top, #needsChip, .acct) { display: none; }
-body.focus-mode #board { display: block; }
 .hdr-end .hchip.focus-chip[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); color: var(--card); }
 body.focus .shell { padding-block: max(18px, env(safe-area-inset-top)) max(24px, env(safe-area-inset-bottom)); }
 /* "Hold to finish" (focus.js holdButton): a deeper amber fills from
@@ -1915,3 +1914,20 @@ body.focus .shell { block-size: auto; min-block-size: 100dvh; overflow: visible;
   .pcard-fl.pop { animation: bl-pop .6s ease-out; transform-origin: 50% 100%; }
   .pcard.pp-dragging .bl-svg { animation: none; }
 }
+
+/* Focus mode's card fills the screen (Mor, 2026-10-10): area and length at
+   the top, the title big in the middle, the actions along the bottom, larger.
+   Same card, same actions; only the room changes. Not at night (the night
+   view keeps its own layout). */
+:root:not(.night) body.focus-mode .nowrow { flex: 1 1 auto; }
+:root:not(.night) body.focus-mode #nowcard { flex: 1 1 0; padding-block-end: max(16px, env(safe-area-inset-bottom)); }
+:root:not(.night) body.focus-mode #nowcard > .deck { flex: 1 0 auto; display: flex; flex-direction: column; }
+:root:not(.night) body.focus-mode .deck > .now-card.main { flex: 1 0 auto; display: flex; flex-direction: column; gap: 6px; padding: 18px 18px 16px; border-radius: 22px; }
+:root:not(.night) body.focus-mode .now-card.main .hero-top { font-size: 15px; }
+:root:not(.night) body.focus-mode .now-card.main .hero-area { font-size: 15px; }
+:root:not(.night) body.focus-mode .now-card.main .now-title { margin-block-start: auto; font-size: clamp(28px, 8vw, 40px); line-height: 1.15; letter-spacing: -0.02em; }
+:root:not(.night) body.focus-mode .now-card.main .now-why { font-size: 17px; }
+:root:not(.night) body.focus-mode .now-card.main .now-row { margin-block-start: auto; padding-block-start: 18px; gap: 10px; }
+:root:not(.night) body.focus-mode .now-card.main .now-row .iconbtn { inline-size: 64px; min-inline-size: 64px; block-size: 64px; min-block-size: 64px; border-radius: 16px; font-size: 12px; gap: 3px; }
+:root:not(.night) body.focus-mode .now-card.main .now-row .iconbtn svg { inline-size: 22px; block-size: 22px; }
+:root:not(.night) body.focus-mode .now-card.main .now-row .btn.start { block-size: 64px; min-block-size: 64px; border-radius: 16px; font-size: 20px; }
