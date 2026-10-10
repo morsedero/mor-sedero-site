@@ -1477,7 +1477,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     return timeline(p.items || [], { ...planCtx(), since: planSince() }).late || null;
   }
   // The approved plan, now: { row } its next task in time (late or not),
-  // { brk, next } inside one of its breaks, {} when it has nothing for now
+  // { brk, next } inside one of its breaks,
   // null when nothing's left for now (done, or all put off): the engine picks.
   // skip: ids not to offer (the task just finished in the handoff).
   function planNow(skip = []){
