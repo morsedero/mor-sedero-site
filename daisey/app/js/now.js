@@ -859,7 +859,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     return [
       h("div", { className: "stars", ariaHidden: "true" }, ...[0, 1, 2, 3].map(() => h("span"))),
       h("div", { className: "night-hero" }, moonDaisy(), h("div", { className: "night-txt" },
-        h("h2", { className: "night-h", textContent: early ? `Early${who}.` : rested() ? `Done for today${who}.` : `Late${who}.` }),
+        h("h2", { className: "night-h", textContent: early ? `Early${who}.` : `Late${who}.` }),
         h("p", { className: "night-p", textContent: ask ? `One question about ${early ? "today" : "tomorrow"}.`
           : early ? "Nothing needs you yet. Here's your day."
           : dueTonight.length ? lead : "Nothing needs you tonight. Here's tomorrow." }))),
@@ -1749,7 +1749,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     else if (!deep.isOn()) deep.enter(runKey()); // a reload or the other device: no tap, so no full screen, but awake and counting
     document.body.classList.toggle("focus", deepOn || !!handoff);
     const hrs = dayHours(settings);
-    const dark = isNight(Date.now(), hrs) || rested();
+    const dark = isNight(Date.now(), hrs);
     if (!dark) nightFree = false;
     // On the way somewhere (trips.js) the day has started, whatever the hours say.
     const riding = cal.status === "ok" && cal.events.some((e) => e.trip && Date.parse(e.start) <= Date.now() && Date.now() < Date.parse(e.end));
@@ -1927,9 +1927,10 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
   // Needs you row went with round 3: the panel's Schedule page and the
   // header's chip hold them now.)
   const day = (...kids) => fill(...kids);
-  // settings.restDay: the day was closed early. Its "Done for today" pill is
-  // gone (Mor, 2026-10-10: "bad button"); a day already closed still reads it.
-  const rested = () => settings.restDay === localDate();
+  // (settings.restDay, a day closed early by the old "Done for today" pill,
+  // is no longer read: the pill went 2026-10-10 as a "bad button", and a day
+  // closed with it then had no way back open, so Daisey slept from 18:31
+  // with the day running to 20:00.)
   const fail = (e) => console.error("[daisey] now", e);
   // "Start task" on a notification (sw.js → ?start=<id>). The suggestion was
   // made minutes ago; what happened since wins (reality.js). Something
