@@ -483,10 +483,10 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
       p = { name: shown, area: null, open: [], all, next: [], pending: [], someday: [], done: all.filter((t) => t.status === "done") };
     }
     const y = els.view.scrollTop, x = els.view.querySelector(".pj-chips")?.scrollLeft;
-    const chips = h("div", { className: "pj-chips", role: "tablist", ariaLabel: "Projects" },
+    const chips = dragScroll(h("div", { className: "pj-chips", role: "tablist", ariaLabel: "Projects" },
       ...ps.map((q) => h("button", { type: "button", role: "tab", ariaSelected: String(q.name === p.name),
         className: "pj-chip" + colorClass(q), onclick: () => go(q.name) },
-      h("span", { className: "dot", ariaHidden: "true" }), bdi(q.name))));
+      h("span", { className: "dot", ariaHidden: "true" }), bdi(q.name)))));
     const next = p.next.map((t) => swipeCard(t, taskBtn(t, [
       h("span", { className: "pj-row" }, h("span", { className: "pj-title", dir: "auto", textContent: t.title }),
         t.id === onCard && h("span", { className: "pj-now", textContent: "NOW" })),
@@ -531,6 +531,39 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
       const r = cur.getBoundingClientRect(), b = row.getBoundingClientRect();
       if (r.left < b.left || r.right > b.right) cur.scrollIntoView({ block: "nearest", inline: "center", behavior: x == null || !motionOK() ? "auto" : "smooth" });
     }
+  }
+  // The chip row drags sideways with a mouse too and flicks on when let go
+  // (Mor, 2026-10-10: "sliding and draggable like the tab itself"); a finger
+  // already scrolls it natively. A drag never counts as a tap on a chip.
+  let chipDragged = false;
+  function dragScroll(row){
+    let d = null;
+    row.addEventListener("pointerdown", (e) => {
+      if (e.pointerType === "touch" || e.button !== 0) return;
+      d = { x: e.clientX, left: row.scrollLeft, on: false, v: 0, lx: e.clientX, t: e.timeStamp };
+    });
+    row.addEventListener("pointermove", (e) => {
+      if (!d) return;
+      const dx = e.clientX - d.x;
+      if (!d.on && Math.abs(dx) > 5) { d.on = true; try { row.setPointerCapture(e.pointerId); } catch { /* gone */ } row.classList.add("dragging"); }
+      if (!d.on) return;
+      d.v = (e.clientX - d.lx) / Math.max(1, e.timeStamp - d.t); d.lx = e.clientX; d.t = e.timeStamp;
+      row.scrollLeft = d.left - dx;
+    });
+    const end = () => {
+      if (!d) return;
+      const { on, v } = d; d = null;
+      row.classList.remove("dragging");
+      if (!on) return;
+      chipDragged = true; setTimeout(() => { chipDragged = false; });
+      let vel = v * 16; // px a frame, fading
+      const glide = () => { if (Math.abs(vel) < 0.5 || !row.isConnected) return; row.scrollLeft -= vel; vel *= 0.92; requestAnimationFrame(glide); };
+      if (motionOK()) requestAnimationFrame(glide);
+    };
+    row.addEventListener("pointerup", end);
+    row.addEventListener("pointercancel", end);
+    row.addEventListener("click", (e) => { if (chipDragged) { e.stopPropagation(); e.preventDefault(); } }, true);
+    return row;
   }
   function go(name){
     if (name === shown) return;

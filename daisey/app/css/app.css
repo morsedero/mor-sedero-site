@@ -997,6 +997,8 @@ body:has(.screen:not([hidden])) { overflow: hidden; }
 :dir(rtl) .pj-back svg { transform: scaleX(-1); }
 .pj-chips { display: flex; gap: 6px; min-inline-size: 0; overflow-x: auto; padding-block: 5px; padding-inline-end: 20px; scrollbar-width: none; touch-action: pan-x; }
 .pj-chips::-webkit-scrollbar { display: none; }
+.pj-chips { cursor: grab; }
+.pj-chips.dragging, .pj-chips.dragging * { cursor: grabbing; user-select: none; -webkit-user-select: none; }
 .pj-chip { flex: none; display: inline-flex; align-items: center; gap: 5px; block-size: 28px; padding-inline: 10px; border: 0; border-radius: 999px; background: var(--tint); color: var(--aink); font: inherit; font-size: 12px; font-weight: 500; cursor: pointer; }
 .pj-chip .dot { inline-size: 7px; block-size: 7px; border-radius: 50%; background: currentColor; }
 .pj-chip[aria-selected="true"] { background: var(--aink); color: var(--card); font-weight: 600; }
