@@ -1168,7 +1168,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
       h("button", { className: "chip", type: "button", textContent: "Pick from On hold", onclick: () => { sd.open = true; state.showAlts = false; render(); } }));
     const row = dragScroll(h("div", { className: "later-ask switch-ask", role: "group", ariaLabel: "Other tasks" }, ...alts.map(({ task: t }) => h("button", {
       type: "button", className: "alt-card" + areaClass(t), ariaLabel: `Put ${t.title} on the card instead, ${howLong(t)}`,
-      onclick: () => { state.chosen = t.id; state.showAlts = false; state.altX = 0; render(); },
+      onclick: () => { switchTo(t.id); state.altX = 0; },
     }, h("span", { className: "hero-top" },
         h("span", { className: "hero-area" },
           // How long first, so a long project name is what gets cut short.
@@ -1179,6 +1179,27 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     if (state.altX) requestAnimationFrame(() => { row.scrollLeft = state.altX; });
     return row;
   }
+  // Switch moves the plan too (Mor, 2026-10-10: "switch doesn't affect the
+  // schedule"): the picked task goes in just before the one on the card, in
+  // the approved plan or the open proposal, so the schedule shows the swap
+  // and everything after shifts. Not in the plan yet: it joins there.
+  function switchTo(id){
+    const task = (tasks || []).find((t) => t.id === id);
+    const reorder = (items) => {
+      const was = items.find((it) => it.taskId === id);
+      const rest = items.filter((it) => it !== was);
+      const { at, ...moved } = was || { taskId: id, minutes: task ? leftMinutes(task) : 30 }; // its old fixed time goes with the old slot
+      const i = rest.findIndex((it) => it.taskId === shown);
+      rest.splice(i < 0 ? 0 : i, 0, moved);
+      return trimBreaks(rest);
+    };
+    const ap = approvedPlan();
+    if (prop.open && prop.items.length && (!ap || prop.touched)) { prop.items = reorder(prop.items); prop.touched = true; }
+    else if (ap) savePlan("approved", reorder(ap.items || []), { kept: ap.kept || [], ...unseen(ap, "cut"), ...unseen(ap, "added") });
+    state.chosen = id; state.showAlts = false;
+    render();
+  }
+
   // How long a Switch card's task takes: what's left once some is done
   // (Mor, 2026-10-10: not its time in the plan).
   function howLong(t){
@@ -1973,9 +1994,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     put(id){
       handoff = null;
       skips.delete(id);
-      state.chosen = id;
-      state.showAlts = false;
-      render();
+      switchTo(id);
     },
     // Start a task from elsewhere (the task sheet, a project).
     // A parked or pending task starting is back in play.

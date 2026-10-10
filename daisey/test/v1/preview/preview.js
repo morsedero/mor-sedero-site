@@ -171,6 +171,13 @@ const SCENARIOS = {
     { title: "Mix review for Reprise", project: "Reprise", size: 60, over: { status: "done", doneAt: Date.now() - 3 * 60000 } },
     { title: "Lesson prep", project: "Teaching", size: 45 },
   ], dayplan: { date: day(0), status: "approved", items: [{ taskId: "t1", minutes: 60 }, { brk: "short", minutes: 10 }, { taskId: "t2", minutes: 45 }] } },
+  // An approved plan of three (--cal none): Switch to the third moves it
+  // in front of the first in the plan, not just on the card (2026-10-10).
+  switchplan: { tasks: [
+    { title: "Mix review for Reprise", project: "Reprise", size: 60 },
+    { title: "Send invoice to Uri", project: "Admin", size: 5 },
+    { title: "Lesson prep", project: "Teaching", size: 30 },
+  ], dayplan: { date: day(0), status: "approved", items: [{ taskId: "t1", minutes: 60 }, { taskId: "t2", minutes: 5 }, { taskId: "t3", minutes: 30 }] } },
   // Nothing active: only waiting and Someday (the calm empty state).
   rest: { tasks: [
     { title: "Waiting on Yuval", project: "Reprise", size: 30, over: { status: "waiting", waitingOn: "Yuval" } },
