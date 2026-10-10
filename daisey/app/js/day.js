@@ -30,15 +30,22 @@ export const minText = (min) => { const m = ((min % 1440) + 1440) % 1440; return
 // logicalDate it was said on): before midnight the end reads 25:00; after
 // it, until that end, the day is still on, as { start: 0, end, late: true }
 // (late: the plan and today's Laters keep yesterday's date, now.js dayKey).
+// The usual day can run past midnight too (night owls, Mor 2026-10-11): a
+// dayEnd before LATE_HOUR and before the start ("02:00") reads 26:00, the
+// same way.
 export function dayHours(settings = {}, now = Date.now()){
-  const s = toMin(settings.dayStart), e = toMin(settings.dayEnd);
+  const late = LATE_HOUR * 60, s = toMin(settings.dayStart);
+  let e = toMin(settings.dayEnd);
+  if (s != null && e != null && e < late && e <= s) e += 1440;
   const base = s != null && e != null && e > s ? { start: s, end: e } : { ...W.DAY_HOURS };
-  const today = settings.dayEndToday, end = toMin(today?.end), late = LATE_HOUR * 60;
+  const today = settings.dayEndToday, end = toMin(today?.end);
   const d = new Date(now), m = d.getHours() * 60 + d.getMinutes();
-  if (end != null && end >= late) { if (today?.date === localDate(now) && end > base.start) base.end = end; }
-  else if (end != null && today?.date === logicalDate(now)) {
-    if (m >= late) base.end = end + 1440;
-    else if (m < end) return { start: 0, end, late: true, meals: [] };
+  if (end != null && today?.date === logicalDate(now)) {
+    if (end >= late) { if (end > base.start) base.end = end; }
+    else base.end = end + 1440;
+  }
+  if (m < late && base.end > 1440) {
+    if (m < base.end - 1440) return { start: 0, end: base.end - 1440, late: true, meals: [] };
   }
   base.meals = mealsToday(settings, now);
   return base;
@@ -66,7 +73,7 @@ export const mealsOf = (settings = {}) => mealPrefs(settings).filter((m) => m.on
 // (eaten at the event, so the plan adds none) }. Tomorrow it's gone, like
 // dayEndToday.
 export function mealsToday(settings = {}, now = Date.now()){
-  const t = settings.mealToday?.date === localDate(now) ? settings.mealToday : {};
+  const t = settings.mealToday?.date === logicalDate(now) ? settings.mealToday : {};
   return mealsOf(settings).flatMap((m) => {
     if (t[m.name] === "there") return [];
     const at = toMin(t[m.name]);
@@ -77,6 +84,10 @@ export function mealsToday(settings = {}, now = Date.now()){
 const atMin = (ms, min) => new Date(ms).setHours(0, min, 0, 0);
 export const dayStartAt = (now, hours = W.DAY_HOURS) => atMin(now, hours.start);
 export const dayEndAt = (now, hours = W.DAY_HOURS) => atMin(now, hours.end);
+// The date the plan's free time belongs to: yesterday's while a day that ran
+// past midnight is still on (late), else the calendar's — after midnight on
+// the night page that's the day you wake into (now.js dayKey).
+export const planDate = (now = Date.now(), hours = W.DAY_HOURS) => (hours.late ? logicalDate(now) : localDate(now));
 
 export function isNight(now = Date.now(), hours = W.DAY_HOURS){
   const d = new Date(now), m = d.getHours() * 60 + d.getMinutes();
@@ -121,7 +132,7 @@ export function gapsToday(events, now = Date.now(), hours = W.DAY_HOURS){
 // smallest. rest: the ones that don't — "Move the rest" sends them to the sweep.
 export function capacity(tasks, events, now = Date.now(), hours = W.DAY_HOURS){
   const free = gapsToday(events, now, hours).reduce((s, g) => s + g.minutes, 0);
-  const today = localDate(now);
+  const today = logicalDate(now);
   const open = tasks.filter((t) => t.status === "ready" && t.due && !notYet(t, now) && effectiveDue(t, now) <= today);
   const left = (t) => Math.max(5, (t.size || 0) - (t.spentMinutes || 0));
   const order = [...open].sort((a, b) => (b.dateKind === "deadline") - (a.dateKind === "deadline") || left(a) - left(b));

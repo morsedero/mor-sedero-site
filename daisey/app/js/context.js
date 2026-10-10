@@ -5,7 +5,7 @@
 // while an event with a location runs or just after it; else Home.
 // (Energy lived here until 2026-10-07; it was dropped on purpose.)
 import * as W from "./weights.js";
-import { localDate } from "./model.js";
+import { localDate, logicalDate } from "./model.js";
 
 const HOUR = 3600000, MIN = 60000;
 const fresh = (c, now) => !!c && ["home", "out", "anywhere"].includes(c.value) && now - c.at < W.CORRECTION_HOURS * HOUR;
@@ -49,14 +49,14 @@ export function watchProjectTiers(cb){ tierSubs.add(cb); return () => tierSubs.d
 // an edit or a skip also moves, so a project skipped today read as "keeps it
 // going". Tasks from before workedAt count by their finish time only.
 export function workBase(tasks = [], now = Date.now()){
-  const today = localDate(now);
+  const today = logicalDate(now);
   const when = (t) => t.workedAt || t.doneAt || 0;
   const worked = tasks.filter((t) => when(t) && when(t) <= now).sort((a, b) => when(b) - when(a));
   const week = new Date(now); week.setHours(0, 0, 0, 0); week.setDate(week.getDate() - week.getDay());
   const areaDone = {};
   for (const t of tasks) if (t.status === "done" && t.doneAt >= week.getTime() && t.area) areaDone[t.area] = (areaDone[t.area] || 0) + 1;
   return {
-    lastProject: worked.find((t) => localDate(when(t)) === today)?.project || null,
+    lastProject: worked.find((t) => logicalDate(when(t)) === today)?.project || null,
     recentProjects: worked.filter((t) => now - when(t) < W.MOMENTUM.recentDays * 864e5).map((t) => t.project),
     areaDone,
     projectTiers: tiers,

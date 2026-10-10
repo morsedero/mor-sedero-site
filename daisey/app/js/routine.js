@@ -37,7 +37,9 @@ const LOG_MAX = 60;
 
 const pad = (n) => String(n).padStart(2, "0");
 const validDay = (s) => typeof s === "string" && /^\d{4}-\d{2}-\d{2}$/.test(s);
-export const dayOf = (ms = Date.now()) => { const d = new Date(ms); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; };
+// The day you're in: before 04:00 it's still yesterday (model.js LATE_HOUR,
+// night owls, Mor 2026-10-11), so 01:00's work counts for the night it was.
+export const dayOf = (ms = Date.now()) => { const d = new Date(ms); if (d.getHours() < 4) d.setDate(d.getDate() - 1); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; };
 const noon = (day) => { const [y, m, d] = day.split("-").map(Number); return new Date(y, m - 1, d, 12); };
 export const addDays = (day, n) => { const d = noon(day); d.setDate(d.getDate() + n); return dayOf(d.getTime()); };
 export const weekStart = (day) => addDays(day, -noon(day).getDay());

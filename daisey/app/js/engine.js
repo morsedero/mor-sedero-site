@@ -7,7 +7,7 @@
 // dates are local time, so the node tests in daisey/test/v1/ drive it with
 // fixed moments. Every number lives in weights.js.
 import * as W from "./weights.js";
-import { localDate, durText, notYet, leftMinutes, progressOf, LABELS } from "./model.js";
+import { localDate, logicalDate, durText, notYet, leftMinutes, progressOf, LABELS } from "./model.js";
 import { effectiveDue } from "./triage.js";
 import { officeOpen, officeMinutesLeft } from "./holidays.js";
 import { cleanRoutine, weekState } from "./routine.js";
@@ -90,7 +90,7 @@ export function readMoment(input = {}){
   const w = Number(input.window);
   return {
     now,
-    today: localDate(now),
+    today: logicalDate(now),
     window: clamp(Number.isFinite(w) && input.window !== "" && input.window != null ? Math.round(w) : W.NO_CALENDAR_WINDOW, 0, W.WINDOW_CAP),
     realWindow: input.realWindow !== false,
     nextEvent: input.nextEvent || null,
@@ -162,7 +162,7 @@ export function filterOut(task, m){
 const dateParts = (s) => s.split("-").map(Number);
 
 export function daysUntil(due, now){
-  const [y, mo, d] = dateParts(due), [ty, tm, td] = dateParts(localDate(now));
+  const [y, mo, d] = dateParts(due), [ty, tm, td] = dateParts(logicalDate(now));
   return Math.round((Date.UTC(y, mo - 1, d) - Date.UTC(ty, tm - 1, td)) / DAY);
 }
 

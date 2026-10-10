@@ -100,7 +100,8 @@ export function toDate(v){
 }
 
 // The day `days` after `ms`, as "YYYY-MM-DD".
-export const dayAfter = (days, ms = Date.now()) => { const d = new Date(ms); d.setDate(d.getDate() + days); return localDate(d.getTime()); };
+// Counted from the day you're in (logicalDate): at 01:00, tomorrow is the day you wake into.
+export const dayAfter = (days, ms = Date.now()) => { const d = new Date(ms); if (d.getHours() < LATE_HOUR) d.setDate(d.getDate() - 1); d.setDate(d.getDate() + days); return localDate(d.getTime()); };
 
 // When Pending asks "still pending?": PENDING_CHECK_DAYS on, but for a real
 // deadline no later than the day before it — asking after the date is asking
@@ -615,7 +616,7 @@ export const pushedTo = (task, fields, { now = Date.now() } = {}) => ({ ...field
 // parked goes with it — otherwise it lands straight in the old-dates sweep.
 // A real deadline stays: it's still real.
 export function bringBack(task, { now = Date.now() } = {}){
-  const stale = task.dateKind !== "deadline" && task.due && task.due < localDate(now);
+  const stale = task.dateKind !== "deadline" && task.due && task.due < logicalDate(now);
   return { status: "ready", notBefore: null, touchedAt: now, ...(stale ? { due: null, dueTime: null, dateKind: null } : {}) };
 }
 
@@ -633,7 +634,7 @@ export function shiftDay(day, period){
 export function againInput(task, period, { now = Date.now() } = {}){
   const guessed = new Set(task.guessed || []);
   const own = Object.fromEntries(GUESSABLE.filter((k) => !guessed.has(k) && task[k] != null).map((k) => [k, task[k]]));
-  let notBefore = shiftDay(localDate(now), period);
+  let notBefore = shiftDay(logicalDate(now), period);
   const due = task.due ? shiftDay(task.due, period) : null;
   if (due && due < notBefore) notBefore = due;
   return {
@@ -674,7 +675,7 @@ export const leftMinutes = (t) => {
 export const isAvailable = (task) => task.status === "ready";
 
 // Still waiting for its day to come round.
-export const notYet = (task, now = Date.now()) => !!task.notBefore && task.notBefore > localDate(now);
+export const notYet = (task, now = Date.now()) => !!task.notBefore && task.notBefore > logicalDate(now);
 
 // A project's dates (Mor, 2026-10-07): it runs from start to due, either
 // optional, and its tasks' start and due dates stay inside. outsideRange says

@@ -21,7 +21,7 @@
 // PALETTE. Names are taken in order, so a colour doesn't move around as
 // counts change. Inbox has none.
 import { watchTasks, watchSettings, saveSettings, finishTask, setDoneMinutes, restoreTask, removeTask, watchProjectNames, saveProjectNames, saveProjectRanges, saveProjectOrder, saveProjectTiers, renameInLog } from "./store.js";
-import { INBOX, progressOf, progressPatch, leftMinutes, pushedTo, notYet, durText, localDate, bringBack, cleanRange, outsideRange, doneSnapshot } from "./model.js";
+import { INBOX, progressOf, progressPatch, leftMinutes, pushedTo, notYet, durText, localDate, logicalDate, bringBack, cleanRange, outsideRange, doneSnapshot } from "./model.js";
 import { isRoutine } from "./routine.js";
 import { dropSeries } from "./slots.js";
 import { isOverdue } from "./triage.js";
@@ -127,7 +127,7 @@ const bar = (p, cls) => h("div", { className: cls, role: "img", ariaLabel: `${Ma
 // A task's date says how close it is (Mor, 2026-10-06; the project card's
 // nearest-date badge is gone — a date belongs to its task): a deadline
 // within a week yellow, within 2 days orange, passed red and bold.
-const daysTo = (s) => Math.round((new Date(`${s}T12:00`) - new Date(`${localDate()}T12:00`)) / 864e5);
+const daysTo = (s) => Math.round((new Date(`${s}T12:00`) - new Date(`${logicalDate()}T12:00`)) / 864e5);
 function dueTone(t){
   if (isOverdue(t)) return "over";
   if (t.dateKind !== "deadline" || !t.due) return "";
@@ -507,7 +507,7 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
       h("span", { className: "pj-row" },
         h("span", { className: "pj-col" }, h("span", { className: "pj-title", dir: "auto", textContent: t.title }),
           h("span", { className: "pj-meta", dir: "ltr" }, ...(t.waitingOn ? ["Waiting on ", bdi(t.waitingOn)] : ["Pending"]),
-            t.checkOn ? (t.checkOn <= localDate() ? " · check now" : ` · I'll ask you ${shortDay(t.checkOn)}`) : "")),
+            t.checkOn ? (t.checkOn <= logicalDate() ? " · check now" : ` · I'll ask you ${shortDay(t.checkOn)}`) : "")),
         t.waitingOn && h("span", { className: "pj-who", ariaHidden: "true", textContent: [...t.waitingOn.trim()][0]?.toUpperCase() || "" }))])));
     if (drawer === "someday" && !p.someday.length) drawer = null;
     const drawerEl = drawer === "done" ? h("div", { className: "pj-drawer" },

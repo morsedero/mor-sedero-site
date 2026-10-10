@@ -28,7 +28,7 @@ import { dropSeries } from "./slots.js";
 import { watchCalendar, deleteEvent, retime } from "./calendar.js";
 import { draftFrom } from "./caltask.js";
 import { pickWeekDay, answer, answerSnapshot, effectiveDue } from "./triage.js";
-import { localDate, pendingCheck, shrunk, shrinkPatch, dayAfter, notYet, pushedTo, bringBack } from "./model.js";
+import { localDate, logicalDate, pendingCheck, shrunk, shrinkPatch, dayAfter, notYet, pushedTo, bringBack } from "./model.js";
 import { sessionPatch, skipSlotPatch, weekState } from "./routine.js";
 import { dayHours, minText } from "./day.js";
 import { nudgeText, waLink } from "./nudge.js";
@@ -52,7 +52,7 @@ const clock = (ms) => new Date(ms).toLocaleTimeString([], { hour: "2-digit", min
 // first: a deadline asks "tonight, or move it?", a target "tomorrow, or not
 // now?". Both can be deleted.
 export function wrapList(tasks = [], now = Date.now()){
-  const today = localDate(now);
+  const today = logicalDate(now);
   return tasks.filter((t) => t.status === "ready" && t.due && !notYet(t, now) && effectiveDue(t, now) <= today)
     .sort((a, b) => (b.dateKind === "deadline") - (a.dateKind === "deadline") || a.due.localeCompare(b.due))
     .map((t) => ({ key: `wrap:${t.id}`, kind: "wrap", id: t.id }));
@@ -70,7 +70,7 @@ export function mountNeeds(root, uid, { onClose, extra } = {}){
 
   const next = () => { follow = null; i++; paint(); };
   const later = (key) => {
-    const today = localDate();
+    const today = logicalDate();
     const keys = settings.needsLater?.date === today ? [...(settings.needsLater.keys || [])] : [];
     const needsLater = { date: today, keys: [...new Set([...keys, key])] };
     settings = { ...settings, needsLater };
@@ -83,8 +83,8 @@ export function mountNeeds(root, uid, { onClose, extra } = {}){
     saveSettings(uid, { calOffered }).catch(fail);
   };
   const somedayDone = () => {
-    settings = { ...settings, somedayAsked: localDate() };
-    saveSettings(uid, { somedayAsked: localDate() }).catch(fail);
+    settings = { ...settings, somedayAsked: logicalDate() };
+    saveSettings(uid, { somedayAsked: logicalDate() }).catch(fail);
   };
   // Delete (Mor, 2026-10-10): "Let it go" read as unclear, so it says what it
   // does and does what the task sheet's Delete does — the task is gone, its
@@ -165,7 +165,7 @@ export function mountNeeds(root, uid, { onClose, extra } = {}){
     if (item.kind === "meal") {
       const m = item.meal, low = m.name.toLowerCase();
       const setMeal = (v) => {
-        const today = localDate();
+        const today = logicalDate();
         const mealToday = { ...(settings.mealToday?.date === today ? settings.mealToday : {}), date: today, [m.name]: v };
         settings = { ...settings, mealToday };
         saveSettings(uid, { mealToday }).catch(fail);
@@ -193,7 +193,7 @@ export function mountNeeds(root, uid, { onClose, extra } = {}){
       // one short again, and Daisey offers it in the next free time.
       const e = item.slot, s = weekState(t);
       return { tone: areaClass(t).trim() || "area-personal", ico: "check", q: "Did it?",
-        sub: `${clock(e.start)}–${clock(e.end)}${e.day === localDate() ? " today" : `, ${weekday(e.day)}`}.`, item: t.title,
+        sub: `${clock(e.start)}–${clock(e.end)}${e.day === logicalDate() ? " today" : `, ${weekday(e.day)}`}.`, item: t.title,
         say: s.done ? `${s.done} of ${s.per} this week so far.` : `Your ${s.per}× a week.`,
         yes: ["Did it", () => { restoreTask(uid, t.id, sessionPatch(t, { ev: e })).catch(fail); next(); }],
         no: ["Skipped it", () => { restoreTask(uid, t.id, skipSlotPatch(t, e.id)).catch(fail); next(); }] };
@@ -202,13 +202,13 @@ export function mountNeeds(root, uid, { onClose, extra } = {}){
       const tomorrow = () => { restoreTask(uid, t.id, pushedTo(t, { due: dayAfter(1) })).catch(fail); next(); };
       const drop = del(t);
       if (t.dateKind === "deadline") {
-        const past = t.due < localDate();
+        const past = t.due < logicalDate();
         return { tone: "area-job", ico: "later", q: past ? "Deadline passed" : "Deadline today",
           sub: past ? `It was ${shortDay(t.due)}.` : "It's still open.", item: t.title, say: "Tonight, or does the date move?",
           yes: ["I'll do it tonight", () => next()], no: ["Move it to tomorrow", tomorrow], more: [drop], noLater: true };
       }
       return { tone: areaClass(t).trim() || "area-home", ico: "later", q: "Still for today?",
-        sub: t.due < localDate() ? `It was planned for ${shortDay(t.due)}.` : "It was planned for today.", item: t.title,
+        sub: t.due < logicalDate() ? `It was planned for ${shortDay(t.due)}.` : "It was planned for today.", item: t.title,
         say: "I'd move it to tomorrow.", yes: ["Move to tomorrow", tomorrow],
         no: ["On hold", () => { restoreTask(uid, t.id, { status: "someday", touchedAt: Date.now() }).catch(fail); next(); }], more: [drop], noLater: true };
     }

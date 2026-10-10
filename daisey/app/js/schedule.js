@@ -22,7 +22,7 @@ import { watchSettings, watchTasks, watchRun, watchDayPlan, saveDayPlan } from "
 import { timeline } from "./proposal.js";
 import { lastActivity } from "./miss.js";
 import { areaClass, watchProjectColors } from "./look.js";
-import { dayHours, minText } from "./day.js";
+import { dayHours, minText, planDate } from "./day.js";
 import { localDate, durText } from "./model.js";
 import { h, bdi, nightDivider, icon } from "./ui.js";
 import { pusher } from "./ppdrag.js";
@@ -255,7 +255,7 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onMissed, onPro
 
   // Today's approved plan on the clock (derived, never written to the calendar).
   function planRows(events, now, hrs){
-    if (dayPlan?.status !== "approved" || dayPlan.date !== localDate() || !tasks) return [];
+    if (dayPlan?.status !== "approved" || dayPlan.date !== planDate(now, hrs) || !tasks) return [];
     // Held like the Now card's (proposal.timeline since): a task you haven't
     // started stays at its time, it doesn't slide with the clock.
     const tl = timeline(dayPlan.items || [], { tasks, events, now, hours: hrs, run, since: lastActivity(tasks, run, dayPlan.approvedAt || 0) });

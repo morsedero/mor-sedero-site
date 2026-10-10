@@ -368,7 +368,8 @@ async function boot(){
           logSwitch.checked = !isGuest && s?.logDone !== false;
           logSwitch.disabled = isGuest;
           laptopAsk.checked = s?.askLaptop === true;
-          hours = hrs;
+          // After midnight a late day reads { start: 0 }; the server gets the usual one.
+          hours = hrs.late ? usual : hrs;
           lastSettings = s || {};
           briefOn = !!s?.morningBrief;
           seen();
@@ -441,11 +442,13 @@ async function boot(){
         // My day as one 24h bar with two handles: drag an end (or tap the bar to
         // pull the nearer end there), arrows nudge 15 min (Shift: 1 h). Saves once,
         // on release, not on every pixel.
-        const SNAP = 15, MIN_SPAN = 60, track = $("#dayTrack"), fill = track.querySelector(".db-fill");
+        // The bar runs 04:00 to 04:00 (model.js LATE_HOUR, Mor 2026-10-11), so a
+        // night owl's day can end past midnight: 02:00 is 26:00 here.
+        const SNAP = 15, MIN_SPAN = 60, BAR0 = 240, track = $("#dayTrack"), fill = track.querySelector(".db-fill");
         let dayS = 480, dayE = 1320, dayDrag = null;
         function paintDay(s, e){
-          dayS = s; dayE = e;
-          const pct = (m) => (m / 1440 * 100) + "%";
+          dayS = s = Math.max(BAR0, s); dayE = e;
+          const pct = (m) => ((m - BAR0) / 1440 * 100) + "%";
           start.style.left = pct(s); end.style.left = pct(e);
           fill.style.left = pct(s); fill.style.width = ((e - s) / 1440 * 100) + "%";
           start.dataset.t = minText(s); end.dataset.t = e === 1440 ? "24:00" : minText(e);
@@ -454,15 +457,15 @@ async function boot(){
         }
         // Moving the end here wins over today's stretch from Tell Daisey ("until
         // 23:00 today"), which would otherwise keep today's end where it was.
-        const saveHours = () => saveSettings(user.uid, { dayStart: minText(dayS), dayEnd: minText(Math.min(dayE, 1439)),
+        const saveHours = () => saveSettings(user.uid, { dayStart: minText(dayS), dayEnd: minText(Math.min(dayE, BAR0 + 1439)),
           ...(String(dayE) !== track.dataset.end ? { dayEndToday: null } : {}) }).catch(fail);
         // Move one end, keeping at least an hour between them.
         const setEnd = (which, m) => {
           m = Math.round(m / SNAP) * SNAP;
-          if (which === start) paintDay(Math.max(0, Math.min(m, dayE - MIN_SPAN)), dayE);
-          else paintDay(dayS, m >= 1440 - SNAP ? 1439 : Math.max(m, dayS + MIN_SPAN)); // top of the bar = 23:59
+          if (which === start) paintDay(Math.max(BAR0, Math.min(m, dayE - MIN_SPAN)), dayE);
+          else paintDay(dayS, m >= BAR0 + 1440 - SNAP ? BAR0 + 1439 : Math.max(m, dayS + MIN_SPAN)); // top of the bar = 03:59
         };
-        const atX = (x) => { const r = track.getBoundingClientRect(); return Math.max(0, Math.min(1, (x - r.left) / r.width)) * 1440; };
+        const atX = (x) => { const r = track.getBoundingClientRect(); return BAR0 + Math.max(0, Math.min(1, (x - r.left) / r.width)) * 1440; };
         track.addEventListener("pointerdown", (e) => {
           const m = atX(e.clientX);
           dayDrag = e.target === start || e.target === end ? e.target

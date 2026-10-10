@@ -4,7 +4,7 @@
 // unchanged, 2026-10-06.
 import { nextOffer } from "./caltask.js";
 import { sweepList, isOverdue, shouldOffer } from "./triage.js";
-import { localDate, notYet } from "./model.js";
+import { localDate, logicalDate, notYet } from "./model.js";
 import { deadlineWithin } from "./engine.js";
 import { STALE_SKIPS, SOMEDAY_DEADLINE_DAYS, PUSHES_ASK } from "./weights.js";
 import { slotClashes } from "./clash.js";
@@ -18,7 +18,7 @@ const STAKES_FIRST = { penalty: 0, money: 1, someone: 2, low: 3 };
 // morning, or whenever fewer than 3 tasks are active, at most once a day.
 export function somedayDue(tasks = [], settings = {}, now = Date.now()){
   if (!tasks.some((t) => t.status === "someday")) return false;
-  if (settings.somedayAsked === localDate(now)) return false;
+  if (settings.somedayAsked === logicalDate(now)) return false;
   const d = new Date(now);
   const active = tasks.filter((t) => t.status === "ready" && !notYet(t, now)).length;
   return (d.getDay() === 0 && d.getHours() < 12) || active < 3;
@@ -29,7 +29,7 @@ const somedayTop = (tasks) => tasks.filter((t) => t.status === "someday")
 // Everything waiting on an answer right now, as { key, kind, … }. PURE apart
 // from reading the clock: now.js calls it for the count on the home screen.
 export function collectNeeds({ tasks = [], events = [], calOk = false, settings = {}, now = Date.now(), home = null } = {}){
-  const later = settings.needsLater?.date === localDate(now) ? new Set(settings.needsLater.keys || []) : new Set();
+  const later = settings.needsLater?.date === logicalDate(now) ? new Set(settings.needsLater.keys || []) : new Set();
   const out = [];
   const add = (item) => { if (!later.has(item.key)) out.push(item); };
   const parked = tasks.filter((t) => t.status === "someday" && deadlineWithin(t, now, SOMEDAY_DEADLINE_DAYS))
@@ -60,7 +60,7 @@ export function collectNeeds({ tasks = [], events = [], calOk = false, settings 
   // A routine's set-days slot that's over (routine.js): "Did it?" — a booked
   // slot isn't counted until the user says so.
   if (calOk) for (const t of tasks) slotsToAsk(t, events, now).forEach((e) => add({ key: `slot:${e.id}`, kind: "slot", id: t.id, slot: e }));
-  const today = localDate(now);
+  const today = logicalDate(now);
   tasks.filter((t) => t.status === "waiting" && t.checkOn && t.checkOn <= today)
     .sort((a, b) => a.checkOn.localeCompare(b.checkOn))
     .forEach((t) => add({ key: `pend:${t.id}`, kind: "pending", id: t.id }));

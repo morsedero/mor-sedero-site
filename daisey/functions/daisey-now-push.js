@@ -113,7 +113,8 @@ const cleanLead = (v) => (Number.isInteger(v) && v >= 5 && v <= 60 ? v : 10);
 const where = (b) => ({
   ...(validTz(b.tz) ? { tz: b.tz } : {}),
   ...(Number.isInteger(b.dayStart) ? { dayStart: mins(b.dayStart, 480) } : {}),
-  ...(Number.isInteger(b.dayEnd) ? { dayEnd: mins(b.dayEnd, 1320) } : {}),
+  // A day can end past midnight, up to 04:00 (26:00 = 02:00; app day.js dayHours).
+  ...(Number.isInteger(b.dayEnd) ? { dayEnd: b.dayEnd > 0 && b.dayEnd < 1680 ? b.dayEnd : 1320 } : {}),
 });
 
 exports.handler = async (event) => {

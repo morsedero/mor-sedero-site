@@ -172,14 +172,14 @@
     <div class="menu-sec">
       <h3 class="menu-h">Personal</h3>
       <!-- Day hours: free time counts only inside them; outside is night mode. -->
-      <!-- One 24h bar, two handles (like Apple's Sleep schedule): drag either end, 15-min snaps. -->
+      <!-- One 24h bar, 04:00 to 04:00, two handles (like Apple's Sleep schedule): drag either end, 15-min snaps. The end can run past midnight. -->
       <!-- The times ride on the handles (Mor, 2026-10-10). -->
       <span class="menu-label">My day</span>
       <div class="daybar">
         <div class="db-track" id="dayTrack">
           <div class="db-fill"></div>
-          <button id="dayStart" class="db-thumb" type="button" role="slider" aria-label="Day starts" aria-valuemin="0" aria-valuemax="1440"></button>
-          <button id="dayEnd" class="db-thumb" type="button" role="slider" aria-label="Day ends" aria-valuemin="0" aria-valuemax="1440"></button>
+          <button id="dayStart" class="db-thumb" type="button" role="slider" aria-label="Day starts" aria-valuemin="240" aria-valuemax="1680"></button>
+          <button id="dayEnd" class="db-thumb" type="button" role="slider" aria-label="Day ends" aria-valuemin="240" aria-valuemax="1680"></button>
         </div>
       </div>
       <!-- Meal breaks (main.js, Mor 2026-10-08): Breakfast, Lunch, Dinner — each on or off, its window and length. -->

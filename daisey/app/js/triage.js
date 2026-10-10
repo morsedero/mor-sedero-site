@@ -7,18 +7,18 @@
 // quietly: it counts as due today (effectiveDue), is never shown as late,
 // and never grows more urgent than a today-target (spec, "Overdue triage").
 import * as W from "./weights.js";
-import { localDate } from "./model.js";
+import { localDate, logicalDate } from "./model.js";
 import { officeDay as officeOpenDay } from "./holidays.js";
 
 const MIN = 60000;
 
 export const isOpen = (t) => t.status === "ready" || t.status === "waiting";
-const passed = (t, now) => !!t.due && t.due < localDate(now);
+const passed = (t, now) => !!t.due && t.due < logicalDate(now);
 export const isOverdue = (t, now = Date.now()) => isOpen(t) && t.dateKind === "deadline" && passed(t, now);
 export const isRolled = (t, now = Date.now()) => isOpen(t) && t.dateKind !== "deadline" && passed(t, now);
 
 // The day a task counts as dated: a passed target is today's.
-export const effectiveDue = (t, now = Date.now()) => (isRolled(t, now) ? localDate(now) : t.due);
+export const effectiveDue = (t, now = Date.now()) => (isRolled(t, now) ? logicalDate(now) : t.due);
 
 // What the sweep goes through: passed deadlines first, then passed targets,
 // oldest first in each.
@@ -30,7 +30,7 @@ export function sweepList(tasks, now = Date.now()){
 // Offer the sweep? More than SWEEP.deadlines passed deadlines, or more than
 // SWEEP.targets passed targets, and not already answered today.
 export function shouldOffer(tasks, now = Date.now(), settings = {}){
-  if (settings.sweepAnswered === localDate(now)) return false;
+  if (settings.sweepAnswered === logicalDate(now)) return false;
   const deadlines = tasks.filter((t) => isOverdue(t, now)).length;
   const targets = tasks.filter((t) => isRolled(t, now)).length;
   return deadlines > W.SWEEP.deadlines || targets > W.SWEEP.targets;
@@ -109,8 +109,8 @@ export function answer(kind, t, { now = Date.now(), week = null } = {}){
     // A passed deadline done "today" is a date you set yourself now, not the
     // real one (that's gone): a target, so it doesn't come back as overdue
     // every morning (2026-10-06).
-    case "today": return { due: localDate(now), touchedAt: now,
-      ...(t.dateKind === "deadline" && t.due && t.due < localDate(now) ? { dateKind: "target" } : {}) };
+    case "today": return { due: logicalDate(now), touchedAt: now,
+      ...(t.dateKind === "deadline" && t.due && t.due < logicalDate(now) ? { dateKind: "target" } : {}) };
     case "week": return { due: week, touchedAt: now, pushes: (t.pushes || 0) + 1 };
     case "someday": return { status: "someday", touchedAt: now };
     case "drop": return { status: "dropped", droppedAt: now, touchedAt: now };

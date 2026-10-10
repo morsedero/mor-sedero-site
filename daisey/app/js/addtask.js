@@ -23,7 +23,7 @@
 // While typing a new task's title they catch up only once typing stops.
 import { nudgeText, waLink } from "./nudge.js";
 import { watchTasks, addTask, updateTask, removeTask, watchProjectNames, watchSettings, unlogReopened } from "./store.js";
-import { durText, guessFields, validField, CHOICES, LABELS, INBOX, localDate, clampDate, outsideRange, progressOf } from "./model.js";
+import { durText, guessFields, validField, CHOICES, LABELS, INBOX, localDate, logicalDate, clampDate, outsideRange, progressOf } from "./model.js";
 import { h, flash, icon, bdi } from "./ui.js";
 import { projectsOf } from "./projects.js";
 import { isRoutine, weekLine, PER_MAX, DEFAULT_AT, cleanRoutine, seriesSig } from "./routine.js";
@@ -579,7 +579,7 @@ export function mountAddTask(dialog, uid, { onStart } = {}){
       waitingOn.value = task.waitingOn || "";
       holdWho.value = task.onHold?.who || "";
       checkOn.value = task.checkOn || "";
-      checkOn.min = localDate();
+      checkOn.min = logicalDate();
       links = (task.links || []).map((l) => ({ ...l }));
       const guessed = new Set(task.guessed || []);
       for (const k of CHIPS) if (validField(k, task[k])) { vals[k] = task[k]; if (!guessed.has(k) || SHOWN.includes(k)) mine.add(k); } // a saved "How long?" shows as chosen, even if Daisey set it

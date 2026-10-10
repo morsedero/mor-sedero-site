@@ -1,7 +1,7 @@
 // The visual pieces the redesign shares (DAISEY_SPEC "Visual design"): the
 // daisy, the area colours, the greeting and the free-time line. No state,
 // nothing at import time touches the DOM (focus.js is imported by node tests).
-import { localDate, LABELS, AREAS } from "./model.js";
+import { localDate, logicalDate, LABELS, AREAS } from "./model.js";
 
 const NS = "http://www.w3.org/2000/svg";
 const svgEl = (tag, attrs = {}) => {
@@ -75,7 +75,7 @@ export function projectShown(task){
 
 // Tasks finished today (local day).
 export const doneToday = (tasks = [], now = Date.now()) =>
-  tasks.filter((t) => t.status === "done" && t.doneAt && localDate(t.doneAt) === localDate(now));
+  tasks.filter((t) => t.status === "done" && t.doneAt && logicalDate(t.doneAt) === logicalDate(now));
 
 export function greeting(name, now = Date.now()){
   // The real clock, whatever night mode says: after midnight it isn't

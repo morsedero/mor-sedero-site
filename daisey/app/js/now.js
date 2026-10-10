@@ -32,7 +32,7 @@ import { rank, freeWindow, timeBucket, matchProject, dueAt } from "./engine.js";
 import { leftMinutes, toMinutes, progressOf, progressPatch, shrinkPatch, shrunk, localDate, logicalDate, LATE_HOUR, skipSnapshot, skipLesson, pendingCheck, notYet, pushedTo, bringBack, againInput, dayAfter, doneSnapshot } from "./model.js";
 import { isRoutine, routineCalendar, eventsToLog, sessionPatch } from "./routine.js";
 import { waitingFor, personOf } from "./nudge.js";
-import { dayHours, isNight, nextMorning, dayEndAt, bookings, sameTitle, minText, gapsToday } from "./day.js";
+import { dayHours, isNight, nextMorning, dayEndAt, bookings, sameTitle, minText, gapsToday, planDate } from "./day.js";
 import { collectNeeds, wrapList } from "./needs.js";
 import { h, icon, bdi, pieces, sizeText, sizeChip, progressBar, dur, say, nightDivider, flash, weekDots, focusField, dragScroll } from "./ui.js";
 import { areaClass, areaName, projectShown, doneToday, moonDaisy, watchProjectColors } from "./look.js";
@@ -101,7 +101,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
   let skipDoc = null;
   // The day the plan and today's Laters belong to: yesterday's, after midnight
   // while a day stretched past it is still on (day.js dayHours late).
-  const dayKey = () => (dayHours(settings).late ? logicalDate() : localDate());
+  const dayKey = () => planDate(Date.now(), dayHours(settings));
   const skipItems = () => (skipDoc?.date === dayKey() ? skipDoc.items || {} : {});
   const hidden = (now = Date.now()) => Object.entries(skipItems()).filter(([, v]) => v.until > now).map(([id]) => id);
   const skipCounts = () => Object.fromEntries(Object.entries(skipItems()).map(([id, v]) => [id, v.count]));
@@ -503,7 +503,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     // in state so a redraw doesn't wipe it.
     const input = h("input", { id: "pendWhy", dir: "auto", autocomplete: "off", value: state.pendText || "",
       oninput: (e) => { state.pendText = e.target.value; } });
-    const check = h("input", { id: "pendCheck", type: "date", value: state.pendCheck || pendingCheck(task), min: localDate(),
+    const check = h("input", { id: "pendCheck", type: "date", value: state.pendCheck || pendingCheck(task), min: logicalDate(),
       oninput: (e) => { state.pendCheck = e.target.value; } });
     const go = () => { const why = input.value; state.pendText = ""; state.pendCheck = ""; pending(task, why, check.value); };
     input.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); go(); } });
@@ -697,7 +697,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     // screen said "Nothing needs you tonight" over it, and by morning it read
     // "deadline passed". It gets named, with a Start — the one thing night
     // mode lets through.
-    const today = localDate(now);
+    const today = logicalDate(now);
     const dueTonight = early ? [] : (tasks || []).filter((t) => t.status === "ready" && t.dateKind === "deadline"
       && t.due === today && !notYet(t, now) && !(t.dueTime && now >= dueAt(t)));
     // Already named under "Due today" — don't offer it again as tomorrow's pick.
@@ -875,7 +875,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
   const SWITCH_TOO = new Set(["size", "block", "place", "office", "evening", "booked"]);
   function restState(){
     const list = somedaySorted().slice(0, 3);
-    const rested = settings.somedayAsked === localDate();
+    const rested = settings.somedayAsked === logicalDate();
     const offer = list.length > 0 && !rested;
     sd.sel = sd.sel.filter((id) => list.some((t) => t.id === id));
     const card = quietCard({ meta: "Nothing active", title: rested ? "Rest it is" : "You have time",
@@ -890,9 +890,9 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     };
     const rest = () => {
       sd.sel = [];
-      settings = { ...settings, somedayAsked: localDate() };
+      settings = { ...settings, somedayAsked: logicalDate() };
       render();
-      saveSettings(uid, { somedayAsked: localDate() }).catch(fail);
+      saveSettings(uid, { somedayAsked: logicalDate() }).catch(fail);
     };
     return [card,
       h("h3", { className: "sd-head", textContent: "From On hold" }),
@@ -919,9 +919,9 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     const shownList = sd.all ? list : list.slice(0, 6);
     const close = () => {
       Object.assign(sd, { open: false, picked: [], all: false });
-      settings = { ...settings, somedayAsked: localDate() };
+      settings = { ...settings, somedayAsked: logicalDate() };
       render();
-      saveSettings(uid, { somedayAsked: localDate() }).catch(fail);
+      saveSettings(uid, { somedayAsked: logicalDate() }).catch(fail);
     };
     const pick = (t) => {
       sd.picked.push(t.id);
@@ -1078,7 +1078,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
   // for a rethink. On demand from the plan line, the Free row or Schedule's
   // "Plan my day". Approved, the card follows it in order.
   // Today's answers to the meal question (meals.js): { [name]: "HH:MM" | "there" }.
-  const mealAnswers = () => { const m = settings.mealToday; if (m?.date !== localDate()) return {}; const { date, ...rest } = m; return rest; };
+  const mealAnswers = () => { const m = settings.mealToday; if (m?.date !== logicalDate()) return {}; const { date, ...rest } = m; return rest; };
   // The day a plan on screen is laid against, taken when it's laid: taken
   // later, at the first render, a change made in between went unnoticed.
   const daySigNow = () => (cal.status === "ok" ? daySig(cal.events, dayHours(settings)) : null);
@@ -1177,7 +1177,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     const b = behindNow();
     if (!b) return null;
     const key = `plan:${b.key}`, nl = settings.needsLater;
-    if (nl?.date === localDate() && (nl.keys || []).includes(key)) return null;
+    if (nl?.date === logicalDate() && (nl.keys || []).includes(key)) return null;
     return { key, kind: "ext", ask: ({ next, close }) => {
       const c = behindNow();
       if (!c || `plan:${c.key}` !== key) return null; // answered or changed since
@@ -1316,7 +1316,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     if (!gone.length) return null;
     const n = gone.length;
     // The follow-up: a real deadline today that no longer fits.
-    const ask = gone.find((t) => t.status === "ready" && t.dateKind === "deadline" && t.due && t.due <= localDate() && !(c.asked || []).includes(t.id));
+    const ask = gone.find((t) => t.status === "ready" && t.dateKind === "deadline" && t.due && t.due <= logicalDate() && !(c.asked || []).includes(t.id));
     const answer = (patch) => { if (patch) restoreTask(uid, ask.id, patch).catch(fail); cutSaved({ ...c, asked: [...(c.asked || []), ask.id] }); render(); };
     // A cut the user approved (planAsk): only the deadline question is left.
     if (c.ok) return ask ? h("div", { className: "toast plan-cut", role: "status" },

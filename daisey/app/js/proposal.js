@@ -10,13 +10,13 @@
 // still the engine's (engine.rank), so the card and the plan agree until the
 // user changes the order.
 // PURE: no Firebase, no DOM.
-import { gapsToday, bookings, mealsOf } from "./day.js";
+import { gapsToday, bookings, mealsOf, planDate } from "./day.js";
 import { rank, fitsPlace } from "./engine.js";
 import { phoneOkIds } from "./phone.js";
 import { routineCalendar } from "./routine.js";
 import { workBase } from "./context.js";
 import { overruled, eventKey, runState } from "./reality.js";
-import { LABELS, notYet, localDate } from "./model.js";
+import { LABELS, notYet, localDate, logicalDate } from "./model.js";
 import * as W from "./weights.js";
 
 const MIN = 60000;
@@ -64,7 +64,7 @@ export function proposeDay({ tasks = [], events = [], now = Date.now(), hours = 
   const skipTypes = new Set(ask.skipTypes || []);
   const out = new Set([...exclude, ...(ask.exclude || []), ...(run?.batch || (run?.taskId ? [run.taskId] : []))]);
   // maxEach: only tasks this small (the lighter plan, miss.js) — a deadline due today still comes.
-  const today = localDate(now);
+  const today = planDate(now, hours);
   const pool = tasks.filter((t) => !skipTypes.has(t.type)
     && (!ask.maxEach || leftOf(t) <= ask.maxEach || (t.dateKind === "deadline" && t.due && t.due <= today)));
   const booked = Object.fromEntries([...bookings(tasks, evs, now)].map(([id, b]) => [id, b.start]));
@@ -402,7 +402,7 @@ export function topUp(items = [], ctx = {}, skip = []){
 // the meal is one). laid: { [name]: answer } already done on this plan, so a
 // later drag isn't undone. → { items, laid }, the same items when nothing to do.
 export function relayMeals(items = [], ctx = {}, laid = {}){
-  const now = ctx.now ?? Date.now(), today = localDate(now);
+  const now = ctx.now ?? Date.now(), today = logicalDate(now);
   const said = ctx.settings?.mealToday?.date === today ? ctx.settings.mealToday : {};
   const meals = ctx.hours?.meals ?? mealsOf(ctx.settings);
   let out = items;
