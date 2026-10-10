@@ -1396,8 +1396,6 @@ body.focus #side { display: none; }
   100% { opacity: 0; transform: translateX(24px) scale(.94); max-block-size: 0; margin-block-start: 0; }
 }
 @media (prefers-reduced-motion: reduce) { .sc-row.sc-land .sc-ev, .sc-row.sc-leave { animation: none; } }
-.sc-today.sc-unplan { display: inline-flex; align-items: center; gap: 4px; block-size: 32px; padding-inline: 10px; font-size: 13px; }
-.sc-unplan svg { inline-size: 14px; block-size: 14px; }
 .sc-proj { flex: none; display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-inline-size: 26px; block-size: 24px; padding-inline: 8px; border: 0; border-radius: 999px; background: #5b67ff; color: #fff; font: inherit; font-size: 13px; font-weight: 700; white-space: nowrap; cursor: pointer; }
 .sc-proj svg { inline-size: 15px; block-size: 15px; }
 .sc-proj-t, .sc-title .sc-date, .sc-title .sc-name:not(.sc-name-s) { display: none; }
@@ -1611,8 +1609,7 @@ body.focus .shell { block-size: auto; min-block-size: 100dvh; overflow: visible;
 /* The action row stays pinned to the bottom of the scrolling card; Rethink
    swaps into the same slot (now.js rethinkRow). */
 .pp-actions { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 6px; margin-block-start: 6px; padding-block: 6px 0; position: sticky; inset-block-end: 0; z-index: 2; background: var(--card); }
-/* Two rows (2026-10-10): the text field gets the full width (it was crushed
-   to one letter beside the buttons), then Fewer | More | Go share row two. */
+/* Rethink (2026-10-10): one-tap Fewer | More | ✕, then a field with its own send. */
 .pp-actions.pp-ask { display: flex; flex-direction: column; gap: 8px; }
 .pp-ask-quick { display: flex; gap: 6px; }
 .now-card.main .pp-ask-quick .btn { flex: 1 1 0; display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
@@ -1628,6 +1625,8 @@ body.focus .shell { block-size: auto; min-block-size: 100dvh; overflow: visible;
 .now-card.main .pp-actions .btn.start { display: inline-flex; align-items: center; justify-content: center; gap: 6px; font-size: 16px; }
 .pp-actions .btn.start svg { inline-size: 18px; block-size: 18px; }
 .done-list .pp-actions { grid-template-columns: 1fr; }
+.pp-actions:has(.pp-close) { grid-template-columns: 1.5fr 1fr 1.25fr 40px; }
+.now-card.main .pp-actions .btn.pp-close { padding-inline: 0; font-size: 16px; }
 /* "No plan" (was "Not today", 2026-10-10): a soft brick tint, so declining reads as a choice, not an alarm. */
 .now-card.main .pp-actions .btn.no-plan { background: var(--p-brick-tint); border: 1px solid var(--p-brick-line); color: var(--p-brick-ink); font-weight: 600; }
 @media (max-width: 359px) { .pp-ctl { inline-size: 28px; } }

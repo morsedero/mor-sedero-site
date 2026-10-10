@@ -24,7 +24,7 @@ import { lastActivity } from "./miss.js";
 import { areaClass, watchProjectColors } from "./look.js";
 import { dayHours, minText } from "./day.js";
 import { localDate, durText } from "./model.js";
-import { h, bdi, nightDivider, icon, flash } from "./ui.js";
+import { h, bdi, nightDivider, icon } from "./ui.js";
 import { pusher } from "./ppdrag.js";
 import { withTrips } from "./trips.js";
 
@@ -229,11 +229,7 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onProjects, onW
       h("button", { type: "button", className: "sc-title" + (isNow ? "" : " away"), ariaLabel: isNow ? title : `${title} — back to today`, onclick: () => go(null) },
         h("span", { className: "sc-name", textContent: title }), h("span", { className: "sc-name sc-name-s", textContent: narrow }), sub && h("span", { className: "sc-date", textContent: sub })),
       // Arrow points the way today lies; tapping slides there like a swipe.
-      // On today, with a plan laid: take Daisey's plan off the Schedule (Mor,
-      // 2026-10-10), where its blocks are. The calendar itself isn't touched.
-      isNow && view !== "week" && planned() ? h("button", { type: "button", className: "sc-today sc-unplan", ariaLabel: "Remove Daisey's plan for today", onclick: unplan },
-        icon("close"), h("span", { textContent: "Remove plan" }))
-      : h("button", { type: "button", className: "sc-today" + (isNow ? " off" : ""), ariaLabel: "Back to today", tabIndex: isNow ? -1 : 0,
+      h("button", { type: "button", className: "sc-today" + (isNow ? " off" : ""), ariaLabel: "Back to today", tabIndex: isNow ? -1 : 0,
         textContent: isNow ? "Today" : future ? "← Today" : "Today →", onclick: () => flip(future ? 1 : -1, () => go(null)) }),
       mode === "home" && onWeek && weekBtn);
     const head = h("div", { className: "sc-head" + (view === "week" ? " wk" : "") }, bar);
@@ -256,16 +252,6 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onProjects, onW
   // A task's project colour (its area's, failing that) for the event made for
   // it; events with no task keep their calendar colour.
   const tone = (ev) => { const t = ev.taskId && tasks?.find((x) => x.id === ev.taskId); return t ? areaClass(t) : ""; };
-
-  const planned = () => dayPlan?.status === "approved" && dayPlan.date === localDate() && dayPlan.items?.length > 0;
-  // Undo puts the same plan back.
-  function unplan(){
-    const { at, ...was } = dayPlan;
-    dayPlan = { ...dayPlan, status: "dismissed", items: [] }; render();
-    saveDayPlan(uid, { ...was, status: "dismissed", items: [] }).catch(fail);
-    flash("Removed today's plan. Your calendar is untouched.", null, { undo: () => {
-      dayPlan = { ...was }; render(); saveDayPlan(uid, was).catch(fail); } });
-  }
 
   // Today's approved plan on the clock (derived, never written to the calendar).
   function planRows(events, now, hrs){

@@ -1432,6 +1432,15 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     flash(`Plan set: ${n} ${n === 1 ? "task" : "tasks"}. The card follows it.`);
   }
   function dismiss(){ savePlan("dismissed", []); closeProposal(); }
+  // Take an approved plan off today (Mor, 2026-10-10): the Schedule goes back
+  // to just the calendar, which isn't touched. Undo puts the same plan back.
+  function removePlan(){
+    const was = approvedPlan();
+    savePlan("dismissed", []); prop.open = false; prop.replan = false; prop.ask = false; prop.note = ""; reset();
+    render();
+    flash("Removed today's plan. Your calendar is untouched.", null, was ? { undo: () => {
+      const { at, ...doc } = was; dayPlan = { ...was, at: Date.now() }; saveDayPlan(uid, doc).catch(fail); render(); } } : {});
+  }
 
   // ---------- Missed slot and the silence check (miss.js, 2026-10-08) ----------
   // While Daisey is open, a banner over the card asks; closed, the server
@@ -1659,7 +1668,10 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
           icon("check"), h("span", { textContent: approved ? "Save plan" : "Approve" })),
         h("button", { className: "btn line", type: "button", ariaExpanded: "false", disabled: prop.busy,
           textContent: prop.busy ? "Thinking…" : "Rethink", onclick: () => { prop.ask = true; render(); } }),
-        h("button", { className: approved ? "btn quiet" : "btn no-plan", type: "button", textContent: approved ? "Close" : "No plan", onclick: approved ? closeProposal : dismiss })));
+        // Approved: Remove plan sits with the others (Mor, 2026-10-10), Close shrinks to ✕.
+        approved && h("button", { className: "btn no-plan", type: "button", textContent: "Remove plan", ariaLabel: "Remove today's plan", disabled: prop.busy, onclick: removePlan }),
+        approved ? h("button", { className: "btn quiet pp-close", type: "button", textContent: "✕", title: "Close", ariaLabel: "Close", onclick: closeProposal })
+          : h("button", { className: "btn no-plan", type: "button", textContent: "No plan", onclick: dismiss })));
   }
   // Once a plan is approved, how far along it is goes to the header chip
   // (next to Needs you); tapping it reopens the plan to change it.
