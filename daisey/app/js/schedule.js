@@ -111,7 +111,7 @@ function lanes(items){
 
 // el: the page. onEvent(ev): an event's details. onNew(date, at): a new
 // event on "YYYY-MM-DD", at "HH:MM" when a gap was tapped.
-export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onProjects, onWeek, onDay, mode = "home" } = {}){
+export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onMissed, onProjects, onWeek, onDay, mode = "home" } = {}){
   let cal = { status: "loading", events: [] };
   let settings = {};
   let tasks = null, run = null; // for Plan my day
@@ -398,7 +398,7 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onProjects, onW
     // like what happened, and not red either ("negative"): a quiet "?" until
     // it's re-planned.
     if (x.kind === "plan") { const pe = h("div", { className: "sc-row" + (x.missed ? " sc-missed" : on ? " sc-on" + areaClass(x.task) : past ? " sc-past" : ""), style: orbit },
-      h("span", { className: "sc-time strong" }, time, x.missed ? h("span", { className: "sc-misstag", textContent: "?", title: "Planned, not started", ariaLabel: "Planned, not started" }) : on && h("span", { className: "sc-nowtag", textContent: "Now" })),
+      h("span", { className: "sc-time strong" }, time, x.missed ? h("button", { type: "button", className: "sc-misstag", textContent: "?", title: "Didn't happen: what now?", ariaLabel: `${x.task.title} didn't happen: what now?`, onclick: () => onMissed?.(x.task.id, x.start) }) : on && h("span", { className: "sc-nowtag", textContent: "Now" })),
       h("button", { type: "button", className: "sc-ev sc-plan" + areaClass(x.task), ariaLabel: `Planned: ${x.task.title}, ${time}`, onclick: () => onOpen?.(x.task) },
         h("span", { className: "sc-dot" }), bdi(x.task.title)));
       if (slots.includes(x)) { x.el = pe; draggable(x, pe, slots); pe.classList.add("sc-drag"); }

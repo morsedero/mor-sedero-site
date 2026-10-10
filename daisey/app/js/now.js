@@ -51,7 +51,7 @@ const clock = (ms) => new Date(ms).toLocaleTimeString([], { hour: "2-digit", min
 // how many tasks are done today, for the header's chip. onNeedsCount(n):
 // how many decisions Needs you holds, for the amber chip.
 // onWrap(): the evening wrap (Needs you: each task still open for today).
-export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap, name = "", onDone, onNeedsCount, onPlanProgress, planRoot, onPlanScreen, onReady, guest = false } = {}){
+export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap, name = "", onDone, onNeedsCount, onPlanProgress, planRoot, onPlanScreen, onReady, missDialog = null, guest = false } = {}){
   let tasks = null; // null until the first snapshot
   let settings = {}; // state/settings: when the sweep was last offered
   let momentDoc = {}; // state/moment: place corrections
@@ -570,7 +570,8 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
       write().catch(fail);
       render();
     };
-    const el = root.querySelector(".now-card.main");
+    // Only the card's own task slides it out (a missed row's sheet asks too).
+    const el = task.id === shown && root.querySelector(".now-card.main");
     if (el && motionOK()) { el.classList.add("out"); setTimeout(go, SLIDE_MS); } else go();
   }
 
@@ -1202,6 +1203,28 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     if (task) { task.touchedAt = Date.now(); restoreTask(uid, id, { touchedAt: task.touchedAt }).catch(fail); }
     state.chosen = id; state.showAlts = false;
     render();
+  }
+
+  // A planned task that didn't happen (the schedule's "?", Mor 2026-10-10):
+  // what now? Done after all, now (Switch), the Later times, or On hold set
+  // apart as in Later. Answering clears the "?" and the Needs you ask with it.
+  function missedSheet(id, start){
+    const task = (tasks || []).find((t) => t.id === id), dlg = missDialog;
+    if (!task || !dlg) return;
+    const act = (fn) => () => { dlg.close(); fn(); };
+    const chip = (text, fn) => h("button", { className: "chip", type: "button", textContent: text, onclick: act(fn) });
+    dlg.replaceChildren(
+      h("div", { className: "now-head" }, h("h2", { id: "missTitle", textContent: start ? `Didn't happen at ${clock(start)}` : "Didn't happen" }),
+        h("button", { className: "now-x", type: "button", ariaLabel: "Close", textContent: "✕", onclick: () => dlg.close() })),
+      h("p", { className: "miss-task", dir: "auto", textContent: task.title }),
+      h("div", { className: "miss-acts" },
+        h("button", { className: "btn line", type: "button", onclick: act(() => quickDoneNow(task)) }, icon("check"), h("span", { textContent: "I did it" })),
+        h("button", { className: "btn primary", type: "button", onclick: act(() => switchTo(id)) }, icon("play"), h("span", { textContent: "Do it now" }))),
+      h("div", { className: "later-ask", role: "group", ariaLabel: "Or later" },
+        ...[["today", "Later today"], ["tomorrow", "Tomorrow"], ["week", "This week"]].map(([w, text]) => chip(text, () => later(task, w))),
+        h("button", { className: "hold-opt", type: "button", ariaLabel: `Put ${task.title} on hold: no date, in the project's On hold list`, onclick: act(() => later(task, "someday")) },
+          icon("someday"), h("span", { textContent: "Put on hold" }), h("span", { className: "hold-opt-s", textContent: "· no date" }))));
+    dlg.showModal();
   }
 
   // How long a Switch card's task takes: what's left once some is done
@@ -2006,6 +2029,8 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     refresh: render,
     // Needs you's questions that only the Now screen can work out (planAsk).
     needsAsks: () => [planAsk()].filter(Boolean),
+    // The schedule's "?" on a planned task that didn't happen.
+    missed: (id, start) => missedSheet(id, start),
     // "Do this now" from the task sheet: the same thing Switch does, driven
     // from the list. A task put off today is un-put-off, or the card would
     // ignore the choice.

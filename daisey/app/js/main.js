@@ -561,7 +561,7 @@ async function boot(){
           // popstate, or the closeScreens it runs would shut that too.
           onClose: (then) => { const pop = !!history.state?.daisey; if (then && pop) addEventListener("popstate", () => then(), { once: true }); screens.back(); if (then && !pop) then(); },
           extra: () => m.now?.needsAsks() || [] });
-        m.schedule = mountSchedule($("#schedPage"), user.uid, { onEvent: (ev) => m.event.view(ev), onNew: (date, at) => m.event.open(date, at), onOpen: (task) => m.adder.edit(task), });
+        m.schedule = mountSchedule($("#schedPage"), user.uid, { onEvent: (ev) => m.event.view(ev), onNew: (date, at) => m.event.open(date, at), onOpen: (task) => m.adder.edit(task), onMissed: (id, start) => m.now?.missed(id, start) });
         // ARCHIVED (Mor, 2026-10-08): the Week page is built but switched off until
         // people ask for it. To bring it back: pass onWeek to the mount above
         //   onWeek: () => { $("#weekview").hidden = false; $("#weekPage").scrollTop = 0; screens.open("week"); }
@@ -590,6 +590,7 @@ async function boot(){
           onProject: (name) => m.projects.openProject(name),
           onEvent: (ev) => m.event.view(ev),
           onWrap: () => { m.needs.open("wrap"); screens.open("needs"); },
+          missDialog: $("#missdlg"),
           guest: isGuest,
         });
         $("#needsChip").onclick = () => { m.needs.open(); screens.open("needs"); };

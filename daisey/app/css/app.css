@@ -453,7 +453,7 @@ dialog.now:focus { outline: none; }
 .later-ask { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 5px; margin-block-start: 4px; font-size: 13px; }
 .later-ask .chip { min-block-size: 36px; font-size: 13px; padding-inline: 10px; }
 /* Later's On hold: not a time, so set apart on its own line, dashed and quiet. */
-.later-ask .hold-opt { flex-basis: 100%; display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-block-size: 34px; margin-block-start: 2px; font: inherit; font-size: 13px; font-weight: 600; color: var(--sub); background: none; border: 1px dashed var(--aline); border-radius: 999px; cursor: pointer; }
+.later-ask .hold-opt { flex-basis: 100%; display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-block-size: 34px; margin-block-start: 2px; font: inherit; font-size: 13px; font-weight: 600; color: var(--sub); background: none; border: 1px dashed var(--aline, var(--line)); border-radius: 999px; cursor: pointer; }
 .later-ask .hold-opt svg { inline-size: 16px; block-size: 16px; flex: none; }
 .later-ask .hold-opt:hover { color: var(--ink); border-style: solid; }
 .hold-opt-s { font-weight: 400; }
@@ -1354,7 +1354,17 @@ body.focus #side { display: none; }
 /* Planned, its time gone, never started: not faded like what happened, not
    red either. Its own dashed block and a soft "?" (Mor, 2026-10-10). */
 .sc-row.sc-missed .sc-ev.sc-plan, .wk-ev.wk-plan.missed { background: none; border-color: var(--line); color: var(--ink-2); }
-.sc-time .sc-misstag { display: grid; place-items: center; inline-size: 20px; block-size: 20px; margin-block-start: 3px; border-radius: 50%; background: var(--chip); color: var(--ink-2); font-size: 12px; font-weight: 700; }
+.sc-time .sc-misstag { display: grid; place-items: center; inline-size: 20px; block-size: 20px; margin-block-start: 3px; border-radius: 50%; background: var(--chip); color: var(--ink-2); font-size: 12px; font-weight: 700; font-family: inherit; border: 0; padding: 0; cursor: pointer; }
+.sc-time .sc-misstag:hover { background: var(--line); color: var(--ink); }
+/* The "?" sheet: the task, I did it / Do it now, then Later's chips and On hold. */
+.miss-dlg { inline-size: min(380px, calc(100vw - 18px)); }
+.miss-dlg[open] { display: grid; gap: 12px; }
+.miss-dlg .miss-task { margin: 0; font-size: 18px; font-weight: 600; overflow-wrap: anywhere; }
+.miss-acts { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.miss-acts .btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+.miss-acts .btn svg { inline-size: 16px; block-size: 16px; }
+.miss-dlg .later-ask { margin: 0; }
+.miss-dlg .later-ask .chip { flex: 1 1 0; white-space: nowrap; padding-inline: 6px; }
 .wk-ev.wk-plan.missed::before { content: "? "; font-weight: 700; }
 .pp-row.missed .pp-time { color: var(--ink-2); }
 /* The row on right now is one block of its colour, time column included (Mor, 2026-10-08). */
