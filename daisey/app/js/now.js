@@ -986,12 +986,14 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
   // elsewhere): finished with no time booked, with an Undo.
   function quickDoneNow(task){
     const before = doneSnapshot(task);
-    handoff = { title: task.title, skip: task.id, minutes: 0, ids: [task.id] };
     const p = finishTask(uid, task, { tasks: tasks || [], events: cal.status === "ok" ? cal.events : [] });
     p.catch(fail);
+    // The time guess and Undo sit in the Done screen itself, not a toast over
+    // the Next card (Mor, 2026-10-11: "the pop up is hiding everything").
+    const h0 = handoff = { title: task.title, skip: task.id, ids: [task.id], minutes: p.counted.minutes || 0,
+      setMinutes: (m) => { h0.minutes = m; h0.said = true; setDoneMinutes(uid, task.id, m); },
+      undo: () => { handoff = null; restoreTask(uid, task.id, before).catch(fail); render(); } };
     reset(); render();
-    flash("Done: ", task.title, { undo: () => { handoff = null; restoreTask(uid, task.id, before).catch(fail); render(); },
-      adjust: p.counted.minutes ? { minutes: p.counted.minutes, set: (m) => setDoneMinutes(uid, task.id, m) } : undefined });
   }
 
   // Switch's row, under the card like Later's and Pending's (Mor,
@@ -1678,7 +1680,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
           render();
         },
       };
-      fill(handoffView({ title: handoff.title, minutes: handoff.minutes || 0, count: n, again }, nextPick, {
+      fill(handoffView({ title: handoff.title, minutes: handoff.minutes || 0, setMinutes: handoff.setMinutes, said: handoff.said, undo: handoff.undo, count: n, again }, nextPick, {
         cheer,
         onStart: (task) => onCardWith(task, { notNow: false }),
         onSwitch: (task) => onCardWith(task, { notNow: false, showAlts: true }),

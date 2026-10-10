@@ -315,9 +315,12 @@ export function handoffView(done, next, { onStart, onSkip, onSwitch, cheer }){
   return h("div", { className: "focus handoff" },
     h("div", { className: "done-hero" },
       h("div", { className: "done-flower" }, daisy(Math.max(1, n), { size: 150, cls: "daisy big" + (cheer ? " pop" : "") }), petals),
-      h("h2", { className: "done-h" + (cheer ? " pop" : ""), textContent: `Done in ${dur(Math.max(1, Math.round(done.minutes || 0)))}` }),
+      h("p", { className: "done-kick", textContent: "Done" }),
+      h("h2", { className: "done-h" + (cheer ? " pop" : ""), dir: "auto", textContent: done.title || "Done" }),
+      doneTime(done),
       h("p", { className: "done-p", textContent: n && n <= 8 ? `${n} done today. Your daisy grew a petal.` : `${n} done today.` }),
-      done.title && h("p", { className: "done-what" }, bdi(done.title)),
+      done.undo && h("button", { className: "linkish done-undo", type: "button", textContent: "Undo",
+        ariaLabel: `Undo: ${done.title} isn't done`, onclick: done.undo }),
       done.again && (done.again.made
         ? h("p", { className: "again-made", textContent: `Again from ${done.again.made}.` })
         : h("div", { className: "again", role: "group", ariaLabel: "Do it again?" },
@@ -328,7 +331,7 @@ export function handoffView(done, next, { onStart, onSkip, onSwitch, cheer }){
     t
       ? h("section", { className: "next-card" + areaClass(t), ariaLabel: "Next" },
         h("div", { className: "next-top" },
-          h("span", { className: "next-label", textContent: "Next" }),
+          h("span", { className: "next-label", textContent: "Up next" }),
           h("span", { className: "next-kind", textContent: [LABELS.type[t.type], dur(t.size)].filter(Boolean).join(" · ") })),
         h("div", { className: "next-title", dir: "auto", textContent: t.title }),
         next.why && h("p", { className: "next-why", textContent: next.why }),
@@ -342,6 +345,20 @@ export function handoffView(done, next, { onStart, onSkip, onSwitch, cheer }){
       : h("div", { className: "next-card none" },
         h("p", { className: "next-why", textContent: "Nothing else fits right now. Take the break." }),
         h("button", { className: "btn line", type: "button", textContent: "Back", onclick: () => onSkip(null) })));
+}
+
+// "Took ~30 min" with − / + (15 min a tap), corrected in place: the guess
+// is logged at once, a tap rewrites it (store setDoneMinutes).
+function doneTime(done){
+  let mins = Math.round(done.minutes || 0);
+  if (!mins && !done.setMinutes) return null;
+  let said = !!done.said;
+  const say = () => `Took ${done.setMinutes && !said ? "~" : ""}${dur(Math.max(1, mins))}`;
+  const text = h("span", { className: "done-took", textContent: say() });
+  if (!done.setMinutes) return h("p", { className: "done-time" }, text);
+  const step = (d) => h("button", { className: "toast-step", type: "button", textContent: d < 0 ? "−" : "+", ariaLabel: `${d < 0 ? "Less" : "More"} time`,
+    onclick: () => { mins = Math.max(1, mins + d); said = true; text.textContent = say(); done.setMinutes(mins); } });
+  return h("p", { className: "done-time" }, step(-15), text, step(15));
 }
 
 // Pause/Resume and Stop: two round icon buttons, side by side, centred.

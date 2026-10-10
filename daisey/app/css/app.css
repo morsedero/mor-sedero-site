@@ -759,15 +759,21 @@ dialog.settings .now-head + .menu-sec { border-block-start: 0; padding-block-sta
   .petal { animation: drift 2.6s ease-out forwards; }
   .done-h.pop { animation: guess-in .25s .15s ease-out both; }
 }
-.done-h { margin: 22px 0 6px; font-size: 30px; font-weight: 600; letter-spacing: -0.4px; }
+/* Done screen: "Done", the task's name big in full ink, how long (− / +), the count, Undo. */
+.done-kick { margin: 20px 0 0; font-size: 13px; font-weight: 700; letter-spacing: .8px; text-transform: uppercase; color: var(--accent); }
+.done-h { margin: 4px 0 8px; font-size: 28px; font-weight: 600; line-height: 1.2; letter-spacing: -0.3px; color: var(--ink); overflow-wrap: anywhere; }
+.done-time { display: flex; align-items: center; justify-content: center; gap: 10px; margin: 0 0 8px; font-size: 16px; color: var(--ink); }
+.done-time .toast-step { inline-size: 32px; block-size: 32px; font-size: 16px; color: var(--ink); border-color: var(--line); }
 .done-p { margin: 0; font-size: 15px; color: var(--ink-2); }
-.done-what { margin: 6px 0 0; font-size: 14px; color: var(--ink-2); overflow-wrap: anywhere; }
-.next-card { margin-block-start: auto; padding: 20px; border-radius: var(--radius); background: var(--tint); border: 1px solid var(--aline); display: flex; flex-direction: column; gap: 10px; }
+.done-undo { margin-block-start: 10px; font-size: 14px; color: var(--ink-2); padding: 8px 6px; }
+/* The Next card is a preview, not the Now card: no fill, a dashed edge in the
+   area colour (Mor, 2026-10-11: it looked like the one just done). */
+.next-card { margin-block-start: auto; padding: 16px 18px; border-radius: var(--radius); background: transparent; border: 1.5px dashed var(--aline); display: flex; flex-direction: column; gap: 8px; }
 .next-card.none { align-items: flex-start; }
 .next-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .next-label { font-size: 12px; font-weight: 600; letter-spacing: .6px; text-transform: uppercase; color: var(--sub); }
 .next-kind { font-size: 13px; color: var(--sub); }
-.next-title { font-size: 24px; font-weight: 600; line-height: 1.2; overflow-wrap: anywhere; }
+.next-title { font-size: 19px; font-weight: 600; line-height: 1.2; overflow-wrap: anywhere; }
 .next-why { margin: 0; font-size: 14px; line-height: 1.4; color: var(--sub); }
 .next-card .btn.start { margin: 4px 0 0; min-block-size: 52px; font-size: 17px; }
 .next-more { display: flex; justify-content: center; gap: 28px; }
