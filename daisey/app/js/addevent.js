@@ -104,7 +104,6 @@ function timePick(label){
 }
 
 export function mountAddEvent(dialog, { localOnly = false } = {}){
-  let busy = false;
   let editing = null; // the event being looked at or edited, or null when adding
   const f = {
     title: h("input", { dir: "auto", required: true, autocomplete: "off" }),
@@ -142,7 +141,6 @@ export function mountAddEvent(dialog, { localOnly = false } = {}){
   const details = h("div", { className: "ev-detail" });
   const scopeBox = h("div", { className: "ev-scope", hidden: true });
 
-  const working = (on, label) => { busy = on; submit.disabled = on; submit.textContent = on ? "Saving…" : label; };
 
   // From and To as minutes after midnight, and the length between them. A
   // new From keeps the length; a new To sets it. Nothing runs past midnight.
@@ -203,22 +201,15 @@ export function mountAddEvent(dialog, { localOnly = false } = {}){
     // event asks which days first.
     const del = h("button", { className: "btn quiet danger", type: "button", textContent: "Remove" });
     del.onclick = async () => {
-      if (busy) return;
       const scope = ev.recurring ? await askScope(true) : "one";
       if (!scope) return;
-      working(true);
       const was = { title: ev.title, calendarId: ev.calendarId, taskId: ev.taskId,
         date: localDate(start), at: hhmm(start), minutes: Math.max(5, Math.round((end - start) / MIN)), location: ev.location || "" };
-      try {
-        await deleteEvent(ev, scope);
-        dialog.close();
-        flash(scope === "one" ? "Removed " : scope === "all" ? "Removed every " : "Removed from here on: ", ev.title,
-          scope === "one" ? { undo: () => createEvent(was).catch((e) => console.error("[daisey] undo remove", e)) } : {});
-      } catch (e) {
-        console.error("[daisey] delete event", e);
-        msg.textContent = ERROR[e.code] || "Couldn't remove it.";
-      }
-      working(false, "Save");
+      // Gone at once; Google hears about it behind (calendar.js write).
+      behind(deleteEvent(ev, scope), "Couldn't remove ", ev.title);
+      dialog.close();
+      flash(scope === "one" ? "Removed " : scope === "all" ? "Removed every " : "Removed from here on: ", ev.title,
+        scope === "one" ? { undo: () => createEvent(was).catch((e) => console.error("[daisey] undo remove", e)) } : {});
     };
     const row = (tag, ico, cls, main, sub, props = {}) => h(tag, { className: `ev-row ${cls}`, ...props }, icon(ico),
       h("div", {}, h("b", {}, main), sub && h("small", { textContent: sub })));
@@ -266,7 +257,6 @@ export function mountAddEvent(dialog, { localOnly = false } = {}){
 
   form.onsubmit = async (ev) => {
     ev.preventDefault();
-    if (busy) return;
     const target = editing;
     msg.textContent = "";
     const mins = formLength();
@@ -286,35 +276,36 @@ export function mountAddEvent(dialog, { localOnly = false } = {}){
     if (target && !renamed && !moved && !placed) { dialog.close(); return; }
     const scope = target?.recurring ? await askScope(false) : "one";
     if (!scope) return;
-    working(true);
-    try {
-      if (target && scope !== "one") {
-        // A series change goes as one write, so "this and following" splits
-        // the series once, not once for the title and again for the times.
-        await editEvent(target, { scope, title: renamed ? title : "", start: moved ? start : null, end, location: placed ? place : undefined });
-        dialog.close();
-        flash(scope === "all" ? "Saved every " : "Saved from here on: ", title || was.title);
-      } else if (target) {
-        // What Google's Save does: whatever changed, in one write. Only what
-        // moved goes, so nothing else on the event is touched.
-        await editEvent(target, { title: renamed ? title : "", start: moved ? start : null, end, location: placed ? place : undefined });
-        dialog.close();
-        flash("Saved ", title || was.title, {
-          undo: () => editEvent(target, { title: renamed ? was.title : "", start: moved ? was.start : null, end: was.end,
-            location: placed ? was.place : undefined }),
-        });
-      } else {
-        // Unlike a task, this one waits: the calendar is somebody else's
-        // database, and "it's in" has to mean Google said so.
-        await createEvent({ title: f.title.value, date: f.date.value, at: f.at.value, minutes: mins, location: place });
-        dialog.close();
-      }
-    } catch (e) {
-      console.error("[daisey] save event", e);
-      msg.textContent = ERROR[e.code] || (target ? "Couldn't save it." : localOnly ? "Couldn't save the event on this device." : "Couldn't add it to the calendar.");
+    // Every save shows at once and goes to Google behind (Mor, 2026-10-10:
+    // waiting on the round trip felt slow); a failure says so in a toast and
+    // the day reloads to what Google has (calendar.js write).
+    if (target && scope !== "one") {
+      // A series change goes as one write, so "this and following" splits
+      // the series once, not once for the title and again for the times.
+      behind(editEvent(target, { scope, title: renamed ? title : "", start: moved ? start : null, end, location: placed ? place : undefined }), "Couldn't save ", title || was.title);
+      flash(scope === "all" ? "Saved every " : "Saved from here on: ", title || was.title);
+    } else if (target) {
+      // What Google's Save does: whatever changed, in one write. Only what
+      // moved goes, so nothing else on the event is touched.
+      behind(editEvent(target, { title: renamed ? title : "", start: moved ? start : null, end, location: placed ? place : undefined }), "Couldn't save ", title || was.title);
+      flash("Saved ", title || was.title, {
+        undo: () => editEvent(target, { title: renamed ? was.title : "", start: moved ? was.start : null, end: was.end,
+          location: placed ? was.place : undefined }),
+      });
+    } else {
+      const name = f.title.value.trim();
+      behind(createEvent({ title: f.title.value, date: f.date.value, at: f.at.value, minutes: mins, location: place }),
+        localOnly ? "Couldn't save " : "Couldn't add to the calendar: ", name);
     }
-    working(false, target ? "Save" : localOnly ? "Add event" : "Add to calendar");
+    dialog.close();
   };
+  // A write left running after the sheet closed: only a failure is heard from.
+  function behind(p, label, title){
+    p.catch((e) => {
+      console.error("[daisey] event write", e);
+      flash(ERROR[e.code] || label, ERROR[e.code] ? null : title);
+    });
+  }
 
   dialog.replaceChildren(h("div", { className: "now-head" }, heading, close), details, scopeBox, form, msg, note);
   dialog.addEventListener("click", (e) => { if (e.target === dialog) dialog.close(); });

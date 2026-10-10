@@ -18,6 +18,7 @@ import { addTask, updateTask, watchTasks, watchRun, watchSkips, saveSkips, start
 import { sortable } from "./ppdrag.js";
 import { proposeDay, timeline, withBreaks, trimBreaks, isBreak, nextPlanned, planProgress, refit, topUp, daySig, relayMeals } from "./proposal.js";
 import { rethink } from "./rethink.js";
+import { breakText } from "./schedule.js";
 import { placeNow, workBase, watchProjectTiers } from "./context.js";
 import { watchWhere, setManual, setStill, saveSpot, whereAsk, homeAt } from "./where.js";
 import { withTrips, ridingAs, stillRiding, asPassenger, chainFrom, setTripDay, MODES, tripAsks, answer as tripAnswer, noTrip } from "./trips.js";
@@ -1421,6 +1422,15 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     flash(`Plan set: ${n} ${n === 1 ? "task" : "tasks"}. The card follows it.`);
   }
   function dismiss(){ savePlan("dismissed", []); closeProposal(); }
+  // Clear an approved plan any time (Mor, 2026-10-10): the Schedule goes back
+  // to just the calendar. Undo puts the same plan back.
+  function clearPlan(){
+    const was = approvedPlan();
+    savePlan("dismissed", []); prop.open = false; prop.replan = false; prop.ask = false; prop.note = ""; reset();
+    render();
+    flash("Plan cleared. The schedule is clean.", null, was ? { undo: () => {
+      const { at, ...doc } = was; dayPlan = { ...was, at: Date.now() }; saveDayPlan(uid, doc).catch(fail); render(); } } : {});
+  }
 
   // ---------- Missed slot and the silence check (miss.js, 2026-10-08) ----------
   // While Daisey is open, a banner over the card asks; closed, the server
@@ -1517,16 +1527,21 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     prop.busy = false; render();
   }
   // Rethink takes the action row's slot, one set of controls at a time
-  // (2026-10-08): what to change, then Fewer | More | Go | ✕. Blank Go = a fresh take.
+  // (2026-10-08): what to change, then Fewer | More | Go | ✕. Go needs words
+  // (Mor, 2026-10-10): a blank Go laid the same plan again and read as broken;
+  // Fewer and More are the no-typing asks.
   function rethinkRow(){
     const close = () => { prop.ask = false; render(); };
-    const input = h("input", { id: "rethinkText", dir: "auto", autocomplete: "off", placeholder: "Other…", ariaLabel: "What should change? Blank for a fresh take", value: prop.text, oninput: (e) => { prop.text = e.target.value; } });
-    const go = () => doRethink(input.value);
+    const blank = () => !String(prop.text || "").trim();
+    const input = h("input", { id: "rethinkText", dir: "auto", autocomplete: "off", placeholder: "Other…", ariaLabel: "What should change?", value: prop.text,
+      oninput: (e) => { prop.text = e.target.value; goBtn.disabled = prop.busy || blank(); } });
+    const go = () => { if (!blank()) doRethink(input.value); };
     input.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); go(); } else if (e.key === "Escape") close(); });
     setTimeout(() => focusField(input));
+    const goBtn = h("button", { className: "btn primary", type: "button", disabled: prop.busy || blank(), textContent: prop.busy ? "…" : "Go", ariaLabel: prop.busy ? "Thinking" : "Rethink", onclick: go });
     return h("div", { className: "pp-actions pp-ask" }, input,
       ...[["Fewer", "Fewer tasks"], ["More", "More tasks"]].map(([label, ask]) => h("button", { type: "button", className: "chip", textContent: label, ariaLabel: ask, disabled: prop.busy, onclick: () => doRethink(ask) })),
-      h("button", { className: "btn primary", type: "button", disabled: prop.busy, textContent: prop.busy ? "…" : "Go", ariaLabel: prop.busy ? "Thinking" : "Rethink", onclick: go }),
+      goBtn,
       h("button", { className: "pp-ctl", type: "button", textContent: "✕", title: "Never mind", ariaLabel: "Never mind", onclick: close }));
   }
   // Done today, under the plan (one chip opens both), oldest first. null when empty.
@@ -1573,8 +1588,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
       const name = b.type === "meal" ? b.name || "Meal" : "Break", own = b.i != null;
       return h("li", { className: "pp-row pp-break" + (own ? " pp-drag" : ""), _i: b.i },
         h("span", { className: "pp-time", ariaLabel: `${clock(b.start)} to ${clock(b.end)}` }, clock(b.start), h("small", { textContent: clock(b.end) })),
-        h("span", { className: "pp-task" }, h("span", { className: "pp-title", textContent: name }),
-          h("span", { className: "pp-meta", textContent: dur(Math.round((b.end - b.start) / 60000)) })),
+        h("span", { className: "pp-task" }, h("span", { className: "pp-title", textContent: breakText(b, dur(Math.round((b.end - b.start) / 60000))) })),
         own && h("span", { className: "pp-ctls" },
           h("button", { type: "button", className: "pp-ctl", textContent: "✕", title: `Take the ${name.toLowerCase()} off`, ariaLabel: `Take the ${name.toLowerCase()} off`, onclick: () => dropItem(b.i) })));
     };
@@ -1615,7 +1629,8 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
           icon("check"), h("span", { textContent: approved ? "Save plan" : "Approve" })),
         h("button", { className: "btn line", type: "button", ariaExpanded: "false", disabled: prop.busy,
           textContent: prop.busy ? "Thinking…" : "Rethink", onclick: () => { prop.ask = true; render(); } }),
-        h("button", { className: approved ? "btn quiet" : "btn no-plan", type: "button", textContent: approved ? "Close" : "No plan", onclick: approved ? closeProposal : dismiss })));
+        h("button", { className: approved ? "btn quiet" : "btn no-plan", type: "button", textContent: approved ? "Close" : "No plan", onclick: approved ? closeProposal : dismiss })),
+      approved && !prop.ask && h("p", { className: "pp-clear" }, h("button", { type: "button", className: "linkish", disabled: prop.busy, textContent: "Clear today's plan", onclick: clearPlan })));
   }
   // Once a plan is approved, how far along it is goes to the header chip
   // (next to Needs you); tapping it reopens the plan to change it.

@@ -35,6 +35,10 @@ const atMin = (d, min) => { const x = new Date(d); x.setHours(Math.floor(min / 6
 
 const quarterUp = (ms) => { const q = 15 * 60000; return Math.ceil(ms / q) * q; };
 const hm = (ms) => clock(ms);
+// A break says what it's for, warmly (Mor, 2026-10-10: "more fun"): "☕ Breather · 15 min", "🥗 Lunch · 45 min".
+const MEAL_ICON = { breakfast: "🥐", lunch: "🥗", dinner: "🍝" };
+export const breakText = (b, len) => (b.type === "meal"
+  ? `${MEAL_ICON[(b.name || "").toLowerCase()] || "🍽️"} ${b.name || "Meal"} · ${len}` : `☕ Breather · ${len}`);
 
 // One day's rows: events (busy or not) in order, and Free boxes for the gaps
 // between busy ones inside the day hours. from: nothing before this counts
@@ -378,12 +382,12 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onProjects, onW
     // Tapping it adds an event there.
     if (x.kind === "free") return x.el = h("button", { type: "button", className: "sc-row sc-gap", ariaLabel: `Free ${time} — add an event`,
       onclick: () => onNew?.(localDate(x.start), hm(quarterUp(x.start))) },
-      h("span", { className: "sc-free" }, `${durText((x.end - x.start) / 60000)} free`, h("span", { className: "sc-add", ariaHidden: "true", textContent: "+" })));
+      h("span", { className: "sc-free" }, `🌿 ${durText((x.end - x.start) / 60000)} free`, h("span", { className: "sc-add", ariaHidden: "true", textContent: "+" })));
     const on = !x.allDay && x.start <= now && now < x.end;
     const past = !x.allDay && x.end <= now;
-    // No clock times: "30 min break" starts where the event boxes do.
+    // No clock times: the break pill starts where the event boxes do.
     if (x.kind === "break") return x.el = h("div", { className: "sc-row sc-gap sc-break" + (on ? " sc-on" : past ? " sc-past" : ""), ariaLabel: `${time} break` },
-      h("span", { className: "sc-free" }, `${durText((x.end - x.start) / 60000)} ${x.type === "meal" ? (x.name || "meal").toLowerCase() : "break"}`));
+      h("span", { className: "sc-free" }, breakText(x, durText((x.end - x.start) / 60000))));
     // The row on right now wears its colour edge to edge (Mor, 2026-10-08).
     // Its orbiting light is phased off the wall clock, so a re-render picks it
     // up where it was instead of jumping back to the start (ORBIT_MS = app.css sc-orbit).

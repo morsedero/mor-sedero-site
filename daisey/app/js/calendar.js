@@ -88,7 +88,7 @@ export async function fetchRange(from, to){
 function load(fresh = false){
   if (loading && !fresh) return loading; // a tab switch mid-fetch shouldn't start a second one
   loading = fetchAgenda(fresh)
-    .then(publish)
+    .then((next) => { if (!pending) publish(next); }) // mid-write it would bring the old day back
     .catch((e) => {
       console.error("[daisey] calendar", e);
       // Offline: keep the last good events rather than forgetting the calendar.
@@ -181,15 +181,45 @@ async function write(body){
     saveGuestEvents(events);
     return event;
   }
-  const res = await fetch(WRITE_URL, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${await idToken()}`, "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-  const out = await res.json().catch(() => ({}));
-  if (!res.ok) throw Object.assign(new Error(out.error || `http ${res.status}`), { code: out.error });
-  await load(body.calendarId.startsWith("daisey")); // a new Daisey calendar isn't in a cached list yet
-  return out;
+  // The change shows at once; Google hears about it behind (Mor, 2026-10-10:
+  // a remove or a new event waited a round trip to appear). A failed write
+  // reloads, so the day goes back to what Google really has.
+  const guess = optimistic(body);
+  if (guess) { pending++; publish(guess); }
+  try {
+    const res = await fetch(WRITE_URL, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${await idToken()}`, "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    const out = await res.json().catch(() => ({}));
+    if (!res.ok) throw Object.assign(new Error(out.error || `http ${res.status}`), { code: out.error });
+    if (guess) pending--;
+    await load(guess || body.calendarId.startsWith("daisey")); // a new Daisey calendar isn't in a cached list yet
+    return out;
+  } catch (e) {
+    if (guess) { pending--; load(true); }
+    throw e;
+  }
+}
+
+// What the day looks like once a write lands, for a one-event change; null
+// for anything Google has to work out (a series, a new Daisey calendar).
+let pending = 0; // optimistic writes in flight: a reload meanwhile would undo them on screen
+function optimistic(body){
+  if (state.status !== "ok" || (body.scope && body.scope !== "one") || body.recurrence) return null;
+  const same = (e) => e.id === body.eventId && e.calendarId === body.calendarId;
+  if (body.action === "create") {
+    if (body.calendarId !== "primary") return null;
+    return { ...state, events: [...state.events, { id: `pending-${Date.now()}`, title: body.title, start: body.start, end: body.end,
+      ...(body.location ? { location: body.location } : {}), ...(body.taskId ? { taskId: body.taskId } : {}),
+      calendarId: "primary", color: null, busy: true, editable: false, pending: true }] };
+  }
+  if (!state.events.some(same)) return null;
+  if (body.action === "delete") return { ...state, events: state.events.filter((e) => !same(e)) };
+  return { ...state, events: state.events.map((e) => (!same(e) ? e : { ...e,
+    ...(body.title ? { title: body.title } : {}), ...(body.start ? { start: body.start, end: body.end } : {}),
+    ...(typeof body.location === "string" ? { location: body.location || null } : {}) })) };
 }
 
 // Both ends at once: a dragged block, or a typed Start and End. The length is

@@ -1297,18 +1297,21 @@ body.focus #side { display: none; }
 .sc-label { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
 .sc-name { font-size: 13px; font-weight: 600; color: color-mix(in srgb, var(--ink) 85%, var(--ink-2)); }
 .sc-date { font-size: 12px; color: var(--ink-2); }
-.sc-row { display: flex; align-items: center; gap: 12px; margin-block-start: 6px; }
-.sc-time { flex: none; inline-size: 88px; font-size: 13px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.sc-row { display: flex; align-items: center; gap: 12px; margin-block-start: 8px; }
+.sc-time { flex: none; inline-size: 96px; font-size: 14px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
 .sc-time.strong { color: color-mix(in srgb, var(--ink) 85%, var(--ink-2)); }
-.sc-gap { inline-size: 100%; margin-block: 2px; padding-block: 0; padding-inline: 100px 0; border: 0; background: none; font: inherit; color: inherit; text-align: start; cursor: pointer; }
+.sc-gap { inline-size: 100%; margin-block: 2px; padding-block: 0; padding-inline: 108px 0; border: 0; background: none; font: inherit; color: inherit; text-align: start; cursor: pointer; }
 .sc-gap.sc-break { cursor: default; }
 .sc-gap .sc-add { order: 2; font-size: 14px; }
-.sc-free { flex: 1; min-inline-size: 0; display: flex; align-items: center; gap: 8px; block-size: 22px; font-size: 12px; color: var(--ink-2); opacity: .8; }
+/* Free time and breaks read warm and a size up (Mor, 2026-10-10: "more fun, bigger"). */
+.sc-free { flex: 1; min-inline-size: 0; display: flex; align-items: center; gap: 8px; block-size: 30px; font-size: 14.5px; font-weight: 600; color: color-mix(in srgb, var(--ink) 55%, var(--ink-2)); }
+.sc-break .sc-free { flex: none; block-size: auto; padding: 5px 14px; border-radius: 999px; background: var(--chip); color: color-mix(in srgb, var(--ink) 80%, var(--ink-2)); }
+.sc-break.sc-past .sc-free { opacity: .55; }
 .sc-gap:not(.sc-break) .sc-free::after { content: ""; flex: 1; border-block-start: 1.5px dotted currentColor; opacity: .35; }
 .sc-ev {
-  flex: 1; min-inline-size: 0; display: flex; align-items: center; min-block-size: 25px; padding: 2px 9px; border: 0; border-radius: 7px;
+  flex: 1; min-inline-size: 0; display: flex; align-items: center; min-block-size: 34px; padding: 6px 12px; border: 0; border-radius: 8px;
   background: color-mix(in srgb, var(--ev, #8c8574) 16%, var(--card)); color: color-mix(in srgb, var(--ev, var(--ink-2)) 55%, var(--ink));
-  font: inherit; font-size: 12.5px; font-weight: 600; text-align: start; cursor: pointer; overflow-wrap: anywhere;
+  font: inherit; font-size: 14px; font-weight: 600; text-align: start; cursor: pointer; overflow-wrap: anywhere;
 }
 .sc-ev[class*="pc-"], .sc-ev[class*="area-"] { background: var(--tint); color: var(--aink); box-shadow: inset 3px 0 0 var(--aline); }
 .wk-ev[class*="pc-"], .wk-ev[class*="area-"] { background: var(--tint); color: var(--aink); box-shadow: inset 2px 0 0 var(--aline); }
@@ -1573,7 +1576,7 @@ body.focus .shell { block-size: auto; min-block-size: 100dvh; overflow: visible;
 .pp-break .pp-time small { display: none; }
 .pp-break .pp-time { font-weight: 500; }
 .pp-break .pp-task { display: flex; align-items: center; gap: 6px; padding: 0; cursor: default; }
-.pp-break .pp-title, .pp-break .pp-meta { flex: none; font-size: 12px; font-weight: 500; color: var(--ink-2); }
+.pp-break .pp-title, .pp-break .pp-meta { flex: none; font-size: 14px; font-weight: 600; color: color-mix(in srgb, var(--ink) 70%, var(--ink-2)); }
 .pp-break .pp-task::after { content: ""; flex: 1; border-block-start: 1px dashed var(--line); }
 .pp-break .pp-ctl { block-size: 28px; font-size: 13px; }
 .pp-row.over > :not(.pp-fit) { opacity: .65; }
@@ -1594,6 +1597,7 @@ body.focus .shell { block-size: auto; min-block-size: 100dvh; overflow: visible;
 /* The action row stays pinned to the bottom of the scrolling card; Rethink
    swaps into the same slot (now.js rethinkRow). */
 .pp-actions { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 6px; margin-block-start: 6px; padding-block: 6px 0; position: sticky; inset-block-end: 0; z-index: 2; background: var(--card); }
+.pp-clear { margin: 8px 0 0; text-align: center; font-size: 13px; color: var(--ink-2); }
 /* Two rows (2026-10-10): the text field gets the full width (it was crushed
    to one letter beside the buttons), then Fewer | More | Go share row two. */
 .pp-actions.pp-ask { display: flex; flex-wrap: wrap; align-items: center; }
@@ -1706,7 +1710,7 @@ body.focus .shell { block-size: auto; min-block-size: 100dvh; overflow: visible;
 
 /* Task events (planned, finished) are plain; the project colour is a dot (Mor, 2026-10-08). */
 .sc-dot { flex: none; inline-size: 10px; block-size: 10px; margin-inline: 5px 13px; border-radius: 50%; background: var(--aink); }
-.sc-ev.sc-plan, .sc-ev.sc-plan[class*="pc-"], .sc-ev.sc-plan[class*="area-"] { background: none; color: var(--ink); box-shadow: none; border: 1.5px dashed var(--line); margin: 0; font-weight: 400; padding: 2px 9px; border-radius: 7px; }
+.sc-ev.sc-plan, .sc-ev.sc-plan[class*="pc-"], .sc-ev.sc-plan[class*="area-"] { background: none; color: var(--ink); box-shadow: none; border: 1.5px dashed var(--line); margin: 0; font-weight: 400; padding: 6px 12px; border-radius: 8px; }
 .sc-ev.sc-done[class*="pc-"], .sc-ev.sc-done[class*="area-"] { box-shadow: none; }
 .wk-ev.done[class*="pc-"], .wk-ev.done[class*="area-"], .wk-ev.wk-plan[class*="pc-"], .wk-ev.wk-plan[class*="area-"] { background: none; color: var(--ink-2); box-shadow: none; }
 
@@ -1787,7 +1791,8 @@ body.focus .shell { block-size: auto; min-block-size: 100dvh; overflow: visible;
 .pcard-row { display: flex; align-items: baseline; gap: 8px; margin-block-start: 2px; }
 .pcard-row .pcard-status { flex: 1; min-inline-size: 0; margin: 0; }
 .pcard-time { flex: none; font-size: 11px; font-weight: 600; color: var(--aink); font-variant-numeric: tabular-nums; }
-.pcard .pbar { block-size: 3px; margin-block-start: 6px; }
+.pcard-barrow { display: flex; align-items: center; gap: 8px; margin-block-start: 6px; }
+.pcard .pcard-barrow .pbar { flex: 1; block-size: 4px; margin: 0; }
 .bl-svg { display: block; flex: none; inline-size: 36px; block-size: auto; overflow: visible; transform-origin: 50% 100%; }
 .tier-focus .bl-svg { inline-size: 40px; }
 .tier-background .bl-svg { inline-size: 32px; }

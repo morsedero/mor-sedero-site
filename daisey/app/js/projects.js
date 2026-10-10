@@ -20,7 +20,7 @@
 // area when no other project has that one yet, else the next free colour in
 // PALETTE. Names are taken in order, so a colour doesn't move around as
 // counts change. Inbox has none.
-import { watchTasks, finishTask, setDoneMinutes, restoreTask, removeTask, watchProjectNames, saveProjectNames, saveProjectRanges, saveProjectOrder, saveProjectTiers } from "./store.js";
+import { watchTasks, watchSettings, finishTask, setDoneMinutes, restoreTask, removeTask, watchProjectNames, saveProjectNames, saveProjectRanges, saveProjectOrder, saveProjectTiers } from "./store.js";
 import { INBOX, progressOf, progressPatch, leftMinutes, pushedTo, notYet, durText, localDate, bringBack, cleanRange, outsideRange, doneSnapshot } from "./model.js";
 import { isRoutine } from "./routine.js";
 import { dropSeries } from "./slots.js";
@@ -29,8 +29,10 @@ import { h, bdi, flash, icon, askProgress, sizeChip, progressBar, weekDots } fro
 import { dirOf, setProjectColors } from "./look.js";
 import { setProjectTiers } from "./context.js";
 import { TIERS, FOCUS_MAX } from "./weights.js";
+// How many projects Focus holds: Settings, 1–5 (Mor, 2026-10-10); FOCUS_MAX (3) until set.
+const focusCap = (s) => (Number.isInteger(s?.focusMax) && s.focusMax >= 1 && s.focusMax <= 5 ? s.focusMax : FOCUS_MAX);
 import { sortable, zoneSortable } from "./ppdrag.js";
-import { mountGrowth, flowerSvg, flowerTime, statsCard, routinesSection } from "./bloom.js";
+import { mountGrowth, flowerSvg, statsCard, routinesSection } from "./bloom.js";
 
 const SWIPE_DONE = 90; // px a task travels right before letting go finishes it
 const SWIPE_PAGE = 70; // px sideways that turns the page to the next project
@@ -163,12 +165,13 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
   // project starts in Keep going. Each tier is a drop area (ppdrag.js
   // zoneSortable): a card dropped in it joins it; order inside a tier is just
   // how Mor likes to see them. While a card is dragged, the area under it
-  // lights up whole — or turns red when full: Focus holds FOCUS_MAX, so it
+  // lights up whole — or turns red when full: Focus holds focusMax, so it
   // stays a choice.
   const TIER_TEXT = { focus: ["Focus", "Most of your time"], keep: ["Keep going", "Steady progress"], background: ["Background", "When there's room"] };
   const MOVED = { focus: "More of your time goes to ", keep: "Steady progress for ", background: "To the background: " };
+  let focusMax = FOCUS_MAX;
   const tierOf = (name) => (TIERS.includes(tiers[name]) ? tiers[name] : "keep");
-  const full = (name, t) => t === "focus" && tierOf(name) !== "focus" && list().filter((p) => tierOf(p.name) === "focus").length >= FOCUS_MAX;
+  const full = (name, t) => t === "focus" && tierOf(name) !== "focus" && list().filter((p) => tierOf(p.name) === "focus").length >= focusMax;
   // Landing in Focus glows (Mor, 2026-10-08): the card pulses once in the
   // accent as it settles, so the move feels like a promotion. A redraw in
   // the meantime (the save's own snapshot) picks the pulse up where it was.
@@ -193,7 +196,7 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
     },
     onMove: (el, zone) => {
       const t = zone._tier;
-      if (full(el._name, t)) { flash(`Focus holds ${FOCUS_MAX}. Move one out first.`); render(); return; }
+      if (full(el._name, t)) { flash(`Focus holds ${focusMax}. Move one out first, or change it in Settings.`); render(); return; }
       // The DOM already shows where it landed (zoneSortable moved the card).
       const names = [...box.children].flatMap((z) => [...z.children].filter((k) => k._name).map((k) => k._name));
       if (t !== tierOf(el._name)) return setTier(el._name, t, names);
@@ -220,24 +223,24 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
     const swayAt = () => (Date.now() % 5000) / 1000;
     const glow = (p) => landed?.name === p.name && Date.now() - landed.at < LANDED_MS;
     // Bloom in the card (Mor, 2026-10-08): its flower for the week beside it.
-    // Compact and labelled (Mor, 2026-10-10): name and "% done" on one row,
-    // the next task and "time this week" on the other, a thin bar under.
+    // Compact and labelled (Mor, 2026-10-10): the name, the next task, and
+    // the bar with its "% done" beside it. No time this week on the card (the
+    // Week page has it).
     const card = (p, i) => { const f = g.flowers.get(p.name);
       return h("button", { type: "button", className: "pcard pp-drag" + colorClass(p) + (glow(p) ? " landed" : ""), style: glow(p) ? `animation-delay:-${Date.now() - landed.at}ms` : "", _name: p.name, onclick: () => openProject(p.name) },
         f && h("span", { className: "pcard-fl" + (f.bud ? " bud" : "") + (g.pops.has(p.name) ? " pop" : ""), style: `--d:-${(swayAt() + i * 0.9).toFixed(2)}s` }, flowerSvg(f)),
         h("span", { className: "pcard-body" },
           h("span", { className: "pcard-top", dir: dirOf(p.name) },
-            h("span", { className: "pcard-name", dir: "auto", textContent: p.name }),
-            p.all.length > 0 && h("span", { className: "pcard-pct", textContent: `${Math.round(progress(p) * 100)}% done` })),
+            h("span", { className: "pcard-name", dir: "auto", textContent: p.name })),
           h("span", { className: "pcard-row" },
-            h("span", { className: "pcard-status" }, ...statusLine(p)),
-            flowerTime(f) && h("span", { className: "pcard-time", textContent: `${flowerTime(f)} this week` })),
-          bar(p, "pbar"))); };
+            h("span", { className: "pcard-status" }, ...statusLine(p))),
+          h("span", { className: "pcard-barrow" }, bar(p, "pbar"),
+            p.all.length > 0 && h("span", { className: "pcard-pct", textContent: `${Math.round(progress(p) * 100)}% done` })))); };
     const tier = (t) => { const ins = ps.filter((p) => tierOf(p.name) === t);
       return h("div", { className: `pp-zone tier-${t}`, _tier: t },
         // Each tier a header with how many it holds; no box (Mor, 2026-10-08).
         h("div", { className: "pp-tier" }, h("span", { className: "pp-tier-name", textContent: TIER_TEXT[t][0] }), h("span", { className: "pp-tier-sub", textContent: TIER_TEXT[t][1] }),
-          h("span", { className: "pp-tier-n", textContent: t === "focus" ? `${ins.length}/${FOCUS_MAX}` : String(ins.length) })),
+          h("span", { className: "pp-tier-n", textContent: t === "focus" ? `${ins.length}/${focusMax}` : String(ins.length) })),
         h("span", { className: "pp-tier-empty", textContent: "Drag a project here" }), ...ins.map(card)); };
     const y = els.grid.scrollTop;
     // No week daisies; routines live in the avatar menu (Mor, 2026-10-10).
@@ -621,6 +624,7 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
   function render(){ if (dragging) { stale = true; return; } paintGrid(); paintView(); paintStats(); }
   const unsubs = [
     watchTasks(uid, (ts) => { tasks = ts; keepNames(); render(); }, fail),
+    watchSettings(uid, (st) => { const n = focusCap(st); if (n !== focusMax) { focusMax = n; render(); } }, fail),
     watchProjectNames(uid, (ns, rs, od, tr) => { made = ns; ranges = rs || {}; order = od || []; tiers = tr || {}; namesIn = true; keepNames(); render(); }, fail),
   ];
   render();
