@@ -22,7 +22,7 @@ import { watchSettings, watchTasks, watchRun, watchDayPlan, saveDayPlan } from "
 import { timeline } from "./proposal.js";
 import { lastActivity } from "./miss.js";
 import { areaClass, watchProjectColors } from "./look.js";
-import { dayHours, minText, planDate } from "./day.js";
+import { dayHours, minText, planDate, usualHours } from "./day.js";
 import { localDate, durText } from "./model.js";
 import { h, bdi, nightDivider, icon } from "./ui.js";
 import { pusher } from "./ppdrag.js";
@@ -47,11 +47,14 @@ export function dayRows(events, date, hrs, from = 0){
   const d0 = new Date(date); d0.setHours(0, 0, 0, 0);
   const d1 = new Date(d0); d1.setDate(d1.getDate() + 1);
   const ymd = localDate(d0.getTime());
+  // A day that runs past midnight keeps its small hours; the next day starts
+  // after them (night owls, Mor 2026-10-11).
+  const tail = Math.max(0, hrs.end - 1440) * 60000, a = d0.getTime() + tail, b = d1.getTime() + tail;
   const allDay = events.filter((e) => e.allDay && String(e.start).slice(0, 10) <= ymd && ymd < String(e.end || e.start).slice(0, 10))
     .map((e) => ({ kind: "event", allDay: true, ev: e }));
   const timed = events.filter((e) => !e.allDay)
     .map((e) => ({ kind: "event", start: Date.parse(e.start), end: Date.parse(e.end), ev: e }))
-    .filter((x) => x.start < d1.getTime() && x.end > d0.getTime())
+    .filter((x) => x.start < b && x.end > a)
     .sort((a, b) => a.start - b.start || a.end - b.end);
   const open = atMin(d0, hrs.start), close = atMin(d0, hrs.end);
   const rows = [];
@@ -184,12 +187,15 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onMissed, onPro
   let dayCtx = null; // the shown day's { events, now, hrs, d0 }, for a drag's preview
   function render(){
     if (dragging) { stale = true; return; }
-    const now = Date.now(), hrs = dayHours(settings);
-    const today = dayStart(now);
+    // After midnight in a day that's still on (late), today is still
+    // yesterday here, as on the plan: Saturday night stays Saturday until its end.
+    const now = Date.now(), real = dayHours(settings);
+    const hrs = real.late ? { ...usualHours(settings), end: real.end + 1440 } : real;
+    const today = dayStart(real.late ? now - 864e5 : now);
     const at = focus ? ymdToDate(focus) : today;
     const range = view === "week" ? [addDays(at, -at.getDay()), 7] : [at, 1];
     const from = range[0], to = addDays(from, range[1]);
-    const got = cal.status === "ok" ? eventsFor(from.getTime(), to.getTime()) : cal;
+    const got = cal.status === "ok" ? eventsFor(from.getTime(), to.getTime() + Math.max(0, hrs.end - 1440) * 60000) : cal;
     // With the travel legs (trips.js): the way there and back sits on the day
     // as its own quiet block, and the plan treats it as the Now card does.
     const src = got.status === "ok" ? { ...got, events: withTrips(got.events, settings.trips || {}, settings.tripDay || [], settings.laptop ?? null) } : got;
@@ -206,7 +212,7 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onMissed, onPro
     stepBy = (n) => go(localDate(addDays(at, n * range[1]).getTime()));
     const isNow = view === "week" ? from.getTime() === addDays(today, -today.getDay()).getTime() : at.getTime() === today.getTime();
     const future = (view === "week" ? from : at).getTime() > today.getTime(); // today lies behind (left)
-    const late = now >= atMin(today, hrs.end);
+    const late = real.late || now >= atMin(today, hrs.end);
     const dayName = (d) => {
       const diff = Math.round((d - today) / 864e5);
       return diff === 0 ? (late || new Date(now).getHours() >= 18 ? "Tonight" : "Today") : diff === 1 ? "Tomorrow" : diff === -1 ? "Yesterday"
@@ -254,7 +260,8 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onMissed, onPro
   const tone = (ev) => { const t = ev.taskId && tasks?.find((x) => x.id === ev.taskId); return t ? areaClass(t) : ""; };
 
   // Today's approved plan on the clock (derived, never written to the calendar).
-  function planRows(events, now, hrs){
+  function planRows(events, now){
+    const hrs = dayHours(settings); // the clock's, not the shown day's
     if (dayPlan?.status !== "approved" || dayPlan.date !== planDate(now, hrs) || !tasks) return [];
     // Held like the Now card's (proposal.timeline since): a task you haven't
     // started stays at its time, it doesn't slide with the clock.
@@ -272,7 +279,7 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onMissed, onPro
     // An approved plan sits inside today's free time (Mor, 2026-10-08): its
     // blocks replace the stretch of gap they cover. Derived, never written to
     // the calendar.
-    const planned = t === t0 ? planRows(events, now, hrs) : [];
+    const planned = t === t0 ? planRows(events, now) : [];
       if (planned.length) {
         const cut = rows.flatMap((x) => {
           if (x.kind !== "free") return [x];
@@ -287,7 +294,7 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onMissed, onPro
     // Where a drag can land: every timed row (free time too). Timed events and
     // planned blocks are the ones that move.
     const slots = rows.filter((x) => !x.allDay && !x.ev?.trip); // a trip moves with its event, never on its own
-    dayCtx = { events, now, hrs, d0: t };
+    dayCtx = { events, now, hrs: dayHours(settings), d0: t };
     const out = [];
     // Not on the way somewhere (trips.js): on the 06:10 train the day has begun.
     const riding = events.some((e) => e.trip && Date.parse(e.start) <= now && now < Date.parse(e.end));
@@ -308,7 +315,7 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onMissed, onPro
       const timed = events.filter((e) => !e.allDay).map((e) => ({ ev: e, start: Date.parse(e.start), end: Date.parse(e.end) }))
         .filter((x) => x.start < b && x.end > a)
         .map((x) => ({ ...x, s: Math.max(0, (x.start - a) / 60000), e: Math.min(1440, (x.end - a) / 60000) }));
-      if (a === t0) for (const p of planRows(events, now, hrs)) timed.push({ plan: p, start: p.start, end: p.end, s: (p.start - a) / 60000, e: (p.end - a) / 60000 });
+      if (a === t0) for (const p of planRows(events, now)) timed.push({ plan: p, start: p.start, end: p.end, s: (p.start - a) / 60000, e: (p.end - a) / 60000 });
       timed.sort((p, q) => p.s - q.s || q.e - p.e);
       return { d, ymd, allDay, timed: lanes(timed) };
     });
