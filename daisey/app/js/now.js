@@ -1082,6 +1082,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
         ...[["today", "Later today"], ["tomorrow", "Tomorrow"], ["week", "This week"], ["someday", "Not now"]].map(([w, text]) =>
           chip(text, () => later(task, w)))),
       state.pendAsk && pendingAsk(task),
+      state.showAlts && switchRow(alts),
     ];
   }
 
@@ -1153,18 +1154,18 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
         hold));
   }
 
-  // Switch's list: the other tasks, or the way into Someday when there are none.
-  function altsFor(alts){
-    return [
-      state.showAlts && !alts.length && h("div", { className: "now-alts", role: "group", ariaLabel: "Other tasks" },
-        h("p", { className: "muted" }, "Nothing else is active. ",
-          h("button", { className: "linkish", type: "button", textContent: "Pick from Not now?",
-            onclick: () => { sd.open = true; state.showAlts = false; render(); } }))),
-      state.showAlts && alts.length > 0 && h("div", { className: "now-alts", role: "group", ariaLabel: "Other tasks" }, ...alts.map((s) => h("button", {
-        type: "button", className: "now-alt", ariaLabel: `Put ${s.task.title} on the card instead${s.why ? ". " + s.why : ""}`,
-        onclick: () => { state.chosen = s.task.id; state.showAlts = false; render(); },
-      }, taskCard(s, false)))),
-    ];
+  // Switch's row, under the card like Later's and Pending's (Mor,
+  // 2026-10-10: three full cards beside the side buttons stretched them):
+  // each other task as one chip, title and size; or the way into Someday
+  // when there are none.
+  function switchRow(alts){
+    if (!alts.length) return h("div", { className: "later-ask", role: "group", ariaLabel: "Other tasks" },
+      h("span", { className: "muted", textContent: "Nothing else is active." }),
+      h("button", { className: "chip", type: "button", textContent: "Pick from Not now", onclick: () => { sd.open = true; state.showAlts = false; render(); } }));
+    return h("div", { className: "later-ask switch-ask", role: "group", ariaLabel: "Other tasks" }, ...alts.map((s) => h("button", {
+      type: "button", className: "chip alt", ariaLabel: `Put ${s.task.title} on the card instead`,
+      onclick: () => { state.chosen = s.task.id; state.showAlts = false; render(); },
+    }, h("span", { className: "alt-t", dir: "auto", textContent: s.task.title }), h("span", { className: "alt-s", textContent: sizeChip(s.task) }))));
   }
 
   // ---------- The day's proposed schedule (proposal.js, 2026-10-07) ----------
@@ -1832,7 +1833,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     if (!card && fw?.current) { day(...head, meetingCard(fw.current), tip); return; }
     const bk = !card && r.out.filter((o) => o.reason === "booked").map((o) => ({ task: o.task, ...booked().get(o.task.id) }))
       .filter((b) => b.start).sort((a, b) => a.start - b.start)[0];
-    if (bk) { day(...head, bookedCard(bk, r), ...altsFor([]), tip); return; }
+    if (bk) { day(...head, bookedCard(bk, r), tip); return; }
     // Nothing active at all: everything open is waiting, in Someday or dated
     // later. Its own calm card, with Someday right there (restState).
     // With something coming up today, that is the card in both cases below
@@ -1863,7 +1864,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     const lead = missed ? missLead(card.task) : [];
     day(...head, deck(taskCard(dueNow ? dueWhy(card, dueNow) : missed ? missWhy(card, missed) : card, true,
       ...cardActions(card.task, alts, lead)), asking()),
-      nextLine(card.task), ...altsFor(alts), tip);
+      nextLine(card.task), tip);
     // One slide-in per step-aside: later snapshots must not replay it.
     if (slideIn) { slideIn = false; if (motionOK()) { const c = root.querySelector(".now-card.main"); if (c) { c.style.animationDelay = ""; c.classList.add("in"); } } }
   }

@@ -448,6 +448,13 @@ dialog.now:focus { outline: none; }
 /* Later → "When?": three choices under the card's actions. */
 .later-ask { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 5px; margin-block-start: 4px; font-size: 13px; }
 .later-ask .chip { min-block-size: 36px; font-size: 13px; padding-inline: 10px; }
+/* Switch: one chip per other task, title (cut short) then its size. */
+/* One row: it scrolls sideways rather than wrap (Mor, 2026-10-10). */
+.switch-ask { flex-wrap: nowrap; justify-content: flex-start; overflow-x: auto; scrollbar-width: none; margin-inline: -4px; padding-inline: 4px; }
+.switch-ask::-webkit-scrollbar { display: none; }
+.switch-ask .chip.alt { flex: none; display: inline-flex; align-items: center; gap: 6px; max-inline-size: 75%; min-inline-size: 0; }
+.switch-ask .alt-t { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-inline-size: 0; }
+.switch-ask .alt-s { flex: none; font-weight: 500; color: var(--sub); }
 /* A missed slot (miss.js): Shorten · Move under the card's line, on the card itself. */
 
 /* Pending → "Waiting on what?": one optional line under the actions. */
@@ -1242,6 +1249,10 @@ dialog.tsheet .msg:empty { display: none; }
 #side .hchip .hchip-dot { display: none; }
 #side .hchip #planN { font-size: 13px; }
 body.focus #side { display: none; }
+/* While Switch, Pending or Later is open under the card, the side buttons
+   keep their closed size instead of stretching with the taller card. */
+:root:not(.night) .nowrow:has(.now-card.main :is(.later-ask, .pend-ask)) #side { align-self: flex-start; }
+:root:not(.night) .nowrow:has(.now-card.main :is(.later-ask, .pend-ask)) #side .hchip { flex: none; block-size: 46px; }
 .now-top:empty { display: none; }
 .now-top { margin: 0; }
 
