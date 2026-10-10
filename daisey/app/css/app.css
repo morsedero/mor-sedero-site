@@ -1573,6 +1573,14 @@ body.focus #side { display: none; }
 :root.night .night-p { font-size: 13px; }
 :root.night .now-card.main.night { margin-block-start: 20px; }
 :root.night .night-today { margin-block-start: 20px; }
+/* Today's wrap at the main page's sizes (Mor, 2026-10-11): the .glance box
+   (card fill, 16px corners, 14px sides), a 44px row, a 30px chip-sized button. */
+:root.night .night-today { margin-block-start: 14px; padding: 10px 14px; border-radius: 16px; background: var(--card); }
+:root.night .night-today:has(> .night-loose:only-child) { padding-block: 0; }
+:root.night .night-loose { min-block-size: 44px; color: var(--ink); }
+:root.night .night-loose .pill-btn { position: relative; min-block-size: 30px; padding-inline: 12px; font-size: 12px; font-weight: 600; background: var(--card); }
+:root.night .night-loose .pill-btn::after { content: ""; position: absolute; inset: -7px -2px; } /* 44px to the finger */
+:root.night .night-done { font-size: 14px; }
 body.focus .shell { block-size: auto; min-block-size: 100dvh; overflow: visible; }
 
 /* Now's two quiet rows under the card: Next event, Free time (now.js glance). */
