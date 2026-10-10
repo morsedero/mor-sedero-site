@@ -1554,9 +1554,13 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     const evs = cal.status !== "ok" ? [] : cal.events.filter((e) => !e.allDay && !/^✓\s*/u.test(e.title || "")
       && Date.parse(e.end) > Date.now() && Date.parse(e.start) < night.getTime());
     const plural = (n) => (n === 1 ? ["One doesn't", "it"] : [`${n} don't`, "them"]);
-    return h("section", { className: "now-card main hero proposal", ariaLabel: approved ? "Today's plan" : "Proposed schedule" },
+    // Past midnight on the night page the plan is the day you wake into,
+    // which that page calls tomorrow (Mor, 2026-10-11), so this says so too.
+    const hrs = dayHours(settings), at = Date.now();
+    const day = isNight(at, hrs) && !nightFree && new Date(at).getHours() < 4 && localDate(nextMorning(at, hrs)) === localDate(at) ? "Tomorrow" : "Today";
+    return h("section", { className: "now-card main hero proposal", ariaLabel: approved ? `${day}'s plan` : "Proposed schedule" },
       h("div", { className: "hero-top" },
-        h("span", { className: "hero-area", textContent: approved ? "Today's plan" : "Proposed for today" }),
+        h("span", { className: "hero-area", textContent: approved ? `${day}'s plan` : `Proposed for ${day.toLowerCase()}` }),
         rows.length > 0 && h("span", { className: "hero-side", textContent: `${dur(total)} · until ${clock(last.end)}` })),
       (rows.length || over.length || evs.length) > 0 && dragRows(h("ol", { className: "pp-list" },
           ...[...rows.map((r) => ({ r, s: r.start })), ...breaks.map((b) => ({ b, s: b.start })), ...evs.map((ev) => ({ ev, s: Date.parse(ev.start) }))]
