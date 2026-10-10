@@ -102,8 +102,10 @@ body {
   font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; min-block-size: 30px;
   padding-inline: 12px; border: 0; border-radius: 999px; background: none; color: var(--ink-2);
 }
-.menu-theme { display: flex; margin-block: 4px 10px; }
-.menu-theme .theme-btn { flex: 1; padding-inline: 4px; }
+.menu-theme { flex: none; }
+.menu-theme .theme-btn { display: grid; place-items: center; inline-size: 34px; min-block-size: 28px; padding: 0; }
+.menu-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-block-end: 10px; }
+.menu-top .menu-who { padding: 0; min-inline-size: 0; }
 .theme-btn[aria-checked="true"] { background: var(--card); color: var(--ink); box-shadow: 0 1px 3px rgb(0 0 0 / .12); }
 
 .card {
@@ -346,6 +348,11 @@ textarea {
 /* Focus mode: the task fills the screen, nothing else on it. */
 body.focus .topbar, body.focus #panel, body.focus .dock, body.focus .now-greet { display: none; }
 body.focus #board { display: block; }
+/* Focus mode (Mor, 2026-10-10): the same Now card and its actions, nothing
+   around it. The header keeps the daisy, the clock and the Focus toggle. */
+body.focus-mode :is(#side, #panel, .dock, .tell-panel, .now-greet, .now-top, #needsChip, .acct) { display: none; }
+body.focus-mode #board { display: block; }
+.hdr-end .hchip.focus-chip[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); color: var(--card); }
 body.focus .shell { padding-block: max(18px, env(safe-area-inset-top)) max(24px, env(safe-area-inset-bottom)); }
 /* "Hold to finish" (focus.js holdButton): a deeper amber fills from
    the start edge over 1 s, drains back if let go early. */
@@ -660,22 +667,23 @@ dialog.now:focus { outline: none; }
 .now-wait { margin: 6px 0 0; font-size: 14px; color: var(--ink-2); }
 .ts-nudge { justify-self: start; font-size: 14px; }
 /* Kinds sit in their own card, one per row with hairlines, so the five options don't crowd the master switch. */
-.menu-kinds { display: grid; margin-block-start: 2px; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
-.menu-kinds summary { display: flex; align-items: center; justify-content: space-between; min-block-size: 40px; padding-inline: 12px; font-size: 14px; cursor: pointer; list-style: none; }
-.menu-kinds summary::-webkit-details-marker { display: none; }
-.menu-kinds summary::after { content: "▾"; color: var(--ink-2); transition: transform .15s; }
-.menu-kinds[open] summary::after { transform: rotate(180deg); }
-.menu-kinds .menu-check { border-block-start: 1px solid var(--line); justify-content: space-between; flex-direction: row-reverse; min-block-size: 40px; padding-inline: 12px; font-size: 14px; }
+/* What to send: a small two-column list right under the switch (2026-10-10). */
+.menu-kinds { display: grid; grid-template-columns: 1fr 1fr; gap: 2px 12px; padding-inline-start: 26px; }
+.menu-kinds .menu-check { min-block-size: 32px; font-size: 13px; color: var(--ink-2); }
+.menu-kinds .menu-check input { inline-size: 16px; block-size: 16px; }
+.menu-kinds .menu-check:has(#meetingLead) { grid-column: 1 / -1; }
 .menu-select { flex: none; padding: 4px 8px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--ink); font: inherit; font-size: 13px; }
 .menu-select:disabled { opacity: .45; }
-#pushTest { margin-block-start: 2px; font-size: 13px; color: var(--ink-2); }
 .menu-ico { flex: none; display: grid; place-items: center; inline-size: 30px; block-size: 30px; border-radius: 10px; background: var(--surface-2, rgba(0,0,0,.05)); color: var(--ink-2); }
 .menu-ico.logo { background: none; }
 .menu-row:has(.menu-ico) .menu-label { margin-inline-end: auto; }
 .menu-stack { display: grid; gap: 2px; }
 .menu-sub { font-size: 12px; color: var(--ink-2); }
 .menu-sub input { inline-size: 15px; block-size: 15px; }
-.menu-stat { display: grid; grid-template-columns: 96px 64px; align-items: center; gap: 10px; font-size: 13px; color: var(--ink-2); }
+.menu-stat { display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--ink-2); white-space: nowrap; }
+.menu-stat .menu-link:not([hidden]) { font-size: 13px; }
+.conn-dot { inline-size: 8px; block-size: 8px; border-radius: 50%; background: var(--green); }
+.menu-link.menu-sub { min-block-size: 24px; font-size: 12px; color: var(--ink-2); }
 .menu-stat > :first-child { text-align: end; }
 .menu-note { margin: 0; font-size: 12px; color: var(--ink-2); }
 .menu-link { justify-self: start; min-block-size: 32px; padding: 0; border: 0; background: none; font: inherit; font-size: 14px; color: var(--ink); cursor: pointer; }
@@ -689,9 +697,12 @@ dialog.now:focus { outline: none; }
 dialog.settings { inline-size: min(420px, calc(100vw - 18px)); }
 dialog.settings .now-head + .menu-sec { border-block-start: 0; padding-block-start: 4px; }
 /* Meal breaks: one row per meal — on/off, then its time and length (only while on). */
-.meal-list { display: grid; gap: 8px; }
-.meal-row { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 8px; min-block-size: 44px; padding: 6px 10px; border: 1px solid var(--line); border-radius: 12px; }
-.meal-row.off { color: var(--ink-2); }
+/* Each is one line, "13:00 · 60 min"; tapped, it opens to the stepper (2026-10-10). */
+.meal-list { display: grid; }
+.meal-row { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 8px; min-block-size: 38px; }
+.meal-row.off { color: var(--ink-2); opacity: .7; }
+.meal-sum { min-block-size: 32px; padding: 0 2px; border: 0; background: none; font: inherit; font-size: 14px; font-variant-numeric: tabular-nums; color: var(--ink-2); cursor: pointer; }
+.meal-sum:hover { color: var(--ink); text-decoration: underline; }
 .meal-when { display: flex; align-items: center; gap: 6px; }
 .meal-stepper { display: inline-flex; align-items: center; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
 .meal-step { inline-size: 32px; block-size: 32px; padding: 0; border: 0; background: none; color: var(--ink-2); font: inherit; font-size: 18px; line-height: 1; cursor: pointer; touch-action: manipulation; user-select: none; -webkit-user-select: none; }
@@ -962,6 +973,7 @@ button.now-title:focus-visible { outline: 2px solid var(--aink); outline-offset:
 .tier-focus .pp-tier-name { padding-block-end: 2px; border-block-end: 2px solid var(--accent); }
 .zone-dragging .pp-zone { background: color-mix(in srgb, var(--ink) 3%, transparent); box-shadow: inset 0 0 0 1px var(--line); }
 .pp-tier-n { margin-inline-start: auto; font-size: 12px; font-weight: 600; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.pp-tier-max { appearance: none; -webkit-appearance: none; padding: 0 2px; border: 0; border-block-end: 1px dashed currentColor; border-radius: 0; background: none; font: inherit; color: inherit; cursor: pointer; }
 .tier-focus .pp-tier-name, .tier-focus .pp-tier-n { color: color-mix(in srgb, var(--accent) 70%, var(--ink)); }
 .pp-tier { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; }
 .pp-tier-name { font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-2); }
@@ -1729,15 +1741,15 @@ body.focus .shell { block-size: auto; min-block-size: 100dvh; overflow: visible;
 .task-bar > span { display: block; block-size: 100%; background: var(--area, var(--accent, currentColor)); }
 
 /* My day: one 24h bar, two handles (main.js paintDay). */
-.dayread { font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums; color: var(--ink); }
-.daybar { padding: 4px 11px 10px; }
+.daybar { padding: 2px 11px 20px; }
 .db-track { position: relative; height: 28px; touch-action: none; cursor: pointer; }
 .db-track::before { content: ""; position: absolute; inset: 11px 0; border-radius: 3px; background: var(--line); }
 .db-fill { position: absolute; top: 11px; height: 6px; border-radius: 3px; background: var(--accent); }
 .db-thumb { position: absolute; top: 3px; width: 22px; height: 22px; margin-left: -11px; padding: 0; border: 2px solid var(--accent); border-radius: 50%; background: var(--surface); box-shadow: 0 1px 4px rgb(0 0 0 / .18); cursor: grab; transition: transform .12s; }
 .db-thumb:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
 .db-track.dragging .db-thumb:focus { transform: scale(1.2); cursor: grabbing; }
-.db-ticks { display: flex; justify-content: space-between; margin: 2px -6px 0; font-size: 11px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+/* Each handle carries its own time underneath (2026-10-10). */
+.db-thumb::after { content: attr(data-t); position: absolute; top: calc(100% + 3px); left: 50%; transform: translateX(-50%); font-size: 12px; font-weight: 600; color: var(--ink); font-variant-numeric: tabular-nums; white-space: nowrap; pointer-events: none; }
 .now-else { display: block; margin: 10px auto 0; font-size: 13px; color: var(--ink-2); }
 /* Done's hold (now.js bloom): a daisy over the card, a petal per beat. */
 .bloom { position: fixed; z-index: 60; display: grid; place-content: center; justify-items: center; gap: 6px; overflow: hidden; pointer-events: none;

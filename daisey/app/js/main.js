@@ -206,6 +206,7 @@ async function boot(){
   $("#settingsBtn").onclick = () => { setMenu(false); settings.showModal(); };
   $("#projectsChip").onclick = () => window.__toggleProjects && window.__toggleProjects();
   $("#weekChip").onclick = () => window.__toggleStats && window.__toggleStats();
+  $("#focusChip").onclick = () => mounted?.now?.focus();
   $("#settingsX").onclick = () => settings.close();
   settings.addEventListener("click", (e) => { if (e.target === settings) settings.close(); });
 
@@ -223,6 +224,7 @@ async function boot(){
     $("#planChip").hidden = !user;
     $("#projectsChip").hidden = !user;
     $("#weekChip").hidden = !user;
+    $("#focusChip").hidden = !user;
     if (!user) { show("signedout"); return; }
 
     const displayName = user.displayName || user.email || "Guest";
@@ -283,17 +285,24 @@ async function boot(){
           trelloBtn.hidden = isGuest;
           trelloBtn.textContent = on ? "Import" : "Connect";
           trelloBtn.onclick = on ? () => { $("#settingsdlg").close(); m.importer.open(); } : connectTrello;
-          trelloNote.textContent = isGuest ? "Sign in first" : on ? "Connected" : "Not connected";
+          connNote(trelloNote, isGuest ? "Sign in first" : on ? "" : "Not connected");
         };
         const checkTrello = () => { if (!isGuest) trelloConnected().then(paintTrello); else paintTrello(false); };
         $("#settingsBtn").addEventListener("click", checkTrello);
         checkTrello();
         const fail = (e) => console.error("[daisey] menu", e);
+        // Connected is a green dot; anything else says what's wrong (Mor, 2026-10-10).
+        function connNote(el, text){
+          el.textContent = text;
+          el.className = text ? "" : "conn-dot";
+          if (text) { el.removeAttribute("role"); el.removeAttribute("aria-label"); el.removeAttribute("title"); }
+          else { el.setAttribute("role", "img"); el.setAttribute("aria-label", "Connected"); el.title = "Connected"; }
+        }
         // Day hours in the account menu (DAISEY_SPEC "Day hours"), saved on change.
         const start = $("#dayStart"), end = $("#dayEnd");
         // Finished tasks into the "Daisey log" calendar (now.js logFinished): on unless switched off.
         const logSwitch = $("#logDone");
-        const laptopAsk = $("#askLaptop"), focusPick = $("#focusMax");
+        const laptopAsk = $("#askLaptop");
         // The morning brief (push.js): this device's switch, a test button,
         // and — while it's on anywhere — the task snapshot the server counts.
         const pushSwitch = $("#pushBrief"), pushNote = $("#pushNote"), pushTest = $("#pushTest"), pushKinds = $("#pushKinds");
@@ -334,10 +343,11 @@ async function boot(){
           }
           pushSwitch.disabled = false; paintPush();
         };
-        // Send the brief now: Settings closes straight away (Mor, 2026-10-06);
-        // the notification itself is the answer, and a toast says if it failed.
+        // Send the brief now, from the avatar menu (Mor, 2026-10-10): the menu
+        // closes straight away; the notification itself is the answer, and a
+        // toast says if it failed.
         pushTest.onclick = async () => {
-          $("#settingsdlg").close();
+          setMenu(false);
           try {
             const r = await push.sendTest();
             if (!r.sent) flash("The brief didn't arrive. Switch notifications off and on again.");
@@ -356,7 +366,6 @@ async function boot(){
           logSwitch.checked = !isGuest && s?.logDone !== false;
           logSwitch.disabled = isGuest;
           laptopAsk.checked = s?.askLaptop === true;
-        focusPick.value = String(s?.focusMax ?? 3);
           hours = hrs;
           lastSettings = s || {};
           briefOn = !!s?.morningBrief;
@@ -368,14 +377,14 @@ async function boot(){
         }, fail);
         logSwitch.onchange = () => saveSettings(user.uid, { logDone: logSwitch.checked }).catch(fail);
         laptopAsk.onchange = () => saveSettings(user.uid, { askLaptop: laptopAsk.checked }).catch(fail);
-        focusPick.onchange = () => saveSettings(user.uid, { focusMax: Number(focusPick.value) }).catch(fail);
         // Meal breaks (Mor, 2026-10-08): Breakfast, Lunch, Dinner, each on or
         // off, with one time (the plan puts it in the hour from there) and a
-        // length. The time is a − 13:00 + stepper (Mor, 2026-10-08: not the
-        // browser's clock picker): 15 min a tap, held it repeats; it saves
-        // once the stepping stops, and nothing repaints under a held finger.
+        // length. Each reads as one line, "13:00 · 60 min"; tap it to change
+        // (Mor, 2026-10-10). The time is a − 13:00 + stepper (Mor, 2026-10-08:
+        // not the browser's clock picker): 15 min a tap, held it repeats; it
+        // saves once the stepping stops, and nothing repaints under a held finger.
         const mealList = $("#mealList"), MEAL_LENS = [15, 20, 30, 45, 60, 90];
-        let meals = mealPrefs({});
+        let meals = mealPrefs({}), mealOpen = null;
         const saveMeals = () => saveSettings(user.uid, { meals: meals.map((m) => ({ name: m.name, on: m.on, at: minText(m.at), minutes: m.minutes })) }).catch(fail);
         const STEP = 15;
         let stepping = null, stepSave = null;
@@ -404,25 +413,37 @@ async function boot(){
         function paintMeals(s){
           if (stepping || stepSave) return; // a later snapshot paints it
           meals = mealPrefs(s);
-          mealList.replaceChildren(...meals.map((m) => h("div", { className: "meal-row" + (m.on ? "" : " off") },
-            h("label", { className: "menu-check" },
-              h("input", { type: "checkbox", checked: m.on, onchange: (e) => { m.on = e.target.checked; saveMeals(); } }), m.name),
-            m.on && h("span", { className: "meal-when" },
-              stepper(m),
-              h("select", { className: "menu-select", ariaLabel: `${m.name} length`, onchange: (e) => { m.minutes = +e.target.value; saveMeals(); } },
-                ...[...new Set([...MEAL_LENS, m.minutes])].sort((a, b) => a - b).map((n) => h("option", { value: n, selected: n === m.minutes, textContent: `${n} min` })))))));
+          drawMeals();
         }
+        function drawMeals(){
+          mealList.replaceChildren(...meals.map((m) => h("div", { className: "meal-row" + (m.on ? "" : " off") + (mealOpen === m.name ? " open" : "") },
+            h("label", { className: "menu-check" },
+              h("input", { type: "checkbox", checked: m.on, onchange: (e) => { m.on = e.target.checked; if (!m.on && mealOpen === m.name) mealOpen = null; saveMeals(); drawMeals(); } }), m.name),
+            m.on && (mealOpen === m.name
+              ? h("span", { className: "meal-when" },
+                  stepper(m),
+                  h("select", { className: "menu-select", ariaLabel: `${m.name} length`, onchange: (e) => { m.minutes = +e.target.value; saveMeals(); } },
+                    ...[...new Set([...MEAL_LENS, m.minutes])].sort((a, b) => a - b).map((n) => h("option", { value: n, selected: n === m.minutes, textContent: `${n} min` }))))
+              : h("button", { type: "button", className: "meal-sum", textContent: `${minText(m.at)} · ${m.minutes} min`, ariaLabel: `${m.name} at ${minText(m.at)}, ${m.minutes} minutes. Change`,
+                  onclick: () => { mealOpen = m.name; drawMeals(); } })))));
+        }
+        // A tap anywhere else in Settings, or closing it, folds the open meal back to its line.
+        const settingsDlg = $("#settingsdlg");
+        const foldMeal = (e) => { if (mealOpen && !e.composedPath().includes(mealList)) { mealOpen = null; drawMeals(); } };
+        const shutMeal = () => { if (mealOpen) { mealOpen = null; drawMeals(); } };
+        settingsDlg.addEventListener("click", foldMeal);
+        settingsDlg.addEventListener("close", shutMeal);
         // My day as one 24h bar with two handles: drag an end (or tap the bar to
         // pull the nearer end there), arrows nudge 15 min (Shift: 1 h). Saves once,
         // on release, not on every pixel.
-        const SNAP = 15, MIN_SPAN = 60, track = $("#dayTrack"), fill = track.querySelector(".db-fill"), read = $("#dayRead");
+        const SNAP = 15, MIN_SPAN = 60, track = $("#dayTrack"), fill = track.querySelector(".db-fill");
         let dayS = 480, dayE = 1320, dayDrag = null;
         function paintDay(s, e){
           dayS = s; dayE = e;
           const pct = (m) => (m / 1440 * 100) + "%";
           start.style.left = pct(s); end.style.left = pct(e);
           fill.style.left = pct(s); fill.style.width = ((e - s) / 1440 * 100) + "%";
-          read.textContent = `${minText(s)} – ${e === 1440 ? "24:00" : minText(e)}`;
+          start.dataset.t = minText(s); end.dataset.t = e === 1440 ? "24:00" : minText(e);
           start.setAttribute("aria-valuenow", s); start.setAttribute("aria-valuetext", minText(s));
           end.setAttribute("aria-valuenow", e); end.setAttribute("aria-valuetext", minText(e));
         }
@@ -505,9 +526,9 @@ async function boot(){
           pickBtn.hidden = isGuest || !calOk;
           connectBtn.hidden = isGuest || calOk;
           connectBtn.textContent = c.status === "needs_reauth" ? "Reconnect" : "Connect";
-          calNote.textContent = isGuest ? "Sign in first" : calOk ? "Connected" : c.status === "needs_reauth" ? "Expired" : "Not connected";
+          connNote(calNote, isGuest ? "Sign in first" : calOk ? "" : c.status === "needs_reauth" ? "Expired" : "Not connected");
         });
-        m.menu = { unmount(){ stopSettings(); stopCal(); stopBriefTasks(); stopBriefRun(); stopBriefPlan(); clearInterval(seenTick); document.removeEventListener("visibilitychange", seen); start.onchange = end.onchange = logSwitch.onchange = laptopAsk.onchange = pushSwitch.onchange = pushTest.onclick = null;
+        m.menu = { unmount(){ stopSettings(); stopCal(); stopBriefTasks(); stopBriefRun(); stopBriefPlan(); clearInterval(seenTick); document.removeEventListener("visibilitychange", seen); settingsDlg.removeEventListener("click", foldMeal); settingsDlg.removeEventListener("close", shutMeal); start.onchange = end.onchange = logSwitch.onchange = laptopAsk.onchange = pushSwitch.onchange = pushTest.onclick = null;
           kindBoxes.forEach((b) => { b.onchange = null; }); } };
 
         // Full screens (a project, Needs you) sit on the history stack, so the
@@ -550,10 +571,9 @@ async function boot(){
         };
         addEventListener("popstate", onPop);
         m.history = { unmount(){ removeEventListener("popstate", onPop); } };
-        // Start from anywhere: back to home first, then focus mode.
-        // The task sheet's and a project's Start is Focus: the card has no Start
-        // (Mor, 2026-10-10), so starting a task from elsewhere is Deep Focus.
-        const startTask = (id) => { if (history.state?.daisey) history.back(); closeScreens(); m.now?.start(id, "focus"); };
+        // The task sheet's Focus: back to home, that task on the card, Focus
+        // mode on (Mor, 2026-10-10; no clock, no Deep Focus).
+        const startTask = (id) => { if (history.state?.daisey) history.back(); closeScreens(); m.now?.start(id); };
 
         m.adder = mountAddTask($("#addtask"), user.uid, { onStart: startTask });
         m.needs = mountNeeds($("#needsview"), user.uid, {
@@ -578,6 +598,7 @@ async function boot(){
         $("#planChip").onclick = () => m.now?.plan();
         m.now = mountNow($("#nowcard"), user.uid, {
           name: (user.displayName || "").trim().split(/\s+/)[0], onDone: paintDone, onNeedsCount: paintNeeds, onPlanProgress: paintPlan,
+          onFocusMode: (on) => { const b = $("#focusChip"); b.setAttribute("aria-pressed", String(on)); b.ariaLabel = on ? "Focus mode on: tap to show everything" : "Focus mode: only the Now card"; if (on) closeScreens(); },
           planRoot: $("#planPage"),
           // Two frames so the panel and chips settle under the daisy first.
           onReady: () => requestAnimationFrame(() => requestAnimationFrame(splashOff)),

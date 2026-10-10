@@ -20,7 +20,7 @@
 // area when no other project has that one yet, else the next free colour in
 // PALETTE. Names are taken in order, so a colour doesn't move around as
 // counts change. Inbox has none.
-import { watchTasks, watchSettings, finishTask, setDoneMinutes, restoreTask, removeTask, watchProjectNames, saveProjectNames, saveProjectRanges, saveProjectOrder, saveProjectTiers, renameInLog } from "./store.js";
+import { watchTasks, watchSettings, saveSettings, finishTask, setDoneMinutes, restoreTask, removeTask, watchProjectNames, saveProjectNames, saveProjectRanges, saveProjectOrder, saveProjectTiers, renameInLog } from "./store.js";
 import { INBOX, progressOf, progressPatch, leftMinutes, pushedTo, notYet, durText, localDate, bringBack, cleanRange, outsideRange, doneSnapshot } from "./model.js";
 import { isRoutine } from "./routine.js";
 import { dropSeries } from "./slots.js";
@@ -196,7 +196,7 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
     },
     onMove: (el, zone) => {
       const t = zone._tier;
-      if (full(el._name, t)) { flash(`Focus holds ${focusMax}. Move one out first, or change it in Settings.`); render(); return; }
+      if (full(el._name, t)) { flash(`Focus holds ${focusMax}. Move one out first, or raise the number beside Focus.`); render(); return; }
       // The DOM already shows where it landed (zoneSortable moved the card).
       const names = [...box.children].flatMap((z) => [...z.children].filter((k) => k._name).map((k) => k._name));
       if (t !== tierOf(el._name)) return setTier(el._name, t, names);
@@ -240,7 +240,13 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
       return h("div", { className: `pp-zone tier-${t}`, _tier: t },
         // Each tier a header with how many it holds; no box (Mor, 2026-10-08).
         h("div", { className: "pp-tier" }, h("span", { className: "pp-tier-name", textContent: TIER_TEXT[t][0] }), h("span", { className: "pp-tier-sub", textContent: TIER_TEXT[t][1] }),
-          h("span", { className: "pp-tier-n", textContent: t === "focus" ? `${ins.length}/${focusMax}` : String(ins.length) })),
+          // Focus's size lives here, on its own header (Mor, 2026-10-10: out of Settings): "2/3", the 3 picks 1–5.
+          t === "focus"
+            ? h("span", { className: "pp-tier-n" }, `${ins.length}/`,
+                h("select", { className: "pp-tier-max", ariaLabel: "Most projects in Focus", title: "Most projects in Focus",
+                  onchange: (e) => { focusMax = Number(e.target.value); saveSettings(uid, { focusMax }).catch(fail); render(); } },
+                  ...[1, 2, 3, 4, 5].map((n) => h("option", { value: n, selected: n === focusMax, textContent: String(n) }))))
+            : h("span", { className: "pp-tier-n", textContent: String(ins.length) })),
         h("span", { className: "pp-tier-empty", textContent: "Drag a project here" }), ...ins.map(card)); };
     const y = els.grid.scrollTop;
     // No week daisies; routines live in the avatar menu (Mor, 2026-10-10).
