@@ -22,7 +22,7 @@ import { watchSettings, watchTasks, watchRun, watchDayPlan, saveDayPlan } from "
 import { timeline } from "./proposal.js";
 import { lastActivity } from "./miss.js";
 import { areaClass, watchProjectColors } from "./look.js";
-import { dayHours, minText, planDate, usualHours } from "./day.js";
+import { dayHours, minText, planDate, usualHours, dayEndAt } from "./day.js";
 import { localDate, durText } from "./model.js";
 import { h, bdi, nightDivider, icon } from "./ui.js";
 import { pusher } from "./ppdrag.js";
@@ -187,11 +187,12 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onMissed, onPro
   let dayCtx = null; // the shown day's { events, now, hrs, d0 }, for a drag's preview
   function render(){
     if (dragging) { stale = true; return; }
-    // After midnight in a day that's still on (late), today is still
-    // yesterday here, as on the plan: Saturday night stays Saturday until its end.
+    // After midnight in a day that's still on (late): the day shown is the
+    // calendar's, with its own hours, and what's left of tonight sits on top
+    // of it (day(); Mor, 2026-10-11).
     const now = Date.now(), real = dayHours(settings);
-    const hrs = real.late ? { ...usualHours(settings), end: real.end + 1440 } : real;
-    const today = dayStart(real.late ? now - 864e5 : now);
+    const hrs = real.late ? usualHours(settings) : real;
+    const today = dayStart(now);
     const at = focus ? ymdToDate(focus) : today;
     const range = view === "week" ? [addDays(at, -at.getDay()), 7] : [at, 1];
     const from = range[0], to = addDays(from, range[1]);
@@ -212,7 +213,7 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onMissed, onPro
     stepBy = (n) => go(localDate(addDays(at, n * range[1]).getTime()));
     const isNow = view === "week" ? from.getTime() === addDays(today, -today.getDay()).getTime() : at.getTime() === today.getTime();
     const future = (view === "week" ? from : at).getTime() > today.getTime(); // today lies behind (left)
-    const late = real.late || now >= atMin(today, hrs.end);
+    const late = now >= atMin(today, hrs.end);
     const dayName = (d) => {
       const diff = Math.round((d - today) / 864e5);
       return diff === 0 ? (late || new Date(now).getHours() >= 18 ? "Tonight" : "Today") : diff === 1 ? "Tomorrow" : diff === -1 ? "Yesterday"
@@ -222,8 +223,9 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onMissed, onPro
     const span = from.getMonth() === last.getMonth()
       ? `${from.getDate()} – ${last.getDate()} ${last.toLocaleDateString("en-GB", { month: "short" })}`
       : `${from.toLocaleDateString("en-GB", { day: "numeric", month: "short" })} – ${last.toLocaleDateString("en-GB", { day: "numeric", month: "short" })}`;
-    const title = view === "week" ? (isNow ? "This week" : span) : dayName(at);
-    const sub = view === "week" ? (isNow ? span : "") : short(at);
+    const tonight = real.late && view !== "week" && isNow;
+    const title = view === "week" ? (isNow ? "This week" : span) : tonight ? "Tonight" : dayName(at);
+    const sub = view === "week" ? (isNow ? span : "") : tonight ? `until ${minText(real.end)}` : short(at);
     // A phone drops the date line, so a plain weekday carries its date ("Wed 15").
     const rel = Math.abs(Math.round((at - today) / 864e5)) <= 1;
     const narrow = view === "week" || rel ? title : `${at.toLocaleDateString("en-GB", { weekday: "short" })} ${at.getDate()}`;
@@ -243,7 +245,7 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onMissed, onPro
     let body;
     if (src.status !== "ok") body = [h("p", { className: "sc-note", textContent: src.status === "loading" ? "Loading…" : "Couldn't load these days." })];
     else if (view === "week") body = week(src.events, from, now, hrs, today, head);
-    else body = day(src.events, at, now, hrs, today);
+    else body = day(src.events, at, now, hrs, today, real);
 
     const y = el.scrollTop;
     el.replaceChildren(head, ...body);
@@ -270,35 +272,51 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onMissed, onPro
       ...tl.breaks.map((b) => ({ kind: "break", start: b.start, end: b.end, type: b.type, name: b.name }))];
   }
 
-  function day(events, date, now, hrs, today){
-    const t = date.getTime(), t0 = today.getTime();
+  // An approved plan sits inside today's free time (Mor, 2026-10-08): its
+  // blocks replace the stretch of gap they cover. Derived, never written to
+  // the calendar.
+  function withPlan(rows, planned){
+    if (!planned.length) return rows;
+    const cut = rows.flatMap((x) => {
+      if (x.kind !== "free") return [x];
+      let parts = [x];
+      for (const p of planned) parts = parts.flatMap((f) => [
+        { ...f, end: Math.min(f.end, p.start) }, { ...f, start: Math.max(f.start, p.end) }]
+        .filter((g) => g.end - g.start >= MIN_FREE * 60000 && (g.end <= p.start || g.start >= p.end)));
+      return parts;
+    });
+    return [...cut, ...planned].sort((a, b) => (a.start ?? -1) - (b.start ?? -1) || (a.kind === "free") - (b.kind === "free"));
+  }
+  // Where a drag can land: every timed row (free time too). Timed events and
+  // planned blocks are the ones that move.
+  const slotsOf = (rows) => rows.filter((x) => !x.allDay && !x.ev?.trip); // a trip moves with its event, never on its own
+
+  // real: the clock's day hours. Late (a day still on past midnight): what's
+  // left of tonight first, then the night, then tomorrow — this calendar day
+  // (Mor, 2026-10-11: a Saturday schedule under a Sunday clock felt wrong).
+  function day(events, date, now, hrs, today, real = hrs){
+    const t = date.getTime(), t0 = today.getTime(), tonight = t === t0 && !!real.late;
     // Free time only from now on: none in the past, today's from the clock.
-    const fromMs = t < t0 ? addDays(date, 1).getTime() : t === t0 ? now : 0;
-    let rows = dayRows(events, date, hrs, fromMs);
-    const ymd = localDate(t);
-    // An approved plan sits inside today's free time (Mor, 2026-10-08): its
-    // blocks replace the stretch of gap they cover. Derived, never written to
-    // the calendar.
+    const fromMs = t < t0 ? addDays(date, 1).getTime() : t === t0 && !tonight ? now : 0;
     const planned = t === t0 ? planRows(events, now) : [];
-      if (planned.length) {
-        const cut = rows.flatMap((x) => {
-          if (x.kind !== "free") return [x];
-          let parts = [x];
-          for (const p of planned) parts = parts.flatMap((f) => [
-            { ...f, end: Math.min(f.end, p.start) }, { ...f, start: Math.max(f.start, p.end) }]
-            .filter((g) => g.end - g.start >= MIN_FREE * 60000 && (g.end <= p.start || g.start >= p.end)));
-          return parts;
-        });
-        rows = [...cut, ...planned].sort((a, b) => (a.start ?? -1) - (b.start ?? -1) || (a.kind === "free") - (b.kind === "free"));
-      }
-    // Where a drag can land: every timed row (free time too). Timed events and
-    // planned blocks are the ones that move.
-    const slots = rows.filter((x) => !x.allDay && !x.ev?.trip); // a trip moves with its event, never on its own
+    const rows = tonight ? dayRows(events, date, hrs, fromMs) : withPlan(dayRows(events, date, hrs, fromMs), planned);
+    const ymd = localDate(t);
+    const slots = slotsOf(rows);
     dayCtx = { events, now, hrs: dayHours(settings), d0: t };
     const out = [];
+    if (tonight) {
+      const close = dayEndAt(now, real);
+      const left = withPlan(dayRows(events.filter((e) => !e.allDay && Date.parse(e.start) < close), date, real, now)
+        .filter((x) => x.end > now), planned);
+      const ls = slotsOf(left);
+      out.push(h("section", { className: "sc-day", ariaLabel: "Tonight" },
+        ...(left.length ? left.map((x) => row(x, now, ls)) : [h("p", { className: "sc-note", textContent: "Nothing left tonight." })])),
+        nightDivider(minText(real.end), minText(hrs.start)),
+        h("div", { className: "sc-label sc-next" }, h("span", { className: "sc-name", textContent: "Tomorrow" }), h("span", { className: "sc-date", textContent: short(date) })));
+    }
     // Not on the way somewhere (trips.js): on the 06:10 train the day has begun.
     const riding = events.some((e) => e.trip && Date.parse(e.start) <= now && now < Date.parse(e.end));
-    if (t === t0 && now < atMin(today, hrs.start) && !riding) out.push(nightDivider(minText(hrs.end), minText(hrs.start)));
+    if (t === t0 && !tonight && now < atMin(today, hrs.start) && !riding) out.push(nightDivider(minText(hrs.end), minText(hrs.start)));
     const none = h("button", { type: "button", className: "sc-none", onclick: () => onNew?.(ymd) },
       h("span", { textContent: "Nothing scheduled" }), h("span", { className: "sc-add", ariaHidden: "true", textContent: "+ Add" }));
     out.push(h("section", { className: "sc-day", ariaLabel: short(date) }, ...(rows.length ? rows.map((x) => row(x, now, slots)) : [none])));

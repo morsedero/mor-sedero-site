@@ -1337,6 +1337,10 @@ body.focus #side { display: none; }
 /* Schedule: a label row per day, time once on the left, the thing on the right. */
 .sc-day + .sc-day { margin-block-start: 12px; }
 .sc-label { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+/* Late past midnight (schedule.js day): tonight, the night, then Tomorrow's label. */
+.sc-day + .night-div { margin-block-start: 14px; }
+.sc-label.sc-next { justify-content: flex-start; margin-block: 12px 0; }
+.sc-next .sc-name { font-size: 15px; font-weight: 700; color: var(--ink); }
 .sc-name { font-size: 13px; font-weight: 600; color: color-mix(in srgb, var(--ink) 85%, var(--ink-2)); }
 .sc-date { font-size: 12px; color: var(--ink-2); }
 .sc-row { display: flex; align-items: center; gap: 12px; margin-block-start: 8px; }
