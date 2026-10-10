@@ -355,6 +355,8 @@ const FAKES = {
     const ms = Number(args[args.indexOf("--hold-ms") + 1]) || 1500;
     await page.mouse.down(); await page.waitForTimeout(args.includes("--hold-ms") ? ms : 1500);
     if (!args.includes("--hold-keep")) { await page.mouse.up(); await page.waitForTimeout(700); } }
+  // --then "sel": click it after the hold (the Done screen's Switch).
+  for (let i = args.indexOf("--then"); i >= 0; i = args.indexOf("--then", i + 1)) { await page.click(args[i + 1], { force: true }); await page.waitForTimeout(300); }
   if (tasksTab) { await page.click("#tabTasks"); await page.waitForTimeout(150); }
   if (evalJs) console.log("eval:", JSON.stringify(await page.evaluate(evalJs)));
   if (args.includes("--text")) console.log(await page.innerText("body"));

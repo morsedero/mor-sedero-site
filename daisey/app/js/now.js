@@ -1002,13 +1002,14 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
   // as Later's open row that scrolls and drags sideways (ui.js dragScroll),
   // keeping its place across redraws; or the way into On hold when there
   // are none.
-  function switchRow(alts){
+  // onPick: what tapping one does (the Done screen swaps its Next card).
+  function switchRow(alts, onPick = (t) => { switchTo(t.id); state.altX = 0; }){
     if (!alts.length) return h("div", { className: "later-ask", role: "group", ariaLabel: "Other tasks" },
       h("span", { className: "muted", textContent: "Nothing else is active." }),
       h("button", { className: "chip", type: "button", textContent: "Pick from On hold", onclick: () => { sd.open = true; state.showAlts = false; render(); } }));
     const row = dragScroll(h("div", { className: "later-ask switch-ask", role: "group", ariaLabel: "Other tasks" }, ...alts.map(({ task: t }) => h("button", {
       type: "button", className: "alt-card" + areaClass(t), ariaLabel: `Put ${t.title} on the card instead, ${howLong(t)}`,
-      onclick: () => { switchTo(t.id); state.altX = 0; },
+      onclick: () => onPick(t),
     }, h("span", { className: "hero-top" },
         h("span", { className: "hero-area" },
           // How long first, so a long project name is what gets cut short.
@@ -1662,10 +1663,20 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
       const m = momentInput();
       const r = rank(tasks || [], { ...m, sessionSkips: [...m.sessionSkips, handoff.skip] });
       const pr = planNow([handoff.skip])?.row;
-      const nextPick = pr ? (r.ranked.find((s) => s.task.id === pr.taskId) || { task: pr.task, whyParts: [] }) : r.pick;
-      // Do it, Switch, Not now (Mor, 2026-10-11: the full set was clutter).
-      // Switch opens the card on that task with its alternatives showing.
-      const onCardWith = (task, open) => { handoff = null; reset(); state.chosen = task.id; state.notNow = true; Object.assign(state, open); render(); };
+      const planned = pr ? (r.ranked.find((s) => s.task.id === pr.taskId) || { task: pr.task, whyParts: [] }) : r.pick;
+      // Switch picked another: it's the Next card now.
+      const swapped = handoff.nextId && (tasks || []).find((t) => t.id === handoff.nextId);
+      const nextPick = swapped ? (r.ranked.find((s) => s.task.id === swapped.id) || { task: swapped, whyParts: [] }) : planned;
+      const nextAlts = [...new Map([planned, ...r.alternatives, ...r.ranked, ...r.out.filter((o) => SWITCH_TOO.has(o.reason))]
+        .filter((s) => s && s.task.id !== nextPick?.task.id && s.task.id !== handoff.skip).map((s) => [s.task.id, { task: s.task }])).values()].slice(0, 5);
+      // Do it, Switch, Back to dashboard (Mor, 2026-10-11: the full set was
+      // clutter; Not now went). Switch shows the other tasks right here, and
+      // picking one swaps the Next card; Do it on a swapped one moves the plan
+      // too, as the card's own Switch does (switchTo).
+      const back = () => { handoff = null; showing(null); render(); };
+      const onStart = (task) => { const sw = !!swapped; handoff = null; reset();
+        if (sw) { switchTo(task.id); return; }
+        state.chosen = task.id; render(); };
       const cheer = !handoff.cheered; // the petals once, not on every re-render
       handoff.cheered = true;
       // "Again?" (2026-10-06): one task finished, not a batch → offer next week / next month.
@@ -1680,11 +1691,12 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
           render();
         },
       };
+      const ho = handoff;
       fill(handoffView({ title: handoff.title, minutes: handoff.minutes || 0, setMinutes: handoff.setMinutes, said: handoff.said, undo: handoff.undo, count: n, again }, nextPick, {
-        cheer,
-        onStart: (task) => onCardWith(task, { notNow: false }),
-        onSwitch: (task) => onCardWith(task, { notNow: false, showAlts: true }),
-        onSkip: (task) => { if (task) skips.add(task.id); handoff = null; showing(null); render(); },
+        cheer, onStart, onBack: back,
+        switching: !!handoff.showAlts,
+        onSwitch: () => { ho.showAlts = !ho.showAlts; render(); },
+        alts: handoff.showAlts && switchRow(nextAlts, (t) => { ho.nextId = t.id; ho.showAlts = false; state.altX = 0; render(); }),
       }));
       if (cheer) navigator.vibrate?.(15);
       return;

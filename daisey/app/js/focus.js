@@ -302,9 +302,10 @@ export function focusView(run, task, cb){
 // done: { title, minutes, count }.
 const DRIFT = [[-130, -120, -30, 0], [120, -140, 40, .2], [-150, 40, 80, .4], [150, 30, -70, .1], [-60, -170, 10, .6], [70, 110, 150, .3]];
 // The Next card asks one thing: do it? (Mor, 2026-10-11: "so cluttered",
-// was every option the Now card has.) Do it, or Switch / Not now quietly
-// under it; the rest is on the Now card once it's there.
-export function handoffView(done, next, { onStart, onSkip, onSwitch, cheer }){
+// was every option the Now card has.) Do it, or Switch / Back to dashboard
+// quietly under it; Switch opens `alts` (the other tasks) right under the
+// card, and the rest is on the Now card once it's there.
+export function handoffView(done, next, { onStart, onBack, onSwitch, switching, alts, cheer }){
   const n = done.count || 0;
   const petals = cheer && h("div", { className: "drift", ariaHidden: "true" }, ...DRIFT.map(([dx, dy, r, d]) => {
     const p = h("span", { className: "petal" });
@@ -338,16 +339,17 @@ export function handoffView(done, next, { onStart, onSkip, onSwitch, cheer }){
         h("button", { className: "btn primary start", type: "button", textContent: "Do it",
           ariaLabel: `Do it: ${t.title} on the card`, onclick: () => onStart(t) }),
         h("div", { className: "next-more" },
-          onSwitch && h("button", { className: "linkish", type: "button", textContent: "Switch",
-            ariaLabel: "Switch: something else instead", onclick: () => onSwitch(t) }),
-          h("button", { className: "linkish", type: "button", textContent: "Not now",
-            ariaLabel: `Not now: skip ${t.title} for a while`, onclick: () => onSkip(t) })))
+          h("button", { className: "linkish", type: "button", textContent: "Switch", ariaExpanded: String(!!switching),
+            ariaLabel: "Switch: something else instead", onclick: onSwitch }),
+          h("button", { className: "linkish", type: "button", textContent: "Back to dashboard", onclick: onBack })),
+        alts || null)
       : h("div", { className: "next-card none" },
         h("p", { className: "next-why", textContent: "Nothing else fits right now. Take the break." }),
-        h("button", { className: "btn line", type: "button", textContent: "Back", onclick: () => onSkip(null) })));
+        h("button", { className: "btn line", type: "button", textContent: "Back", onclick: onBack })));
 }
 
-// "Took ~30 min" with − / + (15 min a tap), corrected in place: the guess
+// "Took ~30 min" with − / +, corrected in place: 5 min a tap, landing on
+// fives (16 → 15 / 20; below 5 is 1, and 1 + is 5): the guess
 // is logged at once, a tap rewrites it (store setDoneMinutes).
 function doneTime(done){
   let mins = Math.round(done.minutes || 0);
@@ -357,8 +359,8 @@ function doneTime(done){
   const text = h("span", { className: "done-took", textContent: say() });
   if (!done.setMinutes) return h("p", { className: "done-time" }, text);
   const step = (d) => h("button", { className: "toast-step", type: "button", textContent: d < 0 ? "−" : "+", ariaLabel: `${d < 0 ? "Less" : "More"} time`,
-    onclick: () => { mins = Math.max(1, mins + d); said = true; text.textContent = say(); done.setMinutes(mins); } });
-  return h("p", { className: "done-time" }, step(-15), text, step(15));
+    onclick: () => { mins = d < 0 ? (mins <= 5 ? 1 : Math.ceil(mins / 5) * 5 - 5) : Math.floor(mins / 5) * 5 + 5; said = true; text.textContent = say(); done.setMinutes(mins); } });
+  return h("p", { className: "done-time" }, step(-5), text, step(5));
 }
 
 // Pause/Resume and Stop: two round icon buttons, side by side, centred.
