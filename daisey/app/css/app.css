@@ -1802,9 +1802,6 @@ body.focus .shell { block-size: auto; min-block-size: 100dvh; overflow: visible;
 .bl-cup { fill: none; stroke: #6fa56f; stroke-width: 1.8; stroke-linecap: round; }
 
 .bl-pills { display: inline-flex; padding: 3px; border-radius: 999px; background: var(--chip); }
-@media (prefers-reduced-motion: reduce) { .bl-pill { position: relative; border: 0; background: none; color: var(--ink-2); font: inherit; font-size: 13px; font-weight: 600; padding: 6px 12px; border-radius: 999px; cursor: pointer; }
-.bl-pill::after { content: ""; position: absolute; inset: -7px -1px; } /* 44px to the finger */
-.bl-pill[aria-checked="true"] { background: var(--card); color: var(--ink); box-shadow: 0 1px 3px rgba(0,0,0,.12); }
 .bl-line { margin: -4px 0 0; font-size: 15px; line-height: 1.45; color: var(--ink); }
 .bl-h { margin: 0 0 8px; font-size: 11px; font-weight: 600; letter-spacing: .6px; text-transform: uppercase; color: var(--ink-2); }
 .bl-note { margin: 6px 0 0; font-size: 13px; line-height: 1.4; color: var(--ink-2); }
