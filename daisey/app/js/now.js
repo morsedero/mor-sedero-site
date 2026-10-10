@@ -1257,7 +1257,14 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
           h("span", { className: "toast-text" }, ...(got.length === 1 ? ["Time opened up. Add ", bdi(got[0].title), "?"] : [`Time opened up. Add ${got.length} tasks?`])),
           h("span", { className: "toast-acts" },
             h("button", { className: "toast-undo", type: "button", textContent: "Add", ariaLabel: "Add them to today's plan",
-              onclick: () => { savePlan("approved", [...(p.items || []), ...offered], { ...keep, offer: null }); render(); } }),
+              // Said back (Mor, 2026-10-10: "I approved and nothing happened"):
+              // they go on the plan's end, out of sight of the card.
+              onclick: () => {
+                savePlan("approved", [...(p.items || []), ...offered], { ...keep, offer: null });
+                const undo = () => { savePlan("approved", p.items || [], { ...keep, offer: null, declined: [...(p.declined || []), ...o.ids] }); render(); };
+                got.length === 1 ? flash("Added to the end of your plan: ", got[0].title, { undo }) : flash(`Added ${got.length} tasks to the end of your plan.`, null, { undo });
+                render();
+              } }),
             h("button", { className: "toast-undo", type: "button", textContent: "No", ariaLabel: "No, leave the plan as it is",
               onclick: () => { savePlan("approved", p.items || [], { ...keep, offer: null, declined: [...(p.declined || []), ...o.ids] }); render(); } }))));
     }
