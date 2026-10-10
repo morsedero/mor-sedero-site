@@ -48,7 +48,8 @@ export const getDoc = (ref) => Promise.resolve(snap(ref.path));
 export function onSnapshot(ref, ...a){ const cb = a.find((x) => typeof x === "function");
   const s = subs.get(ref.path) || new Set(); s.add(cb); subs.set(ref.path, s); cb(snap(ref.path)); return () => s.delete(cb); }
 export const addDoc = () => Promise.resolve({ id: "x" });
-export const getDocs = () => Promise.resolve({ docs: [] });
+export const getDocs = (col) => Promise.resolve({ docs: [...docs].filter(([p]) => p.startsWith(col.path + "/") && !p.slice(col.path.length + 1).includes("/"))
+  .map(([p, v]) => ({ id: p.split("/").pop(), data: () => v })) });
 export const serverTimestamp = () => Date.now();
 `);
 
@@ -117,6 +118,17 @@ for (const uid of [USER, GUEST]) {
     assert.equal(state(uid, "now").extra, 15);
     await store.saveRun(uid, { taskId: "t9", startedAt: 1 });  // another task's stale Pause
     if (uid === GUEST) assert.equal(state(uid, "now").taskId, "t1");
+  });
+  test(`${who}: a renamed project's past work moves to the new name (#6)`, async () => {
+    reset();
+    const logs = { "log-2026-09": { e: { a: { t: "t1", p: "Album", m: 30, at: 1 }, b: { t: "t2", p: "Other", m: 5, at: 2 } } },
+      "log-2026-10": { e: { c: { t: "t1", p: "Album", m: 10, at: 3, d: 1 }, z: null } } };
+    if (uid === GUEST) ls.set(KEY, JSON.stringify({ tasks: [], state: logs }));
+    else for (const [k, v] of Object.entries(logs)) globalThis.__docs.set(`users/${uid}/state/${k}`, v);
+    await store.renameInLog(uid, "Album", "Single");
+    assert.equal(state(uid, "log-2026-09").e.a.p, "Single");
+    assert.equal(state(uid, "log-2026-09").e.b.p, "Other");
+    assert.deepEqual(state(uid, "log-2026-10").e.c, { t: "t1", p: "Single", m: 10, at: 3, d: 1 });
   });
 }
 

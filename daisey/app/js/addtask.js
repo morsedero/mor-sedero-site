@@ -26,7 +26,7 @@ import { watchTasks, addTask, updateTask, removeTask, watchProjectNames, watchSe
 import { durText, guessFields, validField, CHOICES, LABELS, INBOX, localDate, clampDate, outsideRange, progressOf } from "./model.js";
 import { h, flash, icon, bdi } from "./ui.js";
 import { projectsOf } from "./projects.js";
-import { isRoutine, weekLine, PER_MAX, DEFAULT_AT, cleanRoutine } from "./routine.js";
+import { isRoutine, weekLine, PER_MAX, DEFAULT_AT, cleanRoutine, seriesSig } from "./routine.js";
 import { syncSeries, dropSeries } from "./slots.js";
 
 // Every field Daisey guesses, and the one the user sees (Mor, 2026-10-07:
@@ -462,7 +462,7 @@ export function mountAddTask(dialog, uid, { onStart } = {}){
       const added = addTask(uid, input, tasks);
       added.catch((e) => { fail(e); flash("Couldn't add ", input.title); });
       // Set days: the weekly event is written once the task has its id.
-      if (input.routine?.days?.length) added.then((ref) => ref?.id && syncSeries(uid, { id: ref.id, title: input.title.trim(), size: vals.size, routine: cleanRoutine(input.routine) }));
+      if (input.routine?.days?.length) added.then((ref) => ref?.id && owe({ id: ref.id, title: input.title.trim(), size: vals.size, routine: cleanRoutine(input.routine) }));
       flash("Added ", input.title);
       dialog.close();
     } catch (e) { msg.textContent = e.message || String(e); }
@@ -506,8 +506,31 @@ export function mountAddTask(dialog, uid, { onStart } = {}){
   };
   const unsubNames = watchProjectNames(uid, (ns, rs) => { made = ns; ranges = rs || {}; refill(); fenceDates([]); }, fail);
   const unsubSettings = watchSettings(uid, (st) => { laptopRow.hidden = st?.askLaptop !== true; }, fail);
-  const unsub = watchTasks(uid, (ts) => {
+  // A Set-days routine added (or changed) offline never got its weekly event:
+  // the write waits on a server ack the closed app never saw (BEHAVIOR_REVIEW
+  // #9). Owed = its days' sig isn't the event's. Swept once the list comes
+  // from the server, and again on reconnect. series: null = tried, nothing
+  // to make (a guest, no calendar), so not retried.
+  // `asking`: task ids with a sync in flight, so the add's own sync and a sweep landing
+  // together don't write the event twice.
+  let swept = false;
+  const asking = new Set();
+  const owe = (t) => {
+    const k = t.id; // not the sig: the add passes a size the saved task may not have yet
+    if (asking.has(k)) return;
+    asking.add(k);
+    syncSeries(uid, t).then(() => asking.delete(k));
+  };
+  const sweepSeries = () => {
+    for (const t of tasks || []) {
+      const want = t.status !== "done" && seriesSig(t);
+      if (want && t.routine.series !== null && t.routine.series?.sig !== want) owe(t);
+    }
+  };
+  addEventListener("online", () => { if (swept) sweepSeries(); });
+  const unsub = watchTasks(uid, (ts, meta) => {
     tasks = ts;
+    if (!swept && meta && !meta.fromCache) { swept = true; sweepSeries(); }
     refill();
     if (editing) {
       const fresh = ts.find((t) => t.id === editing.id);

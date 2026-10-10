@@ -20,7 +20,7 @@
 // area when no other project has that one yet, else the next free colour in
 // PALETTE. Names are taken in order, so a colour doesn't move around as
 // counts change. Inbox has none.
-import { watchTasks, watchSettings, finishTask, setDoneMinutes, restoreTask, removeTask, watchProjectNames, saveProjectNames, saveProjectRanges, saveProjectOrder, saveProjectTiers } from "./store.js";
+import { watchTasks, watchSettings, finishTask, setDoneMinutes, restoreTask, removeTask, watchProjectNames, saveProjectNames, saveProjectRanges, saveProjectOrder, saveProjectTiers, renameInLog } from "./store.js";
 import { INBOX, progressOf, progressPatch, leftMinutes, pushedTo, notYet, durText, localDate, bringBack, cleanRange, outsideRange, doneSnapshot } from "./model.js";
 import { isRoutine } from "./routine.js";
 import { dropSeries } from "./slots.js";
@@ -324,6 +324,8 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
         if (tiers[old]) { const { [old]: t, ...others } = tiers; tiers = { ...others, [v]: t }; saveProjectTiers(uid, tiers).catch(fail); }
         // Same place in the dragged order, not dropped to the end (#6).
         if (order.includes(old)) { order = order.filter((n) => n !== v).map((n) => (n === old ? v : n)); saveProjectOrder(uid, order).catch(fail); }
+        // Its past work too, so stats don't split it in two (#6).
+        renameInLog(uid, old, v);
         shown = v;
         onScreen?.(v);
       }

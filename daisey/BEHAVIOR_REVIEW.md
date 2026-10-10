@@ -63,8 +63,8 @@ reading the code, none fixed yet. Ranked by harm.
   order), so the project drops to the end of its tier.
 - Work-log entries keep the old name (`entry.p`), so history may split
   between old and new names in stats.
-- **Fixed 2026-10-10 (order):** rename swaps the name in `order` in place and
-  saves it. Old log names still split stats (not fixed).
+- **Fixed 2026-10-10:** rename swaps the name in `order` in place and saves it,
+  and `store.renameInLog` moves its work-log entries (`entry.p`) to the new name.
 
 ## 7. "I'm free now" is forgotten
 - `freeFrom` is in memory only (`now.js:85`). iOS kills the PWA in the
@@ -89,5 +89,8 @@ reading the code, none fixed yet. Ranked by harm.
   `saveRun` writes `state/now` whole and brings the ended run back on reconnect.
 - **Fixed 2026-10-10 (two tabs, Pause/+15):** guest `storage` listener
   re-notifies watchers. `saveRun`/`extendRun` use `updateDoc` (fails on an
-  ended run, not-found swallowed); guests check `taskId`. The routine event
-  (second bullet) is not fixed.
+  ended run, not-found swallowed); guests check `taskId`.
+- **Fixed 2026-10-10 (routine event):** the task sheet sweeps open Set-days
+  routines whose event `sig` doesn't match, once the task list comes from the
+  server and on `online` (`addtask.js` sweepSeries). Two devices sweeping the
+  same owed task at the same moment could still make two events.

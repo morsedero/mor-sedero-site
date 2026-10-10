@@ -272,6 +272,21 @@ export async function unlogReopened(uid, task){
     if (best) await writeLog(uid, best.key, best.id, null);
   } catch (e) { logFail(e); }
 }
+// A project renamed (projects.js askRename): its work-log entries carry the
+// name (entry.p), so they move to the new one, or stats split one project
+// into two (BEHAVIOR_REVIEW #6). Every month doc; merged per entry.
+export async function renameInLog(uid, from, to){
+  for (const d of doneLogged.values()) if (d.entry.p === from) d.entry = { ...d.entry, p: to };
+  try {
+    const months = isGuest(uid)
+      ? Object.entries(readGuestData().state).filter(([k]) => k.startsWith("log-")).map(([key, v]) => ({ key, e: v?.e }))
+      : (await fb.getDocs(fb.collection(fb.db, "users", uid, "state"))).docs
+        .filter((d) => d.id.startsWith("log-")).map((d) => ({ key: d.id, e: d.data().e }));
+    for (const { key, e } of months)
+      for (const [id, x] of Object.entries(e || {}))
+        if (x && x.p === from) await writeLog(uid, key, id, { ...x, p: to });
+  } catch (e) { logFail(e); }
+}
 // The "Counted ~30 min" toast's − / +: the Done's minutes, corrected.
 export function setDoneMinutes(uid, taskId, minutes){
   const d = doneLogged.get(taskId);
