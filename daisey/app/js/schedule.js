@@ -17,14 +17,14 @@
 //
 // One day at a time (Mor, 2026-10-06: the whole week stacked vertically was
 // crowded and confusing), or the week as a grid — see "Day or Week" below.
-import { watchCalendar, connectCalendar, fetchRange, retime } from "./calendar.js";
+import { watchCalendar, connectCalendar, fetchRange, retime, landedAgo } from "./calendar.js";
 import { watchSettings, watchTasks, watchRun, watchDayPlan, saveDayPlan } from "./store.js";
 import { timeline } from "./proposal.js";
 import { lastActivity } from "./miss.js";
 import { areaClass, watchProjectColors } from "./look.js";
 import { dayHours, minText } from "./day.js";
 import { localDate, durText } from "./model.js";
-import { h, bdi, nightDivider, icon } from "./ui.js";
+import { h, bdi, nightDivider, icon, flash } from "./ui.js";
 import { pusher } from "./ppdrag.js";
 import { withTrips } from "./trips.js";
 
@@ -229,7 +229,11 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onProjects, onW
       h("button", { type: "button", className: "sc-title" + (isNow ? "" : " away"), ariaLabel: isNow ? title : `${title} — back to today`, onclick: () => go(null) },
         h("span", { className: "sc-name", textContent: title }), h("span", { className: "sc-name sc-name-s", textContent: narrow }), sub && h("span", { className: "sc-date", textContent: sub })),
       // Arrow points the way today lies; tapping slides there like a swipe.
-      h("button", { type: "button", className: "sc-today" + (isNow ? " off" : ""), ariaLabel: "Back to today", tabIndex: isNow ? -1 : 0,
+      // On today, with a plan laid: take Daisey's plan off the Schedule (Mor,
+      // 2026-10-10), where its blocks are. The calendar itself isn't touched.
+      isNow && view !== "week" && planned() ? h("button", { type: "button", className: "sc-today sc-unplan", ariaLabel: "Remove Daisey's plan for today", onclick: unplan },
+        icon("close"), h("span", { textContent: "Remove plan" }))
+      : h("button", { type: "button", className: "sc-today" + (isNow ? " off" : ""), ariaLabel: "Back to today", tabIndex: isNow ? -1 : 0,
         textContent: isNow ? "Today" : future ? "← Today" : "Today →", onclick: () => flip(future ? 1 : -1, () => go(null)) }),
       mode === "home" && onWeek && weekBtn);
     const head = h("div", { className: "sc-head" + (view === "week" ? " wk" : "") }, bar);
@@ -252,6 +256,16 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onProjects, onW
   // A task's project colour (its area's, failing that) for the event made for
   // it; events with no task keep their calendar colour.
   const tone = (ev) => { const t = ev.taskId && tasks?.find((x) => x.id === ev.taskId); return t ? areaClass(t) : ""; };
+
+  const planned = () => dayPlan?.status === "approved" && dayPlan.date === localDate() && dayPlan.items?.length > 0;
+  // Undo puts the same plan back.
+  function unplan(){
+    const { at, ...was } = dayPlan;
+    dayPlan = { ...dayPlan, status: "dismissed", items: [] }; render();
+    saveDayPlan(uid, { ...was, status: "dismissed", items: [] }).catch(fail);
+    flash("Removed today's plan. Your calendar is untouched.", null, { undo: () => {
+      dayPlan = { ...was }; render(); saveDayPlan(uid, was).catch(fail); } });
+  }
 
   // Today's approved plan on the clock (derived, never written to the calendar).
   function planRows(events, now, hrs){
@@ -410,7 +424,11 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onProjects, onW
       h("span", { className: "sc-ev sc-trip", ariaLabel: `${x.ev.title}, ${time}` }, h("span", { className: "sc-evi" }, icon("later")), x.ev.title));
     // A finished task is logged as a "✓ title" event (calendar.js logDone).
     const done = /^✓\s*/u.test(x.ev.title), title = done ? x.ev.title.replace(/^✓\s*/u, "") : x.ev.title;
-    const rowEl = h("div", { className: "sc-row" + (on ? " sc-on" + tone(x.ev) : past ? " sc-past" : ""), style: orbit + (on && x.ev.color ? `--ev:${x.ev.color}` : "") }, h("span", { className: "sc-time strong" }, time, on && h("span", { className: "sc-nowtag", textContent: "Now" })),
+    // Just added or moved: it drops into place with a glow (Mor, 2026-10-10),
+    // phased off when it landed so the write's reload doesn't replay it.
+    const land = landedAgo(x.ev);
+    const rowEl = h("div", { className: "sc-row" + (on ? " sc-on" + tone(x.ev) : past ? " sc-past" : "") + (land != null ? " sc-land" : ""),
+      style: orbit + (on && x.ev.color ? `--ev:${x.ev.color}` : "") + (land != null ? `--land:-${land}ms;` : "") }, h("span", { className: "sc-time strong" }, time, on && h("span", { className: "sc-nowtag", textContent: "Now" })),
       h("button", { type: "button", className: "sc-ev" + (done ? " sc-done" : "") + tone(x.ev), style: x.ev.color ? `--ev:${x.ev.color}` : "",
         ariaLabel: `${done ? "Finished task: " : ""}${on ? "Now: " : ""}${title}, ${time}`, onclick: () => onEvent?.(x.ev) },
         done ? h("span", { className: "sc-dot" }) : h("span", { className: "sc-evi" }, icon("calendar")), bdi(title)));

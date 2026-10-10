@@ -1422,15 +1422,6 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     flash(`Plan set: ${n} ${n === 1 ? "task" : "tasks"}. The card follows it.`);
   }
   function dismiss(){ savePlan("dismissed", []); closeProposal(); }
-  // Clear an approved plan any time (Mor, 2026-10-10): the Schedule goes back
-  // to just the calendar. Undo puts the same plan back.
-  function clearPlan(){
-    const was = approvedPlan();
-    savePlan("dismissed", []); prop.open = false; prop.replan = false; prop.ask = false; prop.note = ""; reset();
-    render();
-    flash("Plan cleared. The schedule is clean.", null, was ? { undo: () => {
-      const { at, ...doc } = was; dayPlan = { ...was, at: Date.now() }; saveDayPlan(uid, doc).catch(fail); render(); } } : {});
-  }
 
   // ---------- Missed slot and the silence check (miss.js, 2026-10-08) ----------
   // While Daisey is open, a banner over the card asks; closed, the server
@@ -1527,22 +1518,26 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     prop.busy = false; render();
   }
   // Rethink takes the action row's slot, one set of controls at a time
-  // (2026-10-08): what to change, then Fewer | More | Go | ✕. Go needs words
-  // (Mor, 2026-10-10): a blank Go laid the same plan again and read as broken;
-  // Fewer and More are the no-typing asks.
+  // (2026-10-08). Two ways in, each finished on its own (Mor, 2026-10-10:
+  // white Fewer/More chips beside Go read as options to pick, then Go):
+  // one-tap Fewer tasks / More tasks that act at once, and under them a
+  // field with its own send arrow that needs words (a blank Go laid the same
+  // plan again and read as broken).
   function rethinkRow(){
     const close = () => { prop.ask = false; render(); };
     const blank = () => !String(prop.text || "").trim();
-    const input = h("input", { id: "rethinkText", dir: "auto", autocomplete: "off", placeholder: "Other…", ariaLabel: "What should change?", value: prop.text,
-      oninput: (e) => { prop.text = e.target.value; goBtn.disabled = prop.busy || blank(); } });
+    const input = h("input", { id: "rethinkText", dir: "auto", autocomplete: "off", placeholder: "Or tell Daisey what to change…", ariaLabel: "What should change?", value: prop.text,
+      oninput: (e) => { prop.text = e.target.value; send.disabled = prop.busy || blank(); } });
     const go = () => { if (!blank()) doRethink(input.value); };
     input.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); go(); } else if (e.key === "Escape") close(); });
-    setTimeout(() => focusField(input));
-    const goBtn = h("button", { className: "btn primary", type: "button", disabled: prop.busy || blank(), textContent: prop.busy ? "…" : "Go", ariaLabel: prop.busy ? "Thinking" : "Rethink", onclick: go });
-    return h("div", { className: "pp-actions pp-ask" }, input,
-      ...[["Fewer", "Fewer tasks"], ["More", "More tasks"]].map(([label, ask]) => h("button", { type: "button", className: "chip", textContent: label, ariaLabel: ask, disabled: prop.busy, onclick: () => doRethink(ask) })),
-      goBtn,
-      h("button", { className: "pp-ctl", type: "button", textContent: "✕", title: "Never mind", ariaLabel: "Never mind", onclick: close }));
+    const send = h("button", { className: "pp-send", type: "button", disabled: prop.busy || blank(), ariaLabel: prop.busy ? "Thinking" : "Rethink with this", title: "Rethink with this", onclick: go },
+      prop.busy ? h("span", { textContent: "…" }) : icon("chev"));
+    return h("div", { className: "pp-actions pp-ask" },
+      h("div", { className: "pp-ask-quick" },
+        h("button", { type: "button", className: "btn line", disabled: prop.busy, onclick: () => doRethink("Fewer tasks") }, icon("lighter"), h("span", { textContent: "Fewer tasks" })),
+        h("button", { type: "button", className: "btn line", disabled: prop.busy, onclick: () => doRethink("More tasks") }, icon("plus"), h("span", { textContent: "More tasks" })),
+        h("button", { className: "pp-ctl", type: "button", textContent: "✕", title: "Never mind", ariaLabel: "Never mind", onclick: close })),
+      h("div", { className: "pp-ask-field" }, input, send));
   }
   // Done today, under the plan (one chip opens both), oldest first. null when empty.
   function doneCard(){
@@ -1629,8 +1624,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
           icon("check"), h("span", { textContent: approved ? "Save plan" : "Approve" })),
         h("button", { className: "btn line", type: "button", ariaExpanded: "false", disabled: prop.busy,
           textContent: prop.busy ? "Thinking…" : "Rethink", onclick: () => { prop.ask = true; render(); } }),
-        h("button", { className: approved ? "btn quiet" : "btn no-plan", type: "button", textContent: approved ? "Close" : "No plan", onclick: approved ? closeProposal : dismiss })),
-      approved && !prop.ask && h("p", { className: "pp-clear" }, h("button", { type: "button", className: "linkish", disabled: prop.busy, textContent: "Clear today's plan", onclick: clearPlan })));
+        h("button", { className: approved ? "btn quiet" : "btn no-plan", type: "button", textContent: approved ? "Close" : "No plan", onclick: approved ? closeProposal : dismiss })));
   }
   // Once a plan is approved, how far along it is goes to the header chip
   // (next to Needs you); tapping it reopens the plan to change it.
@@ -1845,24 +1839,10 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
   // The day screens: the card and what's under it. (After this and the
   // Needs you row went with round 3: the panel's Schedule page and the
   // header's chip hold them now.)
-  const day = (...kids) => fill(...kids, restButton());
-  // "Done for today" (Mor, 2026-10-10): from the evening on, one quiet pill
-  // under the day's card closes the day early: the night screen now, and no
-  // notifications until morning (settings.restDay, sent to the server with
-  // the snapshot, push.js). "I'm free now" on the night screen undoes it for
-  // this visit. From 18:00, or the last 3 h of a day that ends sooner.
+  const day = (...kids) => fill(...kids);
+  // settings.restDay: the day was closed early. Its "Done for today" pill is
+  // gone (Mor, 2026-10-10: "bad button"); a day already closed still reads it.
   const rested = () => settings.restDay === localDate();
-  function restButton(){
-    const d = new Date(), m = d.getHours() * 60 + d.getMinutes();
-    if (m < Math.min(18 * 60, dayHours(settings).end - 180)) return null;
-    return h("div", { className: "rest-foot" }, h("button", { className: "pill-btn", type: "button", textContent: "Done for today",
-      ariaLabel: "Done for today: close the day", onclick: () => {
-        const restDay = localDate();
-        if (prop.open) closeProposal(); // the night has no plan screen
-        settings = { ...settings, restDay }; nightFree = false; render();
-        saveSettings(uid, { restDay }).catch(fail);
-      } }));
-  }
   const fail = (e) => console.error("[daisey] now", e);
   // "Start task" on a notification (sw.js → ?start=<id>). The suggestion was
   // made minutes ago; what happened since wins (reality.js). Something

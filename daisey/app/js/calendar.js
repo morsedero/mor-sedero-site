@@ -167,6 +167,7 @@ async function write(body){
         editable: true,
         updated: new Date().toISOString(),
       };
+      landed(created.title, created.start);
       saveGuestEvents([...events, created]);
       return created;
     }
@@ -210,16 +211,41 @@ function optimistic(body){
   if (state.status !== "ok" || (body.scope && body.scope !== "one") || body.recurrence) return null;
   const same = (e) => e.id === body.eventId && e.calendarId === body.calendarId;
   if (body.action === "create") {
-    if (body.calendarId !== "primary") return null;
+    if (body.calendarId.startsWith("daisey")) return null; // may not exist yet
+    // "primary" is the signed-in address; the new event wears that calendar's
+    // usual colour from the start, not a grey that changes on the reload.
+    const cal = body.calendarId === "primary" && hint ? hint : body.calendarId;
+    landed(body.title, body.start);
     return { ...state, events: [...state.events, { id: `pending-${Date.now()}`, title: body.title, start: body.start, end: body.end,
       ...(body.location ? { location: body.location } : {}), ...(body.taskId ? { taskId: body.taskId } : {}),
-      calendarId: "primary", color: null, busy: true, editable: false, pending: true }] };
+      calendarId: cal, color: usualColor(cal), busy: true, editable: false, pending: true }] };
   }
-  if (!state.events.some(same)) return null;
+  const was = state.events.find(same);
+  if (!was) return null;
   if (body.action === "delete") return { ...state, events: state.events.filter((e) => !same(e)) };
+  if (body.start || body.title) landed(body.title || was.title, body.start || was.start);
   return { ...state, events: state.events.map((e) => (!same(e) ? e : { ...e,
     ...(body.title ? { title: body.title } : {}), ...(body.start ? { start: body.start, end: body.end } : {}),
     ...(typeof body.location === "string" ? { location: body.location || null } : {}) })) };
+}
+// The colour most of a calendar's events wear (an event can have its own).
+function usualColor(calendarId){
+  const n = new Map();
+  for (const e of state.events) if (e.calendarId === calendarId && e.color) n.set(e.color, (n.get(e.color) || 0) + 1);
+  return [...n].sort((a, b) => b[1] - a[1])[0]?.[0] || null;
+}
+// An event just added or moved, so the Schedule can play it landing (Mor,
+// 2026-10-10). Keyed by title and start: the reload brings a new id.
+const LAND_MS = 900;
+const lands = new Map();
+function landed(title, start){ lands.set(`${title}|${Date.parse(start)}`, Date.now()); }
+// ms since it landed, while it's still landing; else null.
+export function landedAgo(ev){
+  const at = lands.get(`${ev.title}|${Date.parse(ev.start)}`);
+  if (at == null) return null;
+  const ago = Date.now() - at;
+  if (ago < LAND_MS) return ago;
+  lands.delete(`${ev.title}|${Date.parse(ev.start)}`); return null;
 }
 
 // Both ends at once: a dragged block, or a typed Start and End. The length is
