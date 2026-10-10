@@ -1924,3 +1924,4 @@ body.focus .shell { block-size: auto; min-block-size: 100dvh; overflow: visible;
 :root:not(.night) body.focus-mode .now-card.main .now-title { margin-block-start: 6px; font-size: 23px; line-height: 1.2; letter-spacing: -0.01em; }
 :root:not(.night) body.focus-mode .now-card.main .now-why { font-size: 15px; }
 :root:not(.night) body.focus-mode .now-card.main .now-row { padding-block-start: 16px; }
+:root:not(.night) body.focus-mode .now-card.main .now-row { gap: 8px; } :root:not(.night) body.focus-mode .now-card.main .now-row .iconbtn { inline-size: 58px; min-inline-size: 58px; block-size: 58px; min-block-size: 58px; border-radius: 14px; font-size: 11px; gap: 3px; } :root:not(.night) body.focus-mode .now-card.main .now-row .iconbtn svg { inline-size: 20px; block-size: 20px; } :root:not(.night) body.focus-mode .now-card.main .now-row .btn.start { block-size: 58px; min-block-size: 58px; border-radius: 14px; }
