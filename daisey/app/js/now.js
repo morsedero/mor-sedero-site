@@ -1196,6 +1196,10 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     const ap = approvedPlan();
     if (prop.open && prop.items.length && (!ap || prop.touched)) { prop.items = reorder(prop.items); prop.touched = true; }
     else if (ap) savePlan("approved", reorder(ap.items || []), { kept: ap.kept || [], ...unseen(ap, "cut"), ...unseen(ap, "added") });
+    // A switch is activity: the approved plan is laid from the last one
+    // (proposal.js timeline since), so without this the moved task landed in
+    // the old head's past slot, "didn't happen", while Now pointed elsewhere.
+    if (task) { task.touchedAt = Date.now(); restoreTask(uid, id, { touchedAt: task.touchedAt }).catch(fail); }
     state.chosen = id; state.showAlts = false;
     render();
   }

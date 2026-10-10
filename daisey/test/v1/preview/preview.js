@@ -178,6 +178,11 @@ const SCENARIOS = {
     { title: "Send invoice to Uri", project: "Admin", size: 5 },
     { title: "Lesson prep", project: "Teaching", size: 30 },
   ], dayplan: { date: day(0), status: "approved", items: [{ taskId: "t1", minutes: 60 }, { taskId: "t2", minutes: 5 }, { taskId: "t3", minutes: 30 }] } },
+  // The same, approved 40 min ago with nothing touched since, so the plan is
+  // laid from then: a Switch must lay it from now, not drop the picked task
+  // into the past slot as "didn't happen" (2026-10-10).
+  get switchlate(){ const s = structuredClone(SCENARIOS.switchplan), ago = Date.now() - 40 * 60000;
+    for (const t of s.tasks) t.over = { touchedAt: ago, createdAt: ago }; s.dayplan.approvedAt = ago; return s; },
   // Nothing active: only waiting and Someday (the calm empty state).
   rest: { tasks: [
     { title: "Waiting on Yuval", project: "Reprise", size: 30, over: { status: "waiting", waitingOn: "Yuval" } },
