@@ -452,13 +452,19 @@ dialog.now:focus { outline: none; }
 /* Later → "When?": three choices under the card's actions. */
 .later-ask { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 5px; margin-block-start: 4px; font-size: 13px; }
 .later-ask .chip { min-block-size: 36px; font-size: 13px; padding-inline: 10px; }
+/* Later's On hold: not a time, so set apart on its own line, dashed and quiet. */
+.later-ask .hold-opt { flex-basis: 100%; display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-block-size: 34px; margin-block-start: 2px; font: inherit; font-size: 13px; font-weight: 600; color: var(--sub); background: none; border: 1px dashed var(--aline); border-radius: 999px; cursor: pointer; }
+.later-ask .hold-opt svg { inline-size: 16px; block-size: 16px; flex: none; }
+.later-ask .hold-opt:hover { color: var(--ink); border-style: solid; }
+.hold-opt-s { font-weight: 400; }
+.later-ask:has(.hold-opt) { flex-wrap: wrap; gap: 5px; }
+.later-ask:has(.hold-opt) .chip { flex: 1 1 0; min-inline-size: 0; padding-inline: 4px; white-space: nowrap; }
 /* Switch: the other tasks as small cards in the main card's look, one row
    that scrolls sideways, as tall as Later's two rows of chips (Mor, 2026-10-10). */
 .switch-ask { flex-wrap: nowrap; justify-content: flex-start; gap: 8px; overflow-x: auto; scrollbar-width: none; scroll-snap-type: x mandatory; margin-inline: -4px; padding: 2px 4px 4px; }
 .switch-ask::-webkit-scrollbar { display: none; }
-.alt-card { flex: none; inline-size: 70%; block-size: 77px; box-sizing: border-box; display: grid; grid-template-rows: auto 1fr; align-content: start; gap: 4px; padding: 9px 12px; border-radius: 14px; border: 1px solid var(--aline); background: var(--tint); color: var(--ink); font: inherit; text-align: start; cursor: pointer; scroll-snap-align: start; box-shadow: 0 2px 6px color-mix(in srgb, var(--aink) 10%, transparent); }
+.alt-card { flex: none; inline-size: 44%; block-size: 77px; box-sizing: border-box; display: grid; grid-template-rows: auto 1fr; align-content: start; gap: 4px; padding: 9px 12px; border-radius: 14px; border: 1px solid var(--aline); background: var(--tint); color: var(--ink); font: inherit; text-align: start; cursor: pointer; scroll-snap-align: start; box-shadow: 0 2px 6px color-mix(in srgb, var(--aink) 10%, transparent); }
 .alt-card .hero-top, .alt-card .hero-area { font-size: 12px; }
-.alt-card .alt-s { flex: none; font-size: 12px; font-weight: 600; color: var(--aink); }
 .alt-card .alt-t { font-size: 15px; font-weight: 600; line-height: 1.2; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow-wrap: anywhere; }
 /* A missed slot (miss.js): Shorten · Move under the card's line, on the card itself. */
 

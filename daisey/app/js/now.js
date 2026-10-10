@@ -1064,8 +1064,6 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     const someN = somedayTasks().length;
     const toggle = (key) => () => { const was = state[key]; state.more = state.notNow = state.pendAsk = state.showAlts = false; state[key] = !was; render(); };
     const chip = (text, onclick) => h("button", { className: "chip", type: "button", textContent: text, onclick });
-    // In 10 min moves the task's slot in the approved plan, so only then.
-    const inPlan = approvedPlan()?.items.some((it) => it.taskId === task.id);
     const done = h("button", { className: "btn primary start", type: "button", ariaLabel: `Done: hold to show how much of ${task.title} is done` },
       icon("check"), h("span", { textContent: "Done" }));
     return [
@@ -1077,10 +1075,14 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
         doneHold(done, task)),
       lead.length > 0 && !asking() && h("div", { className: "later-ask", role: "group", ariaLabel: "Missed" },
         ...lead.map(([text, onclick]) => chip(text, onclick))),
+      // Later: three times, then On hold set apart under them, quieter and
+      // dashed, since it isn't a time: no date, into the project's On hold
+      // list (Mor, 2026-10-10: In 10 min went).
       state.notNow && h("div", { className: "later-ask", role: "group", ariaLabel: "Come back when?" },
-        inPlan && chip("In 10 min", () => { state.notNow = false; later10(task); render(); }),
-        ...[["today", "Later today"], ["tomorrow", "Tomorrow"], ["week", "This week"], ["someday", "On hold"]].map(([w, text]) =>
-          chip(text, () => later(task, w)))),
+        ...[["today", "Later today"], ["tomorrow", "Tomorrow"], ["week", "This week"]].map(([w, text]) =>
+          chip(text, () => later(task, w))),
+        h("button", { className: "hold-opt", type: "button", ariaLabel: `Put ${task.title} on hold: no date, in the project's On hold list`, onclick: () => later(task, "someday") },
+          icon("someday"), h("span", { textContent: "Put on hold" }), h("span", { className: "hold-opt-s", textContent: "· no date" }))),
       state.pendAsk && pendingAsk(task),
       state.showAlts && switchRow(alts),
     ];
@@ -1156,7 +1158,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
 
   // Switch's row, under the card like Later's and Pending's (Mor,
   // 2026-10-10): the other tasks as small cards in the main card's look
-  // (area colour, project, title, size), one row that scrolls sideways,
+  // (area colour, project, title), one row that scrolls sideways,
   // as tall as Later's open row; or the way into On hold when there are none.
   function switchRow(alts){
     if (!alts.length) return h("div", { className: "later-ask", role: "group", ariaLabel: "Other tasks" },
@@ -1167,8 +1169,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
       onclick: () => { state.chosen = t.id; state.showAlts = false; render(); },
     }, h("span", { className: "hero-top" },
         h("span", { className: "hero-area" }, h("span", { className: "dot", ariaHidden: "true" }),
-          h("span", { className: "hero-where" }, projectShown(t) ? bdi(t.project) : areaName(t) || "Inbox")),
-        h("span", { className: "alt-s", textContent: sizeChip(t) })),
+          h("span", { className: "hero-where" }, projectShown(t) ? bdi(t.project) : areaName(t) || "Inbox"))),
       h("span", { className: "alt-t", dir: "auto", textContent: t.title }))));
   }
 
@@ -1507,14 +1508,6 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
         ariaLabel: `Skip the rest of the break: start ${next.task.title}`, onclick: () => begin(next.task) }) });
   }
   const dueWhy = (card, due) => ({ ...card, whyParts: [Date.now() - due.start < 2 * 60000 ? `planned for ${clock(due.start)}` : `planned for ${clock(due.start)}, not started`] });
-  function later10(task){
-    const at = Math.ceil((Date.now() + 10 * 60000) / 300000) * 300000;
-    const p = approvedPlan();
-    if (!p) return;
-    savePlan("approved", p.items.map((it) => (it.taskId === task.id ? { ...it, at } : it)), { kept: p.kept || [], ...unseen(p, "cut"), ...unseen(p, "added") });
-    restoreTask(uid, task.id, { touchedAt: Date.now() }).catch(fail);
-    flash(`${task.title}: at ${clock(at)}.`);
-  }
   function roughCard(st){
     return plainCard("empty quiet rough", { meta: "Rough day?", title: "Want a lighter plan?", why: silenceText(st, clock).replace(/ Want a lighter plan.*$/, ""),
       action: h("div", { className: "now-actions now-row" },
