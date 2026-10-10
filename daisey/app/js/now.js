@@ -82,7 +82,10 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
   // The event you said you're free from, as its start time in ms (what
   // engine.freeWindow reports). Cleared on its own once that event is no
   // longer the one running.
+  // Kept in state/moment, so a reload (iOS drops a backgrounded PWA) or the
+  // other device still ignores the event.
   let freeFrom = null;
+  const setFree = (v) => { freeFrom = v; render(); saveMoment(uid, { freeFrom: v }).catch(fail); };
   let tripOpen = null; // the trip/laptop line showing its choices (answered())
   // "I'm free now" at night: plan as if it were day until the night is over.
   let nightFree = false;
@@ -203,7 +206,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
   // says the rest.
   function freeNow(start, title){
     return h("button", { className: "linkish free-now", type: "button", textContent: "I'm free now",
-      ariaLabel: `I'm free now: ignore ${title} and pick any task`, onclick: () => { freeFrom = start; render(); } });
+      ariaLabel: `I'm free now: ignore ${title} and pick any task`, onclick: () => setFree(start) });
   }
   function topOf(fw){
     const block = blockOf(fw);
@@ -338,7 +341,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
   const eventCard = (o) => plainCard("meeting event", o);
   const quietCard = (o) => plainCard("empty quiet", o);
   const freeNowButton = (ev, label) => h("button", { className: "btn quiet free-now", type: "button", textContent: "I'm free now",
-    ariaLabel: `I'm free now: ignore ${label} and pick a task anyway`, onclick: () => { freeFrom = ev.start; render(); } });
+    ariaLabel: `I'm free now: ignore ${label} and pick a task anyway`, onclick: () => setFree(ev.start) });
 
   // Driving and no call to make (hands-free calls are the one thing that
   // fits, Mor 2026-10-05): just this. "I'm a passenger" counts as a bus
@@ -467,8 +470,18 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     cancelRun(uid, task, m >= CANCEL_KEEP_MINUTES ? m : 0).catch(fail);
   };
 
+  // The running task was deleted (the sheet, a project's Delete, the other
+  // device): end the run, or focus mode stays on a task that's gone. Only on a
+  // server snapshot (guests have no server), and not for a run just started,
+  // whose task can lag behind the run doc on another device.
+  const dropGhostRun = (meta) => {
+    if (!run || !tasks || (meta?.fromCache && !guest) || Date.now() - run.startedAt < 120000) return;
+    if ((run.batch || [run.taskId]).some((id) => tasks.some((t) => t.id === id))) return;
+    run = null; cancelRun(uid).catch(fail);
+  };
+
   // Done on a running task, from Deep Focus or the dashboard card.
-  const finishRun = (task, minutes, end, pct = 100) => {
+  const finishRun =(task, minutes, end, pct = 100) => {
     if (!run) return; // the hold finished after the run moved on
     if (!task) return finishRunNow(task, minutes, end);
     // Under 100% (the hold let go early) the minutes are kept and the task
@@ -596,7 +609,8 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
       holdInPlan(task, Date.now() + LATER_MINUTES * 60000);
       stepAside(task, { label: `Later (${dur(LATER_MINUTES)}): `, lesson: true, write: () => Promise.all([skipNow(uid, task), declined(task), extra ? restoreTask(uid, task.id, extra) : null]) });
     } else if (when === "tomorrow") {
-      const d = new Date(); d.setDate(d.getDate() + 1);
+      // Still up past midnight (before 04:00): tomorrow is the day you wake into.
+      const d = new Date(); if (d.getHours() >= 4) d.setDate(d.getDate() + 1);
       let day = localDate(d.getTime());
       if (task.dateKind === "deadline" && task.due && task.due < day) day = task.due; // never hide it past its deadline
       stepAside(task, { label: "Tomorrow: ", lesson: true, write: () => Promise.all([restoreTask(uid, task.id, { ...pushedTo(task, { notBefore: day }), ...extra }), declined(task)]) });
@@ -701,7 +715,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     const fw = freeWindow(events, now, isNight(now, hrs) ? null : dayEndAt(now, hrs));
     // The override only ever applies to the event that was running; once it
     // ends, or another starts, the calendar speaks for itself again.
-    if (freeFrom && !cal.events.some((e) => Date.parse(e.start) === freeFrom && Date.parse(e.end) > Date.now())) freeFrom = null;
+    if (freeFrom && !cal.events.some((e) => Date.parse(e.start) === freeFrom && Date.parse(e.end) > Date.now())) { freeFrom = null; saveMoment(uid, { freeFrom: null }).catch(fail); }
     return fw;
   }
 
@@ -1848,7 +1862,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
       // Said you're free during an event that is still on the calendar.
       freeFrom && busy && h("p", { className: "muted" }, "Ignoring ", bdi(busy.title), " ",
         h("button", { className: "linkish", type: "button", textContent: "put it back",
-          ariaLabel: `Stop ignoring ${busy.title}`, onclick: () => { freeFrom = null; render(); } })));
+          ariaLabel: `Stop ignoring ${busy.title}`, onclick: () => setFree(null) })));
 
     const head = night ? [greet] : [topOf(fw), greet];
     if (tasks == null) { fill(...head, h("p", { className: "muted", textContent: "Loading tasks…" })); return; }
@@ -1992,12 +2006,12 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     watchWhere((v) => { located = v; applyTrips(); render(); }),
     watchProjectColors(() => render()),
     watchProjectTiers(() => render()),
-    watchTasks(uid, (ts) => { tasks = ts; render(); tryNoticeStart(); logRoutineEvents(); }, fail),
+    watchTasks(uid, (ts, meta) => { tasks = ts; dropGhostRun(meta); render(); tryNoticeStart(); logRoutineEvents(); }, fail),
     watchCalendar((c) => { rawCal = c; applyTrips(); render(); logRoutineEvents(); }),
     watchRun(uid, (r) => { run = r; runKnown = true; if (r) handoff = null; render(); tryNoticeStart(); }, fail),
     watchSkips(uid, (s) => { skipDoc = s; render(); }, fail),
     watchSettings(uid, (s) => { settings = s || {}; applyTrips(); render(); }, fail),
-    watchMoment(uid, (d) => { momentDoc = d || {}; render(); }, fail),
+    watchMoment(uid, (d) => { momentDoc = d || {}; freeFrom = Number.isFinite(momentDoc.freeFrom) ? momentDoc.freeFrom : null; render(); }, fail),
     watchLearn(uid, (d) => { learnStats = d || {}; render(); }, fail),
     watchDayPlan(uid, (d) => { dayPlan = d || null; planKnown = true; render(); }, fail),
   ];
@@ -2045,6 +2059,10 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     start(id, mode){
       const task = (tasks || []).find((t) => t.id === id);
       if (!task) return;
+      // Already running: carry on (into Deep Focus if asked), the clock untouched.
+      if (run && !run.batch && run.taskId === id) { if (mode && mode !== run.mode) setMode(mode); return; }
+      // Another task running: end it first, its minutes kept, or they're lost.
+      if (run) endSession({ quiet: true });
       if (task.status !== "ready") restoreTask(uid, id, { status: "ready", waitingOn: null, checkOn: null, notBefore: null, touchedAt: Date.now() }).catch(fail);
       skips.delete(id);
       begin(task, mode);

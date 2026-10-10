@@ -18,7 +18,7 @@ import { localDate, LABELS, dayAfter } from "./model.js";
 import { createEvent, watchCalendar } from "./calendar.js";
 import { planDay } from "./plan.js";
 import { planView } from "./plan-view.js";
-import { dayHours, dayStartAt } from "./day.js";
+import { dayHours, dayStartAt, toMin } from "./day.js";
 import { watchSettings, watchRun, saveSettings } from "./store.js";
 import { rank } from "./engine.js";
 import { workBase } from "./context.js";
@@ -133,7 +133,10 @@ export function mountTell(form, input, mic, uid, { openAdd, openTask, guest = fa
 
   // The answer: one line, then a card per change, then Apply.
   function proposal(text, { reply, actions = [], question, choices = [] }){
-    const list = [...actions];
+    // "Until 1am": Daisey's day can't cross midnight yet (day.js dayHours
+    // drops an end before the start), so it runs to 23:59 and says so.
+    const list = actions.map((a) => (a.kind === "moment" && a.dayEnd && toMin(a.dayEnd) != null && toMin(a.dayEnd) <= dayHours(settings).start
+      ? { ...a, dayEnd: "23:59", midnight: true } : a));
     const draw = () => {
       const queries = list.filter((a) => a.kind === "query");
       const cards = list.map((a, i) => a.kind === "query" ? null : card(a, () => { list.splice(i, 1); draw(); })).filter(Boolean);
@@ -212,7 +215,7 @@ export function mountTell(form, input, mic, uid, { openAdd, openTask, guest = fa
     } else if (a.kind === "moment") {
       if (a.place) bits.push(PLACE[a.place]);
       if (a.minutes) bits.push(`${dur(a.minutes)} free`);
-      if (a.dayEnd) bits.push(`day ends ${a.dayEnd} today`);
+      if (a.dayEnd) bits.push(a.midnight ? "day runs to midnight (not past it yet)" : `day ends ${a.dayEnd} today`);
     }
     const LABEL = { add: "New task", update: "Change", waiting: "Pending", drop: "Drop", moment: "Right now", project: "New project", done: "Done", event: "New event" };
     const title = a.kind === "add" || a.kind === "event" ? a.title : a.kind === "project" ? a.project : a.kind === "moment" ? null : t?.title;
