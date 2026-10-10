@@ -1531,7 +1531,10 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     if (!p || !tasks) return null;
     const now = Date.now(), tl = timeline(p.items || [], { ...planCtx(), since: planSince() });
     const off = new Set([...hidden(now), ...skip]);
-    const rows = tl.rows.filter((x) => !off.has(x.taskId) && !x.task.onHold);
+    // A missed row (its whole time passed, nothing started) isn't "now": the
+    // card showed it "until" a time already gone while Now sat on the next
+    // (2026-10-10). The missed note under the card asks about it instead.
+    const rows = tl.rows.filter((x) => !off.has(x.taskId) && !x.task.onHold && !x.missed);
     const brk = !run && tl.breaks.find((b) => b.start <= now && now < b.end);
     if (brk && (!rows[0] || rows[0].start >= brk.end - 60000)) return { brk, next: rows[0] || null };
     if (rows[0]) return { row: rows[0] };

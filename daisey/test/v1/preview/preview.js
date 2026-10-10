@@ -183,6 +183,11 @@ const SCENARIOS = {
   // into the past slot as "didn't happen" (2026-10-10).
   get switchlate(){ const s = structuredClone(SCENARIOS.switchplan), ago = Date.now() - 40 * 60000;
     for (const t of s.tasks) t.over = { touchedAt: ago, createdAt: ago }; s.dayplan.approvedAt = ago; return s; },
+  // An approved plan whose first task's whole time passed untouched (missed,
+  // "?"): the card must show the task that's on Now, not the missed one
+  // "until" a time already gone (2026-10-10).
+  get missedhead(){ const s = structuredClone(SCENARIOS.switchlate);
+    s.dayplan.items = [{ taskId: "t3", minutes: 30 }, { taskId: "t1", minutes: 60 }, { taskId: "t2", minutes: 5 }]; return s; },
   // Nothing active: only waiting and Someday (the calm empty state).
   rest: { tasks: [
     { title: "Waiting on Yuval", project: "Reprise", size: 30, over: { status: "waiting", waitingOn: "Yuval" } },
