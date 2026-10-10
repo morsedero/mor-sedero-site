@@ -14,7 +14,7 @@
 // the same timer.
 import { overruled, eventKey } from "./reality.js";
 import * as deep from "./deep.js";
-import { addTask, updateTask, watchTasks, watchRun, watchSkips, saveSkips, startRun, extendRun, endRun, startBatch, tickBatch, endBatch, skipNow, blockTask, restoreTask, finishTask, setDoneMinutes, watchSettings, saveSettings, watchMoment, saveMoment, watchLearn, bumpLearn, saveRun, cancelRun, watchDayPlan, saveDayPlan, holdTask, releaseTask } from "./store.js";
+import { addTask, updateTask, watchTasks, watchRun, watchSkips, saveSkips, startRun, extendRun, endRun, startBatch, tickBatch, endBatch, skipNow, blockTask, restoreTask, finishTask, setDoneMinutes, watchSettings, saveSettings, watchMoment, saveMoment, watchLearn, bumpLearn, saveRun, cancelRun, watchDayPlan, saveDayPlan, holdTask, releaseTask, logWork } from "./store.js";
 import { sortable } from "./ppdrag.js";
 import { proposeDay, timeline, withBreaks, trimBreaks, isBreak, planProgress, refit, topUp, daySig, relayMeals } from "./proposal.js";
 import { rethink } from "./rethink.js";
@@ -30,7 +30,7 @@ import { missState, silenceText, lastActivity } from "./miss.js";
 import { takeQuiet } from "./push.js";
 import { findPhoneTasks, phoneOkIds, searching } from "./phone.js";
 import { rank, freeWindow, timeBucket, matchProject, dueAt } from "./engine.js";
-import { leftMinutes, toMinutes, progressOf, progressPatch, shrinkPatch, shrunk, localDate, skipSnapshot, skipLesson, pendingCheck, notYet, pushedTo, bringBack, againInput, dayAfter, doneSnapshot } from "./model.js";
+import { leftMinutes, toMinutes, progressOf, progressPatch, shrinkPatch, shrunk, localDate, logicalDate, LATE_HOUR, skipSnapshot, skipLesson, pendingCheck, notYet, pushedTo, bringBack, againInput, dayAfter, doneSnapshot } from "./model.js";
 import { isRoutine, routineCalendar, eventsToLog, sessionPatch } from "./routine.js";
 import { waitingFor, personOf } from "./nudge.js";
 import { dayHours, isNight, nextMorning, dayEndAt, bookings, sameTitle, minText, gapsToday } from "./day.js";
@@ -101,27 +101,30 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
   const state = { chosen: null, showAlts: false, asking: false, laterAsk: false, pendAsk: false, notNow: false };
   // { date, items: { id: { count, until } } } — today's Laters, from Firestore.
   let skipDoc = null;
-  const skipItems = () => (skipDoc?.date === localDate() ? skipDoc.items || {} : {});
+  // The day the plan and today's Laters belong to: yesterday's, after midnight
+  // while a day stretched past it is still on (day.js dayHours late).
+  const dayKey = () => (dayHours(settings).late ? logicalDate() : localDate());
+  const skipItems = () => (skipDoc?.date === dayKey() ? skipDoc.items || {} : {});
   const hidden = (now = Date.now()) => Object.entries(skipItems()).filter(([, v]) => v.until > now).map(([id]) => id);
   const skipCounts = () => Object.fromEntries(Object.entries(skipItems()).map(([id, v]) => [id, v.count]));
   const skips = {
     add(id){
       const items = { ...skipItems() };
       items[id] = { count: (items[id]?.count || 0) + 1, until: Date.now() + LATER_MS };
-      skipDoc = { date: localDate(), items };
+      skipDoc = { date: dayKey(), items };
       saveSkips(uid, skipDoc).catch(fail);
     },
     delete(id){
       const items = { ...skipItems() };
       delete items[id];
-      skipDoc = { date: localDate(), items };
+      skipDoc = { date: dayKey(), items };
       saveSkips(uid, skipDoc).catch(fail);
     },
     // Several at once, one write: "Show the 2 you put off".
     drop(ids){
       const items = { ...skipItems() };
       for (const id of ids) delete items[id];
-      skipDoc = { date: localDate(), items };
+      skipDoc = { date: dayKey(), items };
       saveSkips(uid, skipDoc).catch(fail);
     },
     get size(){ return hidden().length; },
@@ -473,10 +476,13 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
   // The running task was deleted (the sheet, a project's Delete, the other
   // device): end the run, or focus mode stays on a task that's gone. Only on a
   // server snapshot (guests have no server), and not for a run just started,
-  // whose task can lag behind the run doc on another device.
-  const dropGhostRun = (meta) => {
+  // whose task can lag behind the run doc on another device. Its minutes
+  // still count for the project (the work log), from the last list it was in.
+  const dropGhostRun = (meta, was) => {
     if (!run || !tasks || (meta?.fromCache && !guest) || Date.now() - run.startedAt < 120000) return;
     if ((run.batch || [run.taskId]).some((id) => tasks.some((t) => t.id === id))) return;
+    const gone = !run.batch && (was || []).find((t) => t.id === run.taskId), m = gone ? bookedMinutes(run, gone) : 0;
+    if (gone && m >= CANCEL_KEEP_MINUTES) logWork(uid, gone, m).catch(fail);
     run = null; cancelRun(uid).catch(fail);
   };
 
@@ -610,12 +616,12 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
       stepAside(task, { label: `Later (${dur(LATER_MINUTES)}): `, lesson: true, write: () => Promise.all([skipNow(uid, task), declined(task), extra ? restoreTask(uid, task.id, extra) : null]) });
     } else if (when === "tomorrow") {
       // Still up past midnight (before 04:00): tomorrow is the day you wake into.
-      const d = new Date(); if (d.getHours() >= 4) d.setDate(d.getDate() + 1);
+      const d = new Date(); if (d.getHours() >= LATE_HOUR) d.setDate(d.getDate() + 1);
       let day = localDate(d.getTime());
       if (task.dateKind === "deadline" && task.due && task.due < day) day = task.due; // never hide it past its deadline
       stepAside(task, { label: "Tomorrow: ", lesson: true, write: () => Promise.all([restoreTask(uid, task.id, { ...pushedTo(task, { notBefore: day }), ...extra }), declined(task)]) });
     } else if (when === "week") {
-      let day = pickWeekDay(task, { events: cal.status === "ok" ? cal.events : [], tasks: tasks || [], hours: dayHours(settings) });
+      let day = pickWeekDay(task, { events: cal.status === "ok" ? cal.events : [], tasks: tasks || [], hours: dayHours({ ...settings, dayEndToday: null }) }); // other days: no stretch
       if (task.dateKind === "deadline" && task.due && task.due < day) day = task.due; // never hide it past its deadline
       const label = new Date(`${day}T12:00`).toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" });
       stepAside(task, { label: `This week (${label}): `, lesson: true, write: () => Promise.all([restoreTask(uid, task.id, { ...pushedTo(task, { notBefore: day }), ...extra }), declined(task)]) });
@@ -1272,7 +1278,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
       render();
     }).catch(fail);
   }
-  const todaysPlan = () => (dayPlan?.date === localDate() ? dayPlan : null);
+  const todaysPlan = () => (dayPlan?.date === dayKey() ? dayPlan : null);
   const approvedPlan = () => (todaysPlan()?.status === "approved" ? dayPlan : null);
   function openProposal(){
     const saved = todaysPlan(), ctx = planCtx(), reuse = saved?.items?.length && saved.status !== "dismissed";
@@ -1312,7 +1318,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     const approvedAt = was?.approvedAt ?? null, declined = was?.declined || [], mealsLaid = was?.mealsLaid || {};
     extra = { ...(was?.behindNo ? { behindNo: was.behindNo } : {}), ...(was?.offer ? { offer: was.offer } : {}), ...extra };
     const sig = cal.status === "ok" ? daySig(cal.events, dayHours(settings)) : null;
-    dayPlan = { date: localDate(), status, items, approvedAt, declined, mealsLaid, sig, ...extra, at: Date.now() };
+    dayPlan = { date: dayKey(), status, items, approvedAt, declined, mealsLaid, sig, ...extra, at: Date.now() };
     saveDayPlan(uid, { date: dayPlan.date, status, items, approvedAt, declined, mealsLaid, sig, ...extra }).catch(fail);
   };
   // An unseen notice survives a save made for another reason.
@@ -1871,8 +1877,8 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
 
     // The start of the day: once per day, until it's approved or turned
     // down, the card opens as the proposal (when there's something to plan).
-    if (!prop.open && planKnown && cal.status !== "loading" && prop.auto !== localDate() && !todaysPlan()) {
-      prop.auto = localDate();
+    if (!prop.open && planKnown && cal.status !== "loading" && prop.auto !== dayKey() && !todaysPlan()) {
+      prop.auto = dayKey();
       const items = proposeDay({ ...planCtx() });
       if (items.length >= 2) { prop.items = withBreaks(items, planCtx()); prop.exclude = []; prop.touched = false; prop.sig = daySigNow(); prop.askOpts = null; prop.open = true; }
     }
@@ -2006,7 +2012,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     watchWhere((v) => { located = v; applyTrips(); render(); }),
     watchProjectColors(() => render()),
     watchProjectTiers(() => render()),
-    watchTasks(uid, (ts, meta) => { tasks = ts; dropGhostRun(meta); render(); tryNoticeStart(); logRoutineEvents(); }, fail),
+    watchTasks(uid, (ts, meta) => { const was = tasks; tasks = ts; dropGhostRun(meta, was); render(); tryNoticeStart(); logRoutineEvents(); }, fail),
     watchCalendar((c) => { rawCal = c; applyTrips(); render(); logRoutineEvents(); }),
     watchRun(uid, (r) => { run = r; runKnown = true; if (r) handoff = null; render(); tryNoticeStart(); }, fail),
     watchSkips(uid, (s) => { skipDoc = s; render(); }, fail),

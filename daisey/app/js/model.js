@@ -77,6 +77,11 @@ export function localDate(ms = Date.now()){
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
 
+// A day can run on past midnight (Tell Daisey "I can work until 1am"), up to
+// LATE_HOUR. Before that hour, the day you're still in is yesterday's date.
+export const LATE_HOUR = 4;
+export const logicalDate = (ms = Date.now()) => localDate(new Date(ms).getHours() < LATE_HOUR ? ms - (LATE_HOUR + 1) * 3600000 : ms);
+
 // ---------- field cleaning ----------
 
 const text = (v) => (typeof v === "string" ? v.trim().replace(/\s+/g, " ") : "");

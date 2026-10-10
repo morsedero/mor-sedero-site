@@ -21,7 +21,7 @@
 // app closed), so both name the same moment. PURE.
 import { MISS } from "./weights.js";
 import { runState, overruled, eventKey } from "./reality.js";
-import { localDate, leftMinutes, notYet } from "./model.js";
+import { localDate, logicalDate, leftMinutes, notYet } from "./model.js";
 import { effectiveDue } from "./triage.js";
 import { dayStartAt, dayEndAt } from "./day.js";
 
@@ -97,7 +97,7 @@ export function missState({ tasks = [], events = [], run = null, now = Date.now(
   if (busy.some(([s, e]) => s < now + MISS.after * MIN && e > now)) return null;
   const slots = missedSlots({ tasks, events, run, now, hours, planAt });
   if (!slots.length) return null;
-  const today = localDate(now), act = lastActivity(tasks, run, planAt);
+  const today = hours?.late ? logicalDate(now) : localDate(now), act = lastActivity(tasks, run, planAt);
   const dayA = dayStartAt(now, hours), dayB = dayEndAt(now, hours), from = Math.max(act, dayA);
   const last = slots[slots.length - 1];
   const need = tasks.filter((t) => t.status === "ready" && !notYet(t, now) && t.due && effectiveDue(t, now) <= today)

@@ -126,6 +126,29 @@ test("dayEndToday stretches today's end only", async () => {
   assert.equal(dayHours({ dayEndToday: { date: localDate(), end: "06:00" } }).end, 22 * 60); // before the start: ignored
 });
 
+test("dayEndToday past midnight: 'until 1am' runs on, then it's night (BEHAVIOR_REVIEW #4)", async () => {
+  const { dayHours, isNight, dayEndAt, minText } = await import("../../app/js/day.js");
+  const { logicalDate } = await import("../../app/js/model.js");
+  const at = (d, h, m = 0) => new Date(2026, 9, d, h, m).getTime();
+  const s = { dayEndToday: { date: "2026-10-10", end: "01:00" } };
+  // 23:30 on the 10th: the day ends 01:00 on the 11th.
+  const eve = dayHours(s, at(10, 23, 30));
+  assert.equal(eve.end, 25 * 60); assert.equal(minText(eve.end), "01:00");
+  assert.equal(isNight(at(10, 23, 30), eve), false);
+  assert.equal(dayEndAt(at(10, 23, 30), eve), at(11, 1));
+  // 00:30 on the 11th: still the 10th's day, until 01:00.
+  assert.equal(logicalDate(at(11, 0, 30)), "2026-10-10");
+  const late = dayHours(s, at(11, 0, 30));
+  assert.equal(late.late, true); assert.equal(isNight(at(11, 0, 30), late), false);
+  assert.equal(dayEndAt(at(11, 0, 30), late), at(11, 1));
+  // 01:30: over, night. 09:00 on the 11th: the usual day, no stretch.
+  assert.equal(isNight(at(11, 1, 30), dayHours(s, at(11, 1, 30))), true);
+  const next = dayHours(s, at(11, 9));
+  assert.equal(next.end, 22 * 60); assert.equal(next.late, undefined);
+  // Said after midnight (date = the logical day): same.
+  assert.equal(dayHours({ dayEndToday: { date: "2026-10-10", end: "02:00" } }, at(11, 1)).late, true);
+});
+
 test("meals: Breakfast, Lunch, Dinner; only Lunch on by default, 13-14; one time each, saved ones override", async () => {
   const { mealsOf, mealPrefs, dayHours } = await import("../../app/js/day.js");
   assert.deepEqual(mealPrefs({}).map((m) => [m.name, m.on]), [["Breakfast", false], ["Lunch", true], ["Dinner", false]]);

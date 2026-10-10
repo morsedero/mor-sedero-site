@@ -45,10 +45,15 @@ reading the code, none fixed yet. Ranked by harm.
   whole coming day. Tell's "tomorrow" has the same problem.
 - At 00:00 the approved plan and today's Laters vanish (both keyed by date).
 - Fix: treat times before day start as the previous day (a "logical day").
-- **Partly fixed 2026-10-10:** Later → Tomorrow before 04:00 means the coming
-  day. Tell "until 1am" now sets 23:59 and says "day runs to midnight (not
-  past it yet)". Still open: a day can't cross midnight; plan and Laters
-  reset at 00:00; Tell's "tomorrow" after midnight.
+- **Fixed 2026-10-10:** a stretch can run past midnight, up to 04:00
+  (`model.LATE_HOUR`, `logicalDate`). `dayHours(settings, now)`: before
+  midnight "until 1am" ends at 25:00; after it, until that end, the day is
+  still on (`late`), and the plan, today's Laters and the silence check keep
+  yesterday's date (`now.js dayKey`). Tell saves the stretch on the logical
+  day; "until 6am" (between 04:00 and the day start) stops at 03:59 and says
+  so. Later → Tomorrow before 04:00 is the coming day. Preview `latenight`
+  (--at 00:30 day on, --at 01:30 night). Still by design: Settings' usual day
+  ends by 23:59; Tell's "tomorrow" after midnight is still the calendar's.
 
 ## 5. Reopen then Done counts twice
 - Sheet **Reopen** (`addtask.js:423`) sets status ready but doesn't remove the
@@ -70,14 +75,16 @@ reading the code, none fixed yet. Ranked by harm.
 - `freeFrom` is in memory only (`now.js:85`). iOS kills the PWA in the
   background, a reload, or the other device: the card goes back to "busy".
 - **Fixed 2026-10-10:** `freeFrom` saved in `state/moment`, read back on load
-  and cleared when the event ends. Not checked in the browser.
+  and cleared when the event ends. Preview: saved on tap, cleared by Stop
+  ignoring; the reload read-back is one line, not run in the browser.
 
 ## 8. Deleting the running task
 - Delete in the sheet doesn't stop the run: Focus shows "this task" with no
   title, the minutes are lost.
 - **Fixed 2026-10-10:** a server tasks snapshot without the running task
   (2+ min into the run) ends the run (`dropGhostRun`), for every delete path.
-  Checked in preview. Minutes on the deleted task are dropped.
+  Checked in preview. Its minutes still go to the work log (project time),
+  from the last task list it was in.
 
 ## 9. Offline / two-tab edge cases
 - Guest mode, two tabs: no `storage` listener, so tab A never sees tab B's

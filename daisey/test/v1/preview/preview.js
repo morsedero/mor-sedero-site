@@ -32,6 +32,12 @@ const SCENARIOS = {
     { title: "Fix the boss loop", project: "Monster Punk", size: 60, over: ago(6) },
     { title: "Lesson prep", project: "Teaching", size: 30, due: day(4) },
   ] },
+  // Up past midnight on a day stretched to 01:00 (Tell "until 1am", said
+  // yesterday): run with --at 00:30 (day still on) or --at 01:30 (night).
+  latenight: { tasks: [
+    { title: "Mix review for Reprise", project: "Reprise", size: 20, due: day(2) },
+    { title: "Send invoice to Uri", project: "Admin", size: 5, due: day(0) },
+  ], settings: { deadlinesAsked: true, dayEndToday: { date: day(-1), end: "01:00" } } },
   // Passed dates: 4 deadlines (over the sweep's 3) and 2 targets.
   old: { tasks: [
     { title: "Submit grant report", project: "Admin", size: 60, due: day(-5), dateKind: "deadline" },

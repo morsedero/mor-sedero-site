@@ -9,7 +9,7 @@
 // line — now bounded by the day hours.
 import * as W from "./weights.js";
 import { effectiveDue } from "./triage.js";
-import { localDate, notYet } from "./model.js";
+import { localDate, logicalDate, LATE_HOUR, notYet } from "./model.js";
 
 const MIN = 60000;
 const pad = (n) => String(n).padStart(2, "0");
@@ -19,18 +19,28 @@ export function toMin(s){
   const m = /^(\d{1,2}):(\d{2})$/.exec(String(s ?? "").trim());
   return m && +m[1] < 24 && +m[2] < 60 ? +m[1] * 60 + +m[2] : null;
 }
-export const minText = (min) => `${pad(Math.floor(min / 60))}:${pad(min % 60)}`;
+// Wraps past midnight: a day stretched to 25:00 reads "01:00".
+export const minText = (min) => { const m = ((min % 1440) + 1440) % 1440; return `${pad(Math.floor(m / 60))}:${pad(m % 60)}`; };
 
 // The user's day hours from state/settings ({ dayStart, dayEnd } as "HH:MM"),
 // as minutes after midnight; the default when unset or nonsense.
 // "My day can run until 23:00 today" (Tell Daisey): settings.dayEndToday =
 // { date, end } stretches (or shortens) today's end only; tomorrow it's gone.
-export function dayHours(settings = {}){
+// An end before LATE_HOUR runs past midnight ("until 1am", date = the
+// logicalDate it was said on): before midnight the end reads 25:00; after
+// it, until that end, the day is still on, as { start: 0, end, late: true }
+// (late: the plan and today's Laters keep yesterday's date, now.js dayKey).
+export function dayHours(settings = {}, now = Date.now()){
   const s = toMin(settings.dayStart), e = toMin(settings.dayEnd);
   const base = s != null && e != null && e > s ? { start: s, end: e } : { ...W.DAY_HOURS };
-  const today = settings.dayEndToday, end = toMin(today?.end);
-  if (today?.date === localDate() && end != null && end > base.start) base.end = end;
-  base.meals = mealsToday(settings);
+  const today = settings.dayEndToday, end = toMin(today?.end), late = LATE_HOUR * 60;
+  const d = new Date(now), m = d.getHours() * 60 + d.getMinutes();
+  if (end != null && end >= late) { if (today?.date === localDate(now) && end > base.start) base.end = end; }
+  else if (end != null && today?.date === logicalDate(now)) {
+    if (m >= late) base.end = end + 1440;
+    else if (m < end) return { start: 0, end, late: true, meals: [] };
+  }
+  base.meals = mealsToday(settings, now);
   return base;
 }
 

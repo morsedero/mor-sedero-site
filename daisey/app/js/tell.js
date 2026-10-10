@@ -14,7 +14,7 @@
 // down the same path as a typed one. Where there's none, it opens the keyboard.
 import { idToken } from "./firebase.js";
 import { watchTasks, addTask, updateTask, saveMoment, finishTask } from "./store.js";
-import { localDate, LABELS, dayAfter } from "./model.js";
+import { localDate, logicalDate, LATE_HOUR, LABELS, dayAfter } from "./model.js";
 import { createEvent, watchCalendar } from "./calendar.js";
 import { planDay } from "./plan.js";
 import { planView } from "./plan-view.js";
@@ -133,10 +133,12 @@ export function mountTell(form, input, mic, uid, { openAdd, openTask, guest = fa
 
   // The answer: one line, then a card per change, then Apply.
   function proposal(text, { reply, actions = [], question, choices = [] }){
-    // "Until 1am": Daisey's day can't cross midnight yet (day.js dayHours
-    // drops an end before the start), so it runs to 23:59 and says so.
-    const list = actions.map((a) => (a.kind === "moment" && a.dayEnd && toMin(a.dayEnd) != null && toMin(a.dayEnd) <= dayHours(settings).start
-      ? { ...a, dayEnd: "23:59", midnight: true } : a));
+    // "Until 1am" runs past midnight (day.js dayHours), up to LATE_HOUR; an
+    // end between that and the day's start ("until 6am") can't be, so it
+    // stops at the latest one and says so.
+    const endOk = (m) => m < LATE_HOUR * 60 || m > dayHours({ ...settings, dayEndToday: null }).start;
+    const list = actions.map((a) => (a.kind === "moment" && a.dayEnd && toMin(a.dayEnd) != null && !endOk(toMin(a.dayEnd))
+      ? { ...a, dayEnd: `0${LATE_HOUR - 1}:59`, latest: true } : a));
     const draw = () => {
       const queries = list.filter((a) => a.kind === "query");
       const cards = list.map((a, i) => a.kind === "query" ? null : card(a, () => { list.splice(i, 1); draw(); })).filter(Boolean);
@@ -215,7 +217,7 @@ export function mountTell(form, input, mic, uid, { openAdd, openTask, guest = fa
     } else if (a.kind === "moment") {
       if (a.place) bits.push(PLACE[a.place]);
       if (a.minutes) bits.push(`${dur(a.minutes)} free`);
-      if (a.dayEnd) bits.push(a.midnight ? "day runs to midnight (not past it yet)" : `day ends ${a.dayEnd} today`);
+      if (a.dayEnd) bits.push(a.latest ? `day runs to ${a.dayEnd}, the latest it can` : `day ends ${a.dayEnd} today`);
     }
     const LABEL = { add: "New task", update: "Change", waiting: "Pending", drop: "Drop", moment: "Right now", project: "New project", done: "Done", event: "New event" };
     const title = a.kind === "add" || a.kind === "event" ? a.title : a.kind === "project" ? a.project : a.kind === "moment" ? null : t?.title;
@@ -256,7 +258,7 @@ export function mountTell(form, input, mic, uid, { openAdd, openTask, guest = fa
         if (tripDay) saveSettings(uid, { tripDay }).catch(() => {});
         a = { ...a, place: null };
       }
-      if (a.kind === "moment") return Promise.all([a.dayEnd ? saveSettings(uid, { dayEndToday: { date: localDate(), end: a.dayEnd } }) : null, (a.place || a.minutes) ? saveMoment(uid, { ...(a.place ? { place: { value: a.place, at: now } } : {}), ...(a.minutes ? { free: { minutes: a.minutes, at: now } } : {}) }) : null]);
+      if (a.kind === "moment") return Promise.all([a.dayEnd ? saveSettings(uid, { dayEndToday: { date: logicalDate(), end: a.dayEnd } }) : null, (a.place || a.minutes) ? saveMoment(uid, { ...(a.place ? { place: { value: a.place, at: now } } : {}), ...(a.minutes ? { free: { minutes: a.minutes, at: now } } : {}) }) : null]);
       return null;
     }).filter(Boolean);
     close();
