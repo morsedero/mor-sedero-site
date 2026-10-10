@@ -1764,7 +1764,7 @@ body.focus .shell { block-size: auto; min-block-size: 100dvh; overflow: visible;
 
 /* ---------- Bloom (bloom.js), on the Projects page ----------
    One page since 2026-10-08 (Mor): each project card grows its flower, and
-   the routines sit above the tiers. */
+   the routines and the week's numbers live in the avatar menu. */
 .pp-acts { display: inline-flex; align-items: center; gap: 14px; }
 .pp-inbox-chip { position: relative; display: inline-flex; align-items: center; gap: 5px; block-size: 30px; padding-inline: 10px; border: 1px dashed var(--bud); border-radius: 999px; background: none; color: var(--ink); font: inherit; font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums; cursor: pointer; }
 .pp-inbox-chip::after { content: ""; position: absolute; inset: -7px -2px; } /* 44px to the finger */
@@ -1778,7 +1778,9 @@ body.focus .shell { block-size: auto; min-block-size: 100dvh; overflow: visible;
 .ms-fig strong { font-size: 16px; font-weight: 800; letter-spacing: -.01em; color: var(--ink); white-space: nowrap; }
 .ms-fig span { font-size: 11px; color: var(--ink-2); }
 .menu-stats .ms-line { display: flex; gap: 6px; font-size: 12px; color: var(--ink-2); margin-block-start: 8px; }
-.bl-routines { margin-block: 10px 4px; }
+/* Routines under the week's numbers, in the same quiet box. */
+.menu-stats .bl-routines { margin-block-start: 10px; padding: 6px 10px; border-radius: 16px; background: var(--bg); }
+.menu-stats .bl-routine { gap: 8px; }
 
 /* The card: flower standing on its bottom edge, the rest beside it. */
 .pcard:has(> .pcard-fl) { grid-template-columns: auto minmax(0, 1fr); column-gap: 10px; }

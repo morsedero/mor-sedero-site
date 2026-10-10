@@ -150,7 +150,11 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
   // of their own, watched only while the menu is open.
   let statsBox = null;
   const statsGrowth = mountGrowth(uid, { onChange: () => paintStats() });
-  function paintStats(){ if (statsBox) statsBox.replaceChildren(...statsCard(statsGrowth.read(tasks || [], list().map((p) => p.name)))); }
+  // All routines sit under the numbers (Mor, 2026-10-10): the menu is the
+  // place for stats; the Projects page is for deciding.
+  function paintStats(){ if (!statsBox) return;
+    const all = list(), g = statsGrowth.read(tasks || [], all.map((p) => p.name));
+    statsBox.replaceChildren(...statsCard(g), routinesSection(g.routines, tasks || [], new Map(all.map((p) => [p.name, p.color || ""]))) || ""); }
 
   // ---------- the Projects page ----------
   // Tiers (Mor, 2026-10-08): Focus, Keep going, Background. The engine
@@ -235,10 +239,8 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
           h("span", { className: "pp-tier-n", textContent: t === "focus" ? `${ins.length}/${FOCUS_MAX}` : String(ins.length) })),
         h("span", { className: "pp-tier-empty", textContent: "Drag a project here" }), ...ins.map(card)); };
     const y = els.grid.scrollTop;
-    // Routines on top, no week daisies (Mor, 2026-10-10).
-    els.grid.replaceChildren(...[
-      routinesSection(g.routines, tasks || [], new Map(all.map((p) => [p.name, p.color || ""]))),
-      dragProjects(h("div", { className: "pgrid tiers" }, ...TIERS.map(tier)))].filter(Boolean));
+    // No week daisies; routines live in the avatar menu (Mor, 2026-10-10).
+    els.grid.replaceChildren(dragProjects(h("div", { className: "pgrid tiers" }, ...TIERS.map(tier))));
     els.grid.scrollTop = y;
   }
 
