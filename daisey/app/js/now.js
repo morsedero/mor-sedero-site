@@ -13,8 +13,7 @@
 // the run lives in Firestore, so this tab, a reload and the phone all show
 // the same timer.
 import { overruled, eventKey } from "./reality.js";
-import * as deep from "./deep.js";
-import { addTask, updateTask, watchTasks, watchRun, watchSkips, saveSkips, startRun, extendRun, endRun, startBatch, tickBatch, endBatch, skipNow, blockTask, restoreTask, finishTask, setDoneMinutes, watchSettings, saveSettings, watchMoment, saveMoment, watchLearn, bumpLearn, saveRun, cancelRun, watchDayPlan, saveDayPlan, holdTask, releaseTask, logWork } from "./store.js";
+import { addTask, updateTask, watchTasks, watchRun, watchSkips, saveSkips, endBatch, skipNow, blockTask, restoreTask, finishTask, setDoneMinutes, watchSettings, saveSettings, watchMoment, saveMoment, watchLearn, bumpLearn, cancelRun, watchDayPlan, saveDayPlan, logWork } from "./store.js";
 import { sortable } from "./ppdrag.js";
 import { proposeDay, timeline, withBreaks, trimBreaks, isBreak, planProgress, refit, topUp, daySig, relayMeals } from "./proposal.js";
 import { rethink } from "./rethink.js";
@@ -23,8 +22,8 @@ import { placeNow, workBase, watchProjectTiers } from "./context.js";
 import { watchWhere, setManual, setStill, saveSpot, whereAsk, homeAt } from "./where.js";
 import { withTrips, ridingAs, stillRiding, asPassenger, chainFrom, setTripDay, MODES, tripAsks, answer as tripAnswer, noTrip } from "./trips.js";
 import { pickWeekDay } from "./triage.js";
-import { focusView, handoffView, elapsedMinutes, targetMinutes, batchFocusView, batchName, sinceMark, paused, resumed, runCap, bookedMinutes, holdButton, stillOnMinutes, bloomHold } from "./focus.js";
-import { watchCalendar, logDone } from "./calendar.js";
+import { handoffView, sinceMark, runCap, bookedMinutes, bloomHold } from "./focus.js";
+import { watchCalendar } from "./calendar.js";
 import { LATER_MINUTES, DRAIN, CANCEL_KEEP_MINUTES, LIGHTER } from "./weights.js";
 import { missState, silenceText, lastActivity } from "./miss.js";
 import { takeQuiet } from "./push.js";
@@ -51,7 +50,7 @@ const clock = (ms) => new Date(ms).toLocaleTimeString([], { hour: "2-digit", min
 // how many tasks are done today, for the header's chip. onNeedsCount(n):
 // how many decisions Needs you holds, for the amber chip.
 // onWrap(): the evening wrap (Needs you: each task still open for today).
-export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap, name = "", onDone, onNeedsCount, onPlanProgress, planRoot, onPlanScreen, onReady, missDialog = null, guest = false } = {}){
+export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap, name = "", onDone, onNeedsCount, onPlanProgress, planRoot, onPlanScreen, onReady, onFocusMode, missDialog = null, guest = false } = {}){
   let tasks = null; // null until the first snapshot
   let settings = {}; // state/settings: when the sweep was last offered
   let momentDoc = {}; // state/moment: place corrections
@@ -66,7 +65,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
   const applyTrips = () => {
     cal = rawCal.status === "ok" ? { ...rawCal, events: ridingAs(stillRiding(withTrips(rawCal.events, settings.trips || {}, settings.tripDay || [], settings.laptop ?? null), located), located) } : rawCal;
   };
-  let lastWindow, lastClock;
+  let lastWindow;
   let run = null; // the state/now doc while a task is running
   let handoff = null; // { title, next } after Done, until the next choice
   // The day's proposed schedule (proposal.js). dayPlan: today's saved doc
@@ -78,7 +77,6 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
   // they came from (the lighter plan's), so a fresh take keeps it.
   const prop = { open: false, items: [], exclude: [], ask: false, text: "", busy: false, note: "", auto: null, touched: false, sig: null, askOpts: null };
   let ppDragging = false, ppStale = false; // a plan-row drag is live (ppdrag.js)
-  let holdAsk = false, holdText = ""; // "Waiting for reply" on the running card
   // The event you said you're free from, as its start time in ms (what
   // engine.freeWindow reports). Cleared on its own once that event is no
   // longer the one running.
@@ -183,9 +181,6 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
 
   const asking = () => state.more || state.notNow || state.pendAsk || state.showAlts;
 
-  // The one loud button: amber, with a play icon.
-  const startButton = (text, aria, onclick) => h("button", { className: "btn primary start", type: "button", ariaLabel: aria, onclick },
-    icon("play"), h("span", { textContent: text }));
 
   // The engine's pieces as a plain sentence: capital first, full stop last.
   function sentence(parts){
@@ -408,55 +403,14 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
       action: freeNowButton(ev, ev.title) });
   }
 
-  // Focus mode and the handoff own the whole screen (body.focus hides the
-  // header, the panel and the Tell pill).
-  // A batch: a checklist in focus mode. The last tick ends it and hands off
-  // like Done; Stop leaves the unticked ones open with their share of the time.
-  // A finished task goes into Google Calendar's "Daisey log" as a lookback,
-  // unless turned off in the account menu. Under a minute isn't worth a
-  // block. A failure is only logged: the task is done either way.
-  const logFinished = (title, minutes, taskId, planned, end) => {
-    if (settings.logDone === false || minutes < 1) return;
-    const note = `Done with Daisey: ${dur(Math.round(minutes))}${planned ? ` (planned ${dur(planned)})` : ""}.`;
-    logDone({ title, minutes, taskId, note, ...(end ? { end } : {}) }).catch((e) => console.error("[daisey] log to calendar", e));
-  };
-
-  function renderBatch(){
-    const byId = new Map((tasks || []).map((t) => [t.id, t]));
-    const list = run.batch.map((id) => byId.get(id)).filter(Boolean);
-    const type = list[0]?.type;
-    showing(run.taskId);
-    return batchFocusView(run, list, type, {
-      onTick: (t) => {
-        const prev = run, minutes = Math.min(sinceMark(run), runCap(t.size));
-        const done = [...(run.done || []), t.id];
-        const last = list.every((x) => done.includes(x.id));
-        if (last) {
-          const total = Math.min(elapsedMinutes(prev), runCap(list.reduce((s, x) => s + (x.size || 0), 0) + (prev.extra || 0)));
-          handoff = { title: batchName(type, list.length), skip: prev.taskId, minutes: total, ids: [...prev.batch] };
-          tickBatch(uid, prev, t, minutes).then(() => endBatch(uid, [], 0)).catch(fail);
-          logFinished(`${batchName(type, list.length)}: ${list.map((x) => x.title).join(", ")}`, total, prev.taskId,
-            list.reduce((s, x) => s + (x.size || 0), 0));
-          run = null;
-        } else {
-          run = { ...run, done, mark: Date.now() };
-          tickBatch(uid, prev, t, minutes).catch(fail);
-        }
-        render();
-      },
-      onPause: pause,
-      onResume: resume,
-      onStop: () => endSession(),
-    });
-  }
-
-  // Pause (Mor, 2026-10-05): the clock stops and focus mode stays, with
-  // Resume where Pause was. Stop ends the session (endSession) and the normal
-  // card comes back. Ending keeps the minutes, except under
-  // CANCEL_KEEP_MINUTES (a mis-tap), and is never counted as a stop. A batch
-  // keeps the ones already ticked.
-  const pause = () => { const doc = paused(run); run = doc; render(); saveRun(uid, doc).catch(fail); };
-  const resume = () => { const doc = resumed(run); run = doc; render(); saveRun(uid, doc).catch(fail); };
+  // No running card, no clock and no Deep Focus (Mor, 2026-10-10): a task is
+  // on the card until Done, Later, Pending or Switch moves it. A run left
+  // from before (state/now: a reload, the other device on an old copy) is
+  // ended on sight, its minutes kept, as Stop did. A batch keeps the ones
+  // already ticked.
+  // Focus mode: in settings, so it holds across a reload and the other device.
+  const focusOn = () => settings.focusMode === true;
+  const setFocus = (on) => { if (on === focusOn()) return; settings = { ...settings, focusMode: on }; render(); saveSettings(uid, { focusMode: on }).catch(fail); };
   const endSession = ({ quiet = false } = {}) => {
     const prev = run;
     if (!prev) return;
@@ -485,97 +439,6 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     if (gone && m >= CANCEL_KEEP_MINUTES) logWork(uid, gone, m).catch(fail);
     run = null; cancelRun(uid).catch(fail);
   };
-
-  // Done on a running task, from Deep Focus or the dashboard card.
-  const finishRun =(task, minutes, end, pct = 100) => {
-    if (!run) return; // the hold finished after the run moved on
-    if (!task) return finishRunNow(task, minutes, end);
-    // Under 100% (the hold let go early) the minutes are kept and the task
-    // stays open with that much progress, off the card for a while.
-    if (pct >= 100) return finishRunNow(task, minutes, end);
-    cancelRun(uid, task, minutes).catch(fail);
-    run = null; render();
-    partDone(task, pct);
-  };
-  const finishRunNow = (task, minutes, end) => {
-    if (!run) return;
-    handoff = { title: task ? task.title : "", skip: run.taskId, minutes, ids: [run.taskId] };
-    endRun(uid, task, minutes, { finished: true }).catch(fail);
-    if (task) logFinished(task.title, minutes, task.id, targetMinutes(run, task), end);
-    run = null; render();
-  };
-  // Deep Focus is the whole screen (master spec s.20): a run in "focus" mode, a
-  // batch, or one from before modes existed. "inline" keeps the dashboard.
-  const focusing = () => !!run && (!!run.batch || run.mode == null || run.mode === "focus");
-  const runKey = () => `${run.taskId}@${run.startedAt}`;
-  // Into Deep Focus on a task that's already running (or out of it, to the dashboard).
-  const setMode = (mode) => { const doc = { ...run, mode }; run = doc; if (mode === "focus") deep.enter(runKey()); render(); saveRun(uid, doc).catch(fail); };
-
-  function renderFocus(){
-    if (run.batch) return renderBatch();
-    const task = tasks?.find((t) => t.id === run.taskId) || null;
-    const finish = (minutes, end) => finishRun(task, minutes, end);
-    showing(run.taskId);
-    return focusView(run, task, {
-      // Done is finished — no "or more left?" (Pause covers more left).
-      onDone: (pct) => finishRun(task, bookedMinutes(run, task), undefined, pct), // capped: a forgotten timer doesn't book the night
-      // Forgot to hit Done: the minutes the user says it took, logged as
-      // ending that long after the start rather than now.
-      onFinishedAfter: (m) => finish(Math.min(m, elapsedMinutes(run)), run.startedAt + m * 60000),
-      onExtend: (m) => { const prev = run; run = { ...run, extra: (run.extra || 0) + m }; render(); extendRun(uid, prev, m).catch(fail); },
-      onPause: pause,
-      onResume: resume,
-      onStop: () => endSession(),
-      onBack: () => setMode("inline"),
-      onWait: () => { holdAsk = true; setMode("inline"); },
-      // Pending from focus mode: stop, and the card, back on this task, asks
-      // what it's waiting on.
-      onPending: () => { const id = run.taskId; endSession({ quiet: true }); reset(); state.chosen = id; state.pendAsk = true; render(); },
-    });
-  }
-
-  // mode "inline": Start, the dashboard stays. "focus": Deep Focus, the whole
-  // screen (call it from a tap: full screen needs one, deep.js).
-  const begin = (task, mode = "inline") => {
-    bumpLearn(uid, task.type, timeBucket().part, "starts").catch(fail); handoff = null; reset();
-    prop.open = false; holdAsk = false;
-    run = { taskId: task.id, startedAt: Date.now(), extra: 0, mode };
-    if (mode === "focus") deep.enter(runKey());
-    render(); startRun(uid, task, mode).catch(fail);
-  };
-
-  const beginBatch = (list) => {
-    bumpLearn(uid, list[0].type, timeBucket().part, "starts").catch(fail);
-    handoff = null; reset();
-    const now = Date.now();
-    run = { taskId: list[0].id, batch: list.map((t) => t.id), done: [], mark: now, startedAt: now, extra: 0 };
-    deep.enter(runKey());
-    render();
-    startBatch(uid, list).catch(fail);
-  };
-
-  // The batch offer (DAISEY_SPEC "Batches"): when the pick earned the batch
-  // bonus, the card offers the whole batch — "Offices are open: 3 calls,
-  // ~20 min. Together?" — with the list. Start all runs it as a checklist;
-  // Just one falls back to the single task, with its usual actions.
-  function batchCard(r, b){
-    const list = r.ranked.filter((s) => b.ids.includes(s.task.id)).map((s) => s.task);
-    const name = batchName(b.type, list.length);
-    const office = r.moment.officeOpen && list.some((t) => t.openHours === "office");
-    // The task card's shape (Mor, 2026-10-10): the tasks named in the why
-    // line, Start starts them all, "Just one" behind More.
-    const open = !!state.more;
-    return h("div", { className: "now-card main hero batch" + areaClass(list[0]) },
-      heroTop(list[0], `${list.length} tasks · ~${dur(b.minutes)}`),
-      h("div", { className: "now-title", textContent: name }),
-      h("p", { className: "now-why" }, office ? "Offices are open: " : "", ...list.flatMap((t, i) => [i ? ", " : "", bdi(t.title)]), "."),
-      h("div", { className: "now-actions now-row" },
-        action("more", "More", `Just one instead of all ${list.length}`, { ariaExpanded: String(open), onclick: () => { state.more = !open; render(); } }),
-        startButton("Start all", `Start all ${list.length} as one checklist`, () => beginBatch(list))),
-      open && h("div", { className: "later-ask more-ask", role: "group", ariaLabel: "More" },
-        h("button", { className: "chip", type: "button", textContent: "Just one", ariaLabel: `Just one: show only ${list[0].title}`,
-          onclick: () => { state.more = false; state.single = true; render(); } })));
-  }
 
   // Later and Pending both move the card on: it slides out, the next slides
   // in, and for 5 seconds a toast offers Undo. Nothing waits on the write.
@@ -1130,53 +993,6 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
       adjust: p.counted.minutes ? { minutes: p.counted.minutes, set: (m) => setDoneMinutes(uid, task.id, m) } : undefined });
   }
 
-  // The card while a task runs and the dashboard stays: area and project,
-  // title, the clock, then Pause, Stop, Focus and hold-to-finish. Past the
-  // "Still on it?" point it asks the same question Deep Focus does.
-  const clockText = (min) => { const t = Math.floor(min * 60), p2 = (n) => String(n).padStart(2, "0"); return t >= 3600 ? `${Math.floor(t / 3600)}:${p2(Math.floor(t / 60) % 60)}:${p2(t % 60)}` : `${Math.floor(t / 60)}:${p2(t % 60)}`; };
-  // Once a second, only the clock's text: nothing is rebuilt under a finger.
-  const paintInlineClock = () => { const el = root.querySelector(".inl-time"); if (el && run) el.textContent = clockText(elapsedMinutes(run)); };
-  function inlineCard(){
-    const task = tasks?.find((t) => t.id === run.taskId) || null;
-    const mins = elapsedMinutes(run), target = task ? targetMinutes(run, task) : 0, cap = runCap(target);
-    const paused_ = !!run.pausedAt, what = task?.title || "this task";
-    const hold = holdButton(`inline:${runKey()}`, `Hold to finish ${what}`, !task, (pct) => finishRun(task, bookedMinutes(run, task), undefined, pct), { tap: isRoutine(task) });
-    // Waiting for a reply (Mor, 2026-10-07): on hold, but the timer keeps
-    // going — the wait is part of the task. "Got the reply" takes it off hold.
-    const onHold = task?.onHold;
-    const waitLine = onHold && h("p", { className: "hold-line", role: "status" }, icon("pending"),
-      h("span", {}, ...(onHold.who ? ["Waiting on ", bdi(onHold.who)] : ["Waiting for a reply"]), ` · since ${clock(onHold.since)} · timer running`));
-    const setHold = () => { const who = holdText; holdAsk = false; holdText = ""; render(); holdTask(uid, task, who).catch(fail); };
-    const holdBox = holdAsk && !onHold && (() => {
-      const input = h("input", { id: "holdWho", dir: "auto", autocomplete: "off", value: holdText, oninput: (e) => { holdText = e.target.value; } });
-      input.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); setHold(); } });
-      setTimeout(() => focusField(input));
-      return h("div", { className: "pend-ask" },
-        h("label", { htmlFor: "holdWho", textContent: "Waiting on who? (optional) The timer keeps running." }),
-        h("div", { className: "pend-row" }, input, h("button", { className: "btn primary small", type: "button", textContent: "Wait", onclick: setHold })));
-    })();
-    return h("div", { className: "now-card main hero running" + (onHold ? " on-hold" : "") + areaClass(task) },
-      task ? heroTop(task, onHold ? "Waiting" : "Running") : h("div", { className: "now-meta", textContent: "Running" }),
-      task && onOpen ? titleButton(task) : h("div", { className: "now-title", dir: "auto", textContent: task?.title || "That task is gone" }),
-      h("p", { className: "now-why inl-clock" }, h("b", { className: "inl-time", textContent: clockText(mins) }), target ? ` of ${dur(target)}` : "", paused_ ? " · paused" : ""),
-      waitLine,
-      holdBox,
-      mins > cap && h("div", { className: "focus-still", role: "status" },
-        h("p", { className: "focus-still-text", textContent: `Still on it? It's been ${dur(Math.round(mins))}. If you stopped earlier, Done and Stop count ${dur(Math.round(cap))}.` }),
-        h("div", { className: "focus-still-btns" },
-          h("button", { className: "btn line", type: "button", textContent: "Still on it", onclick: () => { const prev = run, m = stillOnMinutes(prev, task); run = { ...run, extra: (run.extra || 0) + m }; render(); extendRun(uid, prev, m).catch(fail); } }),
-          h("button", { className: "btn line", type: "button", textContent: "Stop", onclick: () => endSession() }))),
-      h("div", { className: "now-actions now-row" },
-        onHold
-          ? action("play", "Replied", `the reply came: take ${what} off hold`, { onclick: () => releaseTask(uid, task).catch(fail) })
-          : action(paused_ ? "play" : "pause", paused_ ? "Resume" : "Pause", `${paused_ ? "resume" : "pause"} ${what}`, { onclick: paused_ ? resume : pause }),
-        !onHold && task && action("pending", "Waiting", `waiting for a reply on ${what}: put it on hold, the timer keeps running`,
-          { ariaExpanded: String(holdAsk), onclick: () => { holdAsk = !holdAsk; render(); } }),
-        action("stop", "Stop", `stop ${what} for now; the time so far is kept`, { onclick: () => endSession() }),
-        action("focus", "Focus", "Deep Focus, full screen", { onclick: () => setMode("focus") }),
-        hold));
-  }
-
   // Switch's row, under the card like Later's and Pending's (Mor,
   // 2026-10-10): the other tasks as small cards in the main card's look
   // (area colour, how long it takes, project, title), one row as tall
@@ -1596,7 +1412,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     return quietCard({ meta: "Break", side: `until ${clock(b.end)}`, title: name,
       extras: [next && h("p", { className: "now-why" }, "Next: ", bdi(next.task.title), ` at ${clock(Math.max(next.start, b.end))}.`)],
       action: next && h("button", { className: "btn quiet", type: "button", textContent: "Start it now",
-        ariaLabel: `Skip the rest of the break: start ${next.task.title}`, onclick: () => begin(next.task) }) });
+        ariaLabel: `Skip the rest of the break: start ${next.task.title}`, onclick: () => switchTo(next.task.id) }) });
   }
   const dueWhy = (card, due) => ({ ...card, whyParts: [Date.now() - due.start < 2 * 60000 ? `planned for ${clock(due.start)}` : `planned for ${clock(due.start)}, not started`] });
   function roughCard(st){
@@ -1773,7 +1589,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     for (const id of handoff?.ids || []) ids.add(id);
     return ids.size;
   }
-  let reported = null, reportedNeeds = null, reportedPlan = "";
+  let reported = null, reportedNeeds = null, reportedPlan = "", reportedFocus = null;
 
   // The plan is its own full screen (Mor, 2026-10-08): proposalCard paints into
   // planRoot, and the Now card behind it renders as usual.
@@ -1796,31 +1612,30 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
   }
   function renderCard(){
     if (ppDragging) { ppStale = true; return; } // a redraw mid-drag would drop the dragged row
-    const live = !!run; // paused or not
-    const deepOn = focusing();
-    if (!deepOn) deep.leave();
-    else if (!deep.isOn()) deep.enter(runKey()); // a reload or the other device: no tap, so no full screen, but awake and counting
-    document.body.classList.toggle("focus", deepOn || !!handoff);
+    if (run && tasks != null) endSession({ quiet: true }); // a run from before the clock went
+    // Focus mode (Mor, 2026-10-10): the same card and actions, nothing
+    // around it (CSS body.focus-mode). Done goes straight to the next card.
+    const fm = focusOn();
+    if (fm && handoff) handoff = null;
+    document.body.classList.toggle("focus-mode", fm);
+    if (fm !== reportedFocus) { reportedFocus = fm; onFocusMode?.(fm); }
+    document.body.classList.toggle("focus", !!handoff);
     const hrs = dayHours(settings);
     const dark = isNight(Date.now(), hrs);
     if (!dark) nightFree = false;
     // On the way somewhere (trips.js) the day has started, whatever the hours say.
     const riding = cal.status === "ok" && cal.events.some((e) => e.trip && Date.parse(e.start) <= Date.now() && Date.now() < Date.parse(e.end));
-    const night = !live && !handoff && tasks != null && dark && !nightFree && !riding;
+    const night = !handoff && tasks != null && dark && !nightFree && !riding;
     document.documentElement.classList.toggle("night", night);
     const n = doneCount();
     if (n !== reported) { reported = n; onDone?.(n); }
     const pp = planProgressNow(), ppKey = pp ? `${pp.done}/${pp.total}` : "";
     if (ppKey !== reportedPlan) { reportedPlan = ppKey; onPlanProgress?.(pp); }
-    if (!live && tasks) {
+    if (tasks) {
       const nn = collectNeeds({ tasks, events: cal.events || [], calOk: cal.status === "ok", settings, home: homeAt() }).length + (whereAsk() ? 1 : 0) + (planAsk() ? 1 : 0);
       if (nn !== reportedNeeds) { reportedNeeds = nn; onNeedsCount?.(nn); }
     }
 
-    if (deepOn) { fill(renderFocus()); return; }
-    // Started, and the dashboard stays: the card is the running task (Mor,
-    // 2026-10-06). Deep Focus is one tap away on it.
-    if (live && tasks != null) { showing(run.taskId); fill(topOf(calendarNow()), inlineCard(), toast && toastView()); return; }
     if (handoff) {
       // The task just worked on isn't offered straight back.
       const m = momentInput();
@@ -1847,8 +1662,8 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
       };
       fill(handoffView({ title: handoff.title, minutes: handoff.minutes || 0, count: n, again }, nextPick, {
         cheer,
-        onStart: begin,
-        onFocus: (task) => begin(task, "focus"),
+        onStart: (task) => onCardWith(task, { notNow: false }),
+        onFocus: (task) => { setFocus(true); onCardWith(task, { notNow: false }); },
         onDone: (task, p) => { handoff = null; if (p >= 100) quickDoneNow(task); else partDone(task, p); },
         onLater: (task) => onCardWith(task, {}),
         onSwitch: (task) => onCardWith(task, { notNow: false, showAlts: true }),
@@ -1948,7 +1763,6 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     // Needs you is already asking about the slipped plan: the card doesn't too.
     const due = !behind && planDue(), dueNow = due?.taskId === card.task.id ? due : null;
     const missed = !dueNow && ms?.kind === "miss" ? ms : null;
-    if (card === r.pick && r.pick.batch && !state.chosen && !state.single) { day(...head, batchCard(r, r.pick.batch), tip); return; }
     const alts = r.ranked.length > 1 ? [r.pick, ...r.alternatives].filter((s) => s && s.task.id !== card.task.id).slice(0, 3) : [];
     // Done is the one loud thing on the tab; Switch, Pending and Later stay quiet beside it.
     const lead = missed ? missLead(card.task) : [];
@@ -1987,11 +1801,11 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
   // closed with it then had no way back open, so Daisey slept from 18:31
   // with the day running to 20:00.)
   const fail = (e) => console.error("[daisey] now", e);
-  // "Start task" on a notification (sw.js → ?start=<id>). The suggestion was
-  // made minutes ago; what happened since wins (reality.js). Something
-  // already running stays, and its focus screen is what opens; a task done,
-  // parked or set Pending since isn't started. A cold start from the
-  // notification has neither the tasks nor the run yet, so it waits for both.
+  // "Start task" on a notification (sw.js → ?start=<id>): that task on the
+  // card. The suggestion was made minutes ago; what happened since wins
+  // (reality.js): a task done, parked or set Pending since isn't put up. A
+  // cold start from the notification has neither the tasks nor the run yet,
+  // so it waits for both.
   let noticeStart = null, runKnown = false, noticeShorten = null, noticeLighter = false;
   const tryNoticeStart = () => {
     if (noticeShorten && tasks !== null) {
@@ -2003,37 +1817,30 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     const id = noticeStart;
     noticeStart = null;
     const task = tasks.find((t) => t.id === id);
-    if (run || !task || task.status !== "ready" || notYet(task)) return;
-    skips.delete(id);
-    begin(task);
+    if (!task || task.status !== "ready" || notYet(task)) return;
+    skips.delete(id); handoff = null;
+    switchTo(id);
   };
-  deep.watch(() => { if (focusing()) render(); }); // came back from another app: the away line
   const unsubs = [
     watchWhere((v) => { located = v; applyTrips(); render(); }),
     watchProjectColors(() => render()),
     watchProjectTiers(() => render()),
     watchTasks(uid, (ts, meta) => { const was = tasks; tasks = ts; dropGhostRun(meta, was); render(); tryNoticeStart(); logRoutineEvents(); }, fail),
     watchCalendar((c) => { rawCal = c; applyTrips(); render(); logRoutineEvents(); }),
-    watchRun(uid, (r) => { run = r; runKnown = true; if (r) handoff = null; render(); tryNoticeStart(); }, fail),
+    watchRun(uid, (r) => { run = r; runKnown = true; render(); tryNoticeStart(); }, fail),
     watchSkips(uid, (s) => { skipDoc = s; render(); }, fail),
     watchSettings(uid, (s) => { settings = s || {}; applyTrips(); render(); }, fail),
     watchMoment(uid, (d) => { momentDoc = d || {}; freeFrom = Number.isFinite(momentDoc.freeFrom) ? momentDoc.freeFrom : null; render(); }, fail),
     watchLearn(uid, (d) => { learnStats = d || {}; render(); }, fail),
     watchDayPlan(uid, (d) => { dayPlan = d || null; planKnown = true; render(); }, fail),
   ];
-  // The timer ticks every second while running; otherwise this only
-  // re-renders when the free window's minute changes.
+  // Re-renders when the free window's minute changes.
   const tick = setInterval(() => {
     if (document.hidden) return;
     // A way back still running (trips.stillRiding) is stretched from now:
     // lay it again each minute so it keeps ahead of the clock.
     const m = Math.floor(Date.now() / 60000);
     if (m !== tripMin) { tripMin = m; applyTrips(); }
-    if (run && !run.pausedAt) {
-      const c = Math.floor(elapsedMinutes(run) * 60);
-      if (c !== lastClock) { lastClock = c; if (focusing()) render(); else paintInlineClock(); }
-      return;
-    }
     if (windowMark(calendarNow()) !== lastWindow) render();
     else if (Date.now() - missAt > 15000) { missAt = Date.now(); const d = planDue(), k = `${missNow()?.key ?? ""}|${d ? `${d.taskId}|${d.start}` : ""}`; if (k !== missKey) { missKey = k; render(); } }
   }, 1000);
@@ -2060,19 +1867,17 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
       skips.delete(id);
       switchTo(id);
     },
-    // Start a task from elsewhere (the task sheet, a project).
-    // A parked or pending task starting is back in play.
-    start(id, mode){
+    // The task sheet's Focus (Mor, 2026-10-10): that task on the card, and
+    // Focus mode on. A parked or pending task is back in play.
+    start(id){
       const task = (tasks || []).find((t) => t.id === id);
       if (!task) return;
-      // Already running: carry on (into Deep Focus if asked), the clock untouched.
-      if (run && !run.batch && run.taskId === id) { if (mode && mode !== run.mode) setMode(mode); return; }
-      // Another task running: end it first, its minutes kept, or they're lost.
-      if (run) endSession({ quiet: true });
       if (task.status !== "ready") restoreTask(uid, id, { status: "ready", waitingOn: null, checkOn: null, notBefore: null, touchedAt: Date.now() }).catch(fail);
       skips.delete(id);
-      begin(task, mode);
+      handoff = null; setFocus(true); switchTo(id);
     },
+    // The header's Focus toggle (main.js).
+    focus(on = !focusOn()){ setFocus(on); },
     startFromNotice(id){ noticeStart = id; tryNoticeStart(); },
     // The missed-slot notification's Shorten, and the silence check's two (sw.js).
     shortenFromNotice(id){ noticeShorten = id; tryNoticeStart(); },
@@ -2083,6 +1888,6 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     // "Plan my day" from the Schedule: the proposal on the card.
     closePlan(){ if (prop.open) closeProposal(); },
     plan(){ if (prop.open) { closeProposal(); return; } if (run) { flash("Finish or stop the running task first."); return; } openProposal(); },
-    unmount(){ deep.leave(); deep.watch(() => {}); showing(null); clearTimeout(toastTimer); clearTimeout(upTimer); document.body.classList.remove("focus"); document.documentElement.classList.remove("night"); unsubs.forEach((u) => u()); clearInterval(tick); document.removeEventListener("visibilitychange", onVisible); root.replaceChildren(); planRoot?.replaceChildren(); root.hidden = true; },
+    unmount(){ showing(null); clearTimeout(toastTimer); clearTimeout(upTimer); document.body.classList.remove("focus", "focus-mode"); document.documentElement.classList.remove("night"); unsubs.forEach((u) => u()); clearInterval(tick); document.removeEventListener("visibilitychange", onVisible); root.replaceChildren(); planRoot?.replaceChildren(); root.hidden = true; },
   };
 }

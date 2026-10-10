@@ -47,7 +47,7 @@ const boxDate = (s) => new Date(`${s}T12:00`).toLocaleDateString(undefined, { we
 // "1 h 40", "25 min": the worked line is short on purpose.
 const workedText = (m) => (m < 60 ? `${m} min` : `${Math.floor(m / 60)} h${m % 60 ? ` ${m % 60}` : ""}`);
 
-// onStart(id): close the sheet and start the task in Deep Focus (now.js start).
+// onStart(id): close the sheet, the task on the card, Focus mode on (now.js start).
 export function mountAddTask(dialog, uid, { onStart } = {}){
   let tasks = [];
   let editing = null; // the open task (kept fresh from the snapshot), or null for a new one
