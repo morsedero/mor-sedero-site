@@ -1416,7 +1416,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     prop.busy = false; render();
   }
   // Rethink takes the action row's slot, one set of controls at a time
-  // (2026-10-08): what to change | Fewer | More | Go | ✕. Blank Go = a fresh take.
+  // (2026-10-08): what to change, then Fewer | More | Go | ✕. Blank Go = a fresh take.
   function rethinkRow(){
     const close = () => { prop.ask = false; render(); };
     const input = h("input", { id: "rethinkText", dir: "auto", autocomplete: "off", placeholder: "Other…", ariaLabel: "What should change? Blank for a fresh take", value: prop.text, oninput: (e) => { prop.text = e.target.value; } });
