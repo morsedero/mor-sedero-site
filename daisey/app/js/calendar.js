@@ -222,8 +222,13 @@ function optimistic(body){
   }
   const was = state.events.find(same);
   if (!was) return null;
-  if (body.action === "delete") return { ...state, events: state.events.filter((e) => !same(e)) };
-  if (body.start || body.title) landed(body.title || was.title, body.start || was.start);
+  // A removed event plays leaving first (Mor, 2026-10-10), then goes. A
+  // failed write's reload brings it back unmarked, so it stays.
+  if (body.action === "delete") {
+    setTimeout(() => { if (state.events.some((e) => same(e) && e.leaving)) publish({ ...state, events: state.events.filter((e) => !same(e)) }); }, LEAVE_MS);
+    return { ...state, events: state.events.map((e) => (same(e) ? { ...e, leaving: true } : e)) };
+  }
+  landed(body.title || was.title, body.start || was.start); // an edit lands like a new one
   return { ...state, events: state.events.map((e) => (!same(e) ? e : { ...e,
     ...(body.title ? { title: body.title } : {}), ...(body.start ? { start: body.start, end: body.end } : {}),
     ...(typeof body.location === "string" ? { location: body.location || null } : {}) })) };
@@ -236,7 +241,7 @@ function usualColor(calendarId){
 }
 // An event just added or moved, so the Schedule can play it landing (Mor,
 // 2026-10-10). Keyed by title and start: the reload brings a new id.
-const LAND_MS = 900;
+const LAND_MS = 900, LEAVE_MS = 450; // app.css sc-land / sc-leave
 const lands = new Map();
 function landed(title, start){ lands.set(`${title}|${Date.parse(start)}`, Date.now()); }
 // ms since it landed, while it's still landing; else null.

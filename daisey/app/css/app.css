@@ -1388,7 +1388,14 @@ body.focus #side { display: none; }
   45% { opacity: 1; transform: translateY(2px) scale(1.03); outline-color: color-mix(in srgb, var(--ev, var(--accent)) 55%, transparent); }
   100% { transform: none; outline-color: transparent; }
 }
-@media (prefers-reduced-motion: reduce) { .sc-row.sc-land .sc-ev { animation: none; } }
+/* A removed one slides off and the gap closes (calendar.js LEAVE_MS). */
+.sc-row.sc-leave { animation: sc-leave .45s ease-in forwards; overflow: hidden; pointer-events: none; }
+@keyframes sc-leave {
+  0% { max-block-size: 90px; }
+  45% { opacity: 0; transform: translateX(24px) scale(.94); max-block-size: 90px; }
+  100% { opacity: 0; transform: translateX(24px) scale(.94); max-block-size: 0; margin-block-start: 0; }
+}
+@media (prefers-reduced-motion: reduce) { .sc-row.sc-land .sc-ev, .sc-row.sc-leave { animation: none; } }
 .sc-today.sc-unplan { display: inline-flex; align-items: center; gap: 4px; block-size: 32px; padding-inline: 10px; font-size: 13px; }
 .sc-unplan svg { inline-size: 14px; block-size: 14px; }
 .sc-proj { flex: none; display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-inline-size: 26px; block-size: 24px; padding-inline: 8px; border: 0; border-radius: 999px; background: #5b67ff; color: #fff; font: inherit; font-size: 13px; font-weight: 700; white-space: nowrap; cursor: pointer; }
@@ -1804,8 +1811,8 @@ body.focus .shell { block-size: auto; min-block-size: 100dvh; overflow: visible;
 .pcard-row .pcard-status { flex: 1; min-inline-size: 0; margin: 0; }
 .pcard-time { flex: none; font-size: 11px; font-weight: 600; color: var(--aink); font-variant-numeric: tabular-nums; }
 .pcard-barrow { display: flex; align-items: center; gap: 8px; margin-block-start: 6px; }
-/* Deeper than the card's tint so the bar reads (Mor, 2026-10-10: "too light"). */
-.pcard .pcard-barrow .pbar { flex: 1; block-size: 6px; margin: 0; border-radius: 3px; background: color-mix(in srgb, var(--aink) 10%, var(--aline)); }
+/* Bolder than the card's tint, same thin line (Mor, 2026-10-10: "bolder colors", not thicker). */
+.pcard .pcard-barrow .pbar { flex: 1; block-size: 4px; margin: 0; border-radius: 2px; background: color-mix(in srgb, var(--aink) 32%, var(--aline)); }
 .bl-svg { display: block; flex: none; inline-size: 36px; block-size: auto; overflow: visible; transform-origin: 50% 100%; }
 .tier-focus .bl-svg { inline-size: 40px; }
 .tier-background .bl-svg { inline-size: 32px; }

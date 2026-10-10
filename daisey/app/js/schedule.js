@@ -427,7 +427,7 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onProjects, onW
     // Just added or moved: it drops into place with a glow (Mor, 2026-10-10),
     // phased off when it landed so the write's reload doesn't replay it.
     const land = landedAgo(x.ev);
-    const rowEl = h("div", { className: "sc-row" + (on ? " sc-on" + tone(x.ev) : past ? " sc-past" : "") + (land != null ? " sc-land" : ""),
+    const rowEl = h("div", { className: "sc-row" + (on ? " sc-on" + tone(x.ev) : past ? " sc-past" : "") + (land != null ? " sc-land" : "") + (x.ev.leaving ? " sc-leave" : ""),
       style: orbit + (on && x.ev.color ? `--ev:${x.ev.color}` : "") + (land != null ? `--land:-${land}ms;` : "") }, h("span", { className: "sc-time strong" }, time, on && h("span", { className: "sc-nowtag", textContent: "Now" })),
       h("button", { type: "button", className: "sc-ev" + (done ? " sc-done" : "") + tone(x.ev), style: x.ev.color ? `--ev:${x.ev.color}` : "",
         ariaLabel: `${done ? "Finished task: " : ""}${on ? "Now: " : ""}${title}, ${time}`, onclick: () => onEvent?.(x.ev) },
