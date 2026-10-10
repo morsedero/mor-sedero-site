@@ -1798,6 +1798,10 @@ body.focus .shell { block-size: auto; min-block-size: 100dvh; overflow: visible;
 
 /* The card: flower standing on its bottom edge, the rest beside it. */
 .pcard:has(> .pcard-fl) { grid-template-columns: auto minmax(0, 1fr); column-gap: 10px; }
+/* Bolder project colours (Mor, 2026-10-10: the pastel tint read pale): the
+   card sits between its tint and its line colour, edged in the line. */
+.pcard[class*="pc-"] { background: color-mix(in srgb, var(--aline) 60%, var(--tint)); border-color: var(--aline); }
+.pcard[class*="pc-"] .pcard-name { color: color-mix(in srgb, var(--aink) 35%, var(--ink)); }
 .pcard-fl { align-self: end; display: flex; justify-content: center; inline-size: 40px; margin-block-end: -6px; }
 .pcard-body { display: flex; flex-direction: column; min-inline-size: 0; }
 /* Compact card (Mor, 2026-10-10): two labelled rows and a thin bar. */
@@ -1811,7 +1815,7 @@ body.focus .shell { block-size: auto; min-block-size: 100dvh; overflow: visible;
 .pcard-time { flex: none; font-size: 11px; font-weight: 600; color: var(--aink); font-variant-numeric: tabular-nums; }
 .pcard-barrow { display: flex; align-items: center; gap: 8px; margin-block-start: 6px; }
 /* Bolder than the card's tint, same thin line (Mor, 2026-10-10: "bolder colors", not thicker). */
-.pcard .pcard-barrow .pbar { flex: 1; block-size: 4px; margin: 0; border-radius: 2px; background: color-mix(in srgb, var(--aink) 32%, var(--aline)); }
+.pcard .pcard-barrow .pbar { flex: 1; block-size: 4px; margin: 0; border-radius: 2px; background: color-mix(in srgb, var(--aink) 30%, var(--tint)); }
 .bl-svg { display: block; flex: none; inline-size: 36px; block-size: auto; overflow: visible; transform-origin: 50% 100%; }
 .tier-focus .bl-svg { inline-size: 40px; }
 .tier-background .bl-svg { inline-size: 32px; }
