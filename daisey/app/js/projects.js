@@ -1,7 +1,7 @@
 // Projects (layout round 3, Mor 2026-10-06; New Design/7-home-projects-tab
 // and 8-project). Two views of the same thing:
 //
-// The Projects page of the home panel. "4 projects · 14 tasks" + "+ New",
+// The Projects page of the home panel (new projects come from the + menu):
 // a 2-column grid of project cards in their colour — name, count, one
 // status line, progress — and the Inbox row under it. (It was a pull-up
 // sheet until round 3.)
@@ -232,16 +232,14 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
         h("span", { className: "pp-tier-empty", textContent: "Drag a project here" }), ...ins.map(card)); };
     const y = els.grid.scrollTop;
     els.grid.replaceChildren(...[
-      // Top: just + New (Mor, 2026-10-10: no Week/Month, numbers in the avatar menu).
-      h("div", { className: "pp-head" },
-        h("button", { type: "button", className: "pp-new", textContent: "+ New", onclick: () => askName() })),
       dragProjects(h("div", { className: "pgrid tiers" }, ...TIERS.map(tier))),
       weekCard(g.strip),
       routinesSection(g.routines, tasks || [], new Map(all.map((p) => [p.name, p.color || ""])))].filter(Boolean));
     els.grid.scrollTop = y;
   }
 
-  // ---------- "+ New": a name, and an empty project ----------
+  // ---------- New project: a name, and an empty project ----------
+  // Opened from the + menu (Mor, 2026-10-10: no "+ New" on the page).
   // A project's start and due (Mor, 2026-10-07). Both optional; its tasks'
   // dates can't fall outside them (addtask.js reads the same ranges).
   function dateFields(range){
@@ -628,6 +626,7 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
     closeAll,
     // The project on screen, for "+ Task": the open project, else none.
     shownProject: () => shown,
+    newProject: () => askName(),
     // The avatar menu's stats: a box to paint into while open, null on close.
     stats(box){ statsBox = box; if (box) { statsGrowth.show(); paintStats(); } else statsGrowth.hide(); },
     unmount(){ unsubs.forEach((u) => u()); growth.unmount(); statsGrowth.unmount(); closeProject(); els.grid.replaceChildren(); if (els.dialog.open) els.dialog.close(); },

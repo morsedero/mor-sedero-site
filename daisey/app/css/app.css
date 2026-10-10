@@ -1436,11 +1436,7 @@ body.focus #side { display: none; }
 .pp-title { margin: 0; font-size: 22px; font-weight: 600; }
 .pp-page { padding: 12px 20px 32px; }
 
-/* Projects: summary + New, the grid, the Inbox row. */
-.pp-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-.pp-sum { font-size: 13px; font-weight: 600; color: color-mix(in srgb, var(--ink) 85%, var(--ink-2)); }
-.pp-new { position: relative; padding: 0; border: 0; background: none; font: inherit; font-size: 13px; font-weight: 500; color: var(--a-work-ink); cursor: pointer; margin-inline-start: auto; }
-.pp-new::after { content: ""; position: absolute; inset: -14px -10px; }
+/* Projects: the grid, the Inbox row. */
 .pp-empty { margin: 10px 0 0; }
 .pcard .pbar { margin-block-start: 10px; }
 .pp-inbox { display: flex; align-items: center; gap: 10px; inline-size: 100%; block-size: 44px; margin-block-start: 10px; padding-inline: 14px; border: 1px dashed var(--bud); border-radius: 14px; background: none; color: var(--ink); font: inherit; font-size: 14px; text-align: start; cursor: pointer; }

@@ -498,7 +498,7 @@ export function mountAddTask(dialog, uid, { onStart } = {}){
   dialog.addEventListener("keydown", (e) => { if (e.key === "Escape" && openChip) { e.preventDefault(); openChip = null; paintChips(); } });
 
   // The project list: every project a task names, plus the empty ones
-  // made with "+ New" on the Projects page.
+  // made with New project in the + menu.
   let made = [], ranges = {};
   const refill = () => {
     colors = Object.fromEntries(projectsOf(tasks || [], null, made).map((p) => [p.name, p.color]).filter(([, c]) => c));

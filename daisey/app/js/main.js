@@ -615,7 +615,7 @@ async function boot(){
         navigator.serviceWorker?.addEventListener("message", onSwMessage);
         m.swMessages = { unmount(){ navigator.serviceWorker?.removeEventListener("message", onSwMessage); } };
         // + in the Tell Daisey pill: a task (in the project on screen, if
-        // any) or a calendar event.
+        // any), a calendar event or a new project.
         const plusMenu = $("#plusMenu"), plus = $("#plus");
         const setPlus = (open) => {
           plusMenu.hidden = !open;
@@ -630,6 +630,7 @@ async function boot(){
         const tabProject = () => m.projects.shownProject() || undefined;
         $("#plusTask").onclick = () => { setPlus(false); m.adder.open(tabProject()); };
         $("#plusEvent").onclick = () => { setPlus(false); m.event.open(); };
+        $("#plusProject").onclick = () => { setPlus(false); m.projects.newProject(); };
         document.addEventListener("click", (e) => { if (!plusMenu.hidden && !plusMenu.contains(e.target)) setPlus(false); });
         document.addEventListener("keydown", (e) => { if (e.key === "Escape") setPlus(false); });
         // Tell Daisey: plain language in, confirm cards out (tell.js).
