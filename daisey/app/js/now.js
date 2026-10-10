@@ -35,7 +35,7 @@ import { isRoutine, routineCalendar, eventsToLog, sessionPatch } from "./routine
 import { waitingFor, personOf } from "./nudge.js";
 import { dayHours, isNight, nextMorning, dayEndAt, bookings, sameTitle, minText, gapsToday } from "./day.js";
 import { collectNeeds, wrapList } from "./needs.js";
-import { h, icon, bdi, pieces, sizeText, sizeChip, progressBar, dur, say, nightDivider, flash, weekDots, focusField } from "./ui.js";
+import { h, icon, bdi, pieces, sizeText, sizeChip, progressBar, dur, say, nightDivider, flash, weekDots, focusField, dragScroll } from "./ui.js";
 import { areaClass, areaName, projectShown, doneToday, moonDaisy, watchProjectColors } from "./look.js";
 
 const LATER_MS = LATER_MINUTES * 60000;
@@ -1062,7 +1062,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
   // while nothing else is open (missed plans get their own pass later).
   function cardActions(task, alts, lead = []){
     const someN = somedayTasks().length;
-    const toggle = (key) => () => { const was = state[key]; state.more = state.notNow = state.pendAsk = state.showAlts = false; state[key] = !was; render(); };
+    const toggle = (key) => () => { const was = state[key]; state.more = state.notNow = state.pendAsk = state.showAlts = false; state[key] = !was; state.altX = 0; render(); };
     const chip = (text, onclick) => h("button", { className: "chip", type: "button", textContent: text, onclick });
     const done = h("button", { className: "btn primary start", type: "button", ariaLabel: `Done: hold to show how much of ${task.title} is done` },
       icon("check"), h("span", { textContent: "Done" }));
@@ -1158,19 +1158,35 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
 
   // Switch's row, under the card like Later's and Pending's (Mor,
   // 2026-10-10): the other tasks as small cards in the main card's look
-  // (area colour, project, title), one row that scrolls sideways,
-  // as tall as Later's open row; or the way into On hold when there are none.
+  // (area colour, project, the plan's time for it, title), one row as tall
+  // as Later's open row that scrolls and drags sideways (ui.js dragScroll),
+  // keeping its place across redraws; or the way into On hold when there
+  // are none.
   function switchRow(alts){
     if (!alts.length) return h("div", { className: "later-ask", role: "group", ariaLabel: "Other tasks" },
       h("span", { className: "muted", textContent: "Nothing else is active." }),
       h("button", { className: "chip", type: "button", textContent: "Pick from On hold", onclick: () => { sd.open = true; state.showAlts = false; render(); } }));
-    return h("div", { className: "later-ask switch-ask", role: "group", ariaLabel: "Other tasks" }, ...alts.map(({ task: t }) => h("button", {
-      type: "button", className: "alt-card" + areaClass(t), ariaLabel: `Put ${t.title} on the card instead`,
-      onclick: () => { state.chosen = t.id; state.showAlts = false; render(); },
+    const at = slotTimes();
+    const row = dragScroll(h("div", { className: "later-ask switch-ask", role: "group", ariaLabel: "Other tasks" }, ...alts.map(({ task: t }) => h("button", {
+      type: "button", className: "alt-card" + areaClass(t), ariaLabel: `Put ${t.title} on the card instead${at.has(t.id) ? `, planned ${clock(at.get(t.id))}` : ""}`,
+      onclick: () => { state.chosen = t.id; state.showAlts = false; state.altX = 0; render(); },
     }, h("span", { className: "hero-top" },
-        h("span", { className: "hero-area" }, h("span", { className: "dot", ariaHidden: "true" }),
+        h("span", { className: "hero-area" },
+          // The time first, so a long project name is what gets cut short.
+          at.has(t.id) && h("span", { className: "alt-at", textContent: clock(at.get(t.id)) }),
           h("span", { className: "hero-where" }, projectShown(t) ? bdi(t.project) : areaName(t) || "Inbox"))),
-      h("span", { className: "alt-t", dir: "auto", textContent: t.title }))));
+      h("span", { className: "alt-t", dir: "auto", textContent: t.title })))));
+    row.addEventListener("scroll", () => { state.altX = row.scrollLeft; }, { passive: true });
+    if (state.altX) requestAnimationFrame(() => { row.scrollLeft = state.altX; });
+    return row;
+  }
+  // When the plan on screen has each task: the open proposal's order, else
+  // the approved plan's. taskId -> start (ms).
+  function slotTimes(){
+    const ap = approvedPlan(), items = prop.open && prop.items.length ? prop.items : ap?.items;
+    if (!items?.length) return new Map();
+    const { rows } = timeline(items, { ...planCtx(), ...(ap && !prop.touched ? { since: planSince() } : {}) });
+    return new Map(rows.filter((r) => r.taskId).map((r) => [r.taskId, r.start]));
   }
 
   // ---------- The day's proposed schedule (proposal.js, 2026-10-07) ----------

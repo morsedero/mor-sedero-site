@@ -229,3 +229,64 @@ export function askProgress(task, { onFull, onPartial, start = 50 }){
   document.body.append(d);
   d.showModal();
 }
+
+// The chip row drags sideways with a mouse too and flicks on when let go
+// (Mor, 2026-10-10: "sliding and draggable like the tab itself"); a finger
+// already scrolls it natively. It has weight (Mor, same day: "heavier,
+// with a force after releasing"): the row trails the pointer a little,
+// a throw carries it a long way and slows gently, and pulled past either
+// end it stretches and springs back. A drag never counts as a tap.
+// Shared: the project chips (projects.js) and Switch's cards (now.js).
+let chipDragged = false;
+const motionOK = () => !window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+export function dragScroll(row){
+  const FOLLOW = 0.3, FRICTION = 0.955, THROW = 1.6, STRETCH = 0.35;
+  let d = null, raf = 0, pos = 0, vel = 0, over = 0;
+  const max = () => Math.max(0, row.scrollWidth - row.clientWidth);
+  const stop = () => { cancelAnimationFrame(raf); raf = 0; };
+  // Past an end, the overflow shows as a stretch (transform), not scroll.
+  const put = (x) => {
+    const m = max(), clamped = Math.min(m, Math.max(0, x));
+    row.scrollLeft = clamped; over = clamped - x;
+    row.style.transform = over ? `translateX(${over * STRETCH}px)` : "";
+  };
+  const tick = () => {
+    if (!row.isConnected) return stop();
+    if (d) pos += (d.target - pos) * FOLLOW; // trails the pointer
+    else if (over) { pos += over * 0.18; vel = 0; if (Math.abs(over) < 0.5) { pos = Math.min(max(), Math.max(0, pos)); over = 0; } } // spring back
+    else { pos += vel; vel *= FRICTION; if (pos < 0 || pos > max()) vel *= 0.5; }
+    put(pos);
+    if (d || over || Math.abs(vel) > 0.2) raf = requestAnimationFrame(tick); else { raf = 0; row.style.transform = ""; }
+  };
+  const run = () => { if (!raf) raf = requestAnimationFrame(tick); };
+  row.addEventListener("pointerdown", (e) => {
+    if (e.pointerType === "touch" || e.button !== 0) return;
+    stop(); pos = row.scrollLeft - over; vel = 0;
+    d = { x: e.clientX, start: pos, target: pos, on: false, v: 0, lx: e.clientX, t: e.timeStamp };
+  });
+  row.addEventListener("pointermove", (e) => {
+    if (!d) return;
+    const dx = e.clientX - d.x;
+    if (!d.on && Math.abs(dx) > 5) { d.on = true; try { row.setPointerCapture(e.pointerId); } catch { /* gone */ } row.classList.add("dragging"); }
+    if (!d.on) return;
+    const dt = Math.max(1, e.timeStamp - d.t), v = -(e.clientX - d.lx) / dt; // px/ms, in scroll terms
+    d.v = d.v * 0.6 + v * 0.4; d.lx = e.clientX; d.t = e.timeStamp;
+    d.target = d.start - dx;
+    if (!motionOK()) { pos = d.target; put(pos); } else run();
+  });
+  const end = (e) => {
+    if (!d) return;
+    const { on, v, t } = d; d = null;
+    row.classList.remove("dragging");
+    if (!on) return;
+    chipDragged = true; setTimeout(() => { chipDragged = false; });
+    if (!motionOK()) { put(Math.min(max(), Math.max(0, pos))); row.style.transform = ""; return; }
+    // A pause before letting go is a place, not a throw.
+    vel = e.timeStamp - t > 80 ? 0 : v * 16 * THROW;
+    run();
+  };
+  row.addEventListener("pointerup", end);
+  row.addEventListener("pointercancel", end);
+  row.addEventListener("click", (e) => { if (chipDragged) { e.stopPropagation(); e.preventDefault(); } }, true);
+  return row;
+}
