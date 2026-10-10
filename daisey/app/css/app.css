@@ -1571,12 +1571,12 @@ body.focus #side { display: none; }
 :root.night .nowrow #nowcard, body.focus .nowrow #nowcard { flex: 1 1 0; }
 :root.night .night-foot { margin-block-start: auto; padding-block-start: 20px; }
 :root.night .night-hero { margin-block-start: 12px; }
-/* The night hero at the main card's size and padding, the moon above the words
+/* The night hero at the main card's size and padding, the moon beside the words, big
    (was one short row, 2026-10-10; back to the main card's footprint 10-11). */
-:root.night .night-hero { align-self: stretch; box-sizing: border-box; block-size: 150px; margin-inline-end: 82px; flex-direction: column; align-items: flex-start; justify-content: center; gap: 6px; text-align: start; padding: 8px 15px 13px; border-radius: 20px; background: var(--card); border: 1px solid var(--line); }
-:root.night .night-hero .moon-daisy { inline-size: 40px; block-size: 40px; flex: none; }
-:root.night .night-h { margin: 0 0 2px; font-size: 18px; }
-:root.night .night-p { font-size: 13px; line-height: 1.35; }
+:root.night .night-hero { align-self: stretch; box-sizing: border-box; block-size: 150px; margin-inline-end: 82px; flex-direction: row; align-items: center; justify-content: flex-start; gap: 16px; text-align: start; padding: 16px 20px; border-radius: 20px; background: var(--card); border: 1px solid var(--line); }
+:root.night .night-hero .moon-daisy { inline-size: 64px; block-size: 64px; flex: none; }
+:root.night .night-h { margin: 0 0 4px; font-size: 22px; line-height: 1.15; }
+:root.night .night-p { font-size: 14px; line-height: 1.35; }
 :root.night .now-card.main.night { margin-block-start: 20px; }
 :root.night .night-today { margin-block-start: 20px; }
 /* Today's wrap at the main page's sizes (Mor, 2026-10-11): the .glance box
