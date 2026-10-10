@@ -22,7 +22,7 @@
 // sheet, "Daisey guesses" hands a field back, dashed = a guess, solid = yours.
 // While typing a new task's title they catch up only once typing stops.
 import { nudgeText, waLink } from "./nudge.js";
-import { watchTasks, addTask, updateTask, removeTask, watchProjectNames, watchSettings } from "./store.js";
+import { watchTasks, addTask, updateTask, removeTask, watchProjectNames, watchSettings, unlogReopened } from "./store.js";
 import { durText, guessFields, validField, CHOICES, LABELS, INBOX, localDate, clampDate, outsideRange, progressOf } from "./model.js";
 import { h, flash, icon, bdi } from "./ui.js";
 import { projectsOf } from "./projects.js";
@@ -420,7 +420,7 @@ export function mountAddTask(dialog, uid, { onStart } = {}){
     stateLine.hidden = !(t && (done || t.status === "someday"));
     stateLine.replaceChildren(...(done
       ? [`Done ${t.doneAt ? new Date(t.doneAt).toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" }) : ""}. `,
-        h("button", { type: "button", className: "linkish", textContent: "Reopen", onclick: () => save({ status: "ready" }) })]
+        h("button", { type: "button", className: "linkish", textContent: "Reopen", onclick: () => { unlogReopened(uid, t); save({ status: "ready" }); } })]
       : ["On hold. Focus brings it back."]));
     const r = t?.research;
     researchLine.hidden = !r || r.online === "unsure" || !r.why;

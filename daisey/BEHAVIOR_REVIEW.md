@@ -23,12 +23,16 @@ reading the code, none fixed yet. Ranked by harm.
 - Same root: rename (`projects.js:318`) leaves the old name in `tiers`/`ranges`;
   a new project with the old name inherits its tier and date range.
 - Fix: `deleteField()` for removed keys, or write the projects doc without merge.
+- **Fixed 2026-10-10:** `store.js` merged writes use `mergeFields` (each given
+  top-level field replaced whole), same as the guest path. Rename saves the
+  tiers/ranges maps without the old name. `test/v1/store.test.mjs`.
 
 ## 3. Meal answers leak into the next day
 - `needs.js:165` saves `mealToday: { date: today, Dinner: … }` with merge, so
   yesterday's `Lunch: "14:00"` stays in the map under today's date.
 - Result: today's plan moves Lunch to 14:00 unasked and never asks about Lunch.
 - Fix: same as 2 (replace `mealToday` whole).
+- **Fixed 2026-10-10:** by the #2 change; `mealToday` is replaced whole.
 
 ## 4. Nights past midnight
 - Tell Daisey "I can work until 1am": replies "day ends 01:00 today", but
@@ -44,12 +48,16 @@ reading the code, none fixed yet. Ranked by harm.
   Done's work-log entry (`unlogDone` only runs from Undo, same session).
 - Done again → second entry: Week stats and bloom count the task and its
   minutes twice.
+- **Fixed 2026-10-10:** Reopen calls `store.unlogReopened`, which removes the
+  newest `d:1` entry for the task from the log docs around `doneAt`.
 
 ## 6. Rename a project: it jumps
 - Rename updates tasks, names, tiers, range, but not `order` (the dragged
   order), so the project drops to the end of its tier.
 - Work-log entries keep the old name (`entry.p`), so history may split
   between old and new names in stats.
+- **Fixed 2026-10-10 (order):** rename swaps the name in `order` in place and
+  saves it. Old log names still split stats (not fixed).
 
 ## 7. "I'm free now" is forgotten
 - `freeFrom` is in memory only (`now.js:85`). iOS kills the PWA in the
@@ -67,3 +75,7 @@ reading the code, none fixed yet. Ranked by harm.
   Close the app before reconnecting and the event is never made.
 - Offline device taps Pause / +15 on a run the other device already ended:
   `saveRun` writes `state/now` whole and brings the ended run back on reconnect.
+- **Fixed 2026-10-10 (two tabs, Pause/+15):** guest `storage` listener
+  re-notifies watchers. `saveRun`/`extendRun` use `updateDoc` (fails on an
+  ended run, not-found swallowed); guests check `taskId`. The routine event
+  (second bullet) is not fixed.

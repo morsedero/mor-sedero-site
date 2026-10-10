@@ -29,6 +29,9 @@ function readGuestData(){
 function writeGuestData(data){
   try { localStorage.setItem(GUEST_KEY, JSON.stringify(data)); }
   catch (error) { throw new Error(`Guest data could not be saved: ${error.message || error}`); }
+  notifyGuest(data);
+}
+function notifyGuest(data){
   for(const cb of guestTaskListeners){
     try { cb(data.tasks.map((task) => ({ ...task })), { fromCache: true, pending: false }); }
     catch(error){ console.error("[daisey] guest task listener", error); }
@@ -40,6 +43,14 @@ function writeGuestData(data){
     }
   }
 }
+// Another tab of this guest wrote: show it here too, or this tab acts on a
+// stale list (BEHAVIOR_REVIEW #9). `storage` only fires in the other tabs.
+globalThis.addEventListener?.("storage", (e) => {
+  if (e.key !== GUEST_KEY && e.key !== null) return; // null: storage cleared
+  if (!guestTaskListeners.size && !guestStateListeners.size) return;
+  try { notifyGuest(readGuestData()); }
+  catch(error){ console.error("[daisey] guest sync", error); }
+});
 function watchGuestTasks(cb){
   guestTaskListeners.add(cb);
   cb(readGuestData().tasks.map((task) => ({ ...task })), { fromCache: true, pending: false });
@@ -83,8 +94,12 @@ function watchGuestState(uid, key, cb, onError){
     return () => {};
   }
 }
+// merge: the given top-level fields replace theirs whole, the rest stay. On
+// Firestore that's mergeFields, not merge: true, which merges maps DEEP, so a
+// key dropped from tiers / ranges / mealToday stayed on the server and came
+// back on the next snapshot (BEHAVIOR_REVIEW #2, #3). Same as the guest path.
 function saveGuestState(uid, key, value, merge = false){
-  if(!isGuest(uid)) return fb.setDoc(fb.doc(fb.db, "users", uid, "state", key), value, merge ? { merge: true } : undefined);
+  if(!isGuest(uid)) return fb.setDoc(fb.doc(fb.db, "users", uid, "state", key), value, merge ? { mergeFields: Object.keys(value) } : undefined);
   try {
     const data = readGuestData();
     data.state[key] = merge ? { ...(data.state[key] || {}), ...value } : value;
@@ -238,6 +253,25 @@ export function unlogDone(uid, taskId){
   doneLogged.delete(taskId);
   return writeLog(uid, d.key, d.id, null).catch(logFail);
 }
+// Reopen in the task sheet (BEHAVIOR_REVIEW #5): the Done may be from another
+// session or device, so not in doneLogged. Its entry is the newest d:1 one for
+// this task in the month of doneAt (finishTask logs a guessed time, a bit
+// before doneAt, so the month before is read too). Done again then logs once.
+export async function unlogReopened(uid, task){
+  if (doneLogged.has(task.id)) return unlogDone(uid, task.id);
+  const at = task.doneAt || Date.now();
+  const keys = [...new Set([logDocKey(at), logDocKey(at - 36 * 3600000)])];
+  try {
+    let best = null;
+    for (const key of keys) {
+      const e = isGuest(uid) ? readGuestData().state[key]?.e
+        : await fb.getDoc(logDoc(uid, key)).then((s) => (s.exists() ? s.data().e : null));
+      for (const [id, x] of Object.entries(e || {}))
+        if (x && x.t === task.id && x.d && (!best || x.at > best.at)) best = { key, id, at: x.at };
+    }
+    if (best) await writeLog(uid, best.key, best.id, null);
+  } catch (e) { logFail(e); }
+}
 // The "Counted ~30 min" toast's − / +: the Done's minutes, corrected.
 export function setDoneMinutes(uid, taskId, minutes){
   const d = doneLogged.get(taskId);
@@ -329,7 +363,28 @@ export function endBatch(uid, left, minutes){
 
 // Pause and Resume write the whole doc (focus.js paused/resumed). Cancel
 // drops it; `minutes` > 0 are kept on the task without counting a stop.
-export const saveRun = (uid, run) => saveGuestState(uid, "now", run);
+// Only onto the run that's still going (BEHAVIOR_REVIEW #9): an offline
+// device's Pause / +15 on a run the other device ended must not bring it
+// back. Firestore: updateDoc, which fails on a deleted doc instead of making
+// it again (offline it queues, and is dropped on reconnect). Guests: same
+// task check by hand.
+export const saveRun = (uid, run) => updateRun(uid, run);
+function updateRun(uid, run){
+  if (isGuest(uid)) {
+    try {
+      const data = readGuestData(), cur = data.state.now;
+      if (!cur || cur.taskId !== run.taskId) return Promise.resolve();
+      data.state.now = run;
+      writeGuestData(data);
+      return Promise.resolve();
+    } catch (error) { return Promise.reject(error); }
+  }
+  // A whole-doc write: a field the run dropped (pausedAt on Resume) goes too.
+  const gone = { pausedAt: fb.deleteField() };
+  for (const k of Object.keys(run)) delete gone[k];
+  return fb.updateDoc(runDoc(uid), { ...run, ...gone })
+    .catch((e) => { if (e?.code !== "not-found") throw e; });
+}
 export const cancelRun = (uid, task = null, minutes = 0) => Promise.all([
   task && minutes > 0 ? logWork(uid, task, minutes).catch(logFail) : null,
   removeGuestState(uid, "now"),
@@ -337,7 +392,7 @@ export const cancelRun = (uid, task = null, minutes = 0) => Promise.all([
 ]);
 
 export function extendRun(uid, run, minutes){
-  return saveGuestState(uid, "now", { ...run, extra: (run.extra || 0) + minutes });
+  return updateRun(uid, { ...run, extra: (run.extra || 0) + minutes });
 }
 
 // Ends the run and books the time against the task.

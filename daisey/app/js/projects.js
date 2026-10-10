@@ -319,7 +319,11 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
         made = [...made.filter((n) => n !== old && n !== v), v];
         saveProjectNames(uid, made).catch(fail);
         const { [old]: _gone, ...rest } = ranges; ranges = rest;
+        // tiers and ranges are saved whole, so the old name's keys go on the
+        // server too; a new project by the old name starts clean (#2).
         if (tiers[old]) { const { [old]: t, ...others } = tiers; tiers = { ...others, [v]: t }; saveProjectTiers(uid, tiers).catch(fail); }
+        // Same place in the dragged order, not dropped to the end (#6).
+        if (order.includes(old)) { order = order.filter((n) => n !== v).map((n) => (n === old ? v : n)); saveProjectOrder(uid, order).catch(fail); }
         shown = v;
         onScreen?.(v);
       }

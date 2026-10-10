@@ -39,6 +39,7 @@ export const updateTask = (uid, task, changes) => {
 export const patchTask = (uid, id, patch) => { const i = tasks.findIndex((t) => t.id === id); tasks[i] = { ...tasks[i], ...patch }; return ok("tasks"); };
 export const finishTask = (uid, task) => { const p = patchTask(uid, task.id, completeTask(task)); p.counted = { minutes: 20 }; return p; };
 export const setDoneMinutes = () => Promise.resolve();
+export const unlogReopened = () => Promise.resolve();
 // Bloom: a few entries over the last days so the page has something to draw.
 export const watchLog = (uid, keys, cb) => {
   const t = Date.now(), d = 864e5;
