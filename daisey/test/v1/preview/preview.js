@@ -165,6 +165,12 @@ const SCENARIOS = {
   // once, no minute's wait (2026-10-09).
   get hours(){ const s = structuredClone(SCENARIOS.openup); delete s.dayplan.sig;
     s.settings = { deadlinesAsked: true, somedayAsked: day(0), dayStart: "08:00", dayEnd: "11:30" }; return s; },
+  // A planned break running: the first task done 3 min ago, a 10 min break
+  // next, then the second (--cal none, real clock): the card is the break.
+  planbreak: { tasks: [
+    { title: "Mix review for Reprise", project: "Reprise", size: 60, over: { status: "done", doneAt: Date.now() - 3 * 60000 } },
+    { title: "Lesson prep", project: "Teaching", size: 45 },
+  ], dayplan: { date: day(0), status: "approved", items: [{ taskId: "t1", minutes: 60 }, { brk: "short", minutes: 10 }, { taskId: "t2", minutes: 45 }] } },
   // Nothing active: only waiting and Someday (the calm empty state).
   rest: { tasks: [
     { title: "Waiting on Yuval", project: "Reprise", size: 30, over: { status: "waiting", waitingOn: "Yuval" } },

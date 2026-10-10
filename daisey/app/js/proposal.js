@@ -225,14 +225,32 @@ function lay(items = [], { tasks = [], events = [], now = Date.now(), hours = W.
   // Breaks are the plan's own items: none are added here.
   const fixed = items.some(isBreak);
   let afterDone = false; // the last item looked at was finished work
+  let doneAt = 0; // when that work was finished
+  // Put off with "Later today" (it.hold, ms): laid once its time comes, the
+  // rest moving up meanwhile (Mor, 2026-10-10: the Today list kept it where
+  // it was while the card had moved on).
+  const later = [];
   const lo = items.findIndex((it) => !isBreak(it)), hi = items.findLastIndex((it) => !isBreak(it));
   for (const [i, it] of items.entries()) {
     if (isBreak(it)) {
       if (i < lo || i > hi) continue; // never first or last
       if (isMeal(it) && !meals.length) continue; // meals switched off in Settings
-      // A break right after finished work, with nothing laid since, was had.
-      if (afterDone && !rows.length) continue;
       const len = Math.max(5, it.minutes || 10) * MIN;
+      // A break right after finished work, with nothing laid since, runs from
+      // when the work was finished: had once that's over, until then it's
+      // now (it vanished the moment Done was tapped).
+      if (afterDone && !rows.length) {
+        if (!doneAt || doneAt + len <= now) continue;
+        const g = gaps.findIndex((x) => !x.place && x.end > now);
+        if (g < 0 || (isMeal(it) && !meals.length)) continue;
+        const meal = isMeal(it) ? mealName(it, meals, doneAt) : null;
+        breaks.push({ kind: "break", type: meal ? "meal" : it.brk, minutes: len / MIN, start: doneAt, end: doneAt + len, i, ...(meal ? { name: meal } : {}) });
+        gapEnd.set(breaks[breaks.length - 1], gaps[g].end);
+        worked = 0; if (it.brk !== "short") sinceLong = 0;
+        if (meal) mealsDone.add(meal);
+        lastEnd = doneAt + len; gi = g; cursor = Math.max(cursor, Math.ceil((doneAt + len) / (5 * MIN)) * 5 * MIN);
+        continue;
+      }
       for (let k = gi; k < gaps.length; k++) {
         if (gaps[k].place) continue; // no break on the train: the ride is one
         const from = Math.max(cursor, gaps[k].start);
@@ -248,8 +266,16 @@ function lay(items = [], { tasks = [], events = [], now = Date.now(), hours = W.
       continue;
     }
     const task = byId.get(it.taskId);
-    if (!task || task.status === "done" || task.status === "dropped") { afterDone = !!task; continue; }
+    if (!task || task.status === "done" || task.status === "dropped") { afterDone = !!task; doneAt = task?.doneAt || 0; continue; }
+    // Pending, Not now, Tomorrow, This week: off today's plan.
+    if (task.status !== "ready" || notYet(task, now)) continue;
+    if (it.hold > cursor) { later.push({ it: { ...it, at: Math.max(it.at || 0, it.hold) }, i }); continue; }
+    while (later.length && later[0].it.at <= cursor) { const d = later.shift(); place(d.it, d.i, byId.get(d.it.taskId)); }
     afterDone = false;
+    place(it, i, task);
+  }
+  for (const d of later) place(d.it, d.i, byId.get(d.it.taskId));
+  function place(it, i, task){
     const need = Math.max(5, it.minutes || leftOf(task)) * MIN;
     let placed = false;
     // The soonest ride that fits it (engine.fitsPlace) and still has room.

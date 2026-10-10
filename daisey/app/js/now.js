@@ -16,7 +16,7 @@ import { overruled, eventKey } from "./reality.js";
 import * as deep from "./deep.js";
 import { addTask, updateTask, watchTasks, watchRun, watchSkips, saveSkips, startRun, extendRun, endRun, startBatch, tickBatch, endBatch, skipNow, blockTask, restoreTask, finishTask, setDoneMinutes, watchSettings, saveSettings, watchMoment, saveMoment, watchLearn, bumpLearn, saveRun, cancelRun, watchDayPlan, saveDayPlan, holdTask, releaseTask } from "./store.js";
 import { sortable } from "./ppdrag.js";
-import { proposeDay, timeline, withBreaks, trimBreaks, isBreak, nextPlanned, planProgress, refit, topUp, daySig, relayMeals } from "./proposal.js";
+import { proposeDay, timeline, withBreaks, trimBreaks, isBreak, planProgress, refit, topUp, daySig, relayMeals } from "./proposal.js";
 import { rethink } from "./rethink.js";
 import { breakText } from "./schedule.js";
 import { placeNow, workBase, watchProjectTiers } from "./context.js";
@@ -582,8 +582,17 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
   //   week     not before the roomiest day this week (triage.pickWeekDay)
   //   someday  parked until moved back
   const declined = (task) => bumpLearn(uid, task.type, timeBucket().part, "skips");
+  // Later today on a planned task moves it on the plan too (proposal.lay
+  // it.hold): the Today list and the card both lay the rest first. null: Undo.
+  function holdInPlan(task, until){
+    const p = approvedPlan();
+    if (!p?.items?.some((it) => it.taskId === task.id && (until || it.hold))) return;
+    savePlan("approved", p.items.map((it) => (it.taskId !== task.id ? it : until ? { ...it, hold: until } : (({ hold, ...rest }) => rest)(it))),
+      { kept: p.kept || [], ...unseen(p, "cut"), ...unseen(p, "added") });
+  }
   function later(task, when, extra = null){
     if (when === "today") {
+      holdInPlan(task, Date.now() + LATER_MINUTES * 60000);
       stepAside(task, { label: `Later (${dur(LATER_MINUTES)}): `, lesson: true, write: () => Promise.all([skipNow(uid, task), declined(task), extra ? restoreTask(uid, task.id, extra) : null]) });
     } else if (when === "tomorrow") {
       const d = new Date(); d.setDate(d.getDate() + 1);
@@ -632,6 +641,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
 
   function undo(){
     const { task, before } = toast;
+    holdInPlan(task, null);
     skips.delete(task.id);
     state.chosen = task.id;
     setToast(null);
@@ -1426,8 +1436,10 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
   // ---------- Missed slot and the silence check (miss.js, 2026-10-08) ----------
   // While Daisey is open, a banner over the card asks; closed, the server
   // sends the same as a notification (notify.js "miss").
+  // With an approved plan, its own timeline says what's late (planDue,
+  // behindView): one voice, not two (Mor, 2026-10-10).
   function missNow(){
-    if (!tasks || cal.status !== "ok" || prop.open || handoff) return null;
+    if (!tasks || cal.status !== "ok" || prop.open || handoff || approvedPlan()) return null;
     return missState({ tasks, events: cal.events, run, now: Date.now(), hours: dayHours(settings),
       planAt: todaysPlan()?.approvedAt || 0, silenceOn: settings.silenceOn || null });
   }
@@ -1463,6 +1475,29 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     const p = approvedPlan();
     if (!p || !tasks || cal.status !== "ok" || prop.open || handoff) return null;
     return timeline(p.items || [], { ...planCtx(), since: planSince() }).late || null;
+  }
+  // The approved plan, now: { row } its next task in time (late or not),
+  // { brk, next } inside one of its breaks, {} when it has nothing for now
+  // null when nothing's left for now (done, or all put off): the engine picks.
+  // skip: ids not to offer (the task just finished in the handoff).
+  function planNow(skip = []){
+    const p = approvedPlan();
+    if (!p || !tasks) return null;
+    const now = Date.now(), tl = timeline(p.items || [], { ...planCtx(), since: planSince() });
+    const off = new Set([...hidden(now), ...skip]);
+    const rows = tl.rows.filter((x) => !off.has(x.taskId) && !x.task.onHold);
+    const brk = !run && tl.breaks.find((b) => b.start <= now && now < b.end);
+    if (brk && (!rows[0] || rows[0].start >= brk.end - 60000)) return { brk, next: rows[0] || null };
+    if (rows[0]) return { row: rows[0] };
+    return null;
+  }
+  const planWhy = (row) => [row.start > Date.now() + 2 * 60000 ? `next in your plan, ${clock(row.start)}–${clock(row.end)}` : `in your plan until ${clock(row.end)}`];
+  function breakCard(b, next){
+    const name = b.name || (b.type === "meal" ? "Meal" : "Breather"); // the Today list's words
+    return quietCard({ meta: "Break", side: `until ${clock(b.end)}`, title: name,
+      extras: [next && h("p", { className: "now-why" }, "Next: ", bdi(next.task.title), ` at ${clock(Math.max(next.start, b.end))}.`)],
+      action: next && h("button", { className: "btn quiet", type: "button", textContent: "Start it now",
+        ariaLabel: `Skip the rest of the break: start ${next.task.title}`, onclick: () => begin(next.task) }) });
   }
   const dueWhy = (card, due) => ({ ...card, whyParts: [Date.now() - due.start < 2 * 60000 ? `planned for ${clock(due.start)}` : `planned for ${clock(due.start)}, not started`] });
   function later10(task){
@@ -1697,8 +1732,8 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
       // The task just worked on isn't offered straight back.
       const m = momentInput();
       const r = rank(tasks || [], { ...m, sessionSkips: [...m.sessionSkips, handoff.skip] });
-      const pn = nextPlanned(approvedPlan(), tasks || [], localDate());
-      const nextPick = (pn && r.ranked.find((s) => s.task.id === pn)) || r.pick;
+      const pr = planNow([handoff.skip])?.row;
+      const nextPick = pr ? (r.ranked.find((s) => s.task.id === pr.taskId) || { task: pr.task, whyParts: [] }) : r.pick;
       // Every option the card has, right here (Mor, 2026-10-07: not just
       // Start / Not now). Later, Switch and Pending open the card on that
       // task with the same ask already open.
@@ -1757,14 +1792,26 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
 
     const r = rank(tasks, momentInput(fw));
     const planned = blockOf(fw)?.taskId;
-    const planNext = nextPlanned(approvedPlan(), tasks, localDate());
+    // An approved plan owns the card (Mor, 2026-10-10: the card and the
+    // Today list never disagree): its next row, in time, said in its times;
+    // a break while it runs; the meeting while one runs. The engine picks
+    // only once the plan has nothing left for today. A plan still waiting
+    // for approval: its first task.
+    const pn = planNow();
+    const planRow = pn?.row && !(fw?.current && !fw.current.trip && pn.row.start > Date.now()) ? pn.row : null;
+    const asCard = (id, task, whyParts) => ({ ...(r.ranked.find((s) => s.task.id === id) || { task }), whyParts });
+    const firstProposed = !pn && prop.open && !approvedPlan() ? prop.items.find((it) => !isBreak(it) && (tasks || []).some((t) => t.id === it.taskId && t.status === "ready")) : null;
     const card = (state.chosen && r.ranked.find((s) => s.task.id === state.chosen))
       || (planned && r.ranked.find((s) => s.task.id === planned))
-      || (planNext && r.ranked.find((s) => s.task.id === planNext)) || r.pick;
+      || (planRow && asCard(planRow.taskId, planRow.task, planWhy(planRow)))
+      || (firstProposed && asCard(firstProposed.taskId, tasks.find((t) => t.id === firstProposed.taskId), ["first in the plan below"]))
+      || (pn ? null : r.pick);
     showing(card?.task.id ?? null);
     // One ask under the card at a time, the most asked-for first.
     // (The calendar offer and the weekly Someday pick moved to Needs you.)
-    const tip = (toast && toastView()) || cutView() || behindView() || addedView() || (sd.open && somedayAsk());
+    let behind = null;
+    const tip = (toast && toastView()) || cutView() || (behind = behindView()) || addedView() || (sd.open && somedayAsk());
+    if (!card && pn?.brk && !fw?.current) { day(...head, breakCard(pn.brk, pn.next), tip); return; }
     // In a meeting, the meeting IS what's happening now, so the card says
     // which one and how much of it is left (Mor, 2026-10-04) instead of
     // "nothing to pick until it ends", which named nothing and read as if
@@ -1803,10 +1850,11 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
 
     const ms = missNow();
     if (ms?.kind === "silence") { day(...head, roughCard(ms), tip); return; }
-    const due = planDue(), dueNow = due?.taskId === card.task.id ? due : null;
+    // The behind note under the card already asks: the card doesn't too.
+    const due = !behind && planDue(), dueNow = due?.taskId === card.task.id ? due : null;
     const missed = !dueNow && ms?.kind === "miss" ? ms : null;
     if (card === r.pick && r.pick.batch && !state.chosen && !state.single) { day(...head, batchCard(r, r.pick.batch), tip); return; }
-    const alts = r.ranked.length > 1 ? [r.pick, ...r.alternatives].filter((s) => s !== card).slice(0, 3) : [];
+    const alts = r.ranked.length > 1 ? [r.pick, ...r.alternatives].filter((s) => s && s.task.id !== card.task.id).slice(0, 3) : [];
     // Start is the one loud thing on the tab; the other two stay quiet under it.
     const lead = dueNow ? dueLead(card.task) : missed ? missLead(card.task) : [];
     const leadKey = lead.length ? `${card.task.id}:${(dueNow || missed).start}` : null;
