@@ -1550,9 +1550,12 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
         h("button", { type: "button", className: "sc-ev" + tone, style: ev.color ? `--ev:${ev.color}` : "", ariaLabel: `${ev.title}, ${clock(s)} to ${clock(e)}`,
           onclick: () => onEvent?.(ev) }, h("span", { className: "sc-evi" }, icon("calendar")), bdi(ev.title)));
     };
-    const night = new Date(); night.setHours(24, 0, 0, 0);
+    // Until midnight, or the day's end when it runs past it; after midnight in
+    // a late day only until that end, not into the calendar's new day (Mor, 2026-10-11).
+    const ph = dayHours(settings), midnight = new Date().setHours(24, 0, 0, 0);
+    const night = ph.late ? dayEndAt(Date.now(), ph) : Math.max(midnight, dayEndAt(Date.now(), ph));
     const evs = cal.status !== "ok" ? [] : cal.events.filter((e) => !e.allDay && !/^✓\s*/u.test(e.title || "")
-      && Date.parse(e.end) > Date.now() && Date.parse(e.start) < night.getTime());
+      && Date.parse(e.end) > Date.now() && Date.parse(e.start) < night);
     const plural = (n) => (n === 1 ? ["One doesn't", "it"] : [`${n} don't`, "them"]);
     // Past midnight on the night page the plan is the day you wake into,
     // which that page calls tomorrow (Mor, 2026-10-11), so this says so too.
