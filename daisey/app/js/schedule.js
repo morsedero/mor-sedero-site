@@ -214,9 +214,12 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onMissed, onPro
     const isNow = view === "week" ? from.getTime() === addDays(today, -today.getDay()).getTime() : at.getTime() === today.getTime();
     const future = (view === "week" ? from : at).getTime() > today.getTime(); // today lies behind (left)
     const late = now >= atMin(today, hrs.end);
+    // Names count from the day you're in: late past midnight that's still
+    // yesterday, so the calendar's today reads Tomorrow, the next day its weekday.
+    const named = real.late ? addDays(today, -1) : today;
     const dayName = (d) => {
-      const diff = Math.round((d - today) / 864e5);
-      return diff === 0 ? (late || new Date(now).getHours() >= 18 ? "Tonight" : "Today") : diff === 1 ? "Tomorrow" : diff === -1 ? "Yesterday"
+      const diff = Math.round((d - named) / 864e5);
+      return diff === 0 ? (late || real.late || new Date(now).getHours() >= 18 ? "Tonight" : "Today") : diff === 1 ? "Tomorrow" : diff === -1 ? "Yesterday"
         : d.toLocaleDateString("en-GB", { weekday: "long" });
     };
     const last = addDays(to, -1);
@@ -227,7 +230,7 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onMissed, onPro
     const title = view === "week" ? (isNow ? "This week" : span) : tonight ? "Tonight" : dayName(at);
     const sub = view === "week" ? (isNow ? span : "") : tonight ? `until ${minText(real.end)}` : short(at);
     // A phone drops the date line, so a plain weekday carries its date ("Wed 15").
-    const rel = Math.abs(Math.round((at - today) / 864e5)) <= 1;
+    const rel = Math.abs(Math.round((at - named) / 864e5)) <= 1;
     const narrow = view === "week" || rel ? title : `${at.toLocaleDateString("en-GB", { weekday: "short" })} ${at.getDate()}`;
 
     const weekBtn = h("button", { type: "button", className: "sc-weekbtn", ariaLabel: "Week", onclick: () => onWeek?.() }, icon("calendar"), h("span", { textContent: "Week" }));
