@@ -59,7 +59,10 @@ export function wrapList(tasks = [], now = Date.now()){
 }
 
 // onClose(): back to home.
-export function mountNeeds(root, uid, { onClose } = {}){
+// extra(): questions only another screen can work out (now.js needsAsks:
+// the plan slipped), asked first. Each is { key, kind: "ext", ask({ next,
+// close }) } and ask returns a question, or null once it no longer applies.
+export function mountNeeds(root, uid, { onClose, extra } = {}){
   let tasks = [], settings = {}, cal = { status: "loading", events: [] };
   let list = [], i = 0, follow = null, mode = "needs", loaded = false, waiting = null; // follow: the "keep the event?" step after making one a task
   const fail = (e) => console.error("[daisey] needs", e);
@@ -99,6 +102,7 @@ export function mountNeeds(root, uid, { onClose } = {}){
   // One question: what each source asks and what each answer does.
   // tone: the card's tint (an area class), ico: its icon.
   function question(item){
+    if (item.kind === "ext") return item.ask({ next, close: (then) => onClose?.(then) });
     if (item.kind === "cal") {
       const ev = item.ev, d = draftFrom(ev, tasks);
       const start = Date.parse(ev.start), end = Date.parse(ev.end);
@@ -335,7 +339,7 @@ export function mountNeeds(root, uid, { onClose } = {}){
       if (!loaded) { waiting = which; return; }
       mode = which;
       const dev = which === "wrap" ? null : whereAsk();
-      list = which === "wrap" ? wrapList(tasks) : [...(dev ? [{ key: `where:${dev}`, kind: dev === "name" ? "place" : dev }] : []), ...collectNeeds({ tasks, events: cal.events || [], calOk: cal.status === "ok", settings, home: homeAt() })];
+      list = which === "wrap" ? wrapList(tasks) : [...(extra?.() || []), ...(dev ? [{ key: `where:${dev}`, kind: dev === "name" ? "place" : dev }] : []), ...collectNeeds({ tasks, events: cal.events || [], calOk: cal.status === "ok", settings, home: homeAt() })];
       i = 0; follow = null;
       paint();
       root.hidden = false;

@@ -556,7 +556,11 @@ async function boot(){
         const startTask = (id) => { if (history.state?.daisey) history.back(); closeScreens(); m.now?.start(id, "focus"); };
 
         m.adder = mountAddTask($("#addtask"), user.uid, { onStart: startTask });
-        m.needs = mountNeeds($("#needsview"), user.uid, { onClose: () => screens.back() });
+        m.needs = mountNeeds($("#needsview"), user.uid, {
+          // then: what to open once Needs you is shut. After the back step's
+          // popstate, or the closeScreens it runs would shut that too.
+          onClose: (then) => { const pop = !!history.state?.daisey; if (then && pop) addEventListener("popstate", () => then(), { once: true }); screens.back(); if (then && !pop) then(); },
+          extra: () => m.now?.needsAsks() || [] });
         m.schedule = mountSchedule($("#schedPage"), user.uid, { onEvent: (ev) => m.event.view(ev), onNew: (date, at) => m.event.open(date, at), onOpen: (task) => m.adder.edit(task), });
         // ARCHIVED (Mor, 2026-10-08): the Week page is built but switched off until
         // people ask for it. To bring it back: pass onWeek to the mount above

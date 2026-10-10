@@ -1268,7 +1268,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
   // compares it with the calendar now. mealsLaid: the meal answers already
   // laid into it (proposal.relayMeals), kept across later saves.
   // behindNo / offer: the behind ask's "Not now" and the top-up's open
-  // question (behindView, addedView), kept across later saves too.
+  // question (planAsk, addedView), kept across later saves too.
   const savePlan = (status, items, extra = {}) => {
     const was = todaysPlan();
     const approvedAt = was?.approvedAt ?? null, declined = was?.declined || [], mealsLaid = was?.mealsLaid || {};
@@ -1300,31 +1300,37 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     if (p.behindNo === key) return null;
     return { p, missed, cut, items, key, why: squeezedBy(p) };
   }
-  function behindView(){
+  // The plan slipped (Mor, 2026-10-10: the pop-up under the card was "in
+  // your face"): still a question, but one in Needs you, counted on its chip.
+  // needsAsks() hands it to needs.js (main.js passes it in); "Ask me later"
+  // there hides it for the day like any other (settings.needsLater), and
+  // what's missed or cut changing makes it a new question.
+  function replanFrom(b){
+    const { p } = b, gone = b.cut.length;
+    savePlan("approved", b.items, { kept: p.kept || [], ...unseen(p, "added"), approvedAt: Date.now(), behindNo: null,
+      ...(gone ? { cut: { ids: b.cut, ok: true, before: p.items, asked: [] } } : {}) });
+    flash(gone ? `Re-planned from now. ${gone === 1 ? "One task" : `${gone} tasks`} back in your list.` : "Re-planned from now.");
+    render();
+  }
+  function planAsk(){
     const b = behindNow();
     if (!b) return null;
-    const { p, missed } = b, gone = b.cut.map((id) => tasks.find((t) => t.id === id)).filter(Boolean);
-    // One short line (Mor, 2026-10-10: the notices were too dense to read);
-    // the names are on the Today list, Edit shows the rest.
-    const text = missed.length && gone.length ? [`${missed.length} didn't happen, ${gone.length} won't fit.`]
-      : missed.length === 1 ? [bdi(missed[0].title), " didn't happen."]
-      : missed.length ? [`${missed.length} planned tasks didn't happen.`]
-      : [`Running behind: ${gone.length} won't fit.`];
-    const replan = () => {
-      savePlan("approved", b.items, { kept: p.kept || [], ...unseen(p, "added"), approvedAt: Date.now(), behindNo: null,
-        ...(gone.length ? { cut: { ids: b.cut, ok: true, before: p.items, asked: [] } } : {}) });
-      flash(gone.length ? `Re-planned from now. ${gone.length === 1 ? "One task" : `${gone.length} tasks`} back in your list.` : "Re-planned from now.");
-      render();
-    };
-    return h("div", { className: "toast plan-cut", role: "status" },
-      h("div", { className: "toast-row" },
-        h("span", { className: "toast-text" }, ...text),
-        h("span", { className: "toast-acts" },
-          h("button", { className: "toast-undo", type: "button", textContent: "Re-plan", ariaLabel: "Re-plan the rest of today from now", onclick: replan }),
-          h("button", { className: "toast-undo", type: "button", textContent: "Edit", ariaLabel: "Open today's plan, laid from now, to change it",
-            onclick: () => { prop.replan = true; openProposal(); } }),
-          h("button", { className: "toast-undo", type: "button", textContent: "Later", ariaLabel: "Not now",
-            onclick: () => { savePlan("approved", p.items, { kept: p.kept || [], ...unseen(p, "cut"), ...unseen(p, "added"), behindNo: b.key }); render(); } }))));
+    const key = `plan:${b.key}`, nl = settings.needsLater;
+    if (nl?.date === localDate() && (nl.keys || []).includes(key)) return null;
+    return { key, kind: "ext", ask: ({ next, close }) => {
+      const c = behindNow();
+      if (!c || `plan:${c.key}` !== key) return null; // answered or changed since
+      const { missed } = c, gone = c.cut.map((id) => tasks.find((t) => t.id === id)).filter(Boolean);
+      const sub = missed.length && gone.length ? `${missed.length} didn't happen, ${gone.length} won't fit.`
+        : missed.length === 1 ? "It didn't happen."
+        : missed.length ? `${missed.length} planned tasks didn't happen.`
+        : `Running behind: ${gone.length} won't fit.`;
+      return { tone: "area-work", ico: "later", q: "Your plan slipped", sub,
+        item: (missed.length ? missed : gone).map((t) => t.title).join(", "),
+        say: `Re-plan lays the rest of today from now${gone.length ? ", and what won't fit goes back in your list" : ""}.`,
+        yes: ["Re-plan from now", () => { replanFrom(c); next(); }],
+        no: ["Edit the plan", () => close(() => { prop.replan = true; openProposal(); })] };
+    } };
   }
   // What shrank the day: a busy event added or moved since the plan was saved.
   function squeezedBy(p){
@@ -1442,7 +1448,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     // The follow-up: a real deadline today that no longer fits.
     const ask = gone.find((t) => t.status === "ready" && t.dateKind === "deadline" && t.due && t.due <= localDate() && !(c.asked || []).includes(t.id));
     const answer = (patch) => { if (patch) restoreTask(uid, ask.id, patch).catch(fail); cutSaved({ ...c, asked: [...(c.asked || []), ask.id] }); render(); };
-    // A cut the user approved (behindView): only the deadline question is left.
+    // A cut the user approved (planAsk): only the deadline question is left.
     if (c.ok) return ask ? h("div", { className: "toast plan-cut", role: "status" },
       h("div", { className: "toast-why-row", role: "group", ariaLabel: `${ask.title} is due today` },
         h("span", { className: "toast-text" }, bdi(ask.title), " is due today. Move it?"),
@@ -1483,7 +1489,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
   // While Daisey is open, a banner over the card asks; closed, the server
   // sends the same as a notification (notify.js "miss").
   // With an approved plan, its own timeline says what's late (planDue,
-  // behindView): one voice, not two (Mor, 2026-10-10).
+  // planAsk): one voice, not two (Mor, 2026-10-10).
   function missNow(){
     if (!tasks || cal.status !== "ok" || prop.open || handoff || approvedPlan()) return null;
     return missState({ tasks, events: cal.events, run, now: Date.now(), hours: dayHours(settings),
@@ -1687,7 +1693,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
             .sort((a, b) => a.s - b.s).map((x) => (x.ev ? evRow(x.ev) : x.b ? breakRow(x.b) : row(x.r, false))),
           ...over.map((r) => row(r, true)))),
       !rows.length && !over.length && h("p", { className: "now-empty", textContent: "No open task fits the free time left today." }),
-      // Overflow: Daisey asks before cutting anything (behindView,
+      // Overflow: Daisey asks before cutting anything (planAsk,
       // 2026-10-10), so until it's answered, what doesn't fit shows here.
       // Late in the day it says so and offers a fresh take on what's left.
       over.length > 0 && approved && !prop.busy && h("p", { className: "pp-note pp-late" }, "Running late. ",
@@ -1763,7 +1769,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     const pp = planProgressNow(), ppKey = pp ? `${pp.done}/${pp.total}` : "";
     if (ppKey !== reportedPlan) { reportedPlan = ppKey; onPlanProgress?.(pp); }
     if (!live && tasks) {
-      const nn = collectNeeds({ tasks, events: cal.events || [], calOk: cal.status === "ok", settings, home: homeAt() }).length + (whereAsk() ? 1 : 0);
+      const nn = collectNeeds({ tasks, events: cal.events || [], calOk: cal.status === "ok", settings, home: homeAt() }).length + (whereAsk() ? 1 : 0) + (planAsk() ? 1 : 0);
       if (nn !== reportedNeeds) { reportedNeeds = nn; onNeedsCount?.(nn); }
     }
 
@@ -1853,7 +1859,9 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     // One ask under the card at a time, the most asked-for first.
     // (The calendar offer and the weekly Someday pick moved to Needs you.)
     let behind = null;
-    const tip = (toast && toastView()) || cutView() || (behind = behindView()) || addedView() || (sd.open && somedayAsk());
+    // The plan slipping asks in Needs you now (planAsk), not here.
+    behind = behindNow();
+    const tip = (toast && toastView()) || cutView() || addedView() || (sd.open && somedayAsk());
     if (!card && pn?.brk && !fw?.current) { day(...head, breakCard(pn.brk, pn.next), tip); return; }
     // In a meeting, the meeting IS what's happening now, so the card says
     // which one and how much of it is left (Mor, 2026-10-04) instead of
@@ -1893,7 +1901,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
 
     const ms = missNow();
     if (ms?.kind === "silence") { day(...head, roughCard(ms), tip); return; }
-    // The behind note under the card already asks: the card doesn't too.
+    // Needs you is already asking about the slipped plan: the card doesn't too.
     const due = !behind && planDue(), dueNow = due?.taskId === card.task.id ? due : null;
     const missed = !dueNow && ms?.kind === "miss" ? ms : null;
     if (card === r.pick && r.pick.batch && !state.chosen && !state.single) { day(...head, batchCard(r, r.pick.batch), tip); return; }
@@ -1996,6 +2004,8 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
 
   return {
     refresh: render,
+    // Needs you's questions that only the Now screen can work out (planAsk).
+    needsAsks: () => [planAsk()].filter(Boolean),
     // "Do this now" from the task sheet: the same thing Switch does, driven
     // from the list. A task put off today is un-put-off, or the card would
     // ignore the choice.
