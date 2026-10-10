@@ -451,7 +451,7 @@ async function boot(){
           const pct = (m) => ((m - BAR0) / 1440 * 100) + "%";
           start.style.left = pct(s); end.style.left = pct(e);
           fill.style.left = pct(s); fill.style.width = ((e - s) / 1440 * 100) + "%";
-          start.dataset.t = minText(s); end.dataset.t = e === 1440 ? "24:00" : minText(e);
+          start.dataset.t = minText(s); end.dataset.t = minText(e); // midnight reads 00:00 (Mor, 2026-10-11)
           start.setAttribute("aria-valuenow", s); start.setAttribute("aria-valuetext", minText(s));
           end.setAttribute("aria-valuenow", e); end.setAttribute("aria-valuetext", minText(e));
         }
