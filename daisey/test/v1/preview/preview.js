@@ -156,6 +156,9 @@ const SCENARIOS = {
     { title: "Fix the boss loop", project: "Monster Punk", size: 180 },
   ], dayplan: { date: day(0), status: "approved", at: (() => { const d = new Date(); d.setHours(8, 30, 0, 0); return d.getTime(); })(),
     items: [{ taskId: "t2", minutes: 90 }, { taskId: "t4", minutes: 120 }, { taskId: "t1", minutes: 15 }, { taskId: "t5", minutes: 180 }, { taskId: "t3", minutes: 60 }] } },
+  // Same, still waiting for approval (--at 18:30, open #planChip): the card
+  // names the first row that fits, never a No room one.
+  get "squeeze-proposed"(){ const s = structuredClone(SCENARIOS.squeeze); s.dayplan.status = "proposed"; s.tasks[0].size = 400; s.dayplan.items = [{ taskId: "t1", minutes: 400 }, ...s.dayplan.items.filter((i) => i.taskId !== "t1")]; return s; },
   // Same, with the deadline too big to fit: the note asks about its date.
   get "squeeze-due"(){ const s = structuredClone(SCENARIOS.squeeze); s.tasks[0].size = 400; s.dayplan.items[2].minutes = 400; return s; },
   // An approved plan laid against a busier day (sig "was"), now an empty

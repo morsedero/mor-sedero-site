@@ -1775,7 +1775,11 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     const pn = planNow();
     const planRow = pn?.row && !(fw?.current && !fw.current.trip && pn.row.start > Date.now()) ? pn.row : null;
     const asCard = (id, task, whyParts) => ({ ...(r.ranked.find((s) => s.task.id === id) || { task }), whyParts });
-    const firstProposed = !pn && prop.open && !approvedPlan() ? prop.items.find((it) => !isBreak(it) && (tasks || []).some((t) => t.id === it.taskId && t.status === "ready")) : null;
+    // The first row the plan below actually fits in, by time: never one it
+    // says has No room (Mor, 2026-10-11).
+    const firstProposed = !pn && prop.open && !approvedPlan()
+      ? [...timeline(prop.items, planCtx()).rows].sort((a, b) => a.start - b.start)
+        .find((it) => (tasks || []).some((t) => t.id === it.taskId && t.status === "ready")) : null;
     // Switch offers the rest of what's open too (Mor, 2026-10-10: not only
     // On hold when nothing else fits): what the moment filters out (too long
     // for the gap, office hours, another place, its own slot later) is still
