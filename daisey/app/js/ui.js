@@ -215,10 +215,10 @@ export function askProgress(task, { onFull, onPartial, onCancel, start = 50 }){
   d.addEventListener("close", () => { if (!chose) onCancel?.(); });
   const head = (t) => h("div", { className: "now-head" }, h("h2", { textContent: t }),
     h("button", { className: "now-x", type: "button", ariaLabel: "Close", textContent: "✕", onclick: close }));
-  const out = h("output", { className: "pj-pct", textContent: `${start}%` });
   const range = h("input", { type: "range", min: "5", max: "95", step: "5", value: String(start), ariaLabel: "Percent finished",
-    oninput: () => { out.textContent = `${range.value}%`; part.textContent = `Done ${range.value}%`; } });
-  // The button names the amount it saves, and follows the slider (Mor, 2026-10-11).
+    oninput: () => { part.textContent = `Done ${range.value}%`; } });
+  // Beside the slider, naming the amount it saves as the slider moves; the
+  // button is the readout, so no separate % (Mor, 2026-10-11).
   const part = h("button", { className: "btn", type: "button", textContent: `Done ${start}%`, onclick: () => when(Number(range.value)) });
   const when = (pct) => {
     d.replaceChildren(head("Back to it when?"),
@@ -227,10 +227,9 @@ export function askProgress(task, { onFull, onPartial, onCancel, start = 50 }){
   };
   d.replaceChildren(head("How much is done?"),
     h("p", { className: "muted", dir: "auto", textContent: task.title }),
-    h("div", { className: "sheet-stack" }, out, range,
-      // Part done on the left, all done on the right (Mor, 2026-10-11).
-      h("div", { className: "sheet-actions split" }, part,
-        h("button", { className: "btn primary", type: "button", textContent: "All done · 100%", onclick: () => { chose = true; close(); onFull(); } }))));
+    h("div", { className: "sheet-stack" }, h("div", { className: "pg-row" }, range, part),
+      h("div", { className: "sheet-actions" },
+        h("button", { className: "btn primary wide", type: "button", textContent: "All done · 100%", onclick: () => { chose = true; close(); onFull(); } }))));
   d.onclick = (e) => { if (e.target === d) close(); };
   document.body.append(d);
   d.showModal();
