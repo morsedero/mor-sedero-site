@@ -1372,21 +1372,22 @@ body.focus #side { display: none; }
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
 }
 .now-card.main .now-next, .now-card.main .now-why { margin: 4px 0 0; font-size: 14px; line-height: 1.35; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-/* One row: the quiet three, then Done taking the rest. */
-.now-row { display: flex; align-items: center; gap: 0; margin-block-start: auto; padding-block-start: 12px; }
+/* One row: the three light squares, then Done taking the rest. */
+.now-row { display: flex; align-items: center; gap: 6px; margin-block-start: auto; padding-block-start: 12px; }
 /* The row always fits the card: the icon buttons and Done give way before
    anything spills (phone audit, 2026-10-11: at 390 px and under, Switch
    started past the screen's left edge and Done ran under the side column). */
-.now-row .btn.start, .now-card.main .now-row .btn.start { flex: 1; order: 9; inline-size: auto; min-inline-size: min-content; padding-inline: 10px; margin: 0 0 0 4px; min-block-size: 44px; block-size: 44px; border-radius: 12px; font-size: 16px; }
-/* Quiet text buttons, no tile: 44px tall for the finger, no fill at rest. */
+.now-row .btn.start, .now-card.main .now-row .btn.start { flex: 1; order: 9; inline-size: auto; min-inline-size: min-content; padding-inline: 10px; margin: 0; min-block-size: 44px; block-size: 44px; border-radius: 12px; font-size: 16px; }
+/* Squares, icon over label, in a light fill (Mor, 2026-10-11): quiet next
+   to Done, the one saturated button, but still buttons. */
 .now-row .iconbtn {
-  flex: none; display: inline-flex; align-items: center; justify-content: center;
-  inline-size: auto; min-inline-size: 0; block-size: 44px; min-block-size: 44px; padding: 0 5px; border: 0; border-radius: 10px;
-  background: none; color: var(--sub); font-size: 13px; font-weight: 500;
+  flex: 0 1 46px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px;
+  inline-size: 46px; min-inline-size: 38px; block-size: 46px; min-block-size: 44px; padding: 0; border: 0; border-radius: 12px;
+  background: color-mix(in srgb, var(--aline) 28%, var(--card)); color: var(--sub); font-size: 10px; font-weight: 500;
 }
-.now-row .iconbtn svg { display: none; }
-@media (max-width: 389px) { .now-card.main { padding-inline: 12px; } .now-row .iconbtn { padding-inline: 3px; font-size: 12px; } .now-row .btn.start svg { display: none; } }
-.now-row .iconbtn:hover:not(:disabled), .now-row .iconbtn[aria-expanded="true"] { background: none; color: var(--ink); text-decoration: underline; text-underline-offset: 4px; border-color: transparent; }
+.now-row .iconbtn svg { inline-size: 16px; block-size: 16px; stroke-width: 2; }
+@media (max-width: 389px) { .now-card.main { padding-inline: 12px; } .now-row { gap: 4px; } .now-row .iconbtn { min-inline-size: 36px; } .now-row .btn.start svg { display: none; } }
+.now-row .iconbtn:hover:not(:disabled), .now-row .iconbtn[aria-expanded="true"] { background: color-mix(in srgb, var(--aline) 50%, var(--card)); color: var(--ink); border-color: transparent; }
 .now-card.main .later-ask, .now-card.main .pend-ask, .now-card.main .now-out { margin-block-start: 10px; }
 .now-next-out { margin: 10px 0 0; padding-inline: 4px; font-size: 13px; color: var(--sub); text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .now-card.main.meeting, .now-card.main.empty, .now-card.main.night { min-block-size: 0; }
@@ -2009,5 +2010,5 @@ body.focus .shell { block-size: auto; min-block-size: 100dvh; overflow: visible;
 :root:not(.night) body.focus-mode .now-card.main .now-title { margin-block-start: 6px; font-size: 23px; line-height: 1.2; letter-spacing: -0.01em; }
 :root:not(.night) body.focus-mode .now-card.main .now-why { font-size: 15px; }
 :root:not(.night) body.focus-mode .now-card.main .now-row { padding-block-start: 16px; }
-/* Focus too: Switch, Pending and Later are quiet text, Done the one filled button (2026-10-11). */
-:root:not(.night) body.focus-mode .now-card.main .now-row { gap: 4px; } :root:not(.night) body.focus-mode .now-card.main .now-row .iconbtn { block-size: 58px; min-block-size: 58px; padding-inline: 8px; font-size: 15px; } :root:not(.night) body.focus-mode .now-card.main .now-row .btn.start { block-size: 58px; min-block-size: 58px; border-radius: 14px; }
+/* Focus too: the same light squares, bigger; Done the one saturated button (2026-10-11). */
+:root:not(.night) body.focus-mode .now-card.main .now-row { gap: 8px; } :root:not(.night) body.focus-mode .now-card.main .now-row .iconbtn { inline-size: 58px; min-inline-size: 58px; block-size: 58px; min-block-size: 58px; border-radius: 14px; font-size: 11px; gap: 3px; } :root:not(.night) body.focus-mode .now-card.main .now-row .iconbtn svg { inline-size: 20px; block-size: 20px; } :root:not(.night) body.focus-mode .now-card.main .now-row .btn.start { block-size: 58px; min-block-size: 58px; border-radius: 14px; }
