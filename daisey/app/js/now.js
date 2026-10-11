@@ -374,7 +374,9 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
       action: h("button", { className: "btn quiet", type: "button", textContent: "Show tasks again", onclick: () => { restRide = null; render(); } }) });
     return eventCard({ meta, side, title: leg.title,
       why: leg.trip.late ? "Still on the way. The plan waits until you're there." : "Nothing fits the rest of the ride.",
-      extras: [outLine(r), phoneOk(r, leg), putOffButton(r)] });
+      // No "Out right now" / "You seem to be…" here: the ride already says
+      // where you are and why nothing fits (Mor, 2026-10-11: five stacked asks).
+      extras: [phoneOk(r, leg), putOffButton(r)] });
   }
   // What's left after the phone search (phoneNow) found nothing that fits:
   // one tap says this one works on the phone, and it's offered.

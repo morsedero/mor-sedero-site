@@ -100,6 +100,7 @@ test("on the train: the place is train, the ride is the window, laptop fits, hom
   assert.equal(place.value, "train");
   assert.equal(placeNow({ events: evs, now, located: "ride" }).value, "train");
   assert.equal(placeNow({ events: evs, now, located: "home" }).value, "home"); // the phone says you didn't go
+  assert.equal(placeNow({ events: evs, now, located: "out" }).value, "train"); // "out" is just not home: the leg names it
   const fw = freeWindow(evs.filter((e) => e.busy !== false), now);
   assert.equal(fw.current?.trip?.dir, "to");
   const m = readMoment({ now, place: "train", window: Math.floor((fw.current.end - now) / 60000) });

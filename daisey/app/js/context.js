@@ -18,7 +18,10 @@ export function placeNow({ correction = null, located = null, events = [], now =
   const leg = events.find((e) => e.trip && Date.parse(e.start) <= now && now < Date.parse(e.end));
   // The leg's place, not its mode: a train without the laptop is a bus.
   const ride = leg && (leg.trip.place || leg.trip.mode);
-  if (leg && located === "ride") return { value: ride, guessed: true, trip: leg.trip };
+  // "out" only says "not at home", which a ride is: at a red light or in
+  // traffic the phone reads out, and that dropped the driving card for a
+  // "Driving" card offering phone tasks (Mor, 2026-10-11).
+  if (leg && (located === "ride" || located === "out")) return { value: ride, guessed: true, trip: leg.trip };
   if (W.PLACES.includes(located) && !["anywhere", "spot"].includes(located)) return { value: located, guessed: false, located: true };
   if (leg) return { value: ride, guessed: true, trip: leg.trip };
   const out = events.some((e) => {
