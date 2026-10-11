@@ -117,3 +117,43 @@ export function answer(kind, t, { now = Date.now(), week = null } = {}){
     default: return {};
   }
 }
+
+// ---------- what the sweep suggests ----------
+
+// Words that tie a task to an event: "Prep questions for interview" and
+// "Interview at Acme" share "interview". Short and generic words don't count.
+const GENERIC = new Set(["with", "from", "about", "before", "after", "this", "that", "prep", "prepare", "make", "send", "email",
+  "write", "call", "book", "meeting", "today", "tomorrow", "week", "task", "some", "them", "your", "questions", "question", "notes"]);
+const words = (s) => new Set(String(s || "").toLowerCase().split(/[^\p{L}\p{N}]+/u)
+  .map((w) => (w.length > 4 && /[a-z]s$/.test(w) ? w.slice(0, -1) : w))
+  .filter((w) => (/[\u0590-\u05FF]/.test(w) ? w.length >= 3 : w.length >= 4) && !GENERIC.has(w)));
+
+// A calendar event still ahead today that the task is for, or null.
+export function todaysEventFor(t, events = [], now = Date.now()){
+  const mine = words(t.title);
+  if (!mine.size) return null;
+  const today = localDate(now);
+  return events.filter((e) => e.start && (e.allDay ? String(e.start).slice(0, 10) === today
+      : Date.parse(e.end) > now && localDate(Date.parse(e.start)) === today))
+    .sort((a, b) => Date.parse(a.start) - Date.parse(b.start))
+    .find((e) => [...words(e.title)].some((w) => mine.has(w))) || null;
+}
+
+// What the sweep suggests for an old date (user test 2026-10-11: an overdue
+// "Prep questions for interview" got "move it to Thu" with the interview at
+// 11:00 today, and an overdue money deadline got Thu while the plan had it
+// first today). Today when an event today needs it, when today's plan has
+// it, or when a passed deadline costs money or a penalty; else the roomiest
+// day this week. planned: ids in today's plan.
+// → { kind: "today", why: "event" | "plan" | "stakes", event? } | { kind: "week", day }.
+export function sweepAdvice(t, { events = [], tasks = [], now = Date.now(), hours = W.DAY_HOURS, officeDay = defaultOfficeDay, planned = new Set() } = {}){
+  const event = todaysEventFor(t, events, now);
+  if (event) return { kind: "today", why: "event", event };
+  if (planned.has(t.id)) return { kind: "today", why: "plan" };
+  if (isOverdue(t, now) && (t.stakes === "money" || t.stakes === "penalty")) return { kind: "today", why: "stakes" };
+  return { kind: "week", day: pickWeekDay(t, { events, tasks, now, officeDay, hours }) };
+}
+
+// Whole days a date is past (1 = yesterday).
+export const daysLate = (t, now = Date.now()) =>
+  Math.max(0, Math.round((Date.parse(`${logicalDate(now)}T12:00`) - Date.parse(`${t.due}T12:00`)) / 86400000));

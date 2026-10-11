@@ -13,6 +13,20 @@ import { tripAsks, withTrips } from "./trips.js";
 import { mealAsks } from "./meals.js";
 
 const STAKES_FIRST = { penalty: 0, money: 1, someone: 2, low: 3 };
+const DAY = 86400000;
+
+// Away catch-up (Mor approved 2026-10-08; user test 2026-10-11): after
+// AWAY_DAYS or more with nothing done in Daisey, Needs you opens with a
+// welcome back and goes through every old date first, passed targets too.
+export const AWAY_DAYS = 2;
+// Whole days since the user last did anything Daisey can see (as
+// miss.lastActivity, tasks only); 0 for a new user with no history.
+export function awayDays(tasks = [], now = Date.now()){
+  let last = 0;
+  for (const t of tasks) last = Math.max(last, t.touchedAt || 0, t.workedAt || 0, t.doneAt || 0, t.createdAt || 0);
+  if (!last) return 0;
+  return Math.max(0, Math.round((Date.parse(`${logicalDate(now)}T12:00`) - Date.parse(`${logicalDate(last)}T12:00`)) / DAY));
+}
 
 // The Someday pick's rule (DAISEY_SPEC "Someday comes back"): Sunday
 // morning, or whenever fewer than 3 tasks are active, at most once a day.
@@ -75,8 +89,10 @@ export function collectNeeds({ tasks = [], events = [], calOk = false, settings 
   }
   // Passed deadlines always; passed targets only once they pile up (the
   // sweep's old threshold) — a target that slipped sits quietly under today.
-  const targets = shouldOffer(tasks, now, {});
-  sweepList(tasks, now).filter((t) => isOverdue(t, now) || targets)
-    .forEach((t) => add({ key: `sweep:${t.id}`, kind: "sweep", id: t.id }));
-  return out;
+  // Back after days away: all of them, and first.
+  const away = awayDays(tasks, now) >= AWAY_DAYS;
+  const targets = away || shouldOffer(tasks, now, {});
+  const sweeps = sweepList(tasks, now).filter((t) => isOverdue(t, now) || targets)
+    .map((t) => ({ key: `sweep:${t.id}`, kind: "sweep", id: t.id })).filter((item) => !later.has(item.key));
+  return away ? [...sweeps, ...out] : [...out, ...sweeps];
 }

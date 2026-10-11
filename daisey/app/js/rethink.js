@@ -6,13 +6,20 @@
 // lays it on the clock itself.
 import { idToken } from "./firebase.js";
 import { localDate } from "./model.js";
-import { proposeDay, parseAsk, leftOf } from "./proposal.js";
+import { proposeDay, parseAsk, leftOf, fewerOf, moreOf } from "./proposal.js";
 
 const URL_ = "/.netlify/functions/daisey-now-chat";
 
 // → { items, note, via: "ai" | "local" }
 export async function rethink(text, { tasks, events, now = Date.now(), hours, settings, run, current = [], exclude = [], freeMinutes = 0, guest = false }){
   const open = tasks.filter((t) => t.status === "ready" && !t.onHold && !exclude.includes(t.id) && t.id !== run?.taskId);
+  // The Fewer tasks / More tasks buttons: a step from the plan as it is,
+  // here, not a fresh plan (user test 2026-10-11: More went 2 h 35 → 10 h).
+  const said = String(text).trim().toLowerCase();
+  if (current.some((i) => i.taskId) && (said === "fewer tasks" || said === "more tasks")) {
+    const ctx = { tasks, events, now, hours, settings, run, exclude };
+    return { items: said === "fewer tasks" ? fewerOf(current, ctx) : moreOf(current, ctx), note: "", via: "local" };
+  }
   try {
     const headers = { "Content-Type": "application/json" };
     if (guest) headers["X-Daisey-Guest"] = "1";

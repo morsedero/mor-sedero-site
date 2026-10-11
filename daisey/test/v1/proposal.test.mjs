@@ -2,7 +2,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 process.env.TZ = "Asia/Jerusalem";
-const { proposeDay, timeline, withBreaks, trimBreaks, nextPlanned, parseAsk, planProgress, refit, topUp, daySig } = await import("../../app/js/proposal.js");
+const { proposeDay, timeline, withBreaks, trimBreaks, nextPlanned, parseAsk, planProgress, refit, topUp, daySig, leftOf, fewerOf, moreOf, inProjectOrder } = await import("../../app/js/proposal.js");
 
 const at = (h, m = 0) => Date.UTC(2026, 9, 7, h - 3, m);
 const il = (h, m = 0) => new Date(at(h, m)).toISOString();
@@ -226,4 +226,84 @@ test("held plan: a planned task whose whole time passed unstarted is missed, not
   assert.deepEqual(tl.missed, ["a", "b"]); // 09:05–09:35, 09:35–10:05
   assert.deepEqual(tl.rows.map((r) => !!r.missed), [true, true, false]);
   assert.equal(timeline(items, { tasks, events: [], hours: { start: 480, end: 1320 }, since: at(10, 9), now: at(10, 10) }).missed, undefined);
+});
+
+// ---- user test 2026-10-11, part B ----
+
+test("10b: a part-done task is booked for the time left, not its full size", () => {
+  const tax = t({ id: "tax", size: 120, progress: 75 }), demo = t({ id: "demo", size: 180, progress: 50 });
+  assert.equal(leftOf(tax), 30);
+  assert.equal(leftOf(demo), 90);
+  const items = proposeDay({ tasks: [tax, demo], events: [], now: at(9) });
+  assert.deepEqual(Object.fromEntries(items.map((i) => [i.taskId, i.minutes])), { tax: 30, demo: 90 });
+  // A plan saved before the progress: its slot shrinks to what's left.
+  const { rows } = timeline([{ taskId: "tax", minutes: 120 }], { tasks: [tax], events: [], now: at(9) });
+  assert.equal(rows[0].minutes, 30);
+});
+
+test("12: inside a project the plan keeps the order tasks were added; a last step goes after its siblings", () => {
+  const mk = (id, title, h) => t({ id, title, project: "Reprise", size: 30, createdAt: at(h) });
+  const send = mk("send", "Send rough mixes", 1), m1 = mk("m1", "Mix song 1", 2), m2 = mk("m2", "Mix song 2", 3);
+  const items = proposeDay({ tasks: [send, m2, m1], events: [], now: at(9) });
+  const ids = items.map((i) => i.taskId);
+  assert.ok(ids.indexOf("m1") < ids.indexOf("m2"));
+  assert.ok(ids.indexOf("m2") < ids.indexOf("send"));
+  // With a sibling not in the plan (it doesn't fit, or it's off today), the last step waits.
+  const big = mk("big", "Mix song 3", 4); big.size = 900;
+  const only = proposeDay({ tasks: [send, big], events: [], now: at(9) }).map((i) => i.taskId);
+  assert.ok(!only.includes("send"));
+  // A dragged order (pos) wins over when they were added; other projects keep their places.
+  const a = t({ id: "a", project: "P", pos: 1, createdAt: at(1) }), b = t({ id: "b", project: "P", pos: 0, createdAt: at(2) }), x = t({ id: "x", project: "Q" });
+  assert.deepEqual(inProjectOrder([{ taskId: "a" }, { taskId: "x" }, { taskId: "b" }], [a, b, x]).map((i) => i.taskId), ["b", "x", "a"]);
+});
+
+test("lunch: a long item across the whole lunch hour still gets lunch, before or right after it", () => {
+  const tasks = [t({ id: "a", size: 120 }), t({ id: "b", size: 180 }), t({ id: "c", size: 60 })];
+  const items = [{ taskId: "a", minutes: 120 }, { taskId: "b", minutes: 180 }, { taskId: "c", minutes: 60 }];
+  const { breaks } = timeline(items, { tasks, events: [], now: at(9) });
+  assert.ok(breaks.some((b) => b.type === "meal"), "lunch is in the plan");
+  // And no 5 h stretch on one short break: a long one before a 3 h item after 2 h of work.
+  assert.equal(breaks.find((b) => b.start === at(11)).type, "long");
+});
+
+test("Fewer keeps what's due soonest; More adds a little, not the whole day", () => {
+  const tasks = [t({ id: "pass", title: "Passport renewal", due: "2026-11-15", dateKind: "deadline", size: 30 }),
+    t({ id: "p1", title: "Tamar pack 1", due: "2026-10-09", size: 30 }), t({ id: "p2", title: "Tamar pack 2", due: "2026-10-09", size: 30 }),
+    t({ id: "u", title: "Undated", due: null, dateKind: null, size: 30 }), t({ id: "e", title: "Extra", size: 30 })];
+  const plan = [{ taskId: "pass", minutes: 30 }, { taskId: "p1", minutes: 30 }, { taskId: "p2", minutes: 30 }, { taskId: "u", minutes: 30 }];
+  const kept = fewerOf(plan, { tasks, now: at(9) }).map((i) => i.taskId);
+  assert.ok(kept.includes("p1") && kept.includes("p2") && !kept.includes("u"));
+  const many = Array.from({ length: 12 }, (_, i) => t({ id: `m${i}`, size: 60 }));
+  const more = moreOf([{ taskId: "m0", minutes: 60 }], { tasks: many, events: [], now: at(9) });
+  const added = more.length - 1;
+  assert.ok(added >= 1 && added <= 3, `added ${added}`);
+  assert.ok(more.slice(1).reduce((s, i) => s + i.minutes, 0) <= 120);
+});
+
+test("openHours: the plan never books an office task after offices close, nor an evening one before 17:00", () => {
+  const dentist = t({ id: "d", title: "Book dentist", openHours: "office", size: 15 });
+  const late = timeline([{ taskId: "d", minutes: 15 }], { tasks: [dentist], events: [], now: at(21) });
+  assert.equal(late.rows.length, 0);
+  assert.deepEqual(late.over.map((o) => o.taskId), ["d"]);
+  const early = timeline([{ taskId: "d", minutes: 15 }], { tasks: [dentist], events: [], now: at(8) });
+  assert.equal(early.rows[0].start, at(9));
+  const ev = t({ id: "v", openHours: "evening", size: 30 });
+  assert.equal(timeline([{ taskId: "v", minutes: 30 }], { tasks: [ev], events: [], now: at(10) }).rows[0].start, at(17));
+  // proposeDay moves an office task up rather than leaving it past 16:00.
+  const work = [t({ id: "w1", size: 240 }), t({ id: "w2", size: 240 }), dentist];
+  const items = [{ taskId: "w1", minutes: 240 }, { taskId: "w2", minutes: 240 }, { taskId: "d", minutes: 15 }];
+  assert.equal(timeline(items, { tasks: work, events: [], now: at(9) }).over[0]?.taskId, "d");
+});
+
+test("Today list: a break with nothing after it isn't shown for the rest of the day", () => {
+  const tasks = [t({ id: "a", size: 60 }), t({ id: "b", size: 60, status: "done" })];
+  const { breaks } = timeline([{ taskId: "a", minutes: 60 }, { brk: "short", minutes: 10 }, { taskId: "b", minutes: 60 }], { tasks, events: [], now: at(9) });
+  assert.equal(breaks.length, 0);
+});
+
+test("Later today: a held task leaves its old slot; the rest move up", () => {
+  const tasks = [t({ id: "a", size: 30 }), t({ id: "b", size: 30 })];
+  const { rows } = timeline([{ taskId: "a", minutes: 30, hold: at(12) }, { taskId: "b", minutes: 30 }], { tasks, events: [], now: at(9) });
+  assert.equal(rows.find((r) => r.taskId === "b").start, at(9));
+  assert.ok(rows.find((r) => r.taskId === "a").start >= at(12));
 });

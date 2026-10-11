@@ -26,6 +26,7 @@ import { effectiveDue } from "./triage.js";
 import { h, bdi, dur, flash } from "./ui.js";
 import { setManual, RIDES } from "./where.js";
 import { withTrips, asPassenger } from "./trips.js";
+import { eventFrom } from "./tell-event.js";
 
 const URL_ = "/.netlify/functions/daisey-now-chat";
 const SAID = {
@@ -121,11 +122,16 @@ export function mountTell(form, input, mic, uid, { openAdd, openTask, guest = fa
       body = { error: "network" };
     }
     busy = false;
-    if (body.error === "not_configured") { close(); openAdd(undefined, text); return; } // no AI yet: the old path
+    // No helper: a sentence with a clock time in it is offered as an event
+    // (tell-event.js), else the old path, the Add task form with the text.
+    const ev = eventFrom(text);
+    const asEvent = () => proposal(text, { reply: "I read that as an event.", actions: [ev] });
+    if (body.error === "not_configured") { if (ev) asEvent(); else { close(); openAdd(undefined, text); } return; }
     if (!res?.ok || body.error) {
       const code = body.error || "model";
       show(h("p", { className: "tell-reply", textContent: SAID[code] || SAID.model }),
         h("div", { className: "tell-btns" },
+          ev && h("button", { className: "btn primary", type: "button", textContent: "Add as an event", onclick: asEvent }),
           code !== "daily_cap" && h("button", { className: "btn line", type: "button", textContent: "Try again", onclick: () => ask(text) }),
           h("button", { className: "btn line", type: "button", textContent: "Add as a task", onclick: () => { close(); input.value = ""; openAdd(undefined, text); } }),
           h("button", { className: "btn quiet", type: "button", textContent: "Close", onclick: close })));

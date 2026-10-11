@@ -83,7 +83,7 @@ test("brief: reads the saved plan — proposed, approved, done", () => {
   assert.match(run({ date: "2026-10-06", status: "approved", items }, [a, done, c]), /Plan: 1 of 3 done\. Next: Mix at 08:05\./);
   // A day too full for the plan says what no longer fits.
   const big = [{ taskId: "a", minutes: 500 }, { taskId: "c", minutes: 30 }];
-  assert.match(run({ date: "2026-10-06", status: "approved", items: big }), /Next: Mix\. 1 no longer fits today\./);
+  assert.match(run({ date: "2026-10-06", status: "approved", items: big }, [{ ...a, size: 500 }, b2, c]), /Next: Mix\. 1 no longer fits today\./);
   // All done.
   assert.match(run({ date: "2026-10-06", status: "approved", items }, [{ ...a, status: "done" }, done, { ...c, status: "done" }]), /Plan done: 3 of 3\./);
   // Yesterday's plan doesn't count.

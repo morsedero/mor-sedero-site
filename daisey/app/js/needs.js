@@ -23,17 +23,17 @@
 // "Ask me later" hides one for the rest of the day (settings.needsLater).
 // The list is fixed when the screen opens, so answering one never reshuffles
 // the dots.
-import { watchTasks, watchSettings, saveSettings, restoreTask, addTask, removeTask } from "./store.js";
+import { watchTasks, watchSettings, saveSettings, restoreTask, addTask, removeTask, watchDayPlan } from "./store.js";
 import { dropSeries } from "./slots.js";
 import { watchCalendar, deleteEvent, retime } from "./calendar.js";
 import { draftFrom } from "./caltask.js";
-import { pickWeekDay, answer, answerSnapshot, effectiveDue } from "./triage.js";
+import { pickWeekDay, answer, answerSnapshot, effectiveDue, sweepAdvice, daysLate } from "./triage.js";
 import { localDate, logicalDate, pendingCheck, shrunk, shrinkPatch, dayAfter, notYet, pushedTo, bringBack } from "./model.js";
 import { sessionPatch, skipSlotPatch, weekState } from "./routine.js";
 import { dayHours, minText, usualHours } from "./day.js";
 import { nudgeText, waLink } from "./nudge.js";
 import { daysUntil } from "./engine.js";
-import { collectNeeds, somedayDue } from "./needs-list.js";
+import { collectNeeds, somedayDue, awayDays, AWAY_DAYS } from "./needs-list.js";
 export { collectNeeds, somedayDue }; // now.js counts them for the header chip
 import { h, icon, dur, flash } from "./ui.js";
 import { whereAsk, setRide, setStill, saveSpot, notHomeHere, quietHere, reservedName, homeAt } from "./where.js";
@@ -63,7 +63,7 @@ export function wrapList(tasks = [], now = Date.now()){
 // the plan slipped), asked first. Each is { key, kind: "ext", ask({ next,
 // close }) } and ask returns a question, or null once it no longer applies.
 export function mountNeeds(root, uid, { onClose, extra } = {}){
-  let tasks = [], settings = {}, cal = { status: "loading", events: [] };
+  let tasks = [], settings = {}, cal = { status: "loading", events: [] }, dayPlan = null;
   let list = [], i = 0, follow = null, mode = "needs", loaded = false, waiting = null; // follow: the "keep the event?" step after making one a task
   const fail = (e) => console.error("[daisey] needs", e);
   const find = (id) => tasks.find((t) => t.id === id);
@@ -92,6 +92,8 @@ export function mountNeeds(root, uid, { onClose, extra } = {}){
   // Asks twice (Mor, 2026-10-10), as the sheet does: the third entry is
   // what the button says once armed (answer() below).
   const del = (t) => ["Delete task", () => { dropSeries(t); removeTask(uid, t.id).catch(fail); flash("Deleted ", t.title); next(); }, "Really delete?"];
+  // Ids in today's plan (proposed or approved): the sweep keeps those today.
+  const planned = () => new Set(dayPlan?.date === logicalDate() && dayPlan.status !== "dismissed" ? (dayPlan.items || []).map((it) => it.taskId).filter(Boolean) : []);
   const sweep = (t, kind) => {
     const now = Date.now();
     const week = kind === "week" ? pickWeekDay(t, { events: cal.events || [], tasks, now, hours: usualHours(settings) }) : null;
@@ -103,6 +105,11 @@ export function mountNeeds(root, uid, { onClose, extra } = {}){
   // tone: the card's tint (an area class), ico: its icon.
   function question(item){
     if (item.kind === "ext") return item.ask({ next, close: (then) => onClose?.(then) });
+    // Back after days away (needs-list awayDays): one hello before the old dates.
+    if (item.kind === "away") return { tone: "area-home", ico: "someday", q: "Welcome back",
+      sub: `You've been away ${item.days} days.`, item: "",
+      say: `${item.count === 1 ? "One date" : `${item.count} dates`} passed while you were gone. Let's sort ${item.count === 1 ? "it" : "them"}, one at a time.`,
+      yes: ["Let's go", () => next()], noLater: true };
     if (item.kind === "cal") {
       const ev = item.ev, d = draftFrom(ev, tasks);
       const start = Date.parse(ev.start), end = Date.parse(ev.end);
@@ -262,11 +269,17 @@ export function mountNeeds(root, uid, { onClose, extra } = {}){
         yes: ["Bring it back", () => { somedayDone(); restoreTask(uid, t.id, bringBack(t)).catch(fail); next(); }],
         no: ["Leave it there", () => { somedayDone(); next(); }] };
     }
-    // sweep
-    const week = pickWeekDay(t, { events: cal.events || [], tasks, hours: usualHours(settings) });
+    // sweep: today when today needs it (triage.sweepAdvice), else the roomiest day.
+    const adv = sweepAdvice(t, { events: cal.events || [], tasks, hours: usualHours(settings), planned: planned() });
+    const week = adv.kind === "week" ? adv.day : pickWeekDay(t, { events: cal.events || [], tasks, hours: usualHours(settings) });
+    const late = daysLate(t), lateText = late === 1 ? "yesterday" : `${shortDay(t.due)}, ${late} days ago`;
+    const say = adv.why === "event" ? `It's for ${adv.event.title}${adv.event.allDay ? " today" : ` at ${clock(Date.parse(adv.event.start))}`}. I'd do it today, before then.`
+      : adv.why === "plan" ? "It's in today's plan. I'd keep it today."
+      : adv.why === "stakes" ? `${MARK[t.stakes]} I'd do it today.`
+      : `I'd move it to ${weekday(week)}, the roomiest day this week.`;
     return { tone: "area-job", ico: "later", q: "Still doing this?",
-      sub: `${t.dateKind === "deadline" ? "The deadline was" : "It was planned for"} ${shortDay(t.due)}.`,
-      item: t.title, say: `I'd move it to ${weekday(week)}, the roomiest day this week.`,
+      sub: `${t.dateKind === "deadline" ? "The deadline was" : "It was planned for"} ${lateText}.`,
+      item: t.title, say,
       yes: ["Do it today", () => sweep(t, "today")],
       no: [`Move to ${weekday(week)}`, () => sweep(t, "week")],
       more: [["On hold", () => sweep(t, "someday")], del(t)] };
@@ -332,6 +345,7 @@ export function mountNeeds(root, uid, { onClose, extra } = {}){
     watchTasks(uid, (ts) => { tasks = ts; loaded = true; if (waiting) { const w = waiting; waiting = null; api.open(w); } }, fail),
     watchSettings(uid, (s) => { settings = s || {}; }, fail),
     watchCalendar((c) => { cal = c; }),
+    watchDayPlan(uid, (d) => { dayPlan = d || null; }, fail),
   ];
 
   const api = {
@@ -340,6 +354,9 @@ export function mountNeeds(root, uid, { onClose, extra } = {}){
       mode = which;
       const dev = which === "wrap" ? null : whereAsk();
       list = which === "wrap" ? wrapList(tasks) : [...(extra?.() || []), ...(dev ? [{ key: `where:${dev}`, kind: dev === "name" ? "place" : dev }] : []), ...collectNeeds({ tasks, events: cal.events || [], calOk: cal.status === "ok", settings, home: homeAt() })];
+      // Back after days away: the hello and the old dates come first.
+      const away = which === "wrap" ? 0 : awayDays(tasks), sweeps = list.filter((x) => x.kind === "sweep");
+      if (away >= AWAY_DAYS && sweeps.length) list = [{ key: "away", kind: "away", days: away, count: sweeps.length }, ...sweeps, ...list.filter((x) => x.kind !== "sweep")];
       i = 0; follow = null;
       paint();
       root.hidden = false;

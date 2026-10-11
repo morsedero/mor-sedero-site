@@ -16,17 +16,32 @@ import { phoneOkIds } from "./phone.js";
 import { routineCalendar } from "./routine.js";
 import { workBase } from "./context.js";
 import { overruled, eventKey, runState } from "./reality.js";
-import { LABELS, notYet, localDate, logicalDate } from "./model.js";
+import { LABELS, INBOX, notYet, localDate, logicalDate, leftMinutes } from "./model.js";
+import { officeDay } from "./holidays.js";
 import * as W from "./weights.js";
 
 const MIN = 60000;
+// When a task with set hours (openHours) can start at or after `from`, for
+// `need` ms, the same day — the card's rule (engine: "needs offices open",
+// "evening"), so the plan never books what the card would block (user test
+// 2026-10-11: "Book dentist" at 21:50). null: not today.
+const hourAt = (ms, h) => new Date(ms).setHours(h, 0, 0, 0);
+function openStart(task, from, need){
+  if (task?.openHours === "evening") return Math.max(from, hourAt(from, W.EVENING_FROM));
+  if (task?.openHours !== "office") return from;
+  if (!officeDay(from)) return null;
+  const s = Math.max(from, hourAt(from, W.OFFICE.open));
+  return s + need <= hourAt(from, W.OFFICE.close) ? s : null;
+}
 const WORTH = 15; // minutes: a gap shorter than this holds nothing
 export const MAX_ITEMS = 8;
 const FEWER = 3;
 const MORE = 10;
 
-// What's left of a task: its size less the time already put in.
-export const leftOf = (t) => Math.max(5, (t.size || 0) - (t.spentMinutes || 0));
+// What's left of a task: its size less what's done — the progress % once one
+// is given, else the time already put in (model.leftMinutes). A 75%-done 2 h
+// task gets a 30 min slot, not 2 h (user test 2026-10-11).
+export const leftOf = (t) => leftMinutes(t);
 
 // The free time left today, as gaps, with what reality overruled taken out
 // (a meeting you worked through isn't busy). rides: the trips (trips.js) as
@@ -68,9 +83,13 @@ export function proposeDay({ tasks = [], events = [], now = Date.now(), hours = 
   const pool = tasks.filter((t) => !skipTypes.has(t.type)
     && (!ask.maxEach || leftOf(t) <= ask.maxEach || (t.dateKind === "deadline" && t.due && t.due <= today)));
   const booked = Object.fromEntries([...bookings(tasks, evs, now)].map(([id, b]) => [id, b.start]));
+  // A project's last step waits for its other open work (user test
+  // 2026-10-11: "send rough mixes" came first, before any mix was done).
+  const taken = new Set();
+  const waiting = () => tasks.filter((t) => waitsOnSiblings(t, tasks, taken, today)).map((t) => t.id);
   const routineCal = routineCalendar(tasks, evs, now); // routine sessions already on the calendar
   const items = [];
-  const take = (t) => { items.push({ taskId: t.id, minutes: Math.min(leftOf(t), biggest) }); out.add(t.id); budget -= Math.min(leftOf(t), biggest); };
+  const take = (t) => { items.push({ taskId: t.id, minutes: Math.min(leftOf(t), biggest) }); out.add(t.id); taken.add(t.id); budget -= Math.min(leftOf(t), biggest); };
 
   // "Start with X": those go first, whatever the engine thinks, as long as
   // they're open and allowed today.
@@ -85,22 +104,24 @@ export function proposeDay({ tasks = [], events = [], now = Date.now(), hours = 
     let room = Math.floor((g.end - g.start) / MIN);
     while (items.length + onRide.length < cap && room >= WORTH) {
       const r = rank(pool, { now: g.start, window: room, place: g.place, nextEvent: null, ...workBase(tasks, now),
-        sessionSkips: [...out], booked, routineCal, phoneOk: [...phoneOk] });
+        sessionSkips: [...out, ...waiting()], booked, routineCal, phoneOk: [...phoneOk] });
       if (!r.pick) break;
       const m = Math.min(leftOf(r.pick.task), room);
       onRide.push({ it: { taskId: r.pick.task.id, minutes: m }, at: g.start });
-      out.add(r.pick.task.id); room -= m;
+      out.add(r.pick.task.id); taken.add(r.pick.task.id); room -= m;
     }
   }
   while (usable.length && items.length + onRide.length < cap && budget >= WORTH) {
     const r = rank(pool, {
       now: usable[0].start, window: biggest, nextEvent: null, ...workBase(tasks, now),
-      sessionSkips: [...out], booked, routineCal,
+      sessionSkips: [...out, ...waiting()], booked, routineCal,
     });
     if (!r.pick) break;
     take(r.pick.task);
   }
   if (ask.quickFirst) items.sort((a, b) => a.minutes - b.minutes);
+  inProjectOrder(items, tasks, new Set(ask.first || []));
+  hoursFirst(items, { tasks, events, now, hours, run, rides: false });
   if (!onRide.length) return items;
   // In time order, so the timeline lays each where it was meant: the
   // others where they'd fall without the rides, the ride's own on the ride.
@@ -108,6 +129,55 @@ export function proposeDay({ tasks = [], events = [], now = Date.now(), hours = 
   const at = (i) => sim.rows.find((q) => q.i === i)?.start ?? Infinity;
   return [...items.map((it, i) => ({ it, at: at(i) })), ...onRide]
     .map((x, k) => ({ ...x, k })).sort((a, b) => a.at - b.at || a.k - b.k).map((x) => x.it);
+}
+
+// Inside one project the plan keeps the project's own order: as dragged in
+// Projects (pos), else as added (createdAt), an obvious last step (send,
+// deliver, submit…) after its siblings. Each project's items swap among the
+// places they already hold, so other projects don't move. fixed: ids the user
+// put first ("start with X"). Sorts items in place.
+const LAST_STEP = /^\s*(send|deliver|submit|hand (in|over)|upload|publish|release|ship|file)\b/i;
+const lastStep = (t) => LAST_STEP.test(String(t?.title || ""));
+const inProject = (t) => !!t?.project && t.project !== INBOX && !t.routine;
+const projectRank = (a, b) => lastStep(a) - lastStep(b)
+  || (a.pos == null) - (b.pos == null) || (a.pos ?? 0) - (b.pos ?? 0)
+  || (a.createdAt || 0) - (b.createdAt || 0);
+export function inProjectOrder(items, tasks, fixed = new Set()){
+  const byId = new Map(tasks.map((t) => [t.id, t]));
+  const groups = new Map();
+  items.forEach((it, i) => {
+    const t = byId.get(it.taskId);
+    if (!inProject(t) || fixed.has(t.id)) return;
+    if (!groups.has(t.project)) groups.set(t.project, []);
+    groups.get(t.project).push(i);
+  });
+  for (const at of groups.values()) {
+    const sorted = at.map((i) => items[i]).sort((a, b) => projectRank(byId.get(a.taskId), byId.get(b.taskId)));
+    at.forEach((i, k) => { items[i] = sorted[k]; });
+  }
+  return items;
+}
+// A task with set hours the plan's order pushed out of them (an office call
+// after 16:00) moves up to the first place it fits, rather than not at all.
+function hoursFirst(items, ctx){
+  const byId = new Map(ctx.tasks.map((t) => [t.id, t]));
+  for (const o of timeline(items, ctx).over) {
+    if (!byId.get(o.taskId)?.openHours) continue;
+    const from = items.findIndex((it) => it.taskId === o.taskId);
+    const rest = items.filter((_, i) => i !== from);
+    for (let k = 0; k < from; k++) {
+      const next = [...rest.slice(0, k), items[from], ...rest.slice(k)];
+      if (!timeline(next, ctx).over.some((x) => x.taskId === o.taskId)) { items.splice(0, items.length, ...next); break; }
+    }
+  }
+  return items;
+}
+// A last step with other open work in its project not in the plan yet waits
+// for it — unless its deadline is today or passed (then it comes, after them).
+function waitsOnSiblings(t, tasks, taken, today){
+  if (!lastStep(t) || !inProject(t) || taken.has(t.id)) return false;
+  if (t.dateKind === "deadline" && t.due && t.due <= today) return false;
+  return tasks.some((x) => x.id !== t.id && x.project === t.project && x.status === "ready" && !x.routine && !lastStep(x) && !taken.has(x.id));
 }
 
 // The plan on the clock: each item, in the user's order, in the first free
@@ -137,15 +207,30 @@ const clockMin = (ms) => { const d = new Date(ms); return d.getHours() * 60 + d.
 // The break due before the next item, or null. worked: minutes since the last
 // break of any kind; sinceLong: since the last long one or meal. meals: the
 // user's (day.js mealsOf); mealsDone: names of those already had today.
-export function breakDue({ worked, sinceLong, at, mealsDone = new Set(), meals = mealsOf(), need = 0 }){
+// prevStart: when the item just before started, if it runs straight into
+// this one.
+export function breakDue({ worked, sinceLong, at, mealsDone = new Set(), meals = mealsOf(), need = 0, prevStart = null }){
   const B = W.BREAKS, m = clockMin(at);
   // A meal comes once something has been done (never first thing at noon), or
   // when the next item would carry past its window and the meal would be missed.
+  // A long item across the whole window (user test 2026-10-11: no lunch on 3
+  // of 9 days) gets it up to an hour early, before it, or else up to an hour
+  // late, right after it.
   for (const meal of meals) {
-    if (mealsDone.has(meal.name) || m < meal.from || m >= meal.to) continue;
-    if (worked >= B.lunchAfter || m + need >= meal.to) return { type: "meal", name: meal.name, minutes: meal.minutes };
+    if (mealsDone.has(meal.name)) continue;
+    const meal_ = { type: "meal", name: meal.name, minutes: meal.minutes };
+    if (m >= meal.from && m < meal.to) {
+      if (worked >= B.lunchAfter || m + need >= meal.to) return meal_;
+    } else if (m < meal.from && m >= meal.from - B.mealSlack && m + need > meal.to && worked >= B.lunchAfter) return meal_;
+    else if (m >= meal.to && m < meal.to + B.mealSlack && prevStart != null && clockMin(prevStart) < meal.to) return meal_;
   }
-  if (sinceLong >= B.longEvery) return { type: "long", minutes: B.long };
+  // A long break is due after longEvery, or before an item that would take a
+  // stretch already past after well over it (no 4 h blocks on one short break).
+  if (sinceLong >= B.longEvery || (sinceLong >= B.after && sinceLong + need > B.longEvery + B.long)) {
+    // A long break due just before a meal is the meal, not one then the other.
+    const soon = meals.find((meal) => !mealsDone.has(meal.name) && m < meal.from && meal.from - m <= B.long);
+    return soon ? { type: "meal", name: soon.name, minutes: soon.minutes } : { type: "long", minutes: B.long };
+  }
   if (worked >= B.after) return { type: "short", minutes: B.short };
   return null;
 }
@@ -219,7 +304,7 @@ function lay(items = [], { tasks = [], events = [], now = Date.now(), hours = W.
   // The first start on a round five minutes: 15:55, not 15:52.
   let gi = 0, cursor = Math.ceil((gaps[0]?.start ?? now) / (5 * MIN)) * 5 * MIN;
   // Work since the last break, and since the last long one (a meal counts).
-  let worked = 0, sinceLong = 0, lastEnd = null;
+  let worked = 0, sinceLong = 0, lastEnd = null, lastStart = null;
   const mealsDone = new Set(), rideAt = {}; // rideAt: where each ride's next task starts
   const gapEnd = new Map(); // each break → the end of the free gap it's in
   // Breaks are the plan's own items: none are added here.
@@ -276,22 +361,25 @@ function lay(items = [], { tasks = [], events = [], now = Date.now(), hours = W.
   }
   for (const d of later) place(d.it, d.i, byId.get(d.it.taskId));
   function place(it, i, task){
-    const need = Math.max(5, it.minutes || leftOf(task)) * MIN;
+    // What the item was saved with, but never more than is left: progress
+    // made since the plan was saved shrinks its slot.
+    const need = Math.max(5, Math.min(it.minutes || Infinity, leftOf(task))) * MIN;
     let placed = false;
     // The soonest ride that fits it (engine.fitsPlace) and still has room.
     const ride = gaps.map((g, k) => ({ g, k, from: rideAt[k] ?? Math.ceil(g.start / (5 * MIN)) * 5 * MIN }))
-      .find(({ g, from }) => g.place && fitsPlace(task, g.place, phoneOk) && g.end - from >= need);
+      .find(({ g, from }) => g.place && fitsPlace(task, g.place, phoneOk) && g.end - from >= need && openStart(task, from, need) === from);
     for (let k = gi; k < gaps.length; k++) {
       if (gaps[k].place) continue; // rides: above
-      const from = Math.max(cursor, gaps[k].start, up5(it.at || 0));
+      let from = Math.max(cursor, gaps[k].start, up5(it.at || 0));
       if (ride && ride.from <= from) break;
+      if (task.openHours) { const o = openStart(task, from, need); if (o == null) continue; from = up5(o); }
       // Same stretch as the last item, or a fresh one that starts with the
       // meetings just before it.
       const cont = lastEnd != null && from - lastEnd < W.BREAKS.reset * MIN;
       const w = cont ? worked : runBefore(evs, from), sl = cont ? sinceLong : w;
-      const brk = !fixed && !gaps[k].place && breakDue({ worked: w, sinceLong: sl, at: from, mealsDone, meals, need: need / MIN });
+      const brk = !fixed && !gaps[k].place && breakDue({ worked: w, sinceLong: sl, at: from, mealsDone, meals, need: need / MIN, prevStart: cont ? lastStart : null });
       const gap = (brk ? brk.minutes * MIN : 0) + need;
-      if (gaps[k].end - from >= gap) {
+      if (gaps[k].end - from >= gap && (!brk || openStart(task, from + brk.minutes * MIN, need) != null)) {
         if (brk) {
           breaks.push({ kind: "break", type: brk.type, minutes: brk.minutes, start: from, end: from + brk.minutes * MIN, i: null, ...(brk.name ? { name: brk.name } : {}) });
           gapEnd.set(breaks[breaks.length - 1], gaps[k].end);
@@ -301,7 +389,7 @@ function lay(items = [], { tasks = [], events = [], now = Date.now(), hours = W.
         rows.push({ taskId: it.taskId, task, minutes: need / MIN, start: s, end: s + need, i });
         worked = (brk ? 0 : w) + need / MIN;
         sinceLong = (brk && brk.type !== "short" ? 0 : sl) + need / MIN;
-        lastEnd = s + need;
+        lastEnd = s + need; lastStart = s;
         gi = k; cursor = s + need; placed = true;
         break;
       }
@@ -323,12 +411,17 @@ function lay(items = [], { tasks = [], events = [], now = Date.now(), hours = W.
   // after it is part of it, not a hole (Mor, 2026-10-10: "break shows 10 min
   // although there's a free hour there"). end moves; minutes stays the
   // item's own length, so saving the plan doesn't grow the break.
-  const starts = [...rows.filter((r) => !r.ride).map((r) => r.start), ...breaks.map((b) => b.start)];
-  for (const b of breaks) {
+  // A break with no work after it today (what came after is done, or no
+  // longer fits) goes: it read "☕ Breather · 7 h 40 min" for the rest of the
+  // day (user test 2026-10-11).
+  const lastWork = Math.max(-Infinity, ...rows.filter((r) => !r.ride).map((r) => r.start));
+  const kept = breaks.filter((b) => b.start < lastWork);
+  const starts = [...rows.filter((r) => !r.ride).map((r) => r.start), ...kept.map((b) => b.start)];
+  for (const b of kept) {
     const next = Math.min(gapEnd.get(b), ...starts.filter((s) => s >= b.end));
     if (next > b.end) b.end = next;
   }
-  return { rows: rows.sort((a, b) => a.start - b.start), over, breaks };
+  return { rows: rows.sort((a, b) => a.start - b.start), over, breaks: kept };
 }
 
 // When the day shrinks under an approved plan (an event added, or running
@@ -392,6 +485,43 @@ export function topUp(items = [], ctx = {}, skip = []){
     out = next; added.push(p.taskId);
   }
   return { items: out, added };
+}
+
+// The plan's one-tap Fewer tasks / More tasks (user test 2026-10-11: More
+// jumped 2 h 35 to 10 h, until 21:55; Fewer kept a passport renewal due in a
+// month and dropped two packs due Friday). Both work on the plan as it is.
+// Fewer keeps the most pressing ~60% of its tasks — the nearest date first, a
+// deadline counted two days nearer, undated last — in their order. More adds
+// up to MORE_ADD tasks or MORE_MIN minutes, whichever comes first, on the end.
+const MORE_ADD = 3, MORE_MIN = 120;
+const pressing = (t, today) => {
+  if (!t?.due) return Infinity;
+  const days = (Date.parse(`${t.due}T12:00`) - Date.parse(`${today}T12:00`)) / DAY;
+  return days - (t.dateKind === "deadline" ? 2 : 0);
+};
+export function fewerOf(items = [], ctx = {}){
+  const now = ctx.now ?? Date.now(), today = planDate(now, ctx.hours ?? W.DAY_HOURS);
+  const byId = new Map((ctx.tasks || []).map((t) => [t.id, t]));
+  const tasks = items.map((it, i) => ({ it, i })).filter(({ it }) => !isBreak(it));
+  if (tasks.length < 2) return items;
+  const keep = Math.max(1, Math.min(tasks.length - 1, Math.round(tasks.length * 0.6)));
+  const kept = new Set(tasks.sort((a, b) => pressing(byId.get(a.it.taskId), today) - pressing(byId.get(b.it.taskId), today) || a.i - b.i)
+    .slice(0, keep).map(({ i }) => i));
+  return tidy(items.filter((it, i) => isBreak(it) || kept.has(i)));
+}
+export function moreOf(items = [], ctx = {}){
+  const plan = items.filter((it) => !isBreak(it));
+  const picks = proposeDay({ ...ctx, exclude: [...(ctx.exclude || []), ...plan.map((it) => it.taskId)] });
+  let out = plan, added = 0, mins = 0;
+  const overBefore = timeline(out, ctx).over.length;
+  for (const p of picks) {
+    if (added >= MORE_ADD || mins >= MORE_MIN) break;
+    if (mins + p.minutes > MORE_MIN && (added || p.minutes > MORE_MIN * 1.5)) continue;
+    const next = [...out, p];
+    if (timeline(next, ctx).over.length > overBefore) continue;
+    out = next; added++; mins += p.minutes;
+  }
+  return out;
 }
 
 // A meal answered in Needs you (meals.js, Mor 2026-10-09: "it asked, but

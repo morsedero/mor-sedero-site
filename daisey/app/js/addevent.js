@@ -43,11 +43,12 @@ const pad = (n) => String(n).padStart(2, "0");
 const hhmm = (ms) => `${pad(new Date(ms).getHours())}:${pad(new Date(ms).getMinutes())}`;
 const longDay = (ms) => new Date(ms).toLocaleDateString([], { weekday: "long", day: "numeric", month: "long" });
 
-// The next quarter hour, so a new event never starts in the past.
+// The next quarter hour, so a new event never starts in the past. Late at
+// night it stays today's last one: 23:50 rolled over to 00:00 (user test
+// 2026-10-11, "the event form opens at 00:00").
 function nextQuarter(){
-  const d = new Date();
-  d.setMinutes(Math.ceil((d.getMinutes() + 1) / 15) * 15, 0, 0);
-  return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  const d = new Date(), m = Math.ceil((d.getHours() * 60 + d.getMinutes() + 1) / 15) * 15;
+  return hm(Math.min(m, 23 * 60 + 45));
 }
 
 const ERROR = {
@@ -318,7 +319,9 @@ export function mountAddEvent(dialog, { localOnly = false } = {}){
       editing = null;
       form.reset();
       f.date.value = date || localDate();
-      setTimes(at || nextQuarter(), DEFAULT_LENGTH);
+      // A tapped slot already over today (or none): the next quarter hour.
+      const past = f.date.value === localDate() && at && toMin(at) < toMin(hhmm(Date.now()));
+      setTimes(at && !past ? at : nextQuarter(), DEFAULT_LENGTH);
       showForm(null);
       if (!dialog.open) dialog.showModal();
     },

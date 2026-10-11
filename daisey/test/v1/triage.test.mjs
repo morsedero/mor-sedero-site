@@ -96,3 +96,39 @@ test("pickWeekDay: the user's day hours and Israeli holidays (2026-10-06)", () =
   const ev = { start: new Date(2026, 9, 8, 10).toISOString(), end: new Date(2026, 9, 8, 18).toISOString() };
   assert.equal(T.roomOn(new Date(2026, 9, 8), { events: [ev], hours: { start: 600, end: 1080 } }), 0);
 });
+
+// ---- user test 2026-10-11, part B ----
+test("13: an old date tied to an event today, or overdue with money at stake, is suggested for today", async () => {
+  const prep = tg("2026-10-05", { title: "Prep questions for interview" });
+  const interview = { title: "Interview at Acme", start: iso(7, 11), end: iso(7, 12), busy: true };
+  const a = T.sweepAdvice(prep, { events: [interview], tasks: [prep], now: at(7, 9) });
+  assert.equal(a.kind, "today");
+  assert.equal(a.why, "event");
+  assert.equal(a.event.title, "Interview at Acme");
+  // Once the interview is over, it's an ordinary old date again.
+  assert.equal(T.sweepAdvice(prep, { events: [interview], tasks: [prep], now: at(7, 13) }).kind, "week");
+  // An unrelated event doesn't count.
+  assert.equal(T.sweepAdvice(prep, { events: [{ ...interview, title: "Dentist" }], tasks: [prep], now: at(7, 9) }).kind, "week");
+  const invoice = dl("2026-10-05", { title: "Pay arnona", stakes: "money" });
+  assert.deepEqual(T.sweepAdvice(invoice, { tasks: [invoice], now: NOW }), { kind: "today", why: "stakes" });
+  const plain = dl("2026-10-05", { title: "Tidy drive" });
+  assert.equal(T.sweepAdvice(plain, { tasks: [plain], now: NOW }).kind, "week");
+  // In today's plan: kept today.
+  assert.equal(T.sweepAdvice(plain, { tasks: [plain], now: NOW, planned: new Set([plain.id]) }).why, "plan");
+  assert.equal(T.daysLate(invoice, NOW), 2);
+});
+
+test("14: back after 2+ days away, every old date is asked, first", async () => {
+  const { collectNeeds, awayDays } = await import("../../app/js/needs-list.js");
+  const old = tg("2026-10-05", { touchedAt: at(4) }), late = dl("2026-10-05", { touchedAt: at(4) });
+  const stale = task({ skipsSinceStart: 9, touchedAt: at(4) });
+  assert.equal(awayDays([old, late, stale], NOW), 3);
+  const list = collectNeeds({ tasks: [old, late, stale], now: NOW });
+  assert.deepEqual(list.slice(0, 2).map((x) => x.id), [late.id, old.id]); // a passed target too, while away
+  assert.equal(list[2].kind, "stale");
+  // Here yesterday: a lone passed target sits quietly, the sweep comes last.
+  const here = [tg("2026-10-05", { touchedAt: at(6) }), dl("2026-10-05", { touchedAt: at(6) }), task({ skipsSinceStart: 9, touchedAt: at(6) })];
+  const l2 = collectNeeds({ tasks: here, now: NOW });
+  assert.equal(awayDays(here, NOW), 1);
+  assert.deepEqual(l2.map((x) => x.kind), ["stale", "sweep"]);
+});
