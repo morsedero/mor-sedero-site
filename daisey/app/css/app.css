@@ -353,7 +353,7 @@ body.focus .topbar, body.focus #panel, body.focus .dock, body.focus .now-greet {
 body.focus #board { display: block; }
 /* Focus mode (Mor, 2026-10-10): the same Now card and its actions, nothing
    around it. The header keeps the daisy, the clock and the Focus toggle. */
-body.focus-mode :is(#side, #panel, .dock, .tell-panel, .now-greet, .now-top, #needsChip, .acct) { display: none; }
+body.focus-mode :is(#side, #panel, .dock, .tell-panel, .now-greet, .now-top, #needsChip, #planReady, .acct) { display: none; }
 .hdr-end .hchip.focus-chip[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); color: var(--card); }
 body.focus .shell { padding-block: max(18px, env(safe-area-inset-top)) max(24px, env(safe-area-inset-bottom)); }
 /* "Hold to finish" (focus.js holdButton): a deeper amber fills from
@@ -1218,6 +1218,14 @@ dialog.tsheet .msg:empty { display: none; }
 .hchip.needs { border: 1px solid var(--a-job-line); background: var(--a-job-tint); color: color-mix(in srgb, var(--a-job-ink) 80%, var(--ink)); cursor: pointer; }
 .hchip.needs::after { content: ""; position: absolute; inset: -7px -2px; } /* 44px to the finger */
 .hchip-dot { inline-size: 7px; block-size: 7px; border-radius: 50%; background: var(--accent); }
+/* Plan ready: a notification in blue, apart from Needs you's amber; the dot pings. */
+.hchip.ready { border: 1px solid var(--a-admin-line); background: var(--a-admin-tint); color: var(--a-admin-ink); cursor: pointer; animation: ready-in .35s ease-out; }
+.hchip.ready::after { content: ""; position: absolute; inset: -7px -2px; } /* 44px to the finger */
+.hchip.ready .hchip-dot { background: var(--a-admin-ink); animation: ready-ping 2.4s ease-out infinite; }
+@keyframes ready-in { from { opacity: 0; transform: translateY(-4px) scale(.96); } }
+@keyframes ready-ping { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--a-admin-ink) 55%, transparent); } 70%, 100% { box-shadow: 0 0 0 7px transparent; } }
+@media (prefers-reduced-motion: reduce) { .hchip.ready, .hchip.ready .hchip-dot { animation: none; } }
+@media (max-width: 429px) { .hdr-end:has(#needsChip:not([hidden])) #planReady .hchip-word { display: none; } }
 .hchip.plan { border: 1px solid var(--line); background: var(--card); color: var(--ink); cursor: pointer; }
 .hchip.plan::after { content: ""; position: absolute; inset: -7px -2px; } /* 44px to the finger */
 /* On a phone the word goes; the count and the dot say it (the wordmark needs the room). */

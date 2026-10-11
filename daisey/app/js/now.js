@@ -50,7 +50,7 @@ const clock = (ms) => new Date(ms).toLocaleTimeString([], { hour: "2-digit", min
 // how many tasks are done today, for the header's chip. onNeedsCount(n):
 // how many decisions Needs you holds, for the amber chip.
 // onWrap(): the evening wrap (Needs you: each task still open for today).
-export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap, name = "", onDone, onNeedsCount, onPlanProgress, planRoot, onPlanScreen, onReady, onFocusMode, missDialog = null, guest = false } = {}){
+export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap, name = "", onDone, onNeedsCount, onPlanProgress, onPlanReady, planRoot, onPlanScreen, onReady, onFocusMode, missDialog = null, guest = false } = {}){
   let tasks = null; // null until the first snapshot
   let settings = {}; // state/settings: when the sweep was last offered
   let momentDoc = {}; // state/moment: place corrections
@@ -1106,7 +1106,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     prop.items = withBreaks(reuse ? re.items : proposeDay({ ...ctx, exclude: prop.exclude }), ctx);
     prop.mealsLaid = reuse ? re.laid : mealAnswers();
     prop.touched = false; prop.sig = daySigNow(); prop.askOpts = null;
-    prop.open = true; prop.ask = false; prop.note = "";
+    prop.open = true; prop.ask = false; prop.note = ""; nudgeDay = null;
     // The Now card doesn't change with the plan, so leave it be (a rebuild
     // nudged its text, Mor 2026-10-08).
     paintPlanScreen();
@@ -1611,6 +1611,8 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     return ids.size;
   }
   let reported = null, reportedNeeds = null, reportedPlan = "", reportedFocus = null;
+  // nudgeDay: the day the morning's "Plan ready" chip is up for (onPlanReady).
+  let nudgeDay = null, reportedNudge = false;
 
   // The plan is its own full screen (Mor, 2026-10-08): proposalCard paints into
   // planRoot, and the Now card behind it renders as usual.
@@ -1629,6 +1631,8 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     if (noticeLighter && tasks != null && planKnown && cal.status !== "loading") { noticeLighter = false; lighterPlan(); }
     freshenProposal(); topUpLater();
     renderCard(); paintPlanScreen();
+    const nudge = nudgeDay === dayKey() && !prop.open && !todaysPlan() && !document.documentElement.classList.contains("night");
+    if (nudge !== reportedNudge) { reportedNudge = nudge; onPlanReady?.(nudge); }
     if (!ready && tasks != null && planKnown && cal.status !== "loading") { ready = true; onReady?.(); }
   }
   function renderCard(){
@@ -1672,12 +1676,13 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
 
     if (night) { fill(...head, ...nightView(hrs), toast && toastView()); return; }
 
-    // The start of the day: once per day, until it's approved or turned
-    // down, the card opens as the proposal (when there's something to plan).
+    // The start of the day: once per day, when there's something to plan, a
+    // "Plan ready" chip lights in the header like a notification (Mor,
+    // 2026-10-11: the plan opening by itself each morning was too much). It
+    // goes once the plan is opened, approved or turned down (render reports it).
     if (!prop.open && planKnown && cal.status !== "loading" && prop.auto !== dayKey() && !todaysPlan()) {
       prop.auto = dayKey();
-      const items = proposeDay({ ...planCtx() });
-      if (items.length >= 2) { prop.items = withBreaks(items, planCtx()); prop.exclude = []; prop.touched = false; prop.sig = daySigNow(); prop.askOpts = null; prop.open = true; }
+      if (proposeDay({ ...planCtx() }).length >= 2) nudgeDay = dayKey();
     }
 
     const r = rank(tasks, momentInput(fw));

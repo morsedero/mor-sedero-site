@@ -222,6 +222,7 @@ async function boot(){
     paintDone(0);
     avatar.hidden = !user;
     $("#planChip").hidden = !user;
+    $("#planReady").hidden = true; // now.js lights it
     $("#projectsChip").hidden = !user;
     $("#weekChip").hidden = !user;
     $("#focusChip").hidden = !user;
@@ -603,9 +604,10 @@ async function boot(){
           onScreen: (name) => { if (name) { screens.open("project"); syncPanel(); } else screens.back(); },
         });
         syncPanel();
-        $("#planChip").onclick = () => m.now?.plan();
+        $("#planChip").onclick = $("#planReady").onclick = () => m.now?.plan();
         m.now = mountNow($("#nowcard"), user.uid, {
           name: (user.displayName || "").trim().split(/\s+/)[0], onDone: paintDone, onNeedsCount: paintNeeds, onPlanProgress: paintPlan,
+          onPlanReady: (on) => { $("#planReady").hidden = !on; },
           onFocusMode: (on) => { const b = $("#focusChip"); b.setAttribute("aria-pressed", String(on)); b.ariaLabel = on ? "Focus mode on: tap to show everything" : "Focus mode: only the Now card"; },
           planRoot: $("#planPage"),
           // Two frames so the panel and chips settle under the daisy first.
