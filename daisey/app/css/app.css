@@ -2011,6 +2011,9 @@ body.focus .shell { block-size: auto; min-block-size: 100dvh; overflow: visible;
 /* Bolder project colours (Mor, 2026-10-10: the pastel tint read pale): the
    card sits between its tint and its line colour, edged in the line. */
 .pcard[class*="pc-"] { background: color-mix(in srgb, var(--aline) 60%, var(--tint)); border-color: var(--aline); }
+/* A thin ring just outside the edge (Mor, 2026-10-12): a project reads as a
+   project, not another task card. */
+.pcard { outline: 1.5px solid var(--aline); outline-offset: 2px; }
 .pcard[class*="pc-"] .pcard-name { color: color-mix(in srgb, var(--aink) 35%, var(--ink)); }
 .pcard-fl { align-self: end; display: flex; justify-content: center; inline-size: 40px; margin-block-end: -6px; }
 .pcard-body { display: flex; flex-direction: column; min-inline-size: 0; }
