@@ -169,8 +169,9 @@ export function mountAddTask(dialog, uid, { onStart } = {}){
   }
   until.input.addEventListener("change", () => { fenceUntil(); paintDates(); if (editing && per) save({ routine: routineOf() }); });
   // Target or Deadline: two visible pills with one line of help, shown once
-  // a date is set (user test 2026-10-11: the tag that toggled looked like a label).
-  const KIND_HELP = { target: "I'd like it done by then.", deadline: "Something bad happens if I miss it." };
+  // a date is set, under the Due box (user test 2026-10-11: the tag that
+  // toggled looked like a label).
+  const KIND_HELP = { target: "Would be nice by then.", deadline: "Missing it costs me." };
   const kindHelp = h("span", { className: "ts-kind-help" });
   const kindBtns = Object.keys(KIND_HELP).map((k) => h("button", { type: "button", className: "ts-kind " + k, textContent: k === "deadline" ? "Deadline" : "Target",
     onclick: (e) => { e.preventDefault(); if (kind === k) return; kind = k; paintDates(); if (editing) save({ dateKind: kind }); } }));
@@ -237,8 +238,7 @@ export function mountAddTask(dialog, uid, { onStart } = {}){
   dialog.replaceChildren(h("div", { className: "now-head" }, heading, closeX),
     field("Project", projectSel, newProject),
     field("Task", title),
-    h("div", { className: "ts-dates" }, start.box, due.box, until.box),
-    kindRow,
+    h("div", { className: "ts-dates" }, start.box, due.box, until.box, kindRow),
     field("How long?", chipRow), guessBox, laptopRow, oftenRow, weekNow, pctBox, pendBox, holdBox, researchLine, stateLine,
     section("Links & notes", h("div", { className: "ts-group" }, linkRow, notes)),
     worked, startBtn, del, msg);
