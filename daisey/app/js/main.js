@@ -36,6 +36,15 @@ function cheerPlan(){
   requestAnimationFrame(() => requestAnimationFrame(() => c.classList.add("approved")));
   clearTimeout(cheerPlan.t); cheerPlan.t = setTimeout(() => c.classList.remove("approved"), 1800);
 }
+// The schedule's Now button flashes the card's edge once: this is now
+// (Mor, 2026-10-12; app.css .now-flash).
+function flashNow(){
+  const c = $(".now-card.main");
+  if (!c) return;
+  c.classList.remove("now-flash");
+  requestAnimationFrame(() => requestAnimationFrame(() => c.classList.add("now-flash")));
+  clearTimeout(flashNow.t); flashNow.t = setTimeout(() => c.classList.remove("now-flash"), 1200);
+}
 function paintNeeds(n){
   $("#needsChip").hidden = !n;
   $("#needsN").textContent = String(n);
@@ -623,7 +632,7 @@ async function boot(){
             if (q.has("open") || q.has("start") || history.state?.daisey) return;
             m.needs.open(); screens.open("needs");
           } });
-        m.schedule = mountSchedule($("#schedPage"), user.uid, { onEvent: (ev) => m.event.view(ev), onNew: (date, at) => m.event.open(date, at), onOpen: (task) => m.adder.edit(task), onMissed: (id, start) => m.now?.missed(id, start) });
+        m.schedule = mountSchedule($("#schedPage"), user.uid, { onEvent: (ev) => m.event.view(ev), onNew: (date, at) => m.event.open(date, at), onOpen: (task) => m.adder.edit(task), onMissed: (id, start) => m.now?.missed(id, start), onNow: flashNow });
         // ARCHIVED (Mor, 2026-10-08): the Week page is built but switched off until
         // people ask for it. To bring it back: pass onWeek to the mount above
         //   onWeek: () => { $("#weekview").hidden = false; $("#weekPage").scrollTop = 0; screens.open("week"); }

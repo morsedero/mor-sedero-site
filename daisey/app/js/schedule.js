@@ -114,7 +114,7 @@ function lanes(items){
 
 // el: the page. onEvent(ev): an event's details. onNew(date, at): a new
 // event on "YYYY-MM-DD", at "HH:MM" when a gap was tapped.
-export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onMissed, onProjects, onWeek, onDay, mode = "home" } = {}){
+export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onMissed, onProjects, onWeek, onDay, onNow, mode = "home" } = {}){
   let cal = { status: "loading", events: [] };
   let settings = {};
   let tasks = null, run = null; // for Plan my day
@@ -130,6 +130,26 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onMissed, onPro
 
   let jump = true; // next render scrolls the week to now (or its first event)
   const go = (ymd) => { focus = ymd; el.scrollTop = 0; jump = true; render(); };
+
+  // The day's now row: the one on, else the first not yet past.
+  let toNow = false; // next render lands the list on now (the Now button)
+  const nowRow = () => view === "day" && !focus ? el.querySelector(".sc-row.sc-on, .sc-row:not(.sc-past, .sc-gap, .sc-noroom)") : null;
+  function scrollToNow(smooth){
+    const r = nowRow(), head = el.querySelector(".sc-head");
+    if (!r) return;
+    const top = el.scrollTop + r.getBoundingClientRect().top - el.getBoundingClientRect().top - (head?.offsetHeight || 0) - 8;
+    el.scrollTo({ top: Math.max(0, top), behavior: smooth ? "smooth" : "auto" });
+  }
+  // Today scrolled so its now row is out of sight shows the Now button too.
+  function nowAway(){
+    const b = el.querySelector(".sc-today"), r = nowRow();
+    if (!b || focus || view !== "day") return;
+    const box = el.getBoundingClientRect(), at = r?.getBoundingClientRect(), headH = el.querySelector(".sc-head")?.offsetHeight || 0;
+    const away = !!at && (at.bottom < box.top + headH || at.top > box.bottom - 36);
+    b.classList.toggle("off", !away); b.tabIndex = away ? 0 : -1;
+  }
+  let awayQ = 0;
+  el.addEventListener("scroll", () => { if (!awayQ) awayQ = requestAnimationFrame(() => { awayQ = 0; nowAway(); }); }, { passive: true });
 
   // The events for [from, to): the shared week when it covers it, else a fetch.
   function eventsFor(from, to){
@@ -239,9 +259,14 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onMissed, onPro
     const bar = h("div", { className: "sc-bar" },
       h("button", { type: "button", className: "sc-title" + (isNow ? "" : " away"), ariaLabel: isNow ? title : `${title} — back to today`, onclick: () => go(null) },
         h("span", { className: "sc-name", textContent: title }), h("span", { className: "sc-name sc-name-s", textContent: narrow }), sub && h("span", { className: "sc-date", textContent: sub })),
-      // Arrow points the way today lies; tapping slides there like a swipe.
-      h("button", { type: "button", className: "sc-today" + (isNow ? " off" : ""), ariaLabel: "Back to today", tabIndex: isNow ? -1 : 0,
-        textContent: isNow ? "Today" : future ? "← Today" : "Today →", onclick: () => flip(future ? 1 : -1, () => go(null)) }),
+      // "● Now" (Mor, 2026-10-12): back to the present, not to a date; past
+      // midnight "← Today" didn't say which day. Shows while you're away
+      // from now: another day, or today scrolled off its now row (nowAway).
+      // Another day slides back like a swipe; then the list lands on now.
+      h("button", { type: "button", className: "sc-today" + (isNow ? " off" : ""), ariaLabel: "Back to now", tabIndex: isNow ? -1 : 0,
+        onclick: () => { const back = view === "week" ? () => go(null) : () => { focus = null; toNow = true; render(); onNow?.(); };
+          if (isNow) { scrollToNow(true); onNow?.(); } else flip(future ? 1 : -1, back); } },
+        h("span", { className: "sc-pulse", ariaHidden: "true" }), "Now"),
       mode === "home" && onWeek && weekBtn);
     const head = h("div", { className: "sc-head" + (view === "week" ? " wk" : "") }, bar);
 
@@ -253,6 +278,8 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onMissed, onPro
     const y = el.scrollTop;
     el.replaceChildren(head, ...body);
     el.scrollTop = y;
+    if (toNow && src.status === "ok") { toNow = false; scrollToNow(false); }
+    nowAway();
     if (jump && src.status === "ok") {
       jump = false;
       const mark = view === "week" && (el.querySelector(".wk-now") || [...el.querySelectorAll(".wk-ev")].sort((a, b) => a.getBoundingClientRect().top - b.getBoundingClientRect().top)[0]);

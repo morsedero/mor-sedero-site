@@ -19,6 +19,7 @@ export const watchTasks = watch("tasks");
 export const skipNow = (uid, task) => patchTask(uid, task.id, skipTask(task));
 export const blockTask = (uid, task, waitingOn = "", checkOn = "") => patchTask(uid, task.id, { ...skipReason(task, "blocked"), ...(waitingOn.trim() ? { waitingOn: waitingOn.trim() } : {}), ...(checkOn ? { checkOn } : {}) });
 export const restoreTask = (uid, id, fields) => patchTask(uid, id, fields);
+export const undoDone = (uid, id, before) => patchTask(uid, id, before);
 export const watchRun = watch("now");
 export const watchSkips = watch("skips");
 export const saveSkips = (uid, state) => { docs.skips = state; return ok("skips"); };
