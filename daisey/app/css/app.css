@@ -1650,7 +1650,7 @@ body.focus .shell { block-size: auto; min-block-size: 100dvh; overflow: visible;
 .pp-row.pp-event { background: none; border-color: transparent; padding-block: 0; padding-inline-end: 0; }
 .pp-event .sc-ev { grid-column: 2 / -1; min-block-size: 32px; font-size: 13.5px; }
 /* Drag a row to reorder (ppdrag.js); the rows in the way slide over (pusher) */
-.pushing > :not(.pp-dragging):not(.sc-dragging) { transition: transform .18s ease; }
+.pushing > :not(.pp-dragging) { transition: transform .18s ease; }
 @media (prefers-reduced-motion: reduce) { .pushing > * { transition: none; } }
 .pp-row.pp-drag { user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
 .pp-row.pp-dragging { position: relative; z-index: 5; scale: 1.03; background: var(--card); border-style: solid; box-shadow: 0 0 0 2px var(--aline, var(--ink-2)), 0 14px 28px -4px rgba(0,0,0,.45), 0 4px 8px rgba(0,0,0,.25); }
@@ -1777,14 +1777,6 @@ body.focus .shell { block-size: auto; min-block-size: 100dvh; overflow: visible;
 .db-thumb::after { content: attr(data-t); position: absolute; top: calc(100% + 3px); left: 50%; transform: translateX(-50%); font-size: 12px; font-weight: 600; color: var(--ink); font-variant-numeric: tabular-nums; white-space: nowrap; pointer-events: none; }
 .now-else { display: block; margin: 10px auto 0; font-size: 13px; color: var(--ink-2); }
 .ny-field { margin-block-start: 12px; inline-size: 100%; min-block-size: 48px; padding: 0 14px; border: 1px solid var(--line-2); border-radius: 14px; background: var(--surface); color: var(--ink); font: inherit; font-size: 17px; }
-
-/* Schedule: drag a row anywhere in its day; a line marks where it lands, an outline the free time it'd start at */
-.sc-row.sc-drag { user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
-.sc-row.sc-dragging .sc-ev { position: relative; z-index: 5; scale: 1.04; filter: none; box-shadow: inset 3px 0 0 var(--aline, transparent), 0 0 0 2px var(--aline, var(--ink-2)), 0 14px 28px -4px rgba(0,0,0,.45), 0 4px 8px rgba(0,0,0,.25); }
-.sc-row.sc-dragging .sc-ev.sc-plan { background: var(--card); border-style: solid; }
-.sc-row.sc-dragging { position: relative; z-index: 5; }
-.sc-row.sc-dragging, .sc-row.sc-dragging * { cursor: grabbing; }
-.sc-row.sc-target .sc-free { outline: 2px dashed var(--ink-2); outline-offset: 2px; border-radius: 6px; }
 
 /* Task events (planned, finished) are plain; the project colour is a dot (Mor, 2026-10-08). */
 .sc-dot { flex: none; inline-size: 10px; block-size: 10px; margin-inline: 5px 13px; border-radius: 50%; background: var(--aink); }

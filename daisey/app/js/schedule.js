@@ -17,15 +17,14 @@
 //
 // One day at a time (Mor, 2026-10-06: the whole week stacked vertically was
 // crowded and confusing), or the week as a grid — see "Day or Week" below.
-import { watchCalendar, connectCalendar, fetchRange, retime, landedAgo } from "./calendar.js";
-import { watchSettings, watchTasks, watchRun, watchDayPlan, saveDayPlan } from "./store.js";
+import { watchCalendar, connectCalendar, fetchRange, landedAgo } from "./calendar.js";
+import { watchSettings, watchTasks, watchRun, watchDayPlan } from "./store.js";
 import { timeline } from "./proposal.js";
 import { lastActivity } from "./miss.js";
 import { areaClass, watchProjectColors } from "./look.js";
 import { dayHours, minText, planDate, usualHours, dayEndAt } from "./day.js";
 import { localDate, durText } from "./model.js";
 import { h, bdi, nightDivider, icon } from "./ui.js";
-import { pusher } from "./ppdrag.js";
 import { withTrips } from "./trips.js";
 
 const MIN_FREE = 15; // minutes; a shorter gap isn't worth a box
@@ -156,9 +155,9 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onMissed, onPro
     slide(out, 140);
     setTimeout(() => { swap(); slide(-out); el.getBoundingClientRect(); slide(0, 180); }, 140);
   };
-  el.addEventListener("pointerdown", (e) => { swipe = dragging ? null : { x: e.clientX, y: e.clientY, on: false }; });
+  el.addEventListener("pointerdown", (e) => { swipe = { x: e.clientX, y: e.clientY, on: false }; });
   el.addEventListener("pointermove", (e) => {
-    if (!swipe || dragging) return;
+    if (!swipe) return;
     const dx = e.clientX - swipe.x, dy = e.clientY - swipe.y;
     if (!swipe.on && Math.abs(dx) > 10 && Math.abs(dx) > 1.5 * Math.abs(dy)) {
       swipe.on = true;
@@ -172,7 +171,7 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onMissed, onPro
     swipe = null;
     if (!on) return;
     sawSwipe = true; setTimeout(() => { sawSwipe = false; });
-    if (dragging || Math.abs(dx) < 60 || Math.abs(dx) < 1.5 * Math.abs(dy)) { slide(0, 180); return; }
+    if (Math.abs(dx) < 60 || Math.abs(dx) < 1.5 * Math.abs(dy)) { slide(0, 180); return; }
     const rtl = getComputedStyle(el).direction === "rtl";
     flip(dx < 0 ? -1 : 1, () => stepBy((dx < 0) !== rtl ? 1 : -1));
   });
@@ -183,10 +182,7 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onMissed, onPro
   let sawSwipe = false; // the lift after a drag is not a tap
   el.addEventListener("click", (e) => { if (sawSwipe) { e.stopPropagation(); e.preventDefault(); } }, true);
 
-  let dragging = false, stale = false; // a redraw mid-drag would drop the dragged row
-  let dayCtx = null; // the shown day's { events, now, hrs, d0 }, for a drag's preview
   function render(){
-    if (dragging) { stale = true; return; }
     // After midnight in a day that's still on (late): the day shown is the
     // calendar's, with its own hours, and what's left of tonight sits on top
     // of it (day(); Mor, 2026-10-11).
@@ -290,9 +286,8 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onMissed, onPro
     });
     return [...cut, ...planned].sort((a, b) => (a.start ?? -1) - (b.start ?? -1) || (a.kind === "free") - (b.kind === "free"));
   }
-  // Where a drag can land: every timed row (free time too). Timed events and
-  // planned blocks are the ones that move.
-  const slotsOf = (rows) => rows.filter((x) => !x.allDay && !x.ev?.trip); // a trip moves with its event, never on its own
+  // Events and planned rows stay where they are: no dragging (Mor,
+  // 2026-10-11). A tap opens one; its edit sheet is the only way to move it.
 
   // real: the clock's day hours. Late (a day still on past midnight): what's
   // left of tonight first, then the night, then tomorrow — this calendar day
@@ -304,16 +299,13 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onMissed, onPro
     const planned = t === t0 ? planRows(events, now) : [];
     const rows = tonight ? dayRows(events, date, hrs, fromMs) : withPlan(dayRows(events, date, hrs, fromMs), planned);
     const ymd = localDate(t);
-    const slots = slotsOf(rows);
-    dayCtx = { events, now, hrs: dayHours(settings), d0: t };
     const out = [];
     if (tonight) {
       const close = dayEndAt(now, real);
       const left = withPlan(dayRows(events.filter((e) => !e.allDay && Date.parse(e.start) < close), date, real, now)
         .filter((x) => x.end > now), planned);
-      const ls = slotsOf(left);
       out.push(h("section", { className: "sc-day", ariaLabel: "Tonight" },
-        ...(left.length ? left.map((x) => row(x, now, ls)) : [h("p", { className: "sc-note", textContent: "Nothing left tonight." })])),
+        ...(left.length ? left.map((x) => row(x, now)) : [h("p", { className: "sc-note", textContent: "Nothing left tonight." })])),
         nightDivider(minText(real.end), minText(hrs.start)),
         h("div", { className: "sc-label sc-next" }, h("span", { className: "sc-name", textContent: "Tomorrow" }), h("span", { className: "sc-date", textContent: short(date) })));
     }
@@ -322,7 +314,7 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onMissed, onPro
     if (t === t0 && !tonight && now < atMin(today, hrs.start) && !riding) out.push(nightDivider(minText(hrs.end), minText(hrs.start)));
     const none = h("button", { type: "button", className: "sc-none", onclick: () => onNew?.(ymd) },
       h("span", { textContent: "Nothing scheduled" }), h("span", { className: "sc-add", ariaHidden: "true", textContent: "+ Add" }));
-    out.push(h("section", { className: "sc-day", ariaLabel: short(date) }, ...(rows.length ? rows.map((x) => row(x, now, slots)) : [none])));
+    out.push(h("section", { className: "sc-day", ariaLabel: short(date) }, ...(rows.length ? rows.map((x) => row(x, now)) : [none])));
     return out;
   }
 
@@ -403,18 +395,18 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onMissed, onPro
     return [grid];
   }
 
-  function row(x, now, slots = []){
+  function row(x, now){
     const time = x.allDay ? "All day" : `${clock(x.start)}–${clock(x.end)}`;
     // Free time is quiet (Mor, 2026-10-06: the dashed boxes read as slots to
     // fill): no box, no times, just how long, on a hairline.
     // Tapping it adds an event there.
-    if (x.kind === "free") return x.el = h("button", { type: "button", className: "sc-row sc-gap", ariaLabel: `Free ${time} — add an event`,
+    if (x.kind === "free") return h("button", { type: "button", className: "sc-row sc-gap", ariaLabel: `Free ${time} — add an event`,
       onclick: () => onNew?.(localDate(x.start), hm(quarterUp(x.start))) },
       h("span", { className: "sc-free" }, `🌿 ${durText((x.end - x.start) / 60000)} free`, h("span", { className: "sc-add", ariaHidden: "true", textContent: "+" })));
     const on = !x.allDay && x.start <= now && now < x.end;
     const past = !x.allDay && x.end <= now;
     // No clock times: the break pill starts where the event boxes do.
-    if (x.kind === "break") return x.el = h("div", { className: "sc-row sc-gap sc-break" + (on ? " sc-on" : past ? " sc-past" : ""), ariaLabel: `${time} break` },
+    if (x.kind === "break") return h("div", { className: "sc-row sc-gap sc-break" + (on ? " sc-on" : past ? " sc-past" : ""), ariaLabel: `${time} break` },
       h("span", { className: "sc-free" }, breakText(x, durText((x.end - x.start) / 60000))));
     // The row on right now wears its colour edge to edge (Mor, 2026-10-08).
     // Its orbiting light is phased off the wall clock, so a re-render picks it
@@ -429,11 +421,10 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onMissed, onPro
       h("span", { className: "sc-time strong" }, time, x.missed ? h("button", { type: "button", className: "sc-misstag", textContent: "?", title: "Didn't happen: what now?", ariaLabel: `${x.task.title} didn't happen: what now?`, onclick: () => onMissed?.(x.task.id, x.start) }) : on && h("span", { className: "sc-nowtag", textContent: "Now" })),
       h("button", { type: "button", className: "sc-ev sc-plan" + areaClass(x.task), ariaLabel: `Planned: ${x.task.title}, ${time}`, onclick: () => onOpen?.(x.task) },
         h("span", { className: "sc-dot" }), bdi(x.task.title)));
-      if (slots.includes(x)) { x.el = pe; draggable(x, pe, slots); pe.classList.add("sc-drag"); }
       return pe; }
     // The way to an event in another city and back (trips.js): Daisey's own
     // block, not the calendar's, so it doesn't open, drag or delete.
-    if (x.ev?.trip) return x.el = h("div", { className: "sc-row" + (on ? " sc-on" : past ? " sc-past" : ""), style: orbit },
+    if (x.ev?.trip) return h("div", { className: "sc-row" + (on ? " sc-on" : past ? " sc-past" : ""), style: orbit },
       h("span", { className: "sc-time strong" }, time, on && h("span", { className: "sc-nowtag", textContent: "Now" })),
       h("span", { className: "sc-ev sc-trip", ariaLabel: `${x.ev.title}, ${time}` }, h("span", { className: "sc-evi" }, icon("later")), x.ev.title));
     // A finished task is logged as a "✓ title" event (calendar.js logDone).
@@ -446,147 +437,7 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onMissed, onPro
       h("button", { type: "button", className: "sc-ev" + (done ? " sc-done" : "") + tone(x.ev), style: x.ev.color ? `--ev:${x.ev.color}` : "",
         ariaLabel: `${done ? "Finished task: " : ""}${on ? "Now: " : ""}${title}, ${time}`, onclick: () => onEvent?.(x.ev) },
         done ? h("span", { className: "sc-dot" }) : h("span", { className: "sc-evi" }, icon("calendar")), bdi(title)));
-    if (slots.includes(x)) { x.el = rowEl; draggable(x, rowEl, slots); rowEl.classList.add("sc-drag"); }
     return rowEl;
-  }
-
-  // Drag a row anywhere in the day (Mor, 2026-10-08: one row away wasn't
-  // enough). The row itself is the handle, no grip (Mor, same day): a mouse
-  // drags once it moves a few px, a finger after a short still hold (a quick
-  // swipe still scrolls); a plain tap still opens it. The row stays inside its
-  // day — past the first or last row it stops. Where it's let go decides:
-  // - an event takes a new time and keeps its length. It starts where the row
-  //   above the drop line ends, or where free time it's dropped on starts.
-  //   Nothing else moves; the plan flows around it.
-  // - a planned task takes that place in the plan's order; the plan re-flows
-  //   around the events, so its time follows.
-  // While dragging, the row's time shows where it would land, and the rows in
-  // the way slide over to make room (pusher, ppdrag.js).
-  function draggable(x, rowEl, slots){
-    const dur = x.end - x.start;
-    let x0 = 0, y0 = 0, s0 = 0, off = 0, lastY = 0, home = 0, mid0 = 0, lo = 0, hi = 0, snap = [], drop = null, marked = null, timeEl = null, orig = [], raf = 0, push = null;
-    let pid = null, armed = false, hold = 0, dragged = false;
-    // The dragged row's middle, in page terms: inside its day, and inside what
-    // shows of the list (under the sticky bar, above the bottom) give or take
-    // a peek — so at either edge it stays in sight while the list scrolls.
-    let rh = 0;
-    const centre = () => {
-      const s = el.scrollTop, r = el.getBoundingClientRect(), top = el.querySelector(".sc-head")?.getBoundingClientRect().bottom ?? r.top;
-      const PEEK = 14, vlo = top + s + rh / 2 - PEEK, vhi = r.bottom + s - rh / 2 + PEEK;
-      return Math.min(hi, vhi, Math.max(lo, vlo, lastY + off + s));
-    };
-    // The pointer → { on: a free row } or { i: the line before snap[i] }.
-    const where = () => {
-      const c = centre();
-      const on = x.kind === "event" && snap.find((s) => s.p.kind === "free" && c >= s.top && c <= s.bottom);
-      return on ? { on: on.p } : { i: snap.filter((s) => s.mid < c).length };
-    };
-    // What letting go there does; null = nothing changes.
-    const outcome = (w) => {
-      if (x.kind === "event") {
-        if (!w.on && w.i === home) return null;
-        const above = snap[w.i - 1]?.p, below = snap[w.i]?.p;
-        let start = w.on ? w.on.start : above ? (above.kind === "free" ? above.start : above.end) : below.start - dur;
-        start = Math.max(dayCtx.d0, start);
-        return start === x.start ? null : { start, end: start + dur };
-      }
-      const all = dayPlan?.items || [], me = all.find((it) => it.taskId === x.task.id);
-      if (!me) return null;
-      const items = all.filter((it) => it !== me);
-      const plans = snap.filter((s) => s.p.kind === "plan").map((s) => s.p);
-      const k = snap.slice(0, w.i).filter((s) => s.p.kind === "plan").length;
-      const at = k < plans.length ? items.findIndex((it) => it.taskId === plans[k].task.id)
-        : plans.length ? items.findIndex((it) => it.taskId === plans.at(-1).task.id) + 1 : 0;
-      items.splice(Math.max(0, at), 0, me);
-      if (items.every((it, j) => it === all[j])) return null;
-      const r = timeline(items, { tasks, events: dayCtx.events, now: dayCtx.now, hours: dayCtx.hrs, run }).rows.find((q) => q.taskId === x.task.id);
-      return { items, start: r?.start, end: r?.end };
-    };
-    const unmark = () => { marked?.[0].classList.remove(marked[1]); marked = null; };
-    const show = () => {
-      rowEl.style.transform = `translateY(${centre() - mid0}px)`;
-      const w = where();
-      drop = outcome(w);
-      unmark();
-      // Dropped on free time it takes that time: nothing to push, the gap lights up.
-      if (drop && w.on) { marked = [w.on.el, "sc-target"]; marked[0].classList.add(marked[1]); }
-      drop && !w.on ? push.to(snap[w.i]?.p.el, snap.at(-1)?.p.el) : push.home();
-      timeEl.replaceChildren(...(!drop ? orig : drop.start == null ? ["Won't fit"] : [`${clock(drop.start)}–${clock(drop.end)}`]));
-    };
-    // Near the top or bottom edge the page scrolls, so any row can be reached.
-    const tick = () => {
-      const r = el.getBoundingClientRect(), top = el.querySelector(".sc-head")?.getBoundingClientRect().bottom ?? r.top;
-      // Nearer the edge, faster (up to 20px a frame); a wide zone to push into.
-      const Z = 72, up = top + Z - lastY, down = lastY - (r.bottom - Z);
-      const v = up > 0 ? -Math.min(1, up / Z) : down > 0 ? Math.min(1, down / Z) : 0;
-      if (v) { const was = el.scrollTop; el.scrollTop += Math.sign(v) * Math.max(3, Math.abs(v) * 20); if (el.scrollTop !== was) show(); }
-      raf = requestAnimationFrame(tick);
-    };
-    const arm = () => {
-      if (swipe?.on) return disarm(); // a sideways swipe over a cube isn't a pickup
-      clearTimeout(hold); armed = dragging = dragged = true;
-      try { rowEl.setPointerCapture(pid); } catch {}
-      rowEl.classList.add("sc-dragging");
-      s0 = el.scrollTop; drop = null;
-      snap = slots.filter((p) => p !== x && p.el?.isConnected).map((p) => {
-        const r = p.el.getBoundingClientRect();
-        return { p, top: r.top + s0, bottom: r.bottom + s0, mid: (r.top + r.bottom) / 2 + s0 };
-      });
-      const r = rowEl.getBoundingClientRect(), mid = (r.top + r.bottom) / 2, sec = rowEl.parentElement.getBoundingClientRect();
-      off = mid - y0; mid0 = mid + s0; rh = r.height; home = snap.filter((s) => s.mid < mid0).length;
-      // A little past the first and last row, so a tall row can still pass
-      // a short one's middle and be pushed to the very top or bottom.
-      const EDGE = 56;
-      lo = sec.top + s0 - EDGE; hi = sec.bottom + s0 + EDGE;
-      timeEl = rowEl.querySelector(".sc-time"); orig = [...timeEl.childNodes];
-      push = pusher(rowEl.parentElement, rowEl);
-      navigator.vibrate?.(10);
-      raf = requestAnimationFrame(tick);
-      show();
-    };
-    const disarm = () => { clearTimeout(hold); pid = null; };
-    rowEl.addEventListener("pointerdown", (e) => {
-      if (e.button || pid != null) return;
-      if (!e.target.closest(".sc-ev")) return; // only the task cube drags, not the time text
-      pid = e.pointerId; x0 = e.clientX; y0 = lastY = e.clientY; dragged = false;
-      if (e.pointerType !== "mouse") hold = setTimeout(arm, 350); // a finger: hold still first
-    });
-    rowEl.addEventListener("pointermove", (e) => {
-      if (e.pointerId !== pid) return;
-      lastY = e.clientY;
-      if (armed) return show();
-      if (Math.abs(lastY - y0) > 6) e.pointerType === "mouse" ? arm() : disarm(); // a finger moving first is a scroll
-      else if (e.pointerType !== "mouse" && Math.abs(e.clientX - x0) > 6) disarm(); // sideways first is a swipe
-    });
-    // A finger: once armed, the page mustn't take the move as a scroll.
-    rowEl.addEventListener("touchmove", (e) => { if (armed) e.preventDefault(); }, { passive: false });
-    rowEl.addEventListener("contextmenu", (e) => { if (pid != null) e.preventDefault(); });
-    // The click that ends a drag doesn't open the row.
-    rowEl.addEventListener("click", (e) => { if (dragged) { e.stopPropagation(); e.preventDefault(); dragged = false; } }, true);
-    const end = async (e) => {
-      if (e.pointerId !== pid) return;
-      const live = armed; disarm(); armed = false;
-      if (!live) return;
-      try { rowEl.releasePointerCapture(e.pointerId); } catch {}
-      dragging = false; cancelAnimationFrame(raf);
-      rowEl.style.transform = ""; rowEl.classList.remove("sc-dragging");
-      unmark(); push.done(); timeEl.replaceChildren(...orig);
-      const d = e.type === "pointerup" ? drop : null; drop = null;
-      if (!d) { if (stale) { stale = false; render(); } return; }
-      stale = false;
-      if (x.kind === "plan") { // the saved plan's order; times follow from it
-        dayPlan = { ...dayPlan, items: d.items }; render();
-        saveDayPlan(uid, dayPlan).catch(fail);
-        return;
-      }
-      // Shown at the new time at once; the write's reload confirms it.
-      const ev = x.ev, was = [ev.start, ev.end];
-      ev.start = new Date(d.start).toISOString(); ev.end = new Date(d.end).toISOString(); render();
-      try { await retime(ev, d.start, d.end); }
-      catch (err) { [ev.start, ev.end] = was; render(); fail(err); }
-    };
-    rowEl.addEventListener("pointerup", end);
-    rowEl.addEventListener("pointercancel", end);
   }
 
   const unsubs = [
