@@ -1852,7 +1852,7 @@ body.focus .shell { block-size: auto; min-block-size: 100dvh; overflow: visible;
 /* minmax(0, …) columns: a nowrap label must never push the row past the card (2026-10-12). */
 .now-card.main .pp-actions .btn { min-inline-size: 0; overflow: hidden; text-overflow: ellipsis; }
 .proposal .hero-top .hero-side { margin-inline-start: auto; }
-.proposal .hero-top .pp-close { flex: none; inline-size: 32px; block-size: 32px; margin-block: -6px; margin-inline-end: -8px; }
+.proposal .hero-top .pp-close { flex: none; inline-size: 30px; block-size: 30px; margin-block: 2px; border: 1px solid var(--line); background: var(--card); }
 /* Running late: Rethink lights up in place of a "Running late" line (2026-10-12). */
 .now-card.main .pp-actions .btn.line.late { border: 2px solid var(--accent); font-weight: 600; background: color-mix(in srgb, var(--accent) 14%, var(--card)); }
 /* "No plan" (was "Not today", 2026-10-10): a soft brick tint, so declining reads as a choice, not an alarm. */
