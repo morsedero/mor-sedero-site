@@ -242,11 +242,13 @@ async function boot(){
     show("signedin"); // no element of its own: just clears loading/sign-in views
 
     Promise.all([import("./now.js"), import("./projects.js"), import("./addtask.js"), import("./needs.js"), import("./import-trello.js"), import("./addevent.js"), import("./store.js"), import("./deadlines.js"), import("./day.js"), import("./calendar.js"), import("./schedule.js"), import("./push.js"), import("./sample.js")])
-      .then(([{ mountNow }, { mountProjects }, { mountAddTask }, { mountNeeds }, { mountImport, connectTrello, finishTrelloConnect, trelloConnected }, { mountAddEvent }, { migrateTasks, watchSettings, saveSettings, watchTasks, watchRun, watchDayPlan, resetAll, guestFresh, seedGuest }, { mountDeadlines }, { dayHours, minText, mealPrefs, usualHours }, { watchCalendar, connectCalendar, setCalendarHint, listCalendars, saveCalendars }, { mountSchedule }, push, { sampleDay }]) => {
+      .then(([{ mountNow }, { mountProjects }, { mountAddTask }, { mountNeeds }, { mountImport, connectTrello, finishTrelloConnect, trelloConnected }, { mountAddEvent }, { migrateTasks, watchSettings, saveSettings, watchTasks, watchRun, watchDayPlan, resetAll, guestFresh, seedGuest, seedAccountOnce }, { mountDeadlines }, { dayHours, minText, mealPrefs, usualHours }, { watchCalendar, connectCalendar, setCalendarHint, listCalendars, saveCalendars }, { mountSchedule }, push, { sampleDay }]) => {
         if ((!isGuest && fb.currentUid() !== user.uid) || mounted) return;
         const m = mounted = {};
         // A new guest opens to a sample day, not an empty card (sample.js).
         if (isGuest && guestFresh()) seedGuest(sampleDay({ hours: dayHours({}) }));
+        // …and so does a brand-new Google account, once (store.seedAccountOnce).
+        if (!isGuest) seedAccountOnce(user.uid, () => sampleDay({ hours: dayHours({}) })).catch((e) => console.warn("[daisey] sample", e.message || e));
         setCalendarHint(isGuest ? "" : user.email);
         // Old tasks get the new fields first; then, once, which dates are real.
         const stopMigrate = migrateTasks(user.uid);

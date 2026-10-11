@@ -128,6 +128,27 @@ export function seedGuest({ tasks, plan }){
   writeGuestData({ tasks, state: plan ? { dayplan: plan } : {} });
 }
 
+// A Google account's first open (2026-10-11): the same sample day as a new
+// guest, once ever. Only when the server says the account has no tasks and
+// no work log, and settings carry no `sampled` mark (set first, so a second
+// device or a Reset doesn't lay it again). make() → sample.sampleDay's
+// { tasks, plan }; fixed ids, so a race writes the same three docs twice.
+export async function seedAccountOnce(uid, make){
+  if(isGuest(uid)) return false;
+  const settingsRef = fb.doc(fb.db, "users", uid, "state", "settings");
+  if((await fb.getDoc(settingsRef)).data()?.sampled) return false; // the usual load: one read
+  const [tasks, state] = await Promise.all([fb.getDocs(tasksCol(uid)), fb.getDocs(fb.collection(fb.db, "users", uid, "state"))]);
+  if(tasks.metadata.fromCache) return false; // offline: can't tell a new account from an empty cache
+  const mark = () => fb.setDoc(settingsRef, { sampled: true }, { mergeFields: ["sampled"] });
+  // An account already in use is marked too, so it's never read like this again.
+  if(!tasks.empty || state.docs.some((d) => d.id.startsWith("log-"))) { await mark(); return false; }
+  const { tasks: ts, plan } = make();
+  await mark();
+  await Promise.all([...ts.map(({ id, ...t }) => fb.setDoc(taskDoc(uid, id), t)),
+    ...(plan ? [fb.setDoc(fb.doc(fb.db, "users", uid, "state", "dayplan"), plan)] : [])]);
+  return true;
+}
+
 const tasksCol = (uid) => fb.collection(fb.db, "users", uid, "tasks");
 const taskDoc = (uid, id) => fb.doc(fb.db, "users", uid, "tasks", id);
 
@@ -463,6 +484,8 @@ export async function resetAll(uid){
     ...logs.docs.filter((d) => d.id.startsWith("log-")).map((d) => fb.deleteDoc(d.ref)),
     ...STATE_DOCS.map((k) => fb.deleteDoc(fb.doc(fb.db, "users", uid, "state", k))),
   ]);
+  // Erased stays erased: the sample day isn't laid again (seedAccountOnce).
+  await fb.setDoc(fb.doc(fb.db, "users", uid, "state", "settings"), { sampled: true });
 }
 
 // Projects made by name before they have a task, users/{uid}/state/projects:

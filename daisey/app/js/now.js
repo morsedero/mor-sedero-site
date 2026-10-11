@@ -1601,6 +1601,11 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
         h("button", { className: "pp-ctl", type: "button", textContent: "✕", title: "Never mind", ariaLabel: "Never mind", onclick: close })),
       h("div", { className: "pp-ask-field" }, input, send));
   }
+  // Ready tasks, open today, that aren't in the plan on screen.
+  function notInPlan(){
+    const inPlan = new Set(prop.items.map((it) => it.taskId)), now = Date.now();
+    return (tasks || []).filter((t) => t.status === "ready" && !t.onHold && !notYet(t, now) && !inPlan.has(t.id)).length;
+  }
   function proposalCard(){
     const approved = !!approvedPlan();
     const { rows, over, breaks, late } = timeline(prop.items, { ...planCtx(), ...(approved && !prop.touched && !prop.replan ? { since: planSince() } : {}) });
@@ -1668,6 +1673,11 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
       approved && !prop.busy && (late || rows.some((r) => r.missed)) && h("p", { className: "pp-note pp-late" }, "Running late. ",
         h("button", { type: "button", className: "linkish", textContent: "Rethink for what's left?", onclick: () => doRethink("") })),
       over.length > 0 && !approved && h("p", { className: "muted pp-note", textContent: `${plural(over.length)[0]} fit today. ↑ does one first, ✕ takes it off.` }),
+      // Open tasks the plan didn't take (it holds a day's worth, MAX_ITEMS):
+      // counted, not listed, so nothing sits out of sight unsaid (2026-10-11).
+      notInPlan() > 0 && !prop.ask && h("p", { className: "muted pp-note" },
+        `+${notInPlan()} more open ${notInPlan() === 1 ? "task" : "tasks"} not in today's plan · `,
+        h("button", { className: "linkish", type: "button", textContent: "Add more", disabled: prop.busy, onclick: () => doRethink("More tasks") })),
       prop.note && h("p", { className: "pp-note", role: "status", textContent: prop.note }),
       prop.ask ? rethinkRow() : h("div", { className: "pp-actions" },
         h("button", { className: "btn primary start", type: "button", disabled: !prop.items.some((it) => !isBreak(it)) || prop.busy, onclick: approve },
