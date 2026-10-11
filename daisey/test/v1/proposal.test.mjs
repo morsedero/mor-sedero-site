@@ -307,3 +307,13 @@ test("Later today: a held task leaves its old slot; the rest move up", () => {
   assert.equal(rows.find((r) => r.taskId === "b").start, at(9));
   assert.ok(rows.find((r) => r.taskId === "a").start >= at(12));
 });
+
+test("typed 'lighter' (a fresh fewer plan) keeps what's due soonest too", () => {
+  const tasks = [t({ id: "pass", title: "Passport renewal", due: "2026-11-15", dateKind: "deadline", size: 30, createdAt: at(0) }),
+    t({ id: "p1", due: "2026-10-09", size: 30 }), t({ id: "p2", due: "2026-10-09", size: 30 }),
+    t({ id: "u1", due: null, dateKind: null }), t({ id: "u2", due: null, dateKind: null })];
+  const ids = proposeDay({ tasks, events: [], now: at(9), ask: parseAsk("lighter please") }).map((i) => i.taskId);
+  assert.equal(ids.length, 3);
+  assert.ok(ids.includes("p1") && ids.includes("p2"));
+  assert.ok(!ids.includes("u1") && !ids.includes("u2"));
+});

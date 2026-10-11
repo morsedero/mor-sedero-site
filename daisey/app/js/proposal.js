@@ -75,7 +75,8 @@ export function proposeDay({ tasks = [], events = [], now = Date.now(), hours = 
   let budget = usable.reduce((s, g) => s + Math.floor((g.end - g.start) / MIN), 0);
   if (Number.isFinite(ask.maxMinutes)) budget = Math.min(budget, ask.maxMinutes);
   const biggest = usable.length ? Math.max(...usable.map((g) => Math.floor((g.end - g.start) / MIN))) : 0;
-  const cap = ask.fewer ? FEWER : ask.more ? MORE : MAX_ITEMS;
+  // Fewer picks as usual, then keeps the FEWER most pressing (fewerFirst).
+  const cap = ask.more ? MORE : MAX_ITEMS;
   const skipTypes = new Set(ask.skipTypes || []);
   const out = new Set([...exclude, ...(ask.exclude || []), ...(run?.batch || (run?.taskId ? [run.taskId] : []))]);
   // maxEach: only tasks this small (the lighter plan, miss.js) — a deadline due today still comes.
@@ -119,6 +120,7 @@ export function proposeDay({ tasks = [], events = [], now = Date.now(), hours = 
     if (!r.pick) break;
     take(r.pick.task);
   }
+  if (ask.fewer) fewerFirst(items, tasks, today, new Set(ask.first || []));
   if (ask.quickFirst) items.sort((a, b) => a.minutes - b.minutes);
   inProjectOrder(items, tasks, new Set(ask.first || []));
   hoursFirst(items, { tasks, events, now, hours, run, rides: false });
@@ -499,6 +501,17 @@ const pressing = (t, today) => {
   const days = (Date.parse(`${t.due}T12:00`) - Date.parse(`${today}T12:00`)) / DAY;
   return days - (t.dateKind === "deadline" ? 2 : 0);
 };
+// A fresh lighter plan: the FEWER most pressing of the picks (those the user
+// put first always stay), in the order they were picked. Sorts in place.
+function fewerFirst(items, tasks, today, fixed){
+  const byId = new Map(tasks.map((t) => [t.id, t]));
+  const keep = new Set(items.map((it, i) => ({ it, i }))
+    .sort((a, b) => fixed.has(b.it.taskId) - fixed.has(a.it.taskId)
+      || pressing(byId.get(a.it.taskId), today) - pressing(byId.get(b.it.taskId), today) || a.i - b.i)
+    .slice(0, FEWER).map(({ it }) => it));
+  items.splice(0, items.length, ...items.filter((it) => keep.has(it)));
+  return items;
+}
 export function fewerOf(items = [], ctx = {}){
   const now = ctx.now ?? Date.now(), today = planDate(now, ctx.hours ?? W.DAY_HOURS);
   const byId = new Map((ctx.tasks || []).map((t) => [t.id, t]));

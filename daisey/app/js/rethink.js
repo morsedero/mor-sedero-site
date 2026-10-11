@@ -13,12 +13,15 @@ const URL_ = "/.netlify/functions/daisey-now-chat";
 // → { items, note, via: "ai" | "local" }
 export async function rethink(text, { tasks, events, now = Date.now(), hours, settings, run, current = [], exclude = [], freeMinutes = 0, guest = false }){
   const open = tasks.filter((t) => t.status === "ready" && !t.onHold && !exclude.includes(t.id) && t.id !== run?.taskId);
-  // The Fewer tasks / More tasks buttons: a step from the plan as it is,
-  // here, not a fresh plan (user test 2026-10-11: More went 2 h 35 → 10 h).
-  const said = String(text).trim().toLowerCase();
-  if (current.some((i) => i.taskId) && (said === "fewer tasks" || said === "more tasks")) {
+  // Fewer / More — the buttons, or typed ("lighter", "I'm tired", "more
+  // tasks") with nothing else asked: a step from the plan as it is, here,
+  // not a fresh plan (user test 2026-10-11: More went 2 h 35 → 10 h, and
+  // Fewer dropped what was due Friday for what was due in a month).
+  const a = parseAsk(text, tasks);
+  const plain = !a.quickFirst && !a.skipTypes.length && !a.exclude.length && !a.first.length && a.maxMinutes == null && a.until == null;
+  if (current.some((i) => i.taskId) && plain && !!a.fewer !== !!a.more) {
     const ctx = { tasks, events, now, hours, settings, run, exclude };
-    return { items: said === "fewer tasks" ? fewerOf(current, ctx) : moreOf(current, ctx), note: "", via: "local" };
+    return { items: a.fewer ? fewerOf(current, ctx) : moreOf(current, ctx), note: "", via: "local" };
   }
   try {
     const headers = { "Content-Type": "application/json" };
