@@ -590,7 +590,8 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
         ...LEFT_OPTIONS.map(([m, text]) => h("button", { className: "toast-why", type: "button", textContent: text, ariaLabel: `${text} left`, onclick: () => setLeft(m) })),
         h("button", { className: "toast-why quiet", type: "button", textContent: "Not sure", ariaLabel: "Not sure: keep Daisey's guess", onclick: () => setLeft(null) })),
       toast.left && h("div", { className: "toast-why-row" }, h("span", { className: "toast-thanks", textContent: `Left: ${dur(toast.left)}` })),
-      toast.lesson && (toast.taught
+      // Why? only once Left is answered: one row of buttons at a time.
+      toast.lesson && !toast.asking && (toast.taught
         ? h("div", { className: "toast-why-row" }, h("span", { className: "toast-thanks", textContent: "Got it" }))
         : h("div", { className: "toast-why-row", role: "group", ariaLabel: "Why? (optional)" },
           why("toobig", "Too big", "Too big: offer it in pieces"),
