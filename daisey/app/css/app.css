@@ -2142,7 +2142,7 @@ body.focus .shell { block-size: auto; min-block-size: 100dvh; overflow: visible;
 @media (prefers-reduced-motion: no-preference) {
   body.fm-in .focus-chip svg { animation: fm-pinch .5s cubic-bezier(.3, 1.5, .5, 1); }
   body.fm-out .focus-chip svg { animation: fm-spread .45s cubic-bezier(.3, 1.5, .5, 1); }
-  body.fm-in.focus-mode .deck > .now-card.main { animation: fm-ring 1.1s ease-out .7s; }
+  body.fm-in.focus-mode .deck > .now-card.main { animation: fm-ring 1.1s ease-out 1.1s; }
   body.fm-out :is(#side, #panel, .dock) { animation: fm-back .75s cubic-bezier(.2, .8, .3, 1) backwards; }
   body.fm-out #panel { animation-delay: .1s; }
   body.fm-out .dock { animation-delay: .2s; }

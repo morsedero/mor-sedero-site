@@ -683,24 +683,34 @@ async function boot(){
             if (on === was) return;
             document.body.classList.remove("fm-in", "fm-out"); void document.body.offsetWidth;
             document.body.classList.add(on ? "fm-in" : "fm-out");
-            clearTimeout(fmTimer); fmTimer = setTimeout(() => document.body.classList.remove("fm-in", "fm-out"), 2000);
+            clearTimeout(fmTimer); fmTimer = setTimeout(() => document.body.classList.remove("fm-in", "fm-out"), 2600);
             // Slow slide (Mor, 2026-10-12): the Now card and the Focus chip glide
             // from where they were to where the mode puts them. Measured now, and
             // again once now.js has toggled body.focus-mode (after this returns).
             // #nowcard is a scroll box and would clip the card mid-slide, so it
             // lets it out until the slide ends.
             if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-            const T = { duration: 800, easing: "cubic-bezier(.25, .8, .25, 1)" };
+            const T = { duration: 1200, easing: "cubic-bezier(.45, 0, .2, 1)" };
             const pick = () => [document.querySelector(".deck > .now-card.main"), b];
             const first = pick().map((el) => el?.getBoundingClientRect());
             queueMicrotask(() => pick().forEach((el, i) => {
               const a = first[i]; if (!el || !a) return;
               const z = el.getBoundingClientRect(), dx = a.left - z.left, dy = a.top - z.top;
               if (Math.abs(dx) < 1 && Math.abs(dy) < 1) return;
-              const box = i === 0 && $("#nowcard");
-              if (box) { box.style.overflow = "visible"; box.style.position = "relative"; box.style.zIndex = "3"; }
-              el.animate([{ transform: `translate(${dx}px, ${dy}px)` }, { transform: "none" }], T)
-                .finished.catch(() => {}).finally(() => { if (box) box.style.overflow = box.style.position = box.style.zIndex = ""; });
+              const K = [{ transform: `translate(${dx}px, ${dy}px)` }, { transform: "none" }];
+              let anim = el.animate(K, T);
+              if (i) return;
+              // now.js re-renders #nowcard twice in the next ~50ms, swapping in a
+              // new card each time, so the slide ran on a detached card and the
+              // real one just jumped. Hand the running slide to each new card.
+              const box = $("#nowcard");
+              box.style.overflow = "visible"; box.style.position = "relative"; box.style.zIndex = "3";
+              const mo = new MutationObserver(() => {
+                const c = pick()[0]; if (!c || c === anim.effect.target) return;
+                const t = anim.currentTime; anim.cancel(); anim = c.animate(K, T); anim.currentTime = t;
+              });
+              mo.observe(box, { childList: true, subtree: true });
+              setTimeout(() => { mo.disconnect(); box.style.overflow = box.style.position = box.style.zIndex = ""; }, T.duration);
             }));
           },
           planRoot: $("#planPage"),
