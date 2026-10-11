@@ -1433,7 +1433,7 @@ body.focus #side { display: none; }
 .sc-gap.sc-break { cursor: default; }
 .sc-gap .sc-add { order: 2; font-size: 14px; }
 /* Free time and breaks read warm and a size up (Mor, 2026-10-10: "more fun, bigger"). */
-.sc-free { flex: 1; min-inline-size: 0; display: flex; align-items: center; gap: 8px; block-size: 30px; font-size: 14.5px; font-weight: 600; color: color-mix(in srgb, var(--ink) 55%, var(--ink-2)); }
+.sc-free { flex: 1; min-inline-size: 0; display: flex; align-items: center; gap: 8px; block-size: 30px; font-size: 14.5px; font-weight: 400; color: var(--ink-2); }
 .sc-break.sc-past .sc-free { opacity: .55; }
 .sc-gap .sc-free::after { content: ""; flex: 1; border-block-start: 1.5px dotted currentColor; opacity: .35; }
 .sc-ev {
@@ -1740,7 +1740,7 @@ body.focus .shell { block-size: auto; min-block-size: 100dvh; overflow: visible;
 .pp-break .pp-time small { display: none; }
 .pp-break .pp-time { font-weight: 500; }
 .pp-break .pp-task { display: flex; align-items: center; gap: 6px; padding: 0; cursor: default; }
-.pp-break .pp-title, .pp-break .pp-meta { flex: none; font-size: 14.5px; font-weight: 600; color: color-mix(in srgb, var(--ink) 55%, var(--ink-2)); }
+.pp-break .pp-title, .pp-break .pp-meta { flex: none; font-size: 14.5px; font-weight: 400; color: var(--ink-2); }
 .pp-break .pp-task::after { content: ""; flex: 1; border-block-start: 1.5px dotted currentColor; opacity: .35; }
 .pp-break .pp-ctl { block-size: 28px; font-size: 13px; }
 .pp-row.over > :not(.pp-ctls) { opacity: .65; }

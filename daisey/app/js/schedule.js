@@ -35,6 +35,7 @@ const atMin = (d, min) => { const x = new Date(d); x.setHours(Math.floor(min / 6
 const quarterUp = (ms) => { const q = 15 * 60000; return Math.ceil(ms / q) * q; };
 const hm = (ms) => clock(ms);
 // A break says what it's for, warmly (Mor, 2026-10-10: "more fun"): "☕ Breather · 15 min", "🥗 Lunch · 45 min".
+// Free time reads the same way, "🌿 Free · 2 h", and all three sit light (Mor, 2026-10-11).
 const MEAL_ICON = { breakfast: "🥐", lunch: "🥗", dinner: "🍝" };
 export const breakText = (b, len) => (b.type === "meal"
   ? `${MEAL_ICON[(b.name || "").toLowerCase()] || "🍽️"} ${b.name || "Meal"} · ${len}` : `☕ Breather · ${len}`);
@@ -402,7 +403,7 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onMissed, onPro
     // Tapping it adds an event there.
     if (x.kind === "free") return h("button", { type: "button", className: "sc-row sc-gap", ariaLabel: `Free ${time} — add an event`,
       onclick: () => onNew?.(localDate(x.start), hm(quarterUp(x.start))) },
-      h("span", { className: "sc-free" }, `🌿 ${durText((x.end - x.start) / 60000)} free`, h("span", { className: "sc-add", ariaHidden: "true", textContent: "+" })));
+      h("span", { className: "sc-free" }, `🌿 Free · ${durText((x.end - x.start) / 60000)}`, h("span", { className: "sc-add", ariaHidden: "true", textContent: "+" })));
     const on = !x.allDay && x.start <= now && now < x.end;
     const past = !x.allDay && x.end <= now;
     // No clock times: the break pill starts where the event boxes do.
