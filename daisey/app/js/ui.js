@@ -217,7 +217,9 @@ export function askProgress(task, { onFull, onPartial, onCancel, start = 50 }){
     h("button", { className: "now-x", type: "button", ariaLabel: "Close", textContent: "✕", onclick: close }));
   const out = h("output", { className: "pj-pct", textContent: `${start}%` });
   const range = h("input", { type: "range", min: "5", max: "95", step: "5", value: String(start), ariaLabel: "Percent finished",
-    oninput: () => { out.textContent = `${range.value}%`; } });
+    oninput: () => { out.textContent = `${range.value}%`; part.textContent = `Done ${range.value}%`; } });
+  // The button names the amount it saves, and follows the slider (Mor, 2026-10-11).
+  const part = h("button", { className: "btn", type: "button", textContent: `Done ${start}%`, onclick: () => when(Number(range.value)) });
   const when = (pct) => {
     d.replaceChildren(head("Back to it when?"),
       h("div", { className: "now-chips" }, ...[["today", "Later today"], ["tomorrow", "Tomorrow"], ["week", "This week"], ["someday", "On hold"]].map(([w, text]) =>
@@ -228,7 +230,7 @@ export function askProgress(task, { onFull, onPartial, onCancel, start = 50 }){
     h("div", { className: "sheet-stack" }, out, range,
       h("div", { className: "sheet-actions" },
         h("button", { className: "btn primary", type: "button", textContent: "All done · 100%", onclick: () => { chose = true; close(); onFull(); } }),
-        h("button", { className: "btn", type: "button", textContent: "Save this %", onclick: () => when(Number(range.value)) }))));
+        part)));
   d.onclick = (e) => { if (e.target === d) close(); };
   document.body.append(d);
   d.showModal();
