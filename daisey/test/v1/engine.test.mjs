@@ -373,3 +373,50 @@ test("phoneOk: a phone-able Computer task fits a bus, not a car", () => {
   assert.equal(E.fitsPlace(t, "car", new Set(["a"])), false, "driving: still no phone");
   assert.equal(E.fitsPlace({ ...t, where: "home" }, "bus", new Set(["a"])), false, "only Computer is lifted");
 });
+
+test("keepsCard: the task on the card stays until acted on (user test #6)", () => {
+  const a = task({ title: "Arnona" }), kept = { id: a.id, day: "2026-10-05", until: at(5, 11, 30) };
+  const o = { nextId: "b", today: "2026-10-05", ranked: false, switchable: true, now: at(5, 12) };
+  // Its plan slot ended and the plan moved on to B: A stays.
+  assert.equal(E.keepsCard(kept, a, o), true);
+  // Acted on: Done, Later (skipped), Pending, Switch (chosen) let go.
+  assert.equal(E.keepsCard(kept, { ...a, status: "done" }, o), false);
+  assert.equal(E.keepsCard(kept, { ...a, status: "waiting" }, o), false);
+  assert.equal(E.keepsCard(kept, a, { ...o, skipped: true }), false);
+  assert.equal(E.keepsCard(kept, a, { ...o, chosen: "b" }), false);
+  // A meeting, the proposal open, a new day: the card speaks for them.
+  assert.equal(E.keepsCard(kept, a, { ...o, meeting: true }), false);
+  assert.equal(E.keepsCard(kept, a, { ...o, proposing: true }), false);
+  assert.equal(E.keepsCard(kept, a, { ...o, today: "2026-10-06" }), false);
+  // Only a plan row holds; an engine pick follows the engine.
+  assert.equal(E.keepsCard({ ...kept, until: null }, a, { ...o, ranked: true }), false);
+  assert.equal(E.keepsCard(kept, a, { ...o, switchable: false }), false);
+  assert.equal(E.keepsCard(null, a, o), false);
+});
+
+test("part done stays offerable on its time left, deadline or not (user test #10a)", () => {
+  // 120 min, half done, deadline today, 70 min free: 60 left fits.
+  const t = dl("2026-10-05", { title: "Q3 tax report", size: 120, progress: 50 });
+  const r = E.rank([t], { now: NOW, window: 70 });
+  assert.equal(r.pick?.task.id, t.id);
+  // Untouched, the full 120 doesn't fit the same gap.
+  assert.notEqual(E.rank([{ ...t, progress: 0 }], { now: NOW, window: 70 }).pick?.task.id, t.id);
+});
+
+test("deadline lead: a project's work due by then counts together; a project's own due date counts (user test #15)", () => {
+  // Six 2 h tasks in one project, all due in 5 days: each alone is "within 7",
+  // together 12 h pull the date to today.
+  const pack = Array.from({ length: 6 }, () => dl("2026-10-10", { project: "Tamar", size: 120 }));
+  const gym = task({ title: "Gym", project: "Health" });
+  const r = E.rank([gym, ...pack], { now: NOW, window: 180 });
+  assert.equal(r.pick.task.project, "Tamar");
+  assert.equal(r.pick.parts.deadline, W.DEADLINE.today);
+  // No date of its own: the project's due date (Projects) is its deadline.
+  const t = task({ project: "Portfolio", size: 60 });
+  const s = E.rank([t], { now: NOW, window: 180, projectDue: { Portfolio: "2026-10-06" } }).pick;
+  assert.equal(s.parts.deadline, W.DEADLINE.within2);
+  assert.match(E.whyText(s.whyParts), /Portfolio due/);
+  // The Inbox isn't a project: its tasks don't add up.
+  const inbox = Array.from({ length: 6 }, () => dl("2026-10-10", { project: "Inbox", size: 120 }));
+  assert.equal(E.rank(inbox, { now: NOW, window: 180 }).pick.parts.deadline, W.DEADLINE.within7);
+});

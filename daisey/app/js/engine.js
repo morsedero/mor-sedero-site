@@ -85,6 +85,7 @@ export function matchProject(title, projects){
 //   learnStats      { "type|bucket": { starts, skips } } — learned fit
 //   booked          { id: slot start ms } — booked tasks wait for their slot
 //   phoneOk         ids of Computer tasks the phone can do (phone.js)
+//   projectDue      { project name: "YYYY-MM-DD" } — a project's own due date
 export function readMoment(input = {}){
   const now = input.now ?? Date.now();
   const w = Number(input.window);
@@ -103,6 +104,7 @@ export function readMoment(input = {}){
     lastProject: input.lastProject || null,
     recentProjects: (input.recentProjects || []).map(key),
     projectTiers: Object.fromEntries(Object.entries(input.projectTiers || {}).map(([p, t]) => [key(p), t])),
+    projectDue: Object.fromEntries(Object.entries(input.projectDue || {}).filter(([, d]) => /^\d{4}-\d{2}-\d{2}$/.test(d || "")).map(([p, d]) => [key(p), d])),
     areaDone: input.areaDone || {},
     sessionSkips: new Set(input.sessionSkips || []),
     skipsToday: input.skipsToday || {},
@@ -178,14 +180,38 @@ export function dueAt(task){
 
 // A real deadline: past or today 35, within 2 days 25, within 7 days 12 —
 // counted that many days earlier for big work still to do (DEADLINE_LEAD_PER_DAY).
-function deadline(task, m){
-  if (!task.due || task.dateKind !== "deadline") return { points: 0, detail: null };
-  const days = daysUntil(task.due, m.now);
-  const passed = days < 0 || (days === 0 && !!task.dueTime && m.now >= dueAt(task));
-  const left = leftMinutes(task), lead = Math.max(0, Math.ceil(left / W.DEADLINE_LEAD_PER_DAY) - 1);
+// The lead counts the whole project's work due by then, not this task's
+// alone (user test #15: six tasks, ~11 h, due in 5 days, each scored as
+// "5 days out" and lost to the gym every morning). A task with no deadline
+// of its own takes its project's due date (Projects' dates), if earlier.
+export function deadlineOf(task, m){
+  const own = task.due && task.dateKind === "deadline" ? task.due : null;
+  const p = key(task.project), pd = p && p !== "inbox" ? m.projectDue?.[p] : null;
+  if (pd && (!own || pd < own)) return { due: pd, project: task.project };
+  return own ? { due: own } : null;
+}
+function deadline(task, m, ctx = {}){
+  const dl = deadlineOf(task, m);
+  if (!dl) return { points: 0, detail: null };
+  const days = daysUntil(dl.due, m.now);
+  const passed = days < 0 || (days === 0 && !dl.project && !!task.dueTime && m.now >= dueAt(task));
+  const left = ctx.dueWork ? ctx.dueWork(task, dl.due) : leftMinutes(task), lead = Math.max(0, Math.ceil(left / W.DEADLINE_LEAD_PER_DAY) - 1);
   const eff = days - lead;
   const D = W.DEADLINE;
-  return { points: eff <= 0 ? D.today : eff <= 2 ? D.within2 : eff <= 7 ? D.within7 : 0, detail: { days, passed, lead, left } };
+  return { points: eff <= 0 ? D.today : eff <= 2 ? D.within2 : eff <= 7 ? D.within7 : 0, detail: { days, passed, lead, left, due: dl.due, project: dl.project || null } };
+}
+// Minutes still to do in a task's project that are due by `due` (the task
+// itself counted once). The Inbox isn't a project: its tasks stand alone.
+function dueWorkOf(tasks, m){
+  const by = new Map();
+  for (const t of tasks) {
+    const p = key(t.project), dl = t.status === "ready" && p && p !== "inbox" && deadlineOf(t, m);
+    if (dl) by.set(p, [...(by.get(p) || []), { id: t.id, due: dl.due, left: leftMinutes(t) }]);
+  }
+  return (task, due) => {
+    const mine = leftMinutes(task), list = by.get(key(task.project)) || [];
+    return mine + list.filter((x) => x.id !== task.id && x.due <= due).reduce((s, x) => s + x.left, 0);
+  };
 }
 
 // A target (wish date): today or past 8, within 3 days 4. A passed target
@@ -318,7 +344,7 @@ function progress(task){
 // depends on the other tasks (batches, areas in play).
 export function scoreTask(task, m, ctx = { batches: new Map(), areas: [] }){
   const f = {
-    deadline: deadline(task, m), routine: routine(task, m), target: target(task, m), stakes: stakes(task), priority: priority(task, m), area: areaBalance(task, m, ctx.areas), neglect: neglect(task, m),
+    deadline: deadline(task, m, ctx), routine: routine(task, m), target: target(task, m), stakes: stakes(task), priority: priority(task, m), area: areaBalance(task, m, ctx.areas), neglect: neglect(task, m),
     window: windowFit(task, m), momentum: momentum(task, m), batch: batch(task, ctx.batches), learned: learned(task, m),
     office: office(task, m), spot: spot(task, m), progress: progress(task),
   };
@@ -354,9 +380,10 @@ const sizeWords = (n) => (n === 60 ? "hour" : durText(n));
 const person = (title) => (String(title).match(/(?:\b(?:to|for)\s+|ל-?)(\p{Lu}[\p{L}'-]*)/u) || [])[1] || null;
 
 const PHRASES = {
-  deadline: (s, d) => d.passed || d.days < 0 ? ["deadline passed"]
-    : d.lead > 0 ? [`deadline ${dateWords(s.task.due, d.days)}, ${durText(d.left)} still to do`]
-    : [`deadline ${dateWords(s.task.due, d.days)}`],
+  deadline: (s, d) => d.passed || d.days < 0 ? [d.project ? [{ name: d.project }, " was due"] : "deadline passed"].flat()
+    : d.project ? [{ name: d.project }, ` due ${dateWords(d.due, d.days)}${d.lead > 0 ? `, ${durText(d.left)} still to do` : ""}`]
+    : d.lead > 0 ? [`deadline ${dateWords(d.due, d.days)}, ${durText(d.left)} still to do`]
+    : [`deadline ${dateWords(d.due, d.days)}`],
   // The card's dots (ui.weekDots) already show the count, so the words say
   // what the dots can't: "2 more this week, 2 days left" once every day counts.
   routine: (s, d) => d.need >= d.daysLeft && d.daysLeft <= 3
@@ -370,7 +397,9 @@ const PHRASES = {
   priority: (s, d) => (d.tier === "focus" ? [{ name: s.task.project }, " is in Focus"] : null),
   office: (s, d) => [`offices close at ${d.close}`],
   progress: (s, d) => [d.pct >= 90 ? "almost done, finish it" : d.pct >= 45 && d.pct <= 55 ? "half done, finish it" : `${d.pct}% done, finish it`],
-  area: (s, d) => [{ name: LABELS.area[d.area] || d.area }, d.done ? " is behind this week" : " hasn't moved this week"],
+  // Only an area the user set is named (user test #8: a guessed "Job search"
+  // on a Portfolio task); a guessed one still scores, unsaid.
+  area: (s, d) => !(s.task.guessed || []).includes("area") && [{ name: LABELS.area[d.area] || d.area }, d.done ? " is behind this week" : " hasn't moved this week"],
   batch: (s, d) => [`${d.ids.length} ${{ call: "calls", admin: "admin bits", errand: "errands" }[d.type]}, done together`],
   // A quick win is a small task, not just a small share of a long window.
   window: (s, d) => d.fit === "small" && leftMinutes(s.task) <= W.QUICK_WIN_MAX ? [`${sizeWords(leftMinutes(s.task))}, quick win`]
@@ -483,7 +512,7 @@ export function rank(tasks, input = {}){
   // Areas in play: every open task's, offerable now or not — a whole area
   // being out of reach right now doesn't make the others "even".
   const areas = [...new Set([...offer, ...out.map((o) => o.task)].map((t) => t.area).filter(Boolean))];
-  const ctx = { batches: findBatches(offer, m), areas };
+  const ctx = { batches: findBatches(offer, m), areas, dueWork: dueWorkOf([...offer, ...out.map((o) => o.task)], m) };
   // Background waits (Mor, 2026-10-08): behind every other offerable task,
   // unless a deadline or target date gives it points.
   const waits = (s) => tierOf(s.task, m) === "background" && !s.parts.deadline && !s.parts.target;
@@ -502,4 +531,19 @@ export function rank(tasks, input = {}){
     stale: out.filter((o) => o.reason === "stale").map((o) => o.task),
     empty: pick ? null : out.length ? "nofit" : "none",
   };
+}
+
+// The Now card keeps its task until you act on it (user test #6: a task run
+// past its slot flipped the card to the next planned one, and Done then
+// finished that). `kept`: { id, day, until } last on the card; `task`: that
+// task now. Anything acting on it (Done, Later, Pending, Switch: chosen) or a
+// new day, the proposal open, a meeting starting, or it no longer being
+// offered lets go. Only one the plan put there (`until`, its slot's end)
+// holds, even once the moment filters it (too big for the gap, booked
+// later): it's being worked on.
+export function keepsCard(kept, task, { nextId = null, today, chosen = null, proposing = false, meeting = false, skipped = false, ranked = false, switchable = false, now = Date.now() } = {}){
+  if (!kept || !task || task.id !== kept.id || nextId === kept.id) return false;
+  if (chosen || proposing || meeting || skipped || kept.day !== today) return false;
+  if (task.status !== "ready" || task.onHold || notYet(task, now)) return false;
+  return !!kept.until && (ranked || switchable);
 }

@@ -13,7 +13,7 @@
 // the run lives in Firestore, so this tab, a reload and the phone all show
 // the same timer.
 import { overruled, eventKey } from "./reality.js";
-import { addTask, updateTask, watchTasks, watchRun, watchSkips, saveSkips, endBatch, skipNow, blockTask, restoreTask, finishTask, setDoneMinutes, watchSettings, saveSettings, watchMoment, saveMoment, watchLearn, bumpLearn, cancelRun, watchDayPlan, saveDayPlan, logWork } from "./store.js";
+import { addTask, updateTask, watchTasks, watchRun, watchSkips, saveSkips, endBatch, skipNow, blockTask, restoreTask, finishTask, setDoneMinutes, watchSettings, saveSettings, watchMoment, saveMoment, watchLearn, bumpLearn, cancelRun, watchDayPlan, saveDayPlan, logWork, watchProjectNames } from "./store.js";
 import { sortable } from "./ppdrag.js";
 import { proposeDay, timeline, withBreaks, trimBreaks, isBreak, planProgress, refit, topUp, daySig, relayMeals } from "./proposal.js";
 import { rethink } from "./rethink.js";
@@ -28,7 +28,7 @@ import { LATER_MINUTES, DRAIN, CANCEL_KEEP_MINUTES, LIGHTER } from "./weights.js
 import { missState, silenceText, lastActivity } from "./miss.js";
 import { takeQuiet } from "./push.js";
 import { findPhoneTasks, phoneOkIds, searching } from "./phone.js";
-import { rank, freeWindow, timeBucket, matchProject, dueAt } from "./engine.js";
+import { rank, freeWindow, timeBucket, matchProject, dueAt, keepsCard } from "./engine.js";
 import { leftMinutes, toMinutes, progressOf, leftPatch, shrinkPatch, shrunk, localDate, logicalDate, LATE_HOUR, skipSnapshot, skipLesson, pendingCheck, notYet, pushedTo, bringBack, dayAfter, doneSnapshot } from "./model.js";
 import { isRoutine, routineCalendar, eventsToLog, sessionPatch } from "./routine.js";
 import { waitingFor, personOf } from "./nudge.js";
@@ -126,9 +126,16 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     },
     get size(){ return hidden().length; },
   };
-  const reset = () => { state.chosen = null; state.showAlts = false; state.laterAsk = false; state.pendAsk = false; state.notNow = false; state.more = false; state.pendText = ""; state.pendCheck = ""; state.single = false; };
-  let shown;
-  const showing = (id) => { if (id !== shown) { shown = id; onCard?.(id); } };
+  const reset = () => { state.chosen = null; state.showAlts = false; state.laterAsk = false; state.pendAsk = false; state.notNow = false; state.more = false; state.pendText = ""; state.pendCheck = ""; state.single = false; kept = null; };
+  let shown, kept = null; // kept: keptCard
+  let projectDue = {}; // { project: "YYYY-MM-DD" }, from Projects' dates
+  // A new task on the card shuts the rows opened under the last one.
+  const showing = (id) => { if (id !== shown) { if (shown !== undefined) state.showAlts = state.notNow = state.pendAsk = state.more = false; shown = id; onCard?.(id); } };
+  // Escape shuts an open row under the card (Switch, Later, Pending), unless a dialog has it.
+  function escRow(e){
+    if (e.key !== "Escape" || !asking() || document.querySelector("dialog[open]")) return;
+    state.showAlts = state.notNow = state.pendAsk = state.more = false; render();
+  }
 
   // The card Daisey is proposing says its reasons in the first person; the
   // alternatives keep the plain why line, so only one voice is speaking.
@@ -163,8 +170,11 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
   // area's colour (the area's name only when there's no project; Mor,
   // 2026-10-08), and on the far side the size (or whatever the card says
   // there). The project name opens its project screen.
+  // A guessed area isn't named (user test #8: an Inbox task said "Work"):
+  // only one the user set, else the project, else Inbox.
+  const ownArea = (t) => ((t.guessed || []).includes("area") ? "" : areaName(t));
   function heroTop(t, side){
-    const area = areaName(t);
+    const area = ownArea(t);
     const proj = projectShown(t) && h("button", { type: "button", className: "now-proj",
       title: `Open ${t.project}`, onclick: () => onProject?.(t.project) }, bdi(t.project));
     return h("div", { className: "hero-top" },
@@ -409,7 +419,15 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
   // already ticked.
   // Focus mode: in settings, so it holds across a reload and the other device.
   const focusOn = () => settings.focusMode === true;
-  const setFocus = (on) => { if (on === focusOn()) return; settings = { ...settings, focusMode: on }; render(); saveSettings(uid, { focusMode: on }).catch(fail); };
+  const setFocus = (on) => { if (on) workingFrom = Date.now(); if (on === focusOn()) return; settings = { ...settings, focusMode: on }; render(); saveSettings(uid, { focusMode: on }).catch(fail); };
+  // Picking a task, or Focus on one, is work starting (user test #16: "Rough
+  // day?" came 90 min into a task picked via Focus). It counts as activity
+  // until the task's time left has run from the pick.
+  let workingFrom = 0;
+  const workingUntil = () => {
+    const t = workingFrom && (tasks || []).find((x) => x.id === (state.chosen || (focusOn() ? shown : null)));
+    return t ? Math.min(Date.now(), workingFrom + leftMinutes(t) * 60000) : 0;
+  };
   const endSession = ({ quiet = false } = {}) => {
     const prev = run;
     if (!prev) return;
@@ -523,12 +541,13 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
   }
 
   function undo(){
-    const { task, before, left } = toast;
+    const { task, before } = toast;
     holdInPlan(task, null);
     skips.delete(task.id);
     state.chosen = task.id;
     setToast(null);
-    restoreTask(uid, task.id, left ? { ...before, progress: task.progress ?? 0, size: task.size ?? null } : before).catch(fail);
+    // skipSnapshot holds the skip counts and the progress / size "Left" wrote.
+    restoreTask(uid, task.id, before).catch(fail);
     render();
   }
 
@@ -678,6 +697,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
         : { window: fw.window, nextEvent: fw.next?.title ?? null }),
       ...(said ? { window: Math.min(said, !fw ? 60 : block ? Math.floor((block.end - now) / 60000) : fw.window), realWindow: true } : {}),
       ...workBase(tasks || [], now),
+      projectDue,
       sessionSkips: hidden(now),
       skipsToday: skipCounts(),
       place: f.place.value,
@@ -723,6 +743,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
       now: morning,
       ...(!fw ? { realWindow: false } : { window: fw.current ? 60 : fw.window, nextEvent: fw.next?.title ?? null }),
       ...workBase(tasks || [], now),
+      projectDue,
       place: "home",
       learnStats,
       booked: Object.fromEntries([...booked()].map(([id, b]) => [id, b.start])),
@@ -829,15 +850,18 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
   // Why the open tasks can't come up now, counted: "Out right now: 3 put
   // off today · 2 need offices open." Parked, waiting and future-dated tasks
   // aren't news, so they aren't counted.
+  // [one, more]: "1 needs offices open", "2 need offices open".
   const OUT_SAID = {
-    skipped: "put off today", office: "need offices open", place: "can't be done where you are",
-    size: "too long for the time you have", evening: "are for the evening", block: "belong to another project", booked: "booked later",
+    skipped: "put off today", office: ["needs offices open", "need offices open"], place: "can't be done where you are",
+    size: "too long for the time you have", evening: ["is for the evening", "are for the evening"],
+    block: ["belongs to another project", "belong to another project"], booked: "booked later",
   };
+  const outSaid = (k, c) => (Array.isArray(OUT_SAID[k]) ? OUT_SAID[k][c === 1 ? 0 : 1] : OUT_SAID[k]);
   function outLine(r){
     const n = {};
     for (const o of r.out) if (OUT_SAID[o.reason]) n[o.reason] = (n[o.reason] || 0) + 1;
     delete n.booked; // the card itself is the booked one
-    const parts = Object.entries(n).map(([k, c]) => `${c} ${OUT_SAID[k]}`);
+    const parts = Object.entries(n).map(([k, c]) => `${c} ${outSaid(k, c)}`);
     if (!parts.length) return null;
     const line = h("p", { className: "muted now-out", textContent: `Out right now: ${parts.join(" · ")}.` });
     return n.place ? h("div", {}, line, placeFix(r.moment)) : line;
@@ -866,6 +890,16 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
   // Tomorrow, This week and Someday also hide a task for a while (stepAside),
   // but its status or date keeps it out anyway — counting those made the
   // button promise tasks it couldn't bring back, and tapping it showed nothing.
+  // "Nothing fits" isn't a dead end (user test #9: a guessed "office hours"
+  // hid the one 2 h deadline task with 13 h free): what the moment filtered
+  // out is still yours to pick, in Switch's row. A pick is "your pick".
+  function anywayButton(r){
+    const alts = r.out.filter((o) => SWITCH_TOO.has(o.reason)).map((o) => ({ task: o.task }));
+    return alts.length > 0 && h("div", { className: "now-anyway" },
+      h("button", { className: "btn quiet", type: "button", textContent: "Show me anyway", ariaExpanded: String(state.showAlts),
+        onclick: () => { state.showAlts = !state.showAlts; render(); } }),
+      state.showAlts && switchRow(alts));
+  }
   function putOffButton(r){
     const ids = r.out.filter((o) => o.reason === "skipped").map((o) => o.task.id);
     return ids.length > 0 && h("button", { className: "btn quiet", type: "button", textContent: `Show the ${ids.length} you put off`,
@@ -915,7 +949,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
       h("h3", { className: "sd-head", textContent: "From On hold" }),
       h("ul", { className: "sd-pick" }, ...list.map((t) => {
         const on = sd.sel.includes(t.id);
-        const meta = [areaName(t) || projectShown(t), dur(t.size)].filter(Boolean).join(" · ");
+        const meta = [projectShown(t) || ownArea(t), dur(t.size)].filter(Boolean).join(" · ");
         return h("li", {}, h("button", { type: "button", className: "sd-row" + (on ? " on" : ""),
           ariaPressed: String(on), ariaLabel: `Bring back ${t.title}${MARK[t.stakes] ? ` (${MARK[t.stakes]})` : ""}`,
           onclick: () => { sd.sel = on ? sd.sel.filter((id) => id !== t.id) : [...sd.sel, t.id]; render(); } },
@@ -971,7 +1005,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     return [
       h("div", { className: "now-actions now-row" },
         // Never a dead end while On hold holds tasks (DAISEY_SPEC "Someday comes back").
-        (alts.length || someN) && action("switch", "Switch", `something else instead of ${task.title}`, { ariaExpanded: String(state.showAlts), onclick: toggle("showAlts") }),
+        (alts.length > 0 || someN > 0) && action("switch", "Switch", `something else instead of ${task.title}`, { ariaExpanded: String(state.showAlts), onclick: toggle("showAlts") }),
         action("pending", "Pending", `${task.title} is waiting on something`, { ariaExpanded: String(state.pendAsk), onclick: toggle("pendAsk") }),
         action("later", "Later", `come back to ${task.title} later`, { ariaExpanded: String(state.notNow), onclick: toggle("notNow") }),
         done),
@@ -1025,7 +1059,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
         h("span", { className: "hero-area" },
           // How long first, so a long project name is what gets cut short.
           h("span", { className: "alt-at", textContent: howLong(t) }),
-          h("span", { className: "hero-where" }, projectShown(t) ? bdi(t.project) : areaName(t) || "Inbox"))),
+          h("span", { className: "hero-where" }, projectShown(t) ? bdi(t.project) : ownArea(t) || "Inbox"))),
       h("span", { className: "alt-t", dir: "auto", textContent: t.title })))));
     row.addEventListener("scroll", () => { state.altX = row.scrollLeft; }, { passive: true });
     if (state.altX) requestAnimationFrame(() => { row.scrollLeft = state.altX; });
@@ -1052,7 +1086,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     // (proposal.js timeline since), so without this the moved task landed in
     // the old head's past slot, "didn't happen", while Now pointed elsewhere.
     if (task) { task.touchedAt = Date.now(); restoreTask(uid, id, { touchedAt: task.touchedAt }).catch(fail); }
-    state.chosen = id; state.showAlts = false;
+    state.chosen = id; state.showAlts = false; workingFrom = Date.now();
     render();
   }
 
@@ -1114,9 +1148,13 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
   function openProposal(){
     const saved = todaysPlan(), ctx = planCtx(), reuse = saved?.items?.length && saved.status !== "dismissed";
     const re = reuse ? relayMeals(stillOpen(saved.items), ctx, saved.mealsLaid || {}) : null;
-    prop.items = withBreaks(reuse ? re.items : proposeDay({ ...ctx, exclude: prop.exclude }), ctx);
-    prop.mealsLaid = reuse ? re.laid : mealAnswers();
-    prop.touched = false; prop.sig = daySigNow(); prop.askOpts = null;
+    // A proposal you changed and closed unanswered comes back as you left it.
+    const parked = !reuse && prop.parked === dayKey() && prop.items.length > 0;
+    if (!parked) {
+      prop.items = withBreaks(reuse ? re.items : proposeDay({ ...ctx, exclude: prop.exclude }), ctx);
+      prop.mealsLaid = reuse ? re.laid : mealAnswers();
+    }
+    prop.touched = parked; prop.parked = null; prop.sig = daySigNow(); prop.known = null; prop.askOpts = null;
     prop.open = true; prop.ask = false; prop.note = ""; nudgeDay = null;
     // The Now card doesn't change with the plan, so leave it be (a rebuild
     // nudged its text, Mor 2026-10-08).
@@ -1133,7 +1171,16 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
       cut = true; return false;
     });
   }
-  const closeProposal = () => { prop.replan = false; prop.open = false; prop.ask = false; prop.note = ""; paintPlanScreen(); }; // the Now card stays as is
+  // Closed with no answer (✕, or Projects / Week opened over it; user test
+  // #11: it went silently, the card still saying "first in the plan
+  // below"): a plan you changed is kept for Plan to bring back, the "Plan
+  // ready" chip lights again, and the card stops pointing at it.
+  const closeProposal = () => {
+    const undecided = !todaysPlan();
+    if (undecided && prop.touched) prop.parked = dayKey();
+    prop.replan = false; prop.open = false; prop.ask = false; prop.note = "";
+    if (undecided) { nudgeDay = dayKey(); render(); } else paintPlanScreen(); // a decided plan: the card stays as is
+  };
   // extra: the refit's record ({ kept, cut }), kept until the plan is saved again.
   // approvedAt: when the user last approved it (miss.js counts that as
   // activity; a refit saving the plan isn't), kept across later saves.
@@ -1309,10 +1356,17 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
   // plan screen follows too (it used to stay frozen until closed, since the
   // saved plan's refit and top-up wait while the screen is open): never a
   // fresh take for it, only the same cut and top-up.
+  // Tasks added while it's open join it too (user test #11: six deadline
+  // tasks added in the morning never reached the plan): untouched, it's
+  // laid again from scratch so they're weighed with the rest; changed by
+  // you, they top up what's free. prop.known: the open tasks it has seen.
   function freshenProposal(){
     if (!prop.open || prop.busy || ppDragging || !tasks || cal.status !== "ok") return;
     const ctx = { ...planCtx(), ask: prop.askOpts || {} }, sig = daySig(ctx.events, ctx.hours);
-    if (prop.sig == null || prop.sig === sig) { prop.sig = sig; return; }
+    const open = tasks.filter((t) => t.status === "ready").map((t) => t.id);
+    const added = prop.known ? open.filter((id) => !prop.known.has(id) && !prop.exclude.includes(id)) : [];
+    prop.known = new Set(open);
+    if ((prop.sig == null || prop.sig === sig) && !added.length) { prop.sig = sig; return; }
     prop.sig = sig;
     const ids = () => prop.items.filter((it) => it.taskId).map((it) => it.taskId).join();
     const before = ids();
@@ -1320,7 +1374,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
       ? topUp(refit(relayMeals(prop.items, ctx, prop.mealsLaid || {}).items, ctx).items, ctx, prop.exclude).items
       : withBreaks(proposeDay({ ...ctx, exclude: prop.exclude }), ctx);
     prop.mealsLaid = mealAnswers(); // a fresh take already lays them
-    if (ids() !== before) prop.note = "Your day changed, so I updated the plan.";
+    if (ids() !== before) prop.note = added.length ? "Added what you just put in." : "Your day changed, so I updated the plan.";
   }
   function cutView(){
     const c = approvedPlan()?.cut;
@@ -1379,7 +1433,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
   function missNow(){
     if (!tasks || cal.status !== "ok" || prop.open || approvedPlan()) return null;
     return missState({ tasks, events: cal.events, run, now: Date.now(), hours: dayHours(settings),
-      planAt: todaysPlan()?.approvedAt || 0, silenceOn: settings.silenceOn || null });
+      planAt: Math.max(todaysPlan()?.approvedAt || 0, workingUntil()), silenceOn: settings.silenceOn || null });
   }
   const silenced = (date = localDate()) => { settings = { ...settings, silenceOn: date }; saveSettings(uid, { silenceOn: date }).catch(fail); };
   // Half the time, on the card's own buckets (model.shrunk); counts as an answer.
@@ -1428,9 +1482,27 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     // (2026-10-10). The missed note under the card asks about it instead.
     const rows = tl.rows.filter((x) => !off.has(x.taskId) && !x.task.onHold && !x.missed);
     const brk = !run && tl.breaks.find((b) => b.start <= now && now < b.end);
-    if (brk && (!rows[0] || rows[0].start >= brk.end - 60000)) return { brk, next: rows[0] || null };
+    // The break's "Next" is the Today list's next row, a missed one too (user
+    // test: "Next: Call mom 12:15" while the list showed Arnona at 11:30).
+    const listNext = tl.rows.find((x) => !off.has(x.taskId) && !x.task.onHold) || null;
+    if (brk && (!rows[0] || rows[0].start >= brk.end - 60000)) return { brk, next: listNext };
     if (rows[0]) return { row: rows[0] };
     return null;
+  }
+  // The card keeps its task until you act on it (engine.keepsCard, user
+  // test #6). Done, Later, Pending, Switch, and a plan approved, dropped or
+  // made lighter all let go (reset). kept: { id, why, until, day }.
+  function keptCard(card, { r, fw, asCard, picked, planRow }){
+    const k = kept, t = k && (tasks || []).find((x) => x.id === k.id);
+    if (keepsCard(k, t, { nextId: card?.task.id, today: dayKey(), chosen: state.chosen, proposing: prop.open,
+      meeting: !!fw?.current && !fw.current.trip && blockOf(fw)?.taskId !== k?.id, skipped: !!k && hidden().includes(k.id),
+      ranked: !!k && r.ranked.some((s) => s.task.id === k.id), switchable: !!k && !!picked(k.id) }))
+      return asCard(t.id, t, k.until && Date.now() > k.until ? [`still on it? Planned until ${clock(k.until)}`] : k.why);
+    // Only a plan row, once everything has loaded (a first pick made before
+    // the plan arrived isn't one): the card and the Today list agree otherwise.
+    const until = card && (card.task.id === planRow?.taskId ? planRow.end : k?.id === card.task.id ? k.until : null);
+    kept = until && planKnown && cal.status !== "loading" ? { id: card.task.id, why: card.whyParts, day: dayKey(), until } : null;
+    return card;
   }
   const planWhy = (row) => [row.start > Date.now() + 2 * 60000 ? `next in your plan, ${clock(row.start)}–${clock(row.end)}` : `in your plan until ${clock(row.end)}`];
   function breakCard(b, next){
@@ -1712,11 +1784,12 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     // for the gap, office hours, another place, its own slot later) is still
     // yours to pick. Put off today (skipped) and the quiet ones stay out.
     const picked = (id) => r.out.find((o) => o.task.id === id && SWITCH_TOO.has(o.reason));
-    const card = (state.chosen && (r.ranked.find((s) => s.task.id === state.chosen) || (picked(state.chosen) && asCard(state.chosen, picked(state.chosen).task, ["your pick"]))))
+    let card = (state.chosen && (r.ranked.find((s) => s.task.id === state.chosen) || (picked(state.chosen) && asCard(state.chosen, picked(state.chosen).task, ["your pick"]))))
       || (planned && r.ranked.find((s) => s.task.id === planned))
       || (planRow && asCard(planRow.taskId, planRow.task, planWhy(planRow)))
       || (firstProposed && asCard(firstProposed.taskId, tasks.find((t) => t.id === firstProposed.taskId), [focusOn() ? "first in your plan" : "first in the plan below"]))
       || (pn ? null : r.pick);
+    card = keptCard(card, { r, fw, asCard, picked, planRow });
     showing(card?.task.id ?? null);
     // One ask under the card at a time, the most asked-for first.
     // (The calendar offer and the weekly Someday pick moved to Needs you.)
@@ -1757,7 +1830,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
       day(...head, quietCard(r.empty === "none"
         ? { meta: "Nothing to pick", title: "No tasks yet", why: "Add a few and Daisey will pick." }
         : { meta: "Nothing fits", title: `Nothing fits the next ${dur(r.moment.window)}`, why: "Take the break.",
-          extras: [outLine(r), putOffButton(r)] }), tip);
+          extras: [outLine(r), putOffButton(r), anywayButton(r)] }), tip);
       return;
     }
 
@@ -1827,8 +1900,11 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
   };
   const unsubs = [
     watchWhere((v) => { located = v; applyTrips(); render(); }),
+    (document.addEventListener("keydown", escRow), () => document.removeEventListener("keydown", escRow)),
     watchProjectColors(() => render()),
     watchProjectTiers(() => render()),
+    // Projects' own due dates: a project due Friday pulls its tasks up (engine.deadlineOf).
+    watchProjectNames(uid, (_n, ranges) => { projectDue = Object.fromEntries(Object.entries(ranges || {}).filter(([, r]) => r?.due).map(([p, r]) => [p, r.due])); render(); }, fail),
     watchTasks(uid, (ts, meta) => { const was = tasks; tasks = ts; dropGhostRun(meta, was); render(); tryNoticeStart(); logRoutineEvents(); }, fail),
     watchCalendar((c) => { rawCal = c; applyTrips(); render(); logRoutineEvents(); }),
     watchRun(uid, (r) => { run = r; runKnown = true; render(); tryNoticeStart(); }, fail),

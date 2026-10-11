@@ -35,6 +35,10 @@ import { syncSeries, dropSeries } from "./slots.js";
 // does — a skip reason, past tasks (model.guessFields, now.js).
 const CHIPS = ["area", "type", "where", "openHours", "size", "stakes"];
 const SHOWN = ["size"];
+// …but an open task shows what else Daisey guessed, folded under one line,
+// each a chip to fix (user test #9: a guessed "Office hours" hid "Q3 tax
+// report" all Friday and nothing on screen said why).
+const GUESSES = ["openHours", "where", "type", "area", "stakes"];
 const NAMES = { area: "Area", type: "Type", where: "Where", openHours: "Open hours", size: "Size", stakes: "Stakes" };
 const SIZE_OPTIONS = [5, 15, 30, 60, 90, 120, 180, 240];
 const NEW_PROJECT = "__new"; // the project list's "+ New project…" entry
@@ -96,7 +100,9 @@ export function mountAddTask(dialog, uid, { onStart } = {}){
   let per = 0;
   // One switch, "Repeats weekly" (Mor, 2026-10-08: simpler than a row of
   // chips); on, a − N + stepper says how many times. Off = a one-off task.
-  const PER_ON = 3; // where the stepper starts: the usual "3× a week"
+  // Where the stepper starts: once, so "Repeats weekly" means weekly (user
+  // test #17: it started at 3 and gym came back the next day); + for more.
+  const PER_ON = 1;
   const repeatSwitch = h("input", { type: "checkbox", id: "tsRepeat" });
   const perOut = h("output", { className: "ts-per-n" });
   const stepBtn = (d, text, aria) => h("button", { type: "button", className: "ts-step", textContent: text, ariaLabel: aria,
@@ -181,6 +187,10 @@ export function mountAddTask(dialog, uid, { onStart } = {}){
   // How long you think it takes: Daisey's guess until you tap it.
   const chipRow = h("div", { className: "gchips ts-chips", role: "group", ariaLabel: "How long you think it takes — Daisey's guess until you pick" });
 
+  const guessRow = h("div", { className: "gchips ts-chips", role: "group", ariaLabel: "What Daisey guessed about this task" });
+  const guessSum = h("summary", { className: "ts-guess-sum" });
+  const guessBox = h("details", { className: "ts-guess", hidden: true }, guessSum, guessRow);
+
   // Pending's details, on a pending task: data, not a switch.
   const waitingOn = h("input", { className: "ts-input", dir: "auto", autocomplete: "off", placeholder: "who or what?" });
   const checkOn = h("input", { className: "ts-input", type: "date" });
@@ -229,7 +239,7 @@ export function mountAddTask(dialog, uid, { onStart } = {}){
     field("Project", projectSel, newProject),
     field("Task", title),
     h("div", { className: "ts-dates" }, start.box, due.box, until.box),
-    field("How long?", chipRow), laptopRow, oftenRow, weekNow, pctBox, pendBox, holdBox, researchLine, stateLine,
+    field("How long?", chipRow), guessBox, laptopRow, oftenRow, weekNow, pctBox, pendBox, holdBox, researchLine, stateLine,
     section("Links & notes", h("div", { className: "ts-group" }, linkRow, notes)),
     worked, startBtn, del, msg);
 
@@ -359,15 +369,21 @@ export function mountAddTask(dialog, uid, { onStart } = {}){
   function paintChips(){
     paintArea();
     laptopSwitch.checked = vals.where === "computer";
-    chipRow.replaceChildren(...SHOWN.filter((k) => vals[k] != null).map((k) => {
+    const chipOf = (k, named = false) => {
       const own = mine.has(k);
       const chip = h("button", { type: "button", className: "gchip" + (own ? " mine" : ""), ariaHasPopup: "listbox", ariaExpanded: String(openChip === k),
         ariaLabel: `${NAMES[k]}: ${valueText(k, vals[k])}, ${own ? "yours" : "Daisey's guess"}. Change`,
         onclick: () => { openChip = openChip === k ? null : k; paintChips(); } },
-      icon(k), h("bdi", { textContent: shortText(k, vals[k]) }));
+      icon(k), named && h("span", { className: "gchip-k", textContent: `${NAMES[k]} ` }), h("bdi", { textContent: shortText(k, vals[k]) }));
       return h("div", { className: "gchip-wrap" }, chip, openChip === k ? menuFor(k) : null);
-    }));
-    const menu = openChip && chipRow.querySelector(".gmenu");
+    };
+    chipRow.replaceChildren(...SHOWN.filter((k) => vals[k] != null).map((k) => chipOf(k)));
+    const more = GUESSES.filter((k) => vals[k] != null);
+    guessBox.hidden = !editing || !more.length;
+    // The line names what decides when and where it's offered; the chips, named, hold all of it.
+    guessSum.textContent = `Daisey thinks: ${more.filter((k) => k === "openHours" || k === "where").map((k) => shortText(k, vals[k])).join(" · ")}`;
+    guessRow.replaceChildren(...more.map((k) => chipOf(k, true)));
+    const menu = openChip && dialog.querySelector(".ts-chips .gmenu");
     if (menu && menu.getBoundingClientRect().right > dialog.getBoundingClientRect().right - 8) menu.classList.add("end");
   }
 

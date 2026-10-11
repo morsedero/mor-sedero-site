@@ -4,7 +4,7 @@
 // watchTasks, used as history for "similar past tasks" guesses.
 import * as fb from "./firebase.js";
 import { worthChecking, checkOnline } from "./research.js";
-import { createTask, editTask, completeTask, startedTask, workedTask, keptTime, skipTask, skipReason, migrateTask, toDate, INBOX } from "./model.js";
+import { createTask, editTask, completeTask, startedTask, workedTask, keptTime, skipTask, skipReason, migrateTask, toDate, INBOX, progressOf, leftMinutes } from "./model.js";
 import { logDocKey, guessDoneMinutes } from "./bloom-data.js";
 
 const GUEST_UID = "guest-local";
@@ -184,7 +184,8 @@ export function migrateTasks(uid){
 // (bloom-data guessDoneMinutes). The returned promise carries `counted`, the
 // minutes logged, at once, so the caller's toast can say "Counted ~30 min".
 export function finishTask(uid, task, ctx = {}){
-  const g = guessDoneMinutes(task, ctx);
+  // A task already part done counts only what was left (user test: 75% done, 120 min counted).
+  const g = guessDoneMinutes(progressOf(task) > 0 ? { ...task, size: leftMinutes(task), spentMinutes: 0 } : task, ctx);
   const p = updateGuestTask(uid, task.id, completeTask(task));
   logWork(uid, task, g.minutes, { at: g.at, done: true, guess: true }).catch(logFail);
   p.counted = { minutes: g.minutes };

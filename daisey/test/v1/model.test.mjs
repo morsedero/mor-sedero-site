@@ -141,7 +141,34 @@ test("not now: Undo puts back exactly what the skip touched", () => {
   const before = M.skipSnapshot(t);
   const after = { ...t, ...M.skipTask(t, opts), ...M.skipReason(t, "blocked", opts) };
   assert.equal(after.status, "waiting");
-  assert.deepEqual({ ...after, ...before }, { ...t, notAt: [] }); // notAt: an empty list is "never taught"
+  assert.deepEqual({ ...after, ...before }, { ...t, notAt: [], progress: 0 }); // notAt: an empty list is "never taught"
+});
+
+test("not now: Undo after Later's 'Left' puts the progress, size and skip back (user test #1)", () => {
+  const t = { ...M.createTask({ title: "Q3 tax report", size: 120 }, opts), progress: 0, skipCount: 1 };
+  const before = M.skipSnapshot(t);
+  const after = { ...t, ...M.skipTask(t, opts), ...M.leftPatch(t, 60, opts) };
+  assert.equal(after.progress, 50);
+  assert.equal(after.skipCount, 2);
+  const back = { ...after, ...before };
+  assert.equal(back.progress, 0);
+  assert.equal(back.skipCount, 1);
+  // Over its size, Left grows the size instead: Undo shrinks it back.
+  const grown = { ...t, ...M.leftPatch(t, 180, opts) };
+  assert.equal(grown.size, 180);
+  assert.equal({ ...grown, ...before }.size, 120);
+});
+
+test("reopen: an accidental Done comes back at its real progress, not 95% (user test #5)", () => {
+  const t = { ...M.createTask({ title: "Arnona", size: 60 }, opts), progress: 30 };
+  const done = { ...t, ...M.completeTask(t, opts) };
+  assert.equal(M.progressOf(done), 100);
+  const open = { ...done, ...M.editTask(done, { status: "ready" }, { now: NOW + 1 }) };
+  assert.equal(M.progressOf(open), 30);
+  assert.equal(M.leftMinutes(open), 42);
+  // Done before 2026-10-11 wrote progress 100: back at 0, not 99.
+  const old = { ...t, status: "done", doneAt: NOW, progress: 100 };
+  assert.equal(M.progressOf({ ...old, ...M.editTask(old, { status: "ready" }, { now: NOW + 1 }) }), 0);
 });
 
 test("skip lesson: Too big allows pieces, Not here hides it where you are; Undo takes both back", () => {
@@ -421,7 +448,8 @@ test("progress: done is 100, partial is kept, left shrinks", () => {
   assert.equal(M.progressOf({ status: "ready", progress: 40 }), 40);
   assert.equal(M.progressOf({ status: "ready" }), 0);
   assert.equal(M.progressPatch(150).progress, 99);
-  assert.equal(M.completeTask({}).progress, 100);
+  assert.equal(M.completeTask({ progress: 40 }).progress, undefined); // Done leaves it: Reopen gets it back
+  assert.equal(M.progressOf({ status: "done", progress: 40 }), 100);
   assert.ok(M.leftMinutes({ size: 60, progress: 50 }) <= 30);
 });
 
@@ -441,4 +469,13 @@ test("leftPatch: the toast's 'Left' makes leftMinutes read it", () => {
   assert.equal(left({ size: 30, spentMinutes: 20 }, 45), 45); // bigger than thought: size grows
   assert.equal(left({ size: 30 }, 30), 30);
   assert.equal(left({ size: 60 }, 0), 5);             // never under 5
+});
+
+test("guesses: tax paperwork is any time, bike repair is home work (user test #9)", () => {
+  const g = (t) => M.guessFields(t, "Inbox");
+  assert.equal(g("Q3 tax report").openHours, "anytime");
+  assert.equal(g("Fill insurance form").openHours, "anytime");
+  assert.equal(g("Call the bank").openHours, "office");
+  assert.equal(g("Fix bike brakes").where, "home");
+  assert.equal(g("Fix the boss loop").where, "computer");
 });

@@ -241,8 +241,11 @@ const TYPE_WORDS = [
     "whatsapp", "sms", "message", "confirm", "fill", "חשבונית", "טופס", "מסים", "לחדש", "לשלם", "ביטוח", "להירשם",
     "הרשמה", "להגיש", "הגשה", "להזמין", "לבטל", "קבלה", "בנק", "מייל", "לענות", "לשלוח", "לתאם", "תור", "הודעה",
     "וואטסאפ", "לאשר", "למלא"]],
+  // Things fixed with your hands (user test #9: "Fix bike brakes" came out
+  // computer work). Objects, not "fix" itself: "fix the boss loop" is code.
   ["home", ["clean", "cleaning", "laundry", "dishes", "cook", "cooking", "tidy", "vacuum", "garden", "plants",
-    "לנקות", "ניקיון", "כביסה", "כלים", "לבשל", "לשאוב", "עציצים"]],
+    "bike", "bicycle", "brakes", "tire", "tyre", "shelf", "shelves", "furniture", "sink", "leak", "drill", "assemble",
+    "לנקות", "ניקיון", "כביסה", "כלים", "לבשל", "לשאוב", "עציצים", "אופניים", "בלמים", "צמיג", "מדף", "רהיטים", "נזילה", "להרכיב"]],
   ["social", ["meet", "meetup", "dinner", "lunch", "coffee", "birthday", "party", "visit", "drinks", "hang out",
     "להיפגש", "ארוחת", "קפה", "יום הולדת", "מסיבה", "לבקר", "מפגש"]],
 ];
@@ -250,8 +253,9 @@ const PHONE_WORDS = ["text", "whatsapp", "sms", "message", "הודעה", "ווא
 const HOME_WORDS = ["practice", "rehearse", "לתרגל"];
 // Places that keep office hours. A call to one of them, or an errand or
 // admin task that names one, can only happen while it's open.
+// Not bare "tax": "Q3 tax report" is paperwork at your desk (user test #9).
 const OFFICE_WORDS = ["bank", "clinic", "doctor", "dentist", "insurance", "municipality", "city hall", "post office",
-  "tax", "office", "accountant", "בנק", "מרפאה", "רופא", "רופאה", "ביטוח", "עירייה", "עיריית", "קופת חולים", "דואר",
+  "tax office", "tax authority", "office", "accountant", "בנק", "מרפאה", "רופא", "רופאה", "ביטוח", "עירייה", "עיריית", "קופת חולים", "דואר",
   "רשות", "רואה חשבון", "מס הכנסה"];
 // Calls to people, not offices: any time of day.
 const FAMILY_WORDS = ["mom", "mum", "dad", "grandma", "grandpa", "sister", "brother", "friend",
@@ -283,9 +287,13 @@ export function guessWhere(title, type){
   return "computer";
 }
 
+// Paperwork done at your own desk, whoever it's for: any time.
+const DESK_WORDS = ["report", "form", "fill", "prepare", "draft", "write", "online", "scan", "calculate", "review",
+  "דוח", "דו\"ח", "טופס", "למלא", "להכין", "לכתוב", "לסרוק"];
 export function guessOpenHours(title, type){
   const toks = tokens(title);
   if (type === "call") return anyOf(toks, FAMILY_WORDS) ? "anytime" : "office";
+  if (type === "admin" && anyOf(toks, DESK_WORDS)) return "anytime";
   if ((type === "admin" || type === "errand") && anyOf(toks, OFFICE_WORDS)) return "office";
   return "anytime";
 }
@@ -481,6 +489,8 @@ export function editTask(task, changes, { now = Date.now(), history = [] } = {})
     if (changes.status !== "waiting" && !has("waitingOn")) set("waitingOn", null);
     if (changes.status !== "waiting") set("checkOn", null);
     if (changes.status !== "done") set("doneAt", null); // reopened
+    // …at its real progress. A Done before 2026-10-11 wrote 100: unknown, so 0.
+    if (changes.status !== "done" && (Number(task.progress) || 0) >= 100 && !has("progress")) set("progress", 0);
     if (changes.status !== "ready" && !has("onHold")) set("onHold", null);
   } else if (has("waitingOn") && get("waitingOn") && get("status") === "ready") {
     set("status", "waiting");
@@ -533,9 +543,11 @@ export function migrateTask(task, history = []){
 }
 
 // A routine isn't closed by Done: it logs a session (routine.sessionPatch).
+// Done leaves progress alone (progressOf reads 100 for done), so Reopen
+// brings an accidental Done back where it was, not at 95% (user test #5).
 export const completeTask = (task, { now = Date.now(), minutes = 0 } = {}) =>
   (cleanRoutine(task.routine) ? sessionPatch(task, { now, minutes })
-    : { status: "done", doneAt: now, skipsSinceStart: 0, touchedAt: now, onHold: null, progress: 100 });
+    : { status: "done", doneAt: now, skipsSinceStart: 0, touchedAt: now, onHold: null });
 
 // What Done changes, as it was before: the Undo after a Done.
 export const doneSnapshot = (task) => ({
@@ -599,6 +611,7 @@ export const skipSnapshot = (task) => ({
   waitingOn: task.waitingOn ?? null, // Pending's reason
   checkOn: task.checkOn ?? null, // …and when to ask again
   canSplit: task.canSplit ?? false, notAt: task.notAt ?? [], // …and what the reason chips taught
+  progress: task.progress ?? 0, size: task.size ?? null, // …and the toast's "Left ~30 min" (leftPatch)
 });
 
 // Focus mode. Starting clears the stale-skip count: a task you actually

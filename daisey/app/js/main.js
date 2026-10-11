@@ -360,25 +360,6 @@ async function boot(){
         const stopBriefTasks = watchTasks(user.uid, (ts) => { briefTasks = ts; snap(); }, fail);
         const stopBriefRun = watchRun(user.uid, (r) => { briefRun = r || null; snap(); }, fail);
         const stopBriefPlan = watchDayPlan(user.uid, (d) => { briefPlan = d || null; snap(); }, fail);
-        const stopSettings = watchSettings(user.uid, (s) => {
-          const hrs = dayHours(s || {});
-          const usual = usualHours(s || {}); // the field shows the usual day, not today's stretch
-          if (!dayDrag) paintDay(usual.start, usual.end);
-          $("#dayTrack").dataset.end = usual.end; // saveHours: did the end move?
-          paintMeals(s || {});
-          logSwitch.checked = !isGuest && s?.logDone !== false;
-          logSwitch.disabled = isGuest;
-          laptopAsk.checked = s?.askLaptop === true;
-          // After midnight a late day reads { start: 0 }; the server gets the usual one.
-          hours = hrs.late ? usual : hrs;
-          lastSettings = s || {};
-          briefOn = !!s?.morningBrief;
-          seen();
-          kindBoxes.forEach((b) => { b.checked = s?.notify?.[b.dataset.kind] !== false; });
-          leadPick.value = String(s?.meetingLead ?? 10);
-          leadPick.disabled = !meetingBox.checked;
-          snap();
-        }, fail);
         logSwitch.onchange = () => saveSettings(user.uid, { logDone: logSwitch.checked }).catch(fail);
         laptopAsk.onchange = () => saveSettings(user.uid, { askLaptop: laptopAsk.checked }).catch(fail);
         // Meal breaks (Mor, 2026-10-08): Breakfast, Lunch, Dinner, each on or
@@ -488,6 +469,27 @@ async function boot(){
           saveHours();
         }));
         paintDay(dayS, dayE);
+        // Watched only now: a guest store answers at once, and the callback reads
+        // dayDrag, paintMeals and the meal state declared above.
+        const stopSettings = watchSettings(user.uid, (s) => {
+          const hrs = dayHours(s || {});
+          const usual = usualHours(s || {}); // the field shows the usual day, not today's stretch
+          if (!dayDrag) paintDay(usual.start, usual.end);
+          $("#dayTrack").dataset.end = usual.end; // saveHours: did the end move?
+          paintMeals(s || {});
+          logSwitch.checked = !isGuest && s?.logDone !== false;
+          logSwitch.disabled = isGuest;
+          laptopAsk.checked = s?.askLaptop === true;
+          // After midnight a late day reads { start: 0 }; the server gets the usual one.
+          hours = hrs.late ? usual : hrs;
+          lastSettings = s || {};
+          briefOn = !!s?.morningBrief;
+          seen();
+          kindBoxes.forEach((b) => { b.checked = s?.notify?.[b.dataset.kind] !== false; });
+          leadPick.value = String(s?.meetingLead ?? 10);
+          leadPick.disabled = !meetingBox.checked;
+          snap();
+        }, fail);
         // + → Event is off while the calendar isn't connected.
         let calOk = false;
         // Settings → Integrations: Connect (or Reconnect) Google Calendar. A
@@ -606,7 +608,7 @@ async function boot(){
         syncPanel();
         $("#planChip").onclick = $("#planReady").onclick = () => m.now?.plan();
         m.now = mountNow($("#nowcard"), user.uid, {
-          name: (user.displayName || "").trim().split(/\s+/)[0], onDone: paintDone, onNeedsCount: paintNeeds, onPlanProgress: paintPlan,
+          name: isGuest ? "" : (user.displayName || "").trim().split(/\s+/)[0], onDone: paintDone, onNeedsCount: paintNeeds, onPlanProgress: paintPlan,
           onPlanReady: (on) => { $("#planReady").hidden = !on; },
           onFocusMode: (on) => { const b = $("#focusChip"); b.setAttribute("aria-pressed", String(on)); b.ariaLabel = on ? "Focus mode on: tap to show everything" : "Focus mode: only the Now card"; },
           planRoot: $("#planPage"),
