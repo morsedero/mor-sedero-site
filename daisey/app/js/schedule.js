@@ -226,9 +226,11 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onMissed, onPro
       : `${from.toLocaleDateString("en-GB", { day: "numeric", month: "short" })} – ${last.toLocaleDateString("en-GB", { day: "numeric", month: "short" })}`;
     const tonight = real.late && view !== "week" && isNow;
     const title = view === "week" ? (isNow ? "This week" : span) : tonight ? "Tonight" : dayName(at);
-    const sub = view === "week" ? (isNow ? span : "") : tonight ? `until ${minText(real.end)}` : short(at);
-    // A phone drops the date line, so a plain weekday carries its date ("Wed 15").
     const rel = Math.abs(Math.round((at - named) / 864e5)) <= 1;
+    // A weekday title already names the day, so its date line drops it (Mor, 2026-10-12).
+    const sub = view === "week" ? (isNow ? span : "") : tonight ? `until ${minText(real.end)}`
+      : rel ? short(at) : at.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+    // A phone drops the date line, so a plain weekday carries its date ("Wed 15").
     const narrow = view === "week" || rel ? title : `${at.toLocaleDateString("en-GB", { weekday: "short" })} ${at.getDate()}`;
 
     const weekBtn = h("button", { type: "button", className: "sc-weekbtn", ariaLabel: "Week", onclick: () => onWeek?.() }, icon("calendar"), h("span", { textContent: "Week" }));
