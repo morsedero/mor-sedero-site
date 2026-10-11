@@ -101,9 +101,11 @@
            Plan: "Plan my day" until a plan is approved, then "Plan"; tap
            either way to open it (now.js reports, main.js paints). While the
            morning's draft waits it turns blue with a pulsing dot (Mor,
-           2026-10-11/12: two states, no count). -->
+           2026-10-11/12: two states, no count). The icon tells the states
+           apart: a calendar with + before, with ✓ after; the dot is a badge
+           on its corner. -->
       <aside id="side" class="side" aria-label="Plan and projects">
-        <button id="planChip" class="hchip plan empty" type="button" hidden><span class="hchip-dot" aria-hidden="true"></span><span id="planW" class="hchip-word">Plan my day</span></button>
+        <button id="planChip" class="hchip plan empty" type="button" hidden><span class="plan-ic"><svg class="ic-add" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3v4M16 3v4M3 10h18"/><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M12 13v5M9.5 15.5h5"/></svg><svg class="ic-ok" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3v4M16 3v4M3 10h18"/><rect x="3" y="5" width="18" height="16" rx="2"/><path d="m9 15.5 2 2 4-4"/></svg><span class="hchip-dot" aria-hidden="true"></span></span><span id="planW" class="hchip-word">Plan my day</span></button>
         <button id="projectsChip" class="hchip plan" type="button" hidden aria-label="Projects" aria-pressed="false"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/></svg><span class="hchip-word">Projects</span></button>
         <!-- Week: the week's numbers and all routines (Mor, 2026-10-10). -->
         <button id="weekChip" class="hchip plan" type="button" hidden aria-label="This week" aria-pressed="false"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 20V12M12 20V5M19 20v-5"/></svg><span class="hchip-word">Week</span></button>

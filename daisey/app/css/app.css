@@ -1394,7 +1394,12 @@ dialog.tsheet .msg:empty { display: none; }
 #side .hchip[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); color: var(--card); }
 #side .hchip .hchip-word, #side .hchip.plan:not(.empty) .hchip-word { display: inline; }
 #side .hchip .hchip-dot { display: none; }
-#side .hchip.ready .hchip-dot { display: block; flex: none; }
+/* Plan's icon: calendar + until a plan is approved, calendar ✓ after; the
+   waiting draft's dot sits on its corner like a badge (Mor, 2026-10-12). */
+.plan-ic { position: relative; display: inline-flex; }
+#planChip .ic-ok, #planChip:not(.empty) .ic-add { display: none; }
+#planChip:not(.empty) .ic-ok { display: block; }
+#side .hchip.ready .hchip-dot { display: block; position: absolute; inset-block-start: -2px; inset-inline-end: -4px; outline: 2px solid var(--a-admin-tint); }
 body.focus #side { display: none; }
 /* While Switch, Pending or Later is open under the card, the side buttons
    keep their closed size instead of stretching with the taller card. */
