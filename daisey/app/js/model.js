@@ -170,11 +170,9 @@ export const toTime = (v) => (typeof v === "string" && /^([01]\d|2[0-3]):[0-5]\d
 // What the card SAYS rests only on what the user typed, the calendar or the
 // plan (2026-10-11), so a guess is never said as a fact.
 export const isGuess = (t, k) => (t?.guessed || []).includes(k);
-// The estimate mark. Not "~": Rubik draws its tilde flat and low, so on a
-// phone "Counted ~15 min" read "Counted -15 min" (round 2, 2026-10-11).
-export const APPROX = "≈";
-// A duration read aloud: "≈15 min est" while the size is a guess.
-export const estText = (t, min) => (isGuess(t, "size") ? `${APPROX}${durText(min)} est` : durText(min));
+// A duration read aloud: "15 min", "1 h", guessed or not. No estimate mark
+// (Mor, 2026-10-12): "~" read as a minus in Rubik, and "≈… est" wasn't needed.
+export const estText = (t, min) => durText(min);
 
 export function durText(min){
   const m = Math.max(0, Math.round(min));

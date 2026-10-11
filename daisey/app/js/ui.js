@@ -115,26 +115,27 @@ if (typeof MutationObserver !== "undefined" && typeof document !== "undefined"){
 
 export function dismissFlash(){ clearTimeout(liveTimer); livePop?.remove(); livePop = null; }
 
-// `adjust` { minutes, set(m) }: "Est. 30 min" with − / + (15 min a tap).
-// The estimate is only said, never counted (round 2, 2026-10-11): a Done
-// credits no time. A − / + is the user saying how long it took, "Took 45 min",
-// and only that is logged.
+// `adjust` { minutes, set(m) }: "1 h" with − / + (15 min a tap). The
+// estimate is only said, never counted (round 2, 2026-10-11): a Done credits
+// no time; a − / + is the user saying how long it took, and only that is
+// logged. That toast stays until closed or replaced (Mor, 2026-10-12: it
+// went while you were setting the time), so it has its own ✕.
 export function flash(label, title, { undo, adjust } = {}){
   dismissFlash();
   let mins = adjust?.minutes ?? 0;
-  const count = adjust && h("span", { className: "toast-count", title: "An estimate, not counted. − / + to say how long it took." }, `Est. ${mins} min`);
+  const count = adjust && h("span", { className: "toast-count", title: "− / + to say how long it took" }, durText(mins));
   const step = (d) => h("button", { className: "toast-step", type: "button", textContent: d < 0 ? "−" : "+", ariaLabel: `${d < 0 ? "Less" : "More"} time`,
     onclick: () => {
-      mins = Math.max(0, mins + d); count.textContent = `Took ${mins} min`; adjust.set(mins);
-      clearTimeout(liveTimer); liveTimer = setTimeout(dismissFlash, UNDO_MS);
+      mins = Math.max(0, mins + d); count.textContent = durText(mins); adjust.set(mins);
     } });
   livePop = h("div", { className: adjust ? "toast flash" : "toast flash timed", role: "status" },
     h("span", { className: "toast-text" }, label, title ? bdi(title) : null),
     adjust && h("span", { className: "toast-adj" }, step(-15), count, step(15)),
     undo && h("button", { className: "toast-undo", type: "button", textContent: "Undo",
-      onclick: () => { dismissFlash(); undo(); } }));
+      onclick: () => { dismissFlash(); undo(); } }),
+    adjust && h("button", { className: "toast-close", type: "button", textContent: "✕", ariaLabel: "Close", onclick: dismissFlash }));
   document.body.append(livePop);
-  liveTimer = setTimeout(dismissFlash, adjust ? UNDO_MS + 3000 : UNDO_MS);
+  if (!adjust) liveTimer = setTimeout(dismissFlash, UNDO_MS);
 }
 
 // Inline icons: the card's three quiet actions, and one per guessed field so

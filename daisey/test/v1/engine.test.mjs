@@ -280,7 +280,7 @@ test("why: phrase table — deadline, stakes, office, area, batch, window, momen
   assert.doesNotMatch(why(task({ stakes: "penalty", guessed: ["stakes"] })), /penalty/i);
   assert.doesNotMatch(why(task({ openHours: "office", type: "admin", size: 30, guessed: ["openHours"] }), { now: at(5, 14), window: 60 }), /offices/i);
   // A guessed size is said as an estimate.
-  assert.match(why(task({ size: 10, guessed: ["size"] }), { window: 120 }), /≈10 min est, quick win/i);
+  assert.match(why(task({ size: 10, guessed: ["size"] }), { window: 120 }), /10 min, quick win/i);
   assert.match(why(task({ stakes: "penalty" })), /penalty if late/i);
   assert.match(why(task({ openHours: "office", type: "admin", size: 30 }), { now: at(5, 14), window: 60 }), /offices close at 16:00/i);
   assert.match(why([task({ area: "job" }), task({ area: "work", size: 61 })], { areaDone: { work: 3 } }), /Job search hasn't moved this week/i);
