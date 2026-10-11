@@ -28,7 +28,7 @@ import { LATER_MINUTES, DRAIN, CANCEL_KEEP_MINUTES, LIGHTER } from "./weights.js
 import { missState, silenceText, lastActivity } from "./miss.js";
 import { takeQuiet } from "./push.js";
 import { findPhoneTasks, phoneOkIds, searching } from "./phone.js";
-import { rank, freeWindow, timeBucket, matchProject, dueAt, keepsCard } from "./engine.js";
+import { rank, freeWindow, timeBucket, matchProject, dueAt, keepsCard, passedOver } from "./engine.js";
 import { leftMinutes, toMinutes, progressOf, leftPatch, shrinkPatch, shrunk, localDate, logicalDate, LATE_HOUR, skipSnapshot, skipLesson, pendingCheck, notYet, pushedTo, bringBack, dayAfter, doneSnapshot } from "./model.js";
 import { isRoutine, routineCalendar, eventsToLog, sessionPatch } from "./routine.js";
 import { waitingFor, personOf } from "./nudge.js";
@@ -53,7 +53,7 @@ const clock = (ms) => new Date(ms).toLocaleTimeString([], { hour: "2-digit", min
 export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap, name = "", onDone, onNeedsCount, onPlanProgress, onPlanReady, planRoot, onPlanScreen, onReady, onFocusMode, missDialog = null, guest = false } = {}){
   let tasks = null; // null until the first snapshot
   let settings = {}; // state/settings: when the sweep was last offered
-  let momentDoc = {}; // state/moment: place corrections
+  let momentDoc = {}, momentKnown = false; // state/moment: place corrections, cardSeen
   let learnStats = {}; // state/learn: starts and skips per type and time of day
   let located = null; // "home" | "out" from the phone's location (where.js), null = unknown
   let cal = { status: "loading", events: [] };
@@ -1506,6 +1506,20 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     kept = until && planKnown && cal.status !== "loading" ? { id: card.task.id, why: card.whyParts, day: dayKey(), until } : null;
     return card;
   }
+  // The engine's own pick, left on the card: when it came on (moment doc
+  // cardSeen, so a reload doesn't restart the clock), and after 2 h with
+  // nothing done to it, passed over for today (engine.passedOver).
+  function noteSeen(task){
+    if (!momentKnown) return;
+    const s = momentDoc.cardSeen, now = Date.now(), day = dayKey();
+    if (s?.id !== task.id || s.day !== day) {
+      momentDoc = { ...momentDoc, cardSeen: { id: task.id, at: now, day } };
+      saveMoment(uid, { cardSeen: momentDoc.cardSeen }).catch(fail);
+      return;
+    }
+    const p = passedOver(task, s, { now, today: day });
+    if (p) { Object.assign(task, p); restoreTask(uid, task.id, p).catch(fail); }
+  }
   const planWhy = (row) => [row.start > Date.now() + 2 * 60000 ? `next in your plan, ${clock(row.start)}–${clock(row.end)}` : `in your plan until ${clock(row.end)}`];
   function breakCard(b, next){
     const name = b.name || (b.type === "meal" ? "Meal" : "Breather"); // the Today list's words
@@ -1793,6 +1807,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
       || (pn ? null : r.pick);
     card = keptCard(card, { r, fw, asCard, picked, planRow });
     showing(card?.task.id ?? null);
+    if (card && card === r.pick) noteSeen(card.task);
     // One ask under the card at a time, the most asked-for first.
     // (The calendar offer and the weekly Someday pick moved to Needs you.)
     let behind = null;
@@ -1912,7 +1927,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     watchRun(uid, (r) => { run = r; runKnown = true; render(); tryNoticeStart(); }, fail),
     watchSkips(uid, (s) => { skipDoc = s; render(); }, fail),
     watchSettings(uid, (s) => { settings = s || {}; applyTrips(); render(); }, fail),
-    watchMoment(uid, (d) => { momentDoc = d || {}; freeFrom = Number.isFinite(momentDoc.freeFrom) ? momentDoc.freeFrom : null; render(); }, fail),
+    watchMoment(uid, (d) => { momentDoc = d || {}; momentKnown = true; freeFrom = Number.isFinite(momentDoc.freeFrom) ? momentDoc.freeFrom : null; render(); }, fail),
     watchLearn(uid, (d) => { learnStats = d || {}; render(); }, fail),
     watchDayPlan(uid, (d) => { dayPlan = d || null; planKnown = true; render(); }, fail),
   ];

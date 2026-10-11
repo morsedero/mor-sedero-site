@@ -352,6 +352,7 @@ export function scoreTask(task, m, ctx = { batches: new Map(), areas: [] }){
   const details = Object.fromEntries(FACTORS.map((k) => [k, f[k].detail]));
   const whyPoints = Object.fromEntries(FACTORS.map((k) => [k, f[k].why ?? f[k].points]));
   parts.skips = -W.SKIP_PENALTY * (m.skipsToday[task.id] || 0);
+  parts.ignored = -IGNORED_PENALTY * ignoredDays(task, m.now);
   const score = Object.values(parts).reduce((a, b) => a + b, 0);
   return { task, score, parts, details, whyPoints };
 }
@@ -531,6 +532,23 @@ export function rank(tasks, input = {}){
     stale: out.filter((o) => o.reason === "stale").map((o) => o.task),
     empty: pick ? null : out.length ? "nofit" : "none",
   };
+}
+
+// Passed over (user test #15: the same Gym card three mornings running, and
+// still at 13:30, nothing done): a task the engine kept on the card 2 h+
+// with nothing done to it is marked for that day (task.ignoredOn, the last
+// IGNORED_DAYS), and each such day costs it IGNORED_PENALTY, so something
+// else gets a turn. A real deadline today still outscores it.
+export const IGNORED_PENALTY = 10, IGNORED_DAYS = 3, IGNORED_AFTER_MS = 2 * 3600000;
+export const ignoredDays = (task, now = Date.now()) =>
+  (task.ignoredOn || []).filter((d) => { const n = daysUntil(d, now); return n <= 0 && n > -IGNORED_DAYS; }).length;
+// seen: { id, at, day } — when this task came onto the card. The patch to
+// write, or null: not long enough, worked on since, or already marked today.
+export function passedOver(task, seen, { now = Date.now(), today = logicalDate(now) } = {}){
+  if (!task || !seen || seen.id !== task.id || seen.day !== today || now - seen.at < IGNORED_AFTER_MS) return null;
+  if (Math.max(task.touchedAt || 0, task.workedAt || 0) >= seen.at || (task.ignoredOn || []).includes(today)) return null;
+  const recent = (task.ignoredOn || []).filter((d) => daysUntil(d, now) > -IGNORED_DAYS);
+  return { ignoredOn: [...recent, today].slice(-IGNORED_DAYS) };
 }
 
 // The Now card keeps its task until you act on it (user test #6: a task run

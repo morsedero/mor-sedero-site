@@ -420,3 +420,17 @@ test("deadline lead: a project's work due by then counts together; a project's o
   const inbox = Array.from({ length: 6 }, () => dl("2026-10-10", { project: "Inbox", size: 120 }));
   assert.equal(E.rank(inbox, { now: NOW, window: 180 }).pick.parts.deadline, W.DEADLINE.within7);
 });
+
+test("passed over: 2 h on the card with nothing done costs it a turn, for 3 days (user test #15)", () => {
+  const gym = task({ title: "Gym", touchedAt: at(5, 8) }), seen = { id: gym.id, at: at(5, 9), day: "2026-10-05" };
+  assert.equal(E.passedOver(gym, seen, { now: at(5, 10, 30) }), null); // 1.5 h: not yet
+  const p = E.passedOver(gym, seen, { now: at(5, 11, 30) });
+  assert.deepEqual(p.ignoredOn, ["2026-10-05"]);
+  assert.equal(E.passedOver({ ...gym, ...p }, seen, { now: at(5, 12) }), null); // once a day
+  assert.equal(E.passedOver({ ...gym, touchedAt: at(5, 10) }, seen, { now: at(5, 12) }), null); // worked on since
+  // Ignored today and yesterday: another task gets the card; three days on it's forgiven.
+  const g2 = { ...gym, ignoredOn: ["2026-10-04", "2026-10-05"] }, other = task({ title: "Write", size: 30 });
+  assert.equal(E.ignoredDays(g2, NOW), 2);
+  assert.equal(pick([g2, other], { window: 120 }).task.id, other.id);
+  assert.equal(E.ignoredDays(g2, at(8)), 0);
+});
