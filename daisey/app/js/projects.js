@@ -171,6 +171,16 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
   // "Most of your time" etc. needed someone to explain them).
   const TIER_TEXT = { focus: ["Focus", "Daisey suggests these first"], keep: ["Keep going", "In the mix most days"], background: ["Background", "Only when nothing else waits, or a date is close"] };
   const MOVED = { focus: "Daisey suggests it first now: ", keep: "Back in the mix: ", background: "Waits until there's room: " };
+  // A tapped tier name opens its meaning; one open at a time, gone after 5 s.
+  let tipTimer = 0;
+  function tierTip(e){
+    const btn = e.currentTarget, head = btn.parentElement, on = !head.classList.contains("open");
+    for (const x of document.querySelectorAll(".pp-tier.open")) { x.classList.remove("open"); x.firstChild.ariaExpanded = "false"; }
+    clearTimeout(tipTimer);
+    if (!on) return;
+    head.classList.add("open"); btn.ariaExpanded = "true";
+    tipTimer = setTimeout(() => { head.classList.remove("open"); btn.ariaExpanded = "false"; }, 5000);
+  }
   let focusMax = FOCUS_MAX;
   const tierOf = (name) => (TIERS.includes(tiers[name]) ? tiers[name] : "keep");
   const full = (name, t) => t === "focus" && tierOf(name) !== "focus" && list().filter((p) => tierOf(p.name) === "focus").length >= focusMax;
@@ -241,7 +251,9 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
     const tier = (t) => { const ins = ps.filter((p) => tierOf(p.name) === t);
       return h("div", { className: `pp-zone tier-${t}`, _tier: t },
         // Each tier a header with how many it holds; no box (Mor, 2026-10-08).
-        h("div", { className: "pp-tier" }, h("span", { className: "pp-tier-name", textContent: TIER_TEXT[t][0] }), h("span", { className: "pp-tier-sub", textContent: TIER_TEXT[t][1] }),
+        // The name is the heading; what the tier means sits behind it, shown
+        // on hover with a mouse or a tap with a finger (Mor, 2026-10-11).
+        h("div", { className: "pp-tier" }, h("button", { type: "button", className: "pp-tier-name", textContent: TIER_TEXT[t][0], ariaExpanded: "false", onclick: tierTip }), h("span", { className: "pp-tier-sub", role: "tooltip", textContent: TIER_TEXT[t][1] }),
           // Focus's size lives here, on its own header (Mor, 2026-10-10: out of Settings): "2/3", the 3 picks 1–5.
           t === "focus"
             ? h("span", { className: "pp-tier-n" }, `${ins.length}/`,
