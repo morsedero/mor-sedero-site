@@ -162,8 +162,8 @@ export function mountNeeds(root, uid, { onClose, extra } = {}){
       return { tone: "area-home", ico: "later", q: `Do you travel to ${item.city.name}?`,
         sub: `${new Date(start).toLocaleDateString(undefined, { weekday: "long" })}, ${clock(start)}–${clock(Date.parse(ev.end))}${ev.recurring ? ", every week" : ""}.`,
         item: ev.title,
-        say: est ? `From Home: about ${dur(est.car)} driving, ${dur(est.train)} by train. I'll keep the way there and back free.`
-          : "I'll keep the way there and back free. How long is it each way?",
+        say: est ? `From Home: about ${dur(est.car)} driving, ${dur(est.train)} by train. I'll keep the way there and back free, with time to park and settle in.`
+          : "I'll keep the way there and back free, with time to park and settle in. How long is the ride each way?",
         field: { id: "tripMin", placeholder: est ? "Minutes each way (optional)" : "Minutes each way", inputmode: "numeric" },
         yes: ["Train", go("train")], no: ["Driving", go("car")],
         more: [["Bus", go("bus")], ["It's not a trip", () => save(noTrip(item.city))]] };

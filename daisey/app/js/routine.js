@@ -159,7 +159,8 @@ export function routineCalendar(tasks, events, now = Date.now()){
 export function weekState(task, day = dayOf(), cal = null){
   const per = cleanRoutine(task.routine)?.per || 0;
   const done = doneThisWeek(task, day), ahead = cal?.ahead || 0;
-  return { per, done, ahead, need: Math.max(0, per - done - ahead), daysLeft: daysLeft(task, day) };
+  // gone: whole days of the week already over (Sunday: 0).
+  return { per, done, ahead, need: Math.max(0, per - done - ahead), daysLeft: daysLeft(task, day), gone: noon(day).getDay() };
 }
 
 // "1 of 3 this week", "3 of 3 this week ✓" — for the task sheet and the lists.

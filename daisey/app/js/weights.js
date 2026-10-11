@@ -71,7 +71,8 @@ export const DEADLINE_LEAD_PER_DAY = 120;
 export const TARGET = { today: 8, within3: 4 }; // today or past · ≤3 days; never "overdue"
 // A routine (routine.js) by how its week stands. last: every day left this
 // week is needed — miss today and the week can't be met (as strong as a
-// deadline in 2 days). behind: half the days left or more are needed. due:
+// deadline in 2 days). behind: half the days left or more are needed, and
+// the days already gone fell short of an even pace (engine routine). due:
 // still on pace, but this is one of them (a reason, just over WHY_MIN_POINTS).
 // why: its rank among the reasons (not points) — the week's count leads.
 export const ROUTINE = { last: 25, behind: 14, due: 6, why: 30 };

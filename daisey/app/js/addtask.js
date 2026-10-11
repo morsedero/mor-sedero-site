@@ -15,15 +15,16 @@
 // pending task back into play (now.js start). Delete is the quiet line under
 // Start, two presses.
 //
-// Links are URLs; a file is a link to it (Drive, Dropbox) — there is no file
-// storage behind Daisey.
+// Links are URLs (+ Link). + File keeps a picked file on this device only
+// (files.js) — there is no file storage in the cloud behind Daisey.
 //
 // The guessed chips are the same as before: each drops its own menu over the
 // sheet, "Daisey guesses" hands a field back, dashed = a guess, solid = yours.
 // While typing a new task's title they catch up only once typing stops.
 import { nudgeText, waLink } from "./nudge.js";
 import { watchTasks, addTask, updateTask, removeTask, watchProjectNames, watchSettings, unlogReopened } from "./store.js";
-import { durText, guessFields, validField, CHOICES, LABELS, INBOX, localDate, logicalDate, clampDate, outsideRange, progressOf } from "./model.js";
+import { durText, guessFields, validField, CHOICES, LABELS, INBOX, localDate, logicalDate, clampDate, outsideRange, progressOf, isLink } from "./model.js";
+import { keepFile, dropFile, fileUrl } from "./files.js";
 import { h, flash, icon, bdi } from "./ui.js";
 import { projectsOf } from "./projects.js";
 import { isRoutine, weekLine, PER_MAX, DEFAULT_AT, cleanRoutine, seriesSig } from "./routine.js";
@@ -392,17 +393,39 @@ export function mountAddTask(dialog, uid, { onStart } = {}){
   function paintLinks(){
     const url = h("input", { className: "ts-input", type: "url", inputMode: "url", placeholder: "Paste a link", ariaLabel: "Link" });
     const addIt = () => {
-      if (url.value.trim()) { links.push({ url: url.value.trim() }); if (editing) save({ links }); }
+      const v = url.value.trim();
+      // A file name or a few words aren't an address: as one, the chip opened nothing.
+      if (v && !isLink(v)) { flash("That isn't a web link. For a file on this phone, use + File."); return; }
+      if (v) { links.push({ url: v }); if (editing) save({ links }); }
       adding = false; paintLinks();
     };
     url.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); addIt(); } if (e.key === "Escape") { e.stopPropagation(); adding = false; paintLinks(); } });
+    // + File: the picked file stays on this device (files.js).
+    const picker = h("input", { type: "file", hidden: true, onchange: async () => {
+      const f = picker.files?.[0];
+      if (!f) return;
+      try {
+        links.push({ file: await keepFile(f), label: f.name });
+        if (editing) save({ links });
+        paintLinks();
+      } catch (e) { flash(e.message === "big" ? "That file's too big (25 MB at most). Add a Drive or Dropbox link instead." : "Couldn't keep that file on this phone."); }
+    } });
+    const chip = (l, k) => {
+      const name = l.label || l.url || "File";
+      const a = l.file ? h("a", { href: "#", onclick: (e) => { if (a.getAttribute("href") === "#") { e.preventDefault(); flash("That file is on the phone it was added from."); } } })
+        : h("a", { href: /^[a-z][a-z0-9+.-]*:/i.test(l.url) ? l.url : `https://${l.url}`, target: "_blank", rel: "noopener" });
+      a.append(icon(l.file ? "file" : "link"), bdi(name));
+      if (l.file) fileUrl(l.file).then((f) => { if (f) { a.href = f.url; if (f.view) a.target = "_blank"; else a.download = f.name; } });
+      return h("span", { className: "ts-link" }, a,
+        h("button", { type: "button", className: "ts-link-x", ariaLabel: `Remove ${name}`,
+          onclick: () => { links.splice(k, 1); if (l.file) dropFile(l.file); if (editing) save({ links }); paintLinks(); } }, icon("close")));
+    };
     linkRow.replaceChildren(
-      ...links.map((l, k) => h("span", { className: "ts-link" },
-        h("a", { href: /^[a-z][a-z0-9+.-]*:/i.test(l.url) ? l.url : `https://${l.url}`, target: "_blank", rel: "noopener" }, icon("link"), bdi(l.label || l.url)),
-        h("button", { type: "button", className: "ts-link-x", ariaLabel: `Remove ${l.label || l.url}`,
-          onclick: () => { links.splice(k, 1); if (editing) save({ links }); paintLinks(); } }, icon("close")))),
+      ...links.map(chip),
       adding ? h("span", { className: "ts-link-add" }, url, h("button", { type: "button", className: "btn small", textContent: "Add", onclick: addIt }))
-        : h("button", { type: "button", className: "ts-link-new", textContent: "+ Link or file", onclick: () => { adding = true; paintLinks(); linkRow.querySelector("input")?.focus(); } }));
+        : h("span", { className: "ts-link-adds" },
+          h("button", { type: "button", className: "ts-link-new", textContent: "+ Link", onclick: () => { adding = true; paintLinks(); linkRow.querySelector("input")?.focus(); } }),
+          h("button", { type: "button", className: "ts-link-new", textContent: "+ File", onclick: () => picker.click() }), picker));
   }
   notes.addEventListener("change", () => { if (editing) save({ notes: notes.value }); });
   waitingOn.addEventListener("change", () => save({ waitingOn: waitingOn.value }));

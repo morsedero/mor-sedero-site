@@ -104,6 +104,17 @@ test("engine: behind on the week leans harder, with a why", () => {
   assert.match(r1.pick.why, /keeps your 3× a week going/i);
 });
 
+test("engine: a fresh week isn't behind; a Focus task comes before a Keep going routine", () => {
+  // Mor, 2026-10-11 (a Sunday): a 4×-a-week routine came before a Focus task.
+  const SUN = at("2026-10-11"), TUE = at("2026-10-13");
+  const four = gym({ project: "Health", routine: { per: 4, until: null, log: [] } });
+  assert.equal(rank([four], { now: SUN, window: 120 }).pick.parts.routine, 6, "day one: nothing missed yet");
+  assert.equal(rank([four], { now: TUE, window: 120 }).pick.parts.routine, 14, "two days gone, none done: behind");
+  const mix = { ...createTask({ title: "Mix", size: 45, project: "Album" }, { now: at("2026-10-01") }), id: "m" };
+  const r = rank([four, mix], { now: SUN, window: 120, projectTiers: { Album: "focus", Health: "keep" } });
+  assert.equal(r.pick.task.id, "m");
+});
+
 test("engine: not offered when the week is covered or a session is later today", () => {
   const t = gym({ routine: { per: 1, until: null, log: [{ day: "2026-10-05" }] } });
   assert.equal(rank([t], { now: THU }).out[0].reason, "routine");

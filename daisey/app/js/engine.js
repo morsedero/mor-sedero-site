@@ -228,8 +228,13 @@ function routine(task, m){
   const s = weekState(task, m.today, m.routineCal[task.id]);
   if (!s.need) return { points: 0, detail: null };
   const R = W.ROUTINE;
+  // Behind means behind an even pace: the days already over should have had
+  // their share. A fresh week isn't behind, however many it asks for (Mor,
+  // 2026-10-11, a Sunday: a 4×-a-week routine in Keep going came before a
+  // Focus task, on the card and in the plan).
+  const behind = s.need * 2 >= s.daysLeft && s.done + s.ahead < Math.floor(s.per * s.gone / 7);
   // The week's count is the reason a routine is up, so it always leads the why.
-  return { points: s.need >= s.daysLeft ? R.last : s.need * 2 >= s.daysLeft ? R.behind : R.due, why: R.why, detail: s };
+  return { points: s.need >= s.daysLeft ? R.last : behind ? R.behind : R.due, why: R.why, detail: s };
 }
 
 function stakes(task){

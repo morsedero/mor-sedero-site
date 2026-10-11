@@ -62,10 +62,16 @@ export function placeFrom(fixes, places = [], ride = null, now = Date.now()){
   const speeds = good.map((f) => f.speed).filter((v) => v != null && !Number.isNaN(v)).sort((a, b) => a - b);
   let v = speeds.length ? speeds[Math.floor((speeds.length - 1) / 2)] : null;
   const [a, b] = [good[0], good.at(-1)];
-  if (v == null && good.length >= 2 && b.t - a.t >= SPEED_SPAN_MS) {
-    // Only the part of the move the two fixes' errors can't explain is travel.
-    v = Math.max(0, dist(a, b) - (a.acc || 0) - (b.acc || 0)) / ((b.t - a.t) / 1000);
-  }
+  // Only the part of the move the two fixes' errors can't explain is travel.
+  const moved = good.length >= 2 && b.t - a.t >= SPEED_SPAN_MS
+    ? Math.max(0, dist(a, b) - (a.acc || 0) - (b.acc || 0)) / ((b.t - a.t) / 1000) : null;
+  v ??= moved;
+  // A ride has to have gone somewhere. A phone picked up or shifted on the
+  // table can report a car's speed for a fix or three while it stays put
+  // (Mor, 2026-10-11: moved the phone a little, Daisey asked if he was
+  // driving). Fast without the distance to show for it is the distance's
+  // pace, or standing still when the fixes span too short a time to tell.
+  if (v >= WALK_MPS && !(moved >= WALK_MPS)) v = moved ?? 0;
   v ??= 0;
   if (v >= WALK_MPS) return ride && now - ride.at < RIDE_MS ? ride.mode : "ride";
   // A place saved from a vague fix gets that much more reach (acc, kept since
@@ -85,7 +91,9 @@ const listeners = new Set();
 const tell = (v) => { if (v !== current) { current = v; listeners.forEach((f) => f(v)); } };
 const manualNow = (d = load()) => (d.manual && Date.now() - d.manual.at < MANUAL_MS ? d.manual.value : null);
 
-// Collects fixes for WINDOW_MS (or until three report their own speed).
+// Collects fixes for WINDOW_MS, or until three report a speed under a
+// walk's. Any faster and it waits the window out: a ride is only believed
+// when the fixes cover the ground (placeFrom), and ~3 s of them can't.
 function fixes(){
   const geo = navigator.geolocation;
   if (!geo) return Promise.resolve([]);
@@ -95,7 +103,8 @@ function fixes(){
     const id = geo.watchPosition((p) => {
       const c = p.coords;
       got.push({ lat: c.latitude, lng: c.longitude, acc: c.accuracy || 0, speed: c.speed ?? null, t: p.timestamp || Date.now() });
-      if (got.filter((f) => f.speed != null && !Number.isNaN(f.speed)).length >= 3) done();
+      const told = got.filter((f) => f.speed != null && !Number.isNaN(f.speed));
+      if (told.length >= 3 && told.every((f) => f.speed < WALK_MPS)) done();
     }, () => done(), { enableHighAccuracy: true, maximumAge: 30000, timeout: WINDOW_MS });
     const timer = setTimeout(done, WINDOW_MS);
   });

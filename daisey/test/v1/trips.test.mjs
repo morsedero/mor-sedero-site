@@ -57,7 +57,7 @@ test("legs there and back, busy, and one trip for back-to-back events in a city"
   const out = T.withTrips([ash], trips);
   const legs = out.filter((e) => e.trip);
   assert.deepEqual(legs.map((l) => [l.title, hhmm(Date.parse(l.start)), hhmm(Date.parse(l.end))]),
-    [["Train to Ashkelon", "06:10", "08:00"], ["Train back from Ashkelon", "13:00", "14:50"]]);
+    [["Train to Ashkelon", "06:05", "08:00"], ["Train back from Ashkelon", "13:00", "14:50"]]);
   const more = { id: "e4", title: "פגישה אשקלון", start: iso("14:00"), end: iso("15:00"), busy: true };
   const both = T.withTrips([ash, more], { ...trips, [T.tripKey(more)]: trips["s:abc"] }).filter((e) => e.trip);
   assert.equal(both.length, 2);
@@ -66,6 +66,16 @@ test("legs there and back, busy, and one trip for back-to-back events in a city"
   const c = T.chainFrom(out.find((e) => e.trip?.dir === "to"), out);
   assert.equal(c.main.title, ash.title);
   assert.equal(hhmm(c.end), "14:50");
+});
+
+test("by car: the walk to the car, parking and the walk in, and 5 minutes to settle", () => {
+  const trips = { "s:abc": { city: "Ashkelon", mode: "car", min: { train: 110, bus: 125, car: 80 } } };
+  const legs = T.withTrips([ash], trips).filter((e) => e.trip);
+  // 08:00 − 80 on the road − 15 to the car and in from parking − 5 to settle; back 80 + 10.
+  assert.deepEqual(legs.map((l) => [hhmm(Date.parse(l.start)), hhmm(Date.parse(l.end))]), [["06:20", "08:00"], ["13:00", "14:30"]]);
+  // Riding with someone: the same walks.
+  const ride = T.withTrips([ash], trips, [{ date: "2026-10-09", key: "s:abc", mode: "car", passenger: ["to"] }]).find((e) => e.trip?.dir === "to");
+  assert.equal(hhmm(Date.parse(ride.start)), "06:20");
 });
 
 test("one day another way, or not going, leaves the answer alone", () => {
@@ -176,19 +186,19 @@ test("a ride ahead in the plan takes Computer tasks the phone can do (phone.js)"
 
 test("still moving after the way back's planned end: the drive runs on and the plan waits", () => {
   const trips = { "s:abc": { city: "Ashkelon", mode: "car", min: { train: 110, bus: 125, car: 80 } } };
-  const drive = T.withTrips([ash], trips, [], null); // back: 13:00–14:20
-  const now = at("14:23");
+  const drive = T.withTrips([ash], trips, [], null); // back: 13:00–14:30, 80 min + the walk to the car and in at home
+  const now = at("14:33");
   const late = T.stillRiding(drive, "car", now);
   const back = late.find((e) => e.trip?.dir === "back");
-  assert.equal(back.trip.late, at("14:20"), "remembers the planned end");
-  assert.equal(Date.parse(back.end), at("14:35"), "runs on 10+ min, to a whole 5");
+  assert.equal(back.trip.late, at("14:30"), "remembers the planned end");
+  assert.equal(Date.parse(back.end), at("14:45"), "runs on 10+ min, to a whole 5");
   assert.equal(T.stillRiding(drive, "home", now), drive, "stopped: nothing changes");
   assert.equal(T.stillRiding(drive, "walk", now), drive, "walking: nothing changes");
   assert.equal(T.stillRiding(drive, "car", at("17:30")), drive, "3h+ past: not that drive any more");
   assert.equal(T.stillRiding(drive, "car", at("13:30")), drive, "a leg under way: nothing to stretch");
-  assert.equal(T.stillRiding(drive, "ride", now).find((e) => e.trip?.dir === "back").trip.late, at("14:20"), "an unanswered ride counts");
+  assert.equal(T.stillRiding(drive, "ride", now).find((e) => e.trip?.dir === "back").trip.late, at("14:30"), "an unanswered ride counts");
   const t = (o) => ({ status: "ready", type: "deep", size: 30, spentMinutes: 0, createdAt: 0, due: "2026-10-09", dateKind: "target", ...o });
   const tasks = [t({ id: "mix", title: "Mix", where: "computer", size: 45 })];
   const rows = timeline([{ taskId: "mix", minutes: 45 }], { tasks, events: late, now, hours: { start: 8 * 60, end: 22 * 60 } }).rows;
-  assert.ok(rows[0].start >= at("14:35"), "the plan starts after the stretched drive");
+  assert.ok(rows[0].start >= at("14:45"), "the plan starts after the stretched drive");
 });

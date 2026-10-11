@@ -15,17 +15,20 @@ test("where: still at home → home; still 1 km away → out", () => {
   assert.equal(placeFrom([fix(0.009, 0), fix(0.009, 10000)], PLACES), "out");
 });
 
+// A ride that covers the ground: ~170 m in 10 s, at the speed it reports.
+const drive = (speed = 15, from = 0) => [0, 2500, 5000, 7500, 10000].map((t) => fix(from + 0.0015 * t / 10000, t, { speed }));
+
 test("where: walking under ~10 km/h, a ride over it, even next to home; reported speed wins", () => {
   assert.equal(placeFrom([fix(0.009, 0, { acc: 5 }), fix(0.0092, 10000, { acc: 5 })], PLACES), "walk"); // ~22 m in 10 s, 12 m of it past the error, 1 km from home
   assert.equal(placeFrom([fix(0, 0, { acc: 5 }), fix(0.0002, 10000, { acc: 5 })], PLACES), "home"); // same pace inside the house: pacing, not a walk
   assert.equal(placeFrom([fix(0, 0, { speed: 1.2 }), fix(0, 1000, { speed: 1.4 })], PLACES), "home"); // reported walking speed indoors
-  assert.equal(placeFrom([fix(0, 0, { speed: 8 }), fix(0, 1000, { speed: 9 })], PLACES), "ride");
+  assert.equal(placeFrom(drive(8), PLACES), "ride");
   assert.equal(placeFrom([fix(0, 0, { speed: 0 }), fix(0, 1000, { speed: 0 })], PLACES), "home");
   assert.equal(placeFrom([fix(0, 0, { speed: 1.5 }), fix(0, 1000, { speed: 1.5 })], []), "walk"); // no home needed
 });
 
 test("where: a named ride holds for 2 hours, then asks again", () => {
-  const fast = [fix(0, 0, { speed: 15 }), fix(0, 1000, { speed: 15 })], now = Date.now();
+  const fast = drive(15), now = Date.now();
   assert.equal(placeFrom(fast, PLACES, { mode: "train", at: now - 3600e3 }, now), "train");
   assert.equal(placeFrom(fast, PLACES, { mode: "train", at: now - 3 * 3600e3 }, now), "ride");
 });
@@ -43,7 +46,15 @@ test("where: a vague first fix jumping to a sharp one isn't a ride", () => {
   assert.equal(placeFrom([fix(0, 0, { speed: 0 }), fix(0, 1000, { speed: 6 }), fix(0, 2000, { speed: 0.2 })], PLACES), "home");
   assert.equal(placeFrom([fix(0, 0, { speed: 9, acc: 120 }), fix(0, 1000, { speed: 0 })], PLACES), "home");
   // A real ride still reads as one.
-  assert.equal(placeFrom([fix(0, 0, { speed: 12 }), fix(0, 1000, { speed: 13 }), fix(0, 2000, { speed: 0.5 }), fix(0, 3000, { speed: 12 })], PLACES), "ride");
+  assert.equal(placeFrom([fix(0, 0, { speed: 12 }), fix(0.0005, 3000, { speed: 13 }), fix(0.001, 6000, { speed: 0.5 }), fix(0.0015, 10000, { speed: 12 })], PLACES), "ride");
+});
+
+test("where: a phone moved a little, reporting a car's speed, isn't a ride", () => {
+  // Mor, 2026-10-11: shifted the phone at home and Daisey asked about driving.
+  assert.equal(placeFrom([fix(0, 0, { speed: 8 }), fix(0, 1000, { speed: 9 })], PLACES), "home"); // too short to tell
+  assert.equal(placeFrom([0, 2500, 5000, 7500, 10000].map((t) => fix(0.00003 * (t % 5000 ? 1 : 0), t, { speed: 9 })), PLACES), "home"); // 10 s, went nowhere
+  assert.equal(placeFrom([fix(0.009, 0, { speed: 9 }), fix(0.009, 10000, { speed: 9 })], PLACES), "out"); // still away from home
+  assert.equal(placeFrom([fix(0.009, 0, { speed: 9, acc: 5 }), fix(0.0092, 10000, { speed: 9, acc: 5 })], PLACES), "walk"); // went a walk's worth
 });
 
 test("where: a Home saved from a vague fix reaches that much further", () => {

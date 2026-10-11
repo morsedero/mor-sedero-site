@@ -22,9 +22,15 @@
 const MIN = 60000;
 export const MODES = ["train", "bus", "car"];
 export const LOCAL_KM = 8; // a city this close to Home is no trip
-// Rough door-to-door speed from straight-line km: roads wind (×1.25–1.3),
-// plus getting going (parking, the walk to the station and the wait).
-const SPEED = { car: { wind: 1.25, kmh: 70, plus: 10 }, train: { wind: 1.3, kmh: 55, plus: 20 }, bus: { wind: 1.3, kmh: 45, plus: 15 } };
+// Rough speed from straight-line km: roads wind (×1.25–1.3). A car is time on
+// the road only (the walk and the parking are DOOR); a train or bus adds the
+// walk to the station and the wait.
+const SPEED = { car: { wind: 1.25, kmh: 70, plus: 0 }, train: { wind: 1.3, kmh: 55, plus: 20 }, bus: { wind: 1.3, kmh: 45, plus: 15 } };
+// The human part of a trip, on top of its minutes (Mor, 2026-10-11): by car
+// (driving or riding), the walk to the car and, at the far end, parking and
+// the walk in; every way there, 5 minutes to settle in before it starts.
+export const DOOR = { car: { to: 5 + 10, back: 5 + 5 }, train: { to: 0, back: 0 }, bus: { to: 0, back: 0 } };
+export const SETTLE = 5;
 // Without a Home to measure from: the other modes from the one answered.
 const RATIO = { car: 1, train: 1.35, bus: 1.55 };
 
@@ -251,8 +257,8 @@ export function withTrips(events = [], trips = {}, tripDay = [], laptop = null){
     };
   };
   const legs = runs.flatMap((r) => [
-    leg(r.firstEv, r.trip, "to", r.start - r.trip.minutes * MIN, r.start),
-    leg(r.lastEv, r.back, "back", r.end, r.end + r.back.minutes * MIN),
+    leg(r.firstEv, r.trip, "to", r.start - (r.trip.minutes + DOOR[r.trip.mode].to + SETTLE) * MIN, r.start),
+    leg(r.lastEv, r.back, "back", r.end, r.end + (r.back.minutes + DOOR[r.back.mode].back) * MIN),
   ]);
   return [...events, ...legs];
 }

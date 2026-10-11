@@ -36,6 +36,13 @@ import { mountGrowth, flowerSvg, statsCard, routinesSection } from "./bloom.js";
 
 const SWIPE_DONE = 90; // px a task travels right before letting go finishes it
 const SWIPE_PAGE = 70; // px sideways that turns the page to the next project
+// Swiping to finish wasn't findable (Mor, 2026-10-11). Until the first
+// swipe that finishes a task, a line over the list says how, and the first
+// task peeks right once a visit to show the green Done under it.
+const SWIPE_KEY = "daisey.swipeLearned";
+const swipeLearned = () => { try { return localStorage.getItem(SWIPE_KEY) === "1"; } catch { return false; } };
+const learnSwipe = () => { try { localStorage.setItem(SWIPE_KEY, "1"); } catch { /* per-tab only */ } };
+let peeked = false;
 // A date in the list said the way a person would (Mor, 2026-10-06): today,
 // tomorrow, yesterday; a weekday within the week either side; else "12 Oct".
 // Not numbers: 8/10 reads as a different day in another locale.
@@ -450,6 +457,7 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
       s = null;
       wrap.classList.remove("swiping", "armed");
       if (go) {
+        learnSwipe();
         const sign = getComputedStyle(card).direction === "rtl" ? -1 : 1;
         card.style.transform = `translateX(${sign * 110}%)`;
         setTimeout(() => complete(t), motionOK() ? 160 : 0);
@@ -546,10 +554,15 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
           p.someday.length > 0 && toggle("someday", h("span", { className: "pj-zz", ariaHidden: "true" }), h("span", { className: "pj-tg-t", textContent: `On hold · ${p.someday.length}` }))),
         drawerEl),
       h("section", { className: "pj-sec pj-one", ariaLabel: "Tasks" },
+        next.length + pending.length > 0 && !swipeLearned() && h("p", { className: "pj-hint pj-swipe-hint", textContent: "Done with one? Swipe it right →, or tap its ✓." }),
         dragTasks(h("div", { className: "pj-grp" }, ...next), p.next), dragTasks(h("div", { className: "pj-grp" }, ...pending), p.pending),
         h("button", { type: "button", className: "pj-add", textContent: "+ Add a task", onclick: () => onAdd?.(p.name === INBOX ? "" : p.name) })),
       ].filter(Boolean));
     els.view.className = "ppage" + colorClass(p);
+    if (!peeked && !swipeLearned() && motionOK()) {
+      const first = els.view.querySelector(".pj-swipe");
+      if (first) { peeked = true; first.classList.add("peek"); setTimeout(() => first.classList.remove("peek"), 1700); }
+    }
     els.view.scrollTop = y;
     const row = els.view.querySelector(".pj-chips");
     if (x != null) row.scrollLeft = x;

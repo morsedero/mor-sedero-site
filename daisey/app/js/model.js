@@ -125,15 +125,30 @@ export function toSteps(v){
 export const nextOpenStep = (steps) => (steps || []).find((s) => !s.done)?.text || null;
 
 // Links: [{ url, label }]. A bare "drive.google.com/…" gets its https://.
+// A file kept on the device (files.js): { file: id, label: its name }.
 export function toLinks(v){
   if (!Array.isArray(v)) return null;
   const out = v.map((l) => {
+    if (typeof l?.file === "string" && l.file) return { file: l.file, label: text(l.label) || "File" };
     let url = String(l?.url || "").trim();
     if (!url) return null;
     if (!/^[a-z][a-z0-9+.-]*:/i.test(url)) url = "https://" + url;
     return { url, label: text(l?.label) || linkLabel(url) };
   }).filter(Boolean);
   return out.length ? out : null;
+}
+// Can it open as a link? Not a file name ("mix v2.wav", "cue-sheet.pdf"), a
+// path on a computer ("C:\Music\…", file://), or a few words (Mor,
+// 2026-10-11: a typed file became https://its-name and opened nothing).
+const FILE_EXT = /\.(pdf|docx?|xlsx?|pptx?|txt|rtf|csv|wav|aiff?|mp3|m4a|flac|ogg|mp4|mov|jpe?g|png|gif|heic|psd|zip|rar|logicx|als|ptx|mid)$/i;
+export function isLink(v){
+  const s = String(v || "").trim();
+  if (!s || /\s/.test(s) || /^[a-z]:[\\/]/i.test(s) || /^(file|content):/i.test(s)) return false;
+  try {
+    const u = new URL(/^[a-z][a-z0-9+.-]*:/i.test(s) ? s : "https://" + s);
+    if (!/^https?:$/.test(u.protocol)) return true; // mailto:, tel:, an app's own link
+    return u.hostname.includes(".") && !(u.hostname.split(".").length === 2 && FILE_EXT.test(u.hostname) && u.pathname === "/");
+  } catch { return false; }
 }
 // What a link chip says: the file name if the URL ends in one, else the site.
 export function linkLabel(url){

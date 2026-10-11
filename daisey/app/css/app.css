@@ -1095,6 +1095,11 @@ body:has(.screen:not([hidden])) { overflow: hidden; }
 .pj-swipe.swiping { background: var(--green); }
 .pj-reveal { position: absolute; inset-block: 0; inset-inline-start: 16px; display: flex; align-items: center; gap: 6px; color: #fff; font-size: 13px; font-weight: 600; opacity: .55; }
 .pj-swipe.armed .pj-reveal { opacity: 1; }
+/* The once-a-visit hint: the first task slides right and back, Done under it. */
+.pj-swipe.peek { background: var(--green); }
+.pj-swipe.peek .pj-reveal { visibility: visible; opacity: 1; }
+.pj-swipe.peek .pj-task { animation: pj-peek 1.5s ease-in-out .4s both; }
+@keyframes pj-peek { 0%, 100% { translate: 0; } 35%, 60% { translate: 72px; } }
 .pj-reveal svg { inline-size: 16px; block-size: 16px; stroke-width: 2.5; }
 .pj-task { position: relative; display: grid; gap: 2px; inline-size: 100%; padding: 8px 12px 8px 42px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); color: var(--ink); font: inherit; text-align: start; cursor: pointer; touch-action: pan-y; user-select: none; }
 .pj-swipe:not(.swiping) .pj-task { transition: transform .18s ease; }
@@ -1174,6 +1179,7 @@ dialog.tsheet .now-head { margin-block-end: -4px; }
 .ts-link-x svg { inline-size: 12px; block-size: 12px; }
 .ts-links { padding-block: 6px; }
 .ts-link-new { block-size: 32px; padding: 0; border: 0; background: none; color: var(--aink); font: inherit; font-size: 14px; font-weight: 500; cursor: pointer; }
+.ts-link-adds { display: flex; gap: 18px; }
 .ts-link-add { display: flex; gap: 6px; inline-size: 100%; }
 .ts-link-add .ts-input { padding-block: 6px; }
 .ts-group .ts-notes { display: block; flex: none; inline-size: 100%; min-block-size: 64px; margin: 0; padding: 10px 0 8px; border: 0; border-block-start: 1px solid var(--line); border-radius: 0; background: none; color: var(--ink); font: inherit; font-size: 16px; resize: none; }
