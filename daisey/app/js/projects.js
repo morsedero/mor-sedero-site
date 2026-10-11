@@ -451,8 +451,11 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
     let s = null, moved = false;
     card.addEventListener("pointerdown", (e) => { s = { x: e.clientX, y: e.clientY, id: e.pointerId, dx: 0 }; moved = false; });
     card.addEventListener("pointermove", (e) => {
-      if (s && wrap.classList.contains("pp-dragging")) s = null; // being dragged, not swiped
+      // Being dragged, not swiped: let go of the swipe whole, or the row
+      // stays slid over its green "Done" (Mor, 2026-10-12: it got stuck).
+      if (s && wrap.classList.contains("pp-dragging")) { s = null; wrap.classList.remove("swiping", "armed"); card.style.transform = ""; }
       if (!s) return;
+      if (moved) e.stopPropagation(); // a live swipe is never also a drag
       const sign = getComputedStyle(card).direction === "rtl" ? -1 : 1;
       const dx = (e.clientX - s.x) * sign, dy = e.clientY - s.y;
       if (!moved) {
@@ -461,6 +464,7 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
         moved = true;
         try { card.setPointerCapture(s.id); } catch { /* gone */ }
         wrap.classList.add("swiping");
+        e.stopPropagation();
       }
       s.dx = Math.max(0, dx);
       card.style.transform = `translateX(${s.dx * sign}px)`;
@@ -480,6 +484,7 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
     };
     card.addEventListener("pointerup", end);
     card.addEventListener("pointercancel", end);
+    card.addEventListener("lostpointercapture", end);
     card.addEventListener("click", (e) => { if (moved) { e.preventDefault(); e.stopImmediatePropagation(); moved = false; } }, true);
     return wrap;
   }
