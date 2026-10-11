@@ -1689,7 +1689,9 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
           : h("span", { className: "pp-time", ariaLabel: `${clock(r.start)} to ${clock(r.end)}` }, clock(r.start), h("small", { textContent: clock(r.end) })),
         h("button", { type: "button", className: "pp-task", ariaLabel: `Edit ${t.title}`, onclick: () => onOpen?.(t) },
           h("span", { className: "pp-title", dir: "auto", textContent: t.title }),
-          h("span", { className: "pp-meta" }, ...pieces(projectShown(t) ? t.project : "", isOver ? r.why || estText(t, r.minutes) : r.of ? `${estText(t, r.minutes)} of ${dur(r.of)}, shortened to fit` : estText(t, r.minutes), r.ride ? RIDE_ROW[r.ride] : "", isOver ? "" : r.missed ? "did it happen?" : late?.taskId === r.taskId ? "not started" : ""))),
+          // The slot's times already say how long; "not started" is Rethink's
+          // job; No room says only the first clause of why (Mor, 2026-10-12).
+          h("span", { className: "pp-meta" }, ...pieces(projectShown(t) ? t.project : "", isOver ? (r.why || "").split(",")[0] || estText(t, r.minutes) : r.of ? `shortened from ${dur(r.of)}` : "", r.ride ? RIDE_ROW[r.ride] : "", !isOver && r.missed ? "did it happen?" : ""))),
         h("span", { className: "pp-ctls" },
           isOver && !r.never && ctl("↑", "Do first", false, () => toFront(i)),
           ctl("✕", "Take off today's plan", false, () => dropItem(i))));
@@ -1741,21 +1743,20 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
       !rows.length && !over.length && h("p", { className: "now-empty", textContent: "No open task fits the free time left today." }),
       // Overflow: Daisey asks before cutting anything (planAsk,
       // 2026-10-10), so until it's answered, what doesn't fit shows here.
-      // Running late only when the plan is behind its own slots (a slot's
-      // time came or went with nothing started): No room alone isn't late.
-      approved && !prop.busy && (late || rows.some((r) => r.missed)) && h("p", { className: "pp-note pp-late" }, "Running late. ",
-        h("button", { type: "button", className: "linkish", textContent: "Rethink for what's left?", onclick: () => doRethink("") })),
       over.length > 0 && !approved && h("p", { className: "muted pp-note", textContent: `${plural(over.length)[0]} fit today. ↑ does one first, ✕ takes it off.` }),
       // Open tasks the plan didn't take (it holds a day's worth, MAX_ITEMS):
       // counted, not listed, so nothing sits out of sight unsaid (2026-10-11).
       notInPlan() > 0 && !prop.ask && h("p", { className: "muted pp-note" },
-        `+${notInPlan()} more open ${notInPlan() === 1 ? "task" : "tasks"} not in today's plan · `,
-        h("button", { className: "linkish", type: "button", textContent: "Add more", disabled: prop.busy, onclick: () => doRethink("More tasks") })),
+        `+${notInPlan()} more · `,
+        h("button", { className: "linkish", type: "button", textContent: "Add", ariaLabel: `Add more of the ${notInPlan()} open tasks not in the plan`, disabled: prop.busy, onclick: () => doRethink("More tasks") })),
       prop.note && h("p", { className: "pp-note", role: "status", textContent: prop.note }),
       prop.ask ? rethinkRow() : h("div", { className: "pp-actions" },
         h("button", { className: "btn primary start", type: "button", disabled: !prop.items.some((it) => !isBreak(it)) || prop.busy, onclick: approve },
           icon("check"), h("span", { textContent: approved ? "Save plan" : "Approve" })),
-        h("button", { className: "btn line", type: "button", ariaExpanded: "false", disabled: prop.busy,
+        // Running late (a slot's time came or went with nothing started; No
+        // room alone isn't late): Rethink lights up instead of a line saying so.
+        h("button", { className: "btn line" + (approved && (late || rows.some((r) => r.missed)) ? " late" : ""), type: "button", ariaExpanded: "false", disabled: prop.busy,
+          title: approved && (late || rows.some((r) => r.missed)) ? "Running late: rethink for what's left" : undefined,
           textContent: prop.busy ? "Thinking…" : "Rethink", onclick: () => { prop.ask = true; render(); } }),
         // Approved: Remove plan sits with the others (Mor, 2026-10-10); Close is the header's ✕.
         approved ? h("button", { className: "btn no-plan", type: "button", textContent: "Remove plan", ariaLabel: "Remove today's plan", disabled: prop.busy, onclick: removePlan })
