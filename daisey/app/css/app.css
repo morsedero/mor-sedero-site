@@ -1395,7 +1395,6 @@ dialog.tsheet .msg:empty { display: none; }
 #side .hchip .hchip-word, #side .hchip.plan:not(.empty) .hchip-word { display: inline; }
 #side .hchip .hchip-dot { display: none; }
 #side .hchip.ready .hchip-dot { display: block; flex: none; }
-#side .hchip #planN { font-size: 13px; }
 body.focus #side { display: none; }
 /* While Switch, Pending or Later is open under the card, the side buttons
    keep their closed size instead of stretching with the taller card. */

@@ -12,11 +12,10 @@ import { flash, h, bdi, icon } from "./ui.js";
 // amber "N need you", each only when there is something. now.js reports both.
 // Words on both (2026-10-06): bare numbers beside "Today" read as "2 Today 0".
 // The daisy itself is always the full five-petal logo.
-// The Plan chip is the plan only (Mor, 2026-10-11): "Plan d/t" (done-today
-// tasks outside the plan count in both), else "Plan my day". The done list
-// moved to the Week page, so the chip no longer shows "✓ n".
-// While the morning's plan waits (now.js onPlanReady) the same chip turns
-// blue, pings and reads "Plan ready" (Mor, 2026-10-11).
+// The Plan chip has two states (Mor, 2026-10-12): "Plan my day" until a plan
+// is approved, then "Plan". No count: it's for planning, not a score; what's
+// left shows in the day below, what's done on the Week page. While the
+// morning's draft waits (now.js onPlanReady) "Plan my day" is blue and pings.
 let planNow = null, planReady = false;
 function paintDone(){}
 function paintPlan(p){ planNow = p; paintChip(); }
@@ -24,11 +23,10 @@ function paintReady(on){ planReady = !!on; paintChip(); }
 function paintChip(){
   const p = planNow, c = $("#planChip");
   c.hidden = false;
-  c.classList.toggle("empty", !p || planReady);
-  c.classList.toggle("ready", planReady);
-  $("#planW").textContent = planReady ? "Plan ready" : p ? "Plan " : "Plan my day";
-  $("#planN").textContent = p && !planReady ? `${p.done}/${p.total}` : "";
-  c.ariaLabel = planReady ? "Your plan for today is ready. Open it" : p ? `Today's plan: ${p.done} of ${p.total} done. Open it to change it` : "Plan my day";
+  c.classList.toggle("empty", !p);
+  c.classList.toggle("ready", planReady && !p);
+  $("#planW").textContent = p ? "Plan" : "Plan my day";
+  c.ariaLabel = p ? "Today's plan. Open it to change it" : planReady ? "Plan my day: a plan is ready to look at" : "Plan my day";
 }
 function paintNeeds(n){
   $("#needsChip").hidden = !n;
