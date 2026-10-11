@@ -60,7 +60,7 @@ export function sortable(list, { onMove, busy, grid = false }){
   list.addEventListener("pointerdown", (e) => {
     if (e.button || pid != null) return;
     const r = e.target.closest(".pp-drag");
-    if (!r || !list.contains(r) || e.target.closest(".pp-ctls, .pp-fit, .pj-tick")) return; // the buttons stay buttons
+    if (!r || !list.contains(r) || e.target.closest(".pp-ctls, .pj-tick")) return; // the buttons stay buttons
     row = r; pid = e.pointerId; x0 = lastX = e.clientX; y0 = lastY = e.clientY; dragged = false;
     if (e.pointerType !== "mouse") hold = setTimeout(arm, 350);
   });

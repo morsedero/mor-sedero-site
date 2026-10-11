@@ -2,7 +2,7 @@
 // can just ignore it and nothing happens"). One ladder that gets louder, so
 // the two never overlap:
 //   miss     MISS.after minutes into a free slot with nothing started: the
-//            card's task, with Start / Shorten / Move
+//            card's task, with Start / Move
 //   silence  "Rough day? Lighter plan?" — once a day; after it, quiet until
 //            you do something. Comes when the misses add up, measured
 //            against the day as it is (Mor, 2026-10-08: not a fixed hour):
