@@ -1828,7 +1828,7 @@ body.focus .shell { block-size: auto; min-block-size: 100dvh; overflow: visible;
 .pp-note { margin: 8px 0 0; font-size: 13px; line-height: 1.4; }
 /* The action row stays pinned to the bottom of the scrolling card; Rethink
    swaps into the same slot (now.js rethinkRow). */
-.pp-actions { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 6px; margin-block-start: 6px; padding-block: 6px 0; position: sticky; inset-block-end: 0; z-index: 2; background: var(--card); }
+.pp-actions { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr) minmax(0, 1.35fr); gap: 6px; margin-block-start: 6px; padding-block: 6px 0; position: sticky; inset-block-end: 0; z-index: 2; background: var(--card); }
 /* Rethink (2026-10-10): one-tap Fewer | More | ✕, then a field with its own send. */
 .pp-actions.pp-ask { display: flex; flex-direction: column; gap: 8px; }
 .pp-ask-quick { display: flex; gap: 6px; }
@@ -1841,14 +1841,18 @@ body.focus .shell { block-size: auto; min-block-size: 100dvh; overflow: visible;
 .pp-send:disabled { background: var(--chip); color: var(--ink-2); cursor: default; }
 .pp-send svg { inline-size: 18px; block-size: 18px; }
 .pp-send svg:dir(rtl) { transform: scaleX(-1); }
-.now-card.main .pp-actions .btn { margin: 0; min-block-size: 44px; block-size: 44px; border-radius: 12px; font-size: 14px; padding-inline: 8px; white-space: nowrap; box-shadow: none; }
+.now-card.main .pp-actions .btn { margin: 0; min-block-size: 44px; block-size: 44px; border-radius: 12px; font-size: 14px; padding-inline: 6px; white-space: nowrap; box-shadow: none; }
 .now-card.main .pp-actions .btn.start { display: inline-flex; align-items: center; justify-content: center; gap: 6px; font-size: 16px; }
-.pp-actions .btn.start svg { inline-size: 18px; block-size: 18px; }
-.pp-actions:has(.pp-close) { grid-template-columns: 1.5fr 1fr 1.25fr 40px; }
-.now-card.main .pp-actions .btn.pp-close { padding-inline: 0; font-size: 16px; }
+.pp-actions .btn.start svg { flex: none; inline-size: 18px; block-size: 18px; }
+/* minmax(0, …) columns: a nowrap label must never push the row past the card (2026-10-12). */
+.now-card.main .pp-actions .btn { min-inline-size: 0; overflow: hidden; text-overflow: ellipsis; }
+.proposal .hero-top .hero-side { margin-inline-start: auto; }
+.proposal .hero-top .pp-close { flex: none; inline-size: 32px; block-size: 32px; margin-block: -6px; margin-inline-end: -8px; }
 /* "No plan" (was "Not today", 2026-10-10): a soft brick tint, so declining reads as a choice, not an alarm. */
 .now-card.main .pp-actions .btn.no-plan { background: var(--p-brick-tint); border: 1px solid var(--p-brick-line); color: var(--p-brick-ink); font-weight: 600; }
 @media (max-width: 359px) { .pp-ctl { inline-size: 28px; } }
+/* Save plan | Rethink | Remove plan fit a 320px phone only a size down. */
+@media (max-width: 379px) { .pp-actions { gap: 4px; } .now-card.main .pp-actions .btn { font-size: 13px; padding-inline: 4px; } .now-card.main .pp-actions .btn.start { font-size: 13px; gap: 4px; } .pp-actions .btn.start svg { inline-size: 16px; block-size: 16px; } }
 /* Once approved: one quiet line above the card. */
 .plan-line { display: flex; align-items: center; gap: 8px; inline-size: 100%; min-block-size: 36px; padding: 0 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--card); font: inherit; font-size: 13px; color: var(--ink); text-align: start; cursor: pointer; }
 .plan-line-k { font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--ink-2); }

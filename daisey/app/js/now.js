@@ -1730,7 +1730,10 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     return h("section", { className: "now-card main hero proposal", ariaLabel: approved ? `${day}'s plan` : "Proposed schedule" },
       h("div", { className: "hero-top" },
         h("span", { className: "hero-area", textContent: approved ? `${day}'s plan` : `Proposed for ${day.toLowerCase()}` }),
-        rows.length > 0 && h("span", { className: "hero-side", textContent: `${dur(total)} · until ${clock(last.end)}` })),
+        rows.length > 0 && h("span", { className: "hero-side", textContent: `${dur(total)} · until ${clock(last.end)}` }),
+        // Approved: Close is a ✕ in the corner, not a fourth button in the
+        // action row, which ran off a phone's edge (Mor, 2026-10-12).
+        approved && h("button", { className: "pp-ctl pp-close", type: "button", textContent: "✕", title: "Close", ariaLabel: "Close", onclick: closeProposal })),
       (rows.length || over.length || evs.length) > 0 && h("ol", { className: "pp-list" },
           ...[...rows.map((r) => ({ r, s: r.start })), ...breaks.map((b) => ({ b, s: b.start })), ...evs.map((ev) => ({ ev, s: Date.parse(ev.start) }))]
             .sort((a, b) => a.s - b.s).map((x) => (x.ev ? evRow(x.ev) : x.b ? breakRow(x.b) : row(x.r, false))),
@@ -1754,9 +1757,8 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
           icon("check"), h("span", { textContent: approved ? "Save plan" : "Approve" })),
         h("button", { className: "btn line", type: "button", ariaExpanded: "false", disabled: prop.busy,
           textContent: prop.busy ? "Thinking…" : "Rethink", onclick: () => { prop.ask = true; render(); } }),
-        // Approved: Remove plan sits with the others (Mor, 2026-10-10), Close shrinks to ✕.
-        approved && h("button", { className: "btn no-plan", type: "button", textContent: "Remove plan", ariaLabel: "Remove today's plan", disabled: prop.busy, onclick: removePlan }),
-        approved ? h("button", { className: "btn quiet pp-close", type: "button", textContent: "✕", title: "Close", ariaLabel: "Close", onclick: closeProposal })
+        // Approved: Remove plan sits with the others (Mor, 2026-10-10); Close is the header's ✕.
+        approved ? h("button", { className: "btn no-plan", type: "button", textContent: "Remove plan", ariaLabel: "Remove today's plan", disabled: prop.busy, onclick: removePlan })
           : h("button", { className: "btn no-plan", type: "button", textContent: "No plan", onclick: dismiss })));
   }
   // Once a plan is approved, how far along it is goes to the header chip
