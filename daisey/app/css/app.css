@@ -657,6 +657,15 @@ dialog.now:focus { outline: none; }
   mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
   animation: sc-orbit 9s linear var(--orbit, 0s) infinite; }
 @media (prefers-reduced-motion: reduce) { .deck > .now-card.main::before { animation: none; } }
+/* Driving on a trip leg: the time gone fills in deeper, like its schedule row
+   (sc-prog, --dur/--el from now.js drivingCard). Under the text via isolation. */
+.now-card.main.drive.going { isolation: isolate; }
+.now-card.main.drive.going::after {
+  content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit; pointer-events: none;
+  --deep: color-mix(in srgb, var(--ev, #8c8574) 50%, var(--card));
+  background: linear-gradient(to right, var(--deep) calc(var(--sc-prog) - 18px), transparent var(--sc-prog));
+  animation: sc-prog var(--dur, 1s) linear var(--el, 0s) both; }
+.now-card.main.drive.going:dir(rtl)::after { background: linear-gradient(to left, var(--deep) calc(var(--sc-prog) - 18px), transparent var(--sc-prog)); }
 
 /* Switch's list: the other tasks, small, in their own area colours. */
 .now-alt .now-card { background: var(--tint); border-color: var(--aline); border-radius: 16px; }

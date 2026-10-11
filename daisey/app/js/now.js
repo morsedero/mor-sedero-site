@@ -391,9 +391,15 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
         ariaLabel: `${o.task.title} works on the phone`,
         onclick: () => updateTask(uid, o.task, { where: "phone" }, tasks || []).catch(fail) })), rest);
   }
-  function drivingCard(){
-    return quietCard({ meta: "Driving", title: "Eyes on the road", why: "I'll have something ready when you stop.",
+  // Wears its schedule row's look (Mor, 2026-10-11): the trip colour and the
+  // light round its edge, and on a running trip leg the time gone filling in
+  // (app.css .drive.going, the same sc-prog the row uses).
+  function drivingCard(leg){
+    const c = eventCard({ meta: "Driving", title: "Eyes on the road", why: "I'll have something ready when you stop.", color: "#8c8574",
       action: h("button", { className: "btn quiet", type: "button", textContent: "I'm a passenger", onclick: passenger }) });
+    c.classList.add("drive");
+    if (leg) { c.classList.add("going"); c.style.setProperty("--dur", `${leg.end - leg.start}ms`); c.style.setProperty("--el", `-${Date.now() - leg.start}ms`); }
+    return c;
   }
   // The calendar's answer to "what now": the event that's running, when it
   // ends and what's left of it. Same card as a task's, so the top of the
@@ -1807,7 +1813,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     // "nothing to pick until it ends", which named nothing and read as if
     // Daisey had simply given up. "I'm free now" still overrides it.
     // Driving with no call to make: the driving card, not "nothing fits".
-    if (!card && feel().place.value === "car") { day(...head, drivingCard(), toast && toastView()); return; }
+    if (!card && feel().place.value === "car") { day(...head, drivingCard(fw?.current?.trip && fw.current), toast && toastView()); return; }
     const block = blockOf(fw);
     if (!card && block) {
       day(...head, eventCard({ meta: "Now", side: `until ${clock(fw.current.end)}`, title: fw.current.title, color: fw.current.color,
