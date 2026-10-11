@@ -78,7 +78,7 @@ export function eventEntries(events = [], { projects = [], tasks = [], logged = 
 // ---------- what a period adds up to ----------
 export function summarize(entries = [], range){
   const rows = entries.filter((e) => inRange(e.at, range));
-  const projects = new Map();
+  const projects = new Map(), finished = new Set();
   for (const e of rows) {
     const name = e.p || INBOX;
     const p = projects.get(name) || { name, min: 0, done: 0, guess: false, tasks: new Map() };
@@ -86,21 +86,26 @@ export function summarize(entries = [], range){
     p.guess ||= !!e.g;
     const key = e.t || e.id, t = p.tasks.get(key) || { id: e.t, title: e.title || null, min: 0, done: false };
     t.min += minOf(e);
-    if (e.d && !t.done) { t.done = true; p.done++; }
+    // Every finish counts: a routine's three sessions are three done, not one.
+    // A task finished twice the same day (Reopen, Done again) is one.
+    const fin = `${key}|${dayOf(e.at)}`;
+    if (e.d && !finished.has(fin)) { finished.add(fin); t.done = true; p.done++; }
     p.tasks.set(key, t);
     projects.set(name, p);
   }
-  const days = new Set(rows.filter((e) => (e.m || 0) > 0 || e.d).map((e) => dayOf(e.at)));
+  // A day counts when work happened in Daisey; a calendar event's guess doesn't.
+  const days = new Set(rows.filter((e) => !e.ev && ((e.m || 0) > 0 || e.d)).map((e) => dayOf(e.at)));
   return {
     projects,
     total: rows.reduce((n, e) => n + minOf(e), 0),
+    // Timed minutes only (Mor, 2026-10-12): no Done's length, no guesses.
+    focused: rows.reduce((n, e) => n + (e.g ? 0 : e.m || 0), 0),
     done: [...projects.values()].reduce((s, p) => s + p.done, 0),
     days: days.size,
     guess: rows.some((e) => e.g),
   };
 }
 
-// Minutes per day of the week holding `now`, Sunday first.
 // One flower per project, Focus first, then Keep going, then Background; by
 // time within a tier. height 0-1 against the biggest project of the period,
 // petals = tasks finished (cap PETAL_MAX, the rest in `more`). No time and no

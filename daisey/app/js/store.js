@@ -242,10 +242,16 @@ export function blockTask(uid, task, waitingOn = "", checkOn = ""){
     ...(toDate(checkOn) ? { checkOn } : {}) });
 }
 
+// Writes the fields as-is. Doesn't touch the work log: Later, On hold or a
+// Needs answer on a task Done earlier must keep that Done's time.
 export function restoreTask(uid, id, fields){
-  // Undoing a Done takes the time it logged back out.
-  if (fields?.status && fields.status !== "done") unlogDone(uid, id);
   return updateGuestTask(uid, id, fields);
+}
+// Undo of a Done (or a routine's Did it): the snapshot back, and the time it
+// logged taken back out.
+export function undoDone(uid, id, before){
+  unlogDone(uid, id);
+  return updateGuestTask(uid, id, before);
 }
 
 // ---------- the work log (bloom-data.js) ----------

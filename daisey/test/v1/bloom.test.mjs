@@ -52,6 +52,7 @@ test("summary and flowers: time grows the stem, done tasks are petals, none is a
   assert.equal(s.total, 120);
   assert.equal(s.done, 2);
   assert.equal(s.days, 2);
+  assert.equal(s.focused, 90); // the guessed 30 isn't focus
   const fl = B.flowers(s, ["Band", "Home", "Garden"], { Home: "focus", Garden: "background" });
   assert.deepEqual(fl.map((f) => f.name), ["Home", "Band", "Garden"]); // Focus first
   const band = fl.find((f) => f.name === "Band");
@@ -91,4 +92,18 @@ test("a Done counts at its task's length on the Week page, minutes worked still 
   const s = B.summarize([{ t: "a", p: "Band", m: 0, s: 60, at: NOW, d: 1 }, { t: "b", p: "Band", m: 20, s: 45, at: NOW, d: 1 }], range);
   assert.equal(s.total, 80);
   assert.equal(s.done, 2);
+});
+
+test("summary: every routine session is a done; a Done's length and calendar guesses aren't focus or days", () => {
+  const range = B.periodRange("week", NOW);
+  const s = B.summarize([
+    { t: "gym", p: "Health", m: 0, s: 45, at: at("2026-10-05"), d: 1 },
+    { t: "gym", p: "Health", m: 40, at: at("2026-10-06"), d: 1 },
+    { t: "gym", p: "Health", m: 0, s: 45, at: at("2026-10-06"), d: 1 }, // same day again: one
+    { id: "ev-1", t: null, p: "Band", m: 60, at: at("2026-10-07"), g: 1, ev: 1 },
+  ], range);
+  assert.equal(s.done, 2);
+  assert.equal(s.focused, 40);
+  assert.equal(s.days, 2);
+  assert.equal(s.total, 190);
 });

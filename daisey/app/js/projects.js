@@ -20,7 +20,7 @@
 // area when no other project has that one yet, else the next free colour in
 // PALETTE. Names are taken in order, so a colour doesn't move around as
 // counts change. Inbox has none.
-import { watchTasks, watchSettings, finishTask, restoreTask, removeTask, watchProjectNames, saveProjectNames, saveProjectRanges, saveProjectOrder, saveProjectTiers, renameInLog } from "./store.js";
+import { watchTasks, watchSettings, finishTask, undoDone, unlogReopened, restoreTask, removeTask, watchProjectNames, saveProjectNames, saveProjectRanges, saveProjectOrder, saveProjectTiers, renameInLog } from "./store.js";
 import { INBOX, progressOf, progressPatch, leftMinutes, pushedTo, notYet, durText, localDate, logicalDate, bringBack, cleanRange, outsideRange, doneSnapshot } from "./model.js";
 import { isRoutine } from "./routine.js";
 import { dropSeries } from "./slots.js";
@@ -421,7 +421,7 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
     // even when it was done away from Daisey.
     if (isRoutine(t)) {
       finishTask(uid, t).catch(fail);
-      flash("Did it: ", t.title, { undo: () => restoreTask(uid, t.id, before).catch(fail) });
+      flash("Did it: ", t.title, { undo: () => undoDone(uid, t.id, before).catch(fail) });
       return;
     }
     askProgress(t, {
@@ -429,7 +429,7 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
       onCancel,
       onFull: () => {
         finishTask(uid, t).catch(fail);
-        flash("Done: ", t.title, { undo: () => restoreTask(uid, t.id, before).catch(fail) });
+        flash("Done: ", t.title, { undo: () => undoDone(uid, t.id, before).catch(fail) });
       },
       onPartial: (pct, when) => {
         const day = (n) => { const d = new Date(); d.setDate(d.getDate() + n); let x = localDate(d.getTime()); if (t.dateKind === "deadline" && t.due && t.due < x) x = t.due; return x; };
@@ -506,6 +506,8 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
   // restoreTask writes as-is, so doneAt has to be cleared by hand.
   function reopen(t){
     const before = { status: "done", doneAt: t.doneAt ?? Date.now() };
+    // Its Done's time comes out of the log, as the task sheet's Reopen does.
+    unlogReopened(uid, t);
     restoreTask(uid, t.id, { status: "ready", doneAt: null, touchedAt: Date.now() }).catch(fail);
     flash("Reopened: ", t.title, { undo: () => restoreTask(uid, t.id, before).catch(fail) });
   }

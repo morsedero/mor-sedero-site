@@ -63,7 +63,7 @@ export function mountGrowth(uid, { onChange } = {}){
   // Week only (Mor, 2026-10-10: the Week/Month switch is gone).
   const period = "week";
   let entries = [], events = [], shown = false;
-  let unLog = null, logKey = "", evSeq = 0;
+  let unLog = null, logKey = "", evSeq = 0, evTried = 0;
   const evCache = new Map();
   const fail = (e) => console.error("[daisey] bloom", e);
   // The period plus this week: the week row shows under any period.
@@ -76,6 +76,7 @@ export function mountGrowth(uid, { onChange } = {}){
   // At most 9 days a call; kept per span so a period switch doesn't refetch.
   async function loadEvents(){
     const range = span(), now = Date.now(), key = `${range.from}|${range.to}`, seq = ++evSeq;
+    evTried = now;
     const cached = evCache.get(key);
     if (cached && now - cached.at < 5 * 60000) { events = cached.events; return; }
     try {
@@ -102,6 +103,8 @@ export function mountGrowth(uid, { onChange } = {}){
   // What the page shows: tasks, the project names, their tiers by name.
   function read(tasks = [], names = [], tiers = {}){
     const range = periodRange(period), now = Date.now();
+    // Open for a while: a new month's log doc, and events that have ended since.
+    if (shown) { watchPeriod(); if (now - evTried > 5 * 60000) loadEvents(); }
     const list = [...entries, ...estimatedEntries(tasks, entries), ...eventEntries(events, { projects: names, tasks, logged: entries })];
     const summary = summarize(list, range), fl = flowers(summary, names, tiers);
     const routines = routineRows(tasks, now);
@@ -132,7 +135,7 @@ export function statsCard(g){
   return [
     h("p", { className: "ms-h", textContent: "This week" }),
     h("div", { className: "ms-figs" },
-      fig(s.total ? `${fmtMinutes(s.total)}` : "0", "focused"),
+      fig(s.focused ? fmtMinutes(s.focused) : "0", "focused"),
       fig(String(s.done), "done"),
       fig(String(s.days), s.days === 1 ? "day" : "days")),
     best && h("p", { className: "ms-line" }, h("span", { ariaHidden: "true", textContent: "🐝" }), bdi(best.title), ` · ${best.streak} weeks in a row`),
