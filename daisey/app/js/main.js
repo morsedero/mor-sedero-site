@@ -684,6 +684,18 @@ async function boot(){
             document.body.classList.remove("fm-in", "fm-out"); void document.body.offsetWidth;
             document.body.classList.add(on ? "fm-in" : "fm-out");
             clearTimeout(fmTimer); fmTimer = setTimeout(() => document.body.classList.remove("fm-in", "fm-out"), 1200);
+            // Slow slide (Mor, 2026-10-12): the Now card and the Focus chip glide
+            // from where they were to where the mode puts them. Measured now, and
+            // again once now.js has toggled body.focus-mode (after this returns).
+            if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+            const pick = () => [document.querySelector(".deck > .now-card.main"), b];
+            const first = pick().map((el) => el?.getBoundingClientRect());
+            queueMicrotask(() => pick().forEach((el, i) => {
+              const a = first[i]; if (!el || !a) return;
+              const z = el.getBoundingClientRect(), dx = a.left - z.left, dy = a.top - z.top;
+              if (Math.abs(dx) < 1 && Math.abs(dy) < 1) return;
+              el.animate([{ transform: `translate(${dx}px, ${dy}px)` }, { transform: "none" }], { duration: 850, easing: "cubic-bezier(.25, .8, .25, 1)" });
+            }));
           },
           planRoot: $("#planPage"),
           // Two frames so the panel and chips settle under the daisy first.
