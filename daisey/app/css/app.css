@@ -1439,24 +1439,21 @@ body.focus #side { display: none; }
    anything spills (phone audit, 2026-10-11: at 390 px and under, Switch
    started past the screen's left edge and Done ran under the side column). */
 .now-row .btn.start, .now-card.main .now-row .btn.start { flex: 1; order: 9; inline-size: auto; min-inline-size: min-content; padding-inline: 10px; margin: 0; min-block-size: 44px; block-size: 44px; border-radius: 12px; font-size: 16px; }
-/* Squares, icon over label, in a light fill (Mor, 2026-10-11): quiet next
-   to Done, the one saturated button, but still buttons. */
+/* Squares, icon over label: raised keys in the card's own colour, not new
+   hues (Mor, 2026-10-12 — three pastels beside Done read as a candy row).
+   The app's grammar: one hue per card, --surface for the layer above it,
+   yellow only for Done. So a key is surface washed with the card's tint,
+   icon and word in its ink, lifted by a hairline of its line colour; open
+   or hovered, it presses in to the line colour. */
 .now-row .iconbtn {
   flex: 0 1 46px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px;
   inline-size: 46px; min-inline-size: 38px; block-size: 46px; min-block-size: 44px; padding: 0; border: 0; border-radius: 12px;
-  background: color-mix(in srgb, var(--aline) 18%, var(--card)); color: var(--sub); font-size: 11px; font-weight: 500;
+  background: color-mix(in srgb, var(--surface) 72%, var(--tint)); color: var(--aink); font-size: 11px; font-weight: 500;
+  box-shadow: 0 1px 0 var(--aline), 0 2px 6px -2px color-mix(in srgb, var(--aink) 18%, transparent);
 }
 .now-row .iconbtn svg { inline-size: 16px; block-size: 16px; stroke-width: 2; }
 @media (max-width: 389px) { .now-card.main { padding-inline: 12px; } .now-row { gap: 4px; } .now-row .iconbtn { min-inline-size: 36px; font-size: 10px; } .now-row .btn.start svg { display: none; } }
-.now-row .iconbtn:hover:not(:disabled), .now-row .iconbtn[aria-expanded="true"] { background: color-mix(in srgb, var(--aline) 50%, var(--card)); color: var(--ink); border-color: transparent; }
-/* Each one its own hue, in the app's tint/line/ink pastel (as "No plan"),
-   from the project palette — no area colours a card with it, so a button
-   never melts into the card it sits on (Mor, 2026-10-12). */
-.now-row .ib-switch { --ib-tint: var(--p-teal-tint); --ib-line: var(--p-teal-line); --ib-ink: var(--p-teal-ink); }
-.now-row .ib-pending { --ib-tint: var(--p-orange-tint); --ib-line: var(--p-orange-line); --ib-ink: var(--p-orange-ink); }
-.now-row .ib-later { --ib-tint: var(--p-lime-tint); --ib-line: var(--p-lime-line); --ib-ink: var(--p-lime-ink); }
-.now-row .iconbtn[class*="ib-"] { background: var(--ib-tint); box-shadow: inset 0 0 0 1px var(--ib-line); color: var(--ib-ink); }
-.now-row .iconbtn[class*="ib-"]:hover:not(:disabled), .now-row .iconbtn[class*="ib-"][aria-expanded="true"] { background: var(--ib-line); color: var(--ib-ink); }
+.now-row .iconbtn:hover:not(:disabled), .now-row .iconbtn[aria-expanded="true"] { background: var(--aline); color: var(--ink); border-color: transparent; box-shadow: none; }
 .now-card.main .later-ask, .now-card.main .pend-ask, .now-card.main .now-out { margin-block-start: 10px; }
 .now-next-out { margin: 10px 0 0; padding-inline: 4px; font-size: 13px; color: var(--sub); text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .now-card.main.meeting, .now-card.main.empty, .now-card.main.night { min-block-size: 0; }
