@@ -132,10 +132,10 @@ for (const uid of [USER, GUEST]) {
     seed(hour());
     const p = store.finishTask(uid, hour());
     await p; await new Promise((r) => setTimeout(r));
-    assert.equal(p.estimate.minutes, 60);                  // the toast's estimate, said as one
     const e = logged();
     assert.equal(e.length, 1);
-    assert.deepEqual({ m: e[0].m, d: e[0].d, g: e[0].g }, { m: 0, d: 1, g: undefined }); // the finish, no minutes
+    // The finish, no minutes worked; the task's length beside them (the Week page's count).
+    assert.deepEqual({ m: e[0].m, d: e[0].d, g: e[0].g, s: e[0].s }, { m: 0, d: 1, g: undefined, s: 60 });
     const t = saved("t1");
     assert.equal(t.status, "done");
     assert.equal(t.size, 60);                              // the estimate stays the estimate

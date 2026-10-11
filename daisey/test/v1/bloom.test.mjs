@@ -85,3 +85,10 @@ test("words", () => {
   const fl = B.flowers(s, ["Band", "Home"], { Band: "focus" });
   assert.match(B.oneLine({ summary: s, flowers: fl, period: "week" }), /Band got 4h this week\./);
 });
+
+test("a Done counts at its task's length on the Week page, minutes worked still win", () => {
+  const range = B.periodRange("week", NOW);
+  const s = B.summarize([{ t: "a", p: "Band", m: 0, s: 60, at: NOW, d: 1 }, { t: "b", p: "Band", m: 20, s: 45, at: NOW, d: 1 }], range);
+  assert.equal(s.total, 80);
+  assert.equal(s.done, 2);
+});

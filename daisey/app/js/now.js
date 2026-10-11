@@ -13,7 +13,7 @@
 // the run lives in Firestore, so this tab, a reload and the phone all show
 // the same timer.
 import { overruled, eventKey } from "./reality.js";
-import { addTask, updateTask, watchTasks, watchRun, watchSkips, saveSkips, endBatch, skipNow, blockTask, restoreTask, finishTask, setDoneMinutes, watchSettings, saveSettings, watchMoment, saveMoment, watchLearn, bumpLearn, cancelRun, watchDayPlan, saveDayPlan, logWork, watchProjectNames, removeTask } from "./store.js";
+import { addTask, updateTask, watchTasks, watchRun, watchSkips, saveSkips, endBatch, skipNow, blockTask, restoreTask, finishTask, watchSettings, saveSettings, watchMoment, saveMoment, watchLearn, bumpLearn, cancelRun, watchDayPlan, saveDayPlan, logWork, watchProjectNames, removeTask } from "./store.js";
 import { proposeDay, timeline, withBreaks, trimBreaks, isBreak, planProgress, planStatus, unfitOf, refit, topUp, daySig, relayMeals } from "./proposal.js";
 import { rethink } from "./rethink.js";
 import { breakText } from "./schedule.js";
@@ -1076,14 +1076,11 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     navigator.vibrate?.(15);
     const go = () => {
       const before = doneSnapshot(task);
-      const p = finishTask(uid, task);
-      p.catch(fail);
+      finishTask(uid, task).catch(fail);
       // No Done screen (Mor, 2026-10-11: "confusing, not doing anything good"):
-      // the card moves straight on to the next task, and the toast holds the
-      // estimate (− / + says how long it really took) and Undo.
+      // the card moves straight on to the next task, and the toast holds Undo.
       reset(); slideIn = el ? "push" : false; render();
-      flash("Done: ", task.title, { undo: () => { restoreTask(uid, task.id, before).catch(fail); render(); },
-        adjust: p.estimate.minutes ? { minutes: p.estimate.minutes, set: (m) => setDoneMinutes(uid, task.id, m) } : undefined });
+      flash("Done: ", task.title, { undo: () => { restoreTask(uid, task.id, before).catch(fail); render(); } });
     };
     if (!el || !motionOK()) return go();
     el.style.animationDelay = "";

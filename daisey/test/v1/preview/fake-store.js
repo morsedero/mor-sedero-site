@@ -37,9 +37,8 @@ export const updateTask = (uid, task, changes) => {
   return ok("tasks");
 };
 export const patchTask = (uid, id, patch) => { const i = tasks.findIndex((t) => t.id === id); tasks[i] = { ...tasks[i], ...patch }; return ok("tasks"); };
-// As store.js: the finish alone (0 min) in the log, the estimate for the toast.
-export const finishTask = (uid, task) => { const p = patchTask(uid, task.id, completeTask(task)); logWork(uid, task, 0, { done: true }); p.estimate = { minutes: leftMinutes(task) }; return p; };
-export const setDoneMinutes = () => Promise.resolve();
+// As store.js: the finish in the log, 0 min worked, the task's length beside it.
+export const finishTask = (uid, task) => { const p = patchTask(uid, task.id, completeTask(task)); logWork(uid, task, 0, { done: true, size: leftMinutes(task) }); return p; };
 export const logWork = (uid, task, minutes) => { (window.__logged ||= []).push({ t: task.id, p: task.project, m: Math.round(minutes) }); return Promise.resolve(null); };
 export const unlogReopened = () => Promise.resolve();
 export const renameInLog = () => Promise.resolve();

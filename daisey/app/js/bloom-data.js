@@ -4,7 +4,10 @@
 // The log is one doc per month, users/{uid}/state/log-YYYY-MM, { e: { id:
 // entry } }, one entry per stretch of work:
 //   { t: taskId, p: project, m: minutes, at: ms, d: 1 if it finished the task,
-//     g: 1 if the minutes are Daisey's guess, ev: 1 if from a calendar event }
+//     g: 1 if the minutes are Daisey's guess, ev: 1 if from a calendar event,
+//     s: a Done's task length, what it counts at when no minutes were logged }
+// (A Done logs no minutes since 2026-10-11, so the Week page counts its s.)
+const minOf = (e) => e.m || e.s || 0;
 // Weeks run Sunday to Saturday, as routines do.
 import { dayOf, addDays, weekStart, cleanRoutine } from "./routine.js";
 import { toMinutes, DEFAULT_SIZE, INBOX } from "./model.js";
@@ -79,10 +82,10 @@ export function summarize(entries = [], range){
   for (const e of rows) {
     const name = e.p || INBOX;
     const p = projects.get(name) || { name, min: 0, done: 0, guess: false, tasks: new Map() };
-    p.min += e.m || 0;
+    p.min += minOf(e);
     p.guess ||= !!e.g;
     const key = e.t || e.id, t = p.tasks.get(key) || { id: e.t, title: e.title || null, min: 0, done: false };
-    t.min += e.m || 0;
+    t.min += minOf(e);
     if (e.d && !t.done) { t.done = true; p.done++; }
     p.tasks.set(key, t);
     projects.set(name, p);
@@ -90,7 +93,7 @@ export function summarize(entries = [], range){
   const days = new Set(rows.filter((e) => (e.m || 0) > 0 || e.d).map((e) => dayOf(e.at)));
   return {
     projects,
-    total: rows.reduce((s, e) => s + (e.m || 0), 0),
+    total: rows.reduce((n, e) => n + minOf(e), 0),
     done: [...projects.values()].reduce((s, p) => s + p.done, 0),
     days: days.size,
     guess: rows.some((e) => e.g),

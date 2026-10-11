@@ -2038,11 +2038,6 @@ body.focus .shell { block-size: auto; min-block-size: 100dvh; overflow: visible;
 .bl-dots .wk-dots i { inline-size: 9px; block-size: 9px; }
 .bl-bee { font-size: 13px; text-align: center; }
 
-/* The "1 h" toast's − / +. */
-.toast-adj { display: inline-flex; align-items: center; gap: 4px; margin-inline: 8px; }
-.toast-step { inline-size: 26px; block-size: 26px; border-radius: 50%; border: 1px solid currentColor; background: none; color: inherit; font: inherit; font-weight: 700; line-height: 1; cursor: pointer; }
-.toast-count { font-size: 13px; min-inline-size: 4.5ch; text-align: center; }
-.toast-close { font: inherit; font-size: 14px; color: inherit; opacity: .7; background: none; border: 0; cursor: pointer; padding: 6px 4px; margin-inline-start: 2px; }
 
 @keyframes bl-sway { 0%, 100% { transform: rotate(-2.5deg); } 50% { transform: rotate(2.5deg); } }
 @keyframes bl-pop { 0% { transform: scale(.7); } 60% { transform: scale(1.1); } 100% { transform: scale(1); } }

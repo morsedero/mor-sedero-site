@@ -213,14 +213,13 @@ export function migrateTasks(uid){
 // Done with no timer. Nothing is credited (round 2, 2026-10-11: a Done
 // seconds after the card came up logged the whole hour): the time between
 // the card showing and Done holds waiting, interruptions and time away, so
-// it isn't work. The log gets the finish alone (0 min), the task's size stays
-// the estimate, and nothing reaches the size learning (spentMinutes). The
-// promise carries `estimate`, what was left of it, for the toast to show as
-// an estimate; only the user's − / + (setDoneMinutes) logs real minutes.
+// it isn't work. The log gets the finish with 0 minutes worked, and beside
+// them `s`, the task's own length (what was left of it), which the Week page
+// counts it at (Mor, 2026-10-12, when the toast's time counter went). The
+// task's size stays the estimate, and nothing reaches the size learning.
 export function finishTask(uid, task){
   const p = updateGuestTask(uid, task.id, completeTask(task));
-  logWork(uid, task, 0, { done: true }).catch(logFail);
-  p.estimate = { minutes: leftMinutes(task) };
+  logWork(uid, task, 0, { done: true, size: leftMinutes(task) }).catch(logFail);
   return p;
 }
 
@@ -272,11 +271,12 @@ function writeLog(uid, key, id, entry){
 
 // `minutes` of real (or guessed) work on a task, ending at `at`. `done`: it
 // finished the task. A 0-minute entry is only kept when it marks a finish.
-export function logWork(uid, task, minutes, { at = Date.now(), done = false, guess = false } = {}){
+// `size`: a finish's length (finishTask), kept apart from minutes worked.
+export function logWork(uid, task, minutes, { at = Date.now(), done = false, guess = false, size = 0 } = {}){
   const m = Math.max(0, Math.round(minutes));
   if (!m && !done) return Promise.resolve(null);
   const id = `${at}-${task.id}`, key = logDocKey(at);
-  const entry = { t: task.id, p: task.project || INBOX, m, at, ...(done ? { d: 1 } : {}), ...(guess ? { g: 1 } : {}) };
+  const entry = { t: task.id, p: task.project || INBOX, m, at, ...(done ? { d: 1 } : {}), ...(guess ? { g: 1 } : {}), ...(size > 0 ? { s: Math.round(size) } : {}) };
   if (done) doneLogged.set(task.id, { key, id, entry });
   return writeLog(uid, key, id, entry);
 }
@@ -319,14 +319,6 @@ export async function renameInLog(uid, from, to){
       for (const [id, x] of Object.entries(e || {}))
         if (x && x.p === from) await writeLog(uid, key, id, { ...x, p: to });
   } catch (e) { logFail(e); }
-}
-// The "Counted ~30 min" toast's − / +: the Done's minutes, corrected.
-export function setDoneMinutes(uid, taskId, minutes){
-  const d = doneLogged.get(taskId);
-  if (!d) return Promise.resolve();
-  d.entry = { ...d.entry, m: Math.max(0, Math.round(minutes)) };
-  delete d.entry.g; // said by the user now, no longer a guess
-  return writeLog(uid, d.key, d.id, d.entry).catch(logFail);
 }
 
 // cb(entries) with every entry of the given month docs, on every change.
