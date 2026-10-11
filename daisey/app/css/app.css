@@ -336,11 +336,38 @@ input:is([type="checkbox"], [type="radio"]):disabled { opacity: .45; cursor: def
 @keyframes card-out { to { opacity: 0; transform: translateX(-12%); } }
 @keyframes card-in { from { opacity: 0; transform: translateX(14%); } }
 .now-card.main.out { animation: card-out .14s ease-in forwards; animation-delay: 0s !important; /* beats the inline breathe phase */ }
-.now-card.main.in { animation: card-in .18s ease-out; }
+.now-card.main.in { animation: card-in .3s cubic-bezier(.2, .9, .3, 1.12); }
 :dir(rtl) .now-card.main.out { animation-name: card-out-rtl; }
 :dir(rtl) .now-card.main.in { animation-name: card-in-rtl; }
 @keyframes card-out-rtl { to { opacity: 0; transform: translateX(12%); } }
 @keyframes card-in-rtl { from { opacity: 0; transform: translateX(-14%); } }
+/* Done (now.js quickDoneNow, Mor 2026-10-11): the card pops and glows, a
+   light sweeps across it (.won-shine), confetti and sparkles go up round it
+   (focus.js celebrate), then .out slides it away. */
+.now-card.main.won { pointer-events: none; animation: won-pop .56s cubic-bezier(.3, 1.4, .5, 1) forwards; animation-delay: 0s !important; }
+@keyframes won-pop {
+  0% { transform: scale(1); }
+  30% { transform: scale(1.035); box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 55%, transparent), 0 0 36px color-mix(in srgb, var(--accent) 60%, transparent); }
+  100% { transform: scale(1.01); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 35%, transparent), 0 0 24px color-mix(in srgb, var(--accent) 40%, transparent); }
+}
+.won-shine { position: absolute; inset: 0; z-index: 2; border-radius: inherit; pointer-events: none;
+  background: linear-gradient(105deg, transparent 38%, rgb(255 255 255 / .55) 47%, rgb(255 255 255 / .85) 50%, rgb(255 255 255 / .55) 53%, transparent 62%) no-repeat;
+  background-size: 260% 100%; background-position: 130% 0; animation: won-shine .5s ease-out .05s forwards; }
+:dir(rtl) .won-shine { animation-name: won-shine-rtl; background-position: -30% 0; }
+@keyframes won-shine { to { background-position: -30% 0; } }
+@keyframes won-shine-rtl { to { background-position: 130% 0; } }
+/* #nowcard is a scroll box: while the card shines its glow would be clipped
+   into a rectangle, so the box lets it spill out and sits over the panel. */
+#nowcard:has(.now-card.main.won) { overflow: visible; position: relative; z-index: 3; }
+/* celebrate()'s sparkles: four-point stars that flare and fade. */
+.burst b { position: absolute; inline-size: var(--sz); block-size: var(--sz); margin: calc(var(--sz) / -2); background: currentColor;
+  clip-path: polygon(50% 0, 61% 39%, 100% 50%, 61% 61%, 50% 100%, 39% 61%, 0 50%, 39% 39%);
+  filter: drop-shadow(0 0 4px currentColor); animation: spark .8s ease-out both; }
+@keyframes spark {
+  0% { transform: scale(0) rotate(0); opacity: 1; }
+  40% { transform: scale(1) rotate(45deg); opacity: 1; }
+  100% { transform: scale(0) rotate(120deg); opacity: 0; }
+}
 
 /* Undo + the reasons, for five seconds after Not now. */
 .toast {
@@ -642,7 +669,7 @@ dialog.now:focus { outline: none; }
 .deck > .now-card { position: relative; touch-action: pan-y; }
 @keyframes breathe { 50% { transform: translateY(-3px); } }
 @media (prefers-reduced-motion: no-preference) {
-  .deck:not(.still) > .now-card.main:not(.in):not(.out):not(:focus-within) { animation: breathe 5s ease-in-out infinite; }
+  .deck:not(.still) > .now-card.main:not(.in):not(.out):not(.won):not(:focus-within) { animation: breathe 5s ease-in-out infinite; }
 }
 /* An orbiting light (sc-orbit) travels round the card
    (Mor, 2026-10-11), and round a running event's card (.going). --orbit comes
@@ -1143,8 +1170,9 @@ body:has(.screen:not([hidden])) { overflow: hidden; }
 dialog.tsheet[open] { display: flex; flex-direction: column; gap: 12px; }
 dialog.tsheet[open] > * { flex: none; margin: 0; }
 dialog.tsheet .now-head { margin-block-end: -4px; }
-@media (prefers-reduced-motion: no-preference) { dialog.tsheet[open] { animation: card-in .18s ease-out; } }
-@keyframes card-in { from { opacity: 0; transform: scale(.97); } }
+@media (prefers-reduced-motion: no-preference) { dialog.tsheet[open] { animation: sheet-in .18s ease-out; } }
+/* Its own name: a second card-in here silently replaced the Now card's slide. */
+@keyframes sheet-in { from { opacity: 0; transform: scale(.97); } }
 .ts-project { inline-size: 100%; cursor: pointer; }
 .ts-project option { color: var(--ink); background: var(--card); }
 .ts-input { inline-size: 100%; min-inline-size: 0; padding: 8px 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--ink); font: inherit; font-size: 16px; }

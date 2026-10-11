@@ -88,6 +88,30 @@ export function burst(x, y, n = 14, reach = 90){
   setTimeout(() => box.remove(), 1600);
 }
 
+// Done on the Now card (Mor, 2026-10-11): confetti thrown from the card's
+// middle, past its edges, and four-point stars twinkling round its rim.
+export function celebrate(el){
+  if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  const r = el.getBoundingClientRect(), cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+  burst(cx, cy, 36, Math.max(r.width, r.height) * 0.7);
+  const box = h("div", { className: "burst", ariaHidden: "true" });
+  const n = 12, per = 2 * (r.width + r.height);
+  for (let i = 0; i < n; i++){
+    // Evenly round the rim, nudged a little in or out.
+    let d = (i + Math.random() * 0.6) / n * per, x, y;
+    if (d < r.width) { x = r.left + d; y = r.top; }
+    else if ((d -= r.width) < r.height) { x = r.right; y = r.top + d; }
+    else if ((d -= r.height) < r.width) { x = r.right - d; y = r.bottom; }
+    else { d -= r.width; x = r.left; y = r.bottom - d; }
+    const s = h("b");
+    s.style.cssText = `left:${Math.round(x + (Math.random() - 0.5) * 16)}px;top:${Math.round(y + (Math.random() - 0.5) * 16)}px;` +
+      `--sz:${Math.round(10 + Math.random() * 10)}px;color:${COLOURS[i % COLOURS.length]};animation-delay:${Math.round(60 + Math.random() * 380)}ms`;
+    box.append(s);
+  }
+  document.body.append(box);
+  setTimeout(() => box.remove(), 1400);
+}
+
 // The running task's Done button: one tap (Mor, 2026-10-11: the "how much
 // is done" hold went). The timer re-renders the whole focus screen every
 // second: the button is built once per run (key) and the same node is handed

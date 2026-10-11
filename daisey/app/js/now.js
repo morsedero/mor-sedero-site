@@ -21,7 +21,7 @@ import { placeNow, workBase, watchProjectTiers } from "./context.js";
 import { watchWhere, setManual, setStill, saveSpot, whereAsk, homeAt } from "./where.js";
 import { withTrips, ridingAs, stillRiding, asPassenger, chainFrom, setTripDay, MODES, tripAsks, answer as tripAnswer, noTrip } from "./trips.js";
 import { pickWeekDay } from "./triage.js";
-import { sinceMark, runCap, bookedMinutes } from "./focus.js";
+import { sinceMark, runCap, bookedMinutes, celebrate } from "./focus.js";
 import { watchCalendar } from "./calendar.js";
 import { LATER_MINUTES, DRAIN, CANCEL_KEEP_MINUTES, LIGHTER } from "./weights.js";
 import { missState, silenceText, lastActivity } from "./miss.js";
@@ -39,6 +39,7 @@ import { areaClass, areaName, projectShown, doneToday, moonDaisy, watchProjectCo
 const LATER_MS = LATER_MINUTES * 60000;
 const UNDO_MS = 3500;
 const SLIDE_MS = 140; // matches the card-out animation in app.css
+const WON_MS = 560; // Done's shine on the card (.won in app.css) before it slides out
 const motionOK = () => !window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 const clock = (ms) => new Date(ms).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
 
@@ -1036,16 +1037,30 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
   // Done on a task that was never started here (already finished, or done
   // elsewhere): finished with no time booked, with an Undo.
   function quickDoneNow(task){
-    const before = doneSnapshot(task);
-    const p = finishTask(uid, task, { tasks: tasks || [], events: cal.status === "ok" ? cal.events : [] });
-    p.catch(fail);
-    // No Done screen (Mor, 2026-10-11: "confusing, not doing anything good"):
-    // the card moves straight on to the next task, and the toast holds the
-    // time guess (− / +) and Undo.
-    reset(); render();
-    flash("Done: ", task.title, { undo: () => { restoreTask(uid, task.id, before).catch(fail); render(); },
-      adjust: p.counted.minutes ? { minutes: p.counted.minutes, set: (m) => setDoneMinutes(uid, task.id, m) } : undefined });
+    // Done on the card itself (Mor, 2026-10-11): the card shines, confetti
+    // and sparkles go up round it, then it slides out and the next card
+    // slides into its spot. The write waits for the slide, as Later's does,
+    // so the snapshot it fires can't redraw the card mid-shine.
+    const el = task.id === shown && root.querySelector(".now-card.main");
+    if (el?.classList.contains("won")) return; // a second tap mid-shine
     navigator.vibrate?.(15);
+    const go = () => {
+      const before = doneSnapshot(task);
+      const p = finishTask(uid, task, { tasks: tasks || [], events: cal.status === "ok" ? cal.events : [] });
+      p.catch(fail);
+      // No Done screen (Mor, 2026-10-11: "confusing, not doing anything good"):
+      // the card moves straight on to the next task, and the toast holds the
+      // time guess (− / +) and Undo.
+      reset(); slideIn = !!el; render();
+      flash("Done: ", task.title, { undo: () => { restoreTask(uid, task.id, before).catch(fail); render(); },
+        adjust: p.counted.minutes ? { minutes: p.counted.minutes, set: (m) => setDoneMinutes(uid, task.id, m) } : undefined });
+    };
+    if (!el || !motionOK()) return go();
+    el.style.animationDelay = "";
+    el.classList.add("won");
+    el.append(h("span", { className: "won-shine", ariaHidden: "true" }));
+    celebrate(el);
+    setTimeout(() => { el.classList.add("out"); setTimeout(go, SLIDE_MS); }, WON_MS);
   }
 
   // Switch's row, under the card like Later's and Pending's (Mor,
