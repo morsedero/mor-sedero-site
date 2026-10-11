@@ -1444,10 +1444,10 @@ body.focus #side { display: none; }
 .now-row .iconbtn {
   flex: 0 1 46px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px;
   inline-size: 46px; min-inline-size: 38px; block-size: 46px; min-block-size: 44px; padding: 0; border: 0; border-radius: 12px;
-  background: color-mix(in srgb, var(--aline) 18%, var(--card)); color: var(--sub); font-size: 10px; font-weight: 500;
+  background: color-mix(in srgb, var(--aline) 18%, var(--card)); color: var(--sub); font-size: 11px; font-weight: 500;
 }
 .now-row .iconbtn svg { inline-size: 16px; block-size: 16px; stroke-width: 2; }
-@media (max-width: 389px) { .now-card.main { padding-inline: 12px; } .now-row { gap: 4px; } .now-row .iconbtn { min-inline-size: 36px; } .now-row .btn.start svg { display: none; } }
+@media (max-width: 389px) { .now-card.main { padding-inline: 12px; } .now-row { gap: 4px; } .now-row .iconbtn { min-inline-size: 36px; font-size: 10px; } .now-row .btn.start svg { display: none; } }
 .now-row .iconbtn:hover:not(:disabled), .now-row .iconbtn[aria-expanded="true"] { background: color-mix(in srgb, var(--aline) 50%, var(--card)); color: var(--ink); border-color: transparent; }
 .now-card.main .later-ask, .now-card.main .pend-ask, .now-card.main .now-out { margin-block-start: 10px; }
 .now-next-out { margin: 10px 0 0; padding-inline: 4px; font-size: 13px; color: var(--sub); text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
