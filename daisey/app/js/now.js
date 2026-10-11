@@ -91,6 +91,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
   const sd = { open: false, picked: [], all: false, sel: [] };
   let toast = null; // { text, task, before } for 5 s after Later or Pending
   let slideIn = false; // one slide per step-aside, not one per snapshot
+  let tapped = null; // which quiet action was just pressed: its key pops once, after the render that rebuilt it
   // After Done the next card pushes in (focus.js dropAway); a snapshot that
   // rebuilds it mid-push picks the push up where it is, and the idle bob
   // then starts from rest at the push's end rather than jumping to the
@@ -623,7 +624,8 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
   // The three quiet actions under Start. Icon plus a small word, with the
   // whole phrase as the tooltip and the screen-reader name.
   const action = (name, label, hint, props) => h("button", {
-    className: "iconbtn", type: "button", title: `${label} — ${hint}`, ariaLabel: `${label}: ${hint}`, ...props,
+    className: `iconbtn act-${name}`, type: "button", title: `${label} — ${hint}`, ariaLabel: `${label}: ${hint}`, ...props,
+    onclick: (e) => { tapped = name; props.onclick?.(e); },
   }, icon(name), h("span", { className: "iconbtn-text", textContent: label }));
 
   // What the engine knows about this moment: the calendar's window if it
@@ -1954,6 +1956,8 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
       nextLine(card.task), tip);
     // One slide-in per step-aside: later snapshots must not replay it.
     if (slideIn) { const push = slideIn === "push"; slideIn = false; if (motionOK()) { const c = root.querySelector(".now-card.main"); if (c) { c.style.animationDelay = ""; if (push) { pushAt = Date.now(); pushIn(c, 0); } else c.classList.add("in"); } } }
+    // The render rebuilt the key just pressed, so its press pops here, once.
+    if (tapped) { const k = tapped; tapped = null; if (motionOK()) root.querySelector(`.now-row .act-${k}`)?.classList.add("tap"); }
   }
 
   // (The "Skipped five times. Still want it?" line that lived here moved to

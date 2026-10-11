@@ -1454,6 +1454,16 @@ body.focus #side { display: none; }
 .now-row .iconbtn svg { inline-size: 16px; block-size: 16px; stroke-width: 2; }
 @media (max-width: 389px) { .now-card.main { padding-inline: 12px; } .now-row { gap: 4px; } .now-row .iconbtn { min-inline-size: 36px; font-size: 10px; } .now-row .btn.start svg { display: none; } }
 .now-row .iconbtn:hover:not(:disabled), .now-row .iconbtn[aria-expanded="true"] { background: var(--aline); color: var(--ink); border-color: transparent; box-shadow: none; }
+/* A pressed key sinks while held, then springs back with its icon hopping
+   (now.js adds .tap to the rebuilt key after the render). */
+@media (prefers-reduced-motion: no-preference) {
+  .now-row .iconbtn { transition: transform .12s ease-out; }
+  .now-row .iconbtn:active:not(:disabled) { transform: scale(.9); }
+  .now-row .iconbtn.tap { animation: key-tap .4s cubic-bezier(.3, 1.6, .5, 1); }
+  .now-row .iconbtn.tap svg { animation: key-hop .4s ease-out; }
+}
+@keyframes key-tap { 0% { transform: scale(.9); } 55% { transform: scale(1.08); } 100% { transform: none; } }
+@keyframes key-hop { 40% { transform: translateY(-3px) rotate(-10deg); } 75% { transform: translateY(1px) rotate(4deg); } }
 .now-card.main .later-ask, .now-card.main .pend-ask, .now-card.main .now-out { margin-block-start: 10px; }
 .now-next-out { margin: 10px 0 0; padding-inline: 4px; font-size: 13px; color: var(--sub); text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .now-card.main.meeting, .now-card.main.empty, .now-card.main.night { min-block-size: 0; }
