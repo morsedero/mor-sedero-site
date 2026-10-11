@@ -2107,13 +2107,14 @@ body.focus .shell { block-size: auto; min-block-size: 100dvh; overflow: visible;
 :root:not(.night) body.focus-mode .now-card.main .now-row { gap: 8px; } :root:not(.night) body.focus-mode .now-card.main .now-row .iconbtn { inline-size: 58px; min-inline-size: 58px; block-size: 58px; min-block-size: 58px; border-radius: 14px; font-size: 11px; gap: 3px; } :root:not(.night) body.focus-mode .now-card.main .now-row .iconbtn svg { inline-size: 20px; block-size: 20px; } :root:not(.night) body.focus-mode .now-card.main .now-row .btn.start { block-size: 58px; min-block-size: 58px; border-radius: 14px; }
 
 /* Side buttons, chosen (Mor, 2026-10-12): each in its own colour instead of
-   all three going black — Plan blue, Projects violet, Week green. Unchosen
-   they stay plain. The colour eases in; the chip gives a small press. */
-#planChip { --on: var(--a-admin-ink); }
+   all three going black — Plan daisy yellow (blue read off, and is the
+   waiting draft's colour), Projects violet, Week green. Unchosen they stay
+   plain. The colour eases in; the chip gives a small press. */
+#planChip { --on: var(--accent); --on-ink: var(--on-accent); }
 #projectsChip { --on: var(--a-work-ink); }
 #weekChip { --on: var(--a-home-ink); }
 #side .hchip { transition: background-color .22s ease, border-color .22s ease, color .22s ease, box-shadow .22s ease, transform .15s ease; }
-#side .hchip[aria-pressed="true"] { background: var(--on); border-color: var(--on); color: var(--card); box-shadow: 0 4px 12px color-mix(in srgb, var(--on) 30%, transparent); }
+#side .hchip[aria-pressed="true"] { background: var(--on); border-color: var(--on); color: var(--on-ink, var(--card)); box-shadow: 0 4px 12px color-mix(in srgb, var(--on) 30%, transparent); }
 #side .hchip:active { transform: scale(.95); }
 
 /* Panel pages open and close (main.js swapAnim): the page coming in rises and
@@ -2131,3 +2132,23 @@ body.focus .shell { block-size: auto; min-block-size: 100dvh; overflow: visible;
 @keyframes pg-back { from { opacity: 0; transform: translateY(-10px); } }
 @keyframes pg-out-up { to { opacity: 0; transform: translateY(-8px) scale(.985); } }
 @keyframes pg-out-down { to { opacity: 0; transform: translateY(14px) scale(.985); } }
+
+/* Focus (Mor, 2026-10-12): on, the chip goes deep teal, not black. Turning it
+   on, its corner brackets pinch in and the Now card settles with a teal ring
+   going out once; turning it off, the side, panel and dock rise back in
+   (main.js onFocusMode sets fm-in / fm-out for the moment). */
+.hdr-end .hchip.focus-chip { transition: background-color .22s ease, border-color .22s ease, color .22s ease; }
+.hdr-end .hchip.focus-chip[aria-pressed="true"] { background: var(--p-teal-ink); border-color: var(--p-teal-ink); color: var(--card); box-shadow: 0 4px 12px color-mix(in srgb, var(--p-teal-ink) 30%, transparent); }
+@media (prefers-reduced-motion: no-preference) {
+  body.fm-in .focus-chip svg { animation: fm-pinch .5s cubic-bezier(.3, 1.5, .5, 1); }
+  body.fm-out .focus-chip svg { animation: fm-spread .45s cubic-bezier(.3, 1.5, .5, 1); }
+  body.fm-in.focus-mode .deck > .now-card.main { animation: fm-settle .5s cubic-bezier(.2, .8, .3, 1), fm-ring 1s ease-out .15s; }
+  body.fm-out :is(#side, #panel, .dock) { animation: fm-back .4s cubic-bezier(.2, .8, .3, 1) backwards; }
+  body.fm-out #panel { animation-delay: .06s; }
+  body.fm-out .dock { animation-delay: .12s; }
+}
+@keyframes fm-pinch { 0% { transform: scale(1); } 40% { transform: scale(.62); } 100% { transform: scale(1); } }
+@keyframes fm-spread { 0% { transform: scale(1); } 40% { transform: scale(1.3); } 100% { transform: scale(1); } }
+@keyframes fm-settle { from { opacity: .4; transform: scale(.96); } }
+@keyframes fm-ring { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--p-teal-ink) 45%, transparent); } 100% { box-shadow: 0 0 0 16px transparent; } }
+@keyframes fm-back { from { opacity: 0; transform: translateY(12px); } }

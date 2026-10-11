@@ -602,7 +602,7 @@ async function boot(){
         // fades in; the one leaving stays a moment as an inert copy over it (ids kept so
         // its page styles hold; it sits after the real ones, so $ never finds it),
         // sinking and fading out. Back to the Schedule drops in from above.
-        let shownPage = null;
+        let shownPage = null, fmTimer = 0;
         const swapAnim = () => {
           const now = [...$("#panel").children].find((p) => p.classList.contains("ppage") && !p.hidden && !p.classList.contains("pg-ghost"));
           const was = shownPage; shownPage = now;
@@ -676,7 +676,15 @@ async function boot(){
         m.now = mountNow($("#nowcard"), user.uid, {
           name: isGuest ? "" : (user.displayName || "").trim().split(/\s+/)[0], onDone: paintDone, onNeedsCount: paintNeeds, onPlanProgress: paintPlan,
           onPlanReady: paintReady, onPlanApproved: cheerPlan,
-          onFocusMode: (on) => { const b = $("#focusChip"); b.setAttribute("aria-pressed", String(on)); b.ariaLabel = on ? "Focus mode on: tap to show everything" : "Focus mode: only the Now card"; },
+          onFocusMode: (on) => {
+            const b = $("#focusChip"), was = b.getAttribute("aria-pressed") === "true";
+            b.setAttribute("aria-pressed", String(on)); b.ariaLabel = on ? "Focus mode on: tap to show everything" : "Focus mode: only the Now card";
+            // fm-in / fm-out run the CSS on and off motions, once, on a real change.
+            if (on === was) return;
+            document.body.classList.remove("fm-in", "fm-out"); void document.body.offsetWidth;
+            document.body.classList.add(on ? "fm-in" : "fm-out");
+            clearTimeout(fmTimer); fmTimer = setTimeout(() => document.body.classList.remove("fm-in", "fm-out"), 1200);
+          },
           planRoot: $("#planPage"),
           // Two frames so the panel and chips settle under the daisy first.
           onReady: () => requestAnimationFrame(() => requestAnimationFrame(splashOff)),
