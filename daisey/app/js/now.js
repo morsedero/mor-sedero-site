@@ -29,7 +29,7 @@ import { missState, silenceText, lastActivity } from "./miss.js";
 import { takeQuiet } from "./push.js";
 import { findPhoneTasks, phoneOkIds, searching } from "./phone.js";
 import { rank, freeWindow, timeBucket, matchProject, dueAt } from "./engine.js";
-import { leftMinutes, toMinutes, progressOf, shrinkPatch, shrunk, localDate, logicalDate, LATE_HOUR, skipSnapshot, skipLesson, pendingCheck, notYet, pushedTo, bringBack, dayAfter, doneSnapshot } from "./model.js";
+import { leftMinutes, toMinutes, progressOf, leftPatch, shrinkPatch, shrunk, localDate, logicalDate, LATE_HOUR, skipSnapshot, skipLesson, pendingCheck, notYet, pushedTo, bringBack, dayAfter, doneSnapshot } from "./model.js";
 import { isRoutine, routineCalendar, eventsToLog, sessionPatch } from "./routine.js";
 import { waitingFor, personOf } from "./nudge.js";
 import { dayHours, isNight, nextMorning, dayEndAt, bookings, sameTitle, minText, gapsToday, planDate, usualHours } from "./day.js";
@@ -523,12 +523,23 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
   }
 
   function undo(){
-    const { task, before } = toast;
+    const { task, before, left } = toast;
     holdInPlan(task, null);
     skips.delete(task.id);
     state.chosen = task.id;
     setToast(null);
-    restoreTask(uid, task.id, before).catch(fail);
+    restoreTask(uid, task.id, left ? { ...before, progress: task.progress ?? 0, size: task.size ?? null } : before).catch(fail);
+    render();
+  }
+
+  // Left's − / +: how much the task still needs, 15 min a tap (never under
+  // 5). Each tap writes, and restarts the toast's 5 seconds.
+  function stepLeft(d){
+    if (!toast) return;
+    const { task } = toast;
+    toast.left = Math.max(5, (toast.left ?? leftMinutes(task)) + d);
+    restoreTask(uid, task.id, leftPatch(task, toast.left)).catch(fail);
+    setToast(toast);
     render();
   }
 
@@ -551,6 +562,13 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
         h("span", { className: "toast-text" }, toast.label, bdi(task.title)),
         h("button", { className: "toast-undo", type: "button", textContent: "Undo",
           ariaLabel: `Undo: put ${task.title} back on the card`, onclick: undo })),
+      // Not finished, so how much is left? It starts at Daisey's guess; a
+      // routine's session is always whole, so it never asks.
+      !isRoutine(task) && h("div", { className: "toast-why-row" },
+        h("span", { className: "toast-adj" },
+          h("button", { className: "toast-step", type: "button", textContent: "−", ariaLabel: "Less left", onclick: () => stepLeft(-15) }),
+          h("span", { className: "toast-count" }, `Left ~${dur(toast.left ?? leftMinutes(task))}`),
+          h("button", { className: "toast-step", type: "button", textContent: "+", ariaLabel: "More left", onclick: () => stepLeft(15) }))),
       toast.lesson && (toast.taught
         ? h("div", { className: "toast-why-row" }, h("span", { className: "toast-thanks", textContent: "Got it" }))
         : h("div", { className: "toast-why-row", role: "group", ariaLabel: "Why? (optional)" },

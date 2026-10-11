@@ -433,3 +433,12 @@ test("editTask: progress sets the task's % (clamped), no-op when unchanged", () 
   assert.equal(M.editTask(t, { progress: 150 }, opts).progress, 99);
   assert.deepEqual(M.editTask({ ...t, ...p }, { progress: 40 }, opts), {});
 });
+
+test("leftPatch: the toast's 'Left' makes leftMinutes read it", () => {
+  const left = (t, m) => M.leftMinutes({ ...t, ...M.leftPatch(t, m, { now: 1 }) });
+  assert.equal(left({ size: 60 }, 15), 15);           // under the size: progress
+  assert.equal(left({ size: 60, progress: 50 }, 45), 45);
+  assert.equal(left({ size: 30, spentMinutes: 20 }, 45), 45); // bigger than thought: size grows
+  assert.equal(left({ size: 30 }, 30), 30);
+  assert.equal(left({ size: 60 }, 0), 5);             // never under 5
+});

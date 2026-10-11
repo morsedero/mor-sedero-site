@@ -670,6 +670,16 @@ export const leftMinutes = (t) => {
   return Math.max(5, p > 0 ? Math.round(size * (1 - p / 100)) : size - (t.spentMinutes || 0));
 };
 
+// "Left ~30 min" on Later's and Pending's toast (Mor, 2026-10-11, in place
+// of Done's "how much is done" hold): a patch that makes leftMinutes(t) read
+// `mins`. Under the size it's the progress %; at or over it the size grows
+// instead (the task turned out bigger), progress back to 0.
+export function leftPatch(t, mins, { now = Date.now() } = {}){
+  const size = toMinutes(t.size) ?? DEFAULT_SIZE, m = Math.max(5, Math.round(mins));
+  const p = Math.round(100 * (1 - m / size));
+  return p >= 1 ? progressPatch(p, { now }) : { progress: 0, size: m + (t.spentMinutes || 0), touchedAt: now };
+}
+
 // Ready to be offered at all? engine.js filterOut adds window, skips and
 // the "not before" date.
 export const isAvailable = (task) => task.status === "ready";
