@@ -207,9 +207,12 @@ export function nightDivider(from, to){
 // Done pressed (Mor, 2026-10-07): "how much did you finish?". 100 → onFull().
 // Less → "when do you want to come back to it?" → onPartial(pct, when), where
 // when is today | tomorrow | week | someday. Closing the sheet does nothing.
-export function askProgress(task, { onFull, onPartial, start = 50 }){
+export function askProgress(task, { onFull, onPartial, onCancel, start = 50 }){
   const d = h("dialog", { className: "now", ariaLabel: "How much is done?" });
+  // onCancel: closed with nothing chosen (✕, the backdrop, Esc).
+  let chose = false;
   const close = () => { d.close(); d.remove(); };
+  d.addEventListener("close", () => { if (!chose) onCancel?.(); });
   const head = (t) => h("div", { className: "now-head" }, h("h2", { textContent: t }),
     h("button", { className: "now-x", type: "button", ariaLabel: "Close", textContent: "✕", onclick: close }));
   const out = h("output", { className: "pj-pct", textContent: `${start}%` });
@@ -218,13 +221,13 @@ export function askProgress(task, { onFull, onPartial, start = 50 }){
   const when = (pct) => {
     d.replaceChildren(head("Back to it when?"),
       h("div", { className: "now-chips" }, ...[["today", "Later today"], ["tomorrow", "Tomorrow"], ["week", "This week"], ["someday", "On hold"]].map(([w, text]) =>
-        h("button", { className: "chip", type: "button", textContent: text, onclick: () => { close(); onPartial(pct, w); } }))));
+        h("button", { className: "chip", type: "button", textContent: text, onclick: () => { chose = true; close(); onPartial(pct, w); } }))));
   };
   d.replaceChildren(head("How much is done?"),
     h("p", { className: "muted", dir: "auto", textContent: task.title }),
     h("div", { className: "sheet-stack" }, out, range,
       h("div", { className: "sheet-actions" },
-        h("button", { className: "btn primary", type: "button", textContent: "All done · 100%", onclick: () => { close(); onFull(); } }),
+        h("button", { className: "btn primary", type: "button", textContent: "All done · 100%", onclick: () => { chose = true; close(); onFull(); } }),
         h("button", { className: "btn", type: "button", textContent: "Save this %", onclick: () => when(Number(range.value)) }))));
   d.onclick = (e) => { if (e.target === d) close(); };
   document.body.append(d);

@@ -400,7 +400,10 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
   }
 
   // ---------- the project screen ----------
-  function complete(t){
+  // onCancel: the progress sheet closed with nothing chosen. The card a
+  // swipe slid off (or the tick that went green) comes back (Mor,
+  // 2026-10-11: ✕ left an empty row with only the tick in it).
+  function complete(t, onCancel){
     const before = doneSnapshot(t);
     // A routine has no "how much": the tick is one session done ("Did it"),
     // even when it was done away from Daisey.
@@ -411,6 +414,7 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
     }
     askProgress(t, {
       start: progressOf(t) || 50,
+      onCancel,
       onFull: () => {
         const p = finishTask(uid, t, { tasks: tasks || [] });
         p.catch(fail);
@@ -431,7 +435,8 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
     const reveal = h("span", { className: "pj-reveal", ariaHidden: "true" }, icon("check"), h("span", { textContent: "Done" }));
     // The tick does what the swipe does, for whoever doesn't know to swipe.
     const tick = h("button", { type: "button", className: "pj-tick", ariaLabel: `Done: ${t.title}`,
-      onclick: () => { tick.classList.add("on"); setTimeout(() => complete(t), motionOK() ? 220 : 0); } }, icon("check"));
+      onclick: () => { tick.classList.add("on"); setTimeout(() => complete(t, back), motionOK() ? 220 : 0); } }, icon("check"));
+    const back = () => { tick.classList.remove("on"); card.style.transform = ""; };
     const wrap = h("div", { className: "pj-swipe pp-drag" + (t.status === "waiting" ? " wait" : ""), _t: t }, reveal, card, tick);
     let s = null, moved = false;
     card.addEventListener("pointerdown", (e) => { s = { x: e.clientX, y: e.clientY, id: e.pointerId, dx: 0 }; moved = false; });
@@ -460,7 +465,7 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
         learnSwipe();
         const sign = getComputedStyle(card).direction === "rtl" ? -1 : 1;
         card.style.transform = `translateX(${sign * 110}%)`;
-        setTimeout(() => complete(t), motionOK() ? 160 : 0);
+        setTimeout(() => complete(t, back), motionOK() ? 160 : 0);
       } else card.style.transform = "";
     };
     card.addEventListener("pointerup", end);
