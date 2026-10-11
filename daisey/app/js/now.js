@@ -333,8 +333,11 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
   // optional extras, and at most one action.
   // Busy and empty cards wear the task card's top line (Mor, 2026-10-10:
   // one layout for every card): dot and label, the time on the far side.
-  function plainCard(cls, { meta, side, title, open, why, extras = [], action, color }){
-    return h("div", { className: `now-card main hero ${cls}`, style: color ? `--ev:${color}` : "" },
+  // `span` (a running event's start/end, epoch ms): the time gone fills in
+  // like its schedule row (Mor, 2026-10-11; app.css .going, sc-prog).
+  function plainCard(cls, { meta, side, title, open, why, extras = [], action, color, span }){
+    const going = span ? `--dur:${span.end - span.start}ms;--el:-${Date.now() - span.start}ms;` : "";
+    return h("div", { className: `now-card main hero ${cls}` + (span ? " going" : ""), style: (color ? `--ev:${color};` : "") + going },
       h("div", { className: "hero-top" },
         h("span", { className: "hero-area" }, h("span", { className: "dot", ariaHidden: "true" }), h("span", { className: "hero-where", textContent: meta })),
         side && h("span", { className: "hero-side", textContent: side })),
@@ -370,9 +373,9 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
   let restRide = null;
   function rideCard(leg, r){
     const meta = TRIP_ON[riderOf(leg)], side = leg.trip.late ? `past ${clock(leg.trip.late)}` : `until ${clock(leg.end)}`;
-    if (restRide === leg.id) return eventCard({ meta, side, title: leg.title, why: "Rest. Daisey picks again when you arrive.",
+    if (restRide === leg.id) return eventCard({ meta, side, title: leg.title, span: leg, why: "Rest. Daisey picks again when you arrive.",
       action: h("button", { className: "btn quiet", type: "button", textContent: "Show tasks again", onclick: () => { restRide = null; render(); } }) });
-    return eventCard({ meta, side, title: leg.title,
+    return eventCard({ meta, side, title: leg.title, span: leg,
       why: leg.trip.late ? "Still on the way. The plan waits until you're there." : "Nothing fits the rest of the ride.",
       // No "Out right now" / "You seem to be…" here: the ride already says
       // where you are and why nothing fits (Mor, 2026-10-11: five stacked asks).
@@ -392,14 +395,10 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
         onclick: () => updateTask(uid, o.task, { where: "phone" }, tasks || []).catch(fail) })), rest);
   }
   // Wears its schedule row's look (Mor, 2026-10-11): the trip colour and the
-  // light round its edge, and on a running trip leg the time gone filling in
-  // (app.css .drive.going, the same sc-prog the row uses).
+  // light round its edge, and on a running trip leg the time gone filling in.
   function drivingCard(leg){
-    const c = eventCard({ meta: "Driving", title: "Eyes on the road", why: "I'll have something ready when you stop.", color: "#8c8574",
+    return eventCard({ meta: "Driving", title: "Eyes on the road", why: "I'll have something ready when you stop.", color: "#8c8574", span: leg || undefined,
       action: h("button", { className: "btn quiet", type: "button", textContent: "I'm a passenger", onclick: passenger }) });
-    c.classList.add("drive");
-    if (leg) { c.classList.add("going"); c.style.setProperty("--dur", `${leg.end - leg.start}ms`); c.style.setProperty("--el", `-${Date.now() - leg.start}ms`); }
-    return c;
   }
   // The calendar's answer to "what now": the event that's running, when it
   // ends and what's left of it. Same card as a task's, so the top of the
@@ -410,7 +409,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
   function meetingCard(ev){
     const end = ev.end;
     const left = Math.max(0, Math.round((end - Date.now()) / 60000));
-    return eventCard({ meta: "Now", side: `until ${clock(end)}`, title: ev.title, color: ev.color,
+    return eventCard({ meta: "Now", side: `until ${clock(end)}`, title: ev.title, color: ev.color, span: ev,
       why: left ? `${dur(left)} left. Daisey picks a task again when it ends.` : "Just about done.",
       // With someone a Pending task waits on: worth raising while you're there.
       extras: waitingFor(ev.title, tasks || []).slice(0, 3).map((t) => h("p", { className: "now-wait" },
@@ -1816,7 +1815,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     if (!card && feel().place.value === "car") { day(...head, drivingCard(fw?.current?.trip && fw.current), toast && toastView()); return; }
     const block = blockOf(fw);
     if (!card && block) {
-      day(...head, eventCard({ meta: "Now", side: `until ${clock(fw.current.end)}`, title: fw.current.title, color: fw.current.color,
+      day(...head, eventCard({ meta: "Now", side: `until ${clock(fw.current.end)}`, title: fw.current.title, color: fw.current.color, span: fw.current,
         why: `Nothing in ${block.project} fits right now.`, action: freeNowButton({ start: block.start }, `the ${block.project} block`) }), tip);
       return;
     }
