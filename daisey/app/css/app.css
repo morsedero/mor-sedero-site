@@ -1480,8 +1480,8 @@ body.focus #side { display: none; }
 /* Time gone fills the chip in deeper, start to end, under its text (Mor,
    2026-10-11: the fill lives here, not on the hero card). --dur/--el come
    from schedule.js's row style; --sc-prog animates over the event's length. */
-.sc-row.sc-on:not(.sc-gap) .sc-ev { position: relative; isolation: isolate; --deep: color-mix(in srgb, var(--ev, #8c8574) 58%, var(--card)); --edge: color-mix(in srgb, var(--ev, #8c8574) 75%, var(--ink)); }
-.sc-row.sc-on:not(.sc-gap) .sc-ev:is([class*="pc-"], [class*="area-"]) { --deep: var(--aline); --edge: color-mix(in srgb, var(--aline) 60%, var(--ink)); }
+.sc-row.sc-on:not(.sc-gap) .sc-ev { position: relative; isolation: isolate; --deep: color-mix(in srgb, var(--ev, #8c8574) 58%, var(--card)); --edge: color-mix(in srgb, var(--ev, #8c8574) 72%, var(--card)); /* a shade past the fill, not ink: a dark line cut through the text */ }
+.sc-row.sc-on:not(.sc-gap) .sc-ev:is([class*="pc-"], [class*="area-"]) { --deep: var(--aline); --edge: color-mix(in srgb, var(--aline) 88%, var(--ink)); }
 .sc-row.sc-on:not(.sc-gap) .sc-ev::after {
   content: ""; position: absolute; inset: 0; z-index: -2; border-radius: inherit; pointer-events: none;
   /* Hard edge + a 2px darker line where now is, so the eye finds it (Mor, 2026-10-11: the soft fade read too faint). */
