@@ -1955,6 +1955,11 @@ body.focus .shell { block-size: auto; min-block-size: 100dvh; overflow: visible;
    the plan/done cards inside drop their own border, fill and padding. */
 #planPage .now-card { background: none; border: 0; box-shadow: none; border-radius: 0; padding: 0; }
 #planPage .now-card + .now-card { margin-block-start: 16px; }
+/* Every panel page starts its heading where the Schedule's does, 15px under
+   the box's top edge, so switching pages doesn't jump (Mor, 2026-10-12). */
+#planPage > :first-child { margin-block-start: -8px; }
+#projPage > .pgrid.tiers:first-child { margin-block-start: -16px; }
+#statsPage > :first-child { margin-block-start: -6px; }
 
 /* Opening (Mor, 2026-10-08): only the daisy blooming, over everything, until
    the Now card has its tasks, plan and calendar (main.js lifts it). No
