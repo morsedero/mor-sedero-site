@@ -1408,10 +1408,11 @@ body.focus #side { display: none; }
 .sc-next .sc-name { font-size: 15px; font-weight: 700; color: var(--ink); }
 .sc-name { font-size: 13px; font-weight: 600; color: color-mix(in srgb, var(--ink) 85%, var(--ink-2)); }
 .sc-date { font-size: 12px; color: var(--ink-2); }
-.sc-row { display: flex; align-items: center; gap: 12px; margin-block-start: 8px; }
-.sc-time { flex: none; inline-size: 96px; font-size: 14px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.sc-row { display: flex; align-items: center; gap: 8px; margin-block-start: 8px; }
+/* Times small and narrow so the events get the room (Mor, 2026-10-11). */
+.sc-time { flex: none; inline-size: 68px; font-size: 11.5px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
 .sc-time.strong { color: color-mix(in srgb, var(--ink) 85%, var(--ink-2)); }
-.sc-gap { inline-size: 100%; margin-block: 2px; padding-block: 0; padding-inline: 108px 0; border: 0; background: none; font: inherit; color: inherit; text-align: start; cursor: pointer; }
+.sc-gap { inline-size: 100%; margin-block: 2px; padding-block: 0; padding-inline: 76px 0; border: 0; background: none; font: inherit; color: inherit; text-align: start; cursor: pointer; }
 .sc-gap.sc-break { cursor: default; }
 .sc-gap .sc-add { order: 2; font-size: 14px; }
 /* Free time and breaks read warm and a size up (Mor, 2026-10-10: "more fun, bigger"). */
