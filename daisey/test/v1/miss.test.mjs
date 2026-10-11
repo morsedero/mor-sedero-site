@@ -93,7 +93,7 @@ test("proposeDay maxEach: only small tasks, but a deadline due today still comes
   assert.ok(!ids.includes("big"));
 });
 
-test("decide: miss names the task with Start / Shorten, once; silence offers a lighter plan", () => {
+test("decide: miss names the task with Start (no Shorten), once; silence offers a lighter plan", () => {
   const task = t({ id: "mix", title: "Mix review", size: 60, touchedAt: at(9) });
   const r = rec({ tasks: [task] });
   const d = N.decide(r, [], at(9, 12));
@@ -101,7 +101,7 @@ test("decide: miss names the task with Start / Shorten, once; silence offers a l
   assert.equal(d.out[0].title, "Mix review");
   assert.equal(d.out[0].taskId, "mix");
   assert.match(d.out[0].body, /^Up since 09:00 and not started/);
-  assert.deepEqual(d.out[0].actions.map((a) => a.action), ["start", "shorten"]);
+  assert.deepEqual(d.out[0].actions.map((a) => a.action), ["start"]);
   assert.equal(N.decide({ ...r, missSent: d.patch.missSent }, [], at(9, 17)).out.length, 0); // not twice
 
   const s = N.decide({ ...r, missSent: d.patch.missSent }, [], at(10, 12));

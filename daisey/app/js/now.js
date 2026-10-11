@@ -28,7 +28,7 @@ import { missState, silenceText, lastActivity } from "./miss.js";
 import { takeQuiet } from "./push.js";
 import { findPhoneTasks, phoneOkIds, searching } from "./phone.js";
 import { rank, freeWindow, timeBucket, matchProject, dueAt, keepsCard, passedOver } from "./engine.js";
-import { leftMinutes, toMinutes, progressOf, leftPatch, shrinkPatch, shrunk, localDate, logicalDate, LATE_HOUR, skipSnapshot, skipLesson, pendingCheck, notYet, pushedTo, bringBack, dayAfter, doneSnapshot } from "./model.js";
+import { leftMinutes, toMinutes, progressOf, leftPatch, localDate, logicalDate, LATE_HOUR, skipSnapshot, skipLesson, pendingCheck, notYet, pushedTo, bringBack, dayAfter, doneSnapshot } from "./model.js";
 import { isRoutine, routineCalendar, eventsToLog, sessionPatch } from "./routine.js";
 import { waitingFor, personOf } from "./nudge.js";
 import { dayHours, isNight, nextMorning, dayEndAt, bookings, sameTitle, minText, gapsToday, planDate, usualHours } from "./day.js";
@@ -995,9 +995,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
   // button (Mor, 2026-10-10: no Start on the card. The plan already says
   // what's on, so the loop is Done, Done, Later; Focus lives in the task
   // sheet). Each opens its own row under the card; a second tap shuts it.
-  // lead: [text, onclick], a missed card's asks (Shorten), on their own row
-  // while nothing else is open (missed plans get their own pass later).
-  function cardActions(task, alts, lead = []){
+  function cardActions(task, alts){
     const someN = somedayTasks().length;
     const toggle = (key) => () => { const was = state[key]; state.more = state.notNow = state.pendAsk = state.showAlts = false; state[key] = !was; state.altX = 0; render(); };
     const chip = (text, onclick) => h("button", { className: "chip", type: "button", textContent: text, onclick });
@@ -1010,8 +1008,6 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
         action("pending", "Pending", `${task.title} is waiting on something`, { ariaExpanded: String(state.pendAsk), onclick: toggle("pendAsk") }),
         action("later", "Later", `come back to ${task.title} later`, { ariaExpanded: String(state.notNow), onclick: toggle("notNow") }),
         done),
-      lead.length > 0 && !asking() && h("div", { className: "later-ask", role: "group", ariaLabel: "Missed" },
-        ...lead.map(([text, onclick]) => chip(text, onclick))),
       // Later: three times, then On hold set apart under them, quieter and
       // dashed, since it isn't a time: no date, into the project's On hold
       // list (Mor, 2026-10-10: In 10 min went).
@@ -1437,12 +1433,6 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
       planAt: Math.max(todaysPlan()?.approvedAt || 0, workingUntil()), silenceOn: settings.silenceOn || null });
   }
   const silenced = (date = localDate()) => { settings = { ...settings, silenceOn: date }; saveSettings(uid, { silenceOn: date }).catch(fail); };
-  // Half the time, on the card's own buckets (model.shrunk); counts as an answer.
-  function shortenNow(task){
-    const to = shrunk(task.size);
-    restoreTask(uid, task.id, shrinkPatch(task)).catch(fail);
-    flash(`${task.title}: now ${dur(to)}.`);
-  }
   // A few small tasks for the rest of today, as a proposal to approve.
   function lighterPlan(){
     silenced();
@@ -1455,10 +1445,10 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     render();
   }
   // Both take the main card's place, never a box pushing it down (Mor,
-  // 2026-10-08). A miss is the task's own card saying so, with Shorten and
-  // Move under its line; the silence check is a card of its own.
+  // 2026-10-08). A miss is the task's own card saying so, with its usual
+  // actions; the silence check is a card of its own. No Shorten (Mor,
+  // 2026-10-11): being late doesn't make the task any smaller.
   const missWhy = (card, st) => ({ ...card, whyParts: [`up since ${clock(st.start)} and not started`] });
-  const missLead = (task) => (leftMinutes(task) > 5 ? [["Shorten", () => shortenNow(task)]] : []);
   // The approved plan holds its times (proposal.timeline, 2026-10-10): when
   // the next task's start comes with nothing started, the card asks right
   // then (Mor: "more proactive"), before any miss would. → { taskId, start }
@@ -1849,9 +1839,8 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     const alts = [...new Map([r.pick, ...r.alternatives, ...r.ranked, ...r.out.filter((o) => SWITCH_TOO.has(o.reason))]
       .filter((s) => s && s.task.id !== card.task.id).map((s) => [s.task.id, { task: s.task }])).values()].slice(0, 5);
     // Done is the one loud thing on the tab; Switch, Pending and Later stay quiet beside it.
-    const lead = missed ? missLead(card.task) : [];
     day(...head, deck(taskCard(dueNow ? dueWhy(card, dueNow) : missed ? missWhy(card, missed) : card, true,
-      ...cardActions(card.task, alts, lead)), asking()),
+      ...cardActions(card.task, alts)), asking()),
       nextLine(card.task), tip);
     // One slide-in per step-aside: later snapshots must not replay it.
     if (slideIn) { slideIn = false; if (motionOK()) { const c = root.querySelector(".now-card.main"); if (c) { c.style.animationDelay = ""; c.classList.add("in"); } } }
@@ -1894,13 +1883,8 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
   // (reality.js): a task done, parked or set Pending since isn't put up. A
   // cold start from the notification has neither the tasks nor the run yet,
   // so it waits for both.
-  let noticeStart = null, runKnown = false, noticeShorten = null, noticeLighter = false;
+  let noticeStart = null, runKnown = false, noticeLighter = false;
   const tryNoticeStart = () => {
-    if (noticeShorten && tasks !== null) {
-      const t = tasks.find((x) => x.id === noticeShorten);
-      noticeShorten = null;
-      if (t && t.status === "ready") shortenNow(t);
-    }
     if (!noticeStart || tasks === null || !runKnown) return;
     const id = noticeStart;
     noticeStart = null;
@@ -1969,8 +1953,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     // The header's Focus toggle (main.js).
     focus(on = !focusOn()){ setFocus(on); },
     startFromNotice(id){ noticeStart = id; tryNoticeStart(); },
-    // The missed-slot notification's Shorten, and the silence check's two (sw.js).
-    shortenFromNotice(id){ noticeShorten = id; tryNoticeStart(); },
+    // The silence check's two buttons (sw.js).
     lighter(){ noticeLighter = true; render(); },
     quiet: quietCheck,
     // Tasks finished today, newest first, for the header's done chip.

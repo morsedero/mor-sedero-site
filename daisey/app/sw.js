@@ -13,7 +13,7 @@ self.addEventListener("fetch", () => {}); // pass through to the network
    gets a "Start task" button: Daisey opens with ?start=<id> (or, already
    open, is told to start it) and the page starts it into focus mode, unless
    what happened since says otherwise (now.js startFromNotice).
-   A missed slot (notify.js "miss", 2026-10-08) adds "Shorten" (?shorten=<id>);
+   A missed slot (notify.js "miss", 2026-10-08) has just "Start";
    the silence check has "Lighter plan" (?open=lighter) and "Not today",
    which opens nothing: it leaves the day in the "daisey-flags" cache for the
    page to save (push.js takeQuiet), or tells an open Daisey straight away. */
@@ -42,15 +42,12 @@ self.addEventListener("notificationclick", (e) => {
   }
   const url = new URL(data.url || "./", self.registration.scope);
   const start = e.action === "start" && data.taskId ? data.taskId : null;
-  const shorten = e.action === "shorten" && data.taskId ? data.taskId : null;
   if (start) url.searchParams.set("start", start);
-  if (shorten) url.searchParams.set("shorten", shorten);
   if (e.action === "lighter") url.searchParams.set("open", "lighter");
   const what = url.searchParams.get("open");
   e.waitUntil(all().then((open) => {
     if (!open) return self.clients.openWindow(url.href);
     if (start) open.postMessage({ daisey: "start", id: start });
-    else if (shorten) open.postMessage({ daisey: "shorten", id: shorten });
     else if (what) open.postMessage({ daisey: "open", what });
     return open.focus();
   }));

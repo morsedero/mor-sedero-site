@@ -504,8 +504,6 @@ dialog.now:focus { outline: none; }
 .alt-card .alt-at::after { content: "·"; margin-inline-start: 5px; font-weight: 600; }
 .alt-card .hero-area { gap: 5px; }
 .alt-card .alt-t { font-size: 15px; font-weight: 600; line-height: 1.2; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow-wrap: anywhere; }
-/* A missed slot (miss.js): Shorten · Move under the card's line, on the card itself. */
-
 /* Pending → "Waiting on what?": one optional line under the actions. */
 .pend-ask { display: grid; gap: 4px; margin-block-start: 4px; }
 .pend-ask label { font-size: 13px; font-weight: 600; color: var(--ink-2); }

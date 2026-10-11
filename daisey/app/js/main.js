@@ -638,7 +638,7 @@ async function boot(){
           if (what === "lighter") { if (history.state?.daisey) history.back(); closeScreens(); m.now.lighter(); }
         };
         const params = new URL(location.href).searchParams;
-        const asked = params.get("open"), startId = params.get("start"), shortenId = params.get("shorten");
+        const asked = params.get("open"), startId = params.get("start");
         // Shared into Daisey (manifest share_target, 2026-10-06): read like a Tell message → cards.
         const shared = [...new Set(["title", "text", "url"].map((k) => (params.get(k) || "").trim()).filter(Boolean))].join("\n");
         // Back from Google's consent screen (daisey-auth-google-callback).
@@ -652,18 +652,14 @@ async function boot(){
           flash(ok ? "Trello connected." : "Couldn't connect Trello. Try again.");
           if (ok) { paintTrello(true); m.importer.open(); }
         });
-        if (asked || shared || startId || shortenId) history.replaceState(history.state, "", location.pathname);
+        if (asked || shared || startId) history.replaceState(history.state, "", location.pathname);
         if (asked) openFrom(asked);
         // "Start task" on a notification (sw.js): straight into focus mode.
         const startFrom = (id) => { if (history.state?.daisey) history.back(); closeScreens(); m.now.startFromNotice(id); };
         if (startId) startFrom(startId);
-        // "Shorten" on a missed slot's notification: halve it, then the card.
-        const shortenFrom = (id) => { if (history.state?.daisey) history.back(); closeScreens(); m.now.shortenFromNotice(id); };
-        if (shortenId) shortenFrom(shortenId);
         const onSwMessage = (e) => {
           if (e.data?.daisey === "open") openFrom(e.data.what);
           if (e.data?.daisey === "start" && e.data.id) startFrom(String(e.data.id));
-          if (e.data?.daisey === "shorten" && e.data.id) shortenFrom(String(e.data.id));
           if (e.data?.daisey === "quiet") m.now.quiet();
         };
         navigator.serviceWorker?.addEventListener("message", onSwMessage);

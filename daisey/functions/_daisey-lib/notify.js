@@ -22,7 +22,7 @@
 //           the lead before the day starts, so a meeting at 08:00 still gets
 //           its reminder.
 //   miss    a free slot passed with nothing started (app/js/miss.js): the
-//           task that was up, with Start / Shorten buttons; once the misses
+//           task that was up, with a Start button; once the misses
 //           add up (two slots in a row, a third of the day's free time, or
 //           today's work no longer fitting) it's the silence check instead —
 //           "Rough day?" with Lighter plan / Not today, once a day. Not when Daisey was on screen since
@@ -59,7 +59,7 @@ const { waitingFor, personOf } = require("../../app/js/nudge.js");
 const { EVENT_BUFFER } = require("../../app/js/weights.js");
 const { runState, overruled, eventKey } = require("../../app/js/reality.js");
 const { missState, silenceText, lastActivity } = require("../../app/js/miss.js");
-const { nextPlanned, leftOf } = require("../../app/js/proposal.js");
+const { nextPlanned } = require("../../app/js/proposal.js");
 const { MISS } = require("../../app/js/weights.js");
 const { timeline } = require("../../app/js/proposal.js");
 const { withTrips } = require("../../app/js/trips.js");
@@ -245,10 +245,9 @@ function missMessage(st, { rec, tasks, busy, booked, date, end, now, tz }) {
     task = r.pick?.task;
   }
   if (!task) return null;
-  const shorter = leftOf(task) > 5;
   return { type: "miss", title: task.title, taskId: task.id, ttl: MISS_TTL, tag: `miss-${st.start}`, url: "./",
-    body: `Up since ${clockIn(st.start, tz)} and not started. Start it${shorter ? ", shorten it," : ""} or tap to move it.`,
-    actions: [{ action: "start", title: "Start" }, ...(shorter ? [{ action: "shorten", title: "Shorten" }] : [])] };
+    body: `Up since ${clockIn(st.start, tz)} and not started. Start it or tap to move it.`,
+    actions: [{ action: "start", title: "Start" }] };
 }
 
 module.exports = { decide, DEFAULT_TYPES };
