@@ -1483,11 +1483,26 @@ body.focus #side { display: none; }
 .sc-row.sc-on:not(.sc-gap) .sc-ev { position: relative; isolation: isolate; --deep: color-mix(in srgb, var(--ev, #8c8574) 58%, var(--card)); --edge: color-mix(in srgb, var(--ev, #8c8574) 75%, var(--ink)); }
 .sc-row.sc-on:not(.sc-gap) .sc-ev:is([class*="pc-"], [class*="area-"]) { --deep: var(--aline); --edge: color-mix(in srgb, var(--aline) 60%, var(--ink)); }
 .sc-row.sc-on:not(.sc-gap) .sc-ev::after {
-  content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit; pointer-events: none;
+  content: ""; position: absolute; inset: 0; z-index: -2; border-radius: inherit; pointer-events: none;
   /* Hard edge + a 2px darker line where now is, so the eye finds it (Mor, 2026-10-11: the soft fade read too faint). */
   background: linear-gradient(to right, var(--deep) calc(var(--sc-prog) - 2px), var(--edge) calc(var(--sc-prog) - 2px) var(--sc-prog), transparent var(--sc-prog));
   animation: sc-prog var(--dur, 1s) linear var(--el, 0s) both; }
 .sc-row.sc-on:not(.sc-gap) .sc-ev:dir(rtl)::after { background: linear-gradient(to left, var(--deep) calc(var(--sc-prog) - 2px), var(--edge) calc(var(--sc-prog) - 2px) var(--sc-prog), transparent var(--sc-prog)); }
+/* A little life (Mor, 2026-10-11): a soft light glides through the filled
+   part toward now every few seconds. Masked to the fill, so it shares
+   sc-prog's timing; it sits over the fill (-1 over -2), under the text. */
+@keyframes sc-shine { 0% { background-position: 150% 0; } 70%, 100% { background-position: -50% 0; } }
+.sc-row.sc-on:not(.sc-gap) .sc-ev::before {
+  content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit; pointer-events: none;
+  background: linear-gradient(to right, transparent 35%, color-mix(in srgb, #fff 45%, transparent) 50%, transparent 65%) 150% 0 / 200% 100% no-repeat;
+  -webkit-mask: linear-gradient(to right, #000 var(--sc-prog), transparent var(--sc-prog));
+  mask: linear-gradient(to right, #000 var(--sc-prog), transparent var(--sc-prog));
+  animation: sc-prog var(--dur, 1s) linear var(--el, 0s) both, sc-shine 4s ease-in-out infinite; }
+.sc-row.sc-on:not(.sc-gap) .sc-ev:dir(rtl)::before {
+  -webkit-mask: linear-gradient(to left, #000 var(--sc-prog), transparent var(--sc-prog));
+  mask: linear-gradient(to left, #000 var(--sc-prog), transparent var(--sc-prog));
+  animation-direction: normal, reverse; }
+@media (prefers-reduced-motion: reduce) { .sc-row.sc-on:not(.sc-gap) .sc-ev::before { display: none; } }
 .sc-row.sc-on:not(.sc-gap) .sc-time { color: var(--ink); }
 .sc-time .sc-nowtag { display: block; inline-size: fit-content; margin-block-start: 3px; padding: 1px 7px; border-radius: 999px; background: var(--accent); color: var(--on-accent); font-size: 11px; font-weight: 700; }
 /* Day / Week header (2026-10-07): ‹ title › and a Day|Week switch, sticky at
