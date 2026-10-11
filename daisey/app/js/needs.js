@@ -28,7 +28,7 @@ import { dropSeries } from "./slots.js";
 import { watchCalendar, deleteEvent, retime } from "./calendar.js";
 import { draftFrom } from "./caltask.js";
 import { pickWeekDay, answer, answerSnapshot, effectiveDue, sweepAdvice, daysLate } from "./triage.js";
-import { localDate, logicalDate, pendingCheck, shrunk, shrinkPatch, dayAfter, notYet, pushedTo, bringBack } from "./model.js";
+import { localDate, logicalDate, pendingCheck, shrunk, shrinkPatch, dayAfter, notYet, pushedTo, bringBack, isGuess, estText } from "./model.js";
 import { sessionPatch, skipSlotPatch, weekState } from "./routine.js";
 import { dayHours, minText, usualHours } from "./day.js";
 import { nudgeText, waLink } from "./nudge.js";
@@ -40,7 +40,9 @@ import { whereAsk, setRide, setStill, saveSpot, notHomeHere, quietHere, reserved
 import { estimate, answer as tripAnswer, noTrip } from "./trips.js";
 import { areaClass } from "./look.js";
 
-const MARK = { penalty: "There's a penalty if it's late.", money: "It costs money to leave it.", someone: "Someone's waiting on it." };
+// Only stakes the user set are said, never a guess (engine PHRASES.stakes).
+const MARKS = { penalty: "There's a penalty if it's late.", money: "It costs money to leave it.", someone: "You marked it as affecting someone." };
+const mark = (t) => (isGuess(t, "stakes") ? "" : MARKS[t.stakes] || "");
 const shortDay = (s) => new Date(`${s}T12:00`).toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" });
 const weekday = (s) => new Date(`${s}T12:00`).toLocaleDateString(undefined, { weekday: "short" });
 // "10-minute", "2-hour", "1 h 30 min" — for "I'd make it a 10-minute task".
@@ -265,7 +267,7 @@ export function mountNeeds(root, uid, { onClose, extra } = {}){
     }
     if (item.kind === "someday") {
       return { tone: "area-home", ico: "someday", q: "Bring one back?", sub: "From On hold, for this week.",
-        item: t.title, say: MARK[t.stakes] || `It's ${dur(t.size)}, and the week has room.`,
+        item: t.title, say: mark(t) || `It's ${estText(t, t.size)}, and the week has room.`,
         yes: ["Bring it back", () => { somedayDone(); restoreTask(uid, t.id, bringBack(t)).catch(fail); next(); }],
         no: ["Leave it there", () => { somedayDone(); next(); }] };
     }
@@ -275,7 +277,7 @@ export function mountNeeds(root, uid, { onClose, extra } = {}){
     const late = daysLate(t), lateText = late === 1 ? "yesterday" : `${shortDay(t.due)}, ${late} days ago`;
     const say = adv.why === "event" ? `It's for ${adv.event.title}${adv.event.allDay ? " today" : ` at ${clock(Date.parse(adv.event.start))}`}. I'd do it today, before then.`
       : adv.why === "plan" ? "It's in today's plan. I'd keep it today."
-      : adv.why === "stakes" ? `${MARK[t.stakes]} I'd do it today.`
+      : adv.why === "stakes" ? `${mark(t)} I'd do it today.`.trim()
       : `I'd move it to ${weekday(week)}, the roomiest day this week.`;
     return { tone: "area-job", ico: "later", q: "Still doing this?",
       sub: `${t.dateKind === "deadline" ? "The deadline was" : "It was planned for"} ${lateText}.`,

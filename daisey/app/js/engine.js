@@ -7,7 +7,7 @@
 // dates are local time, so the node tests in daisey/test/v1/ drive it with
 // fixed moments. Every number lives in weights.js.
 import * as W from "./weights.js";
-import { localDate, logicalDate, durText, notYet, leftMinutes, progressOf, LABELS } from "./model.js";
+import { localDate, logicalDate, durText, notYet, leftMinutes, progressOf, LABELS, isGuess, estText } from "./model.js";
 import { effectiveDue } from "./triage.js";
 import { officeOpen, officeMinutesLeft } from "./holidays.js";
 import { cleanRoutine, weekState } from "./routine.js";
@@ -382,14 +382,14 @@ function dateWords(due, days){
 }
 
 const sizeWords = (n) => (n === 60 ? "hour" : durText(n));
-// "send the stems to Yuval" → Yuval: who "affects someone" means, if it says.
-// Hebrew too, when the name is in Latin letters: "ל-Yuval".
-const person = (title) => (String(title).match(/(?:\b(?:to|for)\s+|ל-?)(\p{Lu}[\p{L}'-]*)/u) || [])[1] || null;
+// A reason only restates what the user typed, a calendar fact or the plan
+// (2026-10-11: "Dana is waiting on it" came from a name in the title). A
+// guessed field still scores, unsaid; a guessed size is said as an estimate.
 
 const PHRASES = {
   deadline: (s, d) => d.passed || d.days < 0 ? [d.project ? [{ name: d.project }, " was due"] : "deadline passed"].flat()
-    : d.project ? [{ name: d.project }, ` due ${dateWords(d.due, d.days)}${d.lead > 0 ? `, ${durText(d.left)} still to do` : ""}`]
-    : d.lead > 0 ? [`deadline ${dateWords(d.due, d.days)}, ${durText(d.left)} still to do`]
+    : d.project ? [{ name: d.project }, ` due ${dateWords(d.due, d.days)}${d.lead > 0 ? `, ${estText(s.task, d.left)} still to do` : ""}`]
+    : d.lead > 0 ? [`deadline ${dateWords(d.due, d.days)}, ${estText(s.task, d.left)} still to do`]
     : [`deadline ${dateWords(d.due, d.days)}`],
   // The card's dots (ui.weekDots) already show the count, so the words say
   // what the dots can't: "2 more this week, 2 days left" once every day counts.
@@ -397,19 +397,21 @@ const PHRASES = {
     ? [d.daysLeft === 1 ? `last day to make ${d.per} this week` : `${d.need} more this week, ${d.daysLeft} days left`]
     : [`keeps your ${d.per}× a week going`],
   target: (s, d) => [`planned for ${d.days <= 0 ? "today" : dateWords(effectiveDue(s.task), d.days)}`],
-  stakes: (s, d) => d.kind === "money" ? ["costs money if late"]
+  stakes: (s, d) => isGuess(s.task, "stakes") ? null
+    : d.kind === "money" ? ["costs money if late"]
     : d.kind === "penalty" ? ["there's a penalty if late"]
-    : d.kind === "someone" ? (person(s.task.title) ? [{ name: person(s.task.title) }, " is waiting on it"] : ["someone's waiting on it"])
+    : d.kind === "someone" ? ["you marked it as affecting someone"]
     : null,
   priority: (s, d) => (d.tier === "focus" ? [{ name: s.task.project }, " is in Focus"] : null),
-  office: (s, d) => [`offices close at ${d.close}`],
+  office: (s, d) => (isGuess(s.task, "openHours") ? null : [`offices close at ${d.close}`]),
   progress: (s, d) => [d.pct >= 90 ? "almost done, finish it" : d.pct >= 45 && d.pct <= 55 ? "half done, finish it" : `${d.pct}% done, finish it`],
   // Only an area the user set is named (user test #8: a guessed "Job search"
   // on a Portfolio task); a guessed one still scores, unsaid.
   area: (s, d) => !(s.task.guessed || []).includes("area") && [{ name: LABELS.area[d.area] || d.area }, d.done ? " is behind this week" : " hasn't moved this week"],
   batch: (s, d) => [`${d.ids.length} ${{ call: "calls", admin: "admin bits", errand: "errands" }[d.type]}, done together`],
   // A quick win is a small task, not just a small share of a long window.
-  window: (s, d) => d.fit === "small" && leftMinutes(s.task) <= W.QUICK_WIN_MAX ? [`${sizeWords(leftMinutes(s.task))}, quick win`]
+  window: (s, d) => d.fit === "small" && leftMinutes(s.task) <= W.QUICK_WIN_MAX
+    ? [`${isGuess(s.task, "size") ? estText(s.task, leftMinutes(s.task)) : sizeWords(leftMinutes(s.task))}, quick win`]
     : d.fit === "small" ? [`fits your ${sizeWords(d.window)}`]
     : d.fit === "piece" ? [`a piece fits your ${sizeWords(d.window)}`]
     : d.nextEvent ? ["fits before ", { name: d.nextEvent }]

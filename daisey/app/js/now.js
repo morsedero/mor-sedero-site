@@ -28,7 +28,7 @@ import { missState, silenceText, lastActivity } from "./miss.js";
 import { takeQuiet } from "./push.js";
 import { findPhoneTasks, phoneOkIds, searching } from "./phone.js";
 import { rank, freeWindow, timeBucket, matchProject, dueAt, keepsCard, passedOver } from "./engine.js";
-import { leftMinutes, toMinutes, progressOf, leftPatch, localDate, logicalDate, LATE_HOUR, skipSnapshot, skipLesson, pendingCheck, notYet, pushedTo, bringBack, dayAfter, doneSnapshot } from "./model.js";
+import { leftMinutes, toMinutes, progressOf, leftPatch, localDate, logicalDate, LATE_HOUR, skipSnapshot, skipLesson, pendingCheck, notYet, pushedTo, bringBack, dayAfter, doneSnapshot, isGuess, estText } from "./model.js";
 import { isRoutine, routineCalendar, eventsToLog, sessionPatch } from "./routine.js";
 import { waitingFor, personOf } from "./nudge.js";
 import { dayHours, isNight, nextMorning, dayEndAt, bookings, sameTitle, minText, gapsToday, planDate, usualHours } from "./day.js";
@@ -807,7 +807,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
       h("section", { className: "now-card main hero night" + (p ? areaClass(p.task) : ""), ariaLabel: early ? "First today" : "Tomorrow first" },
         h("div", { className: "night-label", textContent: early ? "First today" : "Tomorrow first" }),
         ...(p ? [
-          heroTop(p.task, [dur(p.task.size), MARK[p.task.stakes]].filter(Boolean).join(" · ")),
+          heroTop(p.task, [sizeChip(p.task), mark(p.task)].filter(Boolean).join(" · ")),
           onOpen ? titleButton(p.task) : h("div", { className: "now-title", dir: "auto", textContent: p.task.title }),
           // Before the first event if it fits there (counting the trip
           // there, trips.js), else when it's over, the trip back included. The
@@ -922,7 +922,9 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
   // ready for this week; two picks, Done or Not now close it for the day.
   const somedayTasks = () => (tasks || []).filter((t) => t.status === "someday");
   const STAKES_FIRST = { penalty: 0, money: 1, someone: 2, low: 3 };
-  const MARK = { penalty: "penalty if late", money: "costs money", someone: "someone's waiting" };
+  // Only stakes the user set are said (engine PHRASES.stakes), never a guess.
+  const MARKS = { penalty: "penalty if late", money: "costs money", someone: "affects someone" };
+  const mark = (t) => (isGuess(t, "stakes") ? "" : MARKS[t.stakes] || "");
   const somedaySorted = () => somedayTasks().sort((a, b) => (STAKES_FIRST[a.stakes] ?? 3) - (STAKES_FIRST[b.stakes] ?? 3)
     || String(a.due || "~").localeCompare(String(b.due || "~")) || (a.createdAt || 0) - (b.createdAt || 0));
 
@@ -958,13 +960,13 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
       h("h3", { className: "sd-head", textContent: "From On hold" }),
       h("ul", { className: "sd-pick" }, ...list.map((t) => {
         const on = sd.sel.includes(t.id);
-        const meta = [projectShown(t) || ownArea(t), dur(t.size)].filter(Boolean).join(" · ");
+        const meta = [projectShown(t) || ownArea(t), estText(t, t.size)].filter(Boolean).join(" · ");
         return h("li", {}, h("button", { type: "button", className: "sd-row" + (on ? " on" : ""),
-          ariaPressed: String(on), ariaLabel: `Bring back ${t.title}${MARK[t.stakes] ? ` (${MARK[t.stakes]})` : ""}`,
+          ariaPressed: String(on), ariaLabel: `Bring back ${t.title}${mark(t) ? ` (${mark(t)})` : ""}`,
           onclick: () => { sd.sel = on ? sd.sel.filter((id) => id !== t.id) : [...sd.sel, t.id]; render(); } },
         h("span", { className: "sd-text" },
           h("span", { className: "sd-title", textContent: t.title }),
-          h("span", { className: "sd-meta", dir: "ltr" }, MARK[t.stakes] && h("span", { className: "tag", textContent: MARK[t.stakes] }),
+          h("span", { className: "sd-meta", dir: "ltr" }, mark(t) && h("span", { className: "tag", textContent: mark(t) }),
             h("span", { textContent: meta }))),
         h("span", { className: "sd-tick", ariaHidden: "true" }, icon(on ? "check" : "plus"))));
       })),
@@ -991,8 +993,8 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     return h("div", { className: "learn-ask someday-ask", role: "group", ariaLabel: "Pick from On hold" },
       h("p", { className: "muted", textContent: sd.picked.length ? "One more, or that's the week?" : "Pick 1–2 from On hold for this week." }),
       h("div", { className: "someday-list" }, ...shownList.map((t) => h("button", { type: "button", className: "someday-item",
-        ariaLabel: `Move ${t.title} to this week${MARK[t.stakes] ? ` (${MARK[t.stakes]})` : ""}`, onclick: () => pick(t) },
-        bdi(t.title), MARK[t.stakes] && h("span", { className: "someday-mark", textContent: MARK[t.stakes] })))),
+        ariaLabel: `Move ${t.title} to this week${mark(t) ? ` (${mark(t)})` : ""}`, onclick: () => pick(t) },
+        bdi(t.title), mark(t) && h("span", { className: "someday-mark", textContent: mark(t) })))),
       h("div", { className: "learn-row" },
         list.length > shownList.length && h("button", { className: "chip quiet", type: "button", textContent: `Show all ${list.length}`,
           onclick: () => { sd.all = true; render(); } }),
@@ -1612,7 +1614,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
           : h("span", { className: "pp-time", ariaLabel: `${clock(r.start)} to ${clock(r.end)}` }, clock(r.start), h("small", { textContent: clock(r.end) })),
         h("button", { type: "button", className: "pp-task", ariaLabel: `Edit ${t.title}`, onclick: () => onOpen?.(t) },
           h("span", { className: "pp-title", dir: "auto", textContent: t.title }),
-          h("span", { className: "pp-meta" }, ...pieces(projectShown(t) ? t.project : "", dur(r.minutes), r.ride ? RIDE_ROW[r.ride] : "", isOver ? "" : r.missed ? "did it happen?" : late?.taskId === r.taskId ? "not started" : ""))),
+          h("span", { className: "pp-meta" }, ...pieces(projectShown(t) ? t.project : "", estText(t, r.minutes), r.ride ? RIDE_ROW[r.ride] : "", isOver ? "" : r.missed ? "did it happen?" : late?.taskId === r.taskId ? "not started" : ""))),
         h("span", { className: "pp-ctls" },
           isOver && ctl("↑", "Do first", false, () => toFront(i)),
           ctl("✕", "Take off today's plan", false, () => dropItem(i))));

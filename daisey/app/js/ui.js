@@ -1,5 +1,5 @@
 // Tiny DOM helpers shared by the Now card and the Tasks board.
-import { durText, leftMinutes, progressOf, toMinutes } from "./model.js";
+import { durText, estText, leftMinutes, progressOf, toMinutes } from "./model.js";
 import { isRoutine, doneThisWeek, weekLine } from "./routine.js";
 
 // A routine's week as dots (Mor, 2026-10-08): ● ● ○ = 2 of 3 done. Read at a
@@ -59,7 +59,7 @@ export const dur = durText;
 // some is done "50% · 15 min left" (Mor, 2026-10-07: always know the %).
 export function sizeChip(t){
   const p = progressOf(t), left = leftMinutes(t), size = toMinutes(t.size) ?? left;
-  const lbl = left < size ? `${durText(left)} left` : durText(t.size);
+  const lbl = left < size ? `${estText(t, left)} left` : estText(t, size);
   return p > 0 ? `${p}% · ${lbl}` : lbl;
 }
 

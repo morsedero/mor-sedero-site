@@ -270,7 +270,14 @@ test("why: phrase table — deadline, stakes, office, area, batch, window, momen
   assert.match(why(dl("2026-10-06")), /deadline tomorrow/i);
   assert.match(why(dl("2026-10-08")), /deadline Thursday/i);
   assert.match(why(dl("2026-10-01")), /deadline passed/i);
-  assert.match(why(task({ stakes: "someone", title: "Send the stems to Sofi" })), /Sofi is waiting on it/i);
+  // Truthful reasons (2026-10-11): what the user marked, never a name pulled from the title.
+  assert.match(why(task({ stakes: "someone", title: "Send the stems to Sofi" })), /you marked it as affecting someone/i);
+  assert.doesNotMatch(why(task({ stakes: "someone", title: "Send the stems to Sofi" })), /Sofi|waiting/i);
+  // A guessed stake or office hours still ranks, unsaid.
+  assert.doesNotMatch(why(task({ stakes: "penalty", guessed: ["stakes"] })), /penalty/i);
+  assert.doesNotMatch(why(task({ openHours: "office", type: "admin", size: 30, guessed: ["openHours"] }), { now: at(5, 14), window: 60 }), /offices/i);
+  // A guessed size is said as an estimate.
+  assert.match(why(task({ size: 10, guessed: ["size"] }), { window: 120 }), /~10 min est, quick win/i);
   assert.match(why(task({ stakes: "penalty" })), /penalty if late/i);
   assert.match(why(task({ openHours: "office", type: "admin", size: 30 }), { now: at(5, 14), window: 60 }), /offices close at 16:00/i);
   assert.match(why([task({ area: "job" }), task({ area: "work", size: 61 })], { areaDone: { work: 3 } }), /Job search hasn't moved this week/i);
@@ -283,9 +290,8 @@ test("why: phrase table — deadline, stakes, office, area, batch, window, momen
 test("why: names are their own pieces, so the UI can isolate them (bidi)", () => {
   const s = pick(task({ project: "חתונה" }), { lastProject: "חתונה" });
   assert.ok(s.whyParts.some((p) => typeof p === "object" && p.name === "חתונה"));
-  const he = pick(task({ title: "Send it to Sofi", stakes: "someone", project: "מסים" }));
-  assert.ok(he.whyParts.some((p) => p.name === "Sofi"));
-  assert.ok(pick(task({ title: "לשלוח את הסטמס ל-Yuval", stakes: "someone" })).whyParts.some((p) => p.name === "Yuval"));
+  // A person is never pulled out of a title into a reason (2026-10-11).
+  assert.ok(!pick(task({ title: "לשלוח את הסטמס ל-Yuval", stakes: "someone" })).whyParts.some((p) => p.name === "Yuval"));
 });
 
 test("why: the card and its alternatives never share a why line", () => {
