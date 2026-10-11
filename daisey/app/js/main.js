@@ -28,6 +28,14 @@ function paintChip(){
   $("#planW").textContent = p ? "Plan" : "Plan my day";
   c.ariaLabel = p ? "Today's plan. Open it to change it" : planReady ? "Plan my day: a plan is ready to look at" : "Plan my day";
 }
+// Approving a plan makes the chip celebrate (Mor, 2026-10-12): a pop, a ring
+// out from it and the ✓ drawing itself in, once (app.css .approved).
+function cheerPlan(){
+  const c = $("#planChip");
+  c.classList.remove("approved");
+  requestAnimationFrame(() => requestAnimationFrame(() => c.classList.add("approved")));
+  clearTimeout(cheerPlan.t); cheerPlan.t = setTimeout(() => c.classList.remove("approved"), 1800);
+}
 function paintNeeds(n){
   $("#needsChip").hidden = !n;
   $("#needsN").textContent = String(n);
@@ -632,7 +640,7 @@ async function boot(){
         $("#planChip").onclick = () => m.now?.plan();
         m.now = mountNow($("#nowcard"), user.uid, {
           name: isGuest ? "" : (user.displayName || "").trim().split(/\s+/)[0], onDone: paintDone, onNeedsCount: paintNeeds, onPlanProgress: paintPlan,
-          onPlanReady: paintReady,
+          onPlanReady: paintReady, onPlanApproved: cheerPlan,
           onFocusMode: (on) => { const b = $("#focusChip"); b.setAttribute("aria-pressed", String(on)); b.ariaLabel = on ? "Focus mode on: tap to show everything" : "Focus mode: only the Now card"; },
           planRoot: $("#planPage"),
           // Two frames so the panel and chips settle under the daisy first.

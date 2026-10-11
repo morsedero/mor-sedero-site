@@ -50,7 +50,7 @@ const clock = (ms) => new Date(ms).toLocaleTimeString([], { hour: "2-digit", min
 // how many tasks are done today, for the header's chip. onNeedsCount(n):
 // how many decisions Needs you holds, for the amber chip.
 // onWrap(): the evening wrap (Needs you: each task still open for today).
-export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap, name = "", onDone, onNeedsCount, onPlanProgress, onPlanReady, planRoot, onPlanScreen, onReady, onFocusMode, missDialog = null, guest = false } = {}){
+export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap, name = "", onDone, onNeedsCount, onPlanProgress, onPlanReady, onPlanApproved, planRoot, onPlanScreen, onReady, onFocusMode, missDialog = null, guest = false } = {}){
   let tasks = null; // null until the first snapshot
   let settings = {}; // state/settings: when the sweep was last offered
   let momentDoc = {}, momentKnown = false; // state/moment: place corrections, cardSeen
@@ -1494,6 +1494,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     savePlan("approved", items, { approvedAt: Date.now(), mealsLaid: mealAnswers(), behindNo: null, offer: null, unfit });
     prop.open = false; prop.replan = false; prop.ask = false; prop.note = ""; reset();
     render();
+    onPlanApproved?.();
     flash(`Plan set: ${n} ${n === 1 ? "task" : "tasks"}. The card follows it.`);
   }
   function dismiss(){ savePlan("dismissed", []); closeProposal(); }

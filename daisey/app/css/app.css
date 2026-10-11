@@ -1399,6 +1399,17 @@ dialog.tsheet .msg:empty { display: none; }
 .plan-ic { position: relative; display: inline-flex; }
 #planChip .ic-ok, #planChip:not(.empty) .ic-add { display: none; }
 #planChip:not(.empty) .ic-ok { display: block; }
+/* Plan approved (Mor, 2026-10-12): the chip pops, a ring goes out from it
+   twice and the ✓ draws itself in (main.js cheerPlan). */
+@media (prefers-reduced-motion: no-preference) {
+  #planChip.approved { animation: plan-pop .6s cubic-bezier(.3, 1.6, .5, 1), plan-ring 1.1s ease-out .1s 2; }
+  #planChip.approved .ic-ok { animation: plan-ic-pop .6s cubic-bezier(.3, 1.6, .5, 1) .1s; }
+  #planChip.approved .ic-ok path:last-child { stroke-dasharray: 10; stroke-dashoffset: 10; animation: plan-tick .45s ease-out .3s forwards; }
+}
+@keyframes plan-pop { 0% { transform: scale(1); } 35% { transform: scale(1.12); } 100% { transform: scale(1); } }
+@keyframes plan-ic-pop { 0% { transform: scale(.6) rotate(-12deg); } 60% { transform: scale(1.25) rotate(4deg); } 100% { transform: none; } }
+@keyframes plan-tick { to { stroke-dashoffset: 0; } }
+@keyframes plan-ring { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--a-admin-ink) 60%, transparent); } 100% { box-shadow: 0 0 0 12px transparent; } }
 #side .hchip.ready .hchip-dot { display: block; position: absolute; inset-block-start: -2px; inset-inline-end: -4px; outline: 2px solid var(--a-admin-tint); }
 body.focus #side { display: none; }
 /* While Switch, Pending or Later is open under the card, the side buttons
