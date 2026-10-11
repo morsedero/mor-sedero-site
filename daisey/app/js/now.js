@@ -1885,7 +1885,11 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     root.replaceChildren(...kids);
     // A rebuilt card would restart its idle bob (breathe, 5s) from the top and
     // jump; keep the phase on the wall clock so every rebuild carries on.
-    root.querySelectorAll(".deck > .now-card.main").forEach((c) => { c.style.animationDelay = `${-(Date.now() % 5000)}ms`; });
+    // Same for the light round its edge (app.css sc-orbit, 9s).
+    root.querySelectorAll(".deck > .now-card.main").forEach((c) => {
+      c.style.animationDelay = `${-(Date.now() % 5000)}ms`;
+      c.style.setProperty("--orbit", `${-(Date.now() % 9000)}ms`);
+    });
   };
   // The day screens: the card and what's under it. (After this and the
   // Needs you row went with round 3: the panel's Schedule page and the
