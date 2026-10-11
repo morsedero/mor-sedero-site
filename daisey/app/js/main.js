@@ -683,14 +683,14 @@ async function boot(){
             if (on === was) return;
             document.body.classList.remove("fm-in", "fm-out"); void document.body.offsetWidth;
             document.body.classList.add(on ? "fm-in" : "fm-out");
-            clearTimeout(fmTimer); fmTimer = setTimeout(() => document.body.classList.remove("fm-in", "fm-out"), 2800);
+            clearTimeout(fmTimer); fmTimer = setTimeout(() => document.body.classList.remove("fm-in", "fm-out"), 2000);
             // Slow slide (Mor, 2026-10-12): the Now card and the Focus chip glide
             // from where they were to where the mode puts them. Measured now, and
             // again once now.js has toggled body.focus-mode (after this returns).
             // #nowcard is a scroll box and would clip the card mid-slide, so it
             // lets it out until the slide ends.
             if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-            const T = { duration: 1600, easing: "cubic-bezier(.45, 0, .2, 1)" };
+            const T = { duration: 800, easing: "cubic-bezier(.25, .8, .25, 1)" };
             const pick = () => [document.querySelector(".deck > .now-card.main"), b];
             const first = pick().map((el) => el?.getBoundingClientRect());
             queueMicrotask(() => pick().forEach((el, i) => {
