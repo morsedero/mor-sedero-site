@@ -254,12 +254,14 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
         // The name is the heading; what the tier means sits behind it, shown
         // on hover with a mouse or a tap with a finger (Mor, 2026-10-11).
         h("div", { className: "pp-tier" }, h("button", { type: "button", className: "pp-tier-name", textContent: TIER_TEXT[t][0], ariaExpanded: "false", onclick: tierTip }), h("span", { className: "pp-tier-sub", role: "tooltip", textContent: TIER_TEXT[t][1] }),
-          // Focus's size lives here, on its own header (Mor, 2026-10-10: out of Settings): "2/3", the 3 picks 1–5.
+          // Focus's size lives here, on its own header (Mor, 2026-10-10: out of Settings):
+          // the count, then a "Max 3" pill that picks 1–5 (Mor, 2026-10-11: a bare "/3" didn't read as editable).
           t === "focus"
-            ? h("span", { className: "pp-tier-n" }, `${ins.length}/`,
-                h("select", { className: "pp-tier-max", ariaLabel: "Most projects in Focus", title: "Most projects in Focus",
-                  onchange: (e) => { focusMax = Number(e.target.value); saveSettings(uid, { focusMax }).catch(fail); render(); } },
-                  ...[1, 2, 3, 4, 5].map((n) => h("option", { value: n, selected: n === focusMax, textContent: String(n) }))))
+            ? h("span", { className: "pp-tier-n" }, String(ins.length),
+                h("span", { className: "pp-tier-maxpill" },
+                  h("select", { className: "pp-tier-max", ariaLabel: "Most projects in Focus at once", title: "Most projects in Focus at once",
+                    onchange: (e) => { focusMax = Number(e.target.value); saveSettings(uid, { focusMax }).catch(fail); render(); } },
+                    ...[1, 2, 3, 4, 5].map((n) => h("option", { value: n, selected: n === focusMax, textContent: `Max ${n}` })))))
             : h("span", { className: "pp-tier-n", textContent: String(ins.length) })),
         h("span", { className: "pp-tier-empty", textContent: "Drag a project here" }), ...ins.map(card)); };
     const y = els.grid.scrollTop;
