@@ -348,7 +348,10 @@ test("tiers: Focus scores most, Background waits unless a date pulls it up", () 
   assert.equal(parts(task({ project: "Mid" }), { projectTiers: tiers }).priority, W.TIER.keep);
   assert.equal(parts(task({ project: "Low" }), { projectTiers: tiers }).priority, W.TIER.background);
   assert.equal(parts(task({ project: "New" }), { projectTiers: tiers }).priority, W.TIER.keep); // no tier yet
-  assert.equal(parts(task({ project: "Inbox" }), { projectTiers: { Inbox: "focus" } }).priority, W.TIER.keep); // Inbox isn't ranked
+  // The Inbox ranks like any project, and no project is the Inbox (2026-10-11).
+  assert.equal(parts(task({ project: "Inbox" }), { projectTiers: { Inbox: "focus" } }).priority, W.TIER.focus);
+  assert.equal(parts(task({ project: "" }), { projectTiers: { Inbox: "background" } }).priority, W.TIER.background);
+  assert.equal(pick([task({ project: "", title: "Inbox one" }), task({ project: "Mid", title: "Mid two" })], { projectTiers: { ...tiers, Inbox: "background" } }).task.title, "Mid two");
   const low = task({ project: "Low", title: "Low one", size: 30 }), mid = task({ project: "Mid", title: "Mid one", size: 45, createdAt: NOW + 1 });
   assert.equal(pick([mid, task({ project: "Top", title: "Top one" })], { projectTiers: tiers }).task.title, "Top one");
   // Background waits behind any other offerable task, even a worse fit…

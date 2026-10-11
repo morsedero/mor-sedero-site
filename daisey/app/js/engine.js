@@ -248,11 +248,12 @@ export function areaBalance(task, m, areas){
 }
 
 // The project's tier on the Projects page (Mor, 2026-10-08): Focus, Keep
-// going, Background (weights TIER). No tier set → keep; the Inbox (or no
-// project) is always keep — it's unsorted tasks, not a project to rank.
+// going, Background (weights TIER). No tier set → keep. The Inbox (or no
+// project, which is the Inbox) ranks like any project: moved to Background,
+// its tasks wait too (Mor, 2026-10-11).
 export function tierOf(task, m){
-  const p = key(task.project);
-  return !p || p === "inbox" ? "keep" : W.TIERS.includes(m.projectTiers[p]) ? m.projectTiers[p] : "keep";
+  const t = m.projectTiers[key(task.project) || "inbox"];
+  return W.TIERS.includes(t) ? t : "keep";
 }
 function priority(task, m){
   const tier = tierOf(task, m);
