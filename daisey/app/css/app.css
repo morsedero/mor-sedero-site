@@ -237,7 +237,7 @@ input:is([type="checkbox"], [type="radio"]):disabled { opacity: .45; cursor: def
 .sheet-form .field { gap: 7px; }
 .sheet-form .field input, .sheet-form .field select, .sheet-form .field textarea { padding: 11px 12px; border-radius: 12px; }
 .sheet-form > .btn.primary { justify-self: end; min-inline-size: 120px; }
-.sheet-stack { display: grid; gap: 10px; }
+.sheet-stack { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; }
 /* Two fields side by side (the two dates); one column when there's no room. */
 .sheet-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; align-items: start; }
 @media (max-width: 420px) { .sheet-row { grid-template-columns: 1fr; } }
@@ -267,7 +267,9 @@ input:is([type="checkbox"], [type="radio"]):disabled { opacity: .45; cursor: def
 }
 .now::backdrop { background: rgba(31,29,26,.45); }
 .now-head { display: flex; align-items: center; justify-content: space-between; margin-block-end: 8px; }
-.now-head h2 { margin: 0; font-size: 22px; }
+.now-head { gap: 8px; }
+.now-head h2 { margin: 0; font-size: 22px; min-inline-size: 0; overflow-wrap: anywhere; }
+.now-x { flex: none; }
 .now-x { font: inherit; font-size: 18px; inline-size: 40px; block-size: 40px; border: 0; border-radius: 999px; background: transparent; color: var(--ink-2); cursor: pointer; }
 .now-body { display: grid; gap: 14px; }
 .now-group { display: grid; gap: 6px; }
@@ -460,9 +462,12 @@ a.ev-place small { text-decoration: underline; text-underline-offset: 3px; }
 
 /* The task sheet's own actions, under the fields (addtask.js in edit mode). */
 .sheet-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-block-start: 12px; padding-block-start: 12px; border-block-start: 1px solid var(--line); }
-.pg-row { display: flex; align-items: center; gap: 12px; }
-.pg-row input[type="range"] { flex: 1; min-inline-size: 0; }
-.pg-row .btn { flex: none; white-space: nowrap; min-inline-size: 7.5em; font-variant-numeric: tabular-nums; }
+/* "How much is done?": slider and Done X% share a row while the slider keeps
+   ~140px; narrower (small phone, big text) the button wraps under it, at
+   the right. Nothing pokes past the sheet's padding. */
+.pg-row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; min-inline-size: 0; }
+.pg-row input[type="range"] { flex: 1 1 140px; inline-size: 0; min-inline-size: 0; margin: 0; }
+.pg-row .btn { flex: none; margin-inline-start: auto; white-space: nowrap; font-variant-numeric: tabular-nums; }
 .sheet-actions .btn.wide { flex: 1; }
 .sheet-actions .btn.danger { margin-inline-start: auto; color: var(--danger); background: none; }
 .sheet-actions .btn.danger:hover:not(:disabled) { background: color-mix(in srgb, var(--danger) 8%, transparent); }
