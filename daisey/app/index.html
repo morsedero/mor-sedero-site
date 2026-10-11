@@ -64,9 +64,6 @@
       <!-- Focus mode (Mor, 2026-10-10): the Now card and nothing around it.
            The same button in and out; now.js keeps it in settings. -->
       <button id="focusChip" class="hchip plan focus-chip" type="button" aria-pressed="false" hidden><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9V5.5A1.5 1.5 0 0 1 5.5 4H9M15 4h3.5A1.5 1.5 0 0 1 20 5.5V9M20 15v3.5a1.5 1.5 0 0 1-1.5 1.5H15M9 20H5.5A1.5 1.5 0 0 1 4 18.5V15"/></svg><span class="hchip-word">Focus</span></button>
-      <!-- Plan ready (Mor, 2026-10-11): the morning's plan as a notification,
-           not opened over you, and apart from Needs you. now.js says when. -->
-      <button id="planReady" class="hchip ready" type="button" aria-label="Your plan for today is ready. Open it" hidden><span class="hchip-dot" aria-hidden="true"></span><span>Plan</span><span class="hchip-word">&nbsp;ready</span></button>
       <!-- Needs you: amber, only when something does (now.js counts, main.js paints). -->
       <button id="needsChip" class="hchip needs" type="button" hidden><span class="hchip-dot" aria-hidden="true"></span><span id="needsN">0</span><span id="needsW" class="hchip-word"></span></button>
       <!-- Account: Google-style avatar; tap for email + sign out. -->
@@ -102,7 +99,10 @@
       <section id="nowcard" aria-label="Now" hidden></section>
       <!-- Right column beside the Now card (Mor, 2026-10-08): Plan and Projects.
            Plan: "Plan my day" until a plan is approved, then done/total; tap
-           either way to open it (now.js reports, main.js paints). -->
+           either way to open it (now.js reports, main.js paints). When the
+           morning's plan is waiting it turns blue with a pulsing dot and
+           reads "Plan ready" (Mor, 2026-10-11: the chip itself, not a
+           second one in the header). -->
       <aside id="side" class="side" aria-label="Plan and projects">
         <button id="planChip" class="hchip plan empty" type="button" hidden><span class="hchip-dot" aria-hidden="true"></span><span id="planW" class="hchip-word">Plan my day</span><span id="planN"></span></button>
         <button id="projectsChip" class="hchip plan" type="button" hidden aria-label="Projects" aria-pressed="false"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/></svg><span class="hchip-word">Projects</span></button>

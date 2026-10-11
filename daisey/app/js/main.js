@@ -15,16 +15,20 @@ import { flash, h, bdi, icon } from "./ui.js";
 // The Plan chip is the plan only (Mor, 2026-10-11): "Plan d/t" (done-today
 // tasks outside the plan count in both), else "Plan my day". The done list
 // moved to the Week page, so the chip no longer shows "✓ n".
-let planNow = null;
+// While the morning's plan waits (now.js onPlanReady) the same chip turns
+// blue, pings and reads "Plan ready" (Mor, 2026-10-11).
+let planNow = null, planReady = false;
 function paintDone(){}
 function paintPlan(p){ planNow = p; paintChip(); }
+function paintReady(on){ planReady = !!on; paintChip(); }
 function paintChip(){
-  const p = planNow;
-  $("#planChip").hidden = false;
-  $("#planChip").classList.toggle("empty", !p);
-  $("#planW").textContent = p ? "Plan " : "Plan my day";
-  $("#planN").textContent = p ? `${p.done}/${p.total}` : "";
-  $("#planChip").ariaLabel = p ? `Today's plan: ${p.done} of ${p.total} done. Open it to change it` : "Plan my day";
+  const p = planNow, c = $("#planChip");
+  c.hidden = false;
+  c.classList.toggle("empty", !p || planReady);
+  c.classList.toggle("ready", planReady);
+  $("#planW").textContent = planReady ? "Plan ready" : p ? "Plan " : "Plan my day";
+  $("#planN").textContent = p && !planReady ? `${p.done}/${p.total}` : "";
+  c.ariaLabel = planReady ? "Your plan for today is ready. Open it" : p ? `Today's plan: ${p.done} of ${p.total} done. Open it to change it` : "Plan my day";
 }
 function paintNeeds(n){
   $("#needsChip").hidden = !n;
@@ -218,11 +222,11 @@ async function boot(){
     if (mounted) { for (const m of Object.values(mounted)) m?.unmount(); mounted = null; }
     for (const s of SIGNED_IN) $(s).hidden = true;
     paintNeeds(0);
+    planReady = false;
     paintPlan(null);
     paintDone(0);
     avatar.hidden = !user;
     $("#planChip").hidden = !user;
-    $("#planReady").hidden = true; // now.js lights it
     $("#projectsChip").hidden = !user;
     $("#weekChip").hidden = !user;
     $("#focusChip").hidden = !user;
@@ -620,10 +624,10 @@ async function boot(){
           onScreen: (name) => { if (name) { screens.open("project"); syncPanel(); } else screens.back(); },
         });
         syncPanel();
-        $("#planChip").onclick = $("#planReady").onclick = () => m.now?.plan();
+        $("#planChip").onclick = () => m.now?.plan();
         m.now = mountNow($("#nowcard"), user.uid, {
           name: isGuest ? "" : (user.displayName || "").trim().split(/\s+/)[0], onDone: paintDone, onNeedsCount: paintNeeds, onPlanProgress: paintPlan,
-          onPlanReady: (on) => { $("#planReady").hidden = !on; },
+          onPlanReady: paintReady,
           onFocusMode: (on) => { const b = $("#focusChip"); b.setAttribute("aria-pressed", String(on)); b.ariaLabel = on ? "Focus mode on: tap to show everything" : "Focus mode: only the Now card"; },
           planRoot: $("#planPage"),
           // Two frames so the panel and chips settle under the daisy first.

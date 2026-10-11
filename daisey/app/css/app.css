@@ -420,7 +420,7 @@ body.focus .topbar, body.focus #panel, body.focus .dock, body.focus .now-greet {
 body.focus #board { display: block; }
 /* Focus mode (Mor, 2026-10-10): the same Now card and its actions, nothing
    around it. The header keeps the daisy, the clock and the Focus toggle. */
-body.focus-mode :is(#side, #panel, .dock, .tell-panel, .now-greet, .now-top, #needsChip, #planReady, .acct) { display: none; }
+body.focus-mode :is(#side, #panel, .dock, .tell-panel, .now-greet, .now-top, #needsChip, .acct) { display: none; }
 .hdr-end .hchip.focus-chip[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); color: var(--card); }
 body.focus .shell { padding-block: max(18px, env(safe-area-inset-top)) max(24px, env(safe-area-inset-bottom)); }
 /* "Hold to finish" (focus.js holdButton): a deeper amber fills from
@@ -1346,8 +1346,8 @@ dialog.tsheet .msg:empty { display: none; }
 .hchip.needs { border: 1px solid var(--a-job-line); background: var(--a-job-tint); color: color-mix(in srgb, var(--a-job-ink) 80%, var(--ink)); cursor: pointer; }
 .hchip.needs::after { content: ""; position: absolute; inset: -7px -2px; } /* 44px to the finger */
 .hchip-dot { inline-size: 7px; block-size: 7px; border-radius: 50%; background: var(--accent); }
-/* Plan ready: a notification in blue, apart from Needs you's amber; the dot pings. */
-.hchip.ready { border: 1px solid var(--a-admin-line); background: var(--a-admin-tint); color: var(--a-admin-ink); cursor: pointer; animation: ready-in .35s ease-out; }
+/* Plan ready: the Plan chip turns blue, apart from Needs you's amber; the dot pings. */
+.hchip.plan.ready, .hchip.ready { border: 1px solid var(--a-admin-line); background: var(--a-admin-tint); color: var(--a-admin-ink); cursor: pointer; animation: ready-in .35s ease-out; }
 .hchip.ready::after { content: ""; position: absolute; inset: -7px -2px; } /* 44px to the finger */
 .hchip.ready .hchip-dot { background: var(--a-admin-ink); animation: ready-ping 2.4s ease-out infinite; }
 @keyframes ready-in { from { opacity: 0; transform: translateY(-4px) scale(.96); } }
@@ -1360,18 +1360,13 @@ dialog.tsheet .msg:empty { display: none; }
    ran under Focus whenever Plan ready and Needs you were both up).
    Room for the chips is about the screen less 152 px. */
 /* Focus always keeps its word (round 2, 2026-10-11: an icon alone, and a
-   first-timer couldn't guess it); on a phone the others give theirs up instead. */
-.hdr-end:has(#needsChip:not([hidden])) #planReady .hchip-word { display: none; }
+   first-timer couldn't guess it); on a phone Needs you gives up its word instead. */
 @media (max-width: 429px) {
-  .hdr-end:has(#focusChip:not([hidden])) :is(#needsChip, #planReady) .hchip-word { display: none; }
+  .hdr-end:has(#focusChip:not([hidden])) #needsChip .hchip-word { display: none; }
   .hchip.plan:not(.empty):not(.focus-chip) .hchip-word, .hchip.plan .hchip-dot { display: none; } .hchip.plan { padding-inline: 9px; } .hdr-end { gap: 6px; }
-  .hdr-end:has(#planReady:not([hidden])) #needsChip .hchip-word { display: none; }
 }
 @media (max-width: 359px) {
   .hdr-end .hchip:not(.focus-chip) > .hchip-word, .hdr-end .focus-chip > svg { display: none; }
-  /* …except beside Plan ready too: there's no room, the icon stays. */
-  .hdr-end:has(#planReady:not([hidden])) .focus-chip > .hchip-word { display: none; } .hdr-end:has(#planReady:not([hidden])) .focus-chip > svg { display: inline; }
-  .hdr-end:has(#planReady:not([hidden])):has(#needsChip:not([hidden])) .hchip-dot { display: none; }
   .hdr-end .hchip { padding-inline: 8px; } .hdr-end .hchip.plan:not(.focus-chip) { inline-size: 34px; justify-content: center; padding: 0; } .hdr-end .hchip.needs { min-inline-size: 30px; justify-content: center; } .hdr-end { gap: 5px; }
 }
 #status { margin-block-start: 16px; }
@@ -1399,6 +1394,7 @@ dialog.tsheet .msg:empty { display: none; }
 #side .hchip[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); color: var(--card); }
 #side .hchip .hchip-word, #side .hchip.plan:not(.empty) .hchip-word { display: inline; }
 #side .hchip .hchip-dot { display: none; }
+#side .hchip.ready .hchip-dot { display: block; flex: none; }
 #side .hchip #planN { font-size: 13px; }
 body.focus #side { display: none; }
 /* While Switch, Pending or Later is open under the card, the side buttons
