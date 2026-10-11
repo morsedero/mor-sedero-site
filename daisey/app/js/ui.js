@@ -228,9 +228,9 @@ export function askProgress(task, { onFull, onPartial, onCancel, start = 50 }){
   d.replaceChildren(head("How much is done?"),
     h("p", { className: "muted", dir: "auto", textContent: task.title }),
     h("div", { className: "sheet-stack" }, out, range,
-      h("div", { className: "sheet-actions" },
-        h("button", { className: "btn primary", type: "button", textContent: "All done · 100%", onclick: () => { chose = true; close(); onFull(); } }),
-        part)));
+      // Part done on the left, all done on the right (Mor, 2026-10-11).
+      h("div", { className: "sheet-actions split" }, part,
+        h("button", { className: "btn primary", type: "button", textContent: "All done · 100%", onclick: () => { chose = true; close(); onFull(); } }))));
   d.onclick = (e) => { if (e.target === d) close(); };
   document.body.append(d);
   d.showModal();

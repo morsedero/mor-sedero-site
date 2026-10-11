@@ -460,6 +460,9 @@ a.ev-place small { text-decoration: underline; text-underline-offset: 3px; }
 
 /* The task sheet's own actions, under the fields (addtask.js in edit mode). */
 .sheet-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-block-start: 12px; padding-block-start: 12px; border-block-start: 1px solid var(--line); }
+.sheet-actions.split { flex-wrap: nowrap; justify-content: space-between; }
+.sheet-actions.split .btn { white-space: nowrap; padding-inline: 14px; }
+@media (max-width: 340px) { .sheet-actions.split .btn { padding-inline: 10px; font-size: 14px; } }
 .sheet-actions .btn.danger { margin-inline-start: auto; color: var(--danger); background: none; }
 .sheet-actions .btn.danger:hover:not(:disabled) { background: color-mix(in srgb, var(--danger) 8%, transparent); }
 /* The last line of the sheet: Delete at one end, Add/Save at the other. */
