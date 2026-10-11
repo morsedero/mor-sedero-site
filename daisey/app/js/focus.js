@@ -156,7 +156,11 @@ export function dropAway(el){
     x += vx * dt; y += vy * dt; a += va * dt;
     f.push([t, x, y, a]);
   }
-  const T = t;
+  // The last frame must sit at offset 1: short of it, the browser fills the
+  // gap with an implicit keyframe at the card's own spot, and the copy
+  // flashed back there for a frame or two before it was removed (Mor's
+  // recording, 2026-10-11).
+  const T = f[f.length - 1][0];
   const anim = c.animate(f.map(([ft, fx, fy, fa]) => ({ offset: ft / T,
     transform: `perspective(900px) translate(${fx.toFixed(1)}px, ${fy.toFixed(1)}px) rotate(${fa.toFixed(2)}deg) rotateX(${Math.min(16, fy * 0.03).toFixed(1)}deg)` })),
     { duration: T, easing: "linear", fill: "forwards" });
