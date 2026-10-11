@@ -21,7 +21,7 @@ import { placeNow, workBase, watchProjectTiers } from "./context.js";
 import { watchWhere, setManual, setStill, saveSpot, whereAsk, homeAt } from "./where.js";
 import { withTrips, ridingAs, stillRiding, asPassenger, chainFrom, setTripDay, MODES, tripAsks, answer as tripAnswer, noTrip } from "./trips.js";
 import { pickWeekDay } from "./triage.js";
-import { sinceMark, runCap, bookedMinutes, celebrate, dropAway } from "./focus.js";
+import { sinceMark, runCap, bookedMinutes, celebrate, dropAway, PUSH_MS } from "./focus.js";
 import { watchCalendar } from "./calendar.js";
 import { LATER_MINUTES, DRAIN, CANCEL_KEEP_MINUTES, LIGHTER } from "./weights.js";
 import { missState, silenceText, lastActivity } from "./miss.js";
@@ -91,6 +91,18 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
   const sd = { open: false, picked: [], all: false, sel: [] };
   let toast = null; // { text, task, before } for 5 s after Later or Pending
   let slideIn = false; // one slide per step-aside, not one per snapshot
+  // After Done the next card pushes in (focus.js dropAway); a snapshot that
+  // rebuilds it mid-push picks the push up where it is, and the idle bob
+  // then starts from rest at the push's end rather than jumping to the
+  // wall clock's phase.
+  let pushAt = 0, breathEpoch = 0;
+  const pushIn = (c, since) => {
+    c.classList.add("push-in"); c.style.setProperty("--push-at", `${-since}ms`);
+    c.addEventListener("animationend", (e) => {
+      if (e.target !== c || !e.animationName.startsWith("card-push-in")) return;
+      breathEpoch = Date.now(); c.classList.remove("push-in"); c.style.animationDelay = "0ms";
+    });
+  };
   let toastTimer = null;
   // laterAsk: Later was tapped and the card is asking "when?"
   // pendAsk: Pending was tapped and the card asks what it's waiting on.
@@ -1043,6 +1055,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     // so the snapshot it fires can't redraw the card mid-shine.
     const el = task.id === shown && root.querySelector(".now-card.main");
     if (el?.classList.contains("won")) return; // a second tap mid-shine
+    if (el && Date.now() - pushAt < PUSH_MS) return; // …or while the next card is still pushing in
     navigator.vibrate?.(15);
     const go = () => {
       const before = doneSnapshot(task);
@@ -1893,7 +1906,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
       ...cardActions(card.task, alts)), asking()),
       nextLine(card.task), tip);
     // One slide-in per step-aside: later snapshots must not replay it.
-    if (slideIn) { const how = slideIn === "push" ? "push-in" : "in"; slideIn = false; if (motionOK()) { const c = root.querySelector(".now-card.main"); if (c) { c.style.animationDelay = ""; c.classList.add(how); } } }
+    if (slideIn) { const push = slideIn === "push"; slideIn = false; if (motionOK()) { const c = root.querySelector(".now-card.main"); if (c) { c.style.animationDelay = ""; if (push) { pushAt = Date.now(); pushIn(c, 0); } else c.classList.add("in"); } } }
   }
 
   // (The "Skipped five times. Still want it?" line that lived here moved to
@@ -1915,9 +1928,11 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     // jump; keep the phase on the wall clock so every rebuild carries on.
     // Same for the light round its edge (app.css sc-orbit, 9s).
     root.querySelectorAll(".deck > .now-card.main").forEach((c) => {
-      c.style.animationDelay = `${-(Date.now() % 5000)}ms`;
+      c.style.animationDelay = `${-((Date.now() - breathEpoch) % 5000)}ms`;
       c.style.setProperty("--orbit", `${-(Date.now() % 9000)}ms`);
     });
+    const since = Date.now() - pushAt;
+    if (since < PUSH_MS && motionOK()) root.querySelectorAll(".now-card.main").forEach((c) => pushIn(c, since));
   };
   // The day screens: the card and what's under it. (After this and the
   // Needs you row went with round 3: the panel's Schedule page and the

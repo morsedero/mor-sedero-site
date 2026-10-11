@@ -341,12 +341,13 @@ input:is([type="checkbox"], [type="radio"]):disabled { opacity: .45; cursor: def
 :dir(rtl) .now-card.main.in { animation-name: card-in-rtl; }
 @keyframes card-out-rtl { to { opacity: 0; transform: translateX(12%); } }
 @keyframes card-in-rtl { from { opacity: 0; transform: translateX(-14%); } }
-/* After Done the next card pushes in from the reading end, slowly, shoving
-   the done one off its spot (focus.js dropAway does the fall). */
-.now-card.main.push-in { animation: card-push-in 1s cubic-bezier(.45, .05, .25, 1) both; animation-delay: 0s !important; }
+/* After Done the next card pushes in from the start side, slowly, shoving
+   the done one off its spot (focus.js dropAway: its PUSH_MS / PUSH_EASE must
+   match this). --push-at carries a push across a rebuild (now.js pushIn). */
+.now-card.main.push-in { animation: card-push-in 1.1s cubic-bezier(.4, 0, .2, 1) both; animation-delay: var(--push-at, 0s) !important; }
 :dir(rtl) .now-card.main.push-in { animation-name: card-push-in-rtl; }
-@keyframes card-push-in { from { transform: translateX(100%); } }
-@keyframes card-push-in-rtl { from { transform: translateX(-100%); } }
+@keyframes card-push-in { from { transform: translateX(-100%); } }
+@keyframes card-push-in-rtl { from { transform: translateX(100%); } }
 /* Done (now.js quickDoneNow, Mor 2026-10-11): the card pops and glows, a
    light sweeps across it (.won-shine), confetti and sparkles go up round it
    (focus.js celebrate), then .out slides it away. */
@@ -354,7 +355,7 @@ input:is([type="checkbox"], [type="radio"]):disabled { opacity: .45; cursor: def
 @keyframes won-pop {
   0% { transform: scale(1); }
   30% { transform: scale(1.035); box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 55%, transparent), 0 0 36px color-mix(in srgb, var(--accent) 60%, transparent); }
-  100% { transform: scale(1.01); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 35%, transparent), 0 0 24px color-mix(in srgb, var(--accent) 40%, transparent); }
+  100% { transform: scale(1); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 35%, transparent), 0 0 24px color-mix(in srgb, var(--accent) 40%, transparent); }
 }
 .won-shine { position: absolute; inset: 0; z-index: 2; border-radius: inherit; pointer-events: none;
   background: linear-gradient(105deg, transparent 38%, rgb(255 255 255 / .55) 47%, rgb(255 255 255 / .85) 50%, rgb(255 255 255 / .55) 53%, transparent 62%) no-repeat;

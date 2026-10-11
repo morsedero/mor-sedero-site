@@ -112,41 +112,53 @@ export function celebrate(el){
   setTimeout(() => box.remove(), 1400);
 }
 
-// After Done (Mor, 2026-10-11): the next card pushes in from the reading end
-// and shoves this one off its spot; it tips over the edge and falls down the
-// screen like a real card. A copy, fixed over the page, does the falling so
-// nothing clips it and the next card can render in place right away. Its
-// path is a small simulation (shove, tip, gravity, a little air drag),
-// sampled at 60 fps into keyframes.
+// After Done (Mor, 2026-10-11): the next card pushes in from the start side
+// (left; right in RTL) and shoves this one off its spot; it tips over the
+// far edge and falls down the screen like a real card. A copy, fixed over
+// the page, does the falling so nothing clips it and the next card can
+// render in place right away. Its path is a small simulation sampled at
+// 60 fps: while the cards touch, this one rides the next card's own curve
+// (PUSH_MS / PUSH_EASE = .push-in in app.css); a tenth of its width along
+// it goes over the edge, drags as it pivots, then gravity takes it. Tuned
+// so it falls down through a phone screen, not out its side.
+export const PUSH_MS = 1100;
+const PUSH_EASE = [0.4, 0, 0.2, 1];
+const bezier = ([x1, y1, x2, y2]) => {
+  const cx = 3 * x1, bx = 3 * (x2 - x1) - cx, ax = 1 - cx - bx, cy = 3 * y1, by = 3 * (y2 - y1) - cy, ay = 1 - cy - by;
+  const X = (t) => ((ax * t + bx) * t + cx) * t, Y = (t) => ((ay * t + by) * t + cy) * t, dX = (t) => (3 * ax * t + 2 * bx) * t + cx;
+  return (x) => { let t = x; for (let i = 0; i < 8; i++) { const d = X(t) - x, v = dX(t); if (Math.abs(d) < 1e-6 || !v) break; t -= d / v; } return Y(Math.min(1, Math.max(0, t))); };
+};
 export function dropAway(el){
   if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-  const r = el.getBoundingClientRect();
-  const rtl = getComputedStyle(el).direction === "rtl", s = rtl ? 1 : -1; // pushed toward the start
+  const r = el.getBoundingClientRect(), glow = getComputedStyle(el).boxShadow;
+  const rtl = getComputedStyle(el).direction === "rtl", s = rtl ? -1 : 1; // pushed toward the end side
   const c = el.cloneNode(true);
   c.classList.remove("won", "in", "out", "push-in");
   c.querySelector(".won-shine")?.remove();
   c.querySelectorAll("[id]").forEach((n) => n.removeAttribute("id"));
   c.removeAttribute("id"); c.setAttribute("aria-hidden", "true"); c.inert = true;
   c.style.cssText += `;position:fixed;left:${r.left}px;top:${r.top}px;width:${r.width}px;height:${r.height}px;margin:0;z-index:60;` +
-    `pointer-events:none;animation:none;transform-origin:${rtl ? "right" : "left"} bottom;box-shadow:0 18px 40px rgb(0 0 0 / .2)`;
+    `pointer-events:none;animation:none;transform:none;will-change:transform;transform-origin:${rtl ? "left" : "right"} bottom;box-shadow:${glow}`;
   document.body.append(c);
-  const dt = 1000 / 60, PUSH = 340, TIP = 260, g = 0.0021, shove = r.width * 0.22, end = innerHeight - r.top + r.width * 0.6;
-  const f = [];
-  let t = 0, x = 0, y = 0, a = 0, rx = 0, vx = 0, vy = 0, va = 0;
-  // The shove: along its spot, still moving when it leaves the edge.
-  for (; t < PUSH; t += dt) { const k = t / PUSH; f.push([t, s * shove * (1.6 * k - 0.6 * k * k), 0, 0, 0]); }
-  x = s * shove; vx = s * shove * 0.4 / PUSH;
-  // Over the edge: it pivots first, then drops, spinning a little faster.
+  const P = bezier(PUSH_EASE), dt = 1000 / 60, W = r.width;
+  const TIP = 300, g = 0.0019, end = innerHeight - r.top + W * 0.6, f = [];
+  let t = 0, x = 0, y = 0, a = 0, vy = 0, va = 0;
+  for (; P(t / PUSH_MS) < 0.1; t += dt) f.push([t, s * W * P(t / PUSH_MS), 0, 0]);
+  const rel = t;
+  x = s * W * P(rel / PUSH_MS);
+  let vx = s * W * (P(rel / PUSH_MS) - P((rel - dt) / PUSH_MS)) / dt;
   for (let n = 0; y < end && n < 240; n++, t += dt) {
-    const tip = t - PUSH < TIP;
-    vy += g * (tip ? 0.35 : 1) * dt; va += s * (tip ? 0.00016 : 0.00002) * dt; vx *= 0.995;
-    x += vx * dt; y += vy * dt; a += va * dt; rx = Math.min(16, rx + 0.12);
-    f.push([t, x, y, a, rx]);
+    const k = Math.min(1, (t - rel) / TIP); // the pivot eases into the fall
+    vy += g * (0.3 + 0.7 * k) * dt; va += s * (0.0003 * (1 - k) + 0.00002 * k) * dt; vx *= k < 1 ? 0.93 : 0.98;
+    x += vx * dt; y += vy * dt; a += va * dt;
+    f.push([t, x, y, a]);
   }
   const T = t;
-  const anim = c.animate(f.map(([ft, fx, fy, fa, frx]) => ({ offset: ft / T,
-    transform: `perspective(900px) translate(${fx.toFixed(1)}px, ${fy.toFixed(1)}px) rotate(${fa.toFixed(2)}deg) rotateX(${frx.toFixed(1)}deg)` })),
+  const anim = c.animate(f.map(([ft, fx, fy, fa]) => ({ offset: ft / T,
+    transform: `perspective(900px) translate(${fx.toFixed(1)}px, ${fy.toFixed(1)}px) rotate(${fa.toFixed(2)}deg) rotateX(${Math.min(16, fy * 0.03).toFixed(1)}deg)` })),
     { duration: T, easing: "linear", fill: "forwards" });
+  // The Done glow fades into the shadow of a card lifted off the page.
+  c.animate([{ boxShadow: glow }, { boxShadow: "0 18px 40px rgb(0 0 0 / .2)" }], { duration: 500, easing: "ease-out", fill: "forwards" });
   const done = () => c.remove();
   anim.finished.then(done, done);
   setTimeout(done, T + 400);
