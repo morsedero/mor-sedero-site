@@ -465,7 +465,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
       skips.add(task.id);
       reset();
       slideIn = true;
-      setToast({ task, before, label, lesson });
+      setToast({ task, before, label, lesson, asking: !isRoutine(task) });
       write().catch(fail);
       render();
     };
@@ -537,7 +537,8 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     clearTimeout(toastTimer);
     toast = t;
     if (t) t.at = Date.now();
-    if (t) toastTimer = setTimeout(() => { toast = null; render(); }, UNDO_MS);
+    // While it asks how much is left it stays, until answered (Mor, 2026-10-11).
+    if (t && !t.asking) toastTimer = setTimeout(() => { toast = null; render(); }, UNDO_MS);
   }
 
   function undo(){
@@ -551,13 +552,14 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     render();
   }
 
-  // Left's − / +: how much the task still needs, 15 min a tap (never under
-  // 5). Each tap writes, and restarts the toast's 5 seconds.
-  function stepLeft(d){
-    if (!toast) return;
+  // "How much is left?": the answer writes progress (model.leftPatch), and
+  // only then does the toast start its 5 seconds. null: Not sure, keep the guess.
+  const LEFT_OPTIONS = [[15, "15 min"], [30, "30 min"], [60, "1 h"], [120, "2 h+"]];
+  function setLeft(m){
+    if (!toast?.asking) return;
     const { task } = toast;
-    toast.left = Math.max(5, (toast.left ?? leftMinutes(task)) + d);
-    restoreTask(uid, task.id, leftPatch(task, toast.left)).catch(fail);
+    toast.asking = false; toast.left = m;
+    if (m) restoreTask(uid, task.id, leftPatch(task, m)).catch(fail);
     setToast(toast);
     render();
   }
@@ -576,18 +578,18 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     const { task } = toast;
     const why = (reason, text, aria) => h("button", { className: "toast-why", type: "button", textContent: text, ariaLabel: aria, onclick: () => teach(reason) });
     // A re-render rebuilds this node, so start its fade where the last left off.
-    const pop = h("div", { className: "toast timed", role: "status" },
+    const pop = h("div", { className: toast.asking ? "toast" : "toast timed", role: "status" },
       h("div", { className: "toast-row" },
         h("span", { className: "toast-text" }, toast.label, bdi(task.title)),
         h("button", { className: "toast-undo", type: "button", textContent: "Undo",
           ariaLabel: `Undo: put ${task.title} back on the card`, onclick: undo })),
-      // Not finished, so how much is left? It starts at Daisey's guess; a
-      // routine's session is always whole, so it never asks.
-      !isRoutine(task) && h("div", { className: "toast-why-row" },
-        h("span", { className: "toast-adj" },
-          h("button", { className: "toast-step", type: "button", textContent: "−", ariaLabel: "Less left", onclick: () => stepLeft(-15) }),
-          h("span", { className: "toast-count" }, `Left ~${dur(toast.left ?? leftMinutes(task))}`),
-          h("button", { className: "toast-step", type: "button", textContent: "+", ariaLabel: "More left", onclick: () => stepLeft(15) }))),
+      // Not finished, so how much is left? Asked plainly, and the toast
+      // waits for it; a routine's session is always whole, so it never asks.
+      toast.asking && h("div", { className: "toast-why-row toast-ask", role: "group", ariaLabel: "How much is left?" },
+        h("span", { className: "toast-ask-q", textContent: "How much is left?" }),
+        ...LEFT_OPTIONS.map(([m, text]) => h("button", { className: "toast-why", type: "button", textContent: text, ariaLabel: `${text} left`, onclick: () => setLeft(m) })),
+        h("button", { className: "toast-why quiet", type: "button", textContent: "Not sure", ariaLabel: "Not sure: keep Daisey's guess", onclick: () => setLeft(null) })),
+      toast.left && h("div", { className: "toast-why-row" }, h("span", { className: "toast-thanks", textContent: `Left: ${dur(toast.left)}` })),
       toast.lesson && (toast.taught
         ? h("div", { className: "toast-why-row" }, h("span", { className: "toast-thanks", textContent: "Got it" }))
         : h("div", { className: "toast-why-row", role: "group", ariaLabel: "Why? (optional)" },

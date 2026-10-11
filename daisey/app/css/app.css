@@ -334,6 +334,9 @@ textarea {
 @media (prefers-reduced-motion: reduce) { .toast, .toast.timed { animation: none; } }
 .toast-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .toast-why-row { display: flex; align-items: center; gap: 8px; }
+.toast-ask { flex-wrap: wrap; }
+.toast-ask-q { flex-basis: 100%; font-size: 13px; font-weight: 600; }
+.toast-why.quiet { background: none; border: 1px solid rgb(255 255 255 / .3); }
 .toast-why { font: inherit; font-size: 12px; color: var(--card); background: rgb(255 255 255 / .14); border: 0; border-radius: 999px; min-block-size: 26px; padding-inline: 10px; cursor: pointer; }
 .toast-thanks { font-size: 12px; opacity: .75; }
 /* A plain flash (ui.js) is one line: text, then Undo beside it, not under it. */
