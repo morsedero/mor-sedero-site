@@ -402,7 +402,10 @@ const sizeWords = (n) => (n === 60 ? "hour" : durText(n));
 // guessed field still scores, unsaid; a guessed size is said as an estimate.
 
 const PHRASES = {
-  deadline: (s, d) => d.passed || d.days < 0 ? [d.project ? [{ name: d.project }, " was due"] : "deadline passed"].flat()
+  // Late says how late (user test 2026-10-11 #14: a 2-day-late invoice read
+  // only "costs money").
+  deadline: (s, d) => d.passed || d.days < 0 ? [d.project ? [{ name: d.project }, " was due"]
+    : d.days < 0 ? `deadline passed ${-d.days === 1 ? "yesterday" : `${-d.days} days ago`}` : "deadline passed"].flat()
     : d.project ? [{ name: d.project }, ` due ${dateWords(d.due, d.days)}${d.lead > 0 ? `, ${estText(s.task, d.left)} still to do` : ""}`]
     : d.lead > 0 ? [`deadline ${dateWords(d.due, d.days)}, ${estText(s.task, d.left)} still to do`]
     : [`deadline ${dateWords(d.due, d.days)}`],
@@ -412,9 +415,10 @@ const PHRASES = {
     ? [d.daysLeft === 1 ? `last day to make ${d.per} this week` : `${d.need} more this week, ${d.daysLeft} days left`]
     : [`keeps your ${d.per}× a week going`],
   target: (s, d) => [`planned for ${d.days <= 0 ? "today" : dateWords(effectiveDue(s.task), d.days)}`],
-  stakes: (s, d) => isGuess(s.task, "stakes") ? null
-    : d.kind === "money" ? ["costs money if late"]
-    : d.kind === "penalty" ? ["there's a penalty if late"]
+  // Once the deadline has passed, "if late" is past tense: it's late now.
+  stakes: (s, d, late = !!s.details.deadline?.passed) => isGuess(s.task, "stakes") ? null
+    : d.kind === "money" ? [late ? "costing money now" : "costs money if late"]
+    : d.kind === "penalty" ? [late ? "the penalty applies now" : "there's a penalty if late"]
     : d.kind === "someone" ? ["you marked it as affecting someone"]
     : null,
   priority: (s, d) => (d.tier === "focus" ? [{ name: s.task.project }, " is in Focus"] : null),

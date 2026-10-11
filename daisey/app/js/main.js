@@ -607,7 +607,14 @@ async function boot(){
           // then: what to open once Needs you is shut. After the back step's
           // popstate, or the closeScreens it runs would shut that too.
           onClose: (then) => { const pop = !!history.state?.daisey; if (then && pop) addEventListener("popstate", () => then(), { once: true }); screens.back(); if (then && !pop) then(); },
-          extra: () => m.now?.needsAsks() || [] });
+          extra: () => m.now?.needsAsks() || [],
+          // Back after days away: the catch-up opens by itself (needs.js
+          // awayCheck), unless a link or another screen got there first.
+          onAway: () => {
+            const q = new URL(location.href).searchParams;
+            if (q.has("open") || q.has("start") || history.state?.daisey) return;
+            m.needs.open(); screens.open("needs");
+          } });
         m.schedule = mountSchedule($("#schedPage"), user.uid, { onEvent: (ev) => m.event.view(ev), onNew: (date, at) => m.event.open(date, at), onOpen: (task) => m.adder.edit(task), onMissed: (id, start) => m.now?.missed(id, start) });
         // ARCHIVED (Mor, 2026-10-08): the Week page is built but switched off until
         // people ask for it. To bring it back: pass onWeek to the mount above

@@ -272,7 +272,9 @@ test("why: the strongest 2 factors, first person on the card", () => {
 test("why: phrase table — deadline, stakes, office, area, batch, window, momentum", () => {
   assert.match(why(dl("2026-10-06")), /deadline tomorrow/i);
   assert.match(why(dl("2026-10-08")), /deadline Thursday/i);
-  assert.match(why(dl("2026-10-01")), /deadline passed/i);
+  assert.match(why(dl("2026-10-01")), /deadline passed 4 days ago/i);
+  // Late is said as late (user test #14): no "if late" once it is.
+  assert.equal(pick(dl("2026-10-03", { stakes: "money", size: 30 })).why, "Deadline passed 2 days ago, costing money now.");
   // Truthful reasons (2026-10-11): what the user marked, never a name pulled from the title.
   assert.match(why(task({ stakes: "someone", title: "Send the stems to Sofi" })), /you marked it as affecting someone/i);
   assert.doesNotMatch(why(task({ stakes: "someone", title: "Send the stems to Sofi" })), /Sofi|waiting/i);

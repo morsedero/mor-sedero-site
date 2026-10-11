@@ -51,6 +51,12 @@ const SCENARIOS = {
     { title: "Send CV to Ubisoft", project: "Job search", size: 30, over: { status: "done", doneAt: Date.now() } },
     { title: "Pay water bill", project: "Home", size: 15, over: { status: "done", doneAt: Date.now() } },
   ] },
+  // Back after 3 days away with a late deadline: Needs you opens by itself
+  // on load (needs.js awayCheck), the late invoice first.
+  away: { tasks: [
+    { title: "Pay invoice to Uri", project: "Admin", size: 15, due: day(-2), dateKind: "deadline", over: { stakes: "money", createdAt: Date.now() - 9 * 864e5, touchedAt: Date.now() - 3 * 864e5 } },
+    { title: "Lesson prep", project: "Teaching", size: 30, due: day(2), over: { createdAt: Date.now() - 9 * 864e5, touchedAt: Date.now() - 3 * 864e5 } },
+  ] },
   // Learning: one task skipped five times (asks keep/shrink/drop), one stopped twice (asks shrink).
   learn: { tasks: [
     { title: "Read the grant guidelines", project: "Admin", size: 90, over: { skipsSinceStart: 5 } },

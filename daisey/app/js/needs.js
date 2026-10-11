@@ -64,8 +64,9 @@ export function wrapList(tasks = [], now = Date.now()){
 // extra(): questions only another screen can work out (now.js needsAsks:
 // the plan slipped), asked first. Each is { key, kind: "ext", ask({ next,
 // close }) } and ask returns a question, or null once it no longer applies.
-export function mountNeeds(root, uid, { onClose, extra } = {}){
+export function mountNeeds(root, uid, { onClose, extra, onAway } = {}){
   let tasks = [], settings = {}, cal = { status: "loading", events: [] }, dayPlan = null;
+  let setLoaded = false, awayChecked = false; // the away catch-up looks once per app load
   let list = [], i = 0, follow = null, mode = "needs", loaded = false, waiting = null; // follow: the "keep the event?" step after making one a task
   const fail = (e) => console.error("[daisey] needs", e);
   const find = (id) => tasks.find((t) => t.id === id);
@@ -342,10 +343,25 @@ export function mountNeeds(root, uid, { onClose, extra } = {}){
         !q.noLater && big("Ask me later", "quiet", () => later(list[i].key))));
   }
 
+  // Away catch-up opens by itself (Mor approved 2026-10-08; user test
+  // 2026-10-11 #14): the first load after AWAY_DAYS or more away, when there
+  // are old dates to sweep, at most once a day (settings.awayShown) — closing
+  // it is an answer, so a reload doesn't bring it back. onAway opens the screen
+  // (main.js), a tick later: the guest store calls back synchronously.
+  const awayCheck = () => {
+    if (!onAway || !loaded || !setLoaded || awayChecked) return;
+    awayChecked = true;
+    const today = logicalDate();
+    if (!root.hidden || settings.awayShown === today || awayDays(tasks) < AWAY_DAYS) return;
+    if (!collectNeeds({ tasks, settings, home: homeAt() }).some((x) => x.kind === "sweep")) return;
+    settings = { ...settings, awayShown: today };
+    saveSettings(uid, { awayShown: today }).catch(fail);
+    setTimeout(onAway, 0);
+  };
   const unsubs = [
     // Opened from a notification before the tasks loaded: open once they do.
-    watchTasks(uid, (ts) => { tasks = ts; loaded = true; if (waiting) { const w = waiting; waiting = null; api.open(w); } }, fail),
-    watchSettings(uid, (s) => { settings = s || {}; }, fail),
+    watchTasks(uid, (ts) => { tasks = ts; loaded = true; if (waiting) { const w = waiting; waiting = null; awayChecked = true; api.open(w); } awayCheck(); }, fail),
+    watchSettings(uid, (s) => { settings = s || {}; setLoaded = true; awayCheck(); }, fail),
     watchCalendar((c) => { cal = c; }),
     watchDayPlan(uid, (d) => { dayPlan = d || null; }, fail),
   ];
