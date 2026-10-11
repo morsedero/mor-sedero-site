@@ -215,8 +215,9 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onMissed, onPro
     const named = real.late ? addDays(today, -1) : today;
     const dayName = (d) => {
       const diff = Math.round((d - named) / 864e5);
-      // The whole day shows, morning included, so it reads Today, not Tonight (2026-10-11).
-      return diff === 0 ? (real.late ? "Tonight" : "Today") : diff === 1 ? "Tomorrow" : diff === -1 ? "Yesterday"
+      // The whole day shows, morning included, so it reads Today, not Tonight
+      // (2026-10-11); past midnight it's all behind you: Earlier today (Mor, 2026-10-12).
+      return diff === 0 ? (real.late ? "Earlier today" : "Today") : diff === 1 ? "Tomorrow" : diff === -1 ? "Yesterday"
         : d.toLocaleDateString("en-GB", { weekday: "long" });
     };
     const last = addDays(to, -1);
