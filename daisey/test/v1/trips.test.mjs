@@ -101,6 +101,9 @@ test("on the train: the place is train, the ride is the window, laptop fits, hom
   assert.equal(placeNow({ events: evs, now, located: "ride" }).value, "train");
   assert.equal(placeNow({ events: evs, now, located: "home" }).value, "home"); // the phone says you didn't go
   assert.equal(placeNow({ events: evs, now, located: "out" }).value, "train"); // "out" is just not home: the leg names it
+  assert.equal(placeNow({ events: evs, now, located: "walk" }).value, "walk"); // to the platform: a train leg believes the walk
+  const drive = T.withTrips([ash], { "s:abc": { ...trips["s:abc"], mode: "car" } }, [], null);
+  assert.equal(placeNow({ events: drive, now, located: "walk" }).value, "car"); // slow traffic is still the drive
   const fw = freeWindow(evs.filter((e) => e.busy !== false), now);
   assert.equal(fw.current?.trip?.dir, "to");
   const m = readMoment({ now, place: "train", window: Math.floor((fw.current.end - now) / 60000) });

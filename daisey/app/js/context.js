@@ -20,8 +20,10 @@ export function placeNow({ correction = null, located = null, events = [], now =
   const ride = leg && (leg.trip.place || leg.trip.mode);
   // "out" only says "not at home", which a ride is: at a red light or in
   // traffic the phone reads out, and that dropped the driving card for a
-  // "Driving" card offering phone tasks (Mor, 2026-10-11).
-  if (leg && (located === "ride" || located === "out")) return { value: ride, guessed: true, trip: leg.trip };
+  // "Driving" card offering phone tasks (Mor, 2026-10-11). In a car,
+  // "walk" is the same: crawling in traffic, or the first slow fix after
+  // coming back to the app (Mor, 2026-10-11: phone tasks for 3s, then Driving).
+  if (leg && (located === "ride" || located === "out" || (located === "walk" && leg.trip.mode === "car"))) return { value: ride, guessed: true, trip: leg.trip };
   if (W.PLACES.includes(located) && !["anywhere", "spot"].includes(located)) return { value: located, guessed: false, located: true };
   if (leg) return { value: ride, guessed: true, trip: leg.trip };
   const out = events.some((e) => {
