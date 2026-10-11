@@ -9,7 +9,7 @@
    playwright from daisey/test/ (npm install there once). */
 const fs = require("fs");
 const path = require("path");
-const { chromium } = require(path.join(__dirname, "..", "..", "node_modules", "playwright"));
+const pw = require(path.join(__dirname, "..", "..", "node_modules", "playwright"));
 
 const APP = path.join(__dirname, "..", "..", "..", "app");
 const ORIGIN = "http://daisey.preview";
@@ -231,6 +231,8 @@ const outDir = flag("--out") || path.join(require("os").tmpdir(), "daisey-previe
 const clicks = [];
 const widthFlag = flag("--width"); // phone width in CSS px (default 390)
 const heightFlag = flag("--height"); // phone height in CSS px (default 844)
+const engine = flag("--engine") || "chromium"; // "webkit" = Safari's engine (npx playwright install webkit once)
+const auditOut = flag("--audit"); // write audit.js's findings (overlaps, overflow, clipping) to this JSON file
 const query = flag("--query") || ""; // e.g. "?open=wrap": what a notification tap opens
 const evalJs = flag("--eval"); // run this in the page at the end and print what it returns
 const holdSel = flag("--hold");
@@ -285,8 +287,12 @@ const FAKES = {
 };
 
 (async () => {
-  const browser = await chromium.launch();
-  const page = await browser.newPage({ viewport: wide ? { width: 1200, height: 900 } : { width: Number(widthFlag) || 390, height: Number(heightFlag) || 844 }, deviceScaleFactor: 2,
+  const browser = await pw[engine].launch();
+  // --mobile: a touch phone (isMobile, hasTouch, a phone UA for the engine), not a narrow desktop window.
+  const mobile = args.includes("--mobile") ? { isMobile: true, hasTouch: true, userAgent: engine === "webkit"
+    ? "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1"
+    : "Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Mobile Safari/537.36" } : {};
+  const page = await browser.newPage({ ...mobile, viewport: wide ? { width: 1200, height: 900 } : { width: Number(widthFlag) || 390, height: Number(heightFlag) || 844 }, deviceScaleFactor: 2,
     colorScheme: args.includes("--dark") ? "dark" : "light" });
   page.on("pageerror", (e) => console.error("pageerror:", e.message));
   page.on("console", (m) => { if (m.type() === "error") console.error("console:", m.text()); });
@@ -362,6 +368,7 @@ const FAKES = {
   if (args.includes("--text")) console.log(await page.innerText("body"));
   if (args.includes("--json-dump")) console.log(JSON.stringify(await page.evaluate(() => window.__store.tasks.map(({ title, area, type, where, openHours, size, stakes, due, dateKind, guessed, spentMinutes, stopsUnfinished }) => ({ title, area, type, where, openHours, size, stakes, energy, due, dateKind, guessed, spentMinutes, stopsUnfinished })))));
   if (args.includes("--tasks-dump")) console.log(await page.evaluate(() => window.__store.tasks.map((t) => t.title + ": " + t.status + (t.skipCount ? " skips " + t.skipCount : "") + (t.source ? " [" + t.source.app + ":" + t.source.cardId + "]" : "")).join(" | ")));
+  if (auditOut) fs.writeFileSync(auditOut, JSON.stringify(await page.evaluate(fs.readFileSync(path.join(__dirname, "audit.js"), "utf8"))));
   fs.mkdirSync(outDir, { recursive: true });
   const file = path.join(outDir, `${name}${tasksTab ? "-tasks" : ""}${cal ? "-cal" + cal.replace(/\W/g, "") : ""}${running ? "-run" + running.replace(/\W/g, "") : ""}${clicks.length ? "-" + clicks.join("").replace(/\W/g, "").slice(0, 24) : ""}${wide ? "-wide" : ""}${args.includes("--dark") ? "-dark" : ""}.png`);
   // A page wider than the phone scrolls sideways: say so.
