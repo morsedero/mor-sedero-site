@@ -623,7 +623,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
   // The three quiet actions under Start. Icon plus a small word, with the
   // whole phrase as the tooltip and the screen-reader name.
   const action = (name, label, hint, props) => h("button", {
-    className: "iconbtn", type: "button", title: `${label} — ${hint}`, ariaLabel: `${label}: ${hint}`, ...props,
+    className: `iconbtn ib-${name}`, type: "button", title: `${label} — ${hint}`, ariaLabel: `${label}: ${hint}`, ...props,
   }, icon(name), h("span", { className: "iconbtn-text", textContent: label }));
 
   // What the engine knows about this moment: the calendar's window if it
