@@ -115,14 +115,17 @@ if (typeof MutationObserver !== "undefined" && typeof document !== "undefined"){
 
 export function dismissFlash(){ clearTimeout(liveTimer); livePop?.remove(); livePop = null; }
 
-// `adjust` { minutes, set(m) }: "Counted ~30 min" with − / + (15 min a tap).
+// `adjust` { minutes, set(m) }: "Est. 30 min" with − / + (15 min a tap).
+// The estimate is only said, never counted (round 2, 2026-10-11): a Done
+// credits no time. A − / + is the user saying how long it took, "Took 45 min",
+// and only that is logged.
 export function flash(label, title, { undo, adjust } = {}){
   dismissFlash();
   let mins = adjust?.minutes ?? 0;
-  const count = adjust && h("span", { className: "toast-count" }, `Counted ~${mins} min`);
+  const count = adjust && h("span", { className: "toast-count", title: "An estimate, not counted. − / + to say how long it took." }, `Est. ${mins} min`);
   const step = (d) => h("button", { className: "toast-step", type: "button", textContent: d < 0 ? "−" : "+", ariaLabel: `${d < 0 ? "Less" : "More"} time`,
     onclick: () => {
-      mins = Math.max(0, mins + d); count.textContent = `Counted ${mins} min`; adjust.set(mins);
+      mins = Math.max(0, mins + d); count.textContent = `Took ${mins} min`; adjust.set(mins);
       clearTimeout(liveTimer); liveTimer = setTimeout(dismissFlash, UNDO_MS);
     } });
   livePop = h("div", { className: adjust ? "toast flash" : "toast flash timed", role: "status" },

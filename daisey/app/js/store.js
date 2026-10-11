@@ -4,8 +4,8 @@
 // watchTasks, used as history for "similar past tasks" guesses.
 import * as fb from "./firebase.js";
 import { worthChecking, checkOnline } from "./research.js";
-import { createTask, editTask, completeTask, startedTask, workedTask, keptTime, skipTask, skipReason, migrateTask, toDate, INBOX, progressOf, leftMinutes } from "./model.js";
-import { logDocKey, guessDoneMinutes } from "./bloom-data.js";
+import { createTask, editTask, completeTask, startedTask, workedTask, keptTime, skipTask, skipReason, migrateTask, toDate, INBOX, leftMinutes } from "./model.js";
+import { logDocKey } from "./bloom-data.js";
 
 const GUEST_UID = "guest-local";
 const GUEST_KEY = "daisey.guest.data.v1";
@@ -210,15 +210,17 @@ export function migrateTasks(uid){
   return () => unsub?.();
 }
 
-// Done with no timer. `ctx` ({ tasks, events }) is what the time guess reads
-// (bloom-data guessDoneMinutes). The returned promise carries `counted`, the
-// minutes logged, at once, so the caller's toast can say "Counted ~30 min".
-export function finishTask(uid, task, ctx = {}){
-  // A task already part done counts only what was left (user test: 75% done, 120 min counted).
-  const g = guessDoneMinutes(progressOf(task) > 0 ? { ...task, size: leftMinutes(task), spentMinutes: 0 } : task, ctx);
+// Done with no timer. Nothing is credited (round 2, 2026-10-11: a Done
+// seconds after the card came up logged the whole hour): the time between
+// the card showing and Done holds waiting, interruptions and time away, so
+// it isn't work. The log gets the finish alone (0 min), the task's size stays
+// the estimate, and nothing reaches the size learning (spentMinutes). The
+// promise carries `estimate`, what was left of it, for the toast to show as
+// an estimate; only the user's − / + (setDoneMinutes) logs real minutes.
+export function finishTask(uid, task){
   const p = updateGuestTask(uid, task.id, completeTask(task));
-  logWork(uid, task, g.minutes, { at: g.at, done: true, guess: true }).catch(logFail);
-  p.counted = { minutes: g.minutes };
+  logWork(uid, task, 0, { done: true }).catch(logFail);
+  p.estimate = { minutes: leftMinutes(task) };
   return p;
 }
 
@@ -286,7 +288,7 @@ export function unlogDone(uid, taskId){
 }
 // Reopen in the task sheet (BEHAVIOR_REVIEW #5): the Done may be from another
 // session or device, so not in doneLogged. Its entry is the newest d:1 one for
-// this task in the month of doneAt (finishTask logs a guessed time, a bit
+// this task in the month of doneAt (a Done from before 2026-10-11 logged a guessed time, a bit
 // before doneAt, so the month before is read too). Done again then logs once.
 export async function unlogReopened(uid, task){
   if (doneLogged.has(task.id)) return unlogDone(uid, task.id);

@@ -7,7 +7,7 @@
 // dates are local time, so the node tests in daisey/test/v1/ drive it with
 // fixed moments. Every number lives in weights.js.
 import * as W from "./weights.js";
-import { localDate, logicalDate, durText, notYet, leftMinutes, progressOf, LABELS, isGuess, estText } from "./model.js";
+import { localDate, logicalDate, durText, notYet, leftMinutes, progressOf, LABELS, isGuess, estText, INBOX } from "./model.js";
 import { effectiveDue } from "./triage.js";
 import { officeOpen, officeMinutesLeft } from "./holidays.js";
 import { cleanRoutine, weekState } from "./routine.js";
@@ -22,6 +22,7 @@ const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "
 const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
 const key = (p) => String(p || "").trim().toLowerCase();
 const pad = (n) => String(n).padStart(2, "0");
+const hhmm = (ms) => { const d = new Date(ms); return `${pad(d.getHours())}:${pad(d.getMinutes())}`; };
 
 // ---------- Step 1: the moment ----------
 
@@ -46,7 +47,9 @@ export function freeWindow(events, now = Date.now(), until = null){
   // EVENT_BUFFER: leave room before the next event (2026-10-06).
   let window = next ? Math.max(0, Math.floor((next.start - now) / MIN) - W.EVENT_BUFFER) : W.WINDOW_CAP;
   if (until != null) window = Math.max(0, Math.min(window, Math.floor((until - now) / MIN)));
-  return { window, current: null, next: restOfDay ? null : next, restOfDay };
+  // end (ms): where the free time stops, a fixed time the clock doesn't move.
+  const ends = [next && next.start - W.EVENT_BUFFER * MIN, until].filter((x) => x != null);
+  return { window, current: null, next: restOfDay ? null : next, restOfDay, end: ends.length ? Math.max(now, Math.min(...ends)) : null };
 }
 
 // The project a calendar event is a block for: its title equals a project's
@@ -71,7 +74,12 @@ export function matchProject(title, projects){
 //   window          free minutes (no calendar → 60), capped at 180
 //   realWindow      false = the window is a stand-in: it still filters what
 //                   fits, but earns no window-fit points
-//   nextEvent       title of the next calendar event ("fits before teaching")
+//   nextEvent       title of the next calendar event ("…, before teaching")
+//   windowEnd       ms the free time ends (next event, block, day end, what
+//                   the user said): the reason's window stops there
+//   anchors         { task id: ms } when each task on screen came up: its
+//                   reason's window starts there, held, so "now · 20:35–20:50"
+//                   stays still while the clock moves (default now)
 //   place           home · out · anywhere · walk · ride · train · bus · car
 //                   · spot (a saved place other than Home; `spot` names it)
 //                   (where.js; default anywhere)
@@ -95,6 +103,8 @@ export function readMoment(input = {}){
     window: clamp(Number.isFinite(w) && input.window !== "" && input.window != null ? Math.round(w) : W.NO_CALENDAR_WINDOW, 0, W.WINDOW_CAP),
     realWindow: input.realWindow !== false,
     nextEvent: input.nextEvent || null,
+    windowEnd: Number.isFinite(input.windowEnd) ? input.windowEnd : null,
+    anchors: Object.fromEntries(Object.entries(input.anchors || {}).filter(([, at]) => Number.isFinite(at) && at <= now)),
     bucket: timeBucket(now),
     place: W.PLACES.includes(input.place) ? input.place : "anywhere",
     officeOpen: officeOpen(now),
@@ -282,7 +292,12 @@ function windowFit(task, m){
   const w = windowFor(task, m);
   const r = w > 0 ? leftMinutes(task) / w : Infinity;
   const fit = r > 1 ? "piece" : r >= 0.5 ? "full" : r >= 0.25 ? "half" : "small";
-  return { points: W.WINDOW_FIT[fit], detail: { fit, window: w, nextEvent: m.nextEvent } };
+  // Where the stated window has to stop: the free time's end, else (office
+  // hours, the 3 h cap, no end given) now plus the minutes there are, on a
+  // round five.
+  const r5 = (ms) => Math.round(ms / (5 * MIN)) * 5 * MIN;
+  const end = m.windowEnd != null && m.windowEnd <= m.now + (w + 1) * MIN ? m.windowEnd : r5(m.now + w * MIN);
+  return { points: W.WINDOW_FIT[fit], detail: { fit, window: w, nextEvent: m.nextEvent, need: leftMinutes(task), at: m.anchors[task.id] ?? m.now, end } };
 }
 
 function momentum(task, m){
@@ -410,13 +425,21 @@ const PHRASES = {
   area: (s, d) => !(s.task.guessed || []).includes("area") && [{ name: LABELS.area[d.area] || d.area }, d.done ? " is behind this week" : " hasn't moved this week"],
   batch: (s, d) => [`${d.ids.length} ${{ call: "calls", admin: "admin bits", errand: "errands" }[d.type]}, done together`],
   // A quick win is a small task, not just a small share of a long window.
-  window: (s, d) => d.fit === "small" && leftMinutes(s.task) <= W.QUICK_WIN_MAX
-    ? [`${isGuess(s.task, "size") ? estText(s.task, leftMinutes(s.task)) : sizeWords(leftMinutes(s.task))}, quick win`]
-    : d.fit === "small" ? [`fits your ${sizeWords(d.window)}`]
-    : d.fit === "piece" ? [`a piece fits your ${sizeWords(d.window)}`]
-    : d.nextEvent ? ["fits before ", { name: d.nextEvent }]
-    : d.fit === "full" ? [`fills your free ${sizeWords(d.window)}`] : [`fits your ${sizeWords(d.window)}`],
-  momentum: (s, d) => d.kind === "today" ? ["keeps ", { name: s.task.project }, " going"] : ["back to ", { name: s.task.project }],
+  // Otherwise the real window, from when the card came up (round 2,
+  // 2026-10-11: "fits your 1 h 9 min" wobbled with the clock and said
+  // nothing): "now · 20:35–20:50", to the task's end or the free time's.
+  window: (s, d) => {
+    if (d.fit === "small" && leftMinutes(s.task) <= W.QUICK_WIN_MAX)
+      return [`${isGuess(s.task, "size") ? estText(s.task, leftMinutes(s.task)) : sizeWords(leftMinutes(s.task))}, quick win`];
+    const to = Math.min(d.at + d.need * MIN, d.end);
+    if (!(to > d.at)) return null;
+    const span = `now · ${hhmm(d.at)}–${hhmm(to)}`;
+    return d.fit === "piece" ? [`${span}, a piece of it`] : d.nextEvent ? [`${span}, before `, { name: d.nextEvent }] : [span];
+  },
+  // What you did, said as that (round 2: "keeps Inbox going" named no
+  // project; the Inbox isn't one).
+  momentum: (s, d) => (key(s.task.project || INBOX) === key(INBOX) ? null
+    : ["you worked on ", { name: s.task.project }, d.kind === "today" ? " today" : " in the last 2 days"]),
   neglect: (s, d) => [`untouched for ${d.days} days`],
   spot: (s, d) => ["you're at ", { name: d.name }],
   learned: (s, d) => s.parts.learned > 0 ? [`you usually do these in the ${d.bucket}`] : null,

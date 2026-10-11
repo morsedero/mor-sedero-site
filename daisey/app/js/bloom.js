@@ -13,6 +13,7 @@ import {
   estimatedEntries, eventEntries,
 } from "./bloom-data.js";
 import { h, bdi, weekDots } from "./ui.js";
+import { APPROX } from "./model.js";
 
 const NS = "http://www.w3.org/2000/svg";
 const svg = (tag, attrs = {}, ...kids) => {
@@ -55,7 +56,7 @@ export function flowerSvg(f){
 }
 
 // A project's time for the period, "" when it got none.
-export const flowerTime = (f) => (f?.min ? `${f.guess ? "~" : ""}${fmtMinutes(f.min)}` : "");
+export const flowerTime = (f) => (f?.min ? `${f.guess ? APPROX : ""}${fmtMinutes(f.min)}` : "");
 
 // The growing half. onChange: the log, the events or the period moved, so
 // the page should redraw.
@@ -132,7 +133,7 @@ export function statsCard(g){
   return [
     h("p", { className: "ms-h", textContent: "This week" }),
     h("div", { className: "ms-figs" },
-      fig(s.total ? `${s.guess ? "~" : ""}${fmtMinutes(s.total)}` : "0", "focused"),
+      fig(s.total ? `${s.guess ? APPROX : ""}${fmtMinutes(s.total)}` : "0", "focused"),
       fig(String(s.done), "done"),
       fig(String(s.days), s.days === 1 ? "day" : "days")),
     best && h("p", { className: "ms-line" }, h("span", { ariaHidden: "true", textContent: "🐝" }), bdi(best.title), ` · ${best.streak} weeks in a row`),

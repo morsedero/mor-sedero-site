@@ -31,30 +31,6 @@ export function periodRange(period, now = Date.now()){
 export const monthsOfRange = ({ from, to }) => [...new Set([from.slice(0, 7), to.slice(0, 7)])];
 export const inRange = (at, { from, to }) => { const d = dayOf(at); return d >= from && d <= to; };
 
-// ---------- guessing the time of a Done with no timer ----------
-// Never asks, never more than the task still needs (its size less what is
-// already logged): Done pressed five hours late means "finished a while ago",
-// not "worked all along". Evidence, in order: the task's own slot on the
-// calendar (a plan or a routine's set days is one) — its length, logged at the
-// slot's end; else the time since the last work that day; else what's left.
-export function guessDoneMinutes(task, { now = Date.now(), events = [], tasks = [] } = {}){
-  const size = toMinutes(task.size) ?? DEFAULT_SIZE;
-  const left = Math.max(0, size - (task.spentMinutes || 0));
-  if (!left) return { minutes: 0, at: now, guess: true };
-  const r5 = (m) => Math.max(5, Math.min(left, Math.round(m / 5) * 5));
-  const slot = events
-    .filter((e) => !e.allDay && e.start && e.end && (e.taskId === task.id || sameTitle(e.title, task.title)))
-    .map((e) => ({ s: Date.parse(e.start), e: Date.parse(e.end) }))
-    .filter((x) => x.s <= now && x.e >= now - 2 * 864e5 && x.e > x.s)
-    .sort((a, b) => b.e - a.e)[0];
-  if (slot) return { minutes: r5((slot.e - slot.s) / MIN), at: Math.min(slot.e, now), guess: true };
-  const today = dayOf(now);
-  const last = Math.max(0, ...tasks.filter((t) => t.id !== task.id)
-    .map((t) => Math.max(t.workedAt || 0, t.doneAt || 0)).filter((x) => x && x <= now && dayOf(x) === today));
-  if (last && (now - last) / MIN >= 5) return { minutes: r5((now - last) / MIN), at: now, guess: true };
-  return { minutes: r5(left), at: now, guess: true };
-}
-
 // ---------- the entries a period shows ----------
 // Work done before the log existed, estimated from what tasks kept: a done
 // task's spentMinutes (else its size) on its done day, a routine's sessions on

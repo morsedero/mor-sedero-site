@@ -33,6 +33,9 @@ test("calendar window: minutes to the next event; inside one → 0; none today �
   const next = E.freeWindow([ev("Teaching", 10, 45, 12, 0)], NOW);
   // 45 minutes to Teaching, less the 10-minute buffer before it (2026-10-06).
   assert.deepEqual([next.window, next.next.title, next.restOfDay], [45 - W.EVENT_BUFFER, "Teaching", false]);
+  // …and where it stops as a time, which the clock doesn't move (round 2 #4).
+  assert.equal(next.end, at(5, 10, 45) - W.EVENT_BUFFER * 60000);
+  assert.equal(E.freeWindow([ev("Teaching", 10, 45, 12, 0)], NOW + 5 * 60000).end, next.end);
   const inside = E.freeWindow([ev("Teaching", 9, 30, 11, 0), ev("Call", 12, 0, 13, 0)], NOW);
   assert.deepEqual([inside.window, inside.current.title], [0, "Teaching"]);
   const done = E.freeWindow([ev("Earlier", 8, 0, 9, 0)], NOW);
@@ -277,14 +280,31 @@ test("why: phrase table — deadline, stakes, office, area, batch, window, momen
   assert.doesNotMatch(why(task({ stakes: "penalty", guessed: ["stakes"] })), /penalty/i);
   assert.doesNotMatch(why(task({ openHours: "office", type: "admin", size: 30, guessed: ["openHours"] }), { now: at(5, 14), window: 60 }), /offices/i);
   // A guessed size is said as an estimate.
-  assert.match(why(task({ size: 10, guessed: ["size"] }), { window: 120 }), /~10 min est, quick win/i);
+  assert.match(why(task({ size: 10, guessed: ["size"] }), { window: 120 }), /≈10 min est, quick win/i);
   assert.match(why(task({ stakes: "penalty" })), /penalty if late/i);
   assert.match(why(task({ openHours: "office", type: "admin", size: 30 }), { now: at(5, 14), window: 60 }), /offices close at 16:00/i);
   assert.match(why([task({ area: "job" }), task({ area: "work", size: 61 })], { areaDone: { work: 3 } }), /Job search hasn't moved this week/i);
   const calls = [10, 5].map((size) => task({ type: "call", size, where: "phone" }));
   assert.match(why(calls, {}), /2 calls, done together/i);
-  assert.match(why(task({ size: 40 }), { nextEvent: "teaching" }), /fits before teaching/i);
-  assert.match(why(task({ project: "Monster Punk" }), { lastProject: "Monster Punk" }), /keeps Monster Punk going/i);
+  assert.match(why(task({ size: 40 }), { nextEvent: "teaching" }), /now · 10:00–10:40, before teaching/i);
+  assert.match(why(task({ project: "Monster Punk" }), { lastProject: "Monster Punk" }), /you worked on Monster Punk today/i);
+  // The Inbox isn't a project: no "keeps Inbox going" (round 2, 2026-10-11).
+  assert.doesNotMatch(why(task({ project: "Inbox" }), { lastProject: "Inbox" }), /Inbox/i);
+});
+
+test("why: the window is the real one, from when the card came up, and holds still (round 2 #4)", () => {
+  const t = task({ id: "w1", size: 40 }), end = at(5, 11, 30);
+  const a = why(t, { window: 80, windowEnd: end });
+  assert.match(a, /now · 10:00–10:40/i);
+  assert.doesNotMatch(a, /fits your|fills your|\d+ h \d+ min/i);
+  // Seven minutes on, the card still up: the very same words.
+  assert.equal(why(t, { now: NOW + 7 * 60000, window: 73, windowEnd: end, anchors: { w1: NOW } }), a);
+  // Without the hold the clock would move it: that is what anchors are for.
+  assert.match(why(t, { now: NOW + 7 * 60000, window: 73, windowEnd: end }), /now · 10:07–10:47/i);
+  // A piece: up to where the free time stops, the calendar's time.
+  assert.match(why(task({ id: "w2", size: 120, canSplit: true }), { window: 40, windowEnd: at(5, 10, 40) }), /now · 10:00–10:40, a piece of it/i);
+  // An anchor from the future is ignored, never a window that hasn't begun.
+  assert.match(why(t, { window: 80, windowEnd: end, anchors: { w1: NOW + 60000 } }), /now · 10:00–10:40/i);
 });
 
 test("why: names are their own pieces, so the UI can isolate them (bidi)", () => {

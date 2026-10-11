@@ -553,6 +553,11 @@ dialog.now:focus { outline: none; }
 .alt-card .alt-at::after { content: "·"; margin-inline-start: 5px; font-weight: 600; }
 .alt-card .hero-area { gap: 5px; }
 .alt-card .alt-t { font-size: 15px; font-weight: 600; line-height: 1.2; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow-wrap: anywhere; }
+/* Its reason, as the Now card would give it (round 2, 2026-10-11); the card
+   grows to hold it, every card in the row as tall as the tallest. */
+.switch-ask:has(.alt-why) { align-items: stretch; }
+.alt-card:has(.alt-why) { block-size: auto; min-block-size: 77px; grid-template-rows: auto auto 1fr; }
+.alt-card .alt-why { font-size: 12px; line-height: 1.3; color: var(--ink-2); overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow-wrap: anywhere; }
 /* Pending → "Waiting on what?": one optional line under the actions. */
 .pend-ask { display: grid; gap: 4px; margin-block-start: 4px; }
 .pend-ask label { font-size: 13px; font-weight: 600; color: var(--ink-2); }
@@ -1354,16 +1359,20 @@ dialog.tsheet .msg:empty { display: none; }
    daisy always stay whole (phone audit, 2026-10-11: at 320-430 px the date
    ran under Focus whenever Plan ready and Needs you were both up).
    Room for the chips is about the screen less 152 px. */
-.hdr-end:has(#planReady:not([hidden]), #needsChip:not([hidden])) .focus-chip .hchip-word { display: none; }
+/* Focus always keeps its word (round 2, 2026-10-11: an icon alone, and a
+   first-timer couldn't guess it); on a phone the others give theirs up instead. */
 .hdr-end:has(#needsChip:not([hidden])) #planReady .hchip-word { display: none; }
 @media (max-width: 429px) {
-  .hchip.plan:not(.empty) .hchip-word, .hchip.plan .hchip-dot { display: none; } .hchip.plan { padding-inline: 9px; } .hdr-end { gap: 6px; }
+  .hdr-end:has(#focusChip:not([hidden])) :is(#needsChip, #planReady) .hchip-word { display: none; }
+  .hchip.plan:not(.empty):not(.focus-chip) .hchip-word, .hchip.plan .hchip-dot { display: none; } .hchip.plan { padding-inline: 9px; } .hdr-end { gap: 6px; }
   .hdr-end:has(#planReady:not([hidden])) #needsChip .hchip-word { display: none; }
 }
 @media (max-width: 359px) {
-  .hdr-end .hchip > .hchip-word { display: none; }
+  .hdr-end .hchip:not(.focus-chip) > .hchip-word, .hdr-end .focus-chip > svg { display: none; }
+  /* …except beside Plan ready too: there's no room, the icon stays. */
+  .hdr-end:has(#planReady:not([hidden])) .focus-chip > .hchip-word { display: none; } .hdr-end:has(#planReady:not([hidden])) .focus-chip > svg { display: inline; }
   .hdr-end:has(#planReady:not([hidden])):has(#needsChip:not([hidden])) .hchip-dot { display: none; }
-  .hdr-end .hchip { padding-inline: 8px; } .hdr-end .hchip.plan { inline-size: 34px; justify-content: center; padding: 0; } .hdr-end .hchip.needs { min-inline-size: 30px; justify-content: center; } .hdr-end { gap: 5px; }
+  .hdr-end .hchip { padding-inline: 8px; } .hdr-end .hchip.plan:not(.focus-chip) { inline-size: 34px; justify-content: center; padding: 0; } .hdr-end .hchip.needs { min-inline-size: 30px; justify-content: center; } .hdr-end { gap: 5px; }
 }
 #status { margin-block-start: 16px; }
 
@@ -2029,7 +2038,7 @@ body.focus .shell { block-size: auto; min-block-size: 100dvh; overflow: visible;
 .bl-dots .wk-dots i { inline-size: 9px; block-size: 9px; }
 .bl-bee { font-size: 13px; text-align: center; }
 
-/* The "Counted ~30 min" toast's − / +. */
+/* The "Est. 30 min" toast's − / +. */
 .toast-adj { display: inline-flex; align-items: center; gap: 4px; margin-inline: 8px; }
 .toast-step { inline-size: 26px; block-size: 26px; border-radius: 50%; border: 1px solid currentColor; background: none; color: inherit; font: inherit; font-weight: 700; line-height: 1; cursor: pointer; }
 .toast-count { font-size: 13px; }

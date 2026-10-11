@@ -170,8 +170,11 @@ export const toTime = (v) => (typeof v === "string" && /^([01]\d|2[0-3]):[0-5]\d
 // What the card SAYS rests only on what the user typed, the calendar or the
 // plan (2026-10-11), so a guess is never said as a fact.
 export const isGuess = (t, k) => (t?.guessed || []).includes(k);
-// A duration read aloud: "~15 min est" while the size is a guess.
-export const estText = (t, min) => (isGuess(t, "size") ? `~${durText(min)} est` : durText(min));
+// The estimate mark. Not "~": Rubik draws its tilde flat and low, so on a
+// phone "Counted ~15 min" read "Counted -15 min" (round 2, 2026-10-11).
+export const APPROX = "≈";
+// A duration read aloud: "≈15 min est" while the size is a guess.
+export const estText = (t, min) => (isGuess(t, "size") ? `${APPROX}${durText(min)} est` : durText(min));
 
 export function durText(min){
   const m = Math.max(0, Math.round(min));
@@ -633,7 +636,7 @@ export const skipSnapshot = (task) => ({
   waitingOn: task.waitingOn ?? null, // Pending's reason
   checkOn: task.checkOn ?? null, // …and when to ask again
   canSplit: task.canSplit ?? false, notAt: task.notAt ?? [], // …and what the reason chips taught
-  progress: task.progress ?? 0, size: task.size ?? null, // …and the toast's "Left ~30 min" (leftPatch)
+  progress: task.progress ?? 0, size: task.size ?? null, // …and the toast's "Left ≈30 min" (leftPatch)
 });
 
 // Focus mode. Starting clears the stale-skip count: a task you actually
@@ -705,7 +708,7 @@ export const leftMinutes = (t) => {
   return Math.max(5, p > 0 ? Math.round(size * (1 - p / 100)) : size - (t.spentMinutes || 0));
 };
 
-// "Left ~30 min" on Later's and Pending's toast (Mor, 2026-10-11, in place
+// "Left ≈30 min" on Later's and Pending's toast (Mor, 2026-10-11, in place
 // of Done's "how much is done" hold): a patch that makes leftMinutes(t) read
 // `mins`. Under the size it's the progress %; at or over it the size grows
 // instead (the task turned out bigger), progress back to 0.

@@ -16,30 +16,6 @@ test("periods: week is Sunday to Saturday, month is the whole month", () => {
   assert.deepEqual(B.monthsOfRange({ from: "2026-09-27", to: "2026-10-03" }), ["2026-09", "2026-10"]);
 });
 
-test("Done guess: never more than the task still needs, however late", () => {
-  // Last work 5 hours ago, size 30 → 30, not 300.
-  const others = [{ id: "x", workedAt: NOW - 5 * 3600000 }];
-  assert.equal(B.guessDoneMinutes(task(), { now: NOW, tasks: others }).minutes, 30);
-  // Time already logged comes off.
-  assert.equal(B.guessDoneMinutes(task({ spentMinutes: 20 }), { now: NOW }).minutes, 10);
-  assert.equal(B.guessDoneMinutes(task({ spentMinutes: 45 }), { now: NOW }).minutes, 0);
-});
-
-test("Done guess: a short gap since the last work is that gap", () => {
-  const others = [{ id: "x", workedAt: NOW - 12 * 60000 }];
-  assert.equal(B.guessDoneMinutes(task(), { now: NOW, tasks: others }).minutes, 10);
-  assert.equal(B.guessDoneMinutes(task(), { now: NOW }).minutes, 30);
-});
-
-test("Done guess: the task's own slot, logged at the slot's end", () => {
-  const ev = { title: "Mix", start: new Date(at("2026-10-08", 11)).toISOString(), end: new Date(at("2026-10-08", 11, 20)).toISOString() };
-  const g = B.guessDoneMinutes(task(), { now: NOW, events: [ev] });
-  assert.equal(g.minutes, 20);
-  assert.equal(g.at, at("2026-10-08", 11, 20));
-  const long = { ...ev, end: new Date(at("2026-10-08", 14)).toISOString() };
-  assert.equal(B.guessDoneMinutes(task(), { now: NOW, events: [long] }).minutes, 30); // capped at the size
-});
-
 test("estimates fill history; a task with real entries is not estimated twice", () => {
   const done = task({ id: "a", status: "done", doneAt: at("2026-10-05"), spentMinutes: 40 });
   const logged = task({ id: "b", status: "done", doneAt: at("2026-10-06") });

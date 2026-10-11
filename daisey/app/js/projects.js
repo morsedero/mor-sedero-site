@@ -428,10 +428,10 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
       start: progressOf(t) || 50,
       onCancel,
       onFull: () => {
-        const p = finishTask(uid, t, { tasks: tasks || [] });
+        const p = finishTask(uid, t);
         p.catch(fail);
         flash("Done: ", t.title, { undo: () => restoreTask(uid, t.id, before).catch(fail),
-          adjust: p.counted.minutes ? { minutes: p.counted.minutes, set: (m) => setDoneMinutes(uid, t.id, m) } : undefined });
+          adjust: p.estimate.minutes ? { minutes: p.estimate.minutes, set: (m) => setDoneMinutes(uid, t.id, m) } : undefined });
       },
       onPartial: (pct, when) => {
         const day = (n) => { const d = new Date(); d.setDate(d.getDate() + n); let x = localDate(d.getTime()); if (t.dateKind === "deadline" && t.due && t.due < x) x = t.due; return x; };

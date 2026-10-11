@@ -137,7 +137,8 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     },
     get size(){ return hidden().length; },
   };
-  const reset = () => { state.chosen = null; state.showAlts = false; state.laterAsk = false; state.pendAsk = false; state.notNow = false; state.more = false; state.pendText = ""; state.pendCheck = ""; state.single = false; kept = null; };
+  let seenAt = new Map(); // task id → when it came up (heldAnchors, below)
+  const reset = () => { state.chosen = null; state.showAlts = false; state.laterAsk = false; state.pendAsk = false; state.notNow = false; state.more = false; state.pendText = ""; state.pendCheck = ""; state.single = false; kept = null; seenAt = new Map(); };
   let shown, kept = null; // kept: keptCard
   let projectDue = {}; // { project: "YYYY-MM-DD" }, from Projects' dates
   // A new task on the card shuts the rows opened under the last one.
@@ -704,6 +705,20 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     const left = f && Number.isFinite(f.minutes) ? Math.floor(f.minutes - (now - f.at) / 60000) : 0;
     return left > 0 ? left : null;
   };
+  // When each task on screen came up (round 2, 2026-10-11): its reason's
+  // window starts there and holds, so "now · 20:35–20:50" doesn't tick with
+  // the clock. Re-anchored after WHY_HOLD (the stated start would read as
+  // late), and dropped once the task is off the screen or an action moves on.
+  // (seenAt is declared up by reset.)
+  const WHY_HOLD = 15 * 60000;
+  function heldAnchors(now = Date.now()){
+    for (const [id, at] of seenAt) if (now - at >= WHY_HOLD) seenAt.set(id, now);
+    return Object.fromEntries(seenAt);
+  }
+  function seenOnScreen(ids){
+    const now = Date.now();
+    seenAt = new Map(ids.map((id) => [id, seenAt.get(id) ?? now]));
+  }
   function momentInput(fw = calendarNow()){
     const now = Date.now();
     const said = saidFree(now);
@@ -714,10 +729,12 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     const leg = fw?.current?.trip ? fw.current : null;
     return {
       ...(!fw ? { realWindow: false }
-        : block ? { window: Math.floor((block.end - now) / 60000), blockProject: block.project }
-        : leg ? { window: Math.floor((leg.end - now) / 60000) }
-        : { window: fw.window, nextEvent: fw.next?.title ?? null }),
-      ...(said ? { window: Math.min(said, !fw ? 60 : block ? Math.floor((block.end - now) / 60000) : fw.window), realWindow: true } : {}),
+        : block ? { window: Math.floor((block.end - now) / 60000), windowEnd: block.end, blockProject: block.project }
+        : leg ? { window: Math.floor((leg.end - now) / 60000), windowEnd: leg.end }
+        : { window: fw.window, windowEnd: fw.end, nextEvent: fw.next?.title ?? null }),
+      ...(said ? { window: Math.min(said, !fw ? 60 : block ? Math.floor((block.end - now) / 60000) : fw.window), realWindow: true,
+        windowEnd: Math.min(momentDoc.free.at + momentDoc.free.minutes * 60000, (block || leg)?.end ?? fw?.end ?? Infinity) } : {}),
+      anchors: heldAnchors(now),
       ...workBase(tasks || [], now),
       projectDue,
       sessionSkips: hidden(now),
@@ -1059,14 +1076,14 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     navigator.vibrate?.(15);
     const go = () => {
       const before = doneSnapshot(task);
-      const p = finishTask(uid, task, { tasks: tasks || [], events: cal.status === "ok" ? cal.events : [] });
+      const p = finishTask(uid, task);
       p.catch(fail);
       // No Done screen (Mor, 2026-10-11: "confusing, not doing anything good"):
       // the card moves straight on to the next task, and the toast holds the
-      // time guess (− / +) and Undo.
+      // estimate (− / + says how long it really took) and Undo.
       reset(); slideIn = el ? "push" : false; render();
       flash("Done: ", task.title, { undo: () => { restoreTask(uid, task.id, before).catch(fail); render(); },
-        adjust: p.counted.minutes ? { minutes: p.counted.minutes, set: (m) => setDoneMinutes(uid, task.id, m) } : undefined });
+        adjust: p.estimate.minutes ? { minutes: p.estimate.minutes, set: (m) => setDoneMinutes(uid, task.id, m) } : undefined });
     };
     if (!el || !motionOK()) return go();
     el.style.animationDelay = "";
@@ -1075,6 +1092,32 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     celebrate(el);
     setTimeout(() => { dropAway(el); go(); }, WON_MS);
   }
+
+  // Why an alternative, said as the Now card would say it (round 2,
+  // 2026-10-11: Switch showed only how long and the area): its slot in the
+  // approved plan, else the engine's reasons (held window and all), else
+  // what keeps it off the card right now. Only facts: what the user typed,
+  // the calendar, the plan. → pieces, or null.
+  // planned: the approved plan's rows (planRowsNow), worked out once a render.
+  function altWhy(s, r, fw, planned){
+    const t = s.task, now = Date.now();
+    const row = planned.find((x) => x.taskId === t.id);
+    if (row) return [row.missed ? `planned for ${clock(row.start)}, not started`
+      : row.start > now + 2 * 60000 ? `in your plan, ${clock(row.start)}–${clock(row.end)}` : `in your plan until ${clock(row.end)}`];
+    if (s.whyParts?.length) return s.whyParts;
+    const end = r.moment.windowEnd;
+    switch (s.reason) {
+      case "size": return [`${estText(t, leftMinutes(t))}${end ? `, free until ${clock(end)}` : ""}`];
+      case "block": return blockOf(fw) ? ["not part of the ", { name: blockOf(fw).project }, " block"] : null;
+      case "office": return isGuess(t, "openHours") ? null : ["offices are closed now"];
+      case "evening": return isGuess(t, "openHours") ? null : ["for the evening"];
+      case "booked": { const b = booked().get(t.id); return b?.start ? [`on your calendar at ${clock(b.start)}`] : null; }
+      case "place": return ["not for where you are now"];
+      default: return null;
+    }
+  }
+
+  const planRowsNow = () => { const p = approvedPlan(); return p && tasks ? timeline(p.items || [], { ...planCtx(), since: planSince() }).rows : []; };
 
   // Switch's row, under the card like Later's and Pending's (Mor,
   // 2026-10-10): the other tasks as small cards in the main card's look
@@ -1087,15 +1130,16 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     if (!alts.length) return h("div", { className: "later-ask", role: "group", ariaLabel: "Other tasks" },
       h("span", { className: "muted", textContent: "Nothing else is active." }),
       h("button", { className: "chip", type: "button", textContent: "Pick from On hold", onclick: () => { sd.open = true; state.showAlts = false; render(); } }));
-    const row = dragScroll(h("div", { className: "later-ask switch-ask", role: "group", ariaLabel: "Other tasks" }, ...alts.map(({ task: t }) => h("button", {
-      type: "button", className: "alt-card" + areaClass(t), ariaLabel: `Put ${t.title} on the card instead, ${howLong(t)}`,
+    const row = dragScroll(h("div", { className: "later-ask switch-ask", role: "group", ariaLabel: "Other tasks" }, ...alts.map(({ task: t, why }) => h("button", {
+      type: "button", className: "alt-card" + areaClass(t), ariaLabel: `Put ${t.title} on the card instead, ${howLong(t)}${why ? `, ${why.map((p) => (typeof p === "string" ? p : p.name)).join("")}` : ""}`,
       onclick: () => onPick(t),
     }, h("span", { className: "hero-top" },
         h("span", { className: "hero-area" },
           // How long first, so a long project name is what gets cut short.
           h("span", { className: "alt-at", textContent: howLong(t) }),
           h("span", { className: "hero-where" }, projectShown(t) ? bdi(t.project) : ownArea(t) || "Inbox"))),
-      h("span", { className: "alt-t", dir: "auto", textContent: t.title })))));
+      h("span", { className: "alt-t", dir: "auto", textContent: t.title }),
+      why && h("span", { className: "alt-why" }, ...say(sentence(why)))))));
     row.addEventListener("scroll", () => { state.altX = row.scrollLeft; }, { passive: true });
     if (state.altX) requestAnimationFrame(() => { row.scrollLeft = state.altX; });
     return row;
@@ -1899,8 +1943,10 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     // Needs you is already asking about the slipped plan: the card doesn't too.
     const due = !behind && planDue(), dueNow = due?.taskId === card.task.id ? due : null;
     const missed = !dueNow && ms?.kind === "miss" ? ms : null;
+    const planRows = planRowsNow();
     const alts = [...new Map([r.pick, ...r.alternatives, ...r.ranked, ...r.out.filter((o) => SWITCH_TOO.has(o.reason))]
-      .filter((s) => s && s.task.id !== card.task.id).map((s) => [s.task.id, { task: s.task }])).values()].slice(0, 5);
+      .filter((s) => s && s.task.id !== card.task.id).map((s) => [s.task.id, { task: s.task, why: altWhy(s, r, fw, planRows) }])).values()].slice(0, 5);
+    seenOnScreen([card.task.id, ...alts.map((a) => a.task.id)]);
     // Done is the one loud thing on the tab; Switch, Pending and Later stay quiet beside it.
     day(...head, deck(taskCard(dueNow ? dueWhy(card, dueNow) : missed ? missWhy(card, missed) : card, true,
       ...cardActions(card.task, alts)), asking()),

@@ -119,6 +119,46 @@ for (const uid of [USER, GUEST]) {
     await store.saveRun(uid, { taskId: "t9", startedAt: 1 });  // another task's stale Pause
     if (uid === GUEST) assert.equal(state(uid, "now").taskId, "t1");
   });
+  // Round 2 #1 (2026-10-11): Done credits no time. The gap between the card
+  // showing and Done is waiting, interruptions and time away, not work.
+  const seed = (t) => { if (uid === GUEST) ls.set(KEY, JSON.stringify({ tasks: [t], state: {} })); else globalThis.__docs.set(`users/${uid}/tasks/${t.id}`, t); };
+  const saved = (id) => (uid === GUEST ? guest().tasks.find((t) => t.id === id) : globalThis.__docs.get(`users/${uid}/tasks/${id}`));
+  const logged = () => (uid === GUEST ? Object.entries(guest().state) : [...globalThis.__docs].filter(([p]) => p.startsWith(`users/${uid}/state/`)).map(([p, v]) => [p.split("/").pop(), v]))
+    .filter(([k]) => k.startsWith("log-")).flatMap(([, v]) => Object.values(v?.e || {})).filter(Boolean);
+  const hour = (o = {}) => ({ id: "t1", title: "Mix review", project: "Band", size: 60, status: "ready", spentMinutes: 0, createdAt: Date.now() - 5000, ...o });
+
+  test(`${who}: Done seconds after a 60-min task shows records no 60 min (round 2 #1a)`, async () => {
+    reset();
+    seed(hour());
+    const p = store.finishTask(uid, hour());
+    await p; await new Promise((r) => setTimeout(r));
+    assert.equal(p.estimate.minutes, 60);                  // the toast's estimate, said as one
+    const e = logged();
+    assert.equal(e.length, 1);
+    assert.deepEqual({ m: e[0].m, d: e[0].d, g: e[0].g }, { m: 0, d: 1, g: undefined }); // the finish, no minutes
+    const t = saved("t1");
+    assert.equal(t.status, "done");
+    assert.equal(t.size, 60);                              // the estimate stays the estimate
+    assert.equal(t.spentMinutes || 0, 0);                  // nothing for the size learning (model.guessSize)
+    await store.unlogDone(uid, "t1");                      // this session's Done map: not into the next test
+  });
+
+  test(`${who}: time in the background is not credited (round 2 #1b)`, async () => {
+    reset();
+    // Card up, other work finished just before it, then the app sits in the
+    // background for 45 min: the old guess logged the gap as work.
+    const t0 = Date.now(), real = Date.now;
+    seed(hour({ createdAt: t0 - 3600000 }));
+    Date.now = () => t0 + 45 * 60000;
+    try {
+      const p = store.finishTask(uid, hour({ createdAt: t0 - 3600000 }));
+      await p; await new Promise((r) => setTimeout(r));
+      assert.equal(logged().reduce((s, x) => s + (x.m || 0), 0), 0);
+      assert.equal(saved("t1").spentMinutes || 0, 0);
+      await store.unlogDone(uid, "t1");
+    } finally { Date.now = real; }
+  });
+
   test(`${who}: a renamed project's past work moves to the new name (#6)`, async () => {
     reset();
     const logs = { "log-2026-09": { e: { a: { t: "t1", p: "Album", m: 30, at: 1 }, b: { t: "t2", p: "Other", m: 5, at: 2 } } },

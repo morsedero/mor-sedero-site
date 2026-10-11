@@ -317,3 +317,17 @@ test("typed 'lighter' (a fresh fewer plan) keeps what's due soonest too", () => 
   assert.ok(ids.includes("p1") && ids.includes("p2"));
   assert.ok(!ids.includes("u1") && !ids.includes("u2"));
 });
+
+test("a Done ahead of time lays the rest of the plan again from now (round 2 #3)", () => {
+  // A 60-min task done a minute in: the next item takes its place, not its
+  // old slot, so the free time after the plan grows by what was freed.
+  const tasks = [t({ id: "a", size: 60 }), t({ id: "b", size: 5 }), t({ id: "c", size: 30 })];
+  const items = tasks.map((x) => ({ taskId: x.id, minutes: x.size }));
+  const before = timeline(items, { tasks, events: [], now: at(10), since: at(10) });
+  const done = tasks.map((x) => (x.id === "a" ? { ...x, status: "done", doneAt: at(10, 1) } : x));
+  const after = timeline(items, { tasks: done, events: [], now: at(10, 1), since: at(10, 1) });
+  const row = (tl, id) => tl.rows.find((r) => r.taskId === id);
+  assert.equal(row(after, "a"), undefined);
+  assert.equal(row(after, "b").start, at(10, 5));
+  assert.ok(row(after, "c").end <= row(before, "c").end - 55 * 60000);
+});

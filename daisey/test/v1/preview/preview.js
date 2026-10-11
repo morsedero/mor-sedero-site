@@ -222,6 +222,14 @@ const SCENARIOS = {
     { title: "Exercise", project: "Health", size: 45, routine: { per: 3, log: [{ day: day(-14) }, { day: day(-13) }, { day: day(-12) }, { day: day(-7) }, { day: day(-6) }, { day: day(-5) }, { day: day(-1), min: 45 }] } },
     { title: "Band practice", project: "Band", size: 60, routine: { per: 2, days: [1, 4], at: "19:00", log: [{ day: day(-2), min: 60 }] } },
   ] },
+  // Done on a 1 h task (use with --cal "70:Teaching"): the free time, the
+  // plan's slots and the next card's reason are worked out again from the
+  // clock, and no hour is credited for a Done tapped seconds in (round 2).
+  freeafter: { tasks: [
+    { title: "Mix review for Reprise", project: "Reprise", size: 60 },
+    { title: "Send invoice to Uri", project: "Admin", size: 15 },
+    { title: "Lesson prep", project: "Teaching", size: 30 },
+  ] },
   waiting: { tasks: [
     { title: "Waiting on Yuval", project: "Reprise", size: 30, over: { status: "waiting", waitingOn: "Yuval" } },
     { title: "Big edit", project: "Reprise", size: 240 },

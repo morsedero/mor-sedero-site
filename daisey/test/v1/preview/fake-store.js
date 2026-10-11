@@ -1,6 +1,6 @@
 // Stand-in for app/js/store.js in the preview: same exports, tasks held in
 // memory instead of Firestore. Seeded from window.__FAKE (set by preview.js).
-import { createTask, editTask, completeTask, startedTask, workedTask, keptTime, skipTask, skipReason } from "./model.js";
+import { createTask, editTask, completeTask, startedTask, workedTask, keptTime, skipTask, skipReason, leftMinutes } from "./model.js";
 
 const seed = window.__FAKE || {};
 let n = 0;
@@ -37,7 +37,8 @@ export const updateTask = (uid, task, changes) => {
   return ok("tasks");
 };
 export const patchTask = (uid, id, patch) => { const i = tasks.findIndex((t) => t.id === id); tasks[i] = { ...tasks[i], ...patch }; return ok("tasks"); };
-export const finishTask = (uid, task) => { const p = patchTask(uid, task.id, completeTask(task)); p.counted = { minutes: 20 }; return p; };
+// As store.js: the finish alone (0 min) in the log, the estimate for the toast.
+export const finishTask = (uid, task) => { const p = patchTask(uid, task.id, completeTask(task)); logWork(uid, task, 0, { done: true }); p.estimate = { minutes: leftMinutes(task) }; return p; };
 export const setDoneMinutes = () => Promise.resolve();
 export const logWork = (uid, task, minutes) => { (window.__logged ||= []).push({ t: task.id, p: task.project, m: Math.round(minutes) }); return Promise.resolve(null); };
 export const unlogReopened = () => Promise.resolve();
