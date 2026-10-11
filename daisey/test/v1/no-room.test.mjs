@@ -27,7 +27,8 @@ test("a task too long for any free stretch is listed, with why", () => {
   assert.equal(over.length, 1);
   assert.equal(over[0].taskId, "long");
   assert.equal(over[0].minutes, 50); // not shrunk to fit
-  assert.equal(over[0].why, "needs 50 min, 30 min free in one stretch");
+  assert.equal(over[0].why, "needs 50 min, only 40 min left today"); // too long even alone (2026-10-12)
+  assert.ok(over[0].never);
 });
 
 test("office hours over: No room says so", () => {

@@ -331,3 +331,15 @@ test("a Done ahead of time lays the rest of the plan again from now (round 2 #3)
   assert.equal(row(after, "b").start, at(10, 5));
   assert.ok(row(after, "c").end <= row(before, "c").end - 55 * 60000);
 });
+
+test("No room: a task too long for the whole day left says so, offers no ↑; Fewer drops it before what fits (Mor, 2026-10-12)", () => {
+  const big = t({ id: "big", title: "Social video", size: 180, dateKind: "deadline" }), a = t({ id: "a", size: 30 }), b = t({ id: "b", size: 30 });
+  const ctx = { tasks: [big, a, b], events: [ev("Late", [21], [23, 59])], now: at(18, 30) };
+  const alone = timeline([{ taskId: "big", minutes: 180 }], ctx).over[0];
+  assert.ok(alone.never, "↑ can't help");
+  assert.match(alone.why, /only 2 h 30 min left today|longest free stretch today is 2 h 30 min/);
+  const after = timeline([{ taskId: "a", minutes: 30 }, { taskId: "b", minutes: 30 }, { taskId: "big", minutes: 120 }], ctx).over[0];
+  assert.ok(after && !after.never && /after the rest/.test(after.why), after?.why);
+  const kept = fewerOf([{ taskId: "big", minutes: 180 }, { taskId: "a", minutes: 30 }, { taskId: "b", minutes: 30 }], ctx).map((i) => i.taskId);
+  assert.ok(!kept.includes("big"), kept.join());
+});

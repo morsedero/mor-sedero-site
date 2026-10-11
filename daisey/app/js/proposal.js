@@ -421,12 +421,20 @@ function lay(items = [], { tasks = [], events = [], now = Date.now(), hours = W.
       let room = 0;
       for (let k = gi; k < gaps.length; k++) room = Math.max(room, gaps[k].end - Math.max(cursor, gaps[k].start));
       room = Math.floor(room / (5 * MIN)) * 5;
+      // Would it fit with nothing else in the plan? If not, ↑ can't help
+      // and "free in one stretch" reads as if other tasks took the time
+      // (Mor, 2026-10-12: 3 h task alone at 01:00, "2 h 50 min free in one
+      // stretch", ↑ offered on the only item).
+      const open = gaps.filter((g) => !g.place);
+      const most = Math.floor(Math.max(0, ...open.map((g, k) => g.end - (k ? g.start : up5(g.start)))) / (5 * MIN)) * 5;
+      const never = most * MIN < need;
       // Why there's no room, in plain facts (2026-10-11: never dropped unsaid).
       const hoursShut = task.openHours && task.openHours !== "anytime"
         && !gaps.slice(gi).some((g) => !g.place && openStart(task, Math.max(cursor, g.start), need) != null);
       const why = hoursShut ? (task.openHours === "office" ? "needs office hours, none left today" : "evening only, no evening time left")
-        : room >= 5 ? `needs ${durText(need / MIN)}, ${durText(room)} free in one stretch` : "no free time left today";
-      over.push({ taskId: it.taskId, task, minutes: need / MIN, room: room >= WORTH ? room : 0, i, why });
+        : never && most >= 5 ? `needs ${durText(need / MIN)}, ${open.length > 1 ? `longest free stretch today is ${durText(most)}` : `only ${durText(most)} left today`}`
+        : room >= 5 ? `needs ${durText(need / MIN)}, ${durText(room)} free in one stretch after the rest` : "no free time left today";
+      over.push({ taskId: it.taskId, task, minutes: need / MIN, room: room >= WORTH ? room : 0, i, why, ...(never && !hoursShut ? { never: true } : {}) });
     }
   }
   // A break runs on to whatever comes next, up to the next meeting: free time
@@ -538,7 +546,10 @@ export function fewerOf(items = [], ctx = {}){
   const tasks = items.map((it, i) => ({ it, i })).filter(({ it }) => !isBreak(it));
   if (tasks.length < 2) return items;
   const keep = Math.max(1, Math.min(tasks.length - 1, Math.round(tasks.length * 0.6)));
-  const kept = new Set(tasks.sort((a, b) => pressing(byId.get(a.it.taskId), today) - pressing(byId.get(b.it.taskId), today) || a.i - b.i)
+  // What has No room goes first: it wasn't happening today anyway, and
+  // keeping it left a "lighter" plan of one task that doesn't fit (Mor, 2026-10-12).
+  const over = new Set(timeline(items, ctx).over.map((o) => o.i));
+  const kept = new Set(tasks.sort((a, b) => over.has(a.i) - over.has(b.i) || pressing(byId.get(a.it.taskId), today) - pressing(byId.get(b.it.taskId), today) || a.i - b.i)
     .slice(0, keep).map(({ i }) => i));
   return tidy(items.filter((it, i) => isBreak(it) || kept.has(i)));
 }
