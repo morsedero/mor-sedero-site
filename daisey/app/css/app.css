@@ -1716,7 +1716,7 @@ body.focus .shell { block-size: auto; min-block-size: 100dvh; overflow: visible;
 .pp-break .pp-title, .pp-break .pp-meta { flex: none; font-size: 14.5px; font-weight: 600; color: color-mix(in srgb, var(--ink) 55%, var(--ink-2)); }
 .pp-break .pp-task::after { content: ""; flex: 1; border-block-start: 1.5px dotted currentColor; opacity: .35; }
 .pp-break .pp-ctl { block-size: 28px; font-size: 13px; }
-.pp-row.over > * { opacity: .65; }
+.pp-row.over > :not(.pp-ctls) { opacity: .65; }
 .pp-time { display: grid; font-size: 12px; font-weight: 600; line-height: 1.3; color: var(--ink-2); font-variant-numeric: tabular-nums; }
 .pp-time small { font-size: 11px; font-weight: 500; opacity: .8; }
 .pp-row.over .pp-time { color: var(--nowline); }

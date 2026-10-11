@@ -1525,6 +1525,13 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
         h("button", { className: "btn primary start", type: "button", onclick: lighterPlan }, h("span", { textContent: "Lighter plan" }))) });
   }
 
+  // No room for it: ↑ puts it first in the plan, and what's last then falls
+  // out instead (Mor, 2026-10-11; the plan doesn't drag).
+  function toFront(i){
+    const items = [...prop.items];
+    const [it] = items.splice(i, 1);
+    prop.items = trimBreaks([it, ...items]); prop.touched = true; render();
+  }
   function dropItem(i){
     const items = [...prop.items];
     const [gone] = items.splice(i, 1);
@@ -1604,6 +1611,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
           h("span", { className: "pp-title", dir: "auto", textContent: t.title }),
           h("span", { className: "pp-meta" }, ...pieces(projectShown(t) ? t.project : "", dur(r.minutes), r.ride ? RIDE_ROW[r.ride] : "", isOver ? "" : r.missed ? "did it happen?" : late?.taskId === r.taskId ? "not started" : ""))),
         h("span", { className: "pp-ctls" },
+          isOver && ctl("↑", "Do first", false, () => toFront(i)),
           ctl("✕", "Take off today's plan", false, () => dropItem(i))));
     };
     // A break is the plan's own item: it comes off like a task. Nothing in
@@ -1653,7 +1661,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
       // Late in the day it says so and offers a fresh take on what's left.
       over.length > 0 && approved && !prop.busy && h("p", { className: "pp-note pp-late" }, "Running late. ",
         h("button", { type: "button", className: "linkish", textContent: "Rethink for what's left?", onclick: () => doRethink("") })),
-      over.length > 0 && !approved && h("p", { className: "muted pp-note", textContent: `${plural(over.length)[0]} fit today. Move ${plural(over.length)[1]} up, or take ${plural(over.length)[1]} off.` }),
+      over.length > 0 && !approved && h("p", { className: "muted pp-note", textContent: `${plural(over.length)[0]} fit today. ↑ does one first, ✕ takes it off.` }),
       prop.note && h("p", { className: "pp-note", role: "status", textContent: prop.note }),
       prop.ask ? rethinkRow() : h("div", { className: "pp-actions" },
         h("button", { className: "btn primary start", type: "button", disabled: !prop.items.some((it) => !isBreak(it)) || prop.busy, onclick: approve },
