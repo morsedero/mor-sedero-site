@@ -1658,9 +1658,6 @@ body.focus .shell { block-size: auto; min-block-size: 100dvh; overflow: visible;
 /* Drag a row to reorder (ppdrag.js); the rows in the way slide over (pusher) */
 .pushing > :not(.pp-dragging) { transition: transform .18s ease; }
 @media (prefers-reduced-motion: reduce) { .pushing > * { transition: none; } }
-.pp-row.pp-drag { user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
-.pp-row.pp-dragging { position: relative; z-index: 5; scale: 1.03; background: var(--card); border-style: solid; box-shadow: 0 0 0 2px var(--aline, var(--ink-2)), 0 14px 28px -4px rgba(0,0,0,.45), 0 4px 8px rgba(0,0,0,.25); }
-.pp-row.pp-dragging, .pp-row.pp-dragging * { cursor: grabbing; }
 .pcard.pp-drag, .pj-swipe.pp-drag { user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
 .pcard.pp-dragging, .pj-swipe.pp-dragging { position: relative; z-index: 5; scale: 1.03; box-shadow: 0 0 0 2px var(--aline, var(--ink-2)), 0 14px 28px -4px rgba(0,0,0,.45), 0 4px 8px rgba(0,0,0,.25); }
 .pj-swipe.pp-dragging { overflow: visible; }

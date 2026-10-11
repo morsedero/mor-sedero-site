@@ -14,7 +14,6 @@
 // the same timer.
 import { overruled, eventKey } from "./reality.js";
 import { addTask, updateTask, watchTasks, watchRun, watchSkips, saveSkips, endBatch, skipNow, blockTask, restoreTask, finishTask, setDoneMinutes, watchSettings, saveSettings, watchMoment, saveMoment, watchLearn, bumpLearn, cancelRun, watchDayPlan, saveDayPlan, logWork, watchProjectNames } from "./store.js";
-import { sortable } from "./ppdrag.js";
 import { proposeDay, timeline, withBreaks, trimBreaks, isBreak, planProgress, refit, topUp, daySig, relayMeals } from "./proposal.js";
 import { rethink } from "./rethink.js";
 import { breakText } from "./schedule.js";
@@ -75,7 +74,6 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
   // sig: the day they were laid against (proposal.daySig); askOpts: the ask
   // they came from (the lighter plan's), so a fresh take keeps it.
   const prop = { open: false, items: [], exclude: [], ask: false, text: "", busy: false, note: "", auto: null, touched: false, sig: null, askOpts: null };
-  let ppDragging = false, ppStale = false; // a plan-row drag is live (ppdrag.js)
   // The event you said you're free from, as its start time in ms (what
   // engine.freeWindow reports). Cleared on its own once that event is no
   // longer the one running.
@@ -1214,7 +1212,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
   // approved cut, kept for the deadline question (cutView).
   function behindNow(){
     const p = approvedPlan();
-    if (!p || !tasks || cal.status !== "ok" || prop.open || ppDragging) return null;
+    if (!p || !tasks || cal.status !== "ok" || prop.open) return null;
     const ctx = planCtx(), held = timeline(p.items || [], { ...ctx, since: planSince() });
     if (held.late && !held.missed.length) return null; // the card is asking about the next task
     const { items, cut } = refit(p.items || [], ctx, p.kept || []);
@@ -1281,7 +1279,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
   function topUpLater(){
     let p = approvedPlan();
     if (!p || !tasks || cal.status !== "ok") return;
-    if (!prop.open && !ppDragging) {
+    if (!prop.open) {
       const re = relayMeals(p.items || [], planCtx(), p.mealsLaid || {});
       if (re.items !== p.items || JSON.stringify(re.laid) !== JSON.stringify(p.mealsLaid || {})) {
         savePlan("approved", re.items, { kept: p.kept || [], ...unseen(p, "cut"), ...unseen(p, "added"), mealsLaid: re.laid });
@@ -1300,7 +1298,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
   }
   function topUpNow(redraw = true){
     const p = approvedPlan();
-    if (!p || !tasks || cal.status !== "ok" || prop.open || ppDragging) return; // the next render asks again
+    if (!p || !tasks || cal.status !== "ok" || prop.open) return; // the next render asks again
     const ctx = planCtx(), sig = daySig(ctx.events, ctx.hours);
     if (p.sig === sig) return;
     const { items, added } = topUp(p.items || [], ctx, p.declined || []);
@@ -1364,7 +1362,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
   // laid again from scratch so they're weighed with the rest; changed by
   // you, they top up what's free. prop.known: the open tasks it has seen.
   function freshenProposal(){
-    if (!prop.open || prop.busy || ppDragging || !tasks || cal.status !== "ok") return;
+    if (!prop.open || prop.busy || !tasks || cal.status !== "ok") return;
     const ctx = { ...planCtx(), ask: prop.askOpts || {} }, sig = daySig(ctx.events, ctx.hours);
     const open = tasks.filter((t) => t.status === "ready").map((t) => t.id);
     const added = prop.known ? open.filter((id) => !prop.known.has(id) && !prop.exclude.includes(id)) : [];
@@ -1606,15 +1604,6 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
             h("button", { type: "button", className: "pj-quiet", onclick: () => onOpen?.(t) }, bdi(t.title)),
             h("span", { className: "pj-meta", dir: "ltr", textContent: new Date(t.doneAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) })))));
   }
-  // Drag a row to reorder the plan (ppdrag.js, same drag as the Schedule's).
-  const dragRows = (ol) => { sortable(ol, {
-    busy: (on) => { ppDragging = on; if (!on && ppStale) { ppStale = false; render(); } },
-    onMove: (el, before) => { // each row's _i: its index in prop.items
-      const it = prop.items[el._i], at = before ? prop.items[before._i] : null;
-      const items = prop.items.filter((x) => x !== it);
-      items.splice(at ? items.indexOf(at) : items.length, 0, it);
-      prop.items = trimBreaks(items); prop.touched = true; render();
-    } }); return ol; };
   function proposalCard(){
     const approved = !!approvedPlan();
     const { rows, over, breaks, late } = timeline(prop.items, { ...planCtx(), ...(approved && !prop.touched && !prop.replan ? { since: planSince() } : {}) });
@@ -1623,7 +1612,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     const row = (r, isOver) => {
       const i = r.i, t = r.task;
       const ctl = (text, label, disabled, onclick) => h("button", { type: "button", className: "pp-ctl", textContent: text, title: label, ariaLabel: `${label}: ${t.title}`, disabled, onclick });
-      return h("li", { className: "pp-row pp-drag" + areaClass(t) + (isOver ? " over" : r.missed ? " missed" : ""), _i: i },
+      return h("li", { className: "pp-row" + areaClass(t) + (isOver ? " over" : r.missed ? " missed" : ""), _i: i },
         isOver ? h("span", { className: "pp-time", textContent: "No room" })
           : h("span", { className: "pp-time", ariaLabel: `${clock(r.start)} to ${clock(r.end)}` }, clock(r.start), h("small", { textContent: clock(r.end) })),
         h("button", { type: "button", className: "pp-task", ariaLabel: `Edit ${t.title}`, onclick: () => onOpen?.(t) },
@@ -1634,10 +1623,11 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
         isOver && r.room > 0 && h("button", { type: "button", className: "pp-fit", ariaLabel: `Shorten ${t.title} to ${dur(r.room)}`, onclick: () => shorten(i, r.room) },
           `Shorten to ${dur(r.room)}`));
     };
-    // A break is the plan's own item: it drags and comes off like a task.
+    // A break is the plan's own item: it comes off like a task. Nothing in
+    // the plan drags (Mor, 2026-10-11).
     const breakRow = (b) => {
       const name = b.type === "meal" ? b.name || "Meal" : "Break", own = b.i != null;
-      return h("li", { className: "pp-row pp-break" + (own ? " pp-drag" : ""), _i: b.i },
+      return h("li", { className: "pp-row pp-break", _i: b.i },
         h("span", { className: "pp-time", ariaLabel: `${clock(b.start)} to ${clock(b.end)}` }, clock(b.start), h("small", { textContent: clock(b.end) })),
         h("span", { className: "pp-task" }, h("span", { className: "pp-title", textContent: breakText(b, dur(Math.round((b.end - b.start) / 60000))) })),
         own && h("span", { className: "pp-ctls" },
@@ -1645,7 +1635,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     };
     // Today's events still to come, as the Schedule draws them (Mor,
     // 2026-10-10): the plan is laid around them. A tap opens the event like
-    // on the Schedule; they're not the plan's, so they don't drag or come off.
+    // on the Schedule; they're not the plan's, so they don't come off.
     const evRow = (ev) => {
       const s = Date.parse(ev.start), e = Date.parse(ev.end), t = ev.taskId && tasks?.find((x) => x.id === ev.taskId);
       const tone = t ? areaClass(t) : "", time = h("span", { className: "pp-time", ariaLabel: `${clock(s)} to ${clock(e)}` }, clock(s), h("small", { textContent: clock(e) }));
@@ -1670,10 +1660,10 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
       h("div", { className: "hero-top" },
         h("span", { className: "hero-area", textContent: approved ? `${day}'s plan` : `Proposed for ${day.toLowerCase()}` }),
         rows.length > 0 && h("span", { className: "hero-side", textContent: `${dur(total)} · until ${clock(last.end)}` })),
-      (rows.length || over.length || evs.length) > 0 && dragRows(h("ol", { className: "pp-list" },
+      (rows.length || over.length || evs.length) > 0 && h("ol", { className: "pp-list" },
           ...[...rows.map((r) => ({ r, s: r.start })), ...breaks.map((b) => ({ b, s: b.start })), ...evs.map((ev) => ({ ev, s: Date.parse(ev.start) }))]
             .sort((a, b) => a.s - b.s).map((x) => (x.ev ? evRow(x.ev) : x.b ? breakRow(x.b) : row(x.r, false))),
-          ...over.map((r) => row(r, true)))),
+          ...over.map((r) => row(r, true))),
       !rows.length && !over.length && h("p", { className: "now-empty", textContent: "No open task fits the free time left today." }),
       // Overflow: Daisey asks before cutting anything (planAsk,
       // 2026-10-10), so until it's answered, what doesn't fit shows here.
@@ -1718,7 +1708,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
   // planRoot, and the Now card behind it renders as usual.
   let planShown = false;
   function paintPlanScreen(){
-    if (!planRoot || ppDragging) return;
+    if (!planRoot) return;
     const open = prop.open;
     if (open) planRoot.replaceChildren(...[proposalCard(), doneCard()].filter(Boolean));
     else if (planShown) planRoot.replaceChildren();
@@ -1736,7 +1726,6 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     if (!ready && tasks != null && planKnown && cal.status !== "loading") { ready = true; onReady?.(); }
   }
   function renderCard(){
-    if (ppDragging) { ppStale = true; return; } // a redraw mid-drag would drop the dragged row
     if (run && tasks != null) endSession({ quiet: true }); // a run from before the clock went
     // Focus mode (Mor, 2026-10-10): the same card and actions, nothing
     // around it (CSS body.focus-mode). Done goes straight to the next card.
