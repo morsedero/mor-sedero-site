@@ -305,7 +305,7 @@ async function boot(){
         const start = $("#dayStart"), end = $("#dayEnd");
         // Finished tasks into the "Daisey log" calendar (now.js logFinished): on unless switched off.
         const logSwitch = $("#logDone");
-        const laptopAsk = $("#askLaptop");
+        const laptopAsk = $("#askLaptop"), focusPick = $("#focusMax");
         // The morning brief (push.js): this device's switch, a test button,
         // and — while it's on anywhere — the task snapshot the server counts.
         const pushSwitch = $("#pushBrief"), pushNote = $("#pushNote"), pushTest = $("#pushTest"), pushKinds = $("#pushKinds");
@@ -362,6 +362,8 @@ async function boot(){
         const stopBriefPlan = watchDayPlan(user.uid, (d) => { briefPlan = d || null; snap(); }, fail);
         logSwitch.onchange = () => saveSettings(user.uid, { logDone: logSwitch.checked }).catch(fail);
         laptopAsk.onchange = () => saveSettings(user.uid, { askLaptop: laptopAsk.checked }).catch(fail);
+        // Focus's size, back in Settings (Mor, 2026-10-11; projects.js shows it as dots).
+        focusPick.onchange = () => saveSettings(user.uid, { focusMax: Number(focusPick.value) }).catch(fail);
         // Meal breaks (Mor, 2026-10-08): Breakfast, Lunch, Dinner, each on or
         // off, with one time (the plan puts it in the hour from there) and a
         // length. Each reads as one line, "13:00 · 60 min"; tap it to change
@@ -480,6 +482,7 @@ async function boot(){
           logSwitch.checked = !isGuest && s?.logDone !== false;
           logSwitch.disabled = isGuest;
           laptopAsk.checked = s?.askLaptop === true;
+          focusPick.value = String(s?.focusMax ?? 3);
           // After midnight a late day reads { start: 0 }; the server gets the usual one.
           hours = hrs.late ? usual : hrs;
           lastSettings = s || {};

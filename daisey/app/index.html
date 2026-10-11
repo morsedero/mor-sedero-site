@@ -228,8 +228,15 @@
     </div>
     <div class="menu-sec">
       <h3 class="menu-h">More</h3>
-      <!-- "Needs laptop" on each task (addtask.js, Mor 2026-10-09): off by default. Focus's size moved to the Projects page (2026-10-10). -->
+      <!-- "Needs laptop" on each task (addtask.js, Mor 2026-10-09): off by default. -->
       <label class="menu-check"><input id="askLaptop" type="checkbox"> Ask "Needs laptop" on each task</label>
+      <!-- How many projects Focus holds (projects.js): 1–5, 3 by default. Back here
+           from the Projects page (Mor, 2026-10-11): a picker beside a full Focus made
+           raising the cap the easy way out; set here, it's a rule, not an escape.
+           The Projects page shows it as dots only. -->
+      <label class="menu-check"><select id="focusMax" class="menu-select">
+        <option value="1">1</option><option value="2">2</option><option value="3" selected>3</option><option value="4">4</option><option value="5">5</option>
+      </select> Most projects in Focus</label>
       <!-- Reset Daisey (2026-10-07): erase Daisey's own data and read the calendar and Trello from scratch. -->
       <button id="resetBtn" class="menu-link danger" type="button" aria-expanded="false" aria-controls="resetPanel">Reset Daisey…</button>
       <div id="resetPanel" class="reset-panel" hidden>

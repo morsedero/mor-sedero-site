@@ -964,16 +964,12 @@ button.now-title:focus-visible { outline: 2px solid var(--aink); outline-offset:
 .tier-focus .pp-tier-name { padding-block-end: 2px; border-block-end: 2px solid var(--accent); }
 .zone-dragging .pp-zone { background: color-mix(in srgb, var(--ink) 3%, transparent); box-shadow: inset 0 0 0 1px var(--line); }
 .pp-tier-n { margin-inline-start: auto; font-size: 12px; font-weight: 600; color: var(--ink-2); font-variant-numeric: tabular-nums; }
-/* Focus's limit is a pill that says what it is, "Max 3", with a chevron
-   (Mor, 2026-10-11: the bare dashed "/3" didn't read as editable). */
-.pp-tier-n:has(.pp-tier-maxpill) { display: inline-flex; align-items: center; gap: 10px; }
+/* Focus's places as dots, filled = taken (Mor, 2026-10-11). Display only:
+   the limit is set in Settings, so a full Focus means choosing, not raising. */
+.pp-tier-n:has(.pp-slots) { display: inline-flex; align-self: center; }
 .pp-slots { display: inline-flex; gap: 5px; }
 .pp-slots > i { inline-size: 10px; block-size: 10px; border-radius: 50%; border: 1.5px solid currentColor; opacity: .55; }
 .pp-slots > i.on { background: currentColor; opacity: 1; }
-.pp-tier-maxpill { position: relative; display: inline-flex; }
-.pp-tier-maxpill::after { content: ""; position: absolute; inset-inline-end: 11px; inset-block-start: 50%; inline-size: 5px; block-size: 5px; border-inline-end: 1.5px solid currentColor; border-block-end: 1.5px solid currentColor; transform: translateY(-70%) rotate(45deg); pointer-events: none; }
-.pp-tier-max { appearance: none; -webkit-appearance: none; min-block-size: 30px; padding-block: 4px; padding-inline: 11px 25px; border: 1.5px solid color-mix(in srgb, currentColor 35%, transparent); border-radius: 999px; background: color-mix(in srgb, var(--accent) 14%, var(--card)); font: inherit; font-size: 13px; font-weight: 700; color: inherit; cursor: pointer; }
-@media (hover: hover) { .pp-tier-max:hover { border-color: currentColor; } }
 .tier-focus .pp-tier-name, .tier-focus .pp-tier-n { color: color-mix(in srgb, var(--accent) 70%, var(--ink)); }
 .pp-tier { position: relative; z-index: 2; display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; }
 /* Tier names are headings; what each means is a tip behind the name, on

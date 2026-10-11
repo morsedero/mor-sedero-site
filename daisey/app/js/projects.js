@@ -20,7 +20,7 @@
 // area when no other project has that one yet, else the next free colour in
 // PALETTE. Names are taken in order, so a colour doesn't move around as
 // counts change. Inbox has none.
-import { watchTasks, watchSettings, saveSettings, finishTask, setDoneMinutes, restoreTask, removeTask, watchProjectNames, saveProjectNames, saveProjectRanges, saveProjectOrder, saveProjectTiers, renameInLog } from "./store.js";
+import { watchTasks, watchSettings, finishTask, setDoneMinutes, restoreTask, removeTask, watchProjectNames, saveProjectNames, saveProjectRanges, saveProjectOrder, saveProjectTiers, renameInLog } from "./store.js";
 import { INBOX, progressOf, progressPatch, leftMinutes, pushedTo, notYet, durText, localDate, logicalDate, bringBack, cleanRange, outsideRange, doneSnapshot } from "./model.js";
 import { isRoutine } from "./routine.js";
 import { dropSeries } from "./slots.js";
@@ -208,7 +208,7 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
     },
     onMove: (el, zone) => {
       const t = zone._tier;
-      if (full(el._name, t)) { flash(`Focus holds ${focusMax}. Move one out first, or raise the number beside Focus.`); render(); return; }
+      if (full(el._name, t)) { flash("Focus is full. Move one out first."); render(); return; }
       // The DOM already shows where it landed (zoneSortable moved the card).
       const names = [...box.children].flatMap((z) => [...z.children].filter((k) => k._name).map((k) => k._name));
       if (t !== tierOf(el._name)) return setTier(el._name, t, names);
@@ -254,17 +254,13 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
         // The name is the heading; what the tier means sits behind it, shown
         // on hover with a mouse or a tap with a finger (Mor, 2026-10-11).
         h("div", { className: "pp-tier" }, h("button", { type: "button", className: "pp-tier-name", textContent: TIER_TEXT[t][0], ariaExpanded: "false", onclick: tierTip }), h("span", { className: "pp-tier-sub", role: "tooltip", textContent: TIER_TEXT[t][1] }),
-          // Focus's size lives here, on its own header (Mor, 2026-10-10: out of Settings):
-          // the count, then a "Max 3" pill that picks 1–5 (Mor, 2026-10-11: a bare "/3" didn't read as editable).
+          // Focus's places as dots, filled ones taken (Mor, 2026-10-11). Display
+          // only: the limit is set in Settings, so a full Focus means choosing
+          // which project steps back, not raising the number on the spot.
           t === "focus"
-            // The count as slots (Mor, 2026-10-11): one dot per place, filled ones taken.
             ? h("span", { className: "pp-tier-n" },
-                h("span", { className: "pp-slots", role: "img", ariaLabel: `${ins.length} of ${focusMax} in Focus` },
-                  ...Array.from({ length: Math.max(ins.length, focusMax) }, (_, i) => h("i", { className: i < ins.length ? "on" : "" }))),
-                h("span", { className: "pp-tier-maxpill" },
-                  h("select", { className: "pp-tier-max", ariaLabel: "Most projects in Focus at once", title: "Most projects in Focus at once",
-                    onchange: (e) => { focusMax = Number(e.target.value); saveSettings(uid, { focusMax }).catch(fail); render(); } },
-                    ...[1, 2, 3, 4, 5].map((n) => h("option", { value: n, selected: n === focusMax, textContent: `Max ${n}` })))))
+                h("span", { className: "pp-slots", role: "img", ariaLabel: `${ins.length} of ${focusMax} in Focus`, title: `${ins.length} of ${focusMax} in Focus` },
+                  ...Array.from({ length: Math.max(ins.length, focusMax) }, (_, i) => h("i", { className: i < ins.length ? "on" : "" }))))
             : h("span", { className: "pp-tier-n", textContent: String(ins.length) })),
         h("span", { className: "pp-tier-empty", textContent: "Drag a project here" }), ...ins.map(card)); };
     const y = els.grid.scrollTop;
