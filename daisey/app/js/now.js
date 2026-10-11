@@ -13,7 +13,7 @@
 // the run lives in Firestore, so this tab, a reload and the phone all show
 // the same timer.
 import { overruled, eventKey } from "./reality.js";
-import { addTask, updateTask, watchTasks, watchRun, watchSkips, saveSkips, endBatch, skipNow, blockTask, restoreTask, finishTask, setDoneMinutes, watchSettings, saveSettings, watchMoment, saveMoment, watchLearn, bumpLearn, cancelRun, watchDayPlan, saveDayPlan, logWork, watchProjectNames } from "./store.js";
+import { addTask, updateTask, watchTasks, watchRun, watchSkips, saveSkips, endBatch, skipNow, blockTask, restoreTask, finishTask, setDoneMinutes, watchSettings, saveSettings, watchMoment, saveMoment, watchLearn, bumpLearn, cancelRun, watchDayPlan, saveDayPlan, logWork, watchProjectNames, removeTask } from "./store.js";
 import { proposeDay, timeline, withBreaks, trimBreaks, isBreak, planProgress, planStatus, unfitOf, refit, topUp, daySig, relayMeals } from "./proposal.js";
 import { rethink } from "./rethink.js";
 import { breakText } from "./schedule.js";
@@ -1751,7 +1751,16 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
       ? freeWindow(cal.events.filter((e) => e.busy !== false && !e.allDay)).current : null;
     const fw = calendarNow();
     lastWindow = windowMark(fw);
-    const greet = h("div", { className: "now-greet" },
+    // The sample day (sample.js): say they're examples, one tap clears them.
+    const samples = (tasks || []).filter((t) => t.sample && t.status !== "dropped");
+    const sampleNote = samples.length > 0 && h("p", { className: "sample-note" },
+      "Example day: these tasks are samples to try Daisey with. ",
+      h("button", { className: "linkish", type: "button", textContent: "Clear examples", onclick: () => {
+        Promise.all(samples.map((t) => removeTask(uid, t.id))).catch(fail);
+        if (todaysPlan()?.items?.some((it) => samples.some((t) => t.id === it.taskId))) savePlan("dismissed", []);
+        reset(); render();
+      } }));
+    const greet = h("div", { className: "now-greet" }, sampleNote,
       // Said you're free during an event that is still on the calendar.
       freeFrom && busy && h("p", { className: "muted" }, "Ignoring ", bdi(busy.title), " ",
         h("button", { className: "linkish", type: "button", textContent: "put it back",

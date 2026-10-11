@@ -8,10 +8,11 @@ const { planProgress, timeline } = await import("../../app/js/proposal.js");
 
 const at = (h, m = 0) => Date.UTC(2026, 9, 12, h - 3, m); // a Monday
 
-test("a morning sample: five tasks, one real deadline, an approved plan, a pick", () => {
+test("a morning sample: three example tasks, one real deadline, an approved plan, a pick", () => {
   const { tasks, plan } = sampleDay({ now: at(9) });
-  assert.equal(tasks.length, 5);
-  assert.equal(new Set(tasks.map((t) => t.id)).size, 5);
+  assert.equal(tasks.length, 3);
+  assert.equal(new Set(tasks.map((t) => t.id)).size, 3);
+  assert.ok(tasks.every((t) => t.sample === true));
   const dl = tasks.filter((t) => t.dateKind === "deadline");
   assert.equal(dl.length, 1);
   assert.equal(dl[0].due, "2026-10-13");
@@ -28,6 +29,6 @@ test("a morning sample: five tasks, one real deadline, an approved plan, a pick"
 
 test("late at night there's no day left to plan: no plan, still the tasks", () => {
   const { tasks, plan } = sampleDay({ now: at(23, 50) });
-  assert.equal(tasks.length, 5);
+  assert.equal(tasks.length, 3);
   assert.equal(plan, null);
 });
