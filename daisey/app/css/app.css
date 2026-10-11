@@ -527,7 +527,7 @@ dialog.now:focus { outline: none; }
 
 /* Area colours: a card names its area with .area-<key>, and everything in it
    reads --tint / --aline / --aink. --sub is the area's quiet text. */
-:where(.now-card, .next-card, .focus) {
+:where(.now-card, .focus) {
   --tint: var(--card); --aline: var(--line); --aink: var(--ink-2);
   --sub: color-mix(in srgb, var(--aink) 40%, var(--ink));
 }
@@ -662,10 +662,6 @@ dialog.now:focus { outline: none; }
 .menu-h { margin: 0; font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-2); }
 .menu-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .menu-label { font-size: 14px; white-space: nowrap; }
-.again { display: flex; align-items: center; justify-content: center; gap: 8px; margin-block-start: 12px; flex-wrap: wrap; }
-.again-q { font-size: 14px; color: var(--ink-2); }
-.again .chip.on { background: var(--accent); color: var(--ink); border-color: var(--accent); }
-.again-made { margin: 12px 0 0; font-size: 14px; color: var(--ink-2); text-align: center; }
 .now-wait { margin: 6px 0 0; font-size: 14px; color: var(--ink-2); }
 .ts-nudge { justify-self: start; font-size: 14px; }
 /* Kinds sit in their own card, one per row with hairlines, so the five options don't crowd the master switch. */
@@ -744,40 +740,6 @@ dialog.settings .now-head + .menu-sec { border-block-start: 0; padding-block-sta
 .focus.paused .ring-bar { opacity: .45; }
 .focus.paused .ring-time { color: var(--sub); }
 .focus .batch-list { margin: 14px 0 0; inline-size: 100%; }
-
-/* Done + Next. */
-.focus.handoff { position: relative; overflow: hidden; }
-.done-hero { display: flex; flex-direction: column; align-items: center; text-align: center; margin-block: 7vh 28px; }
-.done-flower { position: relative; inline-size: 150px; block-size: 150px; }
-.daisy.big .daisy-petals ellipse { stroke-width: .6; }
-.drift { position: absolute; inset: 0; pointer-events: none; }
-.petal { position: absolute; inset-inline-start: 50%; inset-block-start: 50%; inline-size: 14px; block-size: 26px; margin: -13px -7px; border-radius: 50%; background: #fff; border: 1px solid #e6dcc3; opacity: 0; }
-@keyframes drift { 0% { transform: translate(0, 0) rotate(var(--r)); opacity: 0; } 15% { opacity: 1; } 100% { transform: translate(var(--dx), var(--dy)) rotate(calc(var(--r) + 120deg)); opacity: 0; } }
-@keyframes popin { 0% { transform: scale(.6); } 60% { transform: scale(1.08); } 100% { transform: scale(1); } }
-@media (prefers-reduced-motion: no-preference) {
-  .daisy.big.pop { animation: popin .7s cubic-bezier(.3, 1.6, .5, 1) both; }
-  .petal { animation: drift 2.6s ease-out forwards; }
-  .done-h.pop { animation: guess-in .25s .15s ease-out both; }
-}
-/* Done screen: "Done", the task's name big in full ink, how long (− / +), the count, Undo. */
-.done-kick { margin: 20px 0 0; font-size: 13px; font-weight: 700; letter-spacing: .8px; text-transform: uppercase; color: var(--accent); }
-.done-h { margin: 4px 0 8px; font-size: 28px; font-weight: 600; line-height: 1.2; letter-spacing: -0.3px; color: var(--ink); overflow-wrap: anywhere; }
-.done-time { display: flex; align-items: center; justify-content: center; gap: 10px; margin: 0 0 8px; font-size: 16px; color: var(--ink); }
-.done-time .toast-step { inline-size: 32px; block-size: 32px; font-size: 16px; color: var(--ink); border-color: var(--line); }
-.done-p { margin: 0; font-size: 15px; color: var(--ink-2); }
-.done-undo { margin-block-start: 10px; font-size: 14px; color: var(--ink-2); padding: 8px 6px; }
-/* The Next card is a preview, not the Now card: no fill, a dashed edge in the
-   area colour (Mor, 2026-10-11: it looked like the one just done). */
-.next-card { margin-block-start: auto; padding: 16px 18px; border-radius: var(--radius); background: transparent; border: 1.5px dashed var(--aline); display: flex; flex-direction: column; gap: 8px; }
-.next-card.none { align-items: flex-start; }
-.next-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-.next-label { font-size: 12px; font-weight: 600; letter-spacing: .6px; text-transform: uppercase; color: var(--sub); }
-.next-kind { font-size: 13px; color: var(--sub); }
-.next-title { font-size: 19px; font-weight: 600; line-height: 1.2; overflow-wrap: anywhere; }
-.next-why { margin: 0; font-size: 14px; line-height: 1.4; color: var(--sub); }
-.next-card .btn.start { margin: 4px 0 0; min-block-size: 52px; font-size: 17px; }
-.next-more { display: flex; justify-content: center; gap: 28px; }
-.next-more .linkish { font-size: 15px; padding: 8px 4px; }
 
 /* Night: dark whatever the theme (.night on <html>), stars, the moon. */
 .stars { position: fixed; inset: 0; pointer-events: none; z-index: 0; }
