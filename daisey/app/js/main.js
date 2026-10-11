@@ -12,19 +12,19 @@ import { flash, h, bdi, icon } from "./ui.js";
 // amber "N need you", each only when there is something. now.js reports both.
 // Words on both (2026-10-06): bare numbers beside "Today" read as "2 Today 0".
 // The daisy itself is always the full five-petal logo.
-// Plan and Done are one chip (Mor, 2026-10-08): it opens the plan, the day's
-// done list sits under it. "Plan d/t" (done-today tasks outside the plan count in both); no plan but tasks done → "✓ n".
-let doneNow = 0, planNow = null;
-function paintDone(n){ doneNow = n; paintChip(); }
+// The Plan chip is the plan only (Mor, 2026-10-11): "Plan d/t" (done-today
+// tasks outside the plan count in both), else "Plan my day". The done list
+// moved to the Week page, so the chip no longer shows "✓ n".
+let planNow = null;
+function paintDone(){}
 function paintPlan(p){ planNow = p; paintChip(); }
 function paintChip(){
-  const p = planNow, n = doneNow;
+  const p = planNow;
   $("#planChip").hidden = false;
-  $("#planChip").classList.toggle("empty", !p && !n);
-  $("#planW").textContent = p ? "Plan " : n ? "" : "Plan my day";
-  $("#planN").textContent = p ? `${p.done}/${p.total}` : n ? `✓ ${n}` : "";
-  $("#planChip").ariaLabel = p ? `Today's plan: ${p.done} of ${p.total} done. Open it to change it`
-    : n ? `${n === 1 ? "1 task" : `${n} tasks`} done today. Open the plan` : "Plan my day";
+  $("#planChip").classList.toggle("empty", !p);
+  $("#planW").textContent = p ? "Plan " : "Plan my day";
+  $("#planN").textContent = p ? `${p.done}/${p.total}` : "";
+  $("#planChip").ariaLabel = p ? `Today's plan: ${p.done} of ${p.total} done. Open it to change it` : "Plan my day";
 }
 function paintNeeds(n){
   $("#needsChip").hidden = !n;

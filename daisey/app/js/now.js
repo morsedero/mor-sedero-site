@@ -1593,17 +1593,6 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
         h("button", { className: "pp-ctl", type: "button", textContent: "✕", title: "Never mind", ariaLabel: "Never mind", onclick: close })),
       h("div", { className: "pp-ask-field" }, input, send));
   }
-  // Done today, under the plan (one chip opens both), oldest first. null when empty.
-  function doneCard(){
-    const list = doneToday(tasks || []).sort((a, b) => a.doneAt - b.doneAt);
-    if (!list.length) return null;
-    return h("section", { className: "plan done-list", ariaLabel: "Done today" },
-      h("div", { className: "plan-head" }, h("span", { className: "plan-name", textContent: "Done today" })),
-      h("div", { className: "pj-drawer" }, ...list.map((t) => h("div", { className: "pj-drow" },
-            h("span", { className: "pj-tick on", ariaHidden: "true" }, icon("check")),
-            h("button", { type: "button", className: "pj-quiet", onclick: () => onOpen?.(t) }, bdi(t.title)),
-            h("span", { className: "pj-meta", dir: "ltr", textContent: new Date(t.doneAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) })))));
-  }
   function proposalCard(){
     const approved = !!approvedPlan();
     const { rows, over, breaks, late } = timeline(prop.items, { ...planCtx(), ...(approved && !prop.touched && !prop.replan ? { since: planSince() } : {}) });
@@ -1709,7 +1698,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
   function paintPlanScreen(){
     if (!planRoot) return;
     const open = prop.open;
-    if (open) planRoot.replaceChildren(...[proposalCard(), doneCard()].filter(Boolean));
+    if (open) planRoot.replaceChildren(proposalCard());
     else if (planShown) planRoot.replaceChildren();
     if (open !== planShown) { planShown = open; onPlanScreen?.(open); }
   }

@@ -26,7 +26,7 @@ import { isRoutine } from "./routine.js";
 import { dropSeries } from "./slots.js";
 import { isOverdue } from "./triage.js";
 import { h, bdi, flash, icon, askProgress, sizeChip, progressBar, weekDots, dragScroll } from "./ui.js";
-import { setProjectColors } from "./look.js";
+import { setProjectColors, doneToday } from "./look.js";
 import { setProjectTiers } from "./context.js";
 import { TIERS, FOCUS_MAX } from "./weights.js";
 // How many projects Focus holds: Settings, 1–5 (Mor, 2026-10-10); FOCUS_MAX (3) until set.
@@ -161,9 +161,21 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
   const statsGrowth = mountGrowth(uid, { onChange: () => paintStats() });
   // All routines sit under the numbers (Mor, 2026-10-10): the Week page is
   // the place for stats; the Projects page is for deciding.
+  // Done today heads it (Mor, 2026-10-11): what happened, not the plan, so it
+  // left the plan sheet. Oldest first; none when nothing's done yet.
+  function doneSection(){
+    const done = doneToday(tasks || []).sort((a, b) => a.doneAt - b.doneAt);
+    if (!done.length) return null;
+    return h("section", { className: "bl-card bl-done", ariaLabel: "Done today" },
+      h("h3", { className: "bl-h" }, "Done today", h("span", { className: "bl-h-sub", textContent: ` · ${done.length}` })),
+      h("div", { className: "bl-done-rows" }, ...done.map((t) => h("div", { className: "pj-drow" },
+        h("span", { className: "pj-tick on", ariaHidden: "true" }, icon("check")),
+        h("button", { type: "button", className: "pj-quiet", onclick: () => onOpen?.(t) }, bdi(t.title)),
+        h("span", { className: "pj-meta", dir: "ltr", textContent: new Date(t.doneAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) })))));
+  }
   function paintStats(){ if (!statsBox) return;
     const all = list(), g = statsGrowth.read(tasks || [], all.map((p) => p.name));
-    statsBox.replaceChildren(...statsCard(g), routinesSection(g.routines, tasks || [], new Map(all.map((p) => [p.name, p.color || ""])))
+    statsBox.replaceChildren(...[doneSection()].filter(Boolean), ...statsCard(g), routinesSection(g.routines, tasks || [], new Map(all.map((p) => [p.name, p.color || ""])))
       || h("p", { className: "bl-note", textContent: "No routines yet." })); }
 
   // ---------- the Projects page ----------

@@ -1773,7 +1773,6 @@ body.focus .shell { block-size: auto; min-block-size: 100dvh; overflow: visible;
 .now-card.main .pp-actions .btn { margin: 0; min-block-size: 44px; block-size: 44px; border-radius: 12px; font-size: 14px; padding-inline: 8px; white-space: nowrap; box-shadow: none; }
 .now-card.main .pp-actions .btn.start { display: inline-flex; align-items: center; justify-content: center; gap: 6px; font-size: 16px; }
 .pp-actions .btn.start svg { inline-size: 18px; block-size: 18px; }
-.done-list .pp-actions { grid-template-columns: 1fr; }
 .pp-actions:has(.pp-close) { grid-template-columns: 1.5fr 1fr 1.25fr 40px; }
 .now-card.main .pp-actions .btn.pp-close { padding-inline: 0; font-size: 16px; }
 /* "No plan" (was "Not today", 2026-10-10): a soft brick tint, so declining reads as a choice, not an alarm. */
@@ -1920,6 +1919,11 @@ body.focus .shell { block-size: auto; min-block-size: 100dvh; overflow: visible;
 .ms-fig span { font-size: 11px; color: var(--ink-2); }
 .menu-stats .ms-line { display: flex; gap: 6px; font-size: 12px; color: var(--ink-2); margin-block-start: 8px; }
 .menu-stats .bl-routines { margin-block-start: 14px; }
+/* Done today heads the Week page (Mor, 2026-10-11), out of the plan sheet. */
+.menu-stats .bl-done { margin-block-end: 14px; }
+.bl-done-rows { display: grid; gap: 2px; }
+.bl-done-rows .pj-drow { min-block-size: 36px; }
+.bl-done-rows .pj-drow + .pj-drow { border-block-start: 1px solid var(--line); }
 
 /* The card: flower standing on its bottom edge, the rest beside it. */
 .pcard:has(> .pcard-fl) { grid-template-columns: auto minmax(0, 1fr); column-gap: 10px; }
