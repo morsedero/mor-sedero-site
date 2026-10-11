@@ -8,6 +8,11 @@ period across 8 projects (client work, job search, admin, home, routines),
 plus 3 events. Included a 2-day absence, a 3-day "ignore the app" stretch,
 overruns, accidental taps and Hebrew titles.
 
+**Update 2026-10-11:** the Done page is gone (commit f3fe4fa): Done moves the
+card straight to the next task, the toast keeps the time guess and Undo.
+Items 2, 3 and 7 and the "Again?" chips went with it. The rest is split
+into two session prompts (A: card & task truth, B: plan & triage).
+
 ## What worked
 
 - **Morning proposal** shows up by itself and reflows around a new event
@@ -28,10 +33,10 @@ overruns, accidental taps and Hebrew titles.
 1. **Undo after a partial Done doesn't undo the progress.** `stepAside`'s
    snapshot (`model.js skipSnapshot`) has no `progress`, so Undo on
    "63% done: …" leaves 63% and a skip counted. `now.js:978`.
-2. **"Done in 1 min" on every card Done.** `now.js:989` sets `minutes: 0`
+~~2. **"Done in 1 min" on every card Done.**~~ *(gone with the Done page)* `now.js:989` sets `minutes: 0`
    when no timer ran, the hero shows `max(1, 0)`, while the toast below says
    "Counted ~120 min". Seen on every completion for 3 weeks.
-3. **Undo toast covers "Do it"** on the post-Done screen for ~5 s; tapping
+~~3. **Undo toast covers "Do it"**~~ *(gone with the Done page)* on the post-Done screen for ~5 s; tapping
    "Do it" in that window hits the toast and does nothing.
 4. **Guest mode TDZ error on every load**: `main.js:365` reads `dayDrag`
    before `let dayDrag` (`main.js:448`) because the guest store fires the
@@ -46,7 +51,7 @@ overruns, accidental taps and Hebrew titles.
 
 ## Behaviour that confused me as a user
 
-7. **"Not now" on the post-Done screen skips the *next* task for hours.**
+~~7. **"Not now" on the post-Done screen skips the *next* task for hours.**~~ *(gone with the Done page)*
    It's the only way to dismiss the screen (no ✕/Back), so I used it to
    close it and an admin task vanished from the card for 3 h while the Today
    list still showed it at 14:05.
@@ -95,7 +100,6 @@ overruns, accidental taps and Hebrew titles.
 - Today list shows "☕ Breather · 7 h 40 min" for the rest of the day.
 - Break card "Next: Call mom at 12:15" while the list's next item was
   arnona at 11:30.
-- "Again? Next week / Next month" after one-off tasks (recruiter reply).
 - Event form starts at 00:00, not the current time.
 - Guest greeting "Late, Guest."; "1 need offices open" grammar.
 - Escape doesn't close the Switch list; it stays open across views.
@@ -106,5 +110,4 @@ overruns, accidental taps and Hebrew titles.
 
 ## Suggested order
 
-Fix 1, 2, 3, 6, 7 first (cheap, they hit every day). Then 10 + 11 (plan
-honesty), then show/allow-correcting the guessed fields (8, 9).
+See the two session prompts (A and B) handed out 2026-10-11.
