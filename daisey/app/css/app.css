@@ -645,18 +645,19 @@ dialog.now:focus { outline: none; }
   .deck:not(.still) > .now-card.main:not(.in):not(.out):not(:focus-within) { animation: breathe 5s ease-in-out infinite; }
 }
 /* The schedule's now-row light (sc-orbit) travels round the card too
-   (Mor, 2026-10-11). --orbit comes from now.js so a rebuild keeps its place. */
-.deck > .now-card.main:not(.empty):not(.night) { --glint: color-mix(in srgb, var(--aline) 80%, #000); }
-:root[data-theme="dark"] .deck > .now-card.main, :root.night .deck > .now-card.main { --glint: color-mix(in srgb, var(--aline) 40%, #fff); }
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .deck > .now-card.main { --glint: color-mix(in srgb, var(--aline) 40%, #fff); } }
-.deck > .now-card.main:not(.empty):not(.night)::before {
+   (Mor, 2026-10-11), and round a running event's card (.going). --orbit comes
+   from now.js so a rebuild keeps its place. */
+.now-card.main:is(.deck > *, .going):not(.empty):not(.night) { --glint: color-mix(in srgb, var(--aline) 80%, #000); }
+:root[data-theme="dark"] .now-card.main:is(.deck > *, .going), :root.night .now-card.main:is(.deck > *, .going) { --glint: color-mix(in srgb, var(--aline) 40%, #fff); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .now-card.main:is(.deck > *, .going) { --glint: color-mix(in srgb, var(--aline) 40%, #fff); } }
+.now-card.main:is(.deck > *, .going):not(.empty):not(.night)::before {
   content: ""; position: absolute; inset: -2px; padding: 2.5px; border-radius: calc(var(--radius) + 2px); pointer-events: none;
   background: conic-gradient(from var(--sc-ang), transparent 66deg, color-mix(in srgb, var(--aline) 70%, transparent) 80deg,
     var(--glint) 90deg, color-mix(in srgb, var(--aline) 70%, transparent) 100deg, transparent 114deg);
   -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor;
   mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
   animation: sc-orbit 9s linear var(--orbit, 0s) infinite; }
-@media (prefers-reduced-motion: reduce) { .deck > .now-card.main::before { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .now-card.main:is(.deck > *, .going)::before { animation: none; } }
 /* A running event (meeting, block, trip, driving): the time gone fills in
    deeper, like its schedule row (sc-prog, --dur/--el from now.js plainCard's
    span). Under the text via isolation. */

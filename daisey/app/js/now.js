@@ -334,9 +334,10 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
   // Busy and empty cards wear the task card's top line (Mor, 2026-10-10:
   // one layout for every card): dot and label, the time on the far side.
   // `span` (a running event's start/end, epoch ms): the time gone fills in
-  // like its schedule row (Mor, 2026-10-11; app.css .going, sc-prog).
+  // like its schedule row, and its light runs round the edge (Mor, 2026-10-11;
+  // app.css .going, sc-prog, sc-orbit phased off the wall clock).
   function plainCard(cls, { meta, side, title, open, why, extras = [], action, color, span }){
-    const going = span ? `--dur:${span.end - span.start}ms;--el:-${Date.now() - span.start}ms;` : "";
+    const going = span ? `--dur:${span.end - span.start}ms;--el:-${Date.now() - span.start}ms;--orbit:-${Date.now() % 9000}ms;` : "";
     return h("div", { className: `now-card main hero ${cls}` + (span ? " going" : ""), style: (color ? `--ev:${color};` : "") + going },
       h("div", { className: "hero-top" },
         h("span", { className: "hero-area" }, h("span", { className: "dot", ariaHidden: "true" }), h("span", { className: "hero-where", textContent: meta })),
