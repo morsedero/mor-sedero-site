@@ -17,7 +17,7 @@
 // approved, how far along it is and what's next; not yet approved, the
 // proposal (the saved one, else proposal.proposeDay's, as the card would
 // show it). The "about N fit" sum stays only for a day with no plan to tell.
-import { proposeDay, timeline, planProgress, nextPlanned } from "./proposal.js";
+import { proposeDay, timeline, planProgress, nextPlanned, unfitOf } from "./proposal.js";
 export const MIN = 60000;
 
 // The wall clock in `tz`: { date: "YYYY-MM-DD", minutes: after midnight }.
@@ -84,7 +84,7 @@ function planLine({ tasks, events, now, tz, today, dayStart, dayEnd, dayplan, ru
   if (saved?.status === "dismissed") return null;
   if (saved?.status === "approved") {
     const items = saved.items || [];
-    const { done, total } = planProgress({ items }, tasks);
+    const { done, total } = planProgress({ items }, tasks, unfitOf(saved, ctx)); // No room: not counted
     if (!total) return null;
     const nextId = nextPlanned({ status: "approved", date: today, items }, tasks, today, now);
     if (!nextId) return done === total ? `Plan done: ${done} of ${total}.` : `Plan: ${done} of ${total} done.`;

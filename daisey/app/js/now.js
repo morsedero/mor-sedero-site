@@ -14,7 +14,7 @@
 // the same timer.
 import { overruled, eventKey } from "./reality.js";
 import { addTask, updateTask, watchTasks, watchRun, watchSkips, saveSkips, endBatch, skipNow, blockTask, restoreTask, finishTask, setDoneMinutes, watchSettings, saveSettings, watchMoment, saveMoment, watchLearn, bumpLearn, cancelRun, watchDayPlan, saveDayPlan, logWork, watchProjectNames } from "./store.js";
-import { proposeDay, timeline, withBreaks, trimBreaks, isBreak, planProgress, refit, topUp, daySig, relayMeals } from "./proposal.js";
+import { proposeDay, timeline, withBreaks, trimBreaks, isBreak, planProgress, planStatus, unfitOf, refit, topUp, daySig, relayMeals } from "./proposal.js";
 import { rethink } from "./rethink.js";
 import { breakText } from "./schedule.js";
 import { placeNow, workBase, watchProjectTiers } from "./context.js";
@@ -1187,6 +1187,8 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     if (undecided) { nudgeDay = dayKey(); render(); } else paintPlanScreen(); // a decided plan: the card stays as is
   };
   // extra: the refit's record ({ kept, cut }), kept until the plan is saved again.
+  // unfit: what had No room when it was approved (proposal.unfitOf): never
+  // late, never a slip, not counted on the Plan chip. Laid again on approval.
   // approvedAt: when the user last approved it (miss.js counts that as
   // activity; a refit saving the plan isn't), kept across later saves.
   // declined: ids taken off with the top-up's Undo, never added again today.
@@ -1198,11 +1200,14 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
   const savePlan = (status, items, extra = {}) => {
     const was = todaysPlan();
     const approvedAt = was?.approvedAt ?? null, declined = was?.declined || [], mealsLaid = was?.mealsLaid || {};
-    extra = { ...(was?.behindNo ? { behindNo: was.behindNo } : {}), ...(was?.offer ? { offer: was.offer } : {}), ...extra };
+    extra = { ...(was?.behindNo ? { behindNo: was.behindNo } : {}), ...(was?.offer ? { offer: was.offer } : {}),
+      ...(Array.isArray(was?.unfit) ? { unfit: was.unfit } : {}), ...extra };
     const sig = cal.status === "ok" ? daySig(cal.events, dayHours(settings)) : null;
     dayPlan = { date: dayKey(), status, items, approvedAt, declined, mealsLaid, sig, ...extra, at: Date.now() };
     saveDayPlan(uid, { date: dayPlan.date, status, items, approvedAt, declined, mealsLaid, sig, ...extra }).catch(fail);
   };
+  // What has No room in these items, laid from now.
+  const overIds = (items) => timeline(items, planCtx()).over.map((o) => o.taskId);
   // An unseen notice survives a save made for another reason.
   const unseen = (p, key) => (p?.[key] && !p[key].seen ? { [key]: p[key] } : {});
   // The approved plan no longer fits the day (an event added, running late),
@@ -1217,10 +1222,10 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
   function behindNow(){
     const p = approvedPlan();
     if (!p || !tasks || cal.status !== "ok" || prop.open) return null;
-    const ctx = planCtx(), held = timeline(p.items || [], { ...ctx, since: planSince() });
-    if (held.late && !held.missed.length) return null; // the card is asking about the next task
-    const { items, cut } = refit(p.items || [], ctx, p.kept || []);
-    const missed = (held.missed || []).map((id) => tasks.find((t) => t.id === id)).filter(Boolean);
+    const st = planStatus(p, planCtx(), planSince());
+    if (st.late && !st.missed.length) return null; // the card is asking about the next task
+    const { items, cut } = st;
+    const missed = st.missed.map((id) => tasks.find((t) => t.id === id)).filter(Boolean);
     if (!missed.length && !cut.length) return null;
     const key = [...missed.map((t) => t.id), "|", ...cut].join(",");
     if (p.behindNo === key) return null;
@@ -1233,7 +1238,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
   // what's missed or cut changing makes it a new question.
   function replanFrom(b){
     const { p } = b, gone = b.cut.length;
-    savePlan("approved", b.items, { kept: p.kept || [], ...unseen(p, "added"), approvedAt: Date.now(), behindNo: null,
+    savePlan("approved", b.items, { kept: p.kept || [], ...unseen(p, "added"), approvedAt: Date.now(), behindNo: null, unfit: overIds(b.items),
       ...(gone ? { cut: { ids: b.cut, ok: true, before: p.items, asked: [] } } : {}) });
     flash(gone ? `Re-planned from now. ${gone === 1 ? "One task" : `${gone} tasks`} back in your list.` : "Re-planned from now.");
     render();
@@ -1413,8 +1418,9 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
   // dropped, the Today list put a Later'd task back at its old time while the
   // card, honouring the Later, skipped it (2026-10-11).
   function approve(){
-    const n = prop.items.filter((it) => !isBreak(it)).length;
-    savePlan("approved", trimBreaks(prop.items).map(({ taskId, brk, minutes, name, at, hold }) => (brk ? { brk, minutes, ...(name ? { name } : {}) } : { taskId, minutes, ...(at ? { at } : {}), ...(hold ? { hold } : {}) })), { approvedAt: Date.now(), mealsLaid: mealAnswers(), behindNo: null, offer: null });
+    const items = trimBreaks(prop.items).map(({ taskId, brk, minutes, name, at, hold }) => (brk ? { brk, minutes, ...(name ? { name } : {}) } : { taskId, minutes, ...(at ? { at } : {}), ...(hold ? { hold } : {}) }));
+    const unfit = overIds(items), n = items.filter((it) => !isBreak(it) && !unfit.includes(it.taskId)).length;
+    savePlan("approved", items, { approvedAt: Date.now(), mealsLaid: mealAnswers(), behindNo: null, offer: null, unfit });
     prop.open = false; prop.replan = false; prop.ask = false; prop.note = ""; reset();
     render();
     flash(`Plan set: ${n} ${n === 1 ? "task" : "tasks"}. The card follows it.`);
@@ -1655,8 +1661,9 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
       !rows.length && !over.length && h("p", { className: "now-empty", textContent: "No open task fits the free time left today." }),
       // Overflow: Daisey asks before cutting anything (planAsk,
       // 2026-10-10), so until it's answered, what doesn't fit shows here.
-      // Late in the day it says so and offers a fresh take on what's left.
-      over.length > 0 && approved && !prop.busy && h("p", { className: "pp-note pp-late" }, "Running late. ",
+      // Running late only when the plan is behind its own slots (a slot's
+      // time came or went with nothing started): No room alone isn't late.
+      approved && !prop.busy && (late || rows.some((r) => r.missed)) && h("p", { className: "pp-note pp-late" }, "Running late. ",
         h("button", { type: "button", className: "linkish", textContent: "Rethink for what's left?", onclick: () => doRethink("") })),
       over.length > 0 && !approved && h("p", { className: "muted pp-note", textContent: `${plural(over.length)[0]} fit today. ↑ does one first, ✕ takes it off.` }),
       prop.note && h("p", { className: "pp-note", role: "status", textContent: prop.note }),
@@ -1675,7 +1682,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
   function planProgressNow(){
     const p = approvedPlan();
     if (!p || !tasks) return null;
-    const { done, total } = planProgress(p, tasks);
+    const { done, total } = planProgress(p, tasks, unfitOf(p, planCtx()));
     // Done today outside the plan counts too, so the chip never reads 0/8 with a task finished.
     const inPlan = new Set(p.items.map((it) => it.taskId));
     const extra = doneToday(tasks).filter((t) => !inPlan.has(t.id)).length;

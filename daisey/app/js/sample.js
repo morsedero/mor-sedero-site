@@ -7,7 +7,7 @@
 // what's here (no "someone's waiting on it" from a title).
 // PURE: no Firebase, no DOM.
 import { createTask, localDate } from "./model.js";
-import { proposeDay, withBreaks, daySig } from "./proposal.js";
+import { proposeDay, withBreaks, daySig, timeline } from "./proposal.js";
 import { planDate } from "./day.js";
 import * as W from "./weights.js";
 
@@ -31,6 +31,6 @@ export function sampleDay({ now = Date.now(), hours = W.DAY_HOURS } = {}){
   const ctx = { tasks, events: [], now, hours };
   const items = withBreaks(proposeDay(ctx), ctx);
   const plan = items.some((it) => it.taskId) ? { date: planDate(now, hours), status: "approved", items, approvedAt: now,
-    declined: [], mealsLaid: {}, sig: daySig([], hours, now), at: now } : null;
+    declined: [], mealsLaid: {}, sig: daySig([], hours, now), unfit: timeline(items, ctx).over.map((o) => o.taskId), at: now } : null;
   return { tasks, plan };
 }

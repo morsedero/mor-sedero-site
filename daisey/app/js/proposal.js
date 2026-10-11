@@ -595,14 +595,41 @@ export function nextPlanned(plan, tasks = [], date, now = Date.now()){
   }
   return null;
 }
-export function planProgress(plan, tasks = []){
+// unfit: ids the plan had No room for (unfitOf) — never scheduled, so not
+// counted (2026-10-11: "Plan 0/3" with two tasks laid), unless done anyway.
+export function planProgress(plan, tasks = [], unfit = []){
   const byId = new Map(tasks.map((t) => [t.id, t]));
-  const items = (plan?.items || []).filter((it) => byId.has(it.taskId));
   // A routine isn't closed by Done (routine.sessionPatch): it's back to ready
   // with a session logged for the day, so that counts too (2026-10-11: two
   // routines done, the chip read 0/5).
   const done = (t) => t.status === "done" || (!!plan?.date && (t.routine?.log || []).some((l) => l.day === plan.date));
+  const skip = new Set(unfit);
+  const items = (plan?.items || []).filter((it) => byId.has(it.taskId) && (!skip.has(it.taskId) || done(byId.get(it.taskId))));
   return { done: items.filter((it) => done(byId.get(it.taskId))).length, total: items.length };
+}
+
+// What the plan had No room for when it was approved: saved then (plan.unfit),
+// or, for a plan saved before that was kept, laid again from its approval time.
+export function unfitOf(plan, ctx = {}){
+  if (Array.isArray(plan?.unfit)) return plan.unfit;
+  const now = plan?.approvedAt ? Math.min(plan.approvedAt, ctx.now ?? Date.now()) : ctx.now;
+  return lay(plan?.items || [], { ...ctx, now }).over.map((o) => o.taskId);
+}
+
+// Is the approved plan behind? (2026-10-11: a task with No room from the
+// start showed "Running late" and "Your plan slipped" the moment the plan
+// was approved.) Only the clock against the plan's own slots and what's
+// actually done count: late — the next slot's time came with nothing
+// started; missed — slots whose whole time passed, not done; cut — tasks
+// that had a slot and no longer fit what's left of today. Something that
+// never fit is none of these. since: the last activity (miss.lastActivity).
+// → { late, missed, cut, items (the refit), unfit, behind }.
+export function planStatus(plan, ctx = {}, since = null){
+  const unfit = unfitOf(plan, ctx), items = plan?.items || [];
+  const held = timeline(items, { ...ctx, since });
+  const fit = refit(items, ctx, [...(plan?.kept || []), ...unfit]);
+  const late = held.late || null, missed = held.missed || [];
+  return { late, missed, cut: fit.cut, items: fit.items, unfit, behind: !!late || missed.length > 0 || fit.cut.length > 0 };
 }
 
 // "Rethink" in plain words, read here so it works offline and for guests;
