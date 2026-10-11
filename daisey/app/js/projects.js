@@ -257,7 +257,10 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
           // Focus's size lives here, on its own header (Mor, 2026-10-10: out of Settings):
           // the count, then a "Max 3" pill that picks 1–5 (Mor, 2026-10-11: a bare "/3" didn't read as editable).
           t === "focus"
-            ? h("span", { className: "pp-tier-n" }, String(ins.length),
+            // The count as slots (Mor, 2026-10-11): one dot per place, filled ones taken.
+            ? h("span", { className: "pp-tier-n" },
+                h("span", { className: "pp-slots", role: "img", ariaLabel: `${ins.length} of ${focusMax} in Focus` },
+                  ...Array.from({ length: Math.max(ins.length, focusMax) }, (_, i) => h("i", { className: i < ins.length ? "on" : "" }))),
                 h("span", { className: "pp-tier-maxpill" },
                   h("select", { className: "pp-tier-max", ariaLabel: "Most projects in Focus at once", title: "Most projects in Focus at once",
                     onchange: (e) => { focusMax = Number(e.target.value); saveSettings(uid, { focusMax }).catch(fail); render(); } },
