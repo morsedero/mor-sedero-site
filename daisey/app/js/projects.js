@@ -167,8 +167,10 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
   // how Mor likes to see them. While a card is dragged, the area under it
   // lights up whole — or turns red when full: Focus holds focusMax, so it
   // stays a choice.
-  const TIER_TEXT = { focus: ["Focus", "Most of your time"], keep: ["Keep going", "Steady progress"], background: ["Background", "When there's room"] };
-  const MOVED = { focus: "More of your time goes to ", keep: "Steady progress for ", background: "To the background: " };
+  // Subtitles say what Daisey DOES with each tier (Mor, 2026-10-11: the old
+  // "Most of your time" etc. needed someone to explain them).
+  const TIER_TEXT = { focus: ["Focus", "Daisey suggests these first"], keep: ["Keep going", "In the mix most days"], background: ["Background", "Only when nothing else waits, or a date is close"] };
+  const MOVED = { focus: "Daisey suggests it first now: ", keep: "Back in the mix: ", background: "Waits until there's room: " };
   let focusMax = FOCUS_MAX;
   const tierOf = (name) => (TIERS.includes(tiers[name]) ? tiers[name] : "keep");
   const full = (name, t) => t === "focus" && tierOf(name) !== "focus" && list().filter((p) => tierOf(p.name) === "focus").length >= focusMax;
