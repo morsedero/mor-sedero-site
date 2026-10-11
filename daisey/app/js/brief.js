@@ -110,8 +110,10 @@ function planLine({ tasks, events, now, tz, today, dayStart, dayEnd, dayplan, ru
 // null. run: the running task (state/now) or null.
 // Returns { title, body, today }.
 export function brief({ tasks = [], events = null, now = Date.now(), tz = Intl.DateTimeFormat().resolvedOptions().timeZone,
-  dayStart = 480, dayEnd = 1320, needs = 0, title = "Good morning", dayplan = null, run = null } = {}) {
-  const today = localParts(now, tz).date;
+  dayStart = 480, dayEnd = 1320, needs = 0, title = null, dayplan = null, run = null } = {}) {
+  const { date: today, minutes: nowMin } = localParts(now, tz);
+  // "Send the brief now" can fire at any hour, so greet by the clock.
+  title ??= nowMin < 720 ? "Good morning" : nowMin < 1080 ? "Good afternoon" : "Good evening";
   const from = Math.max(now, zoned(today, dayStart, tz)), end = zoned(today, dayEnd, tz);
   const open = tasks.filter((t) => t.status === "ready" && t.due && t.due <= today && !(t.notBefore && t.notBefore > today));
   const isDl = (t) => t.dateKind === "deadline";
