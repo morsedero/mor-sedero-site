@@ -81,15 +81,14 @@ export function mountAddTask(dialog, uid, { onStart } = {}){
     input.addEventListener("click", () => { try { input.showPicker(); } catch { /* opened natively */ } });
     const value = h("span", { className: "ts-date-v" });
     const clear = h("button", { type: "button", className: "ts-date-x", ariaLabel: `Clear ${label}`, onclick: (e) => { e.preventDefault(); input.value = ""; input.dispatchEvent(new Event("change")); } }, icon("close"));
-    const tag = h("button", { type: "button", className: "ts-kind", hidden: true });
-    const box = field(label, h("div", { className: "ts-date" }, value, tag, clear, input));
+    const box = field(label, h("div", { className: "ts-date" }, value, clear, input));
     box.querySelector("label").htmlFor = input.id = `ts-f${++fieldN}`;
     const paint = () => {
       value.textContent = input.value ? boxDate(input.value) : empty;
       box.lastChild.classList.toggle("set", !!input.value);
       clear.hidden = !input.value;
     };
-    return { input, box, tag, paint };
+    return { input, box, paint };
   }
   const start = dateBox("Start", "Any time");
   const due = dateBox("Due", "No date");
@@ -169,19 +168,20 @@ export function mountAddTask(dialog, uid, { onStart } = {}){
     if (document.activeElement !== atIn) atIn.value = at;
   }
   until.input.addEventListener("change", () => { fenceUntil(); paintDates(); if (editing && per) save({ routine: routineOf() }); });
-  due.tag.onclick = (e) => {
-    e.preventDefault();
-    kind = kind === "deadline" ? "target" : "deadline";
-    paintDates();
-    if (editing) save({ dateKind: kind });
-  };
+  // Target or Deadline: two visible pills with one line of help, shown once
+  // a date is set (user test 2026-10-11: the tag that toggled looked like a label).
+  const KIND_HELP = { target: "I'd like it done by then.", deadline: "Something bad happens if I miss it." };
+  const kindHelp = h("span", { className: "ts-kind-help" });
+  const kindBtns = Object.keys(KIND_HELP).map((k) => h("button", { type: "button", className: "ts-kind " + k, textContent: k === "deadline" ? "Deadline" : "Target",
+    onclick: (e) => { e.preventDefault(); if (kind === k) return; kind = k; paintDates(); if (editing) save({ dateKind: kind }); } }));
+  const kindRow = h("div", { className: "ts-kinds", hidden: true }, h("div", { className: "ts-kind-seg", role: "group", ariaLabel: "What kind of date" }, ...kindBtns), kindHelp);
+  due.box.append(kindRow);
   function paintDates(){
     start.paint(); due.paint(); until.paint();
     due.box.hidden = !!per; until.box.hidden = !per;
-    due.tag.hidden = !due.input.value;
-    due.tag.textContent = kind === "deadline" ? "Deadline" : "Target";
-    due.tag.className = "ts-kind " + kind;
-    due.tag.ariaLabel = `${kind === "deadline" ? "Deadline (real)" : "Target (wish)"}: tap to change`;
+    kindRow.hidden = !due.input.value;
+    kindBtns.forEach((b, i) => { const on = Object.keys(KIND_HELP)[i] === kind; b.ariaPressed = String(on); b.classList.toggle("on", on); });
+    kindHelp.textContent = KIND_HELP[kind];
   }
 
   // How long you think it takes: Daisey's guess until you tap it.
