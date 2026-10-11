@@ -1770,7 +1770,12 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     // only once the plan has nothing left for today. A plan still waiting
     // for approval: its first task.
     const pn = planNow();
-    const planRow = pn?.row && !(fw?.current && !fw.current.trip && pn.row.start > Date.now()) ? pn.row : null;
+    // A later row waits out a running event, a trip leg too unless the row
+    // sits on the ride itself (Mor, 2026-10-11: on the drive back the card
+    // said "Next in your plan, 21:50" instead of the drive).
+    const later = fw?.current && pn?.row && pn.row.start > Date.now()
+      && (!fw.current.trip || pn.row.start >= fw.current.end);
+    const planRow = pn?.row && !later ? pn.row : null;
     const asCard = (id, task, whyParts) => ({ ...(r.ranked.find((s) => s.task.id === id) || { task }), whyParts });
     // The first row the plan below actually fits in, by time: never one it
     // says has No room (Mor, 2026-10-11).
