@@ -1748,18 +1748,6 @@ body.focus .shell { block-size: auto; min-block-size: 100dvh; overflow: visible;
 /* Each handle carries its own time underneath (2026-10-10). */
 .db-thumb::after { content: attr(data-t); position: absolute; top: calc(100% + 3px); left: 50%; transform: translateX(-50%); font-size: 12px; font-weight: 600; color: var(--ink); font-variant-numeric: tabular-nums; white-space: nowrap; pointer-events: none; }
 .now-else { display: block; margin: 10px auto 0; font-size: 13px; color: var(--ink-2); }
-/* Done's hold (now.js bloom): a daisy over the card, a petal per beat. */
-.bloom { position: fixed; z-index: 60; display: grid; place-content: center; justify-items: center; gap: 6px; overflow: hidden; pointer-events: none;
-  border-radius: 20px; background: color-mix(in srgb, var(--surface) 88%, transparent); backdrop-filter: blur(2px); transition: opacity .2s; }
-.bloom svg { transition: transform .3s; }
-.bloom .daisy-petals ellipse { opacity: .12; transition: opacity .15s; }
-.bloom .daisy-petals ellipse.on { opacity: 1; }
-.bloom.full svg { transform: scale(1.15) rotate(20deg); }
-.bloom.gone { opacity: 0; }
-.bloom-p { margin: 0; font-weight: 700; font-size: 18px; color: var(--ink); font-variant-numeric: tabular-nums; }
-@media (prefers-reduced-motion: reduce) { .bloom svg, .bloom .daisy-petals ellipse { transition: none; } }
-.bloom-btn { touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
-.bloom-btn * { pointer-events: none; }
 .ny-field { margin-block-start: 12px; inline-size: 100%; min-block-size: 48px; padding: 0 14px; border: 1px solid var(--line-2); border-radius: 14px; background: var(--surface); color: var(--ink); font: inherit; font-size: 17px; }
 
 /* Schedule: drag a row anywhere in its day; a line marks where it lands, an outline the free time it'd start at */

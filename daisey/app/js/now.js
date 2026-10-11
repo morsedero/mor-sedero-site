@@ -22,14 +22,14 @@ import { placeNow, workBase, watchProjectTiers } from "./context.js";
 import { watchWhere, setManual, setStill, saveSpot, whereAsk, homeAt } from "./where.js";
 import { withTrips, ridingAs, stillRiding, asPassenger, chainFrom, setTripDay, MODES, tripAsks, answer as tripAnswer, noTrip } from "./trips.js";
 import { pickWeekDay } from "./triage.js";
-import { sinceMark, runCap, bookedMinutes, bloomHold } from "./focus.js";
+import { sinceMark, runCap, bookedMinutes } from "./focus.js";
 import { watchCalendar } from "./calendar.js";
 import { LATER_MINUTES, DRAIN, CANCEL_KEEP_MINUTES, LIGHTER } from "./weights.js";
 import { missState, silenceText, lastActivity } from "./miss.js";
 import { takeQuiet } from "./push.js";
 import { findPhoneTasks, phoneOkIds, searching } from "./phone.js";
 import { rank, freeWindow, timeBucket, matchProject, dueAt } from "./engine.js";
-import { leftMinutes, toMinutes, progressOf, progressPatch, shrinkPatch, shrunk, localDate, logicalDate, LATE_HOUR, skipSnapshot, skipLesson, pendingCheck, notYet, pushedTo, bringBack, dayAfter, doneSnapshot } from "./model.js";
+import { leftMinutes, toMinutes, progressOf, shrinkPatch, shrunk, localDate, logicalDate, LATE_HOUR, skipSnapshot, skipLesson, pendingCheck, notYet, pushedTo, bringBack, dayAfter, doneSnapshot } from "./model.js";
 import { isRoutine, routineCalendar, eventsToLog, sessionPatch } from "./routine.js";
 import { waitingFor, personOf } from "./nudge.js";
 import { dayHours, isNight, nextMorning, dayEndAt, bookings, sameTitle, minText, gapsToday, planDate, usualHours } from "./day.js";
@@ -948,15 +948,15 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     const someN = somedayTasks().length;
     const toggle = (key) => () => { const was = state[key]; state.more = state.notNow = state.pendAsk = state.showAlts = false; state[key] = !was; state.altX = 0; render(); };
     const chip = (text, onclick) => h("button", { className: "chip", type: "button", textContent: text, onclick });
-    const done = h("button", { className: "btn primary start", type: "button", ariaLabel: `Done: hold to show how much of ${task.title} is done` },
-      icon("check"), h("span", { textContent: "Done" }));
+    const done = h("button", { className: "btn primary start", type: "button", ariaLabel: `Done: ${task.title}`,
+      onclick: () => quickDoneNow(task) }, icon("check"), h("span", { textContent: "Done" }));
     return [
       h("div", { className: "now-actions now-row" },
         // Never a dead end while On hold holds tasks (DAISEY_SPEC "Someday comes back").
         (alts.length || someN) && action("switch", "Switch", `something else instead of ${task.title}`, { ariaExpanded: String(state.showAlts), onclick: toggle("showAlts") }),
         action("pending", "Pending", `${task.title} is waiting on something`, { ariaExpanded: String(state.pendAsk), onclick: toggle("pendAsk") }),
         action("later", "Later", `come back to ${task.title} later`, { ariaExpanded: String(state.notNow), onclick: toggle("notNow") }),
-        doneHold(done, task)),
+        done),
       lead.length > 0 && !asking() && h("div", { className: "later-ask", role: "group", ariaLabel: "Missed" },
         ...lead.map(([text, onclick]) => chip(text, onclick))),
       // Later: three times, then On hold set apart under them, quieter and
@@ -972,15 +972,8 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     ];
   }
 
-  // Done is a hold (focus.js bloomHold). Less than all of it: that much
-  // progress, off the card for a while, with Undo (not a skip).
-  const partDone = (task, p) => stepAside(task, { label: `${p}% done: `, write: () => Promise.all([skipNow(uid, task), restoreTask(uid, task.id, progressPatch(p))]) });
-  // A routine's Done is one tap: a session is always whole.
-  const doneHold = (btn, task) => (isRoutine(task)
-    ? (btn.onclick = () => quickDoneNow(task), btn.ariaLabel = `Done: one session of ${task.title}`, btn)
-    : bloomHold(btn, (p) => (p >= 100 ? quickDoneNow(task) : partDone(task, p)),
-      { hint: () => flash("Hold Done: the daisy opens. Let go at how much you did.") }));
-
+  // Done is one tap (Mor, 2026-10-11: the "how much is done" hold went; the
+  // toast's Undo covers a mis-tap). A routine's tap is one whole session.
   // Done on a task that was never started here (already finished, or done
   // elsewhere): finished with no time booked, with an Undo.
   function quickDoneNow(task){

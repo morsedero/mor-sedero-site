@@ -1,6 +1,6 @@
 // Focus mode: the whole screen is the task you're on, calm and light (Mor,
 // 2026-10-05 redesign): an area-tinted card with the title and a ring timer,
-// Pause and Stop as round icons, "Hold to finish", then +15 min · Pending
+// Pause and Stop as round icons, Done, then +15 min · Pending
 // (icon + words). Nothing
 // else (the tabs, the Tell bar and the greeting are hidden by body.focus).
 //
@@ -9,9 +9,8 @@
 // the main screen had no way back to the normal one). Stop ends the session
 // with its time kept and goes back to the normal card (now.js).
 //
-// Done is a press-and-hold, not a tap (Mor, 2026-10-05: a mis-tap ended the
-// task with no way back). Holding fills the button over a second; letting go
-// early drains it again. See holdButton.
+// Done is one tap (Mor, 2026-10-11); the hold that asked "how much is done"
+// went. See holdButton.
 //
 // +15 min is always there; past the estimate the ring just stays full. No
 // sound, no red — running over is normal.
@@ -20,7 +19,6 @@
 // shows the same timer still going; elapsed is always worked out from
 // startedAt rather than counted here.
 import { h, bdi, dur, icon } from "./ui.js";
-import { isRoutine } from "./routine.js";
 import { elapsedMinutes, runCap } from "./reality.js";
 import { areaClass, areaName, projectShown } from "./look.js";
 import { awayText } from "./deep.js";
@@ -90,96 +88,23 @@ export function burst(x, y, n = 14, reach = 90){
   setTimeout(() => box.remove(), 1600);
 }
 
-// Done is one hold, everywhere (Mor, 2026-10-07: "a mini game, one action,
-// some or all"; the card's Done and Hold to finish are the same thing): a
-// daisy opens over the card a petal at a time while the button is held. Let
-// go when it matches what you did: onEnd(pct). All eight petals is 100, with
-// a burst, without waiting for the release. A tap only says to hold; a touch
-// the browser takes (pointercancel) saves nothing. The daisy lives on <body>
-// and the release is heard on window, so a re-render mid-hold breaks nothing.
-const PETAL_MS = 300, PETALS = 8;
-export function bloomHold(btn, onEnd, { hint } = {}){
-  let t0 = 0, raf = 0, n = 0, ov = null, out = null, petals = [];
-  const listen = (on) => ["pointerup", "pointercancel", "keyup", "blur"].forEach((t) => (on ? addEventListener : removeEventListener)(t, stop));
-  const pct = () => Math.round((n / PETALS) * 100);
-  const open = () => {
-    const over = btn.closest(".now-card") || document.querySelector(".focus .focus-card") || btn;
-    const r = over.getBoundingClientRect();
-    const NS = "http://www.w3.org/2000/svg", el = (tag, a) => { const e = document.createElementNS(NS, tag); for (const k in a) e.setAttribute(k, a[k]); return e; };
-    const size = Math.max(48, Math.min(120, r.height - 64)); // fits a short card too
-    const svg = el("svg", { viewBox: "0 0 40 40", width: size, height: size, "aria-hidden": "true" }), g = el("g", { class: "daisy-petals" });
-    petals = Array.from({ length: PETALS }, (_, i) => el("ellipse", { cx: 20, cy: 9, rx: 4.2, ry: 8, transform: `rotate(${(360 / PETALS) * i} 20 20)` }));
-    g.append(...petals); svg.append(g, el("circle", { cx: 20, cy: 20, r: 6.5, class: "daisy-heart" }));
-    out = h("p", { className: "bloom-p", role: "status" });
-    ov = h("div", { className: "bloom" }, svg, out);
-    Object.assign(ov.style, { left: `${r.left}px`, top: `${r.top}px`, width: `${r.width}px`, height: `${r.height}px` });
-    document.body.append(ov);
-  };
-  const shut = (ms) => { const o = ov; ov = null; if (o) { o.classList.add("gone"); setTimeout(() => o.remove(), ms); } };
-  const step = (now) => {
-    const k = Math.min(PETALS, Math.floor((now - t0) / PETAL_MS));
-    if (k !== n) {
-      n = k; if (!ov) open();
-      petals.forEach((p, i) => p.classList.toggle("on", i < n));
-      out.textContent = n === PETALS ? "All done!" : `${pct()}% done`;
-      navigator.vibrate?.(8);
-    }
-    if (n === PETALS) {
-      const r = ov.getBoundingClientRect();
-      listen(false); t0 = 0; ov.classList.add("full");
-      burst(r.left + r.width / 2, r.top + r.height / 2);
-      setTimeout(() => { shut(200); onEnd(100); }, 450); // let the pop land first
-      return;
-    }
-    raf = requestAnimationFrame(step);
-  };
-  const start = (e) => {
-    if (btn.disabled || t0) return;
-    if (e.type === "keydown") { if (e.repeat || (e.key !== " " && e.key !== "Enter")) return; e.preventDefault(); }
-    else if (e.button) return;
-    t0 = performance.now(); n = 0;
-    raf = requestAnimationFrame(step); listen(true);
-  };
-  function stop(e){
-    if (!t0) return;
-    if (e.type === "keyup" && e.key !== " " && e.key !== "Enter") return;
-    cancelAnimationFrame(raf); listen(false); t0 = 0;
-    if (e.type === "pointercancel" || e.type === "blur") { shut(150); return; }
-    if (!n) { hint?.(); btn.classList.remove("nudge"); void btn.offsetWidth; btn.classList.add("nudge"); return; }
-    shut(250); onEnd(pct());
-  }
-  btn.classList.add("bloom-btn"); // no text selection or scroll stealing a long press (CSS)
-  btn.addEventListener("pointerdown", start);
-  btn.addEventListener("keydown", start);
-  btn.addEventListener("contextmenu", (e) => e.preventDefault()); // a long press on a phone is not a menu
-  return btn;
-}
-
-// The running task's Done button. The timer re-renders the whole focus screen
-// every second: the button is built once per run (key) and the same node is
-// handed back on every render, so a hold isn't reset half-way. onDone(pct).
+// The running task's Done button: one tap (Mor, 2026-10-11: the "how much
+// is done" hold went). The timer re-renders the whole focus screen every
+// second: the button is built once per run (key) and the same node is handed
+// back on every render, so focus isn't lost.
 let held = null; // { key, el, onDone }: the current run's button
 
-// tap: a routine's session is always whole (Mor, 2026-10-08), so its Done is
-// a plain tap, no "how much" hold.
-export function holdButton(key, aria, disabled, onDone, { tap = false } = {}){
-  if (tap) key += ":tap";
+export function holdButton(key, aria, disabled, onDone){
   if (held?.key === key){
     const { el } = held, hadFocus = document.activeElement === el;
     held.onDone = onDone; el.disabled = disabled; el.ariaLabel = aria;
     if (hadFocus) queueMicrotask(() => el.focus({ preventScroll: true })); // the re-render detached it
     return el;
   }
-  if (tap) {
-    const el = h("button", { className: "btn primary hold", type: "button", ariaLabel: aria.replace(/^Hold to finish/, "Done:"), disabled,
-      onclick: () => me.onDone(100) }, h("span", { className: "hold-label" }, h("span", { textContent: "Done" })));
-    const me = held = { key, el, onDone };
-    return el;
-  }
-  const el = h("button", { className: "btn primary hold", type: "button", ariaLabel: aria, disabled },
-    h("span", { className: "hold-label" }, h("span", { textContent: "Hold: how much is done" })));
+  const el = h("button", { className: "btn primary hold", type: "button", ariaLabel: aria, disabled,
+    onclick: () => me.onDone() }, h("span", { className: "hold-label" }, h("span", { textContent: "Done" })));
   const me = held = { key, el, onDone };
-  return bloomHold(el, (p) => me.onDone(p));
+  return el;
 }
 
 // The ring: a 220px circle, track in the area's border colour, amber
@@ -230,7 +155,7 @@ export function focusView(run, task, cb){
     const title = h("div", { className: "focus-title", dir: "auto" });
     const quiet = (name, text, aria, fn) => h("button", { className: "btn line withicon", type: "button", ariaLabel: aria, onclick: fn },
       icon(name), h("span", { textContent: text }));
-    const hold = holdButton(key, `Hold to finish ${what}`, !task, (p) => screen?.cb.onDone(p), { tap: isRoutine(task) });
+    const hold = holdButton(key, `Done: ${what}`, !task, () => screen?.cb.onDone());
     const stillText = h("p", { className: "focus-still-text" });
     // Forgot to hit Done: "Finished earlier" asks how long it took, and
     // that's what gets booked (and logged, ending when it really ended).
@@ -290,7 +215,7 @@ export function focusView(run, task, cb){
   screen.away.hidden = !awayNow;
   screen.away.textContent = awayNow;
   setRing(screen.ring, mins, target);
-  holdButton(key, `Hold to finish ${what}`, !task, (p) => screen?.cb.onDone(p), { tap: isRoutine(task) });
+  holdButton(key, `Done: ${what}`, !task, () => screen?.cb.onDone());
   return screen.el;
 }
 
