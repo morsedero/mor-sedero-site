@@ -685,35 +685,23 @@ async function boot(){
             document.body.classList.add(on ? "fm-in" : "fm-out");
             clearTimeout(fmTimer); fmTimer = setTimeout(() => document.body.classList.remove("fm-in", "fm-out"), 1200);
             // Slow slide (Mor, 2026-10-12): the Now card and the Focus chip glide
-            // from where they were to where the mode puts them; the card also
-            // grows/shrinks to its new size and its parts (title, why, the
-            // buttons) slide and scale to theirs inside it. Measured now, and
+            // from where they were to where the mode puts them. Measured now, and
             // again once now.js has toggled body.focus-mode (after this returns).
+            // #nowcard is a scroll box and would clip the card mid-slide, so it
+            // lets it out until the slide ends.
             if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
             const T = { duration: 850, easing: "cubic-bezier(.25, .8, .25, 1)" };
-            const card = () => document.querySelector(".deck > .now-card.main");
-            const parts = (c) => c ? [...c.querySelectorAll(":scope > :not(.now-row), :scope > .now-row > *")] : [];
-            const box = (el) => el?.getBoundingClientRect();
-            const c0 = card(), a = box(c0), fa = box(b), pa = parts(c0).map(box);
-            queueMicrotask(() => {
-              const fz = box(b);
-              if (fa && (Math.abs(fa.left - fz.left) >= 1 || Math.abs(fa.top - fz.top) >= 1)) b.animate([{ transform: `translate(${fa.left - fz.left}px, ${fa.top - fz.top}px)` }, { transform: "none" }], T);
-              const c = card(); if (!c || !a) return;
-              const z = box(c);
-              const ov = c.style.overflow; c.style.overflow = "clip";
-              c.animate([{ transform: `translate(${a.left - z.left}px, ${a.top - z.top}px)`, width: a.width + "px", height: a.height + "px" }, { transform: "none", width: z.width + "px", height: z.height + "px" }], T)
-                .finished.finally(() => { c.style.overflow = ov; });
-              // Same card element both sides: each part from its old place in
-              // the card to its new one (relative to the card, which moves too).
-              if (c !== c0) return;
-              parts(c).forEach((el, i) => {
-                const p = pa[i], q = box(el); if (!p || !q.width || !q.height) return;
-                const dx = (p.left - a.left) - (q.left - z.left), dy = (p.top - a.top) - (q.top - z.top);
-                const sx = p.width / q.width, sy = p.height / q.height;
-                if (Math.abs(dx) < 1 && Math.abs(dy) < 1 && Math.abs(sx - 1) < .01 && Math.abs(sy - 1) < .01) return;
-                el.animate([{ transformOrigin: "0 0", transform: `translate(${dx}px, ${dy}px) scale(${sx}, ${sy})` }, { transformOrigin: "0 0", transform: "none" }], T);
-              });
-            });
+            const pick = () => [document.querySelector(".deck > .now-card.main"), b];
+            const first = pick().map((el) => el?.getBoundingClientRect());
+            queueMicrotask(() => pick().forEach((el, i) => {
+              const a = first[i]; if (!el || !a) return;
+              const z = el.getBoundingClientRect(), dx = a.left - z.left, dy = a.top - z.top;
+              if (Math.abs(dx) < 1 && Math.abs(dy) < 1) return;
+              const box = i === 0 && $("#nowcard");
+              if (box) { box.style.overflow = "visible"; box.style.position = "relative"; box.style.zIndex = "3"; }
+              el.animate([{ transform: `translate(${dx}px, ${dy}px)` }, { transform: "none" }], T)
+                .finished.catch(() => {}).finally(() => { if (box) box.style.overflow = box.style.position = box.style.zIndex = ""; });
+            }));
           },
           planRoot: $("#planPage"),
           // Two frames so the panel and chips settle under the daisy first.
