@@ -1857,6 +1857,11 @@ body.focus .shell { block-size: auto; min-block-size: 100dvh; overflow: visible;
 .sc-dot { flex: none; inline-size: 10px; block-size: 10px; margin-inline: 5px 13px; border-radius: 50%; background: var(--aink); }
 .sc-ev.sc-plan, .sc-ev.sc-plan[class*="pc-"], .sc-ev.sc-plan[class*="area-"] { background: none; color: var(--ink); box-shadow: none; border: 1.5px dashed var(--line); margin: 0; font-weight: 400; padding: 4px 10px; border-radius: 8px; }
 .sc-ev.sc-done[class*="pc-"], .sc-ev.sc-done[class*="area-"] { box-shadow: none; }
+/* No room, and a task shortened to fit, say so in a small line under the title (2026-10-11). */
+.sc-tt { display: grid; min-inline-size: 0; }
+.sc-why { font-size: 11.5px; font-weight: 400; color: var(--ink-2); }
+.sc-noroom .sc-time { color: var(--p-brick-ink, var(--ink-2)); font-weight: 600; }
+.sc-noroom .sc-ev.sc-plan { color: var(--ink-2); }
 .wk-ev.done[class*="pc-"], .wk-ev.done[class*="area-"], .wk-ev.wk-plan[class*="pc-"], .wk-ev.wk-plan[class*="area-"] { background: none; color: var(--ink-2); box-shadow: none; }
 
 /* The week as its own page (Mor, 2026-10-08): it was small and untouchable in

@@ -268,9 +268,13 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onMissed, onPro
     // Held like the Now card's (proposal.timeline since): a task you haven't
     // started stays at its time, it doesn't slide with the clock.
     const tl = timeline(dayPlan.items || [], { tasks, events, now, hours: hrs, run, since: lastActivity(tasks, run, dayPlan.approvedAt || 0) });
-    return [...tl.rows.map((r) => ({ kind: "plan", start: r.start, end: r.end, task: r.task, missed: !!r.missed })),
+    noRoom = tl.over.map((o) => ({ kind: "noroom", task: o.task, why: o.why }));
+    return [...tl.rows.map((r) => ({ kind: "plan", start: r.start, end: r.end, task: r.task, missed: !!r.missed, of: r.of, minutes: r.minutes })),
       ...tl.breaks.map((b) => ({ kind: "break", start: b.start, end: b.end, type: b.type, name: b.name }))];
   }
+  // The plan's tasks with No room today, and why (2026-10-11: a task in the
+  // plan never just disappears from Today). Set by planRows.
+  let noRoom = [];
 
   // An approved plan sits inside today's free time (Mor, 2026-10-08): its
   // blocks replace the stretch of gap they cover. Derived, never written to
@@ -287,6 +291,10 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onMissed, onPro
     });
     return [...cut, ...planned].sort((a, b) => (a.start ?? -1) - (b.start ?? -1) || (a.kind === "free") - (b.kind === "free"));
   }
+  const noRoomRow = (x) => h("div", { className: "sc-row sc-noroom" },
+    h("span", { className: "sc-time", textContent: "No room" }),
+    h("button", { type: "button", className: "sc-ev sc-plan" + areaClass(x.task), ariaLabel: `No room today: ${x.task.title}, ${x.why}`, onclick: () => onOpen?.(x.task) },
+      h("span", { className: "sc-dot" }), h("span", { className: "sc-tt" }, bdi(x.task.title), h("small", { className: "sc-why", textContent: x.why }))));
   // Events and planned rows stay where they are: no dragging (Mor,
   // 2026-10-11). A tap opens one; its edit sheet is the only way to move it.
 
@@ -297,6 +305,7 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onMissed, onPro
     const t = date.getTime(), t0 = today.getTime(), tonight = t === t0 && !!real.late;
     // Free time only from now on: none in the past, today's from the clock.
     const fromMs = t < t0 ? addDays(date, 1).getTime() : t === t0 && !tonight ? now : 0;
+    noRoom = [];
     const planned = t === t0 ? planRows(events, now) : [];
     const rows = tonight ? dayRows(events, date, hrs, fromMs) : withPlan(dayRows(events, date, hrs, fromMs), planned);
     const ymd = localDate(t);
@@ -315,7 +324,8 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onMissed, onPro
     if (t === t0 && !tonight && now < atMin(today, hrs.start) && !riding) out.push(nightDivider(minText(hrs.end), minText(hrs.start)));
     const none = h("button", { type: "button", className: "sc-none", onclick: () => onNew?.(ymd) },
       h("span", { textContent: "Nothing scheduled" }), h("span", { className: "sc-add", ariaHidden: "true", textContent: "+ Add" }));
-    out.push(h("section", { className: "sc-day", ariaLabel: short(date) }, ...(rows.length ? rows.map((x) => row(x, now)) : [none])));
+    out.push(h("section", { className: "sc-day", ariaLabel: short(date) }, ...(rows.length ? rows.map((x) => row(x, now)) : [none]),
+      ...(tonight ? [] : noRoom.map(noRoomRow))));
     return out;
   }
 
@@ -421,7 +431,8 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onMissed, onPro
     if (x.kind === "plan") { const pe = h("div", { className: "sc-row" + (x.missed ? " sc-missed" : on ? " sc-on" + areaClass(x.task) : past ? " sc-past" : ""), style: orbit },
       h("span", { className: "sc-time strong" }, time, x.missed ? h("button", { type: "button", className: "sc-misstag", textContent: "?", title: "Didn't happen: what now?", ariaLabel: `${x.task.title} didn't happen: what now?`, onclick: () => onMissed?.(x.task.id, x.start) }) : on && h("span", { className: "sc-nowtag", textContent: "Now" })),
       h("button", { type: "button", className: "sc-ev sc-plan" + areaClass(x.task), ariaLabel: `Planned: ${x.task.title}, ${time}`, onclick: () => onOpen?.(x.task) },
-        h("span", { className: "sc-dot" }), bdi(x.task.title)));
+        h("span", { className: "sc-dot" }), x.of ? h("span", { className: "sc-tt" }, bdi(x.task.title),
+          h("small", { className: "sc-why", textContent: `${durText(x.minutes)} of ${durText(x.of)}, shortened to fit` })) : bdi(x.task.title)));
       return pe; }
     // The way to an event in another city and back (trips.js): Daisey's own
     // block, not the calendar's, so it doesn't open, drag or delete.

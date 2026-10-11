@@ -16,7 +16,7 @@ import { phoneOkIds } from "./phone.js";
 import { routineCalendar } from "./routine.js";
 import { workBase } from "./context.js";
 import { overruled, eventKey, runState } from "./reality.js";
-import { LABELS, INBOX, notYet, localDate, logicalDate, leftMinutes } from "./model.js";
+import { LABELS, INBOX, notYet, localDate, logicalDate, leftMinutes, durText } from "./model.js";
 import { officeDay } from "./holidays.js";
 import * as W from "./weights.js";
 
@@ -90,7 +90,11 @@ export function proposeDay({ tasks = [], events = [], now = Date.now(), hours = 
   const waiting = () => tasks.filter((t) => waitsOnSiblings(t, tasks, taken, today)).map((t) => t.id);
   const routineCal = routineCalendar(tasks, evs, now); // routine sessions already on the calendar
   const items = [];
-  const take = (t) => { items.push({ taskId: t.id, minutes: Math.min(leftOf(t), biggest) }); out.add(t.id); taken.add(t.id); budget -= Math.min(leftOf(t), biggest); };
+  // A task longer than the longest free stretch goes in as a piece of it
+  // (the engine only offers that when it can split), and the piece says so
+  // (of: its whole length): 2 h never quietly reads 1 h 27 min (2026-10-11).
+  const take = (t) => { const left = leftOf(t), m = Math.min(left, biggest);
+    items.push({ taskId: t.id, minutes: m, ...(m < left ? { of: left } : {}) }); out.add(t.id); taken.add(t.id); budget -= m; };
 
   // "Start with X": those go first, whatever the engine thinks, as long as
   // they're open and allowed today.
@@ -112,9 +116,11 @@ export function proposeDay({ tasks = [], events = [], now = Date.now(), hours = 
       out.add(r.pick.task.id); taken.add(r.pick.task.id); room -= m;
     }
   }
-  while (usable.length && items.length + onRide.length < cap && budget >= WORTH) {
+  // Down to the last minutes: a 10-min task still goes in the last 10 free
+  // (2026-10-11: it vanished with time left, the loop stopped under 15).
+  while (usable.length && items.length + onRide.length < cap && budget >= 5) {
     const r = rank(pool, {
-      now: usable[0].start, window: biggest, nextEvent: null, ...workBase(tasks, now),
+      now: usable[0].start, window: Math.min(biggest, budget), nextEvent: null, ...workBase(tasks, now),
       sessionSkips: [...out, ...waiting()], booked, routineCal,
     });
     if (!r.pick) break;
@@ -124,6 +130,15 @@ export function proposeDay({ tasks = [], events = [], now = Date.now(), hours = 
   if (ask.quickFirst) items.sort((a, b) => a.minutes - b.minutes);
   inProjectOrder(items, tasks, new Set(ask.first || []));
   hoursFirst(items, { tasks, events, now, hours, run, rides: false });
+  // Nothing due today is dropped without a word (2026-10-11): what the picks
+  // left out goes on the end, laid if it fits after all, else No room with
+  // its reason (lay). Not when the ask narrowed the plan on purpose.
+  const narrowed = ask.fewer || ask.maxEach || Number.isFinite(ask.maxMinutes) || Number.isFinite(ask.until) || skipTypes.size;
+  if (!narrowed) for (const t of tasks) {
+    if (out.has(t.id) || t.status !== "ready" || t.onHold || t.routine || notYet(t, now) || !t.due || t.due > today || booked[t.id] > now
+      || waitsOnSiblings(t, tasks, taken, today)) continue; // a last step still waits for its project's other work
+    items.push({ taskId: t.id, minutes: leftOf(t) }); out.add(t.id);
+  }
   if (!onRide.length) return items;
   // In time order, so the timeline lays each where it was meant: the
   // others where they'd fall without the rides, the ride's own on the ride.
@@ -388,7 +403,7 @@ function lay(items = [], { tasks = [], events = [], now = Date.now(), hours = W.
           if (brk.name) mealsDone.add(brk.name);
         }
         const s = from + (brk ? brk.minutes * MIN : 0);
-        rows.push({ taskId: it.taskId, task, minutes: need / MIN, start: s, end: s + need, i });
+        rows.push({ taskId: it.taskId, task, minutes: need / MIN, start: s, end: s + need, i, ...(leftOf(task) > need / MIN ? { of: leftOf(task) } : {}) });
         worked = (brk ? 0 : w) + need / MIN;
         sinceLong = (brk && brk.type !== "short" ? 0 : sl) + need / MIN;
         lastEnd = s + need; lastStart = s;
@@ -399,14 +414,19 @@ function lay(items = [], { tasks = [], events = [], now = Date.now(), hours = W.
     // On the ride: its own clock, and the rest of the plan carries on as if
     // it weren't there (no break on a ride: the ride is one).
     if (!placed && ride) {
-      rows.push({ taskId: it.taskId, task, minutes: need / MIN, start: ride.from, end: ride.from + need, i, ride: ride.g.mode === "car" && ride.g.place !== "car" ? "passenger" : ride.g.mode });
+      rows.push({ taskId: it.taskId, task, minutes: need / MIN, start: ride.from, end: ride.from + need, i, ...(leftOf(task) > need / MIN ? { of: leftOf(task) } : {}), ride: ride.g.mode === "car" && ride.g.place !== "car" ? "passenger" : ride.g.mode });
       rideAt[ride.k] = ride.from + need; placed = true;
     }
     if (!placed) {
       let room = 0;
       for (let k = gi; k < gaps.length; k++) room = Math.max(room, gaps[k].end - Math.max(cursor, gaps[k].start));
       room = Math.floor(room / (5 * MIN)) * 5;
-      over.push({ taskId: it.taskId, task, minutes: need / MIN, room: room >= WORTH ? room : 0, i });
+      // Why there's no room, in plain facts (2026-10-11: never dropped unsaid).
+      const hoursShut = task.openHours && task.openHours !== "anytime"
+        && !gaps.slice(gi).some((g) => !g.place && openStart(task, Math.max(cursor, g.start), need) != null);
+      const why = hoursShut ? (task.openHours === "office" ? "needs office hours, none left today" : "evening only, no evening time left")
+        : room >= 5 ? `needs ${durText(need / MIN)}, ${durText(room)} free in one stretch` : "no free time left today";
+      over.push({ taskId: it.taskId, task, minutes: need / MIN, room: room >= WORTH ? room : 0, i, why });
     }
   }
   // A break runs on to whatever comes next, up to the next meeting: free time

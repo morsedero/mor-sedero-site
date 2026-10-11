@@ -1614,7 +1614,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
           : h("span", { className: "pp-time", ariaLabel: `${clock(r.start)} to ${clock(r.end)}` }, clock(r.start), h("small", { textContent: clock(r.end) })),
         h("button", { type: "button", className: "pp-task", ariaLabel: `Edit ${t.title}`, onclick: () => onOpen?.(t) },
           h("span", { className: "pp-title", dir: "auto", textContent: t.title }),
-          h("span", { className: "pp-meta" }, ...pieces(projectShown(t) ? t.project : "", estText(t, r.minutes), r.ride ? RIDE_ROW[r.ride] : "", isOver ? "" : r.missed ? "did it happen?" : late?.taskId === r.taskId ? "not started" : ""))),
+          h("span", { className: "pp-meta" }, ...pieces(projectShown(t) ? t.project : "", isOver ? r.why || estText(t, r.minutes) : r.of ? `${estText(t, r.minutes)} of ${dur(r.of)}, shortened to fit` : estText(t, r.minutes), r.ride ? RIDE_ROW[r.ride] : "", isOver ? "" : r.missed ? "did it happen?" : late?.taskId === r.taskId ? "not started" : ""))),
         h("span", { className: "pp-ctls" },
           isOver && ctl("↑", "Do first", false, () => toFront(i)),
           ctl("✕", "Take off today's plan", false, () => dropItem(i))));
