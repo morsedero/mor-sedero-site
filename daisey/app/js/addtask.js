@@ -175,11 +175,10 @@ export function mountAddTask(dialog, uid, { onStart } = {}){
   const kindBtns = Object.keys(KIND_HELP).map((k) => h("button", { type: "button", className: "ts-kind " + k, textContent: k === "deadline" ? "Deadline" : "Target",
     onclick: (e) => { e.preventDefault(); if (kind === k) return; kind = k; paintDates(); if (editing) save({ dateKind: kind }); } }));
   const kindRow = h("div", { className: "ts-kinds", hidden: true }, h("div", { className: "ts-kind-seg", role: "group", ariaLabel: "What kind of date" }, ...kindBtns), kindHelp);
-  due.box.append(kindRow);
   function paintDates(){
     start.paint(); due.paint(); until.paint();
     due.box.hidden = !!per; until.box.hidden = !per;
-    kindRow.hidden = !due.input.value;
+    kindRow.hidden = !due.input.value || !!per;
     kindBtns.forEach((b, i) => { const on = Object.keys(KIND_HELP)[i] === kind; b.ariaPressed = String(on); b.classList.toggle("on", on); });
     kindHelp.textContent = KIND_HELP[kind];
   }
@@ -239,6 +238,7 @@ export function mountAddTask(dialog, uid, { onStart } = {}){
     field("Project", projectSel, newProject),
     field("Task", title),
     h("div", { className: "ts-dates" }, start.box, due.box, until.box),
+    kindRow,
     field("How long?", chipRow), guessBox, laptopRow, oftenRow, weekNow, pctBox, pendBox, holdBox, researchLine, stateLine,
     section("Links & notes", h("div", { className: "ts-group" }, linkRow, notes)),
     worked, startBtn, del, msg);
