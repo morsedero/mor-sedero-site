@@ -644,7 +644,7 @@ dialog.now:focus { outline: none; }
 @media (prefers-reduced-motion: no-preference) {
   .deck:not(.still) > .now-card.main:not(.in):not(.out):not(:focus-within) { animation: breathe 5s ease-in-out infinite; }
 }
-/* The schedule's now-row light (sc-orbit) travels round the card too
+/* An orbiting light (sc-orbit) travels round the card
    (Mor, 2026-10-11), and round a running event's card (.going). --orbit comes
    from now.js so a rebuild keeps its place. */
 .now-card.main:is(.deck > *, .going):not(.empty):not(.night) { --glint: color-mix(in srgb, var(--aline) 80%, #000); }
@@ -1368,7 +1368,9 @@ body.focus #side { display: none; }
 .now-top { margin: 0; }
 
 /* The compact Now card (~150px): area line, title, one-line why, one row. */
-.now-card.main { min-block-size: 150px; display: flex; flex-direction: column; gap: 0; padding: 8px 15px 13px; border-radius: 20px; box-shadow: 0 10px 24px color-mix(in srgb, var(--aink) 12%, transparent); }
+.now-card.main { min-block-size: 150px; display: flex; flex-direction: column; gap: 0; padding: 8px 15px 13px; border-radius: 20px;
+  /* Fits #nowcard's scroll box (12px below, 6px each side) so it isn't clipped into a visible edge (2026-10-11). */
+  box-shadow: 0 6px 12px -6px color-mix(in srgb, var(--aink) 22%, transparent); }
 .now-card.main .hero-top, .now-card.main .hero-area { font-size: 12px; }
 .now-card.main .hero-side { font-size: 11px; display: inline-flex; align-items: center; gap: 6px; }
 .hero-side .task-bar { position: static; inline-size: 36px; block-size: 3px; border-radius: 2px; flex: none; }
@@ -1473,40 +1475,19 @@ body.focus #side { display: none; }
 .miss-dlg .later-ask .chip { flex: 1 1 0; white-space: nowrap; padding-inline: 6px; }
 .wk-ev.wk-plan.missed::before { content: "? "; font-weight: 700; }
 .pp-row.missed .pp-time { color: var(--ink-2); }
-/* The row on right now is one block of its colour, time column included (Mor, 2026-10-08). */
-.sc-row.sc-on:not(.sc-gap) { --rowbg: color-mix(in srgb, var(--ev, #8c8574) 16%, var(--card)); --rowline: var(--ev, #8c8574); --rowink: color-mix(in srgb, var(--ev, var(--ink-2)) 55%, var(--ink));
-  position: relative; background: var(--rowbg); margin-inline: -6px; padding: 4px 6px; border-radius: 9px;
-  box-shadow: 0 0 0 1.5px color-mix(in srgb, var(--rowline) 45%, transparent); }
-.sc-row.sc-on[class*="pc-"]:not(.sc-gap), .sc-row.sc-on[class*="area-"]:not(.sc-gap) { --rowbg: var(--tint); --rowline: var(--aline); --rowink: var(--aink); }
-.sc-row.sc-on:not(.sc-gap) .sc-time { color: var(--rowink); }
-/* …and a soft light travels slowly round its outline, like an LFO, never
-   stopping (Mor, 2026-10-08: a sweep that repeats felt nagging). Border-only
-   via the padding-box mask; --sc-ang is registered so the conic can animate. */
+/* The row on right now keeps its chip's own look and width; a ring and the
+   Now pill mark it. The hero card above owns the time-gone fill and the
+   orbiting light (Mor, 2026-10-11: two loud copies competed, and the row's
+   block bled past the column). The registered props/keyframes stay: the
+   hero card (.now-card.main.going) animates with them. */
 @property --sc-ang { syntax: "<angle>"; inherits: false; initial-value: 0deg; }
-.sc-row.sc-on:not(.sc-gap)::before {
-  content: ""; position: absolute; inset: -2px; padding: 2.5px; border-radius: 11px; pointer-events: none;
-  background: conic-gradient(from var(--sc-ang), transparent 66deg, color-mix(in srgb, var(--rowline) 70%, transparent) 80deg,
-    var(--glint) 90deg, color-mix(in srgb, var(--rowline) 70%, transparent) 100deg, transparent 114deg);
-  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor;
-  mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
-  animation: sc-orbit 9s linear var(--orbit, 0s) infinite; } /* 9s = schedule.js ORBIT_MS */
 @keyframes sc-orbit { to { --sc-ang: 360deg; } }
-/* Time gone in it fills in deeper, start to end, fading softly into what is left (Mor, 2026-10-08). --dur/--el
-   come from schedule.js; --sc-prog animates over the event's own length. */
 @property --sc-prog { syntax: "<percentage>"; inherits: false; initial-value: 0%; }
 @keyframes sc-prog { to { --sc-prog: 100%; } }
-.sc-row.sc-on:not(.sc-gap) { --rowdeep: color-mix(in srgb, var(--ev, #8c8574) 50%, var(--card));
-  background: linear-gradient(to right, var(--rowdeep) calc(var(--sc-prog) - 18px), var(--rowbg) var(--sc-prog));
-  animation: sc-prog var(--dur, 1s) linear var(--el, 0s) both; }
-.sc-row.sc-on[class*="pc-"]:not(.sc-gap), .sc-row.sc-on[class*="area-"]:not(.sc-gap) { --rowdeep: color-mix(in srgb, var(--aline) 75%, var(--tint)); }
-.sc-row.sc-on:not(.sc-gap):dir(rtl) { background: linear-gradient(to left, var(--rowdeep) calc(var(--sc-prog) - 18px), var(--rowbg) var(--sc-prog)); }
-/* The glint: a deeper shade on light paper (white read as a hole in the ring),
-   a lighter one on dark. */
-.sc-row.sc-on:not(.sc-gap) { --glint: color-mix(in srgb, var(--rowline) 80%, #000); }
-:root[data-theme="dark"] .sc-row.sc-on:not(.sc-gap), :root.night .sc-row.sc-on:not(.sc-gap) { --glint: color-mix(in srgb, var(--rowline) 40%, #fff); }
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .sc-row.sc-on:not(.sc-gap) { --glint: color-mix(in srgb, var(--rowline) 40%, #fff); } }
-@media (prefers-reduced-motion: reduce) { .sc-row.sc-on:not(.sc-gap)::before { animation: none; } }
-.sc-row.sc-on .sc-ev, .sc-row.sc-on .sc-ev.sc-plan { background: none; border-color: transparent; box-shadow: none; color: var(--rowink); }
+.sc-row.sc-on:not(.sc-gap) .sc-ev { box-shadow: 0 0 0 1.5px color-mix(in srgb, var(--ev, #8c8574) 60%, transparent); }
+.sc-row.sc-on:not(.sc-gap) .sc-ev:is([class*="pc-"], [class*="area-"]) { box-shadow: inset 3px 0 0 var(--aline), 0 0 0 1.5px var(--aline); }
+.sc-row.sc-on:not(.sc-gap) .sc-ev.sc-plan { border-style: solid; }
+.sc-row.sc-on:not(.sc-gap) .sc-time { color: var(--ink); }
 .sc-time .sc-nowtag { display: block; inline-size: fit-content; margin-block-start: 3px; padding: 1px 7px; border-radius: 999px; background: var(--accent); color: var(--on-accent); font-size: 11px; font-weight: 700; }
 /* Day / Week header (2026-10-07): ‹ title › and a Day|Week switch, sticky at
    the top while the day or week scrolls under it. In Week the weekday

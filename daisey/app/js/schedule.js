@@ -210,13 +210,13 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onMissed, onPro
     stepBy = (n) => go(localDate(addDays(at, n * range[1]).getTime()));
     const isNow = view === "week" ? from.getTime() === addDays(today, -today.getDay()).getTime() : at.getTime() === today.getTime();
     const future = (view === "week" ? from : at).getTime() > today.getTime(); // today lies behind (left)
-    const late = now >= atMin(today, hrs.end);
     // Names count from the day you're in: late past midnight that's still
     // yesterday, so the calendar's today reads Tomorrow, the next day its weekday.
     const named = real.late ? addDays(today, -1) : today;
     const dayName = (d) => {
       const diff = Math.round((d - named) / 864e5);
-      return diff === 0 ? (late || real.late || new Date(now).getHours() >= 18 ? "Tonight" : "Today") : diff === 1 ? "Tomorrow" : diff === -1 ? "Yesterday"
+      // The whole day shows, morning included, so it reads Today, not Tonight (2026-10-11).
+      return diff === 0 ? (real.late ? "Tonight" : "Today") : diff === 1 ? "Tomorrow" : diff === -1 ? "Yesterday"
         : d.toLocaleDateString("en-GB", { weekday: "long" });
     };
     const last = addDays(to, -1);
