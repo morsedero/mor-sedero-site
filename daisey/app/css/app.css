@@ -1358,31 +1358,36 @@ body.focus #side { display: none; }
 .now-top:empty { display: none; }
 .now-top { margin: 0; }
 
-/* The compact Now card (~150px): area line, title, one-line why, one row. */
-.now-card.main { min-block-size: 150px; display: flex; flex-direction: column; gap: 0; padding: 8px 15px 13px; border-radius: 20px;
+/* The Now card is the hero (2026-10-11): the biggest thing on the home
+   screen, title large, the why on up to two lines. Done is its one loud
+   button; Switch, Pending and Later are quiet text beside it. */
+.now-card.main { min-block-size: 200px; display: flex; flex-direction: column; gap: 0; padding: 14px 18px 16px; border-radius: 22px;
   /* Fits #nowcard's scroll box (12px below, 6px each side) so it isn't clipped into a visible edge (2026-10-11). */
   box-shadow: 0 6px 12px -6px color-mix(in srgb, var(--aink) 22%, transparent); }
-.now-card.main .hero-top, .now-card.main .hero-area { font-size: 12px; }
-.now-card.main .hero-side { font-size: 11px; display: inline-flex; align-items: center; gap: 6px; }
+.now-card.main .hero-top, .now-card.main .hero-area { font-size: 13px; }
+.now-card.main .hero-side { font-size: 12px; display: inline-flex; align-items: center; gap: 6px; }
 .hero-side .task-bar { position: static; inline-size: 36px; block-size: 3px; border-radius: 2px; flex: none; }
 .now-card.main .now-title, .now-card.main button.now-title {
-  margin-block-start: 2px; font-size: 16px; line-height: 1.15; letter-spacing: -0.2px;
+  margin-block-start: 8px; font-size: 25px; font-weight: 650; line-height: 1.15; letter-spacing: -0.3px;
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
 }
-.now-card.main .now-next, .now-card.main .now-why { margin: 3px 0 0; font-size: 13px; line-height: 1.35; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.now-row { display: flex; align-items: center; gap: 6px; margin-block-start: auto; padding-block-start: 10px; }
+.now-card.main .now-next, .now-card.main .now-why { margin: 6px 0 0; font-size: 14.5px; line-height: 1.35; overflow: hidden;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+/* Done across the card, the quiet three in a line under it. */
+.now-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 2px 6px; margin-block-start: auto; padding-block-start: 16px; }
 /* The row always fits the card: the icon buttons and Done give way before
    anything spills (phone audit, 2026-10-11: at 390 px and under, Switch
    started past the screen's left edge and Done ran under the side column). */
-.now-row .btn.start, .now-card.main .now-row .btn.start { flex: 1; inline-size: auto; min-inline-size: min-content; padding-inline: 10px; margin: 0; min-block-size: 44px; block-size: 44px; border-radius: 12px; font-size: 16px; }
+.now-row .btn.start, .now-card.main .now-row .btn.start { flex: 1 0 100%; order: -1; inline-size: auto; min-inline-size: min-content; padding-inline: 12px; margin: 0 0 2px; min-block-size: 52px; block-size: 52px; border-radius: 14px; font-size: 18px; }
+/* Quiet text buttons, no tile: 44px tall for the finger, no fill at rest. */
 .now-row .iconbtn {
-  flex: 0 1 44px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px;
-  inline-size: 44px; min-inline-size: 38px; block-size: 44px; min-block-size: 44px; padding: 0; border: 0; border-radius: 12px;
-  background: color-mix(in srgb, var(--aline) 70%, var(--tint)); color: var(--sub); font-size: 10px; font-weight: 500;
+  flex: none; display: inline-flex; align-items: center; justify-content: center;
+  inline-size: auto; min-inline-size: 0; block-size: 40px; min-block-size: 40px; padding: 0 10px; border: 0; border-radius: 10px;
+  background: none; color: var(--sub); font-size: 13.5px; font-weight: 500;
 }
-.now-row .iconbtn svg { inline-size: 16px; block-size: 16px; stroke-width: 2; }
-@media (max-width: 359px) { .now-card.main { padding-inline: 12px; } .now-row { gap: 4px; } .now-row .iconbtn { min-inline-size: 36px; } .now-row .btn.start svg { display: none; } }
-.now-row .iconbtn:hover:not(:disabled), .now-row .iconbtn[aria-expanded="true"] { background: var(--aline); color: var(--ink); border-color: transparent; }
+.now-row .iconbtn svg { display: none; }
+@media (max-width: 359px) { .now-card.main { padding-inline: 12px; } .now-row .iconbtn { padding-inline: 5px; font-size: 12.5px; } .now-row .btn.start svg { display: none; } }
+.now-row .iconbtn:hover:not(:disabled), .now-row .iconbtn[aria-expanded="true"] { background: none; color: var(--ink); text-decoration: underline; text-underline-offset: 4px; border-color: transparent; }
 .now-card.main .later-ask, .now-card.main .pend-ask, .now-card.main .now-out { margin-block-start: 10px; }
 .now-next-out { margin: 10px 0 0; padding-inline: 4px; font-size: 13px; color: var(--sub); text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .now-card.main.meeting, .now-card.main.empty, .now-card.main.night { min-block-size: 0; }
@@ -1418,7 +1423,7 @@ body.focus #side { display: none; }
 .sc-next .sc-name { font-size: 15px; font-weight: 700; color: var(--ink); }
 .sc-name { font-size: 13px; font-weight: 600; color: color-mix(in srgb, var(--ink) 85%, var(--ink-2)); }
 .sc-date { font-size: 12px; color: var(--ink-2); }
-.sc-row { display: flex; align-items: center; gap: 8px; margin-block-start: 8px; }
+.sc-row { display: flex; align-items: center; gap: 8px; margin-block-start: 5px; }
 /* Times small and narrow so the events get the room (Mor, 2026-10-11). */
 .sc-time { flex: none; inline-size: 80px; font-size: 11.5px; white-space: nowrap; color: var(--ink-2); font-variant-numeric: tabular-nums; }
 .sc-time.strong { color: color-mix(in srgb, var(--ink) 85%, var(--ink-2)); }
@@ -1426,13 +1431,14 @@ body.focus #side { display: none; }
 .sc-gap.sc-break { cursor: default; }
 .sc-gap .sc-add { order: 2; font-size: 14px; }
 /* Free time and breaks read warm and a size up (Mor, 2026-10-10: "more fun, bigger"). */
-.sc-free { flex: 1; min-inline-size: 0; display: flex; align-items: center; gap: 8px; block-size: 30px; font-size: 14.5px; font-weight: 400; color: var(--ink-2); }
+/* Condensed under the hero card (2026-10-11): a quiet line, not a row. */
+.sc-free { flex: 1; min-inline-size: 0; display: flex; align-items: center; gap: 6px; block-size: 22px; font-size: 12.5px; font-weight: 400; color: var(--ink-2); }
 .sc-break.sc-past .sc-free { opacity: .55; }
 .sc-gap .sc-free::after { content: ""; flex: 1; border-block-start: 1.5px dotted currentColor; opacity: .35; }
 .sc-ev {
-  flex: 1; min-inline-size: 0; display: flex; align-items: center; min-block-size: 34px; padding: 6px 12px; border: 0; border-radius: 8px;
+  flex: 1; min-inline-size: 0; display: flex; align-items: center; min-block-size: 30px; padding: 4px 10px; border: 0; border-radius: 8px;
   background: color-mix(in srgb, var(--ev, #8c8574) 16%, var(--card)); color: color-mix(in srgb, var(--ev, var(--ink-2)) 55%, var(--ink));
-  font: inherit; font-size: 14px; font-weight: 600; text-align: start; cursor: pointer; overflow-wrap: anywhere;
+  font: inherit; font-size: 13.5px; font-weight: 600; text-align: start; cursor: pointer; overflow-wrap: anywhere;
 }
 .sc-ev[class*="pc-"], .sc-ev[class*="area-"] { background: var(--tint); color: var(--aink); box-shadow: inset 3px 0 0 var(--aline); }
 .wk-ev[class*="pc-"], .wk-ev[class*="area-"] { background: var(--tint); color: var(--aink); box-shadow: inset 2px 0 0 var(--aline); }
@@ -1849,7 +1855,7 @@ body.focus .shell { block-size: auto; min-block-size: 100dvh; overflow: visible;
 
 /* Task events (planned, finished) are plain; the project colour is a dot (Mor, 2026-10-08). */
 .sc-dot { flex: none; inline-size: 10px; block-size: 10px; margin-inline: 5px 13px; border-radius: 50%; background: var(--aink); }
-.sc-ev.sc-plan, .sc-ev.sc-plan[class*="pc-"], .sc-ev.sc-plan[class*="area-"] { background: none; color: var(--ink); box-shadow: none; border: 1.5px dashed var(--line); margin: 0; font-weight: 400; padding: 6px 12px; border-radius: 8px; }
+.sc-ev.sc-plan, .sc-ev.sc-plan[class*="pc-"], .sc-ev.sc-plan[class*="area-"] { background: none; color: var(--ink); box-shadow: none; border: 1.5px dashed var(--line); margin: 0; font-weight: 400; padding: 4px 10px; border-radius: 8px; }
 .sc-ev.sc-done[class*="pc-"], .sc-ev.sc-done[class*="area-"] { box-shadow: none; }
 .wk-ev.done[class*="pc-"], .wk-ev.done[class*="area-"], .wk-ev.wk-plan[class*="pc-"], .wk-ev.wk-plan[class*="area-"] { background: none; color: var(--ink-2); box-shadow: none; }
 
