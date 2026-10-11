@@ -112,6 +112,46 @@ export function celebrate(el){
   setTimeout(() => box.remove(), 1400);
 }
 
+// After Done (Mor, 2026-10-11): the next card pushes in from the reading end
+// and shoves this one off its spot; it tips over the edge and falls down the
+// screen like a real card. A copy, fixed over the page, does the falling so
+// nothing clips it and the next card can render in place right away. Its
+// path is a small simulation (shove, tip, gravity, a little air drag),
+// sampled at 60 fps into keyframes.
+export function dropAway(el){
+  if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  const r = el.getBoundingClientRect();
+  const rtl = getComputedStyle(el).direction === "rtl", s = rtl ? 1 : -1; // pushed toward the start
+  const c = el.cloneNode(true);
+  c.classList.remove("won", "in", "out", "push-in");
+  c.querySelector(".won-shine")?.remove();
+  c.querySelectorAll("[id]").forEach((n) => n.removeAttribute("id"));
+  c.removeAttribute("id"); c.setAttribute("aria-hidden", "true"); c.inert = true;
+  c.style.cssText += `;position:fixed;left:${r.left}px;top:${r.top}px;width:${r.width}px;height:${r.height}px;margin:0;z-index:60;` +
+    `pointer-events:none;animation:none;transform-origin:${rtl ? "right" : "left"} bottom;box-shadow:0 18px 40px rgb(0 0 0 / .2)`;
+  document.body.append(c);
+  const dt = 1000 / 60, PUSH = 340, TIP = 260, g = 0.0021, shove = r.width * 0.22, end = innerHeight - r.top + r.width * 0.6;
+  const f = [];
+  let t = 0, x = 0, y = 0, a = 0, rx = 0, vx = 0, vy = 0, va = 0;
+  // The shove: along its spot, still moving when it leaves the edge.
+  for (; t < PUSH; t += dt) { const k = t / PUSH; f.push([t, s * shove * (1.6 * k - 0.6 * k * k), 0, 0, 0]); }
+  x = s * shove; vx = s * shove * 0.4 / PUSH;
+  // Over the edge: it pivots first, then drops, spinning a little faster.
+  for (let n = 0; y < end && n < 240; n++, t += dt) {
+    const tip = t - PUSH < TIP;
+    vy += g * (tip ? 0.35 : 1) * dt; va += s * (tip ? 0.00016 : 0.00002) * dt; vx *= 0.995;
+    x += vx * dt; y += vy * dt; a += va * dt; rx = Math.min(16, rx + 0.12);
+    f.push([t, x, y, a, rx]);
+  }
+  const T = t;
+  const anim = c.animate(f.map(([ft, fx, fy, fa, frx]) => ({ offset: ft / T,
+    transform: `perspective(900px) translate(${fx.toFixed(1)}px, ${fy.toFixed(1)}px) rotate(${fa.toFixed(2)}deg) rotateX(${frx.toFixed(1)}deg)` })),
+    { duration: T, easing: "linear", fill: "forwards" });
+  const done = () => c.remove();
+  anim.finished.then(done, done);
+  setTimeout(done, T + 400);
+}
+
 // The running task's Done button: one tap (Mor, 2026-10-11: the "how much
 // is done" hold went). The timer re-renders the whole focus screen every
 // second: the button is built once per run (key) and the same node is handed

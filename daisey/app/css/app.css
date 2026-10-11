@@ -341,6 +341,12 @@ input:is([type="checkbox"], [type="radio"]):disabled { opacity: .45; cursor: def
 :dir(rtl) .now-card.main.in { animation-name: card-in-rtl; }
 @keyframes card-out-rtl { to { opacity: 0; transform: translateX(12%); } }
 @keyframes card-in-rtl { from { opacity: 0; transform: translateX(-14%); } }
+/* After Done the next card pushes in from the reading end, slowly, shoving
+   the done one off its spot (focus.js dropAway does the fall). */
+.now-card.main.push-in { animation: card-push-in 1s cubic-bezier(.45, .05, .25, 1) both; animation-delay: 0s !important; }
+:dir(rtl) .now-card.main.push-in { animation-name: card-push-in-rtl; }
+@keyframes card-push-in { from { transform: translateX(100%); } }
+@keyframes card-push-in-rtl { from { transform: translateX(-100%); } }
 /* Done (now.js quickDoneNow, Mor 2026-10-11): the card pops and glows, a
    light sweeps across it (.won-shine), confetti and sparkles go up round it
    (focus.js celebrate), then .out slides it away. */
@@ -400,7 +406,7 @@ input:is([type="checkbox"], [type="radio"]):disabled { opacity: .45; cursor: def
 .plan-cut .toast-row { align-items: flex-start; }
 .plan-cut .toast-why-row { flex-wrap: wrap; }
 .plan-cut .toast-acts { display: flex; gap: 12px; flex: none; }
-@media (prefers-reduced-motion: reduce) { .now-card.main.in, .now-card.main.out { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .now-card.main.in, .now-card.main.out, .now-card.main.push-in { animation: none; } }
 
 /* Focus mode: the task fills the screen, nothing else on it. */
 body.focus .topbar, body.focus #panel, body.focus .dock, body.focus .now-greet { display: none; }
@@ -669,7 +675,7 @@ dialog.now:focus { outline: none; }
 .deck > .now-card { position: relative; touch-action: pan-y; }
 @keyframes breathe { 50% { transform: translateY(-3px); } }
 @media (prefers-reduced-motion: no-preference) {
-  .deck:not(.still) > .now-card.main:not(.in):not(.out):not(.won):not(:focus-within) { animation: breathe 5s ease-in-out infinite; }
+  .deck:not(.still) > .now-card.main:not(.in):not(.out):not(.won):not(.push-in):not(:focus-within) { animation: breathe 5s ease-in-out infinite; }
 }
 /* An orbiting light (sc-orbit) travels round the card
    (Mor, 2026-10-11), and round a running event's card (.going). --orbit comes

@@ -21,7 +21,7 @@ import { placeNow, workBase, watchProjectTiers } from "./context.js";
 import { watchWhere, setManual, setStill, saveSpot, whereAsk, homeAt } from "./where.js";
 import { withTrips, ridingAs, stillRiding, asPassenger, chainFrom, setTripDay, MODES, tripAsks, answer as tripAnswer, noTrip } from "./trips.js";
 import { pickWeekDay } from "./triage.js";
-import { sinceMark, runCap, bookedMinutes, celebrate } from "./focus.js";
+import { sinceMark, runCap, bookedMinutes, celebrate, dropAway } from "./focus.js";
 import { watchCalendar } from "./calendar.js";
 import { LATER_MINUTES, DRAIN, CANCEL_KEEP_MINUTES, LIGHTER } from "./weights.js";
 import { missState, silenceText, lastActivity } from "./miss.js";
@@ -1051,7 +1051,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
       // No Done screen (Mor, 2026-10-11: "confusing, not doing anything good"):
       // the card moves straight on to the next task, and the toast holds the
       // time guess (− / +) and Undo.
-      reset(); slideIn = !!el; render();
+      reset(); slideIn = el ? "push" : false; render();
       flash("Done: ", task.title, { undo: () => { restoreTask(uid, task.id, before).catch(fail); render(); },
         adjust: p.counted.minutes ? { minutes: p.counted.minutes, set: (m) => setDoneMinutes(uid, task.id, m) } : undefined });
     };
@@ -1060,7 +1060,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     el.classList.add("won");
     el.append(h("span", { className: "won-shine", ariaHidden: "true" }));
     celebrate(el);
-    setTimeout(() => { el.classList.add("out"); setTimeout(go, SLIDE_MS); }, WON_MS);
+    setTimeout(() => { dropAway(el); go(); }, WON_MS);
   }
 
   // Switch's row, under the card like Later's and Pending's (Mor,
@@ -1893,7 +1893,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
       ...cardActions(card.task, alts)), asking()),
       nextLine(card.task), tip);
     // One slide-in per step-aside: later snapshots must not replay it.
-    if (slideIn) { slideIn = false; if (motionOK()) { const c = root.querySelector(".now-card.main"); if (c) { c.style.animationDelay = ""; c.classList.add("in"); } } }
+    if (slideIn) { const how = slideIn === "push" ? "push-in" : "in"; slideIn = false; if (motionOK()) { const c = root.querySelector(".now-card.main"); if (c) { c.style.animationDelay = ""; c.classList.add(how); } } }
   }
 
   // (The "Skipped five times. Still want it?" line that lived here moved to
