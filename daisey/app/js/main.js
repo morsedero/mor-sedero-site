@@ -241,10 +241,12 @@ async function boot(){
     } else initial();
     show("signedin"); // no element of its own: just clears loading/sign-in views
 
-    Promise.all([import("./now.js"), import("./projects.js"), import("./addtask.js"), import("./needs.js"), import("./import-trello.js"), import("./addevent.js"), import("./store.js"), import("./deadlines.js"), import("./day.js"), import("./calendar.js"), import("./schedule.js"), import("./push.js")])
-      .then(([{ mountNow }, { mountProjects }, { mountAddTask }, { mountNeeds }, { mountImport, connectTrello, finishTrelloConnect, trelloConnected }, { mountAddEvent }, { migrateTasks, watchSettings, saveSettings, watchTasks, watchRun, watchDayPlan, resetAll }, { mountDeadlines }, { dayHours, minText, mealPrefs, usualHours }, { watchCalendar, connectCalendar, setCalendarHint, listCalendars, saveCalendars }, { mountSchedule }, push]) => {
+    Promise.all([import("./now.js"), import("./projects.js"), import("./addtask.js"), import("./needs.js"), import("./import-trello.js"), import("./addevent.js"), import("./store.js"), import("./deadlines.js"), import("./day.js"), import("./calendar.js"), import("./schedule.js"), import("./push.js"), import("./sample.js")])
+      .then(([{ mountNow }, { mountProjects }, { mountAddTask }, { mountNeeds }, { mountImport, connectTrello, finishTrelloConnect, trelloConnected }, { mountAddEvent }, { migrateTasks, watchSettings, saveSettings, watchTasks, watchRun, watchDayPlan, resetAll, guestFresh, seedGuest }, { mountDeadlines }, { dayHours, minText, mealPrefs, usualHours }, { watchCalendar, connectCalendar, setCalendarHint, listCalendars, saveCalendars }, { mountSchedule }, push, { sampleDay }]) => {
         if ((!isGuest && fb.currentUid() !== user.uid) || mounted) return;
         const m = mounted = {};
+        // A new guest opens to a sample day, not an empty card (sample.js).
+        if (isGuest && guestFresh()) seedGuest(sampleDay({ hours: dayHours({}) }));
         setCalendarHint(isGuest ? "" : user.email);
         // Old tasks get the new fields first; then, once, which dates are real.
         const stopMigrate = migrateTasks(user.uid);
@@ -260,6 +262,13 @@ async function boot(){
         resetBtn.onclick = () => openReset(resetPanel.hidden);
         $("#resetCancel").onclick = () => openReset(false);
         $("#resetDisc").parentElement.hidden = isGuest; // a guest has nothing connected
+        // Reset sample: a guest's way back to the sample day, laid for now.
+        const sampleBtn = $("#sampleBtn");
+        sampleBtn.hidden = !isGuest;
+        sampleBtn.onclick = () => {
+          try { seedGuest(sampleDay({ hours: dayHours({}) })); location.replace(location.pathname); }
+          catch (e) { console.error("[daisey] sample", e); resetMsg.textContent = "Couldn't lay the sample day. Try again."; }
+        };
         resetGo.onclick = async () => {
           resetGo.disabled = true; resetMsg.textContent = "Erasing…";
           try {

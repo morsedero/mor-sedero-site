@@ -119,6 +119,15 @@ function removeGuestState(uid, key){
   catch(error){ return Promise.reject(error); }
 }
 
+// A guest who has never stored anything on this device: main.js lays the
+// sample day (sample.js) for them, so the first screen isn't empty.
+export const guestFresh = () => { try { return localStorage.getItem(GUEST_KEY) == null; } catch { return false; } };
+// The sample day, replacing everything this guest had ("Reset sample" too).
+export function seedGuest({ tasks, plan }){
+  try { localStorage.removeItem("daisey.guest.events.v1"); } catch { /* private window */ }
+  writeGuestData({ tasks, state: plan ? { dayplan: plan } : {} });
+}
+
 const tasksCol = (uid) => fb.collection(fb.db, "users", uid, "tasks");
 const taskDoc = (uid, id) => fb.doc(fb.db, "users", uid, "tasks", id);
 
@@ -442,7 +451,8 @@ const STATE_DOCS = ["now", "skips", "settings", "moment", "learn", "projects", "
 // The work log's month docs (log-YYYY-MM) go too.
 export async function resetAll(uid){
   if(isGuest(uid)){
-    try { localStorage.removeItem(GUEST_KEY); localStorage.removeItem("daisey.guest.events.v1"); }
+    // Emptied, not removed: a removed key reads as a new guest, who gets the sample day again.
+    try { localStorage.setItem(GUEST_KEY, JSON.stringify({ tasks: [], state: {} })); localStorage.removeItem("daisey.guest.events.v1"); }
     catch(error){ throw new Error(`Guest data could not be cleared: ${error.message || error}`); }
     return;
   }
