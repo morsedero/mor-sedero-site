@@ -141,13 +141,16 @@ export function dropAway(el){
     `pointer-events:none;animation:none;transform:none;will-change:transform;transform-origin:${rtl ? "left" : "right"} bottom;box-shadow:${glow}`;
   document.body.append(c);
   const P = bezier(PUSH_EASE), dt = 1000 / 60, W = r.width;
-  const TIP = 300, g = 0.0019, end = innerHeight - r.top + W * 0.6, f = [];
+  const TIP = 300, g = 0.0019, H = r.height, f = [];
   let t = 0, x = 0, y = 0, a = 0, vy = 0, va = 0;
   for (; P(t / PUSH_MS) < 0.1; t += dt) f.push([t, s * W * P(t / PUSH_MS), 0, 0]);
   const rel = t;
   x = s * W * P(rel / PUSH_MS);
   let vx = s * W * (P(rel / PUSH_MS) - P((rel - dt) / PUSH_MS)) / dt;
-  for (let n = 0; y < end && n < 240; n++, t += dt) {
+  // Until its highest corner is below the screen: tipped over, the far end
+  // rides up by W·sin(a), so the card's bottom passing the edge isn't enough.
+  const gone = () => { const q = Math.abs(a) * Math.PI / 180; return r.bottom + y - W * Math.sin(q) - H * Math.cos(q) > innerHeight + 24; };
+  for (let n = 0; !gone() && n < 300; n++, t += dt) {
     const k = Math.min(1, (t - rel) / TIP); // the pivot eases into the fall
     vy += g * (0.3 + 0.7 * k) * dt; va += s * (0.0003 * (1 - k) + 0.00002 * k) * dt; vx *= k < 1 ? 0.93 : 0.98;
     x += vx * dt; y += vy * dt; a += va * dt;
