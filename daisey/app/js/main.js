@@ -596,7 +596,33 @@ async function boot(){
           $("#planChip").setAttribute("aria-pressed", String(plan));
           $("#weekChip").setAttribute("aria-pressed", String(wk));
           $("#panel").setAttribute("aria-label", plan ? "Plan" : on ? "Projects" : wk ? "This week" : "Schedule");
+          swapAnim();
         };
+        // Page swaps animate (Mor, 2026-10-12): the page coming in rises and
+        // fades in; the one leaving stays a moment as an inert copy over it (ids kept so
+        // its page styles hold; it sits after the real ones, so $ never finds it),
+        // sinking and fading out. Back to the Schedule drops in from above.
+        let shownPage = null;
+        const swapAnim = () => {
+          const now = [...$("#panel").children].find((p) => p.classList.contains("ppage") && !p.hidden && !p.classList.contains("pg-ghost"));
+          const was = shownPage; shownPage = now;
+          if (!was || !now || was === now || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+          const back = now.id === "schedPage";
+          $("#panel .pg-ghost")?.remove();
+          const g = was.cloneNode(true);
+          g.hidden = false; g.inert = true; g.setAttribute("aria-hidden", "true");
+          g.classList.add("pg-ghost", back ? "out-down" : "out-up");
+          Object.assign(g.style, { top: now.offsetTop + "px", left: now.offsetLeft + "px", width: now.offsetWidth + "px", height: now.offsetHeight + "px" });
+          $("#panel").append(g);
+          g.scrollTop = g.dataset.st || 0;
+          g.classList.remove("pg-in", "pg-back");
+          g.addEventListener("animationend", (e) => { if (e.target === g) g.remove(); });
+          now.classList.remove("pg-in", "pg-back"); void now.offsetWidth;
+          now.classList.add(back ? "pg-back" : "pg-in");
+          const done = (e) => { if (e.target !== now) return; now.classList.remove("pg-in", "pg-back"); now.removeEventListener("animationend", done); };
+          now.addEventListener("animationend", done);
+        };
+        $("#panel").addEventListener("scroll", (e) => { if (e.target.classList?.contains("ppage")) e.target.dataset.st = e.target.scrollTop; }, true);
         // The Week page (Mor, 2026-10-10): the week's numbers and all
         // routines, in the panel like Projects; projects.js paints it.
         const closeStats = () => { if ($("#statsPage").hidden) return; $("#statsPage").hidden = true; m.projects?.stats(null); syncPanel(); };

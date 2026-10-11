@@ -2105,3 +2105,29 @@ body.focus .shell { block-size: auto; min-block-size: 100dvh; overflow: visible;
 :root:not(.night) body.focus-mode .now-card.main .now-row { padding-block-start: 16px; }
 /* Focus too: the same light squares, bigger; Done the one saturated button (2026-10-11). */
 :root:not(.night) body.focus-mode .now-card.main .now-row { gap: 8px; } :root:not(.night) body.focus-mode .now-card.main .now-row .iconbtn { inline-size: 58px; min-inline-size: 58px; block-size: 58px; min-block-size: 58px; border-radius: 14px; font-size: 11px; gap: 3px; } :root:not(.night) body.focus-mode .now-card.main .now-row .iconbtn svg { inline-size: 20px; block-size: 20px; } :root:not(.night) body.focus-mode .now-card.main .now-row .btn.start { block-size: 58px; min-block-size: 58px; border-radius: 14px; }
+
+/* Side buttons, chosen (Mor, 2026-10-12): each in its own colour instead of
+   all three going black — Plan blue, Projects violet, Week green. Unchosen
+   they stay plain. The colour eases in; the chip gives a small press. */
+#planChip { --on: var(--a-admin-ink); }
+#projectsChip { --on: var(--a-work-ink); }
+#weekChip { --on: var(--a-home-ink); }
+#side .hchip { transition: background-color .22s ease, border-color .22s ease, color .22s ease, box-shadow .22s ease, transform .15s ease; }
+#side .hchip[aria-pressed="true"] { background: var(--on); border-color: var(--on); color: var(--card); box-shadow: 0 4px 12px color-mix(in srgb, var(--on) 30%, transparent); }
+#side .hchip:active { transform: scale(.95); }
+
+/* Panel pages open and close (main.js swapAnim): the page coming in rises and
+   fades in; the leaving one's inert copy sinks and fades over it. Back to the
+   Schedule runs the other way. */
+.panel { position: relative; }
+.pg-ghost { position: absolute; margin: 0; z-index: 1; pointer-events: none; overflow: hidden; }
+@media (prefers-reduced-motion: no-preference) {
+  .ppage.pg-in { animation: pg-in .28s cubic-bezier(.2, .8, .3, 1); }
+  .ppage.pg-back { animation: pg-back .28s cubic-bezier(.2, .8, .3, 1); }
+  .pg-ghost.out-up { animation: pg-out-up .2s ease-in forwards; }
+  .pg-ghost.out-down { animation: pg-out-down .2s ease-in forwards; }
+}
+@keyframes pg-in { from { opacity: 0; transform: translateY(14px) scale(.985); } }
+@keyframes pg-back { from { opacity: 0; transform: translateY(-10px); } }
+@keyframes pg-out-up { to { opacity: 0; transform: translateY(-8px) scale(.985); } }
+@keyframes pg-out-down { to { opacity: 0; transform: translateY(14px) scale(.985); } }
