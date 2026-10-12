@@ -1460,14 +1460,23 @@ body.focus #side { display: none; }
   /* Projects is a full page: no Now card over it (Mor, 2026-10-12). */
   #board:has(#panel > :is(#projPage, #projectview, #statsPage):not([hidden]):not(.pg-ghost)) > .nowrow { display: none; }
   /* Week: off the tiles, a toggle at the top of Projects instead. */
-  #board > #side { grid-template-columns: 3fr 2fr 64px; }
-  /* Focus: an icon square at the row's end (Mor, 2026-10-12). In Focus mode
-     it stays, alone in its spot, as the way out. */
+  /* Home (Mor, 2026-10-12): Today tall on the left; Projects over Focus on
+     the right, each half its height, so the block stays one flush 96px.
+     In Focus mode Focus stays, alone in its spot, as the way out. */
   #focusChip { --on: var(--p-teal-ink); }
-  #board > #side #focusChip .hchip-word { position: absolute; inline-size: 1px; block-size: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
-  body.focus-mode #board > #side { display: grid; grid-template-columns: 1fr 64px; padding-block-end: max(18px, env(safe-area-inset-bottom)); } /* Tell Daisey's room, it being gone */
+  #board > #side { grid-template-columns: 1fr 1fr; grid-template-rows: 43px 43px; }
+  #board > #side #planChip { grid-row: 1 / 3; block-size: auto; }
+  #board > #side :is(#projectsChip, #focusChip) { block-size: auto; flex-direction: row; border-radius: 16px; }
+  #board > #side #focusChip { grid-column: 2; grid-row: 2; }
+  #board > #side:where(:not(:has(#projectsChip:not([hidden])))) #focusChip { grid-row: 1 / 3; }
+  #board > #side:where(:not(:has(#planChip:not([hidden])))) :is(#projectsChip, #focusChip) { grid-column: 1 / -1; }
+  /* A page open: one slim line, Focus back to an icon square. */
+  body.day-open #board > #side, #board:has(#panel > .ppage:not([hidden]):not(#schedPage):not(.pg-ghost)) > #side { grid-template-columns: 3fr 2fr 64px; grid-template-rows: 48px; }
+  body.day-open #board > #side > :is(#planChip, #projectsChip, #focusChip), #board:has(#panel > .ppage:not([hidden]):not(#schedPage):not(.pg-ghost)) > #side > :is(#planChip, #projectsChip, #focusChip) { grid-row: auto; grid-column: auto; border-radius: 20px; }
+  body.day-open #board > #side #focusChip .hchip-word, #board:has(#panel > .ppage:not([hidden]):not(#schedPage):not(.pg-ghost)) > #side #focusChip .hchip-word { position: absolute; inline-size: 1px; block-size: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  body.focus-mode #board > #side { display: grid; padding-block-end: max(18px, env(safe-area-inset-bottom)); } /* Tell Daisey's room, it being gone */
   body.focus-mode #board > #side > :not(#focusChip) { display: none !important; }
-  body.focus-mode #board > #side #focusChip { grid-column: 2; }
+  body.focus-mode #board > #side #focusChip { grid-column: 2; grid-row: 2; }
   #board > #side #weekChip { display: none !important; } /* over the slim tiles' display:flex */
   #panel:has(> :is(#projPage, #statsPage):not([hidden]):not(.pg-ghost)) > .pw-toggle { display: flex; }
   body.has-plan.day-open .sc-planbtn { display: inline-flex; inline-size: auto; padding-inline: 10px; }
@@ -1504,17 +1513,18 @@ body.focus #side { display: none; }
    across its corner. The tape sits level with the tab, not above it, so the
    overhang stays inside #nowcard's padding. */
 .now-card.main > .hero-due { inset-block-start: -7px; transform: rotate(-4deg); box-shadow: 0 2px 4px -1px rgb(0 0 0 / .14); }
-.now-card.main > .hero-due::before { content: ""; position: absolute; inset-inline-start: -16px; inset-block-start: calc(50% - 6.5px); inline-size: 28px; block-size: 13px;
-  transform: rotate(-38deg); pointer-events: none;
-  /* Old tape: yellowed, a brown stain soaked in, faint fibres, darker
-     where the torn ends caught dirt; ends ripped uneven, a bite out of one edge. */
-  background:
-    radial-gradient(ellipse 7px 5px at 70% 60%, rgb(140 95 40 / .28), transparent 75%),
-    radial-gradient(ellipse 5px 4px at 22% 30%, rgb(150 110 50 / .2), transparent 80%),
-    linear-gradient(90deg, rgb(120 85 40 / .3), transparent 14%, transparent 86%, rgb(120 85 40 / .3)),
-    repeating-linear-gradient(90deg, rgb(255 255 255 / .12) 0 1px, transparent 1px 3px),
-    color-mix(in srgb, #d9c48f 88%, transparent);
-  clip-path: polygon(3% 8%, 9% 0, 18% 4%, 82% 0, 88% 9%, 94% 2%, 100% 22%, 93% 38%, 99% 52%, 91% 66%, 97% 84%, 90% 100%, 60% 96%, 52% 100%, 14% 100%, 7% 90%, 0 78%, 6% 60%, 1% 44%, 8% 30%, 0 18%); }
+.now-card.main > .hero-due::before, .now-card.main > .hero-due::after { content: ""; position: absolute; inset-inline-start: -16px; inset-block-start: calc(50% - 6.5px);
+  inline-size: 28px; block-size: 13px; transform: rotate(-38deg); pointer-events: none; }
+.now-card.main > .hero-due::before {
+  background: linear-gradient(rgb(255 255 255 / .35), transparent 60%), color-mix(in srgb, #e9dcb8 82%, transparent);
+  /* Torn ends, and the corner on the card cut off where it peeled up. */
+  clip-path: polygon(0 12%, 5% 0, 95% 0, 100% 16%, 96% 36%, 100% 56%, 95% 78%, 100% 100%, 20% 100%, 0 40%, 5% 22%); }
+/* Stuck on in a hurry (Mor, 2026-10-12): that corner folded back over the
+   tape, its sticky side up — lighter, shaded along the fold. The triangle is
+   the cut-off corner mirrored across the cut. */
+.now-card.main > .hero-due::after {
+  background: linear-gradient(54deg, transparent 4px, rgb(90 70 30 / .3) 4.6px, rgb(255 255 255 / 0) 8.5px), #f5eedb;
+  clip-path: polygon(20% 100%, 0 40%, 26.4% 59%); }
 /* The bar: a thin strip under Done, as wide as it, its % at the end
    (Mor, 2026-10-12: it sat in the top row and ran past the card, then
    spanned the whole card). */
