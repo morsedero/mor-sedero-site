@@ -2233,48 +2233,59 @@ dialog.tsheet[open] > .ts-laptop + .ts-repeat { margin-block-start: -12px; }
 .now-card.main.night.ride .night-label { margin-block-end: 0; }
 .now-card.main.night.ride .trip-chips { margin-block-start: 8px; }
 
-/* The home glance (Mor, 2026-10-12: the Week page went; this is what stayed).
-   Done today and each routine's week as soft pills under the card, only with
-   nothing open (main.js syncPanel); done today opens its list. A routine's
-   ring fills toward its weekly count, a bee once it's met. */
-.hglance { flex: none; display: grid; gap: 8px; margin-block: 12px; }
+/* The home glance (Mor, 2026-10-12: the Week page went). Under the card with
+   nothing open (main.js syncPanel): Done today, a list that opens from its
+   head, then the routines card as the Week page had it. Scrolls on its own
+   if the routines outgrow the room. */
+.hglance { flex: 0 1 auto; min-block-size: 0; overflow-y: auto; display: grid; align-content: start; gap: 10px; margin-block: 12px; }
 .hglance[hidden] { display: none; }
-.hg-row { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; }
-.hg-pill { box-sizing: border-box; display: inline-flex; align-items: center; gap: 6px; max-inline-size: 100%; min-block-size: 34px; padding: 4px 12px 4px 6px; border: 1px solid var(--line); border-radius: 999px; background: var(--card); color: var(--ink-2); font: inherit; font-size: 13px; cursor: pointer; transition: border-color .2s ease, transform .15s ease; }
-.hg-pill:active:not(:disabled) { transform: scale(.96); }
-.hg-pill b { color: var(--ink); font-weight: 700; font-variant-numeric: tabular-nums; }
-.hg-tick { display: grid; place-items: center; flex: none; inline-size: 22px; block-size: 22px; border-radius: 50%; background: var(--green); color: #fff; }
-.hg-tick svg { inline-size: 12px; block-size: 12px; stroke-width: 3; }
-.hg-done.none { cursor: default; }
-.hg-done.none .hg-tick { background: var(--chip); color: var(--ink-2); }
-.hg-done[aria-expanded="true"] { border-color: var(--green); }
-.hg-ring { flex: none; inline-size: 20px; block-size: 20px; margin-inline-start: 2px; border-radius: 50%; background: conic-gradient(var(--aink, var(--ink-2)) calc(var(--p, 0) * 1turn), var(--chip) 0);
-  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 4.5px), #000 calc(100% - 4px)); mask: radial-gradient(farthest-side, transparent calc(100% - 4.5px), #000 calc(100% - 4px)); }
-.hg-rt-t { min-inline-size: 0; max-inline-size: 10em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink); }
-.hg-rt-n { font-size: 12px; font-variant-numeric: tabular-nums; }
-.hg-rt.met { border-color: var(--aline, var(--line)); background: var(--tint, var(--card)); }
-.hg-list { display: grid; padding: 2px 12px; border-radius: 16px; background: var(--card); border: 1px solid var(--line); }
-.hg-list .pj-drow { min-block-size: 40px; }
-.hg-list .pj-drow + .pj-drow { border-block-start: 1px solid var(--line); }
-@media (prefers-reduced-motion: no-preference) { .hg-list { animation: hg-in .22s cubic-bezier(.2, .8, .3, 1); } }
+.bl-h { margin: 0 0 8px; font-size: 11px; font-weight: 600; letter-spacing: .6px; text-transform: uppercase; color: var(--ink-2); }
+.bl-h-sub { font-weight: 400; color: var(--ink-2); }
+.bl-card { padding: 12px 12px 10px; border-radius: 18px; background: var(--card); border: 1px solid var(--line); }
+.bl-done { padding-block: 0; }
+.hg-dhead { display: flex; align-items: center; justify-content: space-between; gap: 8px; inline-size: 100%; min-block-size: 44px; padding: 0; border: 0; background: none; font: inherit; color: inherit; text-align: start; cursor: pointer; }
+.hg-dhead:disabled { cursor: default; }
+.hg-dhead .bl-h { margin: 0; }
+.hg-chev { display: grid; color: var(--ink-2); }
+.hg-chev svg { inline-size: 16px; block-size: 16px; transform: rotate(90deg); transition: transform .2s ease; }
+.bl-done.open .hg-chev svg { transform: rotate(-90deg); }
+.bl-done-rows { display: grid; gap: 2px; padding-block-end: 6px; }
+.bl-done-rows .pj-drow { min-block-size: 36px; }
+.bl-done-rows .pj-drow + .pj-drow { border-block-start: 1px solid var(--line); }
+@media (prefers-reduced-motion: no-preference) { .bl-done-rows { animation: hg-in .22s cubic-bezier(.2, .8, .3, 1); } }
 @keyframes hg-in { from { opacity: 0; transform: translateY(-4px); } }
-
-/* Mini card (Mor, 2026-10-12): with Today open on a phone (body.card-mini,
-   main.js syncPanel) the Now card drops to where + title, its keys beside
-   them, so the day under it gets the room. */
-:root:not(.night) body.card-mini .deck > .now-card.main:has(> .now-row) { min-block-size: 0; display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 10px; align-items: center; padding: 10px 10px 12px 14px; }
-:root:not(.night) body.card-mini .deck > .now-card.main > * { grid-column: 1 / -1; }
-:root:not(.night) body.card-mini .deck > .now-card.main > .hero-top { grid-column: 1; grid-row: 1; }
-:root:not(.night) body.card-mini .deck > .now-card.main > .now-row { grid-column: 2; grid-row: 1; margin: 0; padding: 0; gap: 6px; }
-:root:not(.night) body.card-mini .now-card.main > :is(.now-why, .wk-dots, .now-next), :root:not(.night) body.card-mini :is(.now-greet, .now-next-out) { display: none; }
-:root:not(.night) body.card-mini .deck > .now-card.main .hero-top { font-size: 12px;; min-inline-size: 0; }
-:root:not(.night) body.card-mini .deck > .now-card.main .hero-where .now-proj { display: inline-block; max-inline-size: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: bottom; }
-:root:not(.night) body.card-mini .deck > .now-card.main .now-title { display: block; max-inline-size: 100%; margin: 6px 0 0; text-align: start; font-size: 17px; line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-:root:not(.night) body.card-mini .deck > .now-card.main .now-row .iconbtn { inline-size: 40px; min-inline-size: 40px; block-size: 40px; min-block-size: 40px; padding: 0; border-radius: 12px; }
-:root:not(.night) body.card-mini .deck > .now-card.main .now-row .iconbtn-text, :root:not(.night) body.card-mini .done-col > .task-pct { display: none; }
-:root:not(.night) body.card-mini .deck > .now-card.main .now-row .done-col { flex: none; }
-:root:not(.night) body.card-mini .deck > .now-card.main .now-row .btn.start { block-size: 40px; min-block-size: 40px; padding-inline: 12px; font-size: 15px; }
+/* Routines: one card, a line each (Mor, 2026-10-08: "more minimal"). */
+.bl-routines { display: flex; flex-direction: column; }
+.bl-routines > .bl-h { margin-bottom: 4px; }
+.bl-routine { display: grid; grid-template-columns: auto minmax(0, 1fr) auto 18px; gap: 10px; align-items: center; min-block-size: 36px; }
+.bl-routine + .bl-routine { border-block-start: 1px solid var(--line); }
+.bl-r-dot { inline-size: 8px; block-size: 8px; border-radius: 50%; background: var(--aink, var(--ink-2)); }
+.bl-r-title { font-size: 14px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bl-routine.met .bl-r-title { color: var(--ink-2); }
+.bl-dots { color: var(--ink-2); display: inline-flex; align-items: center; gap: 8px; }
+.bl-r-n { font-size: 12px; font-variant-numeric: tabular-nums; min-inline-size: 2.2em; text-align: end; }
+.bl-routine.met .bl-r-n { color: var(--ink); font-weight: 600; }
+.bl-dots .wk-dots { gap: 5px; }
+.bl-dots .wk-dots i { inline-size: 9px; block-size: 9px; }
+.bl-bee { font-size: 13px; text-align: center; }
 /* Phone home: the card and the glance sit together mid-screen. */
 :root:not(.night) body.home-float:has(#glance:not([hidden])) .nowrow { flex: 0 1 auto; margin-block-start: auto; }
 :root:not(.night) body.home-float:has(#glance:not([hidden])) #nowcard { padding-block-end: 0; }
 :root:not(.night) body.home-float #glance { margin-block: 14px 8vh; }
+@media (max-height: 700px) { :root:not(.night) body.home-float #glance { margin-block: 10px 2vh; } }
+
+/* Mini card (Mor, 2026-10-12): with Today open on a phone (body.card-mini,
+   main.js syncPanel) the Now card is two rows: the words on top (where, then
+   the title on one line), the keys under them, Switch and Not now sharing
+   the left half and Done the right. No why line, dots or progress bar. */
+:root:not(.night) body.card-mini .deck > .now-card.main { min-block-size: 0; padding: 12px 12px 12px 14px; }
+:root:not(.night) body.card-mini .now-card.main > :is(.now-why, .wk-dots, .now-next), :root:not(.night) body.card-mini :is(.now-greet, .now-next-out) { display: none; }
+:root:not(.night) body.card-mini .deck > .now-card.main .hero-top { min-inline-size: 0; font-size: 12px; }
+:root:not(.night) body.card-mini .deck > .now-card.main .hero-where .now-proj { display: inline-block; max-inline-size: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: bottom; }
+:root:not(.night) body.card-mini .deck > .now-card.main .now-title { display: block; max-inline-size: 100%; margin: 4px 0 0; font-size: 18px; line-height: 1.25; text-align: start; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+:root:not(.night) body.card-mini .deck > .now-card.main .now-row { gap: 6px; padding-block-start: 10px; }
+:root:not(.night) body.card-mini .deck > .now-card.main .now-row .iconbtn { flex: 1 1 0; inline-size: auto; min-inline-size: 0; block-size: 46px; min-block-size: 46px; padding: 0 4px; gap: 1px; border-radius: 12px; font-size: 11px; }
+:root:not(.night) body.card-mini .deck > .now-card.main .now-row .iconbtn svg { inline-size: 17px; block-size: 17px; }
+:root:not(.night) body.card-mini .deck > .now-card.main .now-row .done-col { flex: 2 1 0; min-inline-size: 0; }
+:root:not(.night) body.card-mini .deck > .now-card.main .now-row .btn.start { block-size: 46px; min-block-size: 46px; padding-inline: 10px; font-size: 16px; }
+:root:not(.night) body.card-mini .done-col > :is(.task-bar, .task-pct) { display: none; }

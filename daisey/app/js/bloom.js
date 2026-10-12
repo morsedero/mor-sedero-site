@@ -2,7 +2,7 @@
 // daisey/STATS_PLAN.md). The Projects page is the garden now: each project
 // card carries its flower — taller with the time it got this period, a petal
 // for every task finished, a closed bud when it got none — the routines
-// sit on the home glance (projects.js). This file is the
+// card sits on the home glance (projects.js). This file is the
 // growing half: the work log, the calendar's past events, the period, and the
 // pieces drawn from them. projects.js lays them out. Calm on purpose: no red,
 // no "behind", no goals that aren't the user's own.
@@ -12,6 +12,7 @@ import {
   PERIODS, periodRange, monthsOfRange, summarize, flowers, routineRows, fmtMinutes, oneLine,
   estimatedEntries, eventEntries,
 } from "./bloom-data.js";
+import { h, bdi, weekDots } from "./ui.js";
 
 const NS = "http://www.w3.org/2000/svg";
 const svg = (tag, attrs = {}, ...kids) => {
@@ -123,4 +124,22 @@ export function mountGrowth(uid, { onChange } = {}){
     hide(){ shown = false; unLog?.(); unLog = null; logKey = ""; },
     unmount(){ this.hide(); },
   };
+}
+
+// Routines, minimal (Mor, 2026-10-08): one quiet line each in one card —
+// the project's colour dot, the title, the week's dots, a bee once met.
+// colors: project name -> its colour ("" when none).
+export function routinesSection(rows, tasks, colors){
+  if (!rows.length) return null;
+  return h("section", { className: "bl-card bl-routines", ariaLabel: "Routines" },
+    // Dots alone didn't read when empty (Mor, 2026-10-08): "this week" on the
+    // header, the count in words beside each row's dots.
+    h("h3", { className: "bl-h" }, "Routines", h("span", { className: "bl-h-sub", textContent: " · this week" })),
+    ...rows.map((r) => h("div", { className: "bl-routine" + (r.met ? " met" : "") + (colors.get(r.project) ? ` pc-${colors.get(r.project)}` : ""),
+      title: `${r.project} · ${r.count} of ${r.per}${r.streak >= 2 ? ` · ${r.streak} weeks in a row` : ""}` },
+      h("span", { className: "bl-r-dot", ariaHidden: "true" }),
+      h("span", { className: "bl-r-title" }, bdi(r.title)),
+      h("span", { className: "bl-dots", ariaLabel: `${r.count} of ${r.per} this week` }, weekDots(tasks.find((t) => t.id === r.id)),
+        h("span", { className: "bl-r-n", ariaHidden: "true", textContent: `${r.count}/${r.per}` })),
+      h("span", { className: "bl-bee", ariaHidden: "true" }, r.met ? "🐝" : ""))));
 }

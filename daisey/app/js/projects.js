@@ -32,7 +32,7 @@ import { TIERS, FOCUS_MAX } from "./weights.js";
 // How many projects Focus holds: Settings, 1–5 (Mor, 2026-10-10); FOCUS_MAX (3) until set.
 const focusCap = (s) => (Number.isInteger(s?.focusMax) && s.focusMax >= 1 && s.focusMax <= 5 ? s.focusMax : FOCUS_MAX);
 import { sortable, zoneSortable } from "./ppdrag.js";
-import { mountGrowth, flowerSvg } from "./bloom.js";
+import { mountGrowth, flowerSvg, routinesSection } from "./bloom.js";
 import { routineRows } from "./bloom-data.js";
 
 const SWIPE_DONE = 90; // px a task travels right before letting go finishes it
@@ -157,31 +157,25 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
   // Bloom lives on this page (bloom.js): the log or the period moved.
   const growth = mountGrowth(uid, { onChange: () => { if (dragging) { stale = true; return; } paintGrid(); } });
   // The home glance (Mor, 2026-10-12: the Week page is gone; what stayed is
-  // today's done count, its list a tap away, and each routine's week). Small
-  // pills under the Now card while nothing is open; main.js shows the box.
+  // under the Now card while nothing is open; main.js shows the box). Done
+  // today is a list that opens on a tap of its head, oldest first; the
+  // routines card is the Week page's, as it was.
   let doneOpen = false;
   function paintGlance(){
     const box = els.glance; if (!box) return;
     const ts = tasks || [], done = doneToday(ts).sort((a, b) => a.doneAt - b.doneAt);
-    const colors = new Map(list().map((p) => [p.name, p.color || ""]));
     if (!done.length) doneOpen = false;
-    const pill = h("button", { type: "button", className: "hg-pill hg-done" + (done.length ? "" : " none"), disabled: !done.length,
-      ariaExpanded: String(doneOpen), onclick: () => { doneOpen = !doneOpen; paintGlance(); } },
-      h("span", { className: "hg-tick", ariaHidden: "true" }, icon("check")),
-      done.length ? h("span", {}, h("b", { textContent: String(done.length) }), " done today") : h("span", { textContent: "Nothing done yet" }));
-    // A routine: a ring filling toward its weekly count, a bee once met.
-    const routine = (r) => h("button", { type: "button", className: "hg-pill hg-rt" + (r.met ? " met" : "") + (colors.get(r.project) ? ` pc-${colors.get(r.project)}` : ""),
-      title: `${r.project} · ${r.count} of ${r.per} this week${r.streak >= 2 ? ` · ${r.streak} weeks in a row` : ""}`,
-      ariaLabel: `${r.title}: ${r.count} of ${r.per} this week`, onclick: () => { const t = ts.find((x) => x.id === r.id); if (t) onOpen?.(t); } },
-      h("span", { className: "hg-ring", ariaHidden: "true", style: `--p:${Math.min(1, r.count / r.per)}` }),
-      h("span", { className: "hg-rt-t" }, bdi(r.title)),
-      h("span", { className: "hg-rt-n", ariaHidden: "true", textContent: r.met ? "🐝" : `${r.count}/${r.per}` }));
-    box.replaceChildren(
-      h("div", { className: "hg-row" }, pill, ...routineRows(ts).map(routine)));
-    if (doneOpen) box.append(h("div", { className: "hg-list", role: "list", ariaLabel: "Done today" }, ...done.map((t) => h("div", { className: "pj-drow", role: "listitem" },
+    const head = h("button", { type: "button", className: "hg-dhead", disabled: !done.length, ariaExpanded: String(doneOpen),
+      onclick: () => { doneOpen = !doneOpen; paintGlance(); } },
+      h("h3", { className: "bl-h" }, "Done today", h("span", { className: "bl-h-sub", textContent: done.length ? ` · ${done.length}` : " · nothing yet" })),
+      done.length > 0 && h("span", { className: "hg-chev", ariaHidden: "true" }, icon("chev")));
+    const doneCard = h("section", { className: "bl-card bl-done" + (doneOpen ? " open" : ""), ariaLabel: "Done today" }, head,
+      doneOpen && h("div", { className: "bl-done-rows" }, ...done.map((t) => h("div", { className: "pj-drow" },
         h("span", { className: "pj-tick on", ariaHidden: "true" }, icon("check")),
         h("button", { type: "button", className: "pj-quiet", onclick: () => onOpen?.(t) }, bdi(t.title)),
         h("span", { className: "pj-meta", dir: "ltr", textContent: new Date(t.doneAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) })))));
+    const rows = routineRows(ts), colors = new Map(list().map((p) => [p.name, p.color || ""]));
+    box.replaceChildren(doneCard, ...[routinesSection(rows, ts, colors)].filter(Boolean));
   }
 
   // ---------- the Projects page ----------
