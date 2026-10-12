@@ -382,7 +382,8 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onMissed, onPro
       const timed = events.filter((e) => !e.allDay).map((e) => ({ ev: e, start: Date.parse(e.start), end: Date.parse(e.end) }))
         .filter((x) => x.start < b && x.end > a)
         .map((x) => ({ ...x, s: Math.max(0, (x.start - a) / 60000), e: Math.min(1440, (x.end - a) / 60000) }));
-      if (a === t0) for (const p of planRows(events, now)) timed.push({ plan: p, start: p.start, end: p.end, s: (p.start - a) / 60000, e: (p.end - a) / 60000 });
+      // The plan's tasks; its breaks (no task) stay on the day view.
+      if (a === t0) for (const p of planRows(events, now).filter((r) => r.kind === "plan")) timed.push({ plan: p, start: p.start, end: p.end, s: (p.start - a) / 60000, e: (p.end - a) / 60000 });
       timed.sort((p, q) => p.s - q.s || q.e - p.e);
       return { d, ymd, allDay, timed: lanes(timed) };
     });

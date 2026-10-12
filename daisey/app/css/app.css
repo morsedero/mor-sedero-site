@@ -2459,11 +2459,19 @@ body.fm-slide .deck > .now-card.main { animation: none !important; } /* main.js:
   /* The right: the panel, its own column, full height. */
   #panel { grid-area: panel; min-block-size: 0; margin-block: 24px 28px; padding: 14px 18px 0; border-radius: 24px; }
   #panel .ppage { margin-inline: -18px; padding-inline: 18px; }
-  /* Projects (all, or one) open: the page takes the middle and the right;
-     the card steps out until Today brings it back. */
-  .shell:has(#panel > :is(#projPage, #projectview):not([hidden]):not(.pg-ghost)) { grid-template-areas: "rail panel panel" "rail panel panel" "rail panel panel" "rail dock dock"; }
-  .shell:has(#panel > :is(#projPage, #projectview):not([hidden]):not(.pg-ghost)) :is(.nowrow, #glance) { display: none; }
-  .shell:has(#panel > :is(#projPage, #projectview):not([hidden]):not(.pg-ghost)) #dock { justify-self: center; inline-size: min(100%, 760px); }
+  /* Projects (all, or one) or Week open: the page takes the middle and the
+     right, the card a bar over it with Done at its end (body.card-mini,
+     main.js syncPanel); Week keeps done today + routines over its grid. */
+  .shell:has(#panel > :is(#projPage, #projectview, #weekPage):not([hidden]):not(.pg-ghost)) { grid-template-rows: auto auto minmax(0, 1fr) auto; grid-template-areas: "rail now now" "rail glance glance" "rail panel panel" "rail dock dock"; }
+  .shell:has(#panel > :is(#projPage, #projectview, #weekPage):not([hidden]):not(.pg-ghost)) #panel { margin-block-start: 16px; }
+  .shell:has(#panel > :is(#projPage, #projectview, #weekPage):not([hidden]):not(.pg-ghost)) #glance { margin-block: 12px 0; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .shell:has(#panel > :is(#projPage, #projectview, #weekPage):not([hidden]):not(.pg-ghost)) #dock { justify-self: center; inline-size: min(100%, 760px); }
+  :root:not(.night) body.card-mini #nowcard .now-card.main > .now-row { display: flex; grid-column: 3; grid-row: 1; margin: 0; padding: 0; }
+  :root:not(.night) body.card-mini #nowcard .now-card.main > .now-row > :not(.done-col), :root:not(.night) body.card-mini #nowcard .done-col > :not(.btn) { display: none; }
+  :root:not(.night) body.card-mini #nowcard .done-col .btn.start { inline-size: auto; block-size: 44px; min-block-size: 44px; margin: 0; padding-inline: 22px; font-size: 15px; }
+  /* The greeting over the card; not at night, in Focus or over a page. */
+  .pc-greet:not([hidden]) { display: block; margin: 0 0 12px; font-size: 28px; font-weight: 600; letter-spacing: -0.3px; line-height: 1.2; }
+  :root.night .pc-greet, body:is(.focus-mode, .card-mini) .pc-greet { display: none; }
   /* Focus · Keep going · Background side by side; drag across them. */
   #projPage > .pgrid.tiers { grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: start; gap: 20px; margin-block-start: 0; }
   /* The card, a size up for a big screen. */
@@ -2476,7 +2484,23 @@ body.fm-slide .deck > .now-card.main { animation: none !important; } /* main.js:
   body.focus-mode .topbar { background: none; border-inline-end-color: transparent; }
   body.focus-mode .nowrow { grid-row: 1 / -1; }
   body.focus-mode #nowcard { inline-size: 100%; max-inline-size: 720px; margin-inline: auto; box-sizing: border-box; }
-  /* Full screens (Needs you): over the middle and the right; the rail stays. */
-  .screen { inset: 0 0 0 var(--rail); }
-  .screen > * { max-inline-size: 640px; }
+  /* Needs you: one decision at a time in a window over everything, the
+     page dimmed behind it (the shadow is the dim). */
+  #needsview { z-index: 30; inset: 50% auto auto 50%; translate: -50% -50%; inline-size: min(640px, calc(100vw - 64px)); max-block-size: min(760px, calc(100dvh - 64px)); box-sizing: border-box; padding: 26px 30px; border-radius: 28px; background: var(--card); box-shadow: 0 24px 60px rgb(0 0 0 / .25), 0 0 0 100vmax rgb(31 29 26 / .38); }
+  #needsview > * { max-inline-size: none; }
+  /* The task sheet: a drawer down the right side, the day still in view. */
+  dialog.tsheet { margin: 16px 16px 16px auto; inline-size: min(540px, calc(100vw - 32px)); block-size: calc(100dvh - 32px); max-block-size: none; padding: 24px; box-sizing: border-box; border-radius: 24px; }
+  @media (prefers-reduced-motion: no-preference) { dialog.tsheet[open] { animation: ts-drawer .24s cubic-bezier(.2, .8, .2, 1); } }
+  /* Settings: two columns, the sections listed on the left (main.js setNav). */
+  dialog.settings { inline-size: min(900px, calc(100vw - 64px)); block-size: min(680px, calc(100dvh - 64px)); padding: 0 28px 24px 0; box-sizing: border-box; }
+  dialog.settings[open] { display: grid; grid-template-columns: 220px minmax(0, 1fr); column-gap: 28px; align-content: start; }
+  dialog.settings > :not(.set-nav) { grid-column: 2; }
+  dialog.settings > .now-head { position: sticky; inset-block-start: 0; z-index: 1; margin: 0; padding-block: 22px 8px; background: var(--card); }
+  .set-nav { grid-column: 1; grid-row: 1 / span 9; align-self: start; position: sticky; inset-block-start: 0; display: flex; flex-direction: column; gap: 4px; min-block-size: min(680px, calc(100dvh - 64px)); box-sizing: border-box; padding: 22px 14px; background: color-mix(in srgb, var(--chip) 45%, var(--bg)); border-inline-end: 1px solid var(--line); }
+  .set-nav button { min-block-size: 42px; padding-inline: 12px; border: 0; border-radius: 12px; background: transparent; color: color-mix(in srgb, var(--ink) 80%, var(--ink-2)); font: inherit; font-size: 15px; text-align: start; cursor: pointer; }
+  .set-nav button:hover { background: color-mix(in srgb, var(--surface) 60%, transparent); }
+  .set-nav button[aria-current="true"] { background: var(--surface); color: var(--ink); font-weight: 600; box-shadow: 0 1px 3px rgb(0 0 0 / .06); }
+  dialog.settings .set-nav + .menu-sec { border-block-start: 0; padding-block-start: 4px; }
 }
+:where(.pc-greet, .set-nav) { display: none; } /* PC only: no weight, so the block above wins from 1024px */
+@keyframes ts-drawer { from { opacity: 0; transform: translateX(32px); } }

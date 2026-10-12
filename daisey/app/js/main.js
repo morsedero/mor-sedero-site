@@ -6,15 +6,14 @@ const $ = (s) => document.querySelector(s);
 // card redraw and its re-placing it is out of the document: keep it by hand.
 const focusBtn = document.getElementById("focusChip");
 const GUEST_KEY = "daisey_guest_mode";
-// Week on or off (done today + routines under the card), per device.
-const WEEK_KEY = "daisey_week_on";
-let weekOn = false;
-try { weekOn = localStorage.getItem(WEEK_KEY) === "1"; } catch { /* private window */ }
 const GUEST_UID = "guest-local";
 const guestMode = () => { try { return localStorage.getItem(GUEST_KEY) === "1"; } catch { return false; } };
 
 import { flash, h, bdi, icon } from "./ui.js";
-import { areaClass } from "./look.js";
+import { areaClass, greeting } from "./look.js";
+// PC: "Good morning, Mor" over the card (Mor, 2026-10-13, layout B); the
+// clock repaints it. app.css shows it from 1024px only.
+let greetName = null;
 
 // The header's chips (round 3, New Design/6): green "✓ N done" today, and
 // amber "N need you", each only when there is something. now.js reports both.
@@ -92,6 +91,9 @@ function paintClock(){
   $("#hdrDate").textContent = d.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
   $("#hdrTime").textContent = d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
   $("#hdrSec").textContent = ":" + String(d.getSeconds()).padStart(2, "0");
+  const g = $("#pcGreet");
+  g.hidden = greetName == null;
+  if (greetName != null) g.textContent = greeting(greetName, d.getTime());
 }
 paintClock();
 setInterval(() => { if (!document.hidden) paintClock(); }, 1000);
@@ -255,7 +257,21 @@ async function boot(){
   // Settings: the avatar menu's one door to everything else (Mor, 2026-10-06).
   // A tap on the dim backdrop closes it, like Escape and ✕.
   const settings = $("#settingsdlg");
-  $("#settingsBtn").onclick = () => { setMenu(false); settings.showModal(); };
+  // PC: two columns, the sections listed on the left (Mor, 2026-10-13,
+  // layout B); a tap scrolls to one, the one in view is marked. app.css
+  // shows the list from 1024px only.
+  const secs = [...settings.querySelectorAll(":scope > .menu-sec")];
+  const setNav = h("nav", { className: "set-nav", ariaLabel: "Settings sections" }, ...secs.map((s) =>
+    h("button", { type: "button", textContent: s.querySelector(".menu-h").textContent, onclick: () => s.scrollIntoView({ block: "start", behavior: "smooth" }) })));
+  settings.querySelector(".now-head").after(setNav);
+  const markNav = () => {
+    const top = settings.getBoundingClientRect().top;
+    let at = 0; secs.forEach((s, i) => { if (s.getBoundingClientRect().top - top < 140) at = i; });
+    if (settings.scrollTop + settings.clientHeight >= settings.scrollHeight - 2) at = secs.length - 1;
+    [...setNav.children].forEach((b, i) => b.setAttribute("aria-current", String(i === at)));
+  };
+  settings.addEventListener("scroll", markNav, { passive: true });
+  $("#settingsBtn").onclick = () => { setMenu(false); settings.showModal(); markNav(); };
   $("#refreshBtn").onclick = () => location.reload();
   $("#projectsChip").onclick = () => window.__toggleProjects?.();
   $("#weekChip").onclick = () => window.__toggleWeek?.();
@@ -359,6 +375,8 @@ async function boot(){
     $("#weekChip").hidden = !user;
     $("#todayChip").hidden = !user;
     focusBtn.hidden = !user;
+    greetName = user ? (isGuest ? "" : (user.displayName || "").trim().split(/\s+/)[0]) : null;
+    paintClock();
     if (!user) { show("signedout"); return; }
 
     const displayName = user.displayName || user.email || "Guest";
@@ -699,7 +717,7 @@ async function boot(){
           open(kind){ if (history.state?.daisey !== kind) history.pushState({ daisey: kind }, ""); },
           back(){ if (history.state?.daisey) history.back(); else closeScreens(); },
         };
-        const closeScreens = () => { m.now?.closePlan(); m.projects?.closeProject(); m.needs?.close(); syncPanel(); };
+        const closeScreens = () => { $("#weekPage").hidden = true; m.now?.closePlan(); m.projects?.closeProject(); m.needs?.close(); syncPanel(); };
         const onPop = () => {
           const at = history.state?.daisey;
           if (!at) closeScreens();
@@ -710,29 +728,33 @@ async function boot(){
         let schedShown = false;
         const syncPanel = () => {
           const on = !$("#projPage").hidden || !$("#projectview").hidden, plan = !$("#planPage").hidden;
-          $("#schedPage").hidden = on || plan;
+          // PC: Week is its own page, the week grid (Mor, 2026-10-13); the plan
+          // or Projects opening shuts it.
+          if (on || plan || phone.matches) $("#weekPage").hidden = true;
+          const week = !$("#weekPage").hidden;
+          $("#schedPage").hidden = on || plan || week;
           if (on || plan) document.body.classList.remove("day-open");
           const day = document.body.classList.contains("day-open");
           // Phone, nothing open: the card floats mid-screen, as Focus mode did (app.css).
           document.body.classList.toggle("home-float", phone.matches && !day && !(on || plan));
           // Phone, Today open (the day or the plan): the card goes mini, so the
           // day gets the room (Mor, 2026-10-12; app.css).
-          document.body.classList.toggle("card-mini", phone.matches && (day || plan));
-          // The glance (done today, routines) only on the home with nothing
-          // open (Mor, 2026-10-12); wider, the Schedule under it counts as home.
-          // And only while Week is on: the home is the card alone until asked.
-          // On a phone it's Week's pop-over, over whatever is open (Mor,
-          // 2026-10-12: they live in a button).
-          const glance = phone.matches ? weekPop : weekOn && !(on || plan);
+          // PC: with Projects or Week open the card is a bar over the page,
+          // Done at its end (Mor, 2026-10-13, layout B).
+          document.body.classList.toggle("card-mini", phone.matches ? day || plan : on || week);
+          // The glance (done today, routines): on a phone it's Week's
+          // pop-over, over whatever is open (Mor, 2026-10-12: they live in a
+          // button). PC: under the card, and over the week grid (layout B).
+          const glance = phone.matches ? weekPop : !on;
           $("#homeHint").hidden = hintSeen || glance || !(phone.matches && !day && !(on || plan));
           $("#glance").classList.toggle("pop", phone.matches);
           if (phone.matches && glance) popAt();
           $("#glance").hidden = !glance;
-          $("#weekChip").setAttribute("aria-pressed", String(glance));
+          $("#weekChip").setAttribute("aria-pressed", String(phone.matches ? glance : week));
           $("#projectsChip").setAttribute("aria-pressed", String(on));
-          $("#todayChip").setAttribute("aria-pressed", String(!(on || plan)));
+          $("#todayChip").setAttribute("aria-pressed", String(!(on || plan || week)));
           $("#planChip").setAttribute("aria-pressed", String(plan || day));
-          $("#panel").setAttribute("aria-label", plan ? "Plan" : on ? "Projects" : "Schedule");
+          $("#panel").setAttribute("aria-label", plan ? "Plan" : on ? "Projects" : week ? "Week" : "Schedule");
           // Today coming into view lands on its now row, on top (Mor, 2026-10-12).
           const sched = $("#schedPage").getClientRects().length > 0;
           if (sched && !schedShown) m.schedule?.landNow();
@@ -780,26 +802,32 @@ async function boot(){
         // 2026-10-12). From a page it closes the page and turns them on.
         window.__syncPanel = syncPanel;
         window.__homeForFocus = () => { if (!$("#planPage").hidden) m.now?.closePlan(); document.body.classList.remove("day-open"); syncPanel(); };
+        // PC: Week opens the week grid as its own page (schedule.js mode
+        // "week", mounted the first time), over the middle and the right;
+        // a weekday's heading opens that day back in Today.
         window.__toggleWeek = () => {
           if (phone.matches) { weekPop = !weekPop; syncPanel(); return; }
-          const shown = !$("#glance").hidden;
+          const open = $("#weekPage").hidden;
           if (!$("#planPage").hidden) m.now?.closePlan();
           m.projects.closeProject(); m.projects.closeAll();
           if (history.state?.daisey === "project") history.back();
-          document.body.classList.remove("day-open");
-          weekOn = !shown;
-          try { localStorage.setItem(WEEK_KEY, weekOn ? "1" : ""); } catch { /* private window */ }
+          $("#weekPage").hidden = !open;
+          if (open) m.week ??= mountSchedule($("#weekPage"), user.uid, { mode: "week", onEvent: (ev) => m.event.view(ev), onNew: (date, at) => m.event.open(date, at), onOpen: (task) => m.adder.edit(task),
+            onDay: (ymd) => { $("#weekPage").hidden = true; syncPanel(); m.schedule?.go(ymd); } });
           syncPanel();
         };
         // PC: the rail's Today, back to the day in the right column.
         window.__goToday = () => {
+          $("#weekPage").hidden = true;
           if (!$("#planPage").hidden) m.now?.closePlan();
           m.projects.closeProject(); m.projects.closeAll(); syncPanel();
           if (history.state?.daisey === "project") history.back();
         };
         window.__toggleProjects = () => {
           if (!$("#planPage").hidden) m.now?.closePlan();
-          if (!$("#schedPage").hidden) { m.projects.openAll(); syncPanel(); return; }
+          const fromWeek = !$("#weekPage").hidden;
+          $("#weekPage").hidden = true;
+          if (!$("#schedPage").hidden || fromWeek) { m.projects.openAll(); syncPanel(); return; }
           m.projects.closeProject(); m.projects.closeAll(); syncPanel();
           if (history.state?.daisey === "project") history.back();
         };

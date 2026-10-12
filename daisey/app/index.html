@@ -98,6 +98,8 @@
   <!-- Signed in: the Now card (now.js) over the panel. -->
   <div id="board" hidden>
     <div class="nowrow">
+      <!-- PC only: the greeting over the card (main.js paintClock; Mor, 2026-10-13). -->
+      <p id="pcGreet" class="pc-greet" hidden></p>
       <section id="nowcard" aria-label="Now" hidden></section>
       <!-- Right column beside the Now card (Mor, 2026-10-08): Plan and Projects.
            Plan: "Plan my day" until a plan is approved, then "Plan"; tap
@@ -134,6 +136,8 @@
       <div id="planPage" class="ppage" hidden></div>
       <!-- One project (projects.js), in the panel too. -->
       <section id="projectview" class="ppage" aria-label="Project" hidden></section>
+      <!-- PC only: the week grid (schedule.js mode "week"), the rail's Week (Mor, 2026-10-13). -->
+      <div id="weekPage" class="ppage" hidden></div>
     </section>
   </div>
   <!-- Tell Daisey (tell.js): type or speak; Daisey shows what it understood

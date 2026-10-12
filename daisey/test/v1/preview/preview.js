@@ -378,6 +378,15 @@ const FAKES = {
     const ms = Number(args[args.indexOf("--hold-ms") + 1]) || 1500;
     await page.mouse.down(); await page.waitForTimeout(args.includes("--hold-ms") ? ms : 1500);
     if (!args.includes("--hold-keep")) { await page.mouse.up(); await page.waitForTimeout(700); } }
+  // --drag "sel@dx,dy": a mouse drag of it by that many px, in 20 steps
+  // (the Projects tiers); --drag-keep: screenshot before letting go.
+  const dragArg = flag("--drag");
+  if (dragArg) { const [sel, d] = dragArg.split("@"), [dx, dy] = d.split(",").map(Number), b = await page.locator(sel).first().boundingBox();
+    const x = b.x + b.width / 2, y = b.y + b.height / 2;
+    await page.mouse.move(x, y); await page.mouse.down();
+    for (let i = 1; i <= 20; i++) { await page.mouse.move(x + dx * i / 20, y + dy * i / 20); await page.waitForTimeout(25); }
+    await page.waitForTimeout(400);
+    if (!args.includes("--drag-keep")) { await page.mouse.up(); await page.waitForTimeout(700); } }
   // --then "sel": click it after the hold (the Done screen's Switch).
   for (let i = args.indexOf("--then"); i >= 0; i = args.indexOf("--then", i + 1)) { await page.click(args[i + 1], { force: true }); await page.waitForTimeout(300); }
   if (tasksTab) { await page.click("#tabTasks"); await page.waitForTimeout(150); }

@@ -131,21 +131,24 @@ export function pusher(box, row, grid = false){
 // its slot on release instead of jumping.
 // onMove(card, zone, before): it landed in that area, before that card
 // (null: last). onZone(zone | null, card): where it is over, null at the end.
+// Areas stacked (phone) or side by side (PC, three columns; Mor, 2026-10-13:
+// "it just drags vertically"): the card follows the pointer both ways and
+// the area is the column under it, then the nearest by height.
 export function zoneSortable(root, { onMove, busy, onZone }){
   let pid = null, armed = false, hold = 0, dragged = false, card = null, raf = 0, sc = null;
-  let x0 = 0, y0 = 0, lastY = 0, start = 0, home = null, over = null, settle = 0, settling = false;
+  let x0 = 0, y0 = 0, lastX = 0, lastY = 0, start = 0, startX = 0, home = null, over = null, settle = 0, settling = false;
   const MS = 280, EASE = "cubic-bezier(.2, .8, .2, 1)", STAY = 16; // STAY: px past an area's edge before the target moves on
   const zones = () => [...root.querySelectorAll(":scope .pp-zone")];
   const cardsIn = (z) => [...z.querySelectorAll(":scope > .pp-drag")].filter((c) => c !== card);
   const nextCard = (el) => { let n = el.nextElementSibling; while (n && !n.classList.contains("pp-drag")) n = n.nextElementSibling; return n; };
-  // Layout positions in root (offsetTop: transforms don't count), so a card
-  // still gliding doesn't throw the aim off.
-  const rootTop = () => root.getBoundingClientRect().top;
+  // Layout positions in root (offsetTop/Left: transforms don't count), so a
+  // card still gliding doesn't throw the aim off.
+  const rootBox = () => root.getBoundingClientRect();
   const scroller = () => { for (let n = root.parentElement; n; n = n.parentElement) { const o = getComputedStyle(n).overflowY; if ((o === "auto" || o === "scroll") && n.scrollHeight > n.clientHeight) return n; } return document.scrollingElement; };
-  const follow = () => { card.style.transform = `translateY(${start + (lastY - y0) - (rootTop() + card.offsetTop)}px)`; };
+  const follow = () => { const b = rootBox(); card.style.transform = `translate(${startX + (lastX - x0) - (b.left + card.offsetLeft)}px, ${start + (lastY - y0) - (b.top + card.offsetTop)}px)`; };
   const flip = (move) => {
     const zs = zones(), kids = zs.flatMap((z) => [...z.children]).filter((e) => e !== card);
-    const wasTop = new Map(kids.map((e) => [e, e.getBoundingClientRect().top])); // as seen, mid-glide too
+    const was = new Map(kids.map((e) => [e, e.getBoundingClientRect()])); // as seen, mid-glide too
     const wasH = new Map(zs.map((z) => [z, z.getBoundingClientRect().height]));
     move();
     // Where everything ends up: no running glide, natural area heights.
@@ -154,7 +157,7 @@ export function zoneSortable(root, { onMove, busy, onZone }){
     const toH = new Map(zs.map((z) => [z, z.getBoundingClientRect().height]));
     // Areas start at the height they had, so nothing below moves this frame.
     for (const z of zs) z.style.height = `${wasH.get(z)}px`;
-    for (const e of kids) { const d = wasTop.get(e) - e.getBoundingClientRect().top; if (Math.abs(d) >= 1) e.style.transform = `translateY(${d}px)`; }
+    for (const e of kids) { const w = was.get(e), r = e.getBoundingClientRect(), dx = w.left - r.left, dy = w.top - r.top; if (Math.abs(dx) >= 1 || Math.abs(dy) >= 1) e.style.transform = `translate(${dx}px, ${dy}px)`; }
     root.getBoundingClientRect(); // that start frame is the one painted
     for (const e of kids) { e.style.transition = `transform ${MS}ms ${EASE}`; e.style.transform = ""; }
     for (const z of zs) { z.style.transition = `height ${MS}ms ${EASE}, background-color .2s ease, box-shadow .2s ease`; z.style.height = `${toH.get(z)}px`; }
@@ -162,9 +165,16 @@ export function zoneSortable(root, { onMove, busy, onZone }){
     settle = setTimeout(() => zs.forEach((z) => { z.style.height = ""; z.style.transition = ""; }), MS + 30);
   };
   const show = () => {
-    const y = lastY - rootTop(), zs = zones();
-    const inside = (a) => y >= a.offsetTop - STAY && y < a.offsetTop + a.offsetHeight + STAY;
-    const z = over && inside(over) ? over : zs.find((a) => y < a.offsetTop + a.offsetHeight) || zs.at(-1);
+    const b = rootBox(), x = lastX - b.left, y = lastY - b.top, zs = zones();
+    const inX = (a, m) => x >= a.offsetLeft - m && x < a.offsetLeft + a.offsetWidth + m;
+    const inside = (a) => inX(a, STAY) && y >= a.offsetTop - STAY && y < a.offsetTop + a.offsetHeight + STAY;
+    // The areas in the pointer's column (all of them when they're stacked),
+    // else the nearest column's; then the one at its height, or the nearest.
+    const gap = (a) => Math.max(a.offsetLeft - x, 0, x - a.offsetLeft - a.offsetWidth);
+    let col = zs.filter((a) => inX(a, 0));
+    if (!col.length) { const g = Math.min(...zs.map(gap)); col = zs.filter((a) => gap(a) === g); }
+    const dist = (a) => Math.max(a.offsetTop - y, 0, y - a.offsetTop - a.offsetHeight);
+    const z = over && inside(over) ? over : col.reduce((m, a) => (dist(a) < dist(m) ? a : m));
     const before = cardsIn(z).find((c) => y < c.offsetTop + c.offsetHeight / 2) || null;
     if (card.parentElement !== z || nextCard(card) !== before) flip(() => (before ? z.insertBefore(card, before) : z.append(card)));
     if (z !== over) { over = z; onZone?.(z, card); }
@@ -182,7 +192,7 @@ export function zoneSortable(root, { onMove, busy, onZone }){
     clearTimeout(hold); armed = dragged = true; busy(true);
     try { root.setPointerCapture(pid); } catch {} // the root: the card moves in the DOM, which would drop a capture on it
     sc = scroller();
-    start = card.getBoundingClientRect().top;
+    ({ top: start, left: startX } = card.getBoundingClientRect());
     home = { zone: card.parentElement, before: nextCard(card) };
     card.classList.add("pp-dragging");
     root.classList.add("zone-dragging");
@@ -195,14 +205,14 @@ export function zoneSortable(root, { onMove, busy, onZone }){
     if (e.button || pid != null || settling) return;
     const c = e.target.closest(".pp-drag");
     if (!c || !root.contains(c)) return;
-    card = c; pid = e.pointerId; x0 = e.clientX; y0 = lastY = e.clientY; dragged = false;
+    card = c; pid = e.pointerId; x0 = lastX = e.clientX; y0 = lastY = e.clientY; dragged = false;
     if (e.pointerType !== "mouse") hold = setTimeout(arm, 350);
   });
   root.addEventListener("pointermove", (e) => {
     if (e.pointerId !== pid) return;
-    lastY = e.clientY;
+    lastX = e.clientX; lastY = e.clientY;
     if (armed) return show();
-    const dx = Math.abs(e.clientX - x0), dy = Math.abs(lastY - y0);
+    const dx = Math.abs(lastX - x0), dy = Math.abs(lastY - y0);
     if (e.pointerType !== "mouse") { if (dx > 6 || dy > 6) disarm(); }
     else if (dx > 6 || dy > 6) arm();
   });
