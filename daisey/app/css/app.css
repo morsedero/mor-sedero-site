@@ -2372,18 +2372,15 @@ dialog.tsheet[open] > .ts-laptop + .ts-repeat { margin-block-start: -12px; }
   .hglance .bl-routine { min-block-size: 20px; }
 }
 
-/* Mini card (Mor, 2026-10-12): with Today open on a phone (body.card-mini,
-   main.js syncPanel) the Now card is two rows: the words on top (where, then
-   the title on one line), the keys under them, Switch and Not now sharing
-   the left half and Done the right. No why line, dots or progress bar. */
-:root:not(.night) body.card-mini .deck > .now-card.main { min-block-size: 0; padding: 12px 12px 12px 14px; }
-:root:not(.night) body.card-mini .now-card.main > :is(.now-why, .wk-dots, .now-next), :root:not(.night) body.card-mini :is(.now-greet, .now-next-out) { display: none; }
-:root:not(.night) body.card-mini .deck > .now-card.main .hero-top { min-inline-size: 0; font-size: 12px; }
-:root:not(.night) body.card-mini .deck > .now-card.main .hero-where .now-proj { display: inline-block; max-inline-size: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: bottom; }
-:root:not(.night) body.card-mini .deck > .now-card.main .now-title { display: block; max-inline-size: 100%; margin: 4px 0 0; font-size: 18px; line-height: 1.25; text-align: start; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-:root:not(.night) body.card-mini .deck > .now-card.main .now-row { gap: 6px; padding-block-start: 10px; }
-:root:not(.night) body.card-mini .deck > .now-card.main .now-row .iconbtn { flex: 1 1 0; inline-size: auto; min-inline-size: 0; block-size: 46px; min-block-size: 46px; padding: 0 4px; gap: 1px; border-radius: 12px; font-size: 11px; }
-:root:not(.night) body.card-mini .deck > .now-card.main .now-row .iconbtn svg { inline-size: 17px; block-size: 17px; }
-:root:not(.night) body.card-mini .deck > .now-card.main .now-row .done-col { flex: 2 1 0; min-inline-size: 0; }
-:root:not(.night) body.card-mini .deck > .now-card.main .now-row .btn.start { block-size: 46px; min-block-size: 46px; padding-inline: 10px; font-size: 16px; }
-:root:not(.night) body.card-mini .done-col > :is(.task-bar, .task-pct) { display: none; }
+/* Mini card: with Today open on a phone (body.card-mini, main.js
+   syncPanel) the Now card shrinks so the day gets the room. */
+/* One row (Mor, 2026-10-12, canvas "Daisey Bottom Fixes"): the area dot,
+   the title (it still opens the task) and Focus; everything else waits
+   until Today shuts. */
+:root:not(.night) body.card-mini #nowcard .now-card.main { min-block-size: 56px; padding: 6px 6px 6px 16px; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; column-gap: 10px; border-radius: 18px; }
+:root:not(.night) body.card-mini #nowcard .now-card.main > :not(.hero-top, .now-title), :root:not(.night) body.card-mini :is(#nowcard, .deck) > :not(.now-card.main, .deck), :root:not(.night) body.card-mini :is(.now-greet, .now-next-out) { display: none; }
+:root:not(.night) body.card-mini #nowcard .now-card.main .hero-top { display: contents; }
+:root:not(.night) body.card-mini #nowcard .now-card.main .hero-top > :not(.hero-area, #focusChip), :root:not(.night) body.card-mini #nowcard .now-card.main .hero-where { display: none; }
+:root:not(.night) body.card-mini #nowcard .now-card.main .hero-area { grid-column: 1; grid-row: 1; }
+:root:not(.night) body.card-mini #nowcard .now-card.main .now-title { grid-column: 2; grid-row: 1; display: block; min-inline-size: 0; max-inline-size: 100%; margin: 0; font-size: 16px; line-height: 1.25; text-align: start; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+:root:not(.night) body.card-mini #nowcard .now-card.main #focusChip { grid-column: 3; grid-row: 1; position: static; margin: 0; inline-size: 44px; block-size: 44px; }
