@@ -3,6 +3,10 @@ import { configured } from "./config.js";
 
 const $ = (s) => document.querySelector(s);
 const GUEST_KEY = "daisey_guest_mode";
+// Week on or off (done today + routines under the card), per device.
+const WEEK_KEY = "daisey_week_on";
+let weekOn = false;
+try { weekOn = localStorage.getItem(WEEK_KEY) === "1"; } catch { /* private window */ }
 const GUEST_UID = "guest-local";
 const guestMode = () => { try { return localStorage.getItem(GUEST_KEY) === "1"; } catch { return false; } };
 
@@ -242,6 +246,7 @@ async function boot(){
   const settings = $("#settingsdlg");
   $("#settingsBtn").onclick = () => { setMenu(false); settings.showModal(); };
   $("#projectsChip").onclick = () => window.__toggleProjects?.();
+  $("#weekChip").onclick = () => window.__toggleWeek?.();
   $("#focusChip").onclick = () => mounted?.now?.focus();
   // On a phone, Plan · Projects move up into the header as icons, so
   // the Now card gets the whole width (Mor, 2026-10-12: the card was crowded).
@@ -274,6 +279,7 @@ async function boot(){
     avatar.hidden = !user;
     $("#planChip").hidden = !user;
     $("#projectsChip").hidden = !user;
+    $("#weekChip").hidden = !user;
     $("#focusChip").hidden = !user;
     if (!user) { show("signedout"); return; }
 
@@ -635,7 +641,10 @@ async function boot(){
           document.body.classList.toggle("card-mini", phone.matches && (day || plan));
           // The glance (done today, routines) only on the home with nothing
           // open (Mor, 2026-10-12); wider, the Schedule under it counts as home.
-          $("#glance").hidden = on || plan || (phone.matches && day);
+          // And only while Week is on: the home is the card alone until asked.
+          const glance = weekOn && !(on || plan || (phone.matches && day));
+          $("#glance").hidden = !glance;
+          $("#weekChip").setAttribute("aria-pressed", String(glance));
           $("#projectsChip").setAttribute("aria-pressed", String(on));
           $("#planChip").setAttribute("aria-pressed", String(plan || day));
           $("#panel").setAttribute("aria-label", plan ? "Plan" : on ? "Projects" : "Schedule");
@@ -674,6 +683,18 @@ async function boot(){
           const open = !document.body.classList.contains("day-open");
           if (open) { m.now?.closePlan(); m.projects.closeProject(); m.projects.closeAll(); if (history.state?.daisey === "project") history.back(); }
           document.body.classList.toggle("day-open", open); syncPanel();
+        };
+        // Week: done today + routines under the card, on or off (Mor,
+        // 2026-10-12). From a page it closes the page and turns them on.
+        window.__toggleWeek = () => {
+          const shown = !$("#glance").hidden;
+          if (!$("#planPage").hidden) m.now?.closePlan();
+          m.projects.closeProject(); m.projects.closeAll();
+          if (history.state?.daisey === "project") history.back();
+          document.body.classList.remove("day-open");
+          weekOn = !shown;
+          try { localStorage.setItem(WEEK_KEY, weekOn ? "1" : ""); } catch { /* private window */ }
+          syncPanel();
         };
         window.__toggleProjects = () => {
           if (!$("#planPage").hidden) m.now?.closePlan();
