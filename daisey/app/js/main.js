@@ -731,10 +731,11 @@ async function boot(){
           paintChip();
           swapAnim();
         };
-        // Page swaps animate (Mor, 2026-10-12): the page coming in rises and
-        // fades in; the one leaving stays a moment as an inert copy over it (ids kept so
-        // its page styles hold; it sits after the real ones, so $ never finds it),
-        // sinking and fading out. Back to the Schedule drops in from above.
+        // Page swaps animate (Mor, 2026-10-12): the one leaving stays a moment
+        // as an inert copy over the new one (ids kept so its page styles hold;
+        // it sits after the real ones, so $ never finds it) and fades out; then
+        // the page coming in rises and fades in (app.css). Back to the
+        // Schedule drops in from above.
         let shownPage = null, fmTimer = 0;
         const swapAnim = () => {
           const now = [...$("#panel").children].find((p) => p.classList.contains("ppage") && !p.hidden && !p.classList.contains("pg-ghost"));
@@ -752,6 +753,7 @@ async function boot(){
           g.scrollTop = g.dataset.st || 0;
           g.classList.remove("pg-in", "pg-back");
           g.addEventListener("animationend", (e) => { if (e.target === g) g.remove(); });
+          setTimeout(() => g.remove(), 400); // a backgrounded tab never ends it
           now.classList.remove("pg-in", "pg-back"); void now.offsetWidth;
           now.classList.add(back ? "pg-back" : "pg-in");
           const done = (e) => { if (e.target !== now) return; now.classList.remove("pg-in", "pg-back"); now.removeEventListener("animationend", done); };
@@ -825,6 +827,13 @@ async function boot(){
             document.body.classList.remove("fm-in", "fm-out"); void document.body.offsetWidth;
             document.body.classList.add(on ? "fm-in" : "fm-out");
             clearTimeout(fmTimer); fmTimer = setTimeout(() => document.body.classList.remove("fm-in", "fm-out"), 1900);
+            // Once the card lands, a teal ring goes out from it. Run here, on
+            // the card there is then, beside its idle bob rather than in place of it.
+            if (on && !matchMedia("(prefers-reduced-motion: reduce)").matches) setTimeout(() => {
+              const c = document.querySelector("body.focus-mode .deck > .now-card.main"); if (!c) return;
+              const ink = getComputedStyle(c).getPropertyValue("--p-teal-ink").trim() || "teal";
+              c.animate([{ boxShadow: `0 0 0 0 color-mix(in srgb, ${ink} 45%, transparent)` }, { boxShadow: "0 0 0 16px transparent" }], { duration: 1100, easing: "ease-out" });
+            }, 600);
             // Slow slide (Mor, 2026-10-12): the Now card and the Focus chip glide
             // from where they were to where the mode puts them. Measured now, and
             // again once now.js has toggled body.focus-mode (after this returns).

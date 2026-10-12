@@ -40,6 +40,7 @@ import { areaClass, areaName, projectShown, doneToday, moonDaisy, watchProjectCo
 const LATER_MS = LATER_MINUTES * 60000;
 const UNDO_MS = 3500;
 const SLIDE_MS = 140; // matches the card-out animation in app.css
+const IN_MS = 300; // and card-in
 const WON_MS = 560; // Done's shine on the card (.won in app.css) before it slides out
 const motionOK = () => !window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 const clock = (ms) => new Date(ms).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
@@ -98,7 +99,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
   // rebuilds it mid-push picks the push up where it is, and the idle bob
   // then starts from rest at the push's end rather than jumping to the
   // wall clock's phase.
-  let pushAt = 0, breathEpoch = 0;
+  let pushAt = 0, breathEpoch = 0, inAt = 0;
   const pushIn = (c, since) => {
     c.classList.add("push-in"); c.style.setProperty("--push-at", `${-since}ms`);
     c.addEventListener("animationend", (e) => {
@@ -106,6 +107,20 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
       breathEpoch = Date.now(); c.classList.remove("push-in"); c.style.animationDelay = "0ms";
     });
   };
+  // Same for Later's slide-in: the write it follows fires a snapshot that
+  // rebuilt the card a few ms in, so it snapped into place instead of sliding
+  // (and .in, never taken off, kept the bob off until the next rebuild).
+  const slideCardIn = (c, since) => {
+    c.classList.add("in"); c.style.animationDelay = `${-since}ms`;
+    c.addEventListener("animationend", (e) => {
+      if (e.target !== c || !e.animationName.startsWith("card-in")) return;
+      breathEpoch = Date.now(); c.classList.remove("in"); c.style.animationDelay = "0ms";
+    });
+  };
+  // While the card slides out or shines, renders leave it be (a rebuild
+  // brought the card back mid-slide, or dropped the shine); the step's own
+  // render follows straight after.
+  let holdCard = false;
   let toastTimer = null;
   // laterAsk: Later was tapped and the card is asking "when?"
   // pendAsk: Pending was tapped and the card asks what it's waiting on.
@@ -516,7 +531,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     };
     // Only the card's own task slides it out (a missed row's sheet asks too).
     const el = task.id === shown && root.querySelector(".now-card.main");
-    if (el && motionOK()) { el.classList.add("out"); setTimeout(go, SLIDE_MS); } else go();
+    if (el && motionOK()) { el.classList.remove("in", "push-in"); el.classList.add("out"); holdCard = true; setTimeout(() => { holdCard = false; go(); }, SLIDE_MS); } else go();
   }
 
   // Later asks when (Mor, 2026-10-04). Every answer is a "not now" to
@@ -1126,7 +1141,8 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     el.classList.add("won");
     el.append(h("span", { className: "won-shine", ariaHidden: "true" }));
     celebrate(el);
-    setTimeout(() => { dropAway(el); go(); }, WON_MS);
+    holdCard = true;
+    setTimeout(() => { holdCard = false; dropAway(el); go(); }, WON_MS);
   }
 
   // Why an alternative, said as the Now card would say it (round 2,
@@ -2066,7 +2082,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
       ...cardActions(card.task, alts)), asking()),
       nextLine(card.task), tip);
     // One slide-in per step-aside: later snapshots must not replay it.
-    if (slideIn) { const push = slideIn === "push"; slideIn = false; if (motionOK()) { const c = root.querySelector(".now-card.main"); if (c) { c.style.animationDelay = ""; if (push) { pushAt = Date.now(); pushIn(c, 0); } else c.classList.add("in"); } } }
+    if (slideIn) { const push = slideIn === "push"; slideIn = false; if (motionOK()) { const c = root.querySelector(".now-card.main"); if (c) { c.style.animationDelay = ""; if (push) { pushAt = Date.now(); pushIn(c, 0); } else { inAt = Date.now(); slideCardIn(c, 0); } } } }
     // The render rebuilt the key just pressed, so its press pops here, once.
     if (tapped) { const k = tapped; tapped = null; if (motionOK()) root.querySelector(`.now-row .act-${k}`)?.classList.add("tap"); }
   }
@@ -2078,6 +2094,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
   // Focus mode hands back the same node every second (focus.js); an
   // unchanged screen is left be rather than taken out and put back.
   const fill = (...kids) => {
+    if (holdCard) return;
     kids = kids.filter(Boolean);
     // One "I'm free now" at a time: the card's own wins over the top line's.
     if (kids.slice(1).some((k) => k.querySelector?.(".free-now"))) {
@@ -2095,6 +2112,8 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     });
     const since = Date.now() - pushAt;
     if (since < PUSH_MS && motionOK()) root.querySelectorAll(".now-card.main").forEach((c) => pushIn(c, since));
+    const sinceIn = Date.now() - inAt;
+    if (sinceIn < IN_MS && motionOK()) root.querySelectorAll(".deck > .now-card.main").forEach((c) => slideCardIn(c, sinceIn));
   };
   // The day screens: the card and what's under it. (After this and the
   // Needs you row went with round 3: the panel's Schedule page and the
