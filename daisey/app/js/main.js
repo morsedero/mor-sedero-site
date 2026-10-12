@@ -814,6 +814,7 @@ async function boot(){
           // then: what to open once Needs you is shut. After the back step's
           // popstate, or the closeScreens it runs would shut that too.
           onClose: (then) => { const pop = !!history.state?.daisey; if (then && pop) addEventListener("popstate", () => then(), { once: true }); screens.back(); if (then && !pop) then(); },
+          onStart: startTask,
           extra: () => m.now?.needsAsks() || [],
           // Back after days away: the catch-up opens by itself (needs.js
           // awayCheck), unless a link or another screen got there first.

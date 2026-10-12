@@ -64,7 +64,8 @@ export function wrapList(tasks = [], now = Date.now()){
 // extra(): questions only another screen can work out (now.js needsAsks:
 // the plan slipped), asked first. Each is { key, kind: "ext", ask({ next,
 // close }) } and ask returns a question, or null once it no longer applies.
-export function mountNeeds(root, uid, { onClose, extra, onAway } = {}){
+// onStart(id): put that task on the Now card, back home (main.js startTask).
+export function mountNeeds(root, uid, { onClose, onStart, extra, onAway } = {}){
   let tasks = [], settings = {}, cal = { status: "loading", events: [] }, dayPlan = null;
   let setLoaded = false, awayChecked = false; // the away catch-up looks once per app load
   let list = [], i = 0, follow = null, mode = "needs", loaded = false, waiting = null; // follow: the "keep the event?" step after making one a task
@@ -220,7 +221,9 @@ export function mountNeeds(root, uid, { onClose, extra, onAway } = {}){
       return { tone: areaClass(t).trim() || "area-home", ico: "later", q: "Still for today?",
         sub: t.due < logicalDate() ? `It was planned for ${shortDay(t.due)}.` : "It was planned for today.", item: t.title,
         say: "I'd move it to tomorrow.", yes: ["Move to tomorrow", tomorrow],
-        no: ["On hold", () => { restoreTask(uid, t.id, { status: "someday", touchedAt: Date.now() }).catch(fail); next(); }], more: [drop], noLater: true };
+        no: ["On hold", () => { restoreTask(uid, t.id, { status: "someday", touchedAt: Date.now() }).catch(fail); next(); }],
+        // Do it now (Mor, 2026-10-13): whoever opened the app may want to work.
+        more: [...(onStart ? [["Do it now", () => onStart(t.id)]] : []), drop], noLater: true };
     }
     if (item.kind === "parked") {
       const days = daysUntil(t.due, Date.now());
