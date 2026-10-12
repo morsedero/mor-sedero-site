@@ -2199,6 +2199,8 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
       if (!task) return;
       if (task.status !== "ready") restoreTask(uid, id, { status: "ready", waitingOn: null, checkOn: null, notBefore: null, touchedAt: Date.now() }).catch(fail);
       skips.delete(id);
+      // Started at night (wrap's Do it now, the sheet's Focus): past the Late page.
+      nightFree = true;
       setFocus(true); switchTo(id);
     },
     // The header's Focus toggle (main.js).
