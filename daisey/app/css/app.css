@@ -424,6 +424,9 @@ body.focus #board { display: block; }
 /* Focus mode (Mor, 2026-10-10): the same Now card and its actions, nothing
    around it. The header keeps the daisy, the clock and the Focus toggle. */
 body.focus-mode :is(#side, #panel, #glance, .dock, .tell-panel, .now-greet, .now-top, #needsChip, .acct) { display: none; }
+/* Focus mode is calm (Mor, 2026-10-12): soft sage, sky and sand light
+   behind the card, nothing else. */
+body.focus-mode { background: radial-gradient(70% 45% at 5% 10%, rgb(120 180 160 / .32), transparent 70%), radial-gradient(75% 50% at 100% 55%, rgb(140 175 225 / .28), transparent 70%), radial-gradient(70% 45% at 10% 100%, rgb(240 200 130 / .26), transparent 70%), var(--bg); background-attachment: fixed; }
 .hdr-end .hchip.focus-chip[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); color: var(--card); }
 body.focus .shell { padding-block: max(18px, env(safe-area-inset-top)) max(24px, env(safe-area-inset-bottom)); }
 /* "Hold to finish" (focus.js holdButton): a deeper amber fills from
@@ -1455,49 +1458,65 @@ body.focus #side { display: none; }
 .sc-bar .sc-planbtn { display: none; } /* over .sc-weekbtn's inline-flex further down */
 @media (max-width: 599px) {
   body:not(.day-open) #panel:not(:has(> .ppage:not([hidden]):not(#schedPage):not(.pg-ghost))) { display: none; }
-  /* The bottom, 7 targets cut to 4 (Mor, 2026-10-12, canvas "Daisey
-     Minimal Bottom"): under the card one slim strip, Plan my day, or
-     "Next 14:00 task" once a plan is approved, that opens Today (so does a
-     swipe up, main.js). Projects and + stand over the mic (.dock-stack).
-     Week is gone here; Focus is a tap on the card, its chip only the way out. */
-  #board > #side { order: 9; margin-block-start: auto; inline-size: auto; padding: 4px 0 0; display: flex; flex-direction: row; justify-content: center; }
-  #board > #side :is(#projectsChip, #weekChip, #focusChip) { display: none; }
-  #board > #side #planChip:not([hidden]) { display: inline-flex; flex: none; flex-direction: row; align-items: center; gap: 6px; inline-size: auto; max-inline-size: 100%; block-size: 44px; min-block-size: 0; padding: 0 14px; border: 0; border-radius: 22px; background: transparent; box-shadow: none; color: var(--ink-2); font-size: 13px; font-weight: 500; line-height: 1.2; white-space: nowrap; }
-  #board > #side #planChip.ready { border: 1px solid var(--a-admin-line); background: var(--a-admin-tint); color: var(--a-admin-ink); }
-  #board > #side #planChip .plan-ic svg { display: none; }
-  #board > #side #planChip .tile-chev { display: block; inline-size: 18px; block-size: 18px; flex: none; order: -1; }
-  @media (prefers-reduced-motion: no-preference) { #board > #side #planChip .tile-chev { transition: transform .25s ease; } }
-  body.day-open #board > #side #planChip .tile-chev { transform: rotate(180deg); }
-  #board > #side #planChip .hchip-word { display: inline; }
-  #planChip .tile-next:not([hidden]) { display: inline-flex; align-items: center; gap: 6px; min-inline-size: 0; }
-  .tile-next .tn-at { font-variant-numeric: tabular-nums; }
+  /* The bottom (Mor, 2026-10-12, canvas "Daisey Bottom Fixes", home B):
+     one row over Tell Daisey on every screen, main.js placeSide moves them
+     into .dock-stack: Next (the plan chip: "Next 21:10" over the task, or
+     Plan my day; with the day open "Today", dark, to shut it), then Week
+     (done today + routines in a pop-over), Projects and +. With Projects
+     open, Next steps out. Focus is a button on the card itself (main.js
+     placeFocus); #side is empty here. */
+  .nowrow > #side, #board > #side { display: none; }
+  .dock:has(.dock-stack:not(:empty)) { padding-block-start: 8px; }
+  .dock-stack { display: flex; align-items: center; gap: 8px; margin-block-end: 10px; }
+  .dock-stack:empty { display: none; }
+  .dock-stack :is(#weekChip, #projectsChip, .plus) { flex: none; inline-size: 46px; block-size: 46px; margin: 0; padding: 0; justify-content: center; border-radius: 50%; border: 1px solid var(--line); background: var(--card); color: var(--ink); }
+  .dock-stack #weekChip { margin-inline-start: auto; }
+  .dock-stack :is(#weekChip, #projectsChip)[hidden] { display: none; }
+  .dock-stack :is(#weekChip, #projectsChip) svg { inline-size: 20px; block-size: 20px; }
+  .dock-stack :is(#weekChip, #projectsChip) .hchip-word { position: absolute; inline-size: 1px; block-size: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .dock-stack :is(#weekChip, #projectsChip)::after { inset: 0; }
+  .dock-stack :is(#weekChip, #projectsChip)[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); color: var(--card); }
+  .dock-stack .plus-wrap { flex: none; }
+  .dock-stack .plus-menu { inset-inline-start: auto; inset-inline-end: 0; }
+  /* Next: a small card filling the row's start. */
+  .dock-stack #planChip:not([hidden]) { flex: 1 1 auto; min-inline-size: 0; block-size: auto; min-block-size: 56px; margin: 0; padding: 7px 12px; display: grid; grid-template-columns: 16px auto minmax(0, 1fr); grid-template-rows: auto auto; align-items: center; align-content: center; column-gap: 8px; row-gap: 2px; border-radius: 18px; border: 1px solid var(--line); background: var(--card); color: var(--ink-2); font-size: 13px; font-weight: 600; line-height: 1.2; text-align: start; white-space: normal; box-shadow: none; }
+  .dock-stack #planChip::after { inset: 0; }
+  .dock-stack #planChip .plan-ic svg { display: none; }
+  .dock-stack #planChip .tile-chev { display: block; grid-column: 1; grid-row: 1 / 3; inline-size: 16px; block-size: 16px; }
+  .dock-stack #planChip #planW { display: block; grid-column: 2 / 4; grid-row: 1 / 3; }
+  .dock-stack #planChip .tile-next:not([hidden]) { display: contents; }
+  .dock-stack #planChip:has(.tile-next:not([hidden])) #planW { grid-row: 1; grid-column: 2; font-size: 11px; font-weight: 500; }
+  .tile-next .tn-at { grid-column: 3; grid-row: 1; font-size: 11px; font-weight: 500; font-variant-numeric: tabular-nums; }
   .tile-next .tn-more { display: none; }
-  .tile-next .tn-row { display: inline-flex; align-items: center; gap: 6px; min-inline-size: 0; color: var(--ink); font-weight: 600; }
+  .tile-next .tn-row { grid-column: 2 / 4; grid-row: 2; display: flex; align-items: baseline; gap: 6px; min-inline-size: 0; color: var(--ink); font-size: 14px; }
   .tile-next .tn-dot { inline-size: 8px; block-size: 8px; border-radius: 50%; flex: none; background: var(--aink, currentColor); }
-  .tile-next .tn-name { max-inline-size: 48vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  body.day-open #board > #side .tile-next, #board:has(#panel > .ppage:not([hidden]):not(#schedPage):not(.pg-ghost)) > #side .tile-next { display: none; }
-  #board > #side .hchip.ready .hchip-dot { position: static; }
-  .home-hint { display: block; order: 8; align-self: center; margin-block-start: 6px; padding: 6px 12px; border: 0; border-radius: 999px; background: var(--chip); color: var(--ink-2); font: inherit; font-size: 12.5px; cursor: pointer; }
+  .tile-next .tn-name { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+  .dock-stack #planChip.ready { border-color: var(--a-admin-line); background: var(--a-admin-tint); color: var(--a-admin-ink); }
+  .dock-stack #planChip.ready .hchip-dot { display: none; }
+  @media (prefers-reduced-motion: no-preference) { .dock-stack #planChip .tile-chev { transition: transform .25s ease; } }
+  /* The day open: a dark "Today" pill that shuts it, the buttons stay put. */
+  body.day-open .dock-stack #planChip:not([hidden]) { flex: none; min-block-size: 46px; padding: 0 16px 0 12px; border-radius: 23px; border-color: var(--ink); background: var(--ink); color: var(--card); font-size: 14px; }
+  body.day-open .dock-stack #planChip .tile-next { display: none; }
+  body.day-open .dock-stack #planChip .tile-chev { transform: rotate(180deg); }
+  /* Projects open: no Next, no card; the page gets the room. */
+  body:has(#panel > :is(#projPage, #projectview):not([hidden]):not(.pg-ghost)) .dock-stack #planChip { display: none; }
+  #board:has(#panel > :is(#projPage, #projectview):not([hidden]):not(.pg-ghost)) > .nowrow { display: none; }
+  /* Week: done today + routines float over the row (main.js sets --pop-b). */
+  #glance.pop { position: fixed; z-index: 30; inset-inline-end: 16px; inset-block-end: var(--pop-b, 140px); inline-size: min(320px, calc(100vw - 32px)); max-block-size: 60vh; overflow-y: auto; margin: 0; padding: 14px; box-sizing: border-box; border: 1px solid var(--line); border-radius: 22px; background: var(--card); box-shadow: 0 16px 40px rgb(0 0 0 / .16); }
+  @media (prefers-reduced-motion: no-preference) { #glance.pop:not([hidden]) { animation: ready-in .2s ease-out; } }
+  .home-hint { display: block; order: 8; align-self: center; margin-block: 6px 0; padding: 6px 12px; border: 0; border-radius: 999px; background: var(--chip); color: var(--ink-2); font: inherit; font-size: 12.5px; cursor: pointer; }
   .home-hint[hidden], body.focus-mode .home-hint { display: none; }
   @media (prefers-reduced-motion: no-preference) { .home-hint:not([hidden]) { animation: ready-in .35s ease-out; } }
-  .dock:has(.dock-stack:not(:empty)) { padding-block-start: 6px; }
-  .dock-stack { display: flex; flex-direction: column; align-items: flex-end; gap: 10px; padding-inline-end: 6px; margin-block-end: 10px; }
-  .dock-stack:empty { display: none; }
-  .dock-stack .plus-menu { inset-inline-start: auto; inset-inline-end: 0; }
-  .dock-stack .plus { inline-size: 42px; block-size: 42px; border: 1px solid var(--line); background: var(--card); }
-  .dock-stack #projectsChip { inline-size: 42px; block-size: 42px; margin: 0; padding: 0; justify-content: center; border-radius: 50%; }
-  .dock-stack #projectsChip[hidden] { display: none; }
-  .dock-stack #projectsChip svg { inline-size: 20px; block-size: 20px; }
-  .dock-stack #projectsChip .hchip-word { position: absolute; inline-size: 1px; block-size: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
-  .dock-stack #projectsChip::after { inset: 0; }
-  .dock-stack #projectsChip[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); color: var(--card); }
-  /* Projects is a full page: no Now card over it (Mor, 2026-10-12). */
-  #board:has(#panel > :is(#projPage, #projectview):not([hidden]):not(.pg-ghost)) > .nowrow { display: none; }
-  /* Focus mode: Focus, with its word, alone at the end, the way out. */
+  /* Focus, on the card: the top row's end, white; on, filled teal. */
   #focusChip { --on: var(--p-teal-ink); }
-  body.focus-mode #board > #side { display: flex; justify-content: flex-end; padding-block-end: max(18px, env(safe-area-inset-bottom)); } /* Tell Daisey's room, it being gone */
-  body.focus-mode #board > #side > :not(#focusChip) { display: none !important; }
-  body.focus-mode #board > #side #focusChip:not([hidden]) { display: flex; flex: none; flex-direction: row; inline-size: auto; block-size: 48px; padding-inline: 18px; gap: 6px; border-radius: 20px; font-size: 14px; }
+  .now-card.main #focusChip:not([hidden]) { flex: none; inline-size: 34px; block-size: 34px; margin-block: -6px; margin-inline-start: auto; padding: 0; justify-content: center; border-radius: 50%; border: 0; background: var(--surface); color: var(--p-teal-ink); box-shadow: 0 2px 8px rgb(0 0 0 / .08); }
+  .now-card.main .hero-side + #focusChip { margin-inline-start: 8px; }
+  .now-card.main .hero-top:has(> #focusChip) > .hero-side { margin-inline-start: auto; }
+  .now-card.main #focusChip.fc-float { position: absolute; inset-block-start: 10px; inset-inline-end: 10px; margin: 0; }
+  .now-card.main #focusChip::after { inset: -5px; }
+  .now-card.main #focusChip .hchip-word { position: absolute; inline-size: 1px; block-size: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .now-card.main #focusChip svg { inline-size: 18px; block-size: 18px; }
+  .now-card.main #focusChip[aria-pressed="true"] { background: var(--p-teal-ink); color: var(--card); }
   body.has-plan.day-open .sc-planbtn { display: inline-flex; inline-size: auto; padding-inline: 10px; }
   .sc-bar .sc-planbtn span { display: inline; }
   #panel { margin-block-end: 0; }
@@ -2336,14 +2355,14 @@ dialog.tsheet[open] > .ts-laptop + .ts-repeat { margin-block-start: -12px; }
    what's left and the card itself tightens as the room shrinks. Spare room
    splits evenly above the card and under the glance, so the pair sits
    mid-screen (Mor, 2026-10-12: Week on, the card hugged the tiles). */
-:root:not(.night) body.home-float:not(.focus-mode):has(#glance:not([hidden])) .nowrow { flex: 1 1 auto; min-block-size: 0; margin-block-start: 0; }
-:root:not(.night) body.home-float:not(.focus-mode):has(#glance:not([hidden])) #nowcard { padding-block-end: 0; overflow: hidden; justify-content: flex-end; }
-:root:not(.night) body.home-float #glance { flex: 1 1 auto; overflow: visible; margin-block: 8px 2vh; }
-:root:not(.night) body.home-float:not(.focus-mode):has(#glance:not([hidden])) .deck > .now-card.main { min-block-size: 0; }
+:root:not(.night) body.home-float:not(.focus-mode):has(#glance:not([hidden]):not(.pop)) .nowrow { flex: 1 1 auto; min-block-size: 0; margin-block-start: 0; }
+:root:not(.night) body.home-float:not(.focus-mode):has(#glance:not([hidden]):not(.pop)) #nowcard { padding-block-end: 0; overflow: hidden; justify-content: flex-end; }
+:root:not(.night) body.home-float #glance:not(.pop) { flex: 1 1 auto; overflow: visible; margin-block: 8px 2vh; }
+:root:not(.night) body.home-float:not(.focus-mode):has(#glance:not([hidden]):not(.pop)) .deck > .now-card.main { min-block-size: 0; }
 @media (max-height: 760px) {
-  :root:not(.night) body.home-float:not(.focus-mode):has(#glance:not([hidden])) .deck > .now-card.main { padding: 12px 14px 10px; }
-  :root:not(.night) body.home-float:not(.focus-mode):has(#glance:not([hidden])) .now-card.main .now-title { font-size: 19px; margin-block-start: 2px; }
-  :root:not(.night) body.home-float:not(.focus-mode):has(#glance:not([hidden])) .now-card.main .now-why { font-size: 13px; }
+  :root:not(.night) body.home-float:not(.focus-mode):has(#glance:not([hidden]):not(.pop)) .deck > .now-card.main { padding: 12px 14px 10px; }
+  :root:not(.night) body.home-float:not(.focus-mode):has(#glance:not([hidden]):not(.pop)) .now-card.main .now-title { font-size: 19px; margin-block-start: 2px; }
+  :root:not(.night) body.home-float:not(.focus-mode):has(#glance:not([hidden]):not(.pop)) .now-card.main .now-why { font-size: 13px; }
   :root:not(.night) body.home-float:not(.focus-mode):has(#glance:not([hidden])) .now-card.main .now-row { padding-block-start: 8px; }
   :root:not(.night) body.home-float #glance { margin-block: 6px 0; }
   .hglance .bl-routine { min-block-size: 24px; }

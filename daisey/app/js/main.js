@@ -2,6 +2,9 @@
 import { configured } from "./config.js";
 
 const $ = (s) => document.querySelector(s);
+// Focus rides inside the Now card on a phone (placeFocus), so between a
+// card redraw and its re-placing it is out of the document: keep it by hand.
+const focusBtn = document.getElementById("focusChip");
 const GUEST_KEY = "daisey_guest_mode";
 // Week on or off (done today + routines under the card), per device.
 const WEEK_KEY = "daisey_week_on";
@@ -252,7 +255,7 @@ async function boot(){
   $("#refreshBtn").onclick = () => location.reload();
   $("#projectsChip").onclick = () => window.__toggleProjects?.();
   $("#weekChip").onclick = () => window.__toggleWeek?.();
-  $("#focusChip").onclick = () => mounted?.now?.focus();
+  focusBtn.onclick = () => mounted?.now?.focus();
   // On a phone, Plan · Projects move up into the header as icons, so
   // the Now card gets the whole width (Mor, 2026-10-12: the card was crowded).
   // Wider, they go back to their column beside the card.
@@ -261,18 +264,32 @@ async function boot(){
   // the card). Wider, they go back to their column beside the card.
   // Focus goes with them on a phone, a square at the row's end (Mor,
   // 2026-10-12); wider, back to the header's start.
-  // The phone's bottom went from 7 targets to 4 (Mor, 2026-10-12): Today is
-  // a slim strip under the card, Projects and + stand over the mic, Week is
-  // gone (the glance always shows), and Focus is a tap on the card. Focus
-  // stays in #side only as the way out of Focus mode.
+  // The phone's bottom (Mor, 2026-10-12, home B): one row over Tell Daisey
+  // on every screen, Next (the plan chip), Week, Projects and +; Focus is a
+  // button on the card itself (placeFocus). #side stays empty there.
   const placeSide = () => {
-    if (phone.matches) { $("#board").append($("#side")); $("#side").append($("#focusChip")); $("#dockStack").append($("#projectsChip"), $(".plus-wrap")); }
-    else { $(".nowrow").append($("#side")); $(".hdr-end").prepend($("#focusChip")); $("#planChip").after($("#projectsChip")); $("#tell").prepend($(".plus-wrap")); }
+    if (phone.matches) $("#dockStack").append($("#planChip"), $("#weekChip"), $("#projectsChip"), $(".plus-wrap"));
+    else { $(".nowrow").append($("#side")); $("#side").append($("#planChip"), $("#projectsChip"), $("#weekChip")); $("#tell").prepend($(".plus-wrap")); }
+    placeFocus();
     paintChip();
   };
+  // Phone: Focus sits at the end of the card's top row (or its corner, on a
+  // card with no top row). now.js redraws the card often, so this runs on
+  // every redraw; the move itself is a no-op once it's there. Wider, it
+  // goes back to the header.
+  const placeFocus = () => {
+    const b = focusBtn;
+    if (!phone.matches) { if (b.parentElement !== $(".hdr-end")) $(".hdr-end").prepend(b); return; }
+    const card = document.querySelector("#nowcard .deck > .now-card.main:not(.proposal)");
+    const spot = card && (card.querySelector(":scope > .hero-top") || card);
+    if (!spot) { if (b.parentElement !== $("#side")) $("#side").append(b); return; }
+    if (b.parentElement !== spot) spot.append(b);
+    b.classList.toggle("fc-float", spot === card);
+  };
+  new MutationObserver(placeFocus).observe($("#nowcard"), { childList: true, subtree: true });
   phone.addEventListener("change", placeSide); placeSide();
-  // Phone, once: a hint for the two gestures, gone for good after the first
-  // use of either (or a tap on it).
+  // Phone, once: a hint for the swipe, gone for good after the first use
+  // of it or of Next (or a tap on it).
   const HINT_KEY = "daisey_home_hint";
   let hintSeen = false;
   try { hintSeen = localStorage.getItem(HINT_KEY) === "1"; } catch { /* private window */ }
@@ -282,23 +299,15 @@ async function boot(){
     try { localStorage.setItem(HINT_KEY, "1"); } catch { /* private window */ }
   };
   $("#homeHint").onclick = seenHint;
-  // Tap the Now card (not one of its buttons): Focus mode, in and out.
-  $("#nowcard").addEventListener("click", (e) => {
-    if (!phone.matches || document.documentElement.classList.contains("night")) return;
-    const card = e.target.closest(".deck > .now-card.main");
-    if (!card || card.classList.contains("proposal") || e.target.closest("button, a, input, textarea, select, label, summary, [role=button], [contenteditable], [tabindex]")) return;
-    if (getSelection()?.toString()) return;
-    seenHint(); mounted?.now?.focus();
-  });
-  // Swipe up on the card or the strip: Today opens; down: it shuts. Not on
-  // a card that scrolls, where the swipe is the scroll.
+  // Swipe up on the card or Next: Today opens; down: it shuts. Not on a
+  // card that scrolls, where the swipe is the scroll.
   let swipe = null;
-  $("#board").addEventListener("touchstart", (e) => {
+  document.addEventListener("touchstart", (e) => {
     const t = e.touches[0], box = e.target.closest("#nowcard");
     swipe = phone.matches && e.touches.length === 1 && !document.body.classList.contains("focus-mode")
-      && e.target.closest(".nowrow, #side, #glance, #homeHint") && !(box && box.scrollHeight > box.clientHeight + 2) ? { x: t.clientX, y: t.clientY } : null;
+      && e.target.closest(".nowrow, #homeHint, #planChip") && !(box && box.scrollHeight > box.clientHeight + 2) ? { x: t.clientX, y: t.clientY } : null;
   }, { passive: true });
-  $("#board").addEventListener("touchend", (e) => {
+  document.addEventListener("touchend", (e) => {
     if (!swipe) return;
     const t = e.changedTouches[0], dx = t.clientX - swipe.x, dy = t.clientY - swipe.y;
     swipe = null;
@@ -307,6 +316,17 @@ async function boot(){
     if (dy < 0 ? open || !document.body.classList.contains("home-float") : !open) return;
     seenHint(); window.__toggleDay?.();
   }, { passive: true });
+  // Phone: Week shows done today + routines in a pop-over over the row,
+  // shut by a tap anywhere else (Mor, 2026-10-12: they live in a button).
+  let weekPop = false;
+  const popAt = () => $("#glance").style.setProperty("--pop-b", `${Math.round(innerHeight - $("#dockStack").getBoundingClientRect().top + 10)}px`);
+  addEventListener("resize", () => { if (weekPop) popAt(); });
+  document.addEventListener("click", (e) => {
+    if (!weekPop) return;
+    const path = e.composedPath();
+    if (path.includes($("#glance")) || path.includes($("#weekChip"))) return;
+    weekPop = false; window.__syncPanel?.();
+  });
   $("#settingsX").onclick = () => settings.close();
   settings.addEventListener("click", (e) => { if (e.target === settings) settings.close(); });
 
@@ -325,7 +345,7 @@ async function boot(){
     $("#planChip").hidden = !user;
     $("#projectsChip").hidden = !user;
     $("#weekChip").hidden = !user;
-    $("#focusChip").hidden = !user;
+    focusBtn.hidden = !user;
     if (!user) { show("signedout"); return; }
 
     const displayName = user.displayName || user.email || "Guest";
@@ -688,10 +708,12 @@ async function boot(){
           // The glance (done today, routines) only on the home with nothing
           // open (Mor, 2026-10-12); wider, the Schedule under it counts as home.
           // And only while Week is on: the home is the card alone until asked.
-          // On a phone (no Week there) it shows with Today open, over the
-          // day, not on the home (Mor, 2026-10-12).
-          const glance = !(on || plan) && (phone.matches ? day : weekOn);
-          $("#homeHint").hidden = hintSeen || !(phone.matches && !day && !(on || plan));
+          // On a phone it's Week's pop-over, over whatever is open (Mor,
+          // 2026-10-12: they live in a button).
+          const glance = phone.matches ? weekPop : weekOn && !(on || plan);
+          $("#homeHint").hidden = hintSeen || glance || !(phone.matches && !day && !(on || plan));
+          $("#glance").classList.toggle("pop", phone.matches);
+          if (phone.matches && glance) popAt();
           $("#glance").hidden = !glance;
           $("#weekChip").setAttribute("aria-pressed", String(glance));
           $("#projectsChip").setAttribute("aria-pressed", String(on));
@@ -740,7 +762,9 @@ async function boot(){
         };
         // Week: done today + routines under the card, on or off (Mor,
         // 2026-10-12). From a page it closes the page and turns them on.
+        window.__syncPanel = syncPanel;
         window.__toggleWeek = () => {
+          if (phone.matches) { weekPop = !weekPop; syncPanel(); return; }
           const shown = !$("#glance").hidden;
           if (!$("#planPage").hidden) m.now?.closePlan();
           m.projects.closeProject(); m.projects.closeAll();
@@ -788,7 +812,7 @@ async function boot(){
           name: isGuest ? "" : (user.displayName || "").trim().split(/\s+/)[0], onDone: paintDone, onNeedsCount: paintNeeds, onPlanProgress: paintPlan, onPlanNext: paintNext,
           onPlanReady: paintReady, onPlanApproved: cheerPlan,
           onFocusMode: (on) => {
-            const b = $("#focusChip"), was = b.getAttribute("aria-pressed") === "true";
+            const b = focusBtn, was = b.getAttribute("aria-pressed") === "true";
             b.setAttribute("aria-pressed", String(on)); b.ariaLabel = on ? "Focus mode on: tap to show everything" : "Focus mode: only the Now card";
             // fm-in / fm-out run the CSS on and off motions, once, on a real change.
             if (on === was) return;
@@ -802,7 +826,8 @@ async function boot(){
             // lets it out until the slide ends.
             if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
             const T = { duration: 650, easing: "cubic-bezier(.4, 0, .2, 1)" };
-            const pick = () => [document.querySelector(".deck > .now-card.main"), b];
+            // On a phone the chip rides inside the card, so it moves with it.
+            const pick = () => [document.querySelector(".deck > .now-card.main"), b.closest(".now-card") ? null : b];
             // The card grows into its new size by really growing: its width and
             // every value the focus-mode CSS changes (padding, type sizes, button
             // sizes) run from the old value to the new, so the text grows with
