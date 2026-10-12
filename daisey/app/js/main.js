@@ -351,10 +351,16 @@ async function boot(){
         const paintPush = () => push.deviceOn().catch(() => false).then((on) => { pushSwitch.checked = on; pushTest.hidden = !on; pushKinds.hidden = !on; });
         // Which kinds: one account-wide setting (settings.notify), the server reads it from the snapshot.
         const kindBoxes = [...pushKinds.querySelectorAll("input[data-kind]")];
-        kindBoxes.forEach((b) => { b.onchange = () => saveSettings(user.uid,
-          { notify: Object.fromEntries(kindBoxes.map((x) => [x.dataset.kind, x.checked])) }).catch(fail); });
+        // The folded drop list says how many are on; the reminder greys out with Meetings off.
+        const paintKinds = () => {
+          $("#kindCount").textContent = `${kindBoxes.filter((b) => b.checked).length} of ${kindBoxes.length}`;
+          leadPick.disabled = !meetingBox.checked;
+        };
+        kindBoxes.forEach((b) => { b.onchange = () => { paintKinds(); saveSettings(user.uid,
+          { notify: Object.fromEntries(kindBoxes.map((x) => [x.dataset.kind, x.checked])) }).catch(fail); }; });
         // How early the meeting reminder goes (notify.js "meeting").
         const leadPick = $("#meetingLead"), meetingBox = kindBoxes.find((b) => b.dataset.kind === "meeting");
+        paintKinds();
         leadPick.onchange = () => saveSettings(user.uid, { meetingLead: Number(leadPick.value) }).catch(fail);
         if (isGuest) {
           pushSwitch.disabled = true;
@@ -520,7 +526,7 @@ async function boot(){
           seen();
           kindBoxes.forEach((b) => { b.checked = s?.notify?.[b.dataset.kind] !== false; });
           leadPick.value = String(s?.meetingLead ?? 10);
-          leadPick.disabled = !meetingBox.checked;
+          paintKinds();
           snap();
         }, fail);
         // + → Event is off while the calendar isn't connected.

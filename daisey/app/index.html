@@ -190,23 +190,41 @@
       <span class="menu-label">Meal breaks</span>
       <div id="mealList" class="meal-list"></div>
     </div>
+    <!-- Up here, not under More (Mor, 2026-10-12): rules for how tasks and projects work. -->
+    <div class="menu-sec">
+      <h3 class="menu-h">Tasks</h3>
+      <!-- "Needs laptop" on each task (addtask.js, Mor 2026-10-09): off by default. -->
+      <label class="menu-check"><input id="askLaptop" type="checkbox"> Ask "Needs laptop" on each task</label>
+      <!-- How many projects Focus holds (projects.js): 1–5, 3 by default. Back here
+           from the Projects page (Mor, 2026-10-11): a picker beside a full Focus made
+           raising the cap the easy way out; set here, it's a rule, not an escape.
+           The Projects page shows it as dots only. -->
+      <label class="menu-check"><select id="focusMax" class="menu-select">
+        <option value="1">1</option><option value="2">2</option><option value="3" selected>3</option><option value="4">4</option><option value="5">5</option>
+      </select> Most projects in Focus</label>
+    </div>
     <!-- Notifications (push.js): this device, then which kinds (any device). -->
     <div class="menu-sec">
       <h3 class="menu-h">Notifications</h3>
       <label class="menu-check"><input id="pushBrief" type="checkbox"> On this device</label>
-      <!-- What to send: right under the switch while it's on, no dropdown (Mor, 2026-10-10). -->
-      <div id="pushKinds" class="menu-kinds" hidden>
-        <label class="menu-check"><input data-kind="brief" type="checkbox" checked> Morning brief</label>
-        <label class="menu-check"><input data-kind="wrap" type="checkbox" checked> End of day</label>
-        <label class="menu-check"><input data-kind="gap" type="checkbox" checked> Free time</label>
-        <label class="menu-check"><input data-kind="booked" type="checkbox" checked> Task starts</label>
-        <label class="menu-check"><input data-kind="miss" type="checkbox" checked> Missed tasks</label>
-        <label class="menu-check"><input data-kind="meeting" type="checkbox" checked> Meetings</label>
+      <!-- While it's on: the kinds fold away in a drop list, the meeting reminder sits on its own row (Mor, 2026-10-12). -->
+      <div id="pushKinds" class="menu-push" hidden>
+        <details class="menu-drop">
+          <summary>What to send <span id="kindCount" class="menu-count"></span></summary>
+          <div class="menu-kinds">
+            <label class="menu-check"><input data-kind="brief" type="checkbox" checked> Morning brief</label>
+            <label class="menu-check"><input data-kind="wrap" type="checkbox" checked> End of day</label>
+            <label class="menu-check"><input data-kind="gap" type="checkbox" checked> Free time</label>
+            <label class="menu-check"><input data-kind="booked" type="checkbox" checked> Task starts</label>
+            <label class="menu-check"><input data-kind="miss" type="checkbox" checked> Missed tasks</label>
+            <label class="menu-check"><input data-kind="meeting" type="checkbox" checked> Meetings</label>
+            <label class="menu-check"><input data-kind="people" type="checkbox" checked> Waiting on someone</label>
+          </div>
+        </details>
         <label class="menu-check"><select id="meetingLead" class="menu-select">
           <option value="5">5 min before</option><option value="10" selected>10 min before</option>
           <option value="15">15 min before</option><option value="30">30 min before</option>
         </select> Meeting reminder</label>
-        <label class="menu-check"><input data-kind="people" type="checkbox" checked> Waiting on someone</label>
       </div>
       <p id="pushNote" class="menu-note" hidden></p>
     </div>
@@ -229,15 +247,6 @@
     </div>
     <div class="menu-sec">
       <h3 class="menu-h">More</h3>
-      <!-- "Needs laptop" on each task (addtask.js, Mor 2026-10-09): off by default. -->
-      <label class="menu-check"><input id="askLaptop" type="checkbox"> Ask "Needs laptop" on each task</label>
-      <!-- How many projects Focus holds (projects.js): 1–5, 3 by default. Back here
-           from the Projects page (Mor, 2026-10-11): a picker beside a full Focus made
-           raising the cap the easy way out; set here, it's a rule, not an escape.
-           The Projects page shows it as dots only. -->
-      <label class="menu-check"><select id="focusMax" class="menu-select">
-        <option value="1">1</option><option value="2">2</option><option value="3" selected>3</option><option value="4">4</option><option value="5">5</option>
-      </select> Most projects in Focus</label>
       <!-- Reset Daisey (2026-10-07): erase Daisey's own data and read the calendar and Trello from scratch. -->
       <!-- Guests only (sample.js): the sample day again, laid for now. -->
       <button id="sampleBtn" class="menu-link" type="button" hidden>Reset sample day</button>

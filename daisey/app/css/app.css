@@ -757,11 +757,17 @@ dialog.now:focus { outline: none; }
 .now-wait { margin: 6px 0 0; font-size: 14px; color: var(--ink-2); }
 .ts-nudge { justify-self: start; font-size: 14px; }
 /* Kinds sit in their own card, one per row with hairlines, so the five options don't crowd the master switch. */
-/* What to send: a small two-column list right under the switch (2026-10-10). */
-.menu-kinds { display: grid; grid-template-columns: 1fr 1fr; gap: 2px 12px; padding-inline-start: 26px; }
+/* What to send: folded in a drop list under the switch, two columns when open (2026-10-12). */
+.menu-push { display: grid; gap: 8px; padding-inline-start: 26px; }
+.menu-push[hidden] { display: none; }
+.menu-drop summary { display: flex; align-items: center; gap: 8px; min-block-size: 32px; font-size: 14px; cursor: pointer; list-style: none; }
+.menu-drop summary::-webkit-details-marker { display: none; }
+.menu-drop summary::after { content: "▾"; color: var(--ink-2); transition: transform .2s; }
+.menu-drop[open] summary::after { transform: rotate(180deg); }
+.menu-count { margin-inline-start: auto; font-size: 13px; color: var(--ink-2); }
+.menu-kinds { display: grid; grid-template-columns: 1fr 1fr; gap: 2px 12px; padding-block-start: 4px; }
 .menu-kinds .menu-check { min-block-size: 32px; font-size: 13px; color: var(--ink-2); }
 .menu-kinds .menu-check input { inline-size: 16px; block-size: 16px; }
-.menu-kinds .menu-check:has(#meetingLead) { grid-column: 1 / -1; }
 .menu-select { flex: none; padding: 4px 8px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--ink); font: inherit; font-size: 16px; } /* under 16px, iOS zooms the page on focus and stays zoomed */
 .menu-select:disabled { opacity: .45; }
 .menu-ico { flex: none; display: grid; place-items: center; inline-size: 30px; block-size: 30px; border-radius: 10px; background: var(--surface-2, rgba(0,0,0,.05)); color: var(--ink-2); }
