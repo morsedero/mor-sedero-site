@@ -29,7 +29,7 @@ import { missState, silenceText, lastActivity } from "./miss.js";
 import { takeQuiet } from "./push.js";
 import { findPhoneTasks, phoneOkIds, searching } from "./phone.js";
 import { rank, freeWindow, timeBucket, matchProject, dueAt, keepsCard, passedOver } from "./engine.js";
-import { leftMinutes, toMinutes, progressOf, leftPatch, localDate, logicalDate, skipSnapshot, skipLesson, pendingCheck, notYet, pushedTo, bringBack, dayAfter, doneSnapshot, isGuess, estText } from "./model.js";
+import { leftMinutes, toMinutes, progressOf, leftPatch, localDate, logicalDate, skipSnapshot, skipLesson, pendingCheck, notYet, pushedTo, bringBack, dayAfter, doneSnapshot, isGuess, estText, needsLaptop } from "./model.js";
 import { isRoutine, routineCalendar, eventsToLog, sessionPatch } from "./routine.js";
 import { waitingFor, personOf } from "./nudge.js";
 import { dayHours, isNight, nextMorning, dayEndAt, bookings, sameTitle, minText, gapsToday, planDate, usualHours, dayWord, answerDate } from "./day.js";
@@ -410,14 +410,14 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
   // one tap says this one works on the phone, and it's offered.
   function phoneOk(r, leg){
     if (searching()) return h("p", { className: "muted", textContent: "Looking through your tasks for phone ones…" });
-    const can = r.out.filter((o) => o.reason === "place" && o.task.where === "computer").slice(0, 3);
+    const can = r.out.filter((o) => o.reason === "place" && needsLaptop(o.task)).slice(0, 3);
     const rest = h("button", { type: "button", className: "chip", textContent: can.length ? "None of these" : "Just rest",
       onclick: () => { restRide = leg.id; render(); } });
     return h("div", { className: "ride-ask phone-ok", role: "group", ariaLabel: "Doable on the phone?" },
       h("span", { className: "muted", textContent: can.length ? "Doable on the phone?" : "Nothing here works on the phone." }),
       ...can.map((o) => h("button", { type: "button", className: "chip", dir: "auto", textContent: o.task.title,
         ariaLabel: `${o.task.title} works on the phone`,
-        onclick: () => updateTask(uid, o.task, { where: "phone" }, tasks || []).catch(fail) })), rest);
+        onclick: () => updateTask(uid, o.task, { laptop: false }, tasks || []).catch(fail) })), rest);
   }
   // Wears its schedule row's look (Mor, 2026-10-11): the trip colour and the
   // light round its edge, and on a running trip leg the time gone filling in.

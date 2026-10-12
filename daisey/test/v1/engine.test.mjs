@@ -405,6 +405,18 @@ test("phoneOk: a phone-able Computer task fits a bus, not a car", () => {
   assert.equal(E.fitsPlace({ ...t, where: "home" }, "bus", new Set(["a"])), false, "only Computer is lifted");
 });
 
+// Where and Needs laptop apart (Mor, 2026-10-12): each blocks on its own.
+test("laptop: its own field, beside Where", () => {
+  const t = (o) => ({ id: "b", type: "deep", ...o });
+  assert.equal(E.fitsPlace(t({ where: "home", laptop: false }), "home"), true);
+  assert.equal(E.fitsPlace(t({ where: "home", laptop: true }), "home"), true);
+  assert.equal(E.fitsPlace(t({ where: "anywhere", laptop: true }), "out"), false);
+  assert.equal(E.fitsPlace(t({ where: "anywhere", laptop: false }), "out"), true);
+  assert.equal(E.fitsPlace(t({ where: "out", laptop: true }), "train"), false, "a train takes the laptop, not Out");
+  assert.equal(E.fitsPlace(t({ where: "anywhere", laptop: true }), "train"), true);
+  assert.equal(E.fitsPlace(t({ where: "anywhere", laptop: false }), "bus"), true);
+});
+
 test("keepsCard: the task on the card stays until acted on (user test #6)", () => {
   const a = task({ title: "Arnona" }), kept = { id: a.id, day: "2026-10-05", until: at(5, 11, 30) };
   const o = { nextId: "b", today: "2026-10-05", ranked: false, switchable: true, now: at(5, 12) };

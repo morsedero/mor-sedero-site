@@ -7,7 +7,7 @@
 // cap hit) a word list stands in, and the server is tried again later.
 // Firebase loads only when asking, so the planner (proposal.js) can read the
 // answers without it.
-import { localDate } from "./model.js";
+import { localDate, needsLaptop } from "./model.js";
 const FIREBASE = "./firebase.js";
 
 const URL_ = "/.netlify/functions/daisey-now-chat";
@@ -28,13 +28,13 @@ export const searching = () => busy;
 // The ids of Computer tasks the phone can do: the server's answer where it
 // gave one, else the word list.
 export function phoneOkIds(tasks = []){
-  return new Set(tasks.filter((t) => t.where === "computer" && (sig(t) in memo ? memo[sig(t)] : looksPhone(t.title))).map((t) => t.id));
+  return new Set(tasks.filter((t) => needsLaptop(t) && (sig(t) in memo ? memo[sig(t)] : looksPhone(t.title))).map((t) => t.id));
 }
 
 // Ask about the Computer tasks not asked about yet. → true when the answer
 // changed something (render again), false when there was nothing to ask.
 export async function findPhoneTasks(tasks = [], { guest = false } = {}){
-  const todo = tasks.filter((t) => t.where === "computer" && t.status !== "done" && t.status !== "dropped" && !(sig(t) in memo)).slice(0, 120);
+  const todo = tasks.filter((t) => needsLaptop(t) && t.status !== "done" && t.status !== "dropped" && !(sig(t) in memo)).slice(0, 120);
   if (!todo.length || busy || Date.now() - failedAt < RETRY_MS) return false;
   busy = true;
   try {

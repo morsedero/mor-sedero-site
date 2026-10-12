@@ -253,17 +253,21 @@ test("reopening a done task clears doneAt", () => {
 
 test("guesses: type, where, open hours, size from the title", () => {
   const g = (title, project = "Inbox") => M.guessFields(title, project);
-  assert.deepEqual(pick(g("call the bank")), { type: "call", where: "phone", openHours: "office", size: 15 });
+  assert.deepEqual(pick(g("call the bank")), { type: "call", where: "anywhere", openHours: "office", size: 15 });
+  assert.equal(g("call the bank").laptop, false);
   assert.equal(g("call mom").openHours, "anytime"); // a person, not an office
   assert.deepEqual(pick(g("buy strings")), { type: "errand", where: "out", openHours: "anytime", size: 45 });
   assert.equal(g("לקנות מתנה לאבא").type, "errand");
   assert.equal(g("ולהתקשר לרופא").type, "call"); // Hebrew prefix letters
   assert.equal(g("ולהתקשר לרופא").openHours, "office");
-  assert.equal(g("whatsapp Dana").where, "phone");
+  assert.equal(g("whatsapp Dana").where, "anywhere");
+  assert.equal(g("whatsapp Dana").laptop, false);
   assert.equal(g("send invoice to Uri").type, "admin");
-  assert.equal(g("send invoice to Uri").where, "computer");
+  assert.equal(g("send invoice to Uri").where, "anywhere");
+  assert.equal(g("send invoice to Uri").laptop, true);
   assert.equal(g("post office: pick up parcel").openHours, "office");
   assert.equal(g("laundry").where, "home");
+  assert.equal(g("laundry").laptop, false);
   assert.equal(g("dinner with Sofi").type, "social");
   assert.equal(g("fix the boss loop").type, "deep"); // "fix" is too broad to mean Home
   assert.equal(g("practice scales").where, "home");
@@ -296,19 +300,25 @@ test("guesses: area from words, then the project's own areas, then type", () => 
 
 test("a picked type steers the rest of the guesses", () => {
   const t = M.createTask({ title: "Uri about the mix", type: "call" }, opts);
-  assert.equal(t.where, "phone");
+  assert.equal(t.where, "anywhere");
+  assert.equal(t.laptop, false);
   assert.equal(t.openHours, "office");
   assert.ok(!t.guessed.includes("type"));
 });
 
 test("edit: a picked field stays put; handing it back re-guesses", () => {
   const t = { id: "a", ...M.createTask({ title: "Call Uri" }, opts) };
-  const p = M.editTask(t, { where: "computer" }, opts);
-  assert.equal(p.where, "computer");
+  const p = M.editTask(t, { where: "home" }, opts);
+  assert.equal(p.where, "home");
   assert.ok(!p.guessed.includes("where"));
   const t2 = { ...t, ...p };
   assert.equal(M.editTask(t2, { title: "Call Uri again" }, opts).where, undefined); // still the user's
-  assert.equal(M.editTask(t2, { where: "" }, opts).where, "phone");
+  assert.equal(M.editTask(t2, { where: "" }, opts).where, "anywhere");
+  // Needs laptop is its own field: Where never moves it (Mor, 2026-10-12).
+  const lp = M.editTask(t, { laptop: true }, opts);
+  assert.equal(lp.laptop, true);
+  assert.equal(lp.where, undefined);
+  assert.equal(M.editTask({ ...t, ...lp }, { where: "home" }, opts).laptop, undefined);
   // Editing notes alone re-guesses nothing.
   assert.deepEqual(Object.keys(M.editTask(t, { notes: "hi" }, opts)).sort(), ["notes", "touchedAt"]);
 });
@@ -327,7 +337,8 @@ test("migrate: an old task gets every field, real guesses, Targets, and keeps to
   const p = M.migrateTask(old, [old]);
   assert.equal(p.size, 15); // the flat 30 was a guess: re-guessed
   assert.equal(p.type, "call");
-  assert.equal(p.where, "phone");
+  assert.equal(p.where, "anywhere");
+  assert.equal(p.laptop, false);
   assert.equal(p.openHours, "office");
   assert.equal(p.dateKind, "target");
   assert.equal(p.nextStep, null);
@@ -336,6 +347,24 @@ test("migrate: an old task gets every field, real guesses, Targets, and keeps to
   assert.equal("touchedAt" in p, false);
   for (const [k, v] of Object.entries(p)) assert.notEqual(v, undefined, k);
   assert.deepEqual(M.migrateTask({ ...old, ...p }), {}); // once only
+});
+
+test("migrate v5: Where loses Computer/Phone, Needs laptop keeps what they meant", () => {
+  const base = { project: "Inbox", title: "Mix the track", type: "deep", size: 60, canSplit: true, status: "ready", v: 4 };
+  const own = M.migrateTask({ ...base, where: "computer", guessed: [] });
+  assert.equal(own.where, "anywhere");
+  assert.equal(own.laptop, true);
+  assert.ok(!own.guessed.includes("laptop"));
+  const phone = M.migrateTask({ ...base, where: "phone", guessed: [] });
+  assert.equal(phone.where, "anywhere");
+  assert.equal(phone.laptop, false);
+  const home = M.migrateTask({ ...base, where: "home", guessed: [] });
+  assert.equal("where" in home, false);
+  assert.equal(home.laptop, false); // a Home task wasn't a laptop task
+  const guess = M.migrateTask({ ...base, where: "computer", guessed: ["where"] });
+  assert.equal(guess.where, "anywhere");
+  assert.equal(guess.laptop, true); // guessed again: still laptop work
+  assert.ok(guess.guessed.includes("laptop"));
 });
 
 test("migrate: a size the user set survives (any but the old flat 30)", () => {
@@ -477,5 +506,6 @@ test("guesses: tax paperwork is any time, bike repair is home work (user test #9
   assert.equal(g("Fill insurance form").openHours, "anytime");
   assert.equal(g("Call the bank").openHours, "office");
   assert.equal(g("Fix bike brakes").where, "home");
-  assert.equal(g("Fix the boss loop").where, "computer");
+  assert.equal(g("Fix the boss loop").where, "anywhere");
+  assert.equal(g("Fix the boss loop").laptop, true);
 });

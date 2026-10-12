@@ -31,26 +31,31 @@ export const INBOX = "Inbox";
 export const DEFAULT_SIZE = 30;
 export const SPLIT_FROM = 60; // "can split" defaults on from this size
 const SIMILAR = 0.5; // title word overlap that counts as "a similar past task"
-export const TASK_VERSION = 4; // tasks below this get migrateTask'd on load
+export const TASK_VERSION = 5; // tasks below this get migrateTask'd on load
 // Pending asks "still pending?" this many days after it was set (Mor,
 // 2026-10-05: 3 days, editable in the Pending ask).
 export const PENDING_CHECK_DAYS = 3;
 
 export const AREAS = ["work", "job", "home", "admin", "social", "personal"];
 export const TYPES = ["deep", "admin", "call", "errand", "home", "social"];
-export const WHERE = ["anywhere", "computer", "home", "out", "phone"];
+// Where is a place only (Mor, 2026-10-12); the laptop is its own field. A
+// task saved before v5 held the device here: "computer" = anywhere + laptop,
+// "phone" = anywhere. placeOf/needsLaptop read both.
+export const WHERE = ["anywhere", "home", "out"];
+export const placeOf = (t) => (WHERE.includes(t?.where) ? t.where : "anywhere");
+export const needsLaptop = (t) => (typeof t?.laptop === "boolean" ? t.laptop : t?.where === "computer");
 export const OPEN_HOURS = ["anytime", "office", "evening"];
 export const STAKES = ["low", "money", "someone", "penalty"];
 export const DATE_KINDS = ["deadline", "target"];
 // The single-choice fields guessed from the title, and what each may hold.
 export const CHOICES = { area: AREAS, type: TYPES, where: WHERE, openHours: OPEN_HOURS, stakes: STAKES };
 // Every field Daisey can guess, in the order the chips show them.
-export const GUESSABLE = ["area", "type", "where", "openHours", "size", "stakes", "canSplit"];
+export const GUESSABLE = ["area", "type", "where", "laptop", "openHours", "size", "stakes", "canSplit"];
 
 export const LABELS = {
   area: { work: "Work", job: "Job search", home: "Home", admin: "Admin", social: "Social", personal: "Personal" },
   type: { deep: "Deep", admin: "Admin", call: "Call", errand: "Errand", home: "Home", social: "Social" },
-  where: { anywhere: "Anywhere", computer: "Computer", home: "Home", out: "Out", phone: "Phone" },
+  where: { anywhere: "Anywhere", home: "Home", out: "Out" },
   openHours: { anytime: "Anytime", office: "Office hours", evening: "Evening" },
   stakes: { low: "Low stakes", money: "Costs money", someone: "Affects someone", penalty: "Deadline penalty" },
   dateKind: { deadline: "Deadline", target: "Target" },
@@ -306,14 +311,18 @@ export const guessType = (title) => {
 };
 
 export function guessWhere(title, type){
-  const toks = tokens(title);
-  if (type === "call") return "phone";
   if (type === "errand") return "out";
   if (type === "home") return "home";
-  if (type === "social") return "anywhere";
-  if (anyOf(toks, PHONE_WORDS)) return "phone";
-  if (type === "deep" && anyOf(toks, HOME_WORDS)) return "home";
-  return "computer";
+  if (type === "deep" && anyOf(tokens(title), HOME_WORDS)) return "home";
+  return "anywhere";
+}
+
+// Most work is laptop work; calls, errands, chores, people and phone things aren't.
+export function guessLaptop(title, type){
+  const toks = tokens(title);
+  if (["call", "errand", "home", "social"].includes(type)) return false;
+  if (anyOf(toks, PHONE_WORDS)) return false;
+  return !(type === "deep" && anyOf(toks, HOME_WORDS));
 }
 
 // Paperwork done at your own desk, whoever it's for: any time.
@@ -362,7 +371,7 @@ export function guessArea(title, project, type, history = []){
 // Is this a value the field can hold? (size: minutes; canSplit: boolean)
 export function validField(k, v){
   if (k === "size") return toMinutes(v) != null;
-  if (k === "canSplit") return typeof v === "boolean";
+  if (k === "canSplit" || k === "laptop") return typeof v === "boolean";
   return !!CHOICES[k]?.includes(v);
 }
 
@@ -374,6 +383,7 @@ export function guessFields(title, project, given = {}, history = []){
   v.type ??= guessType(title);
   v.area ??= guessArea(title, project, v.type, history);
   v.where ??= guessWhere(title, v.type);
+  v.laptop ??= guessLaptop(title, v.type);
   v.openHours ??= guessOpenHours(title, v.type);
   v.stakes ??= guessStakes(title);
   v.size ??= guessSize(title, history, v.type);
@@ -421,6 +431,7 @@ export function createTask(input, { now = Date.now(), history = [] } = {}){
     area: v.area,
     type: v.type,
     where: v.where,
+    laptop: v.laptop,
     openHours: v.openHours,
     size: v.size,
     stakes: v.stakes,
@@ -547,9 +558,17 @@ export function migrateTask(task, history = []){
   // v3 (2026-10-05): a size still on the old flat 30 is the default, not a
   // choice — guess it again from the title and type.
   if ((task.v || 0) < 3 && toMinutes(task.size) === DEFAULT_SIZE) guessed.add("size");
+  // v5 (2026-10-12): Where is a place only, the laptop its own field. A
+  // Where the user set keeps meaning what it did: Computer = laptop, any
+  // other place = no laptop. A guessed one is guessed again, both halves.
+  let was = task;
+  if (typeof task.laptop !== "boolean") {
+    was = { ...task, where: task.where == null ? task.where : placeOf(task), laptop: needsLaptop(task) };
+    if (guessed.has("where") || task.where == null) guessed.add("laptop");
+  }
   const keep = {};
   for (const k of GUESSABLE) {
-    if (!guessed.has(k) && validField(k, task[k])) keep[k] = k === "size" ? toMinutes(task[k]) : task[k];
+    if (!guessed.has(k) && validField(k, was[k])) keep[k] = k === "size" ? toMinutes(was[k]) : was[k];
     else guessed.add(k);
   }
   const others = history.filter((h) => h && (h.id == null || h.id !== task.id));

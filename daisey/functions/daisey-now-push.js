@@ -48,6 +48,7 @@ const cleanTask = (t) => {
   for (const k of NUMS) if (Number.isFinite(t?.[k])) o[k] = t[k];
   o.dueTime = typeof t?.dueTime === "string" && /^\d{2}:\d{2}$/.test(t.dueTime) ? t.dueTime : null;
   o.canSplit = !!t?.canSplit;
+  if (typeof t?.laptop === "boolean") o.laptop = t.laptop; // Needs laptop, apart from Where (2026-10-12)
   // Places this task was said not to suit ("Not here" on a skip): the engine hides it there.
   if (Array.isArray(t?.notAt)) o.notAt = t.notAt.slice(0, 5).map((k) => str(k, 20)).filter(Boolean);
   // A routine (app/js/routine.js): how often, till when, and the last

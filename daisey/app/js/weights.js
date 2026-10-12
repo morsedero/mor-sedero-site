@@ -52,13 +52,14 @@ export const PUSHES_ASK = 2;
 // driving card.
 export const DRIVING_TYPES = ["call"];
 export const PLACES = ["home", "out", "anywhere", "walk", "ride", "train", "bus", "car", "spot"];
+// A task's Where (home/out/anywhere), and "laptop" for one that needs it.
 export const PLACE_BLOCKS = {
-  out: ["home", "computer"], home: [],
+  out: ["home", "laptop"], home: [],
   spot: ["home"], // a saved place that isn't home: settled, so the laptop is fine
-  walk: ["home", "computer"],
+  walk: ["home", "laptop"],
   train: ["home", "out"],
-  bus: ["home", "out", "computer"], ride: ["home", "out", "computer"],
-  car: ["home", "out", "computer", "phone", "anywhere"],
+  bus: ["home", "out", "laptop"], ride: ["home", "out", "laptop"],
+  car: ["home", "out", "laptop", "anywhere"],
 };
 
 // ---------- Gate 2 — what does leaving it cost? ----------

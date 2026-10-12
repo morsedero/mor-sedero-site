@@ -15,9 +15,9 @@ import * as W from "./weights.js";
 
 const DAY = 86400000;
 const TASKS = [
-  { title: "Draft the project proposal", area: "work", type: "deep", where: "computer", size: 60, due: 0, dateKind: "target" },
-  { title: "Send the invoice", area: "admin", type: "admin", where: "computer", size: 15, due: 1, dateKind: "deadline" },
-  { title: "Pay the electricity bill", area: "admin", type: "admin", where: "anywhere", size: 10, stakes: "money" },
+  { title: "Draft the project proposal", area: "work", type: "deep", where: "anywhere", laptop: true, size: 60, due: 0, dateKind: "target" },
+  { title: "Send the invoice", area: "admin", type: "admin", where: "anywhere", laptop: true, size: 15, due: 1, dateKind: "deadline" },
+  { title: "Pay the electricity bill", area: "admin", type: "admin", where: "anywhere", laptop: false, size: 10, stakes: "money" },
 ];
 const base = { openHours: "anytime", stakes: "low", canSplit: false };
 

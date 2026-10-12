@@ -22,7 +22,7 @@
 // sheet, "Daisey guesses" hands a field back, dashed = a guess, solid = yours.
 // While typing a new task's title they catch up only once typing stops.
 import { nudgeText, waLink } from "./nudge.js";
-import { watchTasks, addTask, updateTask, removeTask, watchProjectNames, watchSettings, unlogReopened } from "./store.js";
+import { watchTasks, addTask, updateTask, removeTask, watchProjectNames, unlogReopened } from "./store.js";
 import { durText, guessFields, validField, CHOICES, LABELS, INBOX, localDate, logicalDate, clampDate, outsideRange, progressOf, isLink } from "./model.js";
 import { keepFile, dropFile, fileUrl } from "./files.js";
 import { h, flash, icon, bdi } from "./ui.js";
@@ -34,7 +34,7 @@ import { syncSeries, dropSeries } from "./slots.js";
 // "keep only the time the user thinks it's gonna take"). The rest are never
 // asked for: they're guessed from the title and corrected by what the user
 // does — a skip reason, past tasks (model.guessFields, now.js).
-const CHIPS = ["area", "type", "where", "openHours", "size", "stakes"];
+const CHIPS = ["area", "type", "where", "laptop", "openHours", "size", "stakes"];
 const SHOWN = ["size"];
 // …but an open task shows what else Daisey guessed, folded under one line,
 // each a chip to fix (user test #9: a guessed "Office hours" hid "Q3 tax
@@ -126,14 +126,12 @@ export function mountAddTask(dialog, uid, { onStart } = {}){
   atIn.addEventListener("change", () => { if (/^\d{2}:\d{2}$/.test(atIn.value)) { at = atIn.value; changed(); } });
   const setBox = h("div", { className: "ts-set" }, dayRow, h("label", { className: "ts-at-row" }, h("span", { textContent: "at" }), atIn),
     h("p", { className: "ts-hint", textContent: "Daisey puts these in your Daisey calendar." }));
-  // "Needs laptop" (Mor, 2026-10-09): a switch over the guessed where, shown
-  // only when Settings turns it on (settings.askLaptop, off by default). On =
-  // where "computer"; off = "anywhere". Ticked by itself when Daisey already
-  // guesses a laptop task.
+  // "Needs laptop" (Mor, 2026-10-09; its own field 2026-10-12): always shown,
+  // ticked by itself when Daisey guesses a laptop task. Where never moves it.
   const laptopSwitch = h("input", { type: "checkbox", id: "tsLaptop" });
-  const laptopRow = h("div", { className: "ts-hold ts-laptop", hidden: true },
+  const laptopRow = h("div", { className: "ts-hold ts-laptop" },
     h("label", { className: "ts-hold-sw", htmlFor: "tsLaptop" }, laptopSwitch, h("span", { textContent: "Needs laptop" })));
-  laptopSwitch.addEventListener("change", () => pick("where", laptopSwitch.checked ? "computer" : "anywhere"));
+  laptopSwitch.addEventListener("change", () => pick("laptop", laptopSwitch.checked));
   const oftenRow = h("div", { className: "ts-hold ts-repeat" },
     h("label", { className: "ts-hold-sw", htmlFor: "tsRepeat" }, repeatSwitch, h("span", { textContent: "Repeats weekly" })), modeRow, perStep, setBox);
   const weekNow = h("p", { className: "ts-worked ts-week" });
@@ -369,10 +367,7 @@ export function mountAddTask(dialog, uid, { onStart } = {}){
       textContent: "Daisey guesses", onclick: () => pick(k, null) }));
   function paintChips(){
     paintArea();
-    // Home implies the laptop (Mor, 2026-10-12): one "where" field, and a home
-    // task only runs where the laptop is, so show it ticked and locked.
-    laptopSwitch.checked = vals.where === "computer" || vals.where === "home";
-    laptopSwitch.disabled = vals.where === "home";
+    laptopSwitch.checked = vals.laptop === true;
     const chipOf = (k, named = false) => {
       const own = mine.has(k);
       const chip = h("button", { type: "button", className: "gchip" + (own ? " mine" : ""), ariaHasPopup: "listbox", ariaExpanded: String(openChip === k),
@@ -547,7 +542,6 @@ export function mountAddTask(dialog, uid, { onStart } = {}){
     fillProjects([...new Set([...(tasks || []).map((t) => t.project), ...made])].filter((p) => p && p !== INBOX).sort((a, b) => a.localeCompare(b)));
   };
   const unsubNames = watchProjectNames(uid, (ns, rs) => { made = ns; ranges = rs || {}; refill(); fenceDates([]); }, fail);
-  const unsubSettings = watchSettings(uid, (st) => { laptopRow.hidden = st?.askLaptop !== true; }, fail);
   // A Set-days routine added (or changed) offline never got its weekly event:
   // the write waits on a server ack the closed app never saw (BEHAVIOR_REVIEW
   // #9). Owed = its days' sig isn't the event's. Swept once the list comes
@@ -629,6 +623,6 @@ export function mountAddTask(dialog, uid, { onStart } = {}){
       paintAll();
       show();
     },
-    unmount(){ clearTimeout(settle); unsub(); unsubNames(); unsubSettings(); if (dialog.open) dialog.close(); dialog.replaceChildren(); },
+    unmount(){ clearTimeout(settle); unsub(); unsubNames(); if (dialog.open) dialog.close(); dialog.replaceChildren(); },
   };
 }

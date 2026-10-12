@@ -335,7 +335,7 @@ async function boot(){
         const start = $("#dayStart"), end = $("#dayEnd");
         // Finished tasks into the "Daisey log" calendar (now.js logFinished): on unless switched off.
         const logSwitch = $("#logDone");
-        const laptopAsk = $("#askLaptop"), focusPick = $("#focusMax");
+        const focusPick = $("#focusMax");
         // The morning brief (push.js): this device's switch, a test button,
         // and — while it's on anywhere — the task snapshot the server counts.
         const pushSwitch = $("#pushBrief"), pushNote = $("#pushNote"), pushTest = $("#pushTest"), pushKinds = $("#pushKinds");
@@ -397,7 +397,6 @@ async function boot(){
         const stopBriefRun = watchRun(user.uid, (r) => { briefRun = r || null; snap(); }, fail);
         const stopBriefPlan = watchDayPlan(user.uid, (d) => { briefPlan = d || null; snap(); }, fail);
         logSwitch.onchange = () => saveSettings(user.uid, { logDone: logSwitch.checked }).catch(fail);
-        laptopAsk.onchange = () => saveSettings(user.uid, { askLaptop: laptopAsk.checked }).catch(fail);
         // Focus's size, back in Settings (Mor, 2026-10-11; projects.js shows it as dots).
         focusPick.onchange = () => saveSettings(user.uid, { focusMax: Number(focusPick.value) }).catch(fail);
         // Meal breaks (Mor, 2026-10-08): Breakfast, Lunch, Dinner, each on or
@@ -517,7 +516,6 @@ async function boot(){
           paintMeals(s || {});
           logSwitch.checked = !isGuest && s?.logDone !== false;
           logSwitch.disabled = isGuest;
-          laptopAsk.checked = s?.askLaptop === true;
           focusPick.value = String(s?.focusMax ?? 3);
           // After midnight a late day reads { start: 0 }; the server gets the usual one.
           hours = hrs.late ? usual : hrs;
@@ -578,7 +576,7 @@ async function boot(){
           connectBtn.textContent = c.status === "needs_reauth" ? "Reconnect" : "Connect";
           connNote(calNote, isGuest ? "Sign in first" : calOk ? "Connected" : c.status === "needs_reauth" ? "Expired" : "Not connected");
         });
-        m.menu = { unmount(){ stopSettings(); stopCal(); stopBriefTasks(); stopBriefRun(); stopBriefPlan(); clearInterval(seenTick); document.removeEventListener("visibilitychange", seen); settingsDlg.removeEventListener("click", foldMeal); settingsDlg.removeEventListener("close", shutMeal); start.onchange = end.onchange = logSwitch.onchange = laptopAsk.onchange = pushSwitch.onchange = pushTest.onclick = null;
+        m.menu = { unmount(){ stopSettings(); stopCal(); stopBriefTasks(); stopBriefRun(); stopBriefPlan(); clearInterval(seenTick); document.removeEventListener("visibilitychange", seen); settingsDlg.removeEventListener("click", foldMeal); settingsDlg.removeEventListener("close", shutMeal); start.onchange = end.onchange = logSwitch.onchange = pushSwitch.onchange = pushTest.onclick = null;
           kindBoxes.forEach((b) => { b.onchange = null; }); } };
 
         // Full screens (a project, Needs you) sit on the history stack, so the

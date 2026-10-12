@@ -7,7 +7,7 @@
 // dates are local time, so the node tests in daisey/test/v1/ drive it with
 // fixed moments. Every number lives in weights.js.
 import * as W from "./weights.js";
-import { localDate, logicalDate, durText, notYet, leftMinutes, progressOf, LABELS, isGuess, estText, INBOX } from "./model.js";
+import { localDate, logicalDate, durText, notYet, leftMinutes, progressOf, LABELS, isGuess, estText, INBOX, placeOf, needsLaptop } from "./model.js";
 import { effectiveDue } from "./triage.js";
 import { officeOpen, officeMinutesLeft } from "./holidays.js";
 import { cleanRoutine, weekState } from "./routine.js";
@@ -135,10 +135,14 @@ const windowFor = (task, m) => (task.openHours === "office" ? Math.min(m.window,
 // Can the task be done at this place? Not where it was skipped as "Not
 // here", and not where its own place is blocked (PLACE_BLOCKS) — except a
 // call while driving. The plan asks the same of a ride (proposal.js).
-// phoneOk: Computer tasks the phone can do too (phone.js), counted as Phone.
-export const fitsPlace = (task, place, phoneOk = null) => !(task.notAt || []).includes(place)
-  && !((W.PLACE_BLOCKS[place] || []).includes(task.where === "computer" && phoneOk?.has(task.id) ? "phone" : task.where)
-    && !(place === "car" && W.DRIVING_TYPES.includes(task.type)));
+// A laptop task is shut out where the laptop is, unless phoneOk (phone.js)
+// says the phone can do it too.
+export function fitsPlace(task, place, phoneOk = null){
+  if ((task.notAt || []).includes(place)) return false;
+  if (place === "car" && W.DRIVING_TYPES.includes(task.type)) return true;
+  const blocks = W.PLACE_BLOCKS[place] || [];
+  return !blocks.includes(placeOf(task)) && !(blocks.includes("laptop") && needsLaptop(task) && !phoneOk?.has(task.id));
+}
 
 // Why a task can't be offered right now, or null if it can.
 export function filterOut(task, m){
