@@ -1202,15 +1202,18 @@ dialog.tsheet .now-head { margin-block-end: -4px; }
 .ts-input { inline-size: 100%; min-inline-size: 0; padding: 8px 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--ink); font: inherit; font-size: 16px; }
 .ts-project + .ts-input { margin-block-start: 2px; }
 .ts-title { color: var(--ink); line-height: 1.35; resize: none; overflow: hidden; }
-.ts-dates { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
-.ts-date { position: relative; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; min-inline-size: 0; min-block-size: 42px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
+/* align-items: start — Start grows an "Add a time" row; stretching would
+   drop Due's box lower and make it taller than Start's (Mor, 2026-10-12). */
+.ts-dates { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; gap: 10px; }
+.ts-date { position: relative; display: flex; align-items: center; gap: 6px; min-inline-size: 0; min-block-size: 42px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
 .ts-date:focus-within { border-color: var(--ink); }
-.ts-date-v { font-size: 16px; color: var(--ink-2); }
-.ts-date.set { padding-inline-end: 36px; }
+/* One line on a phone: "Mon 12 Oct" wrapped to two in a half-width box. */
+.ts-date-v { min-inline-size: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: 16px; color: var(--ink-2); }
+.ts-date.set { padding-inline-end: 30px; }
 .ts-date.set .ts-date-v { color: var(--ink); }
 .ts-date-in { position: absolute; inset: 0; z-index: 1; inline-size: 100%; block-size: 100%; opacity: 0; cursor: pointer; border: 0; padding: 0; }
 .ts-date-in::-webkit-calendar-picker-indicator { position: absolute; inset: 0; inline-size: 100%; block-size: 100%; opacity: 0; cursor: pointer; }
-.ts-date-x { position: absolute; z-index: 2; inset-block: 0; margin-block: auto; inset-inline-end: 4px; inline-size: 32px; block-size: 32px; display: grid; place-items: center; border: 0; border-radius: 50%; background: none; color: var(--ink-2); cursor: pointer; }
+.ts-date-x { position: absolute; z-index: 2; inset-block: 0; margin-block: auto; inset-inline-end: 2px; inline-size: 28px; block-size: 28px; display: grid; place-items: center; border: 0; border-radius: 50%; background: none; color: var(--ink-2); cursor: pointer; }
 .ts-date-x svg { inline-size: 14px; block-size: 14px; }
 /* The optional hour under a set day (addtask.js dateBox). */
 .ts-time { position: relative; margin-block-start: 6px; }
@@ -1907,6 +1910,9 @@ body.focus .shell { block-size: auto; min-block-size: 100dvh; overflow: visible;
 .ts-hold[hidden], .ts-hold label[hidden] { display: none; }
 .ts-hold-sw { display: flex; align-items: center; gap: 8px; min-block-size: 36px; font-size: 14px; cursor: pointer; }
 .ts-hold-sw input { inline-size: 18px; block-size: 18px; accent-color: var(--accent); }
+/* Needs laptop + Repeats weekly read as one list of ticks, not two sections
+   a sheet-gap apart (Mor, 2026-10-12: spacing looked bad on a phone). */
+dialog.tsheet[open] > .ts-laptop + .ts-repeat { margin-block-start: -12px; }
 .ts-hold-who { display: grid; gap: 4px; font-size: 12px; color: var(--ink-2); }
 
 /* Connect Google Calendar (2026-10-07): the Schedule's empty state and Settings. */
