@@ -246,7 +246,7 @@ function routine(task, m){
   // their share. A fresh week isn't behind, however many it asks for (Mor,
   // 2026-10-11, a Sunday: a 4×-a-week routine in Keep going came before a
   // Focus task, on the card and in the plan).
-  const behind = s.need * 2 >= s.daysLeft && s.done + s.ahead < Math.floor(s.per * s.gone / 7);
+  const behind = s.need * 2 >= s.daysLeft && s.done + s.ahead < Math.floor(s.per * s.gone / s.len);
   // The week's count is the reason a routine is up, so it always leads the why.
   return { points: s.need >= s.daysLeft ? R.last : behind ? R.behind : R.due, why: R.why, detail: s };
 }
@@ -416,8 +416,8 @@ const PHRASES = {
   // The card's dots (ui.weekDots) already show the count, so the words say
   // what the dots can't: "2 more this week, 2 days left" once every day counts.
   routine: (s, d) => d.need >= d.daysLeft && d.daysLeft <= 3
-    ? [d.daysLeft === 1 ? `last day to make ${d.per} this week` : `${d.need} more this week, ${d.daysLeft} days left`]
-    : [`keeps your ${d.per}× a week going`],
+    ? [d.daysLeft === 1 ? `last day to make ${d.per} this ${d.word}` : `${d.need} more this ${d.word}, ${d.daysLeft} days left`]
+    : [`keeps your ${d.per}× a ${d.word} going`],
   target: (s, d) => [`planned for ${d.days <= 0 ? "today" : dateWords(effectiveDue(s.task), d.days)}`],
   // Once the deadline has passed, "if late" is past tense: it's late now.
   stakes: (s, d, late = !!s.details.deadline?.passed) => isGuess(s.task, "stakes") ? null
@@ -600,11 +600,12 @@ export function passedOver(task, seen, { now = Date.now(), today = logicalDate(n
 // later): it's being worked on. Until the plan's next task starts (`turn`,
 // Mor, 2026-10-12: the card sat on "Still on it?" past the next start
 // until a refresh): its slot coming is the card moving on.
-export function keepsCard(kept, task, { nextId = null, today, chosen = null, proposing = false, meeting = false, skipped = false, ranked = false, switchable = false, turn = false, misplaced = false, now = Date.now() } = {}){
+export function keepsCard(kept, task, { nextId = null, today, chosen = null, proposing = false, meeting = false, skipped = false, ranked = false, switchable = false, turn = false, cantNow = false, now = Date.now() } = {}){
   if (!kept || !task || task.id !== kept.id || nextId === kept.id) return false;
-  // Can't be done where you are (Mor, 2026-10-12: set to Home on the train,
-  // the card held it until a refresh).
-  if (chosen || proposing || meeting || skipped || turn || misplaced || kept.day !== today) return false;
+  // Can't be done here or now: another place, the office shut, not evening
+  // yet (Mor, 2026-10-12: set to Home on the train, the card held it until a
+  // refresh).
+  if (chosen || proposing || meeting || skipped || turn || cantNow || kept.day !== today) return false;
   if (task.status !== "ready" || task.onHold || notYet(task, now)) return false;
   return !!kept.until && (ranked || switchable);
 }

@@ -136,10 +136,10 @@ export function routinesSection(rows, tasks, colors){
     // header, the count in words beside each row's dots.
     h("h3", { className: "bl-h" }, "Routines", h("span", { className: "bl-h-sub", textContent: " · this week" })),
     ...rows.map((r) => h("div", { className: "bl-routine" + (r.met ? " met" : "") + (colors.get(r.project) ? ` pc-${colors.get(r.project)}` : ""),
-      title: `${r.project} · ${r.count} of ${r.per}${r.streak >= 2 ? ` · ${r.streak} weeks in a row` : ""}` },
+      title: `${r.project} · ${r.count} of ${r.per}${r.month ? " this month" : ""}${r.streak >= 2 ? ` · ${r.streak} ${r.month ? "months" : "weeks"} in a row` : ""}` },
       h("span", { className: "bl-r-dot", ariaHidden: "true" }),
       h("span", { className: "bl-r-title" }, bdi(r.title)),
-      h("span", { className: "bl-dots", ariaLabel: `${r.count} of ${r.per} this week` }, weekDots(tasks.find((t) => t.id === r.id)),
-        h("span", { className: "bl-r-n", ariaHidden: "true", textContent: `${r.count}/${r.per}` })),
+      h("span", { className: "bl-dots", ariaLabel: `${r.count} of ${r.per} this ${r.month ? "month" : "week"}` }, weekDots(tasks.find((t) => t.id === r.id)),
+        h("span", { className: "bl-r-n", ariaHidden: "true", textContent: `${r.count}/${r.per}${r.month ? " mo" : ""}` })),
       h("span", { className: "bl-bee", ariaHidden: "true" }, r.met ? "🐝" : ""))));
 }

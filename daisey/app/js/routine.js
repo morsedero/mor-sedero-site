@@ -31,8 +31,14 @@
 // leaning harder the further behind the week is. Sessions already on the
 // calendar count as planned: the user scheduled ahead, Daisey only tracks.
 //
+// Monthly (Mor, 2026-10-12: "a monthly task, not only weekly"): `every:
+// "month"` makes `per` sessions a calendar month (1st to last), not a week.
+// Any days only — set days are weekdays, a weekly thing. Everything below
+// that says "week" means the routine's period: its week, or its month.
+//
 // PURE and self-contained (model.js imports it, so it can't import model.js).
 export const PER_MAX = 7;
+export const PER_MAX_MONTH = 20;
 const LOG_MAX = 60;
 
 const pad = (n) => String(n).padStart(2, "0");
@@ -43,13 +49,24 @@ export const dayOf = (ms = Date.now()) => { const d = new Date(ms); if (d.getHou
 const noon = (day) => { const [y, m, d] = day.split("-").map(Number); return new Date(y, m - 1, d, 12); };
 export const addDays = (day, n) => { const d = noon(day); d.setDate(d.getDate() + n); return dayOf(d.getTime()); };
 export const weekStart = (day) => addDays(day, -noon(day).getDay());
+const monthEnd = (day) => { const [y, m] = day.split("-").map(Number); return `${y}-${pad(m)}-${pad(new Date(y, m, 0).getDate())}`; };
+export const monthly = (r) => r?.every === "month";
+// The routine's period around `day`: { from, to, len } (days, both ends in).
+export function periodOf(r, day = dayOf()){
+  if (monthly(r)) { const from = day.slice(0, 8) + "01", to = monthEnd(day); return { from, to, len: Number(to.slice(8)) }; }
+  const from = weekStart(day);
+  return { from, to: addDays(from, 6), len: 7 };
+}
+// "week" | "month", for the words.
+export const periodWord = (task) => (monthly(task?.routine) ? "month" : "week");
 
 const validTime = (v) => typeof v === "string" && /^([01]\d|2[0-3]):[0-5]\d$/.test(v);
 export const DEFAULT_AT = "18:00";
 
 export function cleanRoutine(r){
   if (!r || typeof r !== "object") return null;
-  const days = [...new Set((Array.isArray(r.days) ? r.days : []).map(Number).filter((d) => Number.isInteger(d) && d >= 0 && d <= 6))].sort();
+  const month = monthly(r);
+  const days = month ? [] : [...new Set((Array.isArray(r.days) ? r.days : []).map(Number).filter((d) => Number.isInteger(d) && d >= 0 && d <= 6))].sort();
   const per = days.length || Math.round(Number(r.per));
   if (!(per >= 1)) return null;
   const log = (Array.isArray(r.log) ? r.log : []).filter((e) => e && validDay(e.day)).map((e) => ({
@@ -58,7 +75,7 @@ export function cleanRoutine(r){
     ...(e.ev ? { ev: String(e.ev) } : {}),
   }));
   return {
-    per: Math.min(PER_MAX, per), until: validDay(r.until) ? r.until : null, log: log.slice(-LOG_MAX),
+    per: Math.min(month ? PER_MAX_MONTH : PER_MAX, per), ...(month ? { every: "month" } : {}), until: validDay(r.until) ? r.until : null, log: log.slice(-LOG_MAX),
     ...(days.length ? { days, at: validTime(r.at) ? r.at : DEFAULT_AT } : {}),
     ...(r.series?.id ? { series: { id: String(r.series.id), sig: String(r.series.sig || "") } } : {}),
     ...(Array.isArray(r.skipped) && r.skipped.length ? { skipped: r.skipped.map(String).slice(-30) } : {}),
@@ -67,15 +84,15 @@ export function cleanRoutine(r){
 
 export const isRoutine = (task) => !!cleanRoutine(task?.routine);
 
-// Sessions logged in the week `day` falls in.
+// Sessions logged in the week (or month) `day` falls in.
 export function doneThisWeek(task, day = dayOf()){
-  const from = weekStart(day), to = addDays(from, 6);
+  const { from, to } = periodOf(task.routine, day);
   return (task.routine?.log || []).filter((e) => e.day >= from && e.day <= to).length;
 }
 
 // Days left in this week, today included, cut short by `until`.
 export function daysLeft(task, day = dayOf()){
-  let end = addDays(weekStart(day), 6);
+  let end = periodOf(task.routine, day).to;
   const until = task.routine?.until;
   if (until && until < end) end = until;
   return end < day ? 0 : Math.round((noon(end) - noon(day)) / 86400000) + 1;
@@ -110,7 +127,7 @@ export function eventIsRoutine(ev, task){
 // slots that are over but not answered yet ("Did it?"); they count as
 // planned until answered, so Daisey doesn't push a second one meanwhile.
 export function calendarWeek(task, events = [], now = Date.now()){
-  const today = dayOf(now), from = weekStart(today), to = addDays(from, 6);
+  const today = dayOf(now), { from, to } = periodOf(task.routine, today);
   const out = { past: [], ahead: 0, today: false, ask: [] };
   const log = task.routine?.log || [], skipped = new Set(task.routine?.skipped || []);
   for (const ev of events) {
@@ -157,10 +174,11 @@ export function routineCalendar(tasks, events, now = Date.now()){
 
 // Where the week stands: done, planned on the calendar, still needed, days left.
 export function weekState(task, day = dayOf(), cal = null){
-  const per = cleanRoutine(task.routine)?.per || 0;
+  const r = cleanRoutine(task.routine), per = r?.per || 0, p = periodOf(r, day);
   const done = doneThisWeek(task, day), ahead = cal?.ahead || 0;
-  // gone: whole days of the week already over (Sunday: 0).
-  return { per, done, ahead, need: Math.max(0, per - done - ahead), daysLeft: daysLeft(task, day), gone: noon(day).getDay() };
+  // gone: whole days of the period already over (Sunday, or the 1st: 0).
+  return { per, done, ahead, need: Math.max(0, per - done - ahead), daysLeft: daysLeft(task, day),
+    gone: Math.round((noon(day) - noon(p.from)) / 86400000), len: p.len, word: periodWord(task) };
 }
 
 // "1 of 3 this week", "3 of 3 this week ✓" — for the task sheet and the lists.
@@ -168,7 +186,7 @@ export function weekLine(task, day = dayOf()){
   const per = cleanRoutine(task.routine)?.per;
   if (!per) return "";
   const done = doneThisWeek(task, day);
-  return `${done} of ${per} this week${done >= per ? " ✓" : ""}`;
+  return `${done} of ${per} this ${periodWord(task)}${done >= per ? " ✓" : ""}`;
 }
 
 // ---------- a session ----------
@@ -180,7 +198,7 @@ export function sessionPatch(task, { now = Date.now(), minutes = 0, ev = null } 
   const today = dayOf(now);
   const min = ev ? ev.min : Math.round(minutes);
   const log = [...r.log, { day: ev?.day || today, ...(min > 0 ? { min } : {}), ...(ev ? { ev: ev.id } : {}) }].slice(-LOG_MAX);
-  const next = doneThisWeek({ routine: { log } }, today) >= r.per ? addDays(weekStart(today), 7) : addDays(today, 1);
+  const next = doneThisWeek({ routine: { ...r, log } }, today) >= r.per ? addDays(periodOf(r, today).to, 1) : addDays(today, 1);
   // A session logged from the calendar never pulls the next one closer.
   const notBefore = task.notBefore && task.notBefore > next ? task.notBefore : next;
   const over = !!r.until && notBefore > r.until;

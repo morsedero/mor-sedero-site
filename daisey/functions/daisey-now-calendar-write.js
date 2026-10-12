@@ -103,15 +103,15 @@ exports.handler = async (event) => {
   const base = `${API}/${encodeURIComponent(calId)}/events`;
   const url = action === "create" ? base : `${base}/${encodeURIComponent(eventId)}`;
   const headers = { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" };
-  // A routine's set days (app/js/routine.js, Mor 2026-10-08): one weekly
-  // event, recurrence { days: ["MO", "TH"], until: "YYYY-MM-DD" | null },
-  // into the "Daisey" calendar. Google needs the zone to repeat it at the
-  // same local time across a clock change.
-  const BYDAY = ["SU", "MO", "TU", "WE", "TH", "FR", "SA"];
+  // A repeating new event, recurrence { freq?, days?, nth?, monthDay?, until? }:
+  // a routine's set days (app/js/routine.js, Mor 2026-10-08) — weekly, into
+  // the "Daisey" calendar — or Google's Repeat menu on the event sheet (Mor,
+  // 2026-10-12: daily, weekly, monthly, yearly). freq defaults to WEEKLY.
+  // Google needs the zone to repeat it at the same local time across a clock
+  // change.
   const rec = action === "create" && req.recurrence && typeof req.recurrence === "object" ? req.recurrence : null;
-  const recDays = rec && Array.isArray(rec.days) ? [...new Set(rec.days.filter((d) => BYDAY.includes(d)))] : [];
-  if (rec && (!recDays.length || calendarId !== "daisey")) return fail(400, "bad_request");
-  const recUntil = rec && typeof rec.until === "string" && /^\d{4}-\d{2}-\d{2}$/.test(rec.until) ? `;UNTIL=${rec.until.replace(/-/g, "")}T235959Z` : "";
+  const rule = rec && recurrenceRule(rec);
+  if (rec && !rule) return fail(400, "bad_request");
   const zone = typeof req.timeZone === "string" && /^[A-Za-z_]+\/[A-Za-z_\/+-]+$/.test(req.timeZone) ? req.timeZone : "Asia/Jerusalem";
   const times = rec ? { start: { dateTime: start, timeZone: zone }, end: { dateTime: end, timeZone: zone } }
     : { start: { dateTime: start }, end: { dateTime: end } };
@@ -124,7 +124,7 @@ exports.handler = async (event) => {
       // A task's event wears a daisy and Banana yellow (colorId 5), so it reads
       // as Daisey's at a glance. Events the user typed (no taskId) stay plain.
       summary: hasTask ? `${DAISY} ${title}` : title, ...times, ...(place ? { location: place } : {}),
-      ...(rec ? { recurrence: [`RRULE:FREQ=WEEKLY;BYDAY=${recDays.join(",")}${recUntil}`] } : {}),
+      ...(rule ? { recurrence: [rule] } : {}),
       ...(hasTask ? { colorId: "5" } : {}),
       ...(log ? { transparency: "transparent" } : {}),
       ...(hasTask ? { description: log ? note || "Done with Daisey." : "Planned with Daisey.",
@@ -147,6 +147,26 @@ exports.handler = async (event) => {
   return reply(200, { ok: true });
 };
 
+// The RRULE line for a recurrence the client sent, or null when it makes no
+// sense. Built here, never passed through, so only these shapes reach Google:
+// DAILY · WEEKLY + days · MONTHLY + monthDay (the 12th) or + nth and one day
+// (2nd Thursday; nth -1 = the last) · YEARLY.
+function recurrenceRule(rec){
+  const BYDAY = ["SU", "MO", "TU", "WE", "TH", "FR", "SA"];
+  const freq = ["DAILY", "WEEKLY", "MONTHLY", "YEARLY"].includes(rec.freq) ? rec.freq : "WEEKLY";
+  const days = Array.isArray(rec.days) ? [...new Set(rec.days.filter((d) => BYDAY.includes(d)))] : [];
+  const until = typeof rec.until === "string" && /^\d{4}-\d{2}-\d{2}$/.test(rec.until) ? `;UNTIL=${rec.until.replace(/-/g, "")}T235959Z` : "";
+  const nth = Number(rec.nth), monthDay = Number(rec.monthDay);
+  let by = "";
+  if (freq === "WEEKLY") { if (!days.length) return null; by = `;BYDAY=${days.join(",")}`; }
+  else if (freq === "MONTHLY") {
+    if (Number.isInteger(monthDay) && monthDay >= 1 && monthDay <= 31) by = `;BYMONTHDAY=${monthDay}`;
+    else if ([1, 2, 3, 4, -1].includes(nth) && days.length === 1) by = `;BYDAY=${nth}${days[0]}`;
+    else return null;
+  }
+  return `RRULE:FREQ=${freq}${by}${until}`;
+}
+
 // The calendars Daisey makes for itself, by the calendarId the client sends.
 const OWN = {
   daisey: { summary: "Daisey", description: "Blocks you accepted from Daisey's pencil schedule." },
@@ -168,3 +188,5 @@ async function daiseyCalendar(accessToken, timeZone, { summary, description }){
   if (!made.ok) { console.error("daisey-now-calendar-write", "make calendar", made.status, await made.text()); return null; }
   return (await made.json()).id;
 }
+
+exports.recurrenceRule = recurrenceRule; // for test/v1/routine.test.mjs

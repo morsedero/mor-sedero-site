@@ -9,7 +9,7 @@
 // (A Done logs no minutes since 2026-10-11, so the Week page counts its s.)
 const minOf = (e) => e.m || e.s || 0;
 // Weeks run Sunday to Saturday, as routines do.
-import { dayOf, addDays, weekStart, cleanRoutine } from "./routine.js";
+import { dayOf, addDays, weekStart, cleanRoutine, periodOf, monthly } from "./routine.js";
 import { toMinutes, DEFAULT_SIZE, INBOX } from "./model.js";
 
 const MIN = 60000;
@@ -126,14 +126,15 @@ export function flowers(summary, projectNames = [], tiers = {}){
 
 // ---------- routines ----------
 // Consecutive weeks (before this one, plus this one once it is met) in which a
-// routine got its `per` sessions.
+// routine got its `per` sessions. A monthly routine counts months.
 export function weekStreak(task, day = dayOf()){
   const r = cleanRoutine(task.routine);
   if (!r) return 0;
-  const inWeek = (from) => r.log.filter((e) => e.day >= from && e.day <= addDays(from, 6)).length;
-  let from = weekStart(day), n = 0;
-  if (inWeek(from) >= r.per) n++;
-  for (from = addDays(from, -7); n < 52 && inWeek(from) >= r.per; from = addDays(from, -7)) n++;
+  const met = (d) => { const p = periodOf(r, d); return r.log.filter((e) => e.day >= p.from && e.day <= p.to).length >= r.per; };
+  const back = (d) => addDays(periodOf(r, d).from, -1); // a day in the period before
+  let d = day, n = 0;
+  if (met(d)) n++;
+  for (d = back(d); n < 52 && met(d); d = back(d)) n++;
   return n;
 }
 
@@ -143,12 +144,12 @@ export function routineRows(tasks = [], now = Date.now()){
   const day = dayOf(now), from = weekStart(day);
   return tasks.filter((t) => t.status !== "dropped" && cleanRoutine(t.routine)).map((t) => {
     const r = cleanRoutine(t.routine);
-    const done = r.log.filter((e) => e.day >= from && e.day <= addDays(from, 6));
+    const p = periodOf(r, day), done = r.log.filter((e) => e.day >= p.from && e.day <= p.to);
     const dots = Array.from({ length: 7 }, (_, i) => {
       const d = addDays(from, i);
       return { day: d, state: done.some((e) => e.day === d) ? "done" : d >= day && (r.days || []).includes(i) ? "set" : "none", today: d === day };
     });
-    return { id: t.id, title: t.title, project: t.project || INBOX, per: r.per, count: done.length, met: done.length >= r.per, dots, streak: weekStreak(t, day), over: !!r.until && r.until < day };
+    return { id: t.id, title: t.title, project: t.project || INBOX, per: r.per, count: done.length, met: done.length >= r.per, dots, streak: weekStreak(t, day), month: monthly(r), over: !!r.until && r.until < day };
   }).filter((r) => !r.over).sort((a, b) => Number(a.met) - Number(b.met) || a.title.localeCompare(b.title));
 }
 

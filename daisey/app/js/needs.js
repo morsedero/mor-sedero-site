@@ -204,7 +204,7 @@ export function mountNeeds(root, uid, { onClose, extra, onAway } = {}){
       const e = item.slot, s = weekState(t);
       return { tone: areaClass(t).trim() || "area-personal", ico: "check", q: "Did it?",
         sub: `${clock(e.start)}–${clock(e.end)}${["today", "tomorrow"].includes(dayWord(e.day)) ? ` ${dayWord(e.day)}` : `, ${weekday(e.day)}`}.`, item: t.title,
-        say: s.done ? `${s.done} of ${s.per} this week so far.` : `Your ${s.per}× a week.`,
+        say: s.done ? `${s.done} of ${s.per} this ${s.word} so far.` : `Your ${s.per}× a ${s.word}.`,
         yes: ["Did it", () => { restoreTask(uid, t.id, sessionPatch(t, { ev: e })).catch(fail); next(); }],
         no: ["Skipped it", () => { restoreTask(uid, t.id, skipSlotPatch(t, e.id)).catch(fail); next(); }] };
     }

@@ -315,10 +315,13 @@ export function logDone({ title, minutes, taskId, note, end = Date.now() }){
 // calendarId and taskId are for the undo behind Remove (addevent.js), which
 // puts a removed event back where it was rather than in the main calendar.
 // location: where it happens (trips.js plans the ride from its city).
-export function createEvent({ title, date, at, minutes, calendarId = "primary", taskId, location }){
+// `recurrence`: Google's Repeat menu (addevent.js), { freq, days?, nth?, monthDay? }.
+export function createEvent({ title, date, at, minutes, calendarId = "primary", taskId, location, recurrence }){
   const [y, m, d] = date.split("-").map(Number);
   const [hh, mm] = at.split(":").map(Number);
   const start = new Date(y, m - 1, d, hh, mm, 0, 0);
   const end = new Date(start.getTime() + minutes * 60000);
-  return write({ action: "create", calendarId, title, ...(taskId ? { taskId } : {}), ...(location ? { location } : {}), start: start.toISOString(), end: end.toISOString() });
+  return write({ action: "create", calendarId, title, ...(taskId ? { taskId } : {}), ...(location ? { location } : {}),
+    ...(recurrence ? { recurrence, timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone } : {}),
+    start: start.toISOString(), end: end.toISOString() });
 }

@@ -166,3 +166,38 @@ test("seriesSig: null without set days; changes with time or title", () => {
   assert.notEqual(R.seriesSig(t), R.seriesSig({ ...t, routine: { ...t.routine, at: "08:00" } }));
   assert.notEqual(R.seriesSig(t), R.seriesSig({ ...t, title: "Gym" }));
 });
+
+test("monthly: N times a calendar month, met waits for the 1st", () => {
+  const t = gym({ routine: R.cleanRoutine({ per: 2, every: "month", days: [1], log: [{ day: "2026-10-02" }] }) });
+  assert.equal(t.routine.every, "month");
+  assert.equal(t.routine.days, undefined); // set days are a weekly thing
+  assert.equal(R.doneThisWeek(t, "2026-10-08"), 1);
+  assert.equal(R.daysLeft(t, "2026-10-08"), 24);
+  assert.equal(R.weekLine(t, "2026-10-08"), "1 of 2 this month");
+  const s = R.weekState(t, "2026-10-08");
+  assert.deepEqual([s.need, s.gone, s.len, s.word], [1, 7, 31, "month"]);
+  const p = R.sessionPatch(t, { now: THU });
+  assert.equal(p.notBefore, "2026-11-01");
+  assert.equal(p.routine.every, "month");
+  assert.equal(R.routineChange(t, { per: 3 }).routine.every, "month"); // a partial change keeps the month
+  assert.equal(R.routineChange(t, { per: 3, every: null }).routine.every, undefined);
+  assert.equal(R.cleanRoutine({ per: 30, every: "month" }).per, R.PER_MAX_MONTH);
+});
+
+test("event repeat: the write function builds only known RRULEs", async () => {
+  const { createRequire } = await import("node:module");
+  const req = createRequire(import.meta.url);
+  const Module = req("node:module");
+  const load = Module._load;
+  Module._load = function (name, ...rest) { return /blobs|firebase-auth|tokens/.test(name) ? {} : load.call(this, name, ...rest); };
+  const { recurrenceRule } = req("../../functions/daisey-now-calendar-write.js");
+  Module._load = load;
+  assert.equal(recurrenceRule({ days: ["MO", "TH"], until: "2026-12-01" }), "RRULE:FREQ=WEEKLY;BYDAY=MO,TH;UNTIL=20261201T235959Z");
+  assert.equal(recurrenceRule({ freq: "DAILY" }), "RRULE:FREQ=DAILY");
+  assert.equal(recurrenceRule({ freq: "MONTHLY", nth: 2, days: ["TH"] }), "RRULE:FREQ=MONTHLY;BYDAY=2TH");
+  assert.equal(recurrenceRule({ freq: "MONTHLY", nth: -1, days: ["TH"] }), "RRULE:FREQ=MONTHLY;BYDAY=-1TH");
+  assert.equal(recurrenceRule({ freq: "MONTHLY", monthDay: 12 }), "RRULE:FREQ=MONTHLY;BYMONTHDAY=12");
+  assert.equal(recurrenceRule({ freq: "YEARLY" }), "RRULE:FREQ=YEARLY");
+  assert.equal(recurrenceRule({ freq: "MONTHLY" }), null);
+  assert.equal(recurrenceRule({ freq: "WEEKLY", days: ["XX"] }), null);
+});

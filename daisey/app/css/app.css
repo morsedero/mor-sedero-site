@@ -927,6 +927,8 @@ select.ts-project { padding-block: 8px; padding-inline-start: 10px; padding-inli
 .ev-grid .timepick { appearance: none; -webkit-appearance: none; min-block-size: 44px; padding: 8px 4px; text-align: center; text-align-last: center; font-size: 16px; font-weight: 600; cursor: pointer; }
 
 @media (max-width: 420px) { .ev-grid .field input[type="date"]::-webkit-calendar-picker-indicator { display: none; } } /* a tap on the field opens the picker on phones anyway */
+.field[hidden] { display: none; }
+.ev-grid .ev-repeat { min-block-size: 44px; font-size: 16px; } /* Google's Repeat menu (addevent.js); 16px so iOS does not zoom */
 
 /* Tell Daisey's answer: a sheet just above the bar, cards to confirm. */
 .tell-panel {
@@ -963,12 +965,12 @@ body.focus .tell-panel { display: none; }
 .ride-ask { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-block-end: 10px; font-size: 13px; }
 .ride-ask .chip { min-block-size: 36px; padding-inline: 12px; border: none; background: var(--chip); font-size: 13px; }
 .place-fix { margin: 8px 0 0; }
-.place-fix > .muted { flex-basis: 100%; }
-
 /* Ride with nothing that fits: the question, Switch's small task cards, then rest. */
 .phone-ok { display: grid; margin-block-start: 10px; }
 .phone-q { margin: 0 0 6px; font-size: 13px; font-weight: 600; color: var(--ink-2); }
 .phone-ok .switch-ask { margin-block-start: 0; }
+.place-fix > .muted { flex-basis: 100%; }
+
 
 /* ===== Layout round 2 (Mor, 2026-10-05; daisey/New Design/6–10) =====
    A calm home with everything one pull away. Sizes and colours follow the
@@ -1263,14 +1265,14 @@ dialog.tsheet .now-head { margin-block-end: -4px; }
 .ts-pct-row { display: flex; align-items: center; gap: 12px; }
 .ts-pct-row input { flex: 1; min-width: 0; }
 .ts-worked { margin: 0 0 10px; text-align: center; font-size: 12px; color: var(--ink-2); }
-/* Routines (routine.js): "Repeats weekly" switch, then − N + times a week. */
+/* Routines (routine.js): "Repeats" switch, week/month, then − N + times. */
 .ts-per { display: flex; align-items: center; gap: 10px; font-size: 14px; color: var(--ink-2); }
 .ts-per[hidden] { display: none; }
 .ts-step { font: inherit; font-size: 18px; font-weight: 700; inline-size: 36px; block-size: 36px; border-radius: 50%;
   border: 1px solid var(--line); background: var(--surface); color: var(--ink); cursor: pointer; }
 .ts-step:disabled { opacity: .35; cursor: default; }
-.ts-mode[hidden], .ts-set[hidden] { display: none; }
-.ts-mode .chip { min-block-size: 34px; font-size: 14px; }
+.ts-mode[hidden], .ts-every[hidden], .ts-set[hidden] { display: none; }
+.ts-mode .chip, .ts-every .chip { min-block-size: 34px; font-size: 14px; }
 .ts-set { display: grid; gap: 8px; }
 .ts-days { display: flex; gap: 5px; }
 .ts-day { font: inherit; font-size: 14px; font-weight: 700; flex: 1 1 0; max-inline-size: 40px; aspect-ratio: 1; border-radius: 50%;
