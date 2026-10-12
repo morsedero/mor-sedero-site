@@ -34,7 +34,7 @@ import { isRoutine, routineCalendar, eventsToLog, sessionPatch } from "./routine
 import { waitingFor, personOf } from "./nudge.js";
 import { dayHours, isNight, nextMorning, dayEndAt, bookings, sameTitle, minText, gapsToday, planDate, usualHours, dayWord, answerDate } from "./day.js";
 import { collectNeeds, wrapList } from "./needs.js";
-import { h, icon, bdi, pieces, sizeText, sizeChip, progressBar, dur, say, nightDivider, flash, weekDots, focusField, dragScroll } from "./ui.js";
+import { h, icon, bdi, pieces, sizeText, sizeChip, heroChip, progressBar, dur, say, nightDivider, flash, weekDots, focusField, dragScroll } from "./ui.js";
 import { areaClass, areaName, projectShown, doneToday, moonDaisy, watchProjectColors } from "./look.js";
 
 const LATER_MS = LATER_MINUTES * 60000;
@@ -173,7 +173,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     // read as a contradiction (Mor, 2026-10-07). Plus the % and a bar.
     const sizeLbl = sizeChip(t);
     return h("div", { className: "now-card" + (main ? " main hero" : "") + areaClass(t) },
-      main ? heroTop(t, sizeLbl)
+      main ? heroTop(t, heroChip(t))
         : h("div", { className: "now-meta" }, ...pieces(t.project, sizeLbl)),
       main && onOpen ? titleButton(t) : h("div", { className: "now-title", dir: "auto", textContent: t.title }),
       weekDots(t),
@@ -848,7 +848,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
       h("section", { className: "now-card main hero night" + (p ? areaClass(p.task) : ""), ariaLabel: early ? "First today" : "Tomorrow first" },
         h("div", { className: "night-label", textContent: early ? "First today" : "Tomorrow first" }),
         ...(p ? [
-          heroTop(p.task, [sizeChip(p.task), mark(p.task)].filter(Boolean).join(" · ")),
+          heroTop(p.task, [heroChip(p.task), mark(p.task)].filter(Boolean).join(" · ")),
           onOpen ? titleButton(p.task) : h("div", { className: "now-title", dir: "auto", textContent: p.task.title }),
           // Before the first event if it fits there (counting the trip
           // there, trips.js), else when it's over, the trip back included. The

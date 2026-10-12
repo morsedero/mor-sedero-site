@@ -63,6 +63,13 @@ export function sizeChip(t){
   return p > 0 ? `${p}% · ${lbl}` : lbl;
 }
 
+// The main card's chip: the % and its bar say enough once some is done; a
+// "24 min left" there read as time to the due date or start (Mor, 2026-10-12).
+export function heroChip(t){
+  const p = progressOf(t);
+  return p > 0 ? `${p}%` : sizeChip(t);
+}
+
 // A thin bar along a card's bottom edge; nothing at 0%.
 export const progressBar = (t) => {
   const p = progressOf(t);
