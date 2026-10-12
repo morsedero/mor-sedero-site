@@ -31,7 +31,7 @@ const SCREENS = {
   schedule: ["--cal", "day"],
   tell: ["--chat", "on", "--click", "#tellInput=add milk, call Uri", "--eval", "new Promise((r) => { document.querySelector('#tell').requestSubmit(); setTimeout(r, 900); })"],
   needs: ["--cal", "day", "--click", "#needsChip"],
-  later: ["--click", "[aria-label^='Later']"],
+  later: ["--click", "[aria-label^='Not now']"],
 };
 const PHONES = { 320: 568, 360: 780, 390: 844, 430: 932 };
 const widths = (opt("--widths") || Object.keys(PHONES).join(",")).split(",").map(Number);

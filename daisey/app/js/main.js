@@ -226,6 +226,12 @@ async function boot(){
   $("#projectsChip").onclick = () => window.__toggleProjects && window.__toggleProjects();
   $("#weekChip").onclick = () => window.__toggleStats && window.__toggleStats();
   $("#focusChip").onclick = () => mounted?.now?.focus();
+  // On a phone, Plan · Projects · Week move up into the header as icons, so
+  // the Now card gets the whole width (Mor, 2026-10-12: the card was crowded).
+  // Wider, they go back to their column beside the card.
+  const phone = matchMedia("(max-width: 599px)");
+  const placeSide = () => phone.matches ? $(".hdr-end").insertBefore($("#side"), $("#focusChip")) : $(".nowrow").append($("#side"));
+  phone.addEventListener("change", placeSide); placeSide();
   $("#settingsX").onclick = () => settings.close();
   settings.addEventListener("click", (e) => { if (e.target === settings) settings.close(); });
 

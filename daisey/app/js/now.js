@@ -170,7 +170,8 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     const t = s.task;
     // The why line fits the time LEFT (engine leftMinutes), so the chip says it
     // too once some is done/spent: "30 min" beside "fills your free 23 min"
-    // read as a contradiction (Mor, 2026-10-07). Plus the % and a bar.
+    // read as a contradiction (Mor, 2026-10-07). The bar runs along the
+    // card's bottom, the main card's too (Mor, 2026-10-12).
     const sizeLbl = sizeChip(t);
     return h("div", { className: "now-card" + (main ? " main hero" : "") + areaClass(t) },
       main ? heroTop(t, heroChip(t), dueTag(t))
@@ -179,7 +180,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
       weekDots(t),
       !main && t.nextStep && h("p", { className: "now-next" }, "Next: ", bdi(t.nextStep)),
       why && h("p", { className: "now-why" }, ...say(why)),
-      !main && progressBar(t),
+      progressBar(t),
       ...extra);
   }
   const titleButton = (t) => h("button", { type: "button", className: "now-title", dir: "auto", textContent: t.title,
@@ -202,7 +203,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     return h("div", { className: "hero-top" },
       h("span", { className: "hero-area" }, h("span", { className: "dot", ariaHidden: "true" }),
         h("span", { className: "hero-where" }, proj || area || "Inbox")),
-      side && h("span", { className: "hero-side" }, due, side, progressBar(t)));
+      side && h("span", { className: "hero-side" }, due, side));
   }
 
   // A date the card has to say (Mor, 2026-10-12): due today or tomorrow, or a
@@ -864,6 +865,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
         ...(p ? [
           heroTop(p.task, [heroChip(p.task), mark(p.task)].filter(Boolean).join(" · ")),
           onOpen ? titleButton(p.task) : h("div", { className: "now-title", dir: "auto", textContent: p.task.title }),
+          progressBar(p.task),
           // Before the first event if it fits there (counting the trip
           // there, trips.js), else when it's over, the trip back included. The
           // title is its own <bdi>, or a Hebrew name drags the times after it
@@ -1059,7 +1061,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
         h("button", { className: "chip quiet", type: "button", textContent: sd.picked.length ? "Done" : "Not now", onclick: close })));
   }
 
-  // Switch · Pending · Later, then Done at the row's far end: the one loud
+  // Switch · Not now, then Done at the row's far end: the one loud
   // button (Mor, 2026-10-10: no Start on the card. The plan already says
   // what's on, so the loop is Done, Done, Later; Focus lives in the task
   // sheet). Each opens its own row under the card; a second tap shuts it.
@@ -1073,13 +1075,17 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
       h("div", { className: "now-actions now-row" },
         // Never a dead end while On hold holds tasks (DAISEY_SPEC "Someday comes back").
         (alts.length > 0 || someN > 0) && action("switch", "Switch", `something else instead of ${task.title}`, { ariaExpanded: String(state.showAlts), onclick: toggle("showAlts") }),
-        action("pending", "Pending", `${task.title} is waiting on something`, { ariaExpanded: String(state.pendAsk), onclick: toggle("pendAsk") }),
-        action("later", "Later", `come back to ${task.title} later`, { ariaExpanded: String(state.notNow), onclick: toggle("notNow") }),
+        // Not now: Later and Pending as one key (Mor, 2026-10-12: the card
+        // was crowded on a phone); Pending is the row's first choice.
+        action("later", "Not now", `later, or ${task.title} is waiting on something`, { ariaExpanded: String(state.notNow || state.pendAsk),
+          onclick: () => { if (state.pendAsk) { state.pendAsk = false; render(); } else toggle("notNow")(); } }),
         done),
-      // Later: three times, then On hold set apart under them, quieter and
-      // dashed, since it isn't a time: no date, into the project's On hold
-      // list (Mor, 2026-10-10: In 10 min went).
-      state.notNow && h("div", { className: "later-ask", role: "group", ariaLabel: "Come back when?" },
+      // Not now: Waiting on…, three times, then On hold set apart under them,
+      // quieter and dashed, since it isn't a time: no date, into the
+      // project's On hold list (Mor, 2026-10-10: In 10 min went).
+      state.notNow && h("div", { className: "later-ask", role: "group", ariaLabel: "Not now: why, or when?" },
+        h("button", { className: "chip pend-opt", type: "button", ariaLabel: `Pending: ${task.title} is waiting on something`,
+          onclick: () => { state.notNow = false; state.pendAsk = true; render(); } }, icon("pending"), h("span", { textContent: "Waiting on…" })),
         ...[["today", "Later today"], ["tomorrow", "Tomorrow"], ["week", "This week"]].map(([w, text]) =>
           chip(text, () => later(task, w))),
         h("button", { className: "hold-opt", type: "button", ariaLabel: `Put ${task.title} on hold: no date, in the project's On hold list`, onclick: () => later(task, "someday") },
@@ -1623,7 +1629,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     const p = passedOver(task, s, { now, today: day });
     if (p) { Object.assign(task, p); restoreTask(uid, task.id, p).catch(fail); }
   }
-  const planWhy = (row) => [row.start > Date.now() + 2 * 60000 ? `next in your plan, ${clock(row.start)}–${clock(row.end)}` : `in your plan until ${clock(row.end)}`];
+  const planWhy = (row) => [row.start > Date.now() + 2 * 60000 ? `next in your plan, ${clock(row.start)}–${clock(row.end)}` : `until ${clock(row.end)}`];
   function breakCard(b, next){
     const name = b.name || (b.type === "meal" ? "Meal" : "Breather"); // the Today list's words
     return quietCard({ meta: "Break", side: `until ${clock(b.end)}`, title: name,

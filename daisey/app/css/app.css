@@ -538,6 +538,9 @@ dialog.now:focus { outline: none; }
 /* Later's On hold: not a time, so set apart on its own line, dashed and quiet. */
 .later-ask .hold-opt { flex-basis: 100%; display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-block-size: 34px; margin-block-start: 2px; font: inherit; font-size: 13px; font-weight: 600; color: var(--sub); background: none; border: 1px dashed var(--aline, var(--line)); border-radius: 999px; cursor: pointer; }
 .later-ask .hold-opt svg { inline-size: 16px; block-size: 16px; flex: none; }
+/* Not now's first choice, Pending, on its own line above the times (2026-10-12). */
+.later-ask:has(.hold-opt) .chip.pend-opt { flex: 1 0 100%; display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+.later-ask .pend-opt svg { inline-size: 16px; block-size: 16px; flex: none; }
 .later-ask .hold-opt:hover { color: var(--ink); border-style: solid; }
 .hold-opt-s { font-weight: 400; }
 .later-ask:has(.hold-opt) { flex-wrap: wrap; gap: 5px; }
@@ -1427,6 +1430,24 @@ dialog.tsheet .msg:empty { display: none; }
 @keyframes plan-ring { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--a-admin-ink) 60%, transparent); } 100% { box-shadow: 0 0 0 12px transparent; } }
 #side .hchip.ready .hchip-dot { display: block; position: absolute; inset-block-start: -2px; inset-inline-end: -4px; outline: 2px solid var(--a-admin-tint); }
 body.focus #side { display: none; }
+/* Phone (main.js placeSide): the column moves into the header, before Focus,
+   as three round icon buttons; the words go to their aria-labels and title
+   (Mor, 2026-10-12: the card gets the whole width). */
+.hdr-end > #side { inline-size: auto; flex-direction: row; gap: 6px; padding: 0; align-self: center; }
+.hdr-end > #side .hchip { flex: none; inline-size: 34px; block-size: 34px; min-block-size: 0; padding: 0; border-radius: 50%; }
+.hdr-end > #side .hchip svg { inline-size: 17px; block-size: 17px; }
+/* Words kept for screen readers only (Plan's name is its word). Focus goes
+   to its icon too when the header runs short: a small phone, or Needs you
+   showing; a small phone with Needs you drops Focus (the task sheet has it). */
+.hdr-end > #side .hchip .hchip-word,
+.hdr-end:has(> #side):has(> #needsChip:not([hidden])) #focusChip .hchip-word { position: absolute; inline-size: 1px; block-size: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.hdr-end:has(> #side):has(> #needsChip:not([hidden])) #focusChip { inline-size: 34px; padding: 0; justify-content: center; }
+@media (max-width: 379px) {
+  .hdr-end > #side { gap: 4px; } .hdr-end > #side .hchip { inline-size: 32px; block-size: 32px; }
+  .hdr-end:has(> #side) #focusChip .hchip-word { position: absolute; inline-size: 1px; block-size: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .hdr-end:has(> #side) #focusChip { inline-size: 34px; padding: 0; justify-content: center; }
+  .hdr-end:has(> #side):has(> #needsChip:not([hidden])) #focusChip { display: none; }
+}
 /* While Switch, Pending or Later is open under the card, the side buttons
    keep their closed size instead of stretching with the taller card. */
 :root:not(.night) .nowrow:has(.now-card.main :is(.later-ask, .pend-ask)) #side { align-self: flex-start; }
@@ -1442,12 +1463,14 @@ body.focus #side { display: none; }
   box-shadow: 0 6px 12px -6px color-mix(in srgb, var(--aink) 22%, transparent); }
 .now-card.main .hero-top, .now-card.main .hero-area { font-size: 13px; }
 .now-card.main .hero-side { font-size: 12px; display: inline-flex; align-items: center; gap: 6px; }
-.hero-side .task-bar { position: static; inline-size: 36px; block-size: 3px; border-radius: 2px; flex: none; }
-.now-card.main .now-title, .now-card.main button.now-title {
-  margin-block-start: 5px; font-size: 20px; font-weight: 650; line-height: 1.2; letter-spacing: -0.2px;
 .hero-due { color: var(--p-orange-ink); font-weight: 600; }
 .hero-due.over { color: var(--danger); font-weight: 700; }
 .hero-due::after { content: " ·"; color: var(--sub); font-weight: 500; }
+/* The bar: a thin strip inside the card's bottom edge, clear of the round
+   corners (Mor, 2026-10-12: it sat in the top row and ran past the card). */
+.now-card.main > .task-bar { inset-inline: 22px; inset-block-end: 5px; border-radius: 2px; }
+.now-card.main .now-title, .now-card.main button.now-title {
+  margin-block-start: 5px; font-size: 20px; font-weight: 650; line-height: 1.2; letter-spacing: -0.2px;
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
 }
 .now-card.main .now-next, .now-card.main .now-why { margin: 4px 0 0; font-size: 14px; line-height: 1.35; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -1756,7 +1779,7 @@ body.focus #side { display: none; }
    three chips in the day's right column beside it. The column still sits in
    .nowrow's flex column (the foot needs margin-top:auto), pulled up beside
    the hero by its own height. */
-:root.night #side { order: 1; align-self: flex-end; block-size: 150px; padding-block: 0; margin-block-start: -150px; position: relative; z-index: 1; }
+:root.night .nowrow > #side { order: 1; align-self: flex-end; block-size: 150px; padding-block: 0; margin-block-start: -150px; position: relative; z-index: 1; }
 :root.night #panel { margin-block-start: 15px; } /* the day's gap under the card (#side's 15px) */
 :root.night:has(#planPage:not([hidden]), #projPage:not([hidden]), #projectview:not([hidden])) #nowcard > .now-card, :root.night:has(#planPage:not([hidden]), #projPage:not([hidden]), #projectview:not([hidden])) #nowcard > .night-foot, :root.night:has(#planPage:not([hidden]), #projPage:not([hidden]), #projectview:not([hidden])) #nowcard > .night-today { display: none; }
 :root.night #nowcard, body.focus #nowcard { flex: 1 1 auto; }

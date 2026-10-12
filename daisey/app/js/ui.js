@@ -65,10 +65,10 @@ export function sizeChip(t){
 
 // The main card's chip: the % and its bar say enough once some is done; a
 // "24 min left" there read as time to the due date or start (Mor, 2026-10-12).
-// Full size first, then the %: "30 min · 20%" — never "left" here.
+// Full size only, never "left" here; the % went too (Mor, 2026-10-12: the
+// card was crowded) — the bar along the card's bottom says how far along.
 export function heroChip(t){
-  const p = progressOf(t), size = estText(t, toMinutes(t.size) ?? leftMinutes(t));
-  return p > 0 ? `${size} · ${p}%` : size;
+  return estText(t, toMinutes(t.size) ?? leftMinutes(t));
 }
 
 // A thin bar along a card's bottom edge; nothing at 0%.
