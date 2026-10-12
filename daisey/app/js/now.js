@@ -174,7 +174,8 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     // card's bottom, the main card's too (Mor, 2026-10-12).
     const sizeLbl = sizeChip(t);
     return h("div", { className: "now-card" + (main ? " main hero" : "") + areaClass(t) },
-      main ? heroTop(t, heroChip(t), dueTag(t))
+      main && dueTag(t),
+      main ? heroTop(t, heroChip(t))
         : h("div", { className: "now-meta" }, ...pieces(t.project, sizeLbl)),
       main && onOpen ? titleButton(t) : h("div", { className: "now-title", dir: "auto", textContent: t.title }),
       weekDots(t),
@@ -196,19 +197,20 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
   // A guessed area isn't named (user test #8: an Inbox task said "Work"):
   // only one the user set, else the project, else Inbox.
   const ownArea = (t) => ((t.guessed || []).includes("area") ? "" : areaName(t));
-  function heroTop(t, side, due){
+  function heroTop(t, side){
     const area = ownArea(t);
     const proj = projectShown(t) && h("button", { type: "button", className: "now-proj",
       title: `Open ${t.project}`, onclick: () => onProject?.(t.project) }, bdi(t.project));
     return h("div", { className: "hero-top" },
       h("span", { className: "hero-area" }, h("span", { className: "dot", ariaHidden: "true" }),
         h("span", { className: "hero-where" }, proj || area || "Inbox")),
-      side && h("span", { className: "hero-side" }, due, side));
+      side && h("span", { className: "hero-side" }, side));
   }
 
   // A date the card has to say (Mor, 2026-10-12): due today or tomorrow, or a
   // deadline already passed (red). Further off, the why line covers it. A
-  // passed target isn't late (triage.js), so it says nothing.
+  // passed target isn't late (triage.js), so it says nothing. A tab on the
+  // card's top edge, not in the top row, where it hid the project on a phone.
   function dueTag(t){
     if (!t.due || t.status === "done") return null;
     const d = Math.round((new Date(`${t.due}T12:00`) - new Date(`${logicalDate()}T12:00`)) / 864e5);

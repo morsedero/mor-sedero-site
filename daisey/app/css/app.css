@@ -1492,6 +1492,14 @@ body.focus #side { display: none; }
 .hero-due { color: var(--p-orange-ink); font-weight: 600; }
 .hero-due.over { color: var(--danger); font-weight: 700; }
 .hero-due::after { content: " ·"; color: var(--sub); font-weight: 500; }
+/* Due/overdue is a tab on the card's top edge, half above the border, so the
+   top row keeps the project name whole (Mor, 2026-10-12: on a phone "Due
+   tomorrow" hid it). #nowcard's 10px top padding holds the overhang. */
+.now-card.main > .hero-due { position: absolute; inset-block-start: -10px; inset-inline-end: 20px; z-index: 1;
+  padding: 2px 9px; border-radius: 7px; font-size: 11px; line-height: 15px; font-weight: 700; letter-spacing: .2px; white-space: nowrap;
+  background: var(--p-orange-tint); border: 1px solid var(--p-orange-line); }
+.now-card.main > .hero-due.over { background: color-mix(in srgb, var(--danger) 12%, var(--surface)); border-color: color-mix(in srgb, var(--danger) 35%, var(--surface)); }
+.now-card.main > .hero-due::after { content: none; }
 /* The bar: a thin strip under Done, as wide as it, its % at the end
    (Mor, 2026-10-12: it sat in the top row and ran past the card, then
    spanned the whole card). */
