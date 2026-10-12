@@ -2293,10 +2293,25 @@ dialog.tsheet[open] > .ts-laptop + .ts-repeat { margin-block-start: -12px; }
 .hglance .bl-dots .wk-dots i { inline-size: 7px; block-size: 7px; border-width: 1.2px; }
 .hglance .bl-bee { font-size: 11px; }
 /* Phone home: the card and the glance sit together mid-screen. */
-:root:not(.night) body.home-float:has(#glance:not([hidden])) .nowrow { flex: 0 1 auto; margin-block-start: auto; }
-:root:not(.night) body.home-float:has(#glance:not([hidden])) #nowcard { padding-block-end: 0; }
-:root:not(.night) body.home-float #glance { margin-block: 14px 8vh; }
-@media (max-height: 700px) { :root:not(.night) body.home-float #glance { margin-block: 10px 2vh; } }
+/* Main card, Done today, routines and the dock always fit with no scroll
+   (Mor, 2026-10-12): the glance takes its natural height, the card row takes
+   what's left and the card itself tightens as the room shrinks. */
+:root:not(.night) body.home-float:has(#glance:not([hidden])) .nowrow { flex: 1 1 0; margin-block-start: 0; }
+:root:not(.night) body.home-float:has(#glance:not([hidden])) #nowcard { padding-block-end: 0; overflow: hidden; justify-content: flex-end; }
+:root:not(.night) body.home-float #glance { flex: none; overflow: visible; margin-block: 8px 2vh; }
+:root:not(.night) body.home-float:has(#glance:not([hidden])) .deck > .now-card.main { min-block-size: 0; }
+@media (max-height: 760px) {
+  :root:not(.night) body.home-float:has(#glance:not([hidden])) .deck > .now-card.main { padding: 12px 14px 10px; }
+  :root:not(.night) body.home-float:has(#glance:not([hidden])) .now-card.main .now-title { font-size: 19px; margin-block-start: 2px; }
+  :root:not(.night) body.home-float:has(#glance:not([hidden])) .now-card.main .now-why { font-size: 13px; }
+  :root:not(.night) body.home-float:has(#glance:not([hidden])) .now-card.main .now-row { padding-block-start: 8px; }
+  :root:not(.night) body.home-float #glance { margin-block: 6px 0; }
+  .hglance .bl-routine { min-block-size: 24px; }
+}
+@media (max-height: 640px) {
+  :root:not(.night) body.home-float:has(#glance:not([hidden])) .now-card.main .now-why { display: none; }
+  .hglance .bl-routine { min-block-size: 20px; }
+}
 
 /* Mini card (Mor, 2026-10-12): with Today open on a phone (body.card-mini,
    main.js syncPanel) the Now card is two rows: the words on top (where, then
