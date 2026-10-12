@@ -173,7 +173,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     // read as a contradiction (Mor, 2026-10-07). Plus the % and a bar.
     const sizeLbl = sizeChip(t);
     return h("div", { className: "now-card" + (main ? " main hero" : "") + areaClass(t) },
-      main ? heroTop(t, heroChip(t))
+      main ? heroTop(t, heroChip(t), dueTag(t))
         : h("div", { className: "now-meta" }, ...pieces(t.project, sizeLbl)),
       main && onOpen ? titleButton(t) : h("div", { className: "now-title", dir: "auto", textContent: t.title }),
       weekDots(t),
@@ -195,14 +195,28 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
   // A guessed area isn't named (user test #8: an Inbox task said "Work"):
   // only one the user set, else the project, else Inbox.
   const ownArea = (t) => ((t.guessed || []).includes("area") ? "" : areaName(t));
-  function heroTop(t, side){
+  function heroTop(t, side, due){
     const area = ownArea(t);
     const proj = projectShown(t) && h("button", { type: "button", className: "now-proj",
       title: `Open ${t.project}`, onclick: () => onProject?.(t.project) }, bdi(t.project));
     return h("div", { className: "hero-top" },
       h("span", { className: "hero-area" }, h("span", { className: "dot", ariaHidden: "true" }),
         h("span", { className: "hero-where" }, proj || area || "Inbox")),
-      side && h("span", { className: "hero-side" }, side, progressBar(t)));
+      side && h("span", { className: "hero-side" }, due, side, progressBar(t)));
+  }
+
+  // A date the card has to say (Mor, 2026-10-12): due today or tomorrow, or a
+  // deadline already passed (red). Further off, the why line covers it. A
+  // passed target isn't late (triage.js), so it says nothing.
+  function dueTag(t){
+    if (!t.due || t.status === "done") return null;
+    const d = Math.round((new Date(`${t.due}T12:00`) - new Date(`${logicalDate()}T12:00`)) / 864e5);
+    const dl = t.dateKind === "deadline", late = dl && (d < 0 || (d === 0 && t.dueTime && Date.now() >= dueAt(t)));
+    if (!late && (d < 0 || d > 1)) return null;
+    const day = d === 0 ? (t.dueTime || "today") : d === 1 ? `tomorrow${t.dueTime ? ` ${t.dueTime}` : ""}` : d === -1 ? "yesterday"
+      : new Date(`${t.due}T12:00`).toLocaleDateString(undefined, d >= -6 ? { weekday: "short" } : { day: "numeric", month: "short" });
+    const text = `${late ? "Was due" : dl ? "Due" : "By"} ${day}`;
+    return h("span", { className: `hero-due${late ? " over" : ""}`, textContent: text });
   }
 
   // The card. (Swiping it away is gone, Mor 2026-10-07: nobody could see it,
