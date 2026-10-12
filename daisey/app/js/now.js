@@ -1626,7 +1626,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
         why: st.free >= 15 ? `${dur(st.free)} free today. Want me to fit things in?` : "Want me to fit things in?",
         action: h("div", { className: "now-actions now-row" },
           h("button", { className: "btn quiet", type: "button", textContent: "Not now", onclick: () => { silenced(); render(); } }),
-          h("button", { className: "btn primary start", type: "button", onclick: () => { silenced(); openProposal(); } }, h("span", { textContent: "Plan the rest of today" }))),
+          h("button", { className: "btn primary start", type: "button", onclick: openProposal }, h("span", { textContent: "Plan the rest of today" }))),
         extras: [h("button", { className: "btn quiet", type: "button", textContent: "Or a lighter plan", onclick: lighterPlan })] });
     }
     return plainCard("empty quiet rough", { meta: "Rough day?", title: "Want a lighter plan?", why: silenceText(st, clock).replace(/ Want a lighter plan.*$/, ""),
@@ -1972,7 +1972,9 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     }
 
     const ms = missNow();
-    if (ms?.kind === "silence") { day(...head, roughCard(ms), tip); return; }
+    // A late start's offer stays until answered: leaving the plan unapproved
+    // brings it back (Mor, 2026-10-12); "No plan" there is an answer.
+    if (ms?.kind === "silence" && !(ms.since == null && todaysPlan()?.status === "dismissed")) { day(...head, roughCard(ms), tip); return; }
     // Needs you is already asking about the slipped plan: the card doesn't too.
     const due = !behind && planDue(), dueNow = due?.taskId === card.task.id ? due : null;
     const missed = !dueNow && ms?.kind === "miss" ? ms : null;
