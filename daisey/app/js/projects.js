@@ -492,7 +492,9 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
     };
     card.addEventListener("pointerup", end);
     card.addEventListener("pointercancel", end);
-    card.addEventListener("lostpointercapture", end);
+    // Only the card's own: a finger is captured to the text it landed on, and
+    // that capture passing to the card bubbles up here as a loss.
+    card.addEventListener("lostpointercapture", (e) => { if (e.target === card) end(); });
     card.addEventListener("click", (e) => { if (moved) { e.preventDefault(); e.stopImmediatePropagation(); moved = false; } }, true);
     return wrap;
   }
