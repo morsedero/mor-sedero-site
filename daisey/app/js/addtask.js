@@ -369,7 +369,10 @@ export function mountAddTask(dialog, uid, { onStart } = {}){
       textContent: "Daisey guesses", onclick: () => pick(k, null) }));
   function paintChips(){
     paintArea();
-    laptopSwitch.checked = vals.where === "computer";
+    // Home implies the laptop (Mor, 2026-10-12): one "where" field, and a home
+    // task only runs where the laptop is, so show it ticked and locked.
+    laptopSwitch.checked = vals.where === "computer" || vals.where === "home";
+    laptopSwitch.disabled = vals.where === "home";
     const chipOf = (k, named = false) => {
       const own = mine.has(k);
       const chip = h("button", { type: "button", className: "gchip" + (own ? " mine" : ""), ariaHasPopup: "listbox", ariaExpanded: String(openChip === k),
