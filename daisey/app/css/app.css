@@ -928,7 +928,9 @@ select.ts-project { padding-block: 8px; padding-inline-start: 10px; padding-inli
 
 @media (max-width: 420px) { .ev-grid .field input[type="date"]::-webkit-calendar-picker-indicator { display: none; } } /* a tap on the field opens the picker on phones anyway */
 .field[hidden] { display: none; }
-.ev-grid .ev-repeat { min-block-size: 44px; font-size: 16px; } /* Google's Repeat menu (addevent.js); 16px so iOS does not zoom */
+.ev-repeat { gap: 8px; margin-block-start: 0; } /* the task sheet's Repeats controls on the event sheet (addevent.js) */
+.ev-repeat .ts-days[hidden] { display: none; }
+.ev-repeat .ts-hold-sw { color: var(--ink); font-weight: 400; } /* the switch, not a field label */
 
 /* Tell Daisey's answer: a sheet just above the bar, cards to confirm. */
 .tell-panel {
@@ -2322,20 +2324,20 @@ dialog.tsheet[open] > .ts-laptop + .ts-repeat { margin-block-start: -12px; }
 /* Main card, Done today, routines and the dock always fit with no scroll
    (Mor, 2026-10-12): the glance takes its natural height, the card row takes
    what's left and the card itself tightens as the room shrinks. */
-:root:not(.night) body.home-float:has(#glance:not([hidden])) .nowrow { flex: 1 1 0; margin-block-start: 0; }
-:root:not(.night) body.home-float:has(#glance:not([hidden])) #nowcard { padding-block-end: 0; overflow: hidden; justify-content: flex-end; }
+:root:not(.night) body.home-float:not(.focus-mode):has(#glance:not([hidden])) .nowrow { flex: 1 1 0; margin-block-start: 0; }
+:root:not(.night) body.home-float:not(.focus-mode):has(#glance:not([hidden])) #nowcard { padding-block-end: 0; overflow: hidden; justify-content: flex-end; }
 :root:not(.night) body.home-float #glance { flex: none; overflow: visible; margin-block: 8px 2vh; }
-:root:not(.night) body.home-float:has(#glance:not([hidden])) .deck > .now-card.main { min-block-size: 0; }
+:root:not(.night) body.home-float:not(.focus-mode):has(#glance:not([hidden])) .deck > .now-card.main { min-block-size: 0; }
 @media (max-height: 760px) {
-  :root:not(.night) body.home-float:has(#glance:not([hidden])) .deck > .now-card.main { padding: 12px 14px 10px; }
-  :root:not(.night) body.home-float:has(#glance:not([hidden])) .now-card.main .now-title { font-size: 19px; margin-block-start: 2px; }
-  :root:not(.night) body.home-float:has(#glance:not([hidden])) .now-card.main .now-why { font-size: 13px; }
-  :root:not(.night) body.home-float:has(#glance:not([hidden])) .now-card.main .now-row { padding-block-start: 8px; }
+  :root:not(.night) body.home-float:not(.focus-mode):has(#glance:not([hidden])) .deck > .now-card.main { padding: 12px 14px 10px; }
+  :root:not(.night) body.home-float:not(.focus-mode):has(#glance:not([hidden])) .now-card.main .now-title { font-size: 19px; margin-block-start: 2px; }
+  :root:not(.night) body.home-float:not(.focus-mode):has(#glance:not([hidden])) .now-card.main .now-why { font-size: 13px; }
+  :root:not(.night) body.home-float:not(.focus-mode):has(#glance:not([hidden])) .now-card.main .now-row { padding-block-start: 8px; }
   :root:not(.night) body.home-float #glance { margin-block: 6px 0; }
   .hglance .bl-routine { min-block-size: 24px; }
 }
 @media (max-height: 640px) {
-  :root:not(.night) body.home-float:has(#glance:not([hidden])) .now-card.main .now-why { display: none; }
+  :root:not(.night) body.home-float:not(.focus-mode):has(#glance:not([hidden])) .now-card.main .now-why { display: none; }
   .hglance .bl-routine { min-block-size: 20px; }
 }
 

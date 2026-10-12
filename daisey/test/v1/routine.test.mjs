@@ -201,3 +201,15 @@ test("event repeat: the write function builds only known RRULEs", async () => {
   assert.equal(recurrenceRule({ freq: "MONTHLY" }), null);
   assert.equal(recurrenceRule({ freq: "WEEKLY", days: ["XX"] }), null);
 });
+
+test("monthly by date: once a month on its day, waits till next month's", () => {
+  const t = gym({ notBefore: "2026-10-31", routine: R.cleanRoutine({ per: 5, every: "month", on: "2026-10-31", log: [] }) });
+  assert.equal(t.routine.per, 1);
+  assert.equal(R.onDayIn(t.routine, "2026-11-05"), "2026-11-30"); // a short month: its last day
+  assert.equal(R.weekState(t, "2026-10-20").daysLeft, 12);
+  assert.equal(R.weekState(t, "2026-10-31").daysLeft, 1);
+  assert.equal(R.weekState(t, "2026-10-31").on, "2026-10-31");
+  const p = R.sessionPatch(t, { now: at("2026-10-31") });
+  assert.equal(p.notBefore, "2026-11-30");
+  assert.equal(p.routine.on, "2026-10-31");
+});

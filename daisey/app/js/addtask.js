@@ -27,7 +27,7 @@ import { durText, guessFields, validField, CHOICES, LABELS, INBOX, localDate, lo
 import { keepFile, dropFile, fileUrl } from "./files.js";
 import { h, flash, icon, bdi } from "./ui.js";
 import { projectsOf } from "./projects.js";
-import { isRoutine, weekLine, PER_MAX, PER_MAX_MONTH, DEFAULT_AT, cleanRoutine, seriesSig, monthly } from "./routine.js";
+import { isRoutine, weekLine, PER_MAX, DEFAULT_AT, cleanRoutine, seriesSig, monthly } from "./routine.js";
 import { syncSeries, dropSeries } from "./slots.js";
 
 // Every field Daisey guesses, and the one the user sees (Mor, 2026-10-07:
@@ -122,17 +122,25 @@ export function mountAddTask(dialog, uid, { onStart } = {}){
   const repeatSwitch = h("input", { type: "checkbox", id: "tsRepeat" });
   const perOut = h("output", { className: "ts-per-n" });
   const stepBtn = (d, text, aria) => h("button", { type: "button", className: "ts-step", textContent: text, ariaLabel: aria,
-    onclick: () => setPer(Math.min(perMax(), Math.max(1, per + d))) });
-  const perWord = h("span", { textContent: "times a week" });
-  const perStep = h("div", { className: "ts-per", role: "group", ariaLabel: "How many times" },
-    stepBtn(-1, "−", "Fewer times"), perOut, stepBtn(1, "+", "More times"), perWord);
+    onclick: () => setPer(Math.min(PER_MAX, Math.max(1, per + d))) });
+  const perStep = h("div", { className: "ts-per", role: "group", ariaLabel: "Times a week" },
+    stepBtn(-1, "−", "Fewer times a week"), perOut, stepBtn(1, "+", "More times a week"), h("span", { textContent: "times a week" }));
   // Every week or every month (Mor, 2026-10-12: "a monthly task, not only
-  // weekly"). A month is any days: set days are weekdays, a weekly thing.
-  let every = "week";
-  const perMax = () => (every === "month" ? PER_MAX_MONTH : PER_MAX);
+  // weekly"). A month is one date and nothing else ("just with a date
+  // choice"): its day is every month's, and it takes the Start box's place —
+  // the task waits till that day (notBefore), as a start date would make it.
+  let every = "week", on = "";
   const everyBtn = (v, text) => h("button", { type: "button", className: "chip", textContent: text, value: v,
-    onclick: () => { if (every === v) return; every = v; if (v === "month") mode = "any"; per = Math.min(perMax(), Math.max(1, per)); changed(); } });
+    onclick: () => { if (every === v) return; every = v; if (v === "month") { mode = "any"; if (!on) setOn(start.input.value || logicalDate()); changed(); return; }
+      // Back to weekly: the month's date was only ever its start, so it goes.
+      const was = start.input.value === on; if (was) start.input.value = ""; on = ""; changed(was ? { notBefore: "" } : {}); } });
   const everyRow = h("div", { className: "now-chips ts-every", role: "group", ariaLabel: "How often" }, everyBtn("week", "Every week"), everyBtn("month", "Every month"));
+  const onIn = h("input", { type: "date", className: "ts-input ts-on", ariaLabel: "From which date" });
+  const onHint = h("p", { className: "ts-hint" });
+  const ordinal = (n) => n + (n > 10 && n < 14 ? "th" : ["th", "st", "nd", "rd"][n % 10] || "th");
+  function setOn(v){ on = v; start.input.value = v; }
+  onIn.addEventListener("change", () => { if (/^\d{4}-\d{2}-\d{2}$/.test(onIn.value)) { setOn(onIn.value); changed(); } });
+  const monthBox = h("div", { className: "ts-set ts-month" }, h("label", { className: "ts-at-row" }, h("span", { textContent: "from" }), onIn), onHint);
   // Any days (Daisey finds the time) or Set days (Mor, 2026-10-08): the user
   // picks the weekdays and one time, and Daisey writes them as a weekly event
   // in the "Daisey" calendar when the sheet closes (slots.js). The number of
@@ -157,18 +165,19 @@ export function mountAddTask(dialog, uid, { onStart } = {}){
     h("label", { className: "ts-hold-sw", htmlFor: "tsLaptop" }, laptopSwitch, h("span", { textContent: "Needs laptop" })));
   laptopSwitch.addEventListener("change", () => pick("laptop", laptopSwitch.checked));
   const oftenRow = h("div", { className: "ts-hold ts-repeat" },
-    h("label", { className: "ts-hold-sw", htmlFor: "tsRepeat" }, repeatSwitch, h("span", { textContent: "Repeats" })), everyRow, modeRow, perStep, setBox);
+    h("label", { className: "ts-hold-sw", htmlFor: "tsRepeat" }, repeatSwitch, h("span", { textContent: "Repeats" })), everyRow, modeRow, perStep, setBox, monthBox);
   const weekNow = h("p", { className: "ts-worked ts-week" });
   const setDays = () => mode === "set" && days.length > 0;
   const routineOf = () => (!per ? null : every === "month"
-    ? { per, every: "month", days: [], until: until.input.value || null }
+    ? { per: 1, every: "month", on: on || logicalDate(), days: [], until: until.input.value || null }
     : setDays()
     ? { per: days.length, every: null, days, at, until: until.input.value || null }
     : { per, every: null, days: [], until: until.input.value || null });
-  function changed(){
+  function changed(extra = {}){
     if (setDays()) per = days.length;
-    paintOften();
-    if (editing) save({ routine: routineOf() });
+    if (every === "month") per = 1;
+    paintDates(); paintOften();
+    if (editing) save({ routine: routineOf(), ...(every === "month" && on ? { notBefore: on } : {}), ...extra });
   }
   function setPer(n){
     if (n === per) return;
@@ -185,13 +194,15 @@ export function mountAddTask(dialog, uid, { onStart } = {}){
     everyRow.hidden = !per;
     for (const b of everyRow.children) b.ariaPressed = String(b.value === every);
     modeRow.hidden = !per || every === "month";
-    perWord.textContent = `times a ${every}`;
     for (const b of modeRow.children) b.ariaPressed = String((b.textContent === "Set days") === (mode === "set"));
-    perStep.hidden = !per || mode === "set";
-    setBox.hidden = !per || mode !== "set";
+    perStep.hidden = !per || mode === "set" || every === "month";
+    setBox.hidden = !per || mode !== "set" || every === "month";
+    monthBox.hidden = !per || every !== "month";
+    if (document.activeElement !== onIn) onIn.value = on;
+    onHint.textContent = on ? `Every month on the ${ordinal(Number(on.slice(8)))}.` : "";
     perOut.textContent = String(per);
     const [less, more] = perStep.querySelectorAll(".ts-step");
-    less.disabled = per <= 1; more.disabled = per >= perMax();
+    less.disabled = per <= 1; more.disabled = per >= PER_MAX;
     [...dayRow.children].forEach((b, i) => { b.ariaPressed = String(days.includes(i)); });
     if (document.activeElement !== atIn) atIn.value = at;
   }
@@ -207,6 +218,7 @@ export function mountAddTask(dialog, uid, { onStart } = {}){
   function paintDates(){
     start.paint(); due.paint(); until.paint();
     due.box.hidden = !!per; until.box.hidden = !per;
+    start.box.hidden = !!per && every === "month"; // the month's date is its start
     kindRow.hidden = !due.input.value || !!per;
     kindBtns.forEach((b, i) => { const on = Object.keys(KIND_HELP)[i] === kind; b.ariaPressed = String(on); b.classList.toggle("on", on); });
     kindHelp.textContent = KIND_HELP[kind];
@@ -542,7 +554,7 @@ export function mountAddTask(dialog, uid, { onStart } = {}){
     vals = {}; mine = new Set(); openChip = null;
     links = []; adding = false; kind = "target";
     title.value = ""; notes.value = ""; newProject.value = ""; waitingOn.value = ""; checkOn.value = "";
-    start.input.value = ""; due.input.value = ""; until.input.value = ""; start.reset(); due.reset(); per = 0; every = "week"; mode = "any"; days = []; at = DEFAULT_AT;
+    start.input.value = ""; due.input.value = ""; until.input.value = ""; start.reset(); due.reset(); per = 0; every = "week"; on = ""; mode = "any"; days = []; at = DEFAULT_AT;
     msg.textContent = "";
     disarm();
   }
@@ -641,6 +653,7 @@ export function mountAddTask(dialog, uid, { onStart } = {}){
       days = per && task.routine.days ? [...task.routine.days] : [];
       mode = days.length ? "set" : "any";
       every = per && monthly(task.routine) ? "month" : "week";
+      on = every === "month" ? task.routine.on || task.notBefore || "" : "";
       at = task.routine?.at || DEFAULT_AT;
       fenceDates([]);
       kind = task.dateKind === "deadline" ? "deadline" : "target";

@@ -415,7 +415,9 @@ const PHRASES = {
     : [`deadline ${dateWords(d.due, d.days)}`],
   // The card's dots (ui.weekDots) already show the count, so the words say
   // what the dots can't: "2 more this week, 2 days left" once every day counts.
-  routine: (s, d) => d.need >= d.daysLeft && d.daysLeft <= 3
+  // A dated month says its day: "every month on the 12th".
+  routine: (s, d) => d.on ? [`every month on the ${((n) => n + (n > 10 && n < 14 ? "th" : ["th", "st", "nd", "rd"][n % 10] || "th"))(Number(d.on.slice(8)))}`]
+    : d.need >= d.daysLeft && d.daysLeft <= 3
     ? [d.daysLeft === 1 ? `last day to make ${d.per} this ${d.word}` : `${d.need} more this ${d.word}, ${d.daysLeft} days left`]
     : [`keeps your ${d.per}× a ${d.word} going`],
   target: (s, d) => [`planned for ${d.days <= 0 ? "today" : dateWords(effectiveDue(s.task), d.days)}`],

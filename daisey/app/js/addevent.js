@@ -28,12 +28,11 @@
 // series change can split or end the series, and writing it back is not
 // one step.
 //
-// Repeat (Mor, 2026-10-12: "like Google"): a new event gets Google's own
-// menu, worded from its day — Does not repeat, Every day, Every week on
-// Thursday, Every month on the second Thursday, Every month on the 12th,
-// Every year on 12 October, Every weekday. Google's "Custom…" isn't here; it
-// is a tap away in Google Calendar. Editing doesn't change a rule (Google
-// keeps it), so the menu is on new events only.
+// Repeat (Mor, 2026-10-12: "like Google", then "copy from the task
+// repeat"): the task sheet's own controls — a Repeats switch, Every week |
+// Every month; a week is the weekday chips (the Day's own picked), a month
+// is the Day's date every month; an optional Until. Editing doesn't change a
+// rule (Google keeps it), so it's on new events only.
 //
 // A new event opens on the day the Schedule panel is showing, with the time
 // rounded up to the next quarter hour, so adding something to Thursday from
@@ -46,28 +45,10 @@ import { h, bdi, flash, icon } from "./ui.js";
 
 const DEFAULT_LENGTH = 60;
 const BYDAY = ["SU", "MO", "TU", "WE", "TH", "FR", "SA"];
-const NTH = ["first", "second", "third", "fourth"];
-const ordinal = (n) => n + ((n % 100 > 10 && n % 100 < 14) ? "th" : ["th", "st", "nd", "rd"][n % 10] || "th");
-// The working week where the user is: Sunday to Thursday in Israel, else Monday to Friday.
-const workWeek = () => (/^Asia\/(Jerusalem|Tel_Aviv)$/.test(Intl.DateTimeFormat().resolvedOptions().timeZone) ? [0, 1, 2, 3, 4] : [1, 2, 3, 4, 5]);
-// Google's Repeat menu for a day ("YYYY-MM-DD"): [{ value, label, rec }].
-function repeatChoices(date){
-  const [y, m, d] = (date || "").split("-").map(Number);
-  if (!y) return [{ value: "none", label: "Does not repeat", rec: null }];
-  const day = new Date(y, m - 1, d), wd = day.getDay(), name = day.toLocaleDateString("en", { weekday: "long" });
-  const nth = Math.ceil(d / 7), last = d + 7 > new Date(y, m, 0).getDate();
-  const ww = workWeek(), wwName = (i) => new Date(2026, 9, 4 + i).toLocaleDateString("en", { weekday: "long" });
-  return [
-    { value: "none", label: "Does not repeat", rec: null },
-    { value: "daily", label: "Every day", rec: { freq: "DAILY" } },
-    { value: "weekly", label: `Every week on ${name}`, rec: { freq: "WEEKLY", days: [BYDAY[wd]] } },
-    nth <= 4 && { value: "nth", label: `Every month on the ${NTH[nth - 1]} ${name}`, rec: { freq: "MONTHLY", nth, days: [BYDAY[wd]] } },
-    last && { value: "last", label: `Every month on the last ${name}`, rec: { freq: "MONTHLY", nth: -1, days: [BYDAY[wd]] } },
-    { value: "monthday", label: `Every month on the ${ordinal(d)}`, rec: { freq: "MONTHLY", monthDay: d } },
-    { value: "yearly", label: `Every year on ${day.toLocaleDateString("en", { day: "numeric", month: "long" })}`, rec: { freq: "YEARLY" } },
-    { value: "workdays", label: `Every weekday (${wwName(ww[0])} to ${wwName(ww[4])})`, rec: { freq: "WEEKLY", days: ww.map((i) => BYDAY[i]) } },
-  ].filter(Boolean);
-}
+const ordinal = (n) => n + (n > 10 && n < 14 ? "th" : ["th", "st", "nd", "rd"][n % 10] || "th");
+const DAY_LETTER = Array.from({ length: 7 }, (_, i) => new Date(2026, 9, 4 + i).toLocaleDateString(undefined, { weekday: "narrow" }));
+const DAY_NAME = Array.from({ length: 7 }, (_, i) => new Date(2026, 9, 4 + i).toLocaleDateString(undefined, { weekday: "long" }));
+const dayNum = (date) => { const [y, m, d] = (date || "").split("-").map(Number); return y ? { wd: new Date(y, m - 1, d).getDay(), d } : null; };
 const MIN = 60000;
 const pad = (n) => String(n).padStart(2, "0");
 const hhmm = (ms) => `${pad(new Date(ms).getHours())}:${pad(new Date(ms).getMinutes())}`;
@@ -142,19 +123,56 @@ export function mountAddEvent(dialog, { localOnly = false } = {}){
     at: timePick("From"),
     to: timePick("To"),
     place: h("input", { dir: "auto", autocomplete: "off", placeholder: "City or address" }),
-    repeat: h("select", { className: "ev-repeat" }),
   };
-  // The menu reworded for the day picked, keeping the kind of repeat chosen
-  // (a day whose "nth" is gone falls back to "last", then to none).
-  let choices = [];
-  const paintRepeat = () => {
-    const was = f.repeat.value || "none";
-    choices = repeatChoices(f.date.value);
-    f.repeat.replaceChildren(...choices.map((c) => h("option", { value: c.value, textContent: c.label })));
-    f.repeat.value = choices.some((c) => c.value === was) ? was : was === "nth" && choices.some((c) => c.value === "last") ? "last" : "none";
+  // Repeat, as on the task sheet (addtask.js): off, or every week on the
+  // chips' days, or every month on the Day's date.
+  const rp = { on: false, every: "week", days: [] };
+  const repeatSwitch = h("input", { type: "checkbox", id: "evRepeat" });
+  const everyBtn = (v, text) => h("button", { type: "button", className: "chip", textContent: text, value: v,
+    onclick: () => { rp.every = v; paintRepeat(); } });
+  const everyRow = h("div", { className: "now-chips ts-every", role: "group", ariaLabel: "How often" }, everyBtn("week", "Every week"), everyBtn("month", "Every month"));
+  const dayRow = h("div", { className: "ts-days", role: "group", ariaLabel: "Days" },
+    ...DAY_LETTER.map((l, i) => h("button", { type: "button", className: "ts-day", textContent: l, ariaLabel: DAY_NAME[i],
+      onclick: () => { rp.days = rp.days.includes(i) ? rp.days.filter((d) => d !== i) : [...rp.days, i].sort(); paintRepeat(); } })));
+  const monthHint = h("p", { className: "ts-hint" });
+  const untilIn = h("input", { type: "date", className: "ts-input", ariaLabel: "Until" });
+  const untilRow = h("label", { className: "ts-at-row" }, h("span", { textContent: "until" }), untilIn);
+  repeatSwitch.addEventListener("change", () => {
+    rp.on = repeatSwitch.checked;
+    if (rp.on && !rp.days.length) { const n = dayNum(f.date.value); if (n) rp.days = [n.wd]; }
+    paintRepeat();
+  });
+  // A new Day moves a lone weekday chip along with it, as Google does.
+  let dayWas = null;
+  f.date.addEventListener("change", () => {
+    const n = dayNum(f.date.value);
+    if (n && rp.days.length === 1 && rp.days[0] === dayWas) rp.days = [n.wd];
+    paintRepeat();
+  });
+  function paintRepeat(){
+    const n = dayNum(f.date.value);
+    dayWas = n ? n.wd : null;
+    repeatSwitch.checked = rp.on;
+    everyRow.hidden = !rp.on;
+    for (const b of everyRow.children) b.ariaPressed = String(b.value === rp.every);
+    dayRow.hidden = !rp.on || rp.every !== "week";
+    [...dayRow.children].forEach((b, i) => { b.ariaPressed = String(rp.days.includes(i)); });
+    monthHint.hidden = !rp.on || rp.every !== "month";
+    monthHint.textContent = n ? `Every month on the ${ordinal(n.d)}.` : "";
+    untilRow.hidden = !rp.on;
+    if (untilIn.value && f.date.value && untilIn.value < f.date.value) untilIn.value = "";
+    untilIn.min = f.date.value || "";
+  }
+  // What goes to Google, or null for a one-off.
+  const recurrence = () => {
+    if (!rp.on || localOnly) return null;
+    const until = untilIn.value || null, n = dayNum(f.date.value);
+    if (rp.every === "month") return n ? { freq: "MONTHLY", monthDay: n.d, until } : null;
+    return rp.days.length ? { freq: "WEEKLY", days: rp.days.map((i) => BYDAY[i]), until } : null;
   };
-  f.date.addEventListener("change", paintRepeat);
-  const repeatField = field("Repeat", f.repeat, true);
+  const repeatField = h("div", { className: "field wide ts-hold ts-repeat ev-repeat" },
+    h("label", { className: "ts-hold-sw", htmlFor: "evRepeat" }, repeatSwitch, h("span", { textContent: "Repeats" })),
+    everyRow, dayRow, monthHint, untilRow);
   // What Daisey makes of the place, under the field, as it's typed.
   const placeHint = h("p", { className: "muted ev-hint" });
   const hintPlace = () => {
@@ -339,7 +357,7 @@ export function mountAddEvent(dialog, { localOnly = false } = {}){
       });
     } else {
       const name = f.title.value.trim();
-      const rec = localOnly ? null : choices.find((c) => c.value === f.repeat.value)?.rec || null;
+      const rec = recurrence();
       behind(createEvent({ title: f.title.value, date: f.date.value, at: f.at.value, minutes: mins, location: place, ...(rec ? { recurrence: rec } : {}) }),
         localOnly ? "Couldn't save " : "Couldn't add to the calendar: ", name);
     }
@@ -364,7 +382,7 @@ export function mountAddEvent(dialog, { localOnly = false } = {}){
       editing = null;
       form.reset();
       f.date.value = date || localDate();
-      f.repeat.value = "none"; paintRepeat();
+      rp.on = false; rp.every = "week"; rp.days = []; untilIn.value = ""; paintRepeat();
       // A tapped slot already over today (or none): the next quarter hour.
       const past = f.date.value === localDate() && at && toMin(at) < toMin(hhmm(Date.now()));
       setTimes(at && !past ? at : nextQuarter(), DEFAULT_LENGTH);
