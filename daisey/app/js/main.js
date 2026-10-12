@@ -629,6 +629,7 @@ async function boot(){
         };
         // The home panel: the Schedule, or Projects (the grid or one project)
         // in its place. The Projects button toggles between them (Mor, 2026-10-08).
+        let schedShown = false;
         const syncPanel = () => {
           const on = !$("#projPage").hidden || !$("#projectview").hidden, plan = !$("#planPage").hidden;
           $("#schedPage").hidden = on || plan;
@@ -648,6 +649,10 @@ async function boot(){
           $("#projectsChip").setAttribute("aria-pressed", String(on));
           $("#planChip").setAttribute("aria-pressed", String(plan || day));
           $("#panel").setAttribute("aria-label", plan ? "Plan" : on ? "Projects" : "Schedule");
+          // Today coming into view lands on its now row, on top (Mor, 2026-10-12).
+          const sched = $("#schedPage").getClientRects().length > 0;
+          if (sched && !schedShown) m.schedule?.landNow();
+          schedShown = sched;
           swapAnim();
         };
         // Page swaps animate (Mor, 2026-10-12): the page coming in rises and

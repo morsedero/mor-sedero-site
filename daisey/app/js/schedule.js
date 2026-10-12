@@ -134,7 +134,7 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onMissed, onPro
   const go = (ymd) => { focus = ymd; el.scrollTop = 0; jump = true; render(); };
 
   // The day's now row: the one on, else the first not yet past.
-  let toNow = false; // next render lands the list on now (the Now button)
+  let toNow = view === "day"; // next render lands the list on now (the Now button, opening Today)
   const nowRow = () => view === "day" && !focus ? el.querySelector(".sc-row.sc-on, .sc-row:not(.sc-past, .sc-gap, .sc-noroom)") : null;
   function scrollToNow(smooth){
     const r = nowRow(), head = el.querySelector(".sc-head");
@@ -508,5 +508,7 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onMissed, onPro
   let mark = null;
   const tick = setInterval(() => { const m = Math.floor(Date.now() / 60000); if (m !== mark && !document.hidden) { mark = m; render(); } }, 5000);
   render();
-  return { go, unmount(){ unsubs.forEach((u) => u()); clearInterval(tick); sized?.disconnect(); el.replaceChildren(); } };
+  // Today opened (shown again): back on today, its now row on top (Mor, 2026-10-12).
+  const landNow = () => { if (view !== "day") return; focus = null; toNow = true; render(); };
+  return { go, landNow, unmount(){ unsubs.forEach((u) => u()); clearInterval(tick); sized?.disconnect(); el.replaceChildren(); } };
 }
