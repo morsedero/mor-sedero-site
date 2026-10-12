@@ -29,10 +29,11 @@ function paintDone(){}
 function paintPlan(p){ planNow = p; paintChip(); }
 // Phone: the home is the card, and Plan is the Today tile at the bottom
 // (Mor, 2026-10-12). Approved, it says what's next and opens the day.
-// The phone layout is every screen's for now (Mor, 2026-10-12: copy it to
-// all platforms, a PC layout comes after). Was "(max-width: 599px)"; with
-// app.css's PHONE LAYOUT blocks it's the one switch to put back.
-const phone = matchMedia("all");
+// The phone layout is every screen's up to 1023px, tablets too; from 1024px
+// it's the PC layout, "B · Side rail" (Mor, 2026-10-12, canvas "Daisey PC
+// Layout"): a rail on the left, the card in the middle, the day on the right.
+// app.css's PHONE LAYOUT and PC LAYOUT blocks use the same width.
+const phone = matchMedia("(max-width: 1023px)");
 let planNext = null;
 const hm = (ms) => new Date(ms).toTimeString().slice(0, 5);
 function paintNext(nx){ planNext = nx; paintChip(); }
@@ -258,6 +259,7 @@ async function boot(){
   $("#refreshBtn").onclick = () => location.reload();
   $("#projectsChip").onclick = () => window.__toggleProjects?.();
   $("#weekChip").onclick = () => window.__toggleWeek?.();
+  $("#todayChip").onclick = () => window.__goToday?.();
   // Focus from the mini card (Today or the plan open on a phone) goes home
   // first, so Focus mode gets the full card (Mor, 2026-10-12).
   focusBtn.onclick = () => {
@@ -275,9 +277,11 @@ async function boot(){
   // The phone's bottom (Mor, 2026-10-12, home B): one row over Tell Daisey
   // on every screen, Next (the plan chip), Week, Projects and +; Focus is a
   // button on the card itself (placeFocus). #side stays empty there.
+  // PC: #side is the rail's nav, under the daisy and the clock: Today, Plan,
+  // Projects, Week (Mor, 2026-10-12, layout B).
   const placeSide = () => {
-    if (phone.matches) $("#dockStack").append($("#planChip"), $("#weekChip"), $("#projectsChip"), $(".plus-wrap"));
-    else { $(".nowrow").append($("#side")); $("#side").append($("#planChip"), $("#projectsChip"), $("#weekChip")); $("#tell").prepend($(".plus-wrap")); }
+    if (phone.matches) { $(".nowrow").append($("#side")); $("#dockStack").append($("#planChip"), $("#weekChip"), $("#projectsChip"), $(".plus-wrap")); }
+    else { $(".brandrow").after($("#side")); $("#side").append($("#todayChip"), $("#planChip"), $("#projectsChip"), $("#weekChip")); $("#tell").prepend($(".plus-wrap")); }
     placeFocus();
     paintChip();
   };
@@ -353,6 +357,7 @@ async function boot(){
     $("#planChip").hidden = !user;
     $("#projectsChip").hidden = !user;
     $("#weekChip").hidden = !user;
+    $("#todayChip").hidden = !user;
     focusBtn.hidden = !user;
     if (!user) { show("signedout"); return; }
 
@@ -725,6 +730,7 @@ async function boot(){
           $("#glance").hidden = !glance;
           $("#weekChip").setAttribute("aria-pressed", String(glance));
           $("#projectsChip").setAttribute("aria-pressed", String(on));
+          $("#todayChip").setAttribute("aria-pressed", String(!(on || plan)));
           $("#planChip").setAttribute("aria-pressed", String(plan || day));
           $("#panel").setAttribute("aria-label", plan ? "Plan" : on ? "Projects" : "Schedule");
           // Today coming into view lands on its now row, on top (Mor, 2026-10-12).
@@ -784,6 +790,12 @@ async function boot(){
           weekOn = !shown;
           try { localStorage.setItem(WEEK_KEY, weekOn ? "1" : ""); } catch { /* private window */ }
           syncPanel();
+        };
+        // PC: the rail's Today, back to the day in the right column.
+        window.__goToday = () => {
+          if (!$("#planPage").hidden) m.now?.closePlan();
+          m.projects.closeProject(); m.projects.closeAll(); syncPanel();
+          if (history.state?.daisey === "project") history.back();
         };
         window.__toggleProjects = () => {
           if (!$("#planPage").hidden) m.now?.closePlan();

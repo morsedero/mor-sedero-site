@@ -1400,7 +1400,7 @@ dialog.tsheet .msg:empty { display: none; }
    Room for the chips is about the screen less 152 px. */
 /* Focus always keeps its word (round 2, 2026-10-11: an icon alone, and a
    first-timer couldn't guess it); on a phone Needs you gives up its word instead. */
-@media all { /* PHONE LAYOUT, every screen for now; was (max-width: 429px), the phone width Mor's layout was made at: wider, the Plan chip's old dot showed in Next */
+@media (max-width: 1023px) { /* PHONE LAYOUT, every screen up to 1023px, tablets too; PC LAYOUT from 1024px; was (max-width: 429px), the phone width Mor's layout was made at: wider, the Plan chip's old dot showed in Next */
   .hdr-end:has(#focusChip:not([hidden])) #needsChip .hchip-word { display: none; }
   .hchip.plan:not(.empty):not(.focus-chip) .hchip-word, .hchip.plan .hchip-dot { display: none; } .hchip.plan { padding-inline: 9px; } .hdr-end { gap: 6px; }
 }
@@ -1458,7 +1458,7 @@ body.focus #side { display: none; }
    page open the tiles shrink to one line, a tab bar under it. */
 .tile-next, .tile-chev, .home-hint, .dock-stack:empty { display: none; }
 .sc-bar .sc-planbtn { display: none; } /* over .sc-weekbtn's inline-flex further down */
-@media all { /* PHONE LAYOUT, every screen for now (main.js phone); was (max-width: 599px) */
+@media (max-width: 1023px) { /* PHONE LAYOUT, every screen up to 1023px, tablets too; PC LAYOUT from 1024px (main.js phone); was (max-width: 599px) */
   /* Wider screens get the phone's own width, a big phone's (Mor, 2026-10-12). */
   .shell { max-inline-size: 430px; }
   .screen > * { max-inline-size: 430px; }
@@ -2244,7 +2244,7 @@ dialog.tsheet[open] > .ts-laptop + .ts-repeat { margin-block-start: -12px; }
    flow (absolute, bottom right) so it doesn't shift the middle. */
 :root:not(.night) body.focus-mode #nowcard { padding-block: 10px calc(max(16px, env(safe-area-inset-top)) + 44px - 3px); } /* -3: measured, the deck's own spacing */
 :root:not(.night) body.focus-mode .shell { position: relative; }
-@media all { /* PHONE LAYOUT, every screen for now (main.js phone); was (max-width: 599px) */ :root:not(.night) body.focus-mode #board > #side { position: absolute; inset-inline: 16px; inset-block-end: 0; } }
+@media (max-width: 1023px) { /* PHONE LAYOUT, every screen up to 1023px, tablets too; PC LAYOUT from 1024px (main.js phone); was (max-width: 599px) */ :root:not(.night) body.focus-mode #board > #side { position: absolute; inset-inline: 16px; inset-block-end: 0; } }
 /* Focus too: the same light squares, bigger; Done the one saturated button (2026-10-11). */
 :root:not(.night) body:is(.focus-mode, .home-float) .now-card.main .now-row { gap: 8px; } :root:not(.night) body:is(.focus-mode, .home-float) .now-card.main .now-row .iconbtn { inline-size: 58px; min-inline-size: 58px; block-size: 58px; min-block-size: 58px; border-radius: 14px; font-size: 11px; gap: 3px; } :root:not(.night) body:is(.focus-mode, .home-float) .now-card.main .now-row .iconbtn svg { inline-size: 20px; block-size: 20px; } :root:not(.night) body:is(.focus-mode, .home-float) .now-card.main .now-row .btn.start { block-size: 58px; min-block-size: 58px; border-radius: 14px; }
 
@@ -2403,3 +2403,80 @@ body.fm-slide .deck > .now-card.main { animation: none !important; } /* main.js:
 /* Four buttons (Save | Rethink | Remove | Cancel): smaller type, columns sized to the words so Remove isn't cut. */
 #planPage .pp-actions:has(> .btn:nth-child(4)) { grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr) minmax(0, 1.1fr) minmax(0, 1.05fr); gap: 5px; }
 #planPage .now-card.main .pp-actions:has(> .btn:nth-child(4)) .btn { font-size: 13px; padding-inline: 2px; text-overflow: clip; }
+
+/* ===== PC LAYOUT, from 1024px (Mor, 2026-10-12, canvas "Daisey PC Layout",
+   B · Side rail) =====
+   The phone's logic, laid out wide: a rail on the left (the daisy and the
+   clock, then Today · Plan · Projects · Week, then Focus, Needs you and the
+   account at its foot), the card in the middle with Tell Daisey under it,
+   and the panel (the day, the plan, projects) on the right. main.js placeSide
+   moves #side into the rail; #board is display: contents so its children sit
+   in the shell's grid. Below 1024px the PHONE LAYOUT blocks above hold. */
+@media (min-width: 1024px) {
+  .shell {
+    --rail: 240px; max-inline-size: none; margin: 0; padding: 0 32px 0 0;
+    display: grid; column-gap: 28px;
+    grid-template-columns: var(--rail) minmax(0, 1fr) minmax(320px, 400px);
+    grid-template-rows: minmax(0, auto) auto minmax(0, 1fr) auto;
+    grid-template-areas: "rail now panel" "rail glance panel" "rail . panel" "rail dock panel";
+  }
+  #board { display: contents; }
+  #board[hidden] { display: none; }
+  #status { grid-area: now; margin-block-start: 32px; }
+  /* The rail. */
+  .topbar {
+    grid-area: rail; flex-direction: column; align-items: stretch; gap: 4px; block-size: auto; min-block-size: 0; margin: 0;
+    padding: 24px 16px max(20px, env(safe-area-inset-bottom)); overflow-y: auto;
+    background: color-mix(in srgb, var(--chip) 45%, var(--bg)); border-inline-end: 1px solid var(--line);
+  }
+  .topbar > .brandrow { flex: none; gap: 12px; padding: 0 8px 18px; }
+  .topbar .logo { inline-size: 34px; block-size: 34px; }
+  .hdr-time { font-size: 22px; }
+  .topbar > #side { flex: none; align-self: stretch; inline-size: auto; padding: 0; gap: 4px; }
+  #side .hchip {
+    flex: none; flex-direction: row; justify-content: flex-start; gap: 12px; block-size: 44px; min-block-size: 44px; padding: 0 12px;
+    border: 0; border-radius: 12px; background: transparent; color: color-mix(in srgb, var(--ink) 80%, var(--ink-2));
+    font-size: 15px; font-weight: 500; line-height: 1.2; text-align: start; white-space: nowrap;
+  }
+  #side .hchip svg { inline-size: 18px; block-size: 18px; }
+  #side .hchip::after { inset: 0; }
+  #side .hchip:hover { background: color-mix(in srgb, var(--surface) 60%, transparent); }
+  #side .hchip[aria-pressed="true"] { background: var(--surface); border-color: transparent; color: var(--ink); font-weight: 600; box-shadow: 0 1px 3px rgb(0 0 0 / .06); }
+  #side .hchip.ready { background: var(--a-admin-tint); color: var(--a-admin-ink); font-weight: 600; }
+  .topbar > .hdr-end { margin-block-start: auto; margin-inline-start: 0; flex-direction: column; align-items: stretch; justify-content: flex-start; gap: 8px; padding-block-start: 24px; }
+  .hdr-end .hchip { block-size: 44px; justify-content: flex-start; gap: 10px; padding-inline: 12px; border-radius: 12px; font-size: 14px; }
+  .hdr-end .hchip::after { inset: 0; }
+  .hdr-end #needsChip .hchip-word { display: inline; }
+  .hdr-end .focus-chip:not([aria-pressed="true"]) { border-color: transparent; background: transparent; color: color-mix(in srgb, var(--ink) 80%, var(--ink-2)); }
+  .hdr-end .acct { align-self: flex-start; padding-inline-start: 4px; }
+  .hdr-end .avatar { inline-size: 36px; block-size: 36px; }
+  .acct-menu { inset-block-start: auto; inset-block-end: calc(100% + 8px); inset-inline-end: auto; inset-inline-start: 0; }
+  /* The middle: the card, Week's glance under it, Tell Daisey at the foot. */
+  .nowrow { grid-area: now; display: flex; flex-direction: column; min-block-size: 0; padding-block-start: 22px; }
+  .nowrow #nowcard { flex: 0 1 auto; padding-inline-end: 16px; }
+  #glance { grid-area: glance; margin-block: 4px 0; }
+  #dock { grid-area: dock; padding-block: 12px max(28px, env(safe-area-inset-bottom)); }
+  /* The right: the panel, its own column, full height. */
+  #panel { grid-area: panel; min-block-size: 0; margin-block: 24px 28px; padding: 14px 18px 0; border-radius: 24px; }
+  #panel .ppage { margin-inline: -18px; padding-inline: 18px; }
+  /* Projects (all, or one) open: the page takes the middle and the right;
+     the card steps out until Today brings it back. */
+  .shell:has(#panel > :is(#projPage, #projectview):not([hidden]):not(.pg-ghost)) { grid-template-areas: "rail panel panel" "rail panel panel" "rail panel panel" "rail dock dock"; }
+  .shell:has(#panel > :is(#projPage, #projectview):not([hidden]):not(.pg-ghost)) :is(.nowrow, #glance) { display: none; }
+  .shell:has(#panel > :is(#projPage, #projectview):not([hidden]):not(.pg-ghost)) #dock { justify-self: center; inline-size: min(100%, 760px); }
+  /* Focus · Keep going · Background side by side; drag across them. */
+  #projPage > .pgrid.tiers { grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: start; gap: 20px; margin-block-start: 0; }
+  /* The card, a size up for a big screen. */
+  :root:not(.night) .deck > .now-card.main { padding: 20px 24px 16px; border-radius: 28px; }
+  .now-card.main .now-title { font-size: 30px; letter-spacing: -0.4px; }
+  .now-card.main .now-why { font-size: 15px; }
+  /* Focus mode: the rail keeps the clock and the way out, the card sits in
+     the middle of the screen (an empty column the rail's width on the right). */
+  body.focus-mode .shell { grid-template-columns: var(--rail) minmax(0, 1fr) var(--rail); padding-inline-end: 0; }
+  body.focus-mode .topbar { background: none; border-inline-end-color: transparent; }
+  body.focus-mode .nowrow { grid-row: 1 / -1; }
+  body.focus-mode #nowcard { inline-size: 100%; max-inline-size: 720px; margin-inline: auto; box-sizing: border-box; }
+  /* Full screens (Needs you): over the middle and the right; the rail stays. */
+  .screen { inset: 0 0 0 var(--rail); }
+  .screen > * { max-inline-size: 640px; }
+}
