@@ -1454,6 +1454,8 @@ body.focus #side { display: none; }
   body.has-plan.day-open #board > #side #planChip, body.has-plan #board:has(#panel > .ppage:not([hidden]):not(#schedPage)) > #side #planChip { display: flex; align-items: center; justify-content: center; padding: 4px 8px; }
   body.day-open #board > #side .tile-next, #board:has(#panel > .ppage:not([hidden]):not(#schedPage)) > #side .tile-next { display: none; }
   #board > #side .hchip.ready .hchip-dot { inset-block-start: -3px; inset-inline-end: -5px; }
+  /* Projects is a full page: no Now card over it (Mor, 2026-10-12). */
+  #board:has(#panel > :is(#projPage, #projectview):not([hidden])) > .nowrow { display: none; }
   body.has-plan.day-open .sc-planbtn { display: inline-flex; inline-size: auto; padding-inline: 10px; }
   .sc-bar .sc-planbtn span { display: inline; }
   #panel { margin-block-end: 0; }
