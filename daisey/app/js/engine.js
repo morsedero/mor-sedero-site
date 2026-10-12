@@ -597,10 +597,12 @@ export function passedOver(task, seen, { now = Date.now(), today = logicalDate(n
 // new day, the proposal open, a meeting starting, or it no longer being
 // offered lets go. Only one the plan put there (`until`, its slot's end)
 // holds, even once the moment filters it (too big for the gap, booked
-// later): it's being worked on.
-export function keepsCard(kept, task, { nextId = null, today, chosen = null, proposing = false, meeting = false, skipped = false, ranked = false, switchable = false, now = Date.now() } = {}){
+// later): it's being worked on. Until the plan's next task starts (`turn`,
+// Mor, 2026-10-12: the card sat on "Still on it?" past the next start
+// until a refresh): its slot coming is the card moving on.
+export function keepsCard(kept, task, { nextId = null, today, chosen = null, proposing = false, meeting = false, skipped = false, ranked = false, switchable = false, turn = false, now = Date.now() } = {}){
   if (!kept || !task || task.id !== kept.id || nextId === kept.id) return false;
-  if (chosen || proposing || meeting || skipped || kept.day !== today) return false;
+  if (chosen || proposing || meeting || skipped || turn || kept.day !== today) return false;
   if (task.status !== "ready" || task.onHold || notYet(task, now)) return false;
   return !!kept.until && (ranked || switchable);
 }

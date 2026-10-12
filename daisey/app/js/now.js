@@ -1610,7 +1610,8 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     const k = kept, t = k && (tasks || []).find((x) => x.id === k.id);
     if (keepsCard(k, t, { nextId: card?.task.id, today: dayKey(), chosen: state.chosen, proposing: prop.open,
       meeting: !!fw?.current && !fw.current.trip && blockOf(fw)?.taskId !== k?.id, skipped: !!k && hidden().includes(k.id),
-      ranked: !!k && r.ranked.some((s) => s.task.id === k.id), switchable: !!k && !!picked(k.id) }))
+      ranked: !!k && r.ranked.some((s) => s.task.id === k.id), switchable: !!k && !!picked(k.id),
+      turn: !!planRow && planRow.taskId !== k?.id && planRow.start <= Date.now() }))
       return asCard(t.id, t, k.until && Date.now() > k.until ? [`still on it? Planned until ${clock(k.until)}`] : k.why);
     // Only a plan row, once everything has loaded (a first pick made before
     // the plan arrived isn't one): the card and the Today list agree otherwise.
@@ -2094,7 +2095,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     const m = Math.floor(Date.now() / 60000);
     if (m !== tripMin) { tripMin = m; applyTrips(); }
     if (windowMark(calendarNow()) !== lastWindow) render();
-    else if (Date.now() - missAt > 15000) { missAt = Date.now(); const d = planDue(), k = `${missNow()?.key ?? ""}|${d ? `${d.taskId}|${d.start}` : ""}`; if (k !== missKey) { missKey = k; render(); } }
+    else if (Date.now() - missAt > 15000) { missAt = Date.now(); const d = planDue(), pr = planNow()?.row, k = `${missNow()?.key ?? ""}|${d ? `${d.taskId}|${d.start}` : ""}|${pr && pr.start <= Date.now() ? pr.taskId : ""}`; if (k !== missKey) { missKey = k; render(); } }
   }, 1000);
   let missAt = 0, missKey = "", tripMin = 0;
   // "Not today" on the silence check's notification (sw.js), saved here.
