@@ -2118,8 +2118,12 @@ dialog.tsheet[open] > .ts-laptop + .ts-repeat { margin-block-start: -12px; }
 /* The project screen's header card, copied (Mor, 2026-10-12): surface fill,
    its colour as the edge and a soft glow, so a project reads apart from a
    task card (those are filled with their tint). */
-.pcard { background: var(--surface); border-color: var(--aline); box-shadow: 0 6px 20px color-mix(in srgb, var(--aink) 12%, transparent); }
-.pcard[class*="pc-"] .pcard-name { color: color-mix(in srgb, var(--aink) 35%, var(--ink)); }
+/* Calmer (Mor, 2026-10-12: "something feels off"): the colour lives in the
+   edge and the done part of the bar only. Warm fill, neutral shadow, plain
+   ink name; the empty track is grey so 0% no longer reads as full. */
+.pcard { background: color-mix(in srgb, var(--surface) 55%, var(--card)); border-color: var(--aline); box-shadow: 0 1px 2px rgb(0 0 0 / .04), 0 4px 14px rgb(0 0 0 / .05); }
+.pcard[class*="pc-"] .pcard-name { color: var(--ink); }
+.pcard .pcard-status { color: var(--ink-2); }
 .pcard-fl { align-self: end; display: flex; justify-content: center; inline-size: 40px; margin-block-end: -6px; }
 .pcard-body { display: flex; flex-direction: column; min-inline-size: 0; }
 /* Compact card (Mor, 2026-10-10): two labelled rows and a thin bar. */
@@ -2127,13 +2131,14 @@ dialog.tsheet[open] > .ts-laptop + .ts-repeat { margin-block-start: -12px; }
 .pcard-fl .bl-svg, .tier-focus .pcard-fl .bl-svg, .tier-background .pcard-fl .bl-svg { inline-size: 26px; }
 .pcard-fl { inline-size: 28px; margin-block-end: -4px; }
 .pcard .pcard-name { font-size: 14px; }
-.pcard-pct { flex: none; font-size: 12px; font-weight: 700; color: var(--aink); font-variant-numeric: tabular-nums; }
+.pcard-pct { flex: none; font-size: 12px; font-weight: 700; color: var(--ink-2); font-variant-numeric: tabular-nums; }
 .pcard-row { display: flex; align-items: baseline; gap: 8px; margin-block-start: 2px; }
 .pcard-row .pcard-status { flex: 1; min-inline-size: 0; margin: 0; }
 .pcard-time { flex: none; font-size: 11px; font-weight: 600; color: var(--aink); font-variant-numeric: tabular-nums; }
 .pcard-barrow { display: flex; align-items: center; gap: 8px; margin-block-start: 6px; }
-/* Bolder than the card's tint, same thin line (Mor, 2026-10-10: "bolder colors", not thicker). */
-.pcard .pcard-barrow .pbar { flex: 1; block-size: 4px; margin: 0; border-radius: 2px; background: color-mix(in srgb, var(--aink) 30%, var(--tint)); }
+/* Same thin line (Mor, 2026-10-10: "bolder colors", not thicker): the done
+   part in the project's ink, the rest a neutral track. */
+.pcard .pcard-barrow .pbar { flex: 1; block-size: 4px; margin: 0; border-radius: 2px; background: color-mix(in srgb, var(--ink) 9%, transparent); }
 .bl-svg { display: block; flex: none; inline-size: 36px; block-size: auto; overflow: visible; transform-origin: 50% 100%; }
 .tier-focus .bl-svg { inline-size: 40px; }
 .tier-background .bl-svg { inline-size: 32px; }
