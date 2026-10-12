@@ -1436,6 +1436,9 @@ body.focus #side { display: none; }
    Projects and Week. The Schedule waits behind Today (body.day-open). With a
    page open the tiles shrink to one line, a tab bar under it. */
 .tile-next { display: none; }
+.pw-toggle { display: none; flex: none; gap: 4px; margin: 2px 0 4px; padding: 4px; border-radius: 999px; background: var(--chip); }
+.pw-toggle button { flex: 1; block-size: 36px; border: 0; border-radius: 999px; background: none; font: inherit; font-size: 14px; font-weight: 600; color: var(--ink-2); cursor: pointer; }
+.pw-toggle button[aria-pressed="true"] { background: var(--card); color: var(--ink); box-shadow: 0 1px 3px rgb(0 0 0 / .12); }
 .sc-bar .sc-planbtn { display: none; } /* over .sc-weekbtn's inline-flex further down */
 @media (max-width: 599px) {
   body:not(.day-open) #panel:not(:has(> .ppage:not([hidden]):not(#schedPage):not(.pg-ghost))) { display: none; }
@@ -1450,12 +1453,16 @@ body.focus #side { display: none; }
   .tile-next .tn-dot { inline-size: 8px; block-size: 8px; border-radius: 50%; flex: none; background: var(--aink, currentColor); }
   .tile-next .tn-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   /* A page open: the tiles go to one slim line. */
-  body.day-open #board > #side .hchip, #board:has(#panel > .ppage:not([hidden]):not(#schedPage)) > #side .hchip { block-size: 48px; flex-direction: row; display: flex; padding: 4px 8px; }
-  body.has-plan.day-open #board > #side #planChip, body.has-plan #board:has(#panel > .ppage:not([hidden]):not(#schedPage)) > #side #planChip { display: flex; align-items: center; justify-content: center; padding: 4px 8px; }
-  body.day-open #board > #side .tile-next, #board:has(#panel > .ppage:not([hidden]):not(#schedPage)) > #side .tile-next { display: none; }
+  body.day-open #board > #side .hchip, #board:has(#panel > .ppage:not([hidden]):not(#schedPage):not(.pg-ghost)) > #side .hchip { block-size: 48px; flex-direction: row; display: flex; padding: 4px 8px; }
+  body.has-plan.day-open #board > #side #planChip, body.has-plan #board:has(#panel > .ppage:not([hidden]):not(#schedPage):not(.pg-ghost)) > #side #planChip { display: flex; align-items: center; justify-content: center; padding: 4px 8px; }
+  body.day-open #board > #side .tile-next, #board:has(#panel > .ppage:not([hidden]):not(#schedPage):not(.pg-ghost)) > #side .tile-next { display: none; }
   #board > #side .hchip.ready .hchip-dot { inset-block-start: -3px; inset-inline-end: -5px; }
   /* Projects is a full page: no Now card over it (Mor, 2026-10-12). */
-  #board:has(#panel > :is(#projPage, #projectview):not([hidden])) > .nowrow { display: none; }
+  #board:has(#panel > :is(#projPage, #projectview, #statsPage):not([hidden]):not(.pg-ghost)) > .nowrow { display: none; }
+  /* Week: off the tiles, a toggle at the top of Projects instead. */
+  #board > #side { grid-template-columns: 3fr 2fr; }
+  #board > #side #weekChip { display: none !important; } /* over the slim tiles' display:flex */
+  #panel:has(> :is(#projPage, #statsPage):not([hidden]):not(.pg-ghost)) > .pw-toggle { display: flex; }
   body.has-plan.day-open .sc-planbtn { display: inline-flex; inline-size: auto; padding-inline: 10px; }
   .sc-bar .sc-planbtn span { display: inline; }
   #panel { margin-block-end: 0; }

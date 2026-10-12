@@ -238,7 +238,8 @@ async function boot(){
   // A tap on the dim backdrop closes it, like Escape and ✕.
   const settings = $("#settingsdlg");
   $("#settingsBtn").onclick = () => { setMenu(false); settings.showModal(); };
-  $("#projectsChip").onclick = () => window.__toggleProjects && window.__toggleProjects();
+  // Phone: Week sits inside Projects, so the Projects tile shuts Week too.
+  $("#projectsChip").onclick = () => phone.matches && !$("#statsPage").hidden ? window.__toggleStats?.() : window.__toggleProjects?.();
   $("#weekChip").onclick = () => window.__toggleStats && window.__toggleStats();
   $("#focusChip").onclick = () => mounted?.now?.focus();
   // On a phone, Plan · Projects · Week move up into the header as icons, so
@@ -621,7 +622,9 @@ async function boot(){
           $("#schedPage").hidden = on || plan || wk;
           if (on || plan || wk) document.body.classList.remove("day-open");
           const day = document.body.classList.contains("day-open");
-          $("#projectsChip").setAttribute("aria-pressed", String(on));
+          $("#projectsChip").setAttribute("aria-pressed", String(on || (wk && phone.matches)));
+          $("#pwProj").setAttribute("aria-pressed", String(on));
+          $("#pwWeek").setAttribute("aria-pressed", String(wk));
           $("#planChip").setAttribute("aria-pressed", String(plan || day));
           $("#weekChip").setAttribute("aria-pressed", String(wk));
           $("#panel").setAttribute("aria-label", plan ? "Plan" : on ? "Projects" : wk ? "This week" : "Schedule");
@@ -635,7 +638,9 @@ async function boot(){
         const swapAnim = () => {
           const now = [...$("#panel").children].find((p) => p.classList.contains("ppage") && !p.hidden && !p.classList.contains("pg-ghost"));
           const was = shownPage; shownPage = now;
-          if (!was || !now || was === now || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+          // A hidden panel (the phone's home) never runs the animation, so its
+          // ghost would never go: no swap animation there.
+          if (!was || !now || was === now || !$("#panel").offsetParent || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
           const back = now.id === "schedPage";
           $("#panel .pg-ghost")?.remove();
           const g = was.cloneNode(true);
@@ -667,6 +672,8 @@ async function boot(){
           if (open) { m.now?.closePlan(); closeStats(); m.projects.closeProject(); m.projects.closeAll(); if (history.state?.daisey === "project") history.back(); }
           document.body.classList.toggle("day-open", open); syncPanel();
         };
+        $("#pwWeek").onclick = () => { if ($("#statsPage").hidden) window.__toggleStats(); };
+        $("#pwProj").onclick = () => { if (!$("#statsPage").hidden) window.__toggleProjects(); };
         window.__toggleProjects = () => {
           closeStats();
           if (!$("#planPage").hidden) m.now?.closePlan();

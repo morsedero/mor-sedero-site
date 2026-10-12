@@ -117,6 +117,12 @@
     <!-- The home panel: the Schedule, or Projects in its place. The Projects
          button toggles between them (Mor, 2026-10-08). -->
     <section id="panel" class="panel" aria-label="Schedule">
+      <!-- Phone: Week lives inside Projects, a toggle at the page's top (Mor,
+           2026-10-12: Week isn't important enough for a tile). CSS shows it. -->
+      <div id="pwToggle" class="pw-toggle" role="group" aria-label="Projects or this week">
+        <button id="pwProj" type="button" aria-pressed="true">Projects</button>
+        <button id="pwWeek" type="button" aria-pressed="false">Week</button>
+      </div>
       <div id="schedPage" class="ppage"></div>
       <div id="projPage" class="ppage" hidden></div>
       <!-- The plan (now.js proposalCard), in the panel too; the Plan chip toggles it. -->
