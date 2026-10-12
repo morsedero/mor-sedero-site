@@ -709,7 +709,9 @@ async function boot(){
             const parts = (card) => PARTS.map(([sel]) => (sel ? [...card.querySelectorAll(sel)] : [card]));
             const grab = (card) => parts(card).map((es, i) => es.map((e) => {
               const cs = getComputedStyle(e);
-              return Object.fromEntries(PARTS[i][1].map((p) => [p, cs[p] === "normal" ? (p === "letterSpacing" ? "0px" : cs[p]) : cs[p]]));
+              // Keywords don't animate (they flip halfway); swap in their px.
+              const v = (p) => (cs[p] === "normal" && p === "letterSpacing") || (cs[p] === "auto" && p.startsWith("min")) ? "0px" : cs[p];
+              return Object.fromEntries(PARTS[i][1].map((p) => [p, v(p)]));
             }));
             const first = pick().map((el) => el?.getBoundingClientRect());
             const old = pick()[0] && grab(pick()[0]);
