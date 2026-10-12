@@ -424,17 +424,19 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
       extras: [phoneOk(r, leg), putOffButton(r)] });
   }
   // What's left after the phone search (phoneNow) found nothing that fits:
-  // one tap says this one works on the phone, and it's offered.
+  // one tap says this one works on the phone, and it's offered. The tasks are
+  // Switch's small cards (switchRow), not chips (Mor, 2026-10-12: "make it
+  // coherent with the app"); resting is the card's one quiet button.
   function phoneOk(r, leg){
     if (searching()) return h("p", { className: "muted", textContent: "Looking through your tasks for phone ones…" });
     const can = r.out.filter((o) => o.reason === "place" && needsLaptop(o.task)).slice(0, 3);
-    const rest = h("button", { type: "button", className: "chip", textContent: can.length ? "None of these" : "Just rest",
+    const rest = h("button", { type: "button", className: "btn quiet", textContent: can.length ? "None of these" : "Just rest",
       onclick: () => { restRide = leg.id; render(); } });
-    return h("div", { className: "ride-ask phone-ok", role: "group", ariaLabel: "Doable on the phone?" },
-      h("span", { className: "muted", textContent: can.length ? "Doable on the phone?" : "Nothing here works on the phone." }),
-      ...can.map((o) => h("button", { type: "button", className: "chip", dir: "auto", textContent: o.task.title,
-        ariaLabel: `${o.task.title} works on the phone`,
-        onclick: () => updateTask(uid, o.task, { laptop: false }, tasks || []).catch(fail) })), rest);
+    return h("div", { className: "phone-ok", role: "group", ariaLabel: "Doable on the phone?" },
+      h("p", { className: "phone-q", textContent: can.length ? "Doable on the phone?" : "Nothing here works on the phone." }),
+      can.length ? switchRow(can.map((o) => ({ task: o.task })), (t) => updateTask(uid, t, { laptop: false }, tasks || []).catch(fail),
+        (t) => `${t.title} works on the phone, ${howLong(t)}`) : null,
+      rest);
   }
   // Wears its schedule row's look (Mor, 2026-10-11): the trip colour and the
   // light round its edge, and on a running trip leg the time gone filling in.
@@ -1159,13 +1161,13 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
   // as Later's open row that scrolls and drags sideways (ui.js dragScroll),
   // keeping its place across redraws; or the way into On hold when there
   // are none.
-  // onPick: what tapping one does.
-  function switchRow(alts, onPick = (t) => { switchTo(t.id); state.altX = 0; }){
+  // onPick: what tapping one does; aria: its label, when it isn't a switch.
+  function switchRow(alts, onPick = (t) => { switchTo(t.id); state.altX = 0; }, aria = null){
     if (!alts.length) return h("div", { className: "later-ask", role: "group", ariaLabel: "Other tasks" },
       h("span", { className: "muted", textContent: "Nothing else is active." }),
       h("button", { className: "chip", type: "button", textContent: "Pick from On hold", onclick: () => { sd.open = true; state.showAlts = false; render(); } }));
     const row = dragScroll(h("div", { className: "later-ask switch-ask", role: "group", ariaLabel: "Other tasks" }, ...alts.map(({ task: t, why }) => h("button", {
-      type: "button", className: "alt-card" + areaClass(t), ariaLabel: `Put ${t.title} on the card instead, ${howLong(t)}${why ? `, ${why.map((p) => (typeof p === "string" ? p : p.name)).join("")}` : ""}`,
+      type: "button", className: "alt-card" + areaClass(t), ariaLabel: aria ? aria(t) : `Put ${t.title} on the card instead, ${howLong(t)}${why ? `, ${why.map((p) => (typeof p === "string" ? p : p.name)).join("")}` : ""}`,
       onclick: () => onPick(t),
     }, h("span", { className: "hero-top" },
         h("span", { className: "hero-area" },

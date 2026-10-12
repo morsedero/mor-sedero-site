@@ -965,6 +965,10 @@ body.focus .tell-panel { display: none; }
 .place-fix { margin: 8px 0 0; }
 .place-fix > .muted { flex-basis: 100%; }
 
+/* Ride with nothing that fits: the question, Switch's small task cards, then rest. */
+.phone-ok { display: grid; margin-block-start: 10px; }
+.phone-q { margin: 0 0 6px; font-size: 13px; font-weight: 600; color: var(--ink-2); }
+.phone-ok .switch-ask { margin-block-start: 0; }
 
 /* ===== Layout round 2 (Mor, 2026-10-05; daisey/New Design/6–10) =====
    A calm home with everything one pull away. Sizes and colours follow the
