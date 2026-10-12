@@ -255,7 +255,12 @@ async function boot(){
   $("#refreshBtn").onclick = () => location.reload();
   $("#projectsChip").onclick = () => window.__toggleProjects?.();
   $("#weekChip").onclick = () => window.__toggleWeek?.();
-  focusBtn.onclick = () => mounted?.now?.focus();
+  // Focus from the mini card (Today or the plan open on a phone) goes home
+  // first, so Focus mode gets the full card (Mor, 2026-10-12).
+  focusBtn.onclick = () => {
+    if (document.body.classList.contains("card-mini") && !document.body.classList.contains("focus-mode")) window.__homeForFocus?.();
+    mounted?.now?.focus();
+  };
   // On a phone, Plan · Projects move up into the header as icons, so
   // the Now card gets the whole width (Mor, 2026-10-12: the card was crowded).
   // Wider, they go back to their column beside the card.
@@ -763,6 +768,7 @@ async function boot(){
         // Week: done today + routines under the card, on or off (Mor,
         // 2026-10-12). From a page it closes the page and turns them on.
         window.__syncPanel = syncPanel;
+        window.__homeForFocus = () => { if (!$("#planPage").hidden) m.now?.closePlan(); document.body.classList.remove("day-open"); syncPanel(); };
         window.__toggleWeek = () => {
           if (phone.matches) { weekPop = !weekPop; syncPanel(); return; }
           const shown = !$("#glance").hidden;
