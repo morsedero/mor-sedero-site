@@ -434,7 +434,7 @@ test("keepsCard: the task on the card stays until acted on (user test #6)", () =
   assert.equal(E.keepsCard(kept, a, { ...o, turn: true }), false);
   assert.equal(E.keepsCard(kept, a, { ...o, today: "2026-10-06" }), false);
   // Changed to a place you aren't at (Mor, 2026-10-12: Home, on the train).
-  assert.equal(E.keepsCard(kept, a, { ...o, misplaced: true }), false);
+  assert.equal(E.keepsCard(kept, a, { ...o, cantNow: true }), false);
   // Only a plan row holds; an engine pick follows the engine.
   assert.equal(E.keepsCard({ ...kept, until: null }, a, { ...o, ranked: true }), false);
   assert.equal(E.keepsCard(kept, a, { ...o, switchable: false }), false);

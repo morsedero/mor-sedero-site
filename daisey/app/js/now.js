@@ -150,6 +150,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
   let seenAt = new Map(); // task id → when it came up (heldAnchors, below)
   const reset = () => { state.chosen = null; state.showAlts = false; state.laterAsk = false; state.pendAsk = false; state.notNow = false; state.more = false; state.pendText = ""; state.pendCheck = ""; state.single = false; kept = null; seenAt = new Map(); };
   let shown, kept = null; // kept: keptCard
+  let chosenOut = null; // { id, why }: why state.chosen was out when picked (renderCard)
   let projectDue = {}; // { project: "YYYY-MM-DD" }, from Projects' dates
   // A new task on the card shuts the rows opened under the last one.
   const showing = (id) => { if (id !== shown) { if (shown !== undefined) state.showAlts = state.notNow = state.pendAsk = state.more = false; shown = id; onCard?.(id); } };
@@ -999,6 +1000,10 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
   // "Just rest" closes it for the day, the same as the Someday ask's Not now.
   const QUIET = new Set(["waiting", "someday", "notyet", "stale"]);
   const SWITCH_TOO = new Set(["size", "block", "place", "office", "evening", "booked"]);
+  // Out for good right now: another place, the office shut, not evening yet.
+  // A card holding a task that turns one of these lets go of it (keptCard,
+  // and a Switch pick in renderCard) rather than waiting for a refresh.
+  const CANT_NOW = new Set(["place", "office", "evening"]);
   function restState(){
     const list = somedaySorted().slice(0, 3);
     const rested = settings.somedayAsked === logicalDate();
@@ -1616,7 +1621,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     if (keepsCard(k, t, { nextId: card?.task.id, today: dayKey(), chosen: state.chosen, proposing: prop.open,
       meeting: !!fw?.current && !fw.current.trip && blockOf(fw)?.taskId !== k?.id, skipped: !!k && hidden().includes(k.id),
       ranked: !!k && r.ranked.some((s) => s.task.id === k.id), switchable: !!k && !!picked(k.id),
-      misplaced: !!k && picked(k.id)?.reason === "place",
+      cantNow: !!k && CANT_NOW.has(picked(k.id)?.reason),
       turn: !!planRow && planRow.taskId !== k?.id && planRow.start <= Date.now() }))
       return asCard(t.id, t, k.until && Date.now() > k.until ? [`still on it? Planned until ${clock(k.until)}`] : k.why);
     // Only a plan row, once everything has loaded (a first pick made before
@@ -1956,6 +1961,15 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     // for the gap, office hours, another place, its own slot later) is still
     // yours to pick. Put off today (skipped) and the quiet ones stay out.
     const picked = (id) => r.out.find((o) => o.task.id === id && SWITCH_TOO.has(o.reason));
+    // A pick holds until acted on, but not once it can't be done after it
+    // was picked (moved, or set to another place: Mor, 2026-10-12). One
+    // picked knowingly from another place stays.
+    if (state.chosen) {
+      const why = picked(state.chosen)?.reason ?? null;
+      if (chosenOut?.id !== state.chosen) chosenOut = { id: state.chosen, why };
+      else if (!CANT_NOW.has(why)) chosenOut.why = why;
+      else if (why !== chosenOut.why) state.chosen = null;
+    }
     let card = (state.chosen && (r.ranked.find((s) => s.task.id === state.chosen) || (picked(state.chosen) && asCard(state.chosen, picked(state.chosen).task, ["your pick"]))))
       || (planned && r.ranked.find((s) => s.task.id === planned))
       || (planRow && asCard(planRow.taskId, planRow.task, planWhy(planRow)))
@@ -2099,8 +2113,12 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     // A way back still running (trips.stillRiding) is stretched from now:
     // lay it again each minute so it keeps ahead of the clock.
     const m = Math.floor(Date.now() / 60000);
-    if (m !== tripMin) { tripMin = m; applyTrips(); }
-    if (windowMark(calendarNow()) !== lastWindow) render();
+    const turned = m !== tripMin;
+    if (turned) { tripMin = m; applyTrips(); }
+    // Each minute as well: past WINDOW_CAP the window holds at 180, so the
+    // office shutting, evening opening or a start time passing changed
+    // nothing above and the card waited for a refresh (2026-10-12).
+    if (turned || windowMark(calendarNow()) !== lastWindow) render();
     else if (Date.now() - missAt > 15000) { missAt = Date.now(); const d = planDue(), pr = planNow()?.row, k = `${missNow()?.key ?? ""}|${d ? `${d.taskId}|${d.start}` : ""}|${pr && pr.start <= Date.now() ? pr.taskId : ""}`; if (k !== missKey) { missKey = k; render(); } }
   }, 1000);
   let missAt = 0, missKey = "", tripMin = 0;
