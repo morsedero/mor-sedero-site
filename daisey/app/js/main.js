@@ -15,7 +15,7 @@ import { areaClass } from "./look.js";
 // The daisy itself is always the full five-petal logo.
 // The Plan chip has two states (Mor, 2026-10-12): "Plan my day" until a plan
 // is approved, then "Plan". No count: it's for planning, not a score; what's
-// left shows in the day below, what's done on the Week page. While the
+// left shows in the day below, what's done on the home glance. While the
 // morning's draft waits (now.js onPlanReady) "Plan my day" is blue and pings.
 let planNow = null, planReady = false;
 function paintDone(){}
@@ -241,14 +241,12 @@ async function boot(){
   // A tap on the dim backdrop closes it, like Escape and ✕.
   const settings = $("#settingsdlg");
   $("#settingsBtn").onclick = () => { setMenu(false); settings.showModal(); };
-  // Phone: Week sits inside Projects, so the Projects tile shuts Week too.
-  $("#projectsChip").onclick = () => phone.matches && !$("#statsPage").hidden ? window.__toggleStats?.() : window.__toggleProjects?.();
-  $("#weekChip").onclick = () => window.__toggleStats && window.__toggleStats();
+  $("#projectsChip").onclick = () => window.__toggleProjects?.();
   $("#focusChip").onclick = () => mounted?.now?.focus();
-  // On a phone, Plan · Projects · Week move up into the header as icons, so
+  // On a phone, Plan · Projects move up into the header as icons, so
   // the Now card gets the whole width (Mor, 2026-10-12: the card was crowded).
   // Wider, they go back to their column beside the card.
-  // On a phone, Plan · Projects · Week are the tiles at the bottom, over Tell
+  // On a phone, Plan · Projects are the tiles at the bottom, over Tell
   // Daisey, and the Schedule waits behind Today (Mor, 2026-10-12: the home is
   // the card). Wider, they go back to their column beside the card.
   // Focus goes with them on a phone, a square at the row's end (Mor,
@@ -276,7 +274,6 @@ async function boot(){
     avatar.hidden = !user;
     $("#planChip").hidden = !user;
     $("#projectsChip").hidden = !user;
-    $("#weekChip").hidden = !user;
     $("#focusChip").hidden = !user;
     if (!user) { show("signedout"); return; }
 
@@ -618,7 +615,7 @@ async function boot(){
           open(kind){ if (history.state?.daisey !== kind) history.pushState({ daisey: kind }, ""); },
           back(){ if (history.state?.daisey) history.back(); else closeScreens(); },
         };
-        const closeScreens = () => { m.now?.closePlan(); m.projects?.closeProject(); m.needs?.close(); $("#weekview").hidden = true; syncPanel(); };
+        const closeScreens = () => { m.now?.closePlan(); m.projects?.closeProject(); m.needs?.close(); syncPanel(); };
         const onPop = () => {
           const at = history.state?.daisey;
           if (!at) closeScreens();
@@ -627,18 +624,21 @@ async function boot(){
         // The home panel: the Schedule, or Projects (the grid or one project)
         // in its place. The Projects button toggles between them (Mor, 2026-10-08).
         const syncPanel = () => {
-          const on = !$("#projPage").hidden || !$("#projectview").hidden, plan = !$("#planPage").hidden, wk = !$("#statsPage").hidden;
-          $("#schedPage").hidden = on || plan || wk;
-          if (on || plan || wk) document.body.classList.remove("day-open");
+          const on = !$("#projPage").hidden || !$("#projectview").hidden, plan = !$("#planPage").hidden;
+          $("#schedPage").hidden = on || plan;
+          if (on || plan) document.body.classList.remove("day-open");
           const day = document.body.classList.contains("day-open");
           // Phone, nothing open: the card floats mid-screen, as Focus mode did (app.css).
-          document.body.classList.toggle("home-float", phone.matches && !day && !(on || plan || wk));
-          $("#projectsChip").setAttribute("aria-pressed", String(on || (wk && phone.matches)));
-          $("#pwProj").setAttribute("aria-pressed", String(on));
-          $("#pwWeek").setAttribute("aria-pressed", String(wk));
+          document.body.classList.toggle("home-float", phone.matches && !day && !(on || plan));
+          // Phone, Today open (the day or the plan): the card goes mini, so the
+          // day gets the room (Mor, 2026-10-12; app.css).
+          document.body.classList.toggle("card-mini", phone.matches && (day || plan));
+          // The glance (done today, routines) only on the home with nothing
+          // open (Mor, 2026-10-12); wider, the Schedule under it counts as home.
+          $("#glance").hidden = on || plan || (phone.matches && day);
+          $("#projectsChip").setAttribute("aria-pressed", String(on));
           $("#planChip").setAttribute("aria-pressed", String(plan || day));
-          $("#weekChip").setAttribute("aria-pressed", String(wk));
-          $("#panel").setAttribute("aria-label", plan ? "Plan" : on ? "Projects" : wk ? "This week" : "Schedule");
+          $("#panel").setAttribute("aria-label", plan ? "Plan" : on ? "Projects" : "Schedule");
           swapAnim();
         };
         // Page swaps animate (Mor, 2026-10-12): the page coming in rises and
@@ -669,25 +669,13 @@ async function boot(){
         };
         phone.addEventListener("change", syncPanel);
         $("#panel").addEventListener("scroll", (e) => { if (e.target.classList?.contains("ppage")) e.target.dataset.st = e.target.scrollTop; }, true);
-        // The Week page (Mor, 2026-10-10): the week's numbers and all
-        // routines, in the panel like Projects; projects.js paints it.
-        const closeStats = () => { if ($("#statsPage").hidden) return; $("#statsPage").hidden = true; m.projects?.stats(null); syncPanel(); };
-        window.__toggleStats = () => {
-          if (!$("#statsPage").hidden) return closeStats();
-          m.now?.closePlan(); m.projects.closeProject(); m.projects.closeAll();
-          if (history.state?.daisey === "project") history.back();
-          const box = $("#statsPage"); box.hidden = false; box.scrollTop = 0; m.projects.stats(box); syncPanel();
-        };
         // Phone: the Today tile opens the day under the card, and shuts it.
         window.__toggleDay = () => {
           const open = !document.body.classList.contains("day-open");
-          if (open) { m.now?.closePlan(); closeStats(); m.projects.closeProject(); m.projects.closeAll(); if (history.state?.daisey === "project") history.back(); }
+          if (open) { m.now?.closePlan(); m.projects.closeProject(); m.projects.closeAll(); if (history.state?.daisey === "project") history.back(); }
           document.body.classList.toggle("day-open", open); syncPanel();
         };
-        $("#pwWeek").onclick = () => { if ($("#statsPage").hidden) window.__toggleStats(); };
-        $("#pwProj").onclick = () => { if (!$("#statsPage").hidden) window.__toggleProjects(); };
         window.__toggleProjects = () => {
-          closeStats();
           if (!$("#planPage").hidden) m.now?.closePlan();
           if (!$("#schedPage").hidden) { m.projects.openAll(); syncPanel(); return; }
           m.projects.closeProject(); m.projects.closeAll(); syncPanel();
@@ -713,13 +701,7 @@ async function boot(){
             m.needs.open(); screens.open("needs");
           } });
         m.schedule = mountSchedule($("#schedPage"), user.uid, { onEvent: (ev) => m.event.view(ev), onNew: (date, at) => m.event.open(date, at), onOpen: (task) => m.adder.edit(task), onMissed: (id, start) => m.now?.missed(id, start), onNow: flashNow, onPlan: () => m.now?.plan() });
-        // ARCHIVED (Mor, 2026-10-08): the Week page is built but switched off until
-        // people ask for it. To bring it back: pass onWeek to the mount above
-        //   onWeek: () => { $("#weekview").hidden = false; $("#weekPage").scrollTop = 0; screens.open("week"); }
-        // and mount the week page:
-        //   m.week = mountSchedule($("#weekPage"), user.uid, { mode: "week", onEvent: (ev) => m.event.view(ev), onNew: (date, at) => m.event.open(date, at), onOpen: (task) => m.adder.edit(task), onDay: (ymd) => { m.schedule.go(ymd); screens.back(); } });
-        //   $("#weekBack").onclick = () => screens.back();
-        m.projects = mountProjects({ grid: $("#projPage"), page: $("#projPage"), view: $("#projectview"), dialog: $("#projdlg") }, user.uid, {
+        m.projects = mountProjects({ grid: $("#projPage"), page: $("#projPage"), glance: $("#glance"), view: $("#projectview"), dialog: $("#projdlg") }, user.uid, {
           onOpen: (task) => m.adder.edit(task),
           onAdd: (project) => m.adder.open(project),
           onStart: startTask,
@@ -814,7 +796,7 @@ async function boot(){
           // Two frames so the panel and chips settle under the daisy first.
           onReady: () => requestAnimationFrame(() => requestAnimationFrame(splashOff)),
           onPlanScreen: (open) => {
-            if (open) { closeStats(); m.projects?.closeProject(); m.projects?.closeAll(); if (history.state?.daisey === "project") history.back(); }
+            if (open) { m.projects?.closeProject(); m.projects?.closeAll(); if (history.state?.daisey === "project") history.back(); }
             $("#planPage").hidden = !open; if (open) $("#planPage").scrollTop = 0; syncPanel();
           },
           onCard: (id) => m.projects?.setCurrent(id),

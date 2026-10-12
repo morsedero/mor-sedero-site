@@ -32,7 +32,8 @@ import { TIERS, FOCUS_MAX } from "./weights.js";
 // How many projects Focus holds: Settings, 1–5 (Mor, 2026-10-10); FOCUS_MAX (3) until set.
 const focusCap = (s) => (Number.isInteger(s?.focusMax) && s.focusMax >= 1 && s.focusMax <= 5 ? s.focusMax : FOCUS_MAX);
 import { sortable, zoneSortable } from "./ppdrag.js";
-import { mountGrowth, flowerSvg, statsCard, routinesSection } from "./bloom.js";
+import { mountGrowth, flowerSvg } from "./bloom.js";
+import { routineRows } from "./bloom-data.js";
 
 const SWIPE_DONE = 90; // px a task travels right before letting go finishes it
 const SWIPE_PAGE = 70; // px sideways that turns the page to the next project
@@ -155,28 +156,33 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
   const hold = (on) => { dragging = on; if (!on && stale) { stale = false; render(); } };
   // Bloom lives on this page (bloom.js): the log or the period moved.
   const growth = mountGrowth(uid, { onChange: () => { if (dragging) { stale = true; return; } paintGrid(); } });
-  // The week's numbers live on the Week page (Mor, 2026-10-10): a growth
-  // of their own, watched only while it's open.
-  let statsBox = null;
-  const statsGrowth = mountGrowth(uid, { onChange: () => paintStats() });
-  // All routines sit under the numbers (Mor, 2026-10-10): the Week page is
-  // the place for stats; the Projects page is for deciding.
-  // Done today heads it (Mor, 2026-10-11): what happened, not the plan, so it
-  // left the plan sheet. Oldest first; none when nothing's done yet.
-  function doneSection(){
-    const done = doneToday(tasks || []).sort((a, b) => a.doneAt - b.doneAt);
-    if (!done.length) return null;
-    return h("section", { className: "bl-card bl-done", ariaLabel: "Done today" },
-      h("h3", { className: "bl-h" }, "Done today", h("span", { className: "bl-h-sub", textContent: ` · ${done.length}` })),
-      h("div", { className: "bl-done-rows" }, ...done.map((t) => h("div", { className: "pj-drow" },
+  // The home glance (Mor, 2026-10-12: the Week page is gone; what stayed is
+  // today's done count, its list a tap away, and each routine's week). Small
+  // pills under the Now card while nothing is open; main.js shows the box.
+  let doneOpen = false;
+  function paintGlance(){
+    const box = els.glance; if (!box) return;
+    const ts = tasks || [], done = doneToday(ts).sort((a, b) => a.doneAt - b.doneAt);
+    const colors = new Map(list().map((p) => [p.name, p.color || ""]));
+    if (!done.length) doneOpen = false;
+    const pill = h("button", { type: "button", className: "hg-pill hg-done" + (done.length ? "" : " none"), disabled: !done.length,
+      ariaExpanded: String(doneOpen), onclick: () => { doneOpen = !doneOpen; paintGlance(); } },
+      h("span", { className: "hg-tick", ariaHidden: "true" }, icon("check")),
+      done.length ? h("span", {}, h("b", { textContent: String(done.length) }), " done today") : h("span", { textContent: "Nothing done yet" }));
+    // A routine: a ring filling toward its weekly count, a bee once met.
+    const routine = (r) => h("button", { type: "button", className: "hg-pill hg-rt" + (r.met ? " met" : "") + (colors.get(r.project) ? ` pc-${colors.get(r.project)}` : ""),
+      title: `${r.project} · ${r.count} of ${r.per} this week${r.streak >= 2 ? ` · ${r.streak} weeks in a row` : ""}`,
+      ariaLabel: `${r.title}: ${r.count} of ${r.per} this week`, onclick: () => { const t = ts.find((x) => x.id === r.id); if (t) onOpen?.(t); } },
+      h("span", { className: "hg-ring", ariaHidden: "true", style: `--p:${Math.min(1, r.count / r.per)}` }),
+      h("span", { className: "hg-rt-t" }, bdi(r.title)),
+      h("span", { className: "hg-rt-n", ariaHidden: "true", textContent: r.met ? "🐝" : `${r.count}/${r.per}` }));
+    box.replaceChildren(
+      h("div", { className: "hg-row" }, pill, ...routineRows(ts).map(routine)));
+    if (doneOpen) box.append(h("div", { className: "hg-list", role: "list", ariaLabel: "Done today" }, ...done.map((t) => h("div", { className: "pj-drow", role: "listitem" },
         h("span", { className: "pj-tick on", ariaHidden: "true" }, icon("check")),
         h("button", { type: "button", className: "pj-quiet", onclick: () => onOpen?.(t) }, bdi(t.title)),
         h("span", { className: "pj-meta", dir: "ltr", textContent: new Date(t.doneAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) })))));
   }
-  function paintStats(){ if (!statsBox) return;
-    const all = list(), g = statsGrowth.read(tasks || [], all.map((p) => p.name));
-    statsBox.replaceChildren(...[doneSection()].filter(Boolean), ...statsCard(g), routinesSection(g.routines, tasks || [], new Map(all.map((p) => [p.name, p.color || ""])))
-      || h("p", { className: "bl-note", textContent: "No routines yet." })); }
 
   // ---------- the Projects page ----------
   // Tiers (Mor, 2026-10-08): Focus, Keep going, Background. The engine
@@ -464,7 +470,9 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
         moved = true;
         try { card.setPointerCapture(s.id); } catch { /* gone */ }
         wrap.classList.add("swiping");
-        e.stopPropagation();
+        // This first move still reaches the list, so a finger's press-and-hold
+        // (ppdrag) hears it moved and stands down; stopped, the hold armed
+        // mid-swipe on a phone and turned a slow swipe into a drag.
       }
       s.dx = Math.max(0, dx);
       card.style.transform = `translateX(${s.dx * sign}px)`;
@@ -610,6 +618,7 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
   // The page follows the finger, slides off, and the next project slides in
   // (same as the Schedule's day swipe).
   let page = null, sawSwipe = false;
+  els.view.style.touchAction = "pan-y"; // keep the horizontal drag ours, or a phone cancels it
   // Only the body moves; the header with the project chips stays put.
   const slide = (x, ms) => {
     for (const c of els.view.children) {
@@ -683,7 +692,7 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
     saveProjectNames(uid, made).catch(fail);
   }
 
-  function render(){ if (dragging) { stale = true; return; } paintGrid(); paintView(); paintStats(); }
+  function render(){ if (dragging) { stale = true; return; } paintGrid(); paintView(); paintGlance(); }
   const unsubs = [
     watchTasks(uid, (ts) => { tasks = ts; keepNames(); render(); }, fail),
     watchSettings(uid, (st) => { const n = focusCap(st); if (n !== focusMax) { focusMax = n; render(); } }, fail),
@@ -700,8 +709,6 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
     // The project on screen, for "+ Task": the open project, else none.
     shownProject: () => shown,
     newProject: () => askName(),
-    // The avatar menu's stats: a box to paint into while open, null on close.
-    stats(box){ statsBox = box; if (box) { statsGrowth.show(); paintStats(); } else statsGrowth.hide(); },
-    unmount(){ unsubs.forEach((u) => u()); growth.unmount(); statsGrowth.unmount(); closeProject(); els.grid.replaceChildren(); if (els.dialog.open) els.dialog.close(); },
+    unmount(){ unsubs.forEach((u) => u()); growth.unmount(); closeProject(); els.grid.replaceChildren(); els.glance?.replaceChildren(); if (els.dialog.open) els.dialog.close(); },
   };
 }

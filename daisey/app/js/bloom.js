@@ -2,7 +2,7 @@
 // daisey/STATS_PLAN.md). The Projects page is the garden now: each project
 // card carries its flower — taller with the time it got this period, a petal
 // for every task finished, a closed bud when it got none — the routines
-// and the week's numbers sit on the Week page. This file is the
+// sit on the home glance (projects.js). This file is the
 // growing half: the work log, the calendar's past events, the period, and the
 // pieces drawn from them. projects.js lays them out. Calm on purpose: no red,
 // no "behind", no goals that aren't the user's own.
@@ -12,7 +12,6 @@ import {
   PERIODS, periodRange, monthsOfRange, summarize, flowers, routineRows, fmtMinutes, oneLine,
   estimatedEntries, eventEntries,
 } from "./bloom-data.js";
-import { h, bdi, weekDots } from "./ui.js";
 
 const NS = "http://www.w3.org/2000/svg";
 const svg = (tag, attrs = {}, ...kids) => {
@@ -124,38 +123,4 @@ export function mountGrowth(uid, { onChange } = {}){
     hide(){ shown = false; unLog?.(); unLog = null; logKey = ""; },
     unmount(){ this.hide(); },
   };
-}
-
-// The week's numbers, on the Week page (Mor, 2026-10-10: off the Projects
-// page, week only). Three quiet figures in one box, like the theme switch
-// beside them; a bee line once a routine has a streak.
-export function statsCard(g){
-  const s = g.summary, best = g.routines.filter((r) => r.streak >= 2).sort((a, b) => b.streak - a.streak)[0];
-  const fig = (v, word) => h("div", { className: "ms-fig" }, h("strong", {}, v), h("span", {}, word));
-  return [
-    h("p", { className: "ms-h", textContent: "This week" }),
-    h("div", { className: "ms-figs" },
-      fig(s.focused ? fmtMinutes(s.focused) : "0", "focused"),
-      fig(String(s.done), "done"),
-      fig(String(s.days), s.days === 1 ? "day" : "days")),
-    best && h("p", { className: "ms-line" }, h("span", { ariaHidden: "true", textContent: "🐝" }), bdi(best.title), ` · ${best.streak} weeks in a row`),
-  ].filter(Boolean);
-}
-
-// Routines, minimal (Mor, 2026-10-08): one quiet line each in one card —
-// the project's colour dot, the title, the week's dots, a bee once met.
-// colors: project name -> its colour ("" when none).
-export function routinesSection(rows, tasks, colors){
-  if (!rows.length) return null;
-  return h("section", { className: "bl-card bl-routines", ariaLabel: "Routines" },
-    // Dots alone didn't read when empty (Mor, 2026-10-08): "this week" on the
-    // header, the count in words beside each row's dots.
-    h("h3", { className: "bl-h" }, "Routines", h("span", { className: "bl-h-sub", textContent: " · this week" })),
-    ...rows.map((r) => h("div", { className: "bl-routine" + (r.met ? " met" : "") + (colors.get(r.project) ? ` pc-${colors.get(r.project)}` : ""),
-      title: `${r.project} · ${r.count} of ${r.per}${r.streak >= 2 ? ` · ${r.streak} weeks in a row` : ""}` },
-      h("span", { className: "bl-r-dot", ariaHidden: "true" }),
-      h("span", { className: "bl-r-title" }, bdi(r.title)),
-      h("span", { className: "bl-dots", ariaLabel: `${r.count} of ${r.per} this week` }, weekDots(tasks.find((t) => t.id === r.id)),
-        h("span", { className: "bl-r-n", ariaHidden: "true", textContent: `${r.count}/${r.per}` })),
-      h("span", { className: "bl-bee", ariaHidden: "true" }, r.met ? "🐝" : ""))));
 }
