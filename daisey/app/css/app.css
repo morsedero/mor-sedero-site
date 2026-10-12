@@ -2189,6 +2189,13 @@ dialog.tsheet[open] > .ts-laptop + .ts-repeat { margin-block-start: -12px; }
 :root:not(.night) body:is(.focus-mode, .home-float) .now-card.main .now-title { margin-block-start: 6px; font-size: 23px; line-height: 1.2; letter-spacing: -0.01em; }
 :root:not(.night) body:is(.focus-mode, .home-float) .now-card.main .now-why { font-size: 15px; }
 :root:not(.night) body:is(.focus-mode, .home-float) .now-card.main .now-row { padding-block-start: 16px; }
+/* Focus mode dead centre on the screen (Mor, 2026-10-12): the card's box
+   runs from under the header to the bottom edge, and pads its bottom by the
+   header's height so the two balance. The phone's exit square leaves the
+   flow (absolute, bottom right) so it doesn't shift the middle. */
+:root:not(.night) body.focus-mode #nowcard { padding-block: 10px calc(max(16px, env(safe-area-inset-top)) + 44px - 3px); } /* -3: measured, the deck's own spacing */
+:root:not(.night) body.focus-mode .shell { position: relative; }
+@media (max-width: 599px) { :root:not(.night) body.focus-mode #board > #side { position: absolute; inset-inline: 16px; inset-block-end: 0; } }
 /* Focus too: the same light squares, bigger; Done the one saturated button (2026-10-11). */
 :root:not(.night) body:is(.focus-mode, .home-float) .now-card.main .now-row { gap: 8px; } :root:not(.night) body:is(.focus-mode, .home-float) .now-card.main .now-row .iconbtn { inline-size: 58px; min-inline-size: 58px; block-size: 58px; min-block-size: 58px; border-radius: 14px; font-size: 11px; gap: 3px; } :root:not(.night) body:is(.focus-mode, .home-float) .now-card.main .now-row .iconbtn svg { inline-size: 20px; block-size: 20px; } :root:not(.night) body:is(.focus-mode, .home-float) .now-card.main .now-row .btn.start { block-size: 58px; min-block-size: 58px; border-radius: 14px; }
 
