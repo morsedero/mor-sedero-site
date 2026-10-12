@@ -1455,11 +1455,16 @@ body.focus #side { display: none; }
   #board > #side { order: 9; margin-block-start: auto; inline-size: auto; padding: 12px 0 0; display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 10px; }
   #board > #side .hchip { inline-size: auto; block-size: 96px; min-block-size: 0; padding: 8px; gap: 6px; border-radius: 20px; font-size: 14px; font-weight: 600; }
   #board > #side .hchip svg { inline-size: 22px; block-size: 22px; }
-  body.has-plan #board > #side #planChip { display: grid; grid-template-columns: auto 1fr; align-content: space-between; justify-items: start; column-gap: 6px; padding: 12px 14px; text-align: start; }
+  /* Today with a next task: three single lines in the 76px tile (Mor,
+     2026-10-12: "Next · 20:05" wrapped and the task name fell off) —
+     Today, the time, the task. "+N more" stays in the aria-label only. */
+  body.has-plan #board > #side #planChip { display: grid; grid-template-columns: auto minmax(0, 1fr); align-content: center; justify-items: start; column-gap: 6px; row-gap: 3px; padding: 8px 12px; text-align: start; line-height: 1.2; }
   body.has-plan #board > #side #planChip svg { inline-size: 17px; block-size: 17px; }
-  #planChip .tile-next:not([hidden]) { grid-column: 1 / -1; display: flex; flex-direction: column; gap: 2px; min-inline-size: 0; inline-size: 100%; font-weight: 500; }
-  .tile-next .tn-at, .tile-next .tn-more { font-size: 12px; opacity: .75; }
-  .tile-next .tn-row { display: flex; align-items: center; gap: 6px; min-inline-size: 0; font-size: 14px; font-weight: 600; }
+  body.has-plan #board > #side #planW { font-size: 15px; }
+  #planChip .tile-next:not([hidden]) { grid-column: 1 / -1; display: flex; flex-direction: column; gap: 1px; min-inline-size: 0; inline-size: 100%; font-weight: 500; }
+  .tile-next .tn-at { font-size: 12px; opacity: .75; white-space: nowrap; }
+  .tile-next .tn-more { display: none; }
+  .tile-next .tn-row { display: flex; align-items: center; gap: 6px; min-inline-size: 0; inline-size: 100%; font-size: 14px; font-weight: 600; }
   .tile-next .tn-dot { inline-size: 8px; block-size: 8px; border-radius: 50%; flex: none; background: var(--aink, currentColor); }
   .tile-next .tn-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   /* A page open: the tiles go to one slim line. */

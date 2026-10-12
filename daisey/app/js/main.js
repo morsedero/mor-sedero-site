@@ -43,7 +43,7 @@ function paintChip(){
   const box = $("#planNext");
   box.hidden = !day || !planNext;
   box.replaceChildren(...(day && planNext ? [
-    h("span", { className: "tn-at", textContent: `Next · ${hm(planNext.start)}` }),
+    h("span", { className: "tn-at", textContent: hm(planNext.start) }),
     h("span", { className: "tn-row" }, h("span", { className: "tn-dot" + areaClass(planNext.task) }), h("bdi", { className: "tn-name", dir: "auto", textContent: planNext.task.title })),
     h("span", { className: "tn-more", textContent: planNext.more ? `+${planNext.more} more` : "" })] : []));
 }
