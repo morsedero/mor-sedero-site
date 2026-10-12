@@ -622,6 +622,8 @@ async function boot(){
           $("#schedPage").hidden = on || plan || wk;
           if (on || plan || wk) document.body.classList.remove("day-open");
           const day = document.body.classList.contains("day-open");
+          // Phone, nothing open: the card floats mid-screen, as Focus mode did (app.css).
+          document.body.classList.toggle("home-float", phone.matches && !day && !(on || plan || wk));
           $("#projectsChip").setAttribute("aria-pressed", String(on || (wk && phone.matches)));
           $("#pwProj").setAttribute("aria-pressed", String(on));
           $("#pwWeek").setAttribute("aria-pressed", String(wk));
@@ -656,6 +658,7 @@ async function boot(){
           const done = (e) => { if (e.target !== now) return; now.classList.remove("pg-in", "pg-back"); now.removeEventListener("animationend", done); };
           now.addEventListener("animationend", done);
         };
+        phone.addEventListener("change", syncPanel);
         $("#panel").addEventListener("scroll", (e) => { if (e.target.classList?.contains("ppage")) e.target.dataset.st = e.target.scrollTop; }, true);
         // The Week page (Mor, 2026-10-10): the week's numbers and all
         // routines, in the panel like Projects; projects.js paints it.

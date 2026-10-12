@@ -1457,6 +1457,7 @@ body.focus #side { display: none; }
   body.has-plan.day-open #board > #side #planChip, body.has-plan #board:has(#panel > .ppage:not([hidden]):not(#schedPage):not(.pg-ghost)) > #side #planChip { display: flex; align-items: center; justify-content: center; padding: 4px 8px; }
   body.day-open #board > #side .tile-next, #board:has(#panel > .ppage:not([hidden]):not(#schedPage):not(.pg-ghost)) > #side .tile-next { display: none; }
   #board > #side .hchip.ready .hchip-dot { inset-block-start: -3px; inset-inline-end: -5px; }
+  #focusChip { display: none !important; } /* no Focus mode on a phone: the home is it */
   /* Projects is a full page: no Now card over it (Mor, 2026-10-12). */
   #board:has(#panel > :is(#projPage, #projectview, #statsPage):not([hidden]):not(.pg-ghost)) > .nowrow { display: none; }
   /* Week: off the tiles, a toggle at the top of Projects instead. */
@@ -2162,15 +2163,17 @@ dialog.tsheet[open] > .ts-laptop + .ts-repeat { margin-block-start: -12px; }
 
 /* Focus mode (Mor, 2026-10-10): the card alone, a little roomier, resting
    just above the middle of the screen. Same card, same actions. Not at
-   night (the night view keeps its own layout). */
-:root:not(.night) body.focus-mode .nowrow { flex: 1 1 auto; }
-:root:not(.night) body.focus-mode #nowcard { flex: 1 1 0; justify-content: center; padding-block-end: max(12vh, env(safe-area-inset-bottom)); }
-:root:not(.night) body.focus-mode .deck > .now-card.main { padding: 18px 18px 14px; border-radius: 20px; }
-:root:not(.night) body.focus-mode .now-card.main .now-title { margin-block-start: 6px; font-size: 23px; line-height: 1.2; letter-spacing: -0.01em; }
-:root:not(.night) body.focus-mode .now-card.main .now-why { font-size: 15px; }
-:root:not(.night) body.focus-mode .now-card.main .now-row { padding-block-start: 16px; }
+   night (the night view keeps its own layout). The phone's home does the
+   same with nothing open (body.home-float, main.js syncPanel): there is no
+   Focus button on a phone (Mor, 2026-10-12). */
+:root:not(.night) body:is(.focus-mode, .home-float) .nowrow { flex: 1 1 auto; }
+:root:not(.night) body:is(.focus-mode, .home-float) #nowcard { flex: 1 1 0; justify-content: center; padding-block-end: max(12vh, env(safe-area-inset-bottom)); }
+:root:not(.night) body:is(.focus-mode, .home-float) .deck > .now-card.main { padding: 18px 18px 14px; border-radius: 20px; }
+:root:not(.night) body:is(.focus-mode, .home-float) .now-card.main .now-title { margin-block-start: 6px; font-size: 23px; line-height: 1.2; letter-spacing: -0.01em; }
+:root:not(.night) body:is(.focus-mode, .home-float) .now-card.main .now-why { font-size: 15px; }
+:root:not(.night) body:is(.focus-mode, .home-float) .now-card.main .now-row { padding-block-start: 16px; }
 /* Focus too: the same light squares, bigger; Done the one saturated button (2026-10-11). */
-:root:not(.night) body.focus-mode .now-card.main .now-row { gap: 8px; } :root:not(.night) body.focus-mode .now-card.main .now-row .iconbtn { inline-size: 58px; min-inline-size: 58px; block-size: 58px; min-block-size: 58px; border-radius: 14px; font-size: 11px; gap: 3px; } :root:not(.night) body.focus-mode .now-card.main .now-row .iconbtn svg { inline-size: 20px; block-size: 20px; } :root:not(.night) body.focus-mode .now-card.main .now-row .btn.start { block-size: 58px; min-block-size: 58px; border-radius: 14px; }
+:root:not(.night) body:is(.focus-mode, .home-float) .now-card.main .now-row { gap: 8px; } :root:not(.night) body:is(.focus-mode, .home-float) .now-card.main .now-row .iconbtn { inline-size: 58px; min-inline-size: 58px; block-size: 58px; min-block-size: 58px; border-radius: 14px; font-size: 11px; gap: 3px; } :root:not(.night) body:is(.focus-mode, .home-float) .now-card.main .now-row .iconbtn svg { inline-size: 20px; block-size: 20px; } :root:not(.night) body:is(.focus-mode, .home-float) .now-card.main .now-row .btn.start { block-size: 58px; min-block-size: 58px; border-radius: 14px; }
 
 /* Side buttons, chosen (Mor, 2026-10-12): each in its own colour instead of
    all three going black — Plan daisy yellow (blue read off, and is the
