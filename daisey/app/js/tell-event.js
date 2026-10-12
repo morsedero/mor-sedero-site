@@ -6,11 +6,11 @@
 // Understands a time ("at 13:00", "13:30", "1pm", "at 9"), a length ("for an
 // hour", "for 90 min", "for 1.5 hours", "for half an hour"; else an hour),
 // and a day ("today", "tonight", "this morning", "tomorrow", a weekday; else
-// today). Day words follow the sleep boundary (wake.js, night owls, Mor
+// today). Day words follow the 04:00 switch (model.js LATE_HOUR, night owls, Mor
 // 2026-10-12): at 03:00 "tomorrow" is the morning you wake into, the one the
 // Now card calls Tomorrow first, not the day after it. The rest, tidied,
 // is the title. → { kind: "event", title, date, time, minutes } or null.
-import { localDate, dayAfter, wakeMin } from "./model.js";
+import { localDate, dayAfter, LATE_HOUR } from "./model.js";
 
 const pad = (n) => String(n).padStart(2, "0");
 const DAYS = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
@@ -46,9 +46,9 @@ export function eventFrom(text = "", now = Date.now()){
   if (cut(/\s(tomorrow|tmrw)\b/i)) date = dayAfter(1, now);
   else if (cut(/\s(?:today|this morning)\b/i)) date = localDate(now);
   else if (cut(/\stonight\b/i)) {
-    // Tonight runs on past midnight until the boundary: "tonight at 1am" is
+    // Tonight runs on past midnight until 04:00: "tonight at 1am" is
     // the small hours after this evening; one already over is the next one.
-    date = dayAfter(h * 60 + m < wakeMin() ? 1 : 0, now);
+    date = dayAfter(h < LATE_HOUR ? 1 : 0, now);
     if (Date.parse(`${date}T${pad(h)}:${pad(m)}`) < now) date = dayAfter(1, Date.parse(`${date}T12:00`));
   }
   else {

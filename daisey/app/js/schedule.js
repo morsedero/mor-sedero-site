@@ -6,7 +6,7 @@
 // day hours. A day with nothing on it says "Nothing scheduled".
 //
 // Labels follow the night-owl day (Mor, 2026-10-12; was the real clock):
-// after midnight and before the sleep boundary (model.js beforeWake) it's
+// after midnight and before the 04:00 switch (model.js LATE_HOUR) it's
 // still tonight, so the coming morning is "Tomorrow" (with the night divider
 // above it) — the same morning the Now card calls Tomorrow first.
 //

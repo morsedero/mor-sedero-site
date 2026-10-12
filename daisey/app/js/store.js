@@ -4,7 +4,7 @@
 // watchTasks, used as history for "similar past tasks" guesses.
 import * as fb from "./firebase.js";
 import { worthChecking, checkOnline } from "./research.js";
-import { createTask, editTask, completeTask, startedTask, workedTask, keptTime, skipTask, skipReason, migrateTask, toDate, INBOX, leftMinutes, setWake } from "./model.js";
+import { createTask, editTask, completeTask, startedTask, workedTask, keptTime, skipTask, skipReason, migrateTask, toDate, INBOX, leftMinutes } from "./model.js";
 import { logDocKey } from "./bloom-data.js";
 
 const GUEST_UID = "guest-local";
@@ -524,13 +524,10 @@ export function saveProjectRanges(uid, ranges){
 // write, so one feature's key never clobbers another's.
 const settingsDoc = (uid) => fb.doc(fb.db, "users", uid, "state", "settings");
 
-// Every settings reader goes through here, so the sleep boundary (model.js
-// setWake: the usual day start) is set before any of them renders a label.
 export function watchSettings(uid, cb, onError){
-  const got = (s, meta) => { setWake(s.dayStart); cb(s, meta); };
-  const guestUnsub = watchGuestState(uid, "settings", (value) => got({ ...(value || {}), logDone: false }, { fromCache: true }), onError);
+  const guestUnsub = watchGuestState(uid, "settings", (value) => cb({ ...(value || {}), logDone: false }, { fromCache: true }), onError);
   if(guestUnsub) return guestUnsub;
-  return fb.onSnapshot(settingsDoc(uid), (snap) => got(snap.exists() ? snap.data() : {}, { fromCache: snap.metadata.fromCache }), onError);
+  return fb.onSnapshot(settingsDoc(uid), (snap) => cb(snap.exists() ? snap.data() : {}, { fromCache: snap.metadata.fromCache }), onError);
 }
 
 export function saveSettings(uid, fields){

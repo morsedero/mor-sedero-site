@@ -109,7 +109,7 @@ export function mountTell(form, input, mic, uid, { openAdd, openTask, guest = fa
         headers,
         body: JSON.stringify({
           text, today: localDate(), weekday: new Date().toLocaleDateString("en", { weekday: "long" }),
-          // Still up past midnight, before the sleep boundary (wake.js): the day they
+          // Still up past midnight, before 04:00 (model.js LATE_HOUR): the day they
           // mean is the one they wake into, so "tomorrow" is today's date, not the
           // day after (the chat function says so) — the morning the card calls Tomorrow first.
           ...(logicalDate() !== localDate() ? { upLate: logicalDate() } : {}),

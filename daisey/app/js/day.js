@@ -104,7 +104,7 @@ export const planDate = (now = Date.now(), hours = W.DAY_HOURS) => (hours.late ?
 export const answerDate = (settings = {}, now = Date.now()) => planDate(now, dayHours(settings, now));
 
 // What a date is called (night owls, Mor 2026-10-12): counted from the day
-// you're in (logicalDate, the sleep boundary in wake.js), not the
+// you're in (logicalDate, the 04:00 switch in model.js), not the
 // calendar's, so at 03:00 the coming morning is "tomorrow" — on the Now
 // card, the Schedule and the plan alike. → "today" | "tomorrow" |
 // "yesterday" | null (further off).

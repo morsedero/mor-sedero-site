@@ -21,7 +21,6 @@
 //   unticked one is written to nextStep, so the engine and the Now card read
 //   the same field they always did.
 import { cleanRoutine, sessionPatch, routineChange } from "./routine.js";
-import { beforeWake } from "./wake.js";
 
 export const SIZES = [5, 15, 30, 60, 90]; // guess buckets; 90 reads as "90+"
 // someday: parked, never on the card until moved back. dropped: let go in the
@@ -78,13 +77,16 @@ export function localDate(ms = Date.now()){
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
 
-// The day you're in follows the sleep boundary (wake.js): until you wake,
-// it's still yesterday's date. A day itself can run on past midnight (Tell
-// Daisey "I can work until 1am", a usual end of 02:00) only up to LATE_HOUR.
-export { wakeMin, setWake, beforeWake } from "./wake.js";
+// The day switches at LATE_HOUR, not midnight (night owls, Mor 2026-10-11/12):
+// before 04:00 it's still last night, yesterday's date, and the coming
+// morning is "tomorrow" — on the Now card, the Schedule, the plan and in Tell
+// Daisey alike (day.js dayWord). A day itself can run on past midnight (Tell
+// Daisey "I can work until 1am", a usual end of 02:00) up to the same hour;
+// the day hours themselves are the user's, from Settings.
 export const LATE_HOUR = 4;
+export const lastNight = (ms = Date.now()) => new Date(ms).getHours() < LATE_HOUR;
 const back1 = (ms) => { const d = new Date(ms); d.setDate(d.getDate() - 1); return d.getTime(); };
-export const logicalDate = (ms = Date.now()) => localDate(beforeWake(ms) ? back1(ms) : ms);
+export const logicalDate = (ms = Date.now()) => localDate(lastNight(ms) ? back1(ms) : ms);
 
 // ---------- field cleaning ----------
 
@@ -105,7 +107,7 @@ export function toDate(v){
 
 // The day `days` after `ms`, as "YYYY-MM-DD".
 // Counted from the day you're in (logicalDate): at 03:00, tomorrow is the day you wake into.
-export const dayAfter = (days, ms = Date.now()) => { const d = new Date(beforeWake(ms) ? back1(ms) : ms); d.setDate(d.getDate() + days); return localDate(d.getTime()); };
+export const dayAfter = (days, ms = Date.now()) => { const d = new Date(lastNight(ms) ? back1(ms) : ms); d.setDate(d.getDate() + days); return localDate(d.getTime()); };
 
 // When Pending asks "still pending?": PENDING_CHECK_DAYS on, but for a real
 // deadline no later than the day before it — asking after the date is asking

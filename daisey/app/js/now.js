@@ -115,7 +115,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
   const dayKey = () => planDate(Date.now(), dayHours(settings));
   // What the plan's day is called (night owls, Mor 2026-10-12): its date
   // counted from the day you're in (day.js dayWord), so after midnight and
-  // before the sleep boundary the plan is for the morning the card calls
+  // before the 04:00 switch the plan is for the morning the card calls
   // Tomorrow first, and every label in the plan flow says tomorrow too.
   // "I'm free now" plans as day: today.
   const planWord = () => (!nightFree && dayWord(dayKey()) === "tomorrow" ? "tomorrow" : "today");
@@ -523,7 +523,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
       holdInPlan(task, Date.now() + LATER_MINUTES * 60000);
       stepAside(task, { label: `Later (${dur(LATER_MINUTES)}): `, lesson: true, write: () => Promise.all([skipNow(uid, task), declined(task), extra ? restoreTask(uid, task.id, extra) : null]) });
     } else if (when === "tomorrow") {
-      // Still up past midnight (before the sleep boundary): tomorrow is the day you wake into.
+      // Still up past midnight (before 04:00): tomorrow is the day you wake into.
       let day = dayAfter(1);
       if (task.dateKind === "deadline" && task.due && task.due < day) day = task.due; // never hide it past its deadline
       stepAside(task, { label: "Tomorrow: ", lesson: true, write: () => Promise.all([restoreTask(uid, task.id, { ...pushedTo(task, { notBefore: day }), ...extra }), declined(task)]) });
@@ -774,8 +774,8 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     const now = Date.now(), morning = nextMorning(now, hrs);
     const evs = cal.status === "ok" ? cal.events.filter((e) => e.busy !== false && !e.allDay) : [];
     const fw = cal.status === "ok" ? freeWindow(evs, morning, dayEndAt(morning, hrs)) : null;
-    // Before the day starts it's still "tonight" until the sleep boundary
-    // (wake.js, the usual day start; day.js dayWord); after that the morning's
+    // Before the day starts it's still "tonight" until 04:00 (model.js
+    // LATE_HOUR, day.js dayWord); after that the morning's
     // plan is today's, not tomorrow's.
     const early = dayWord(localDate(morning), now) === "today";
     // A real deadline that's today and still open (2026-10-06): the night

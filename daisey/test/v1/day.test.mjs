@@ -127,7 +127,7 @@ test("dayEndToday stretches today's end only", async () => {
   assert.equal(dayHours({ dayEndToday: { date: logicalDate(noon), end: "06:00" } }, noon).end, 22 * 60); // before the start: ignored
 });
 
-test("night owls: a usual day end past midnight runs on, and 'today' flips at the sleep boundary (Mor, 2026-10-11/12)", async () => {
+test("night owls: a usual day end past midnight runs on, and 'today' flips at 04:00 (Mor, 2026-10-11/12)", async () => {
   const { dayHours, isNight, dayEndAt, minText, gapsToday, planDate } = await import("../../app/js/day.js");
   const { logicalDate, dayAfter, notYet } = await import("../../app/js/model.js");
   const at = (d, h, m = 0) => new Date(2026, 9, d, h, m).getTime();
@@ -149,17 +149,15 @@ test("night owls: a usual day end past midnight runs on, and 'today' flips at th
   // An ordinary day (22:00) at 01:00: night, the plan is for the day you wake into.
   assert.equal(isNight(at(11, 1), dayHours({}, at(11, 1))), true);
   assert.equal(planDate(at(11, 1), dayHours({}, at(11, 1))), "2026-10-11");
-  // Dates: before the sleep boundary (08:00 by default, wake.js) it's still
-  // yesterday, so tomorrow is the calendar's today.
+  // Dates: before 04:00 it's still yesterday, so tomorrow is the calendar's today.
   assert.equal(logicalDate(at(11, 1)), "2026-10-10");
   assert.equal(dayAfter(1, at(11, 1)), "2026-10-11");
-  assert.equal(dayAfter(1, at(11, 5)), "2026-10-11");
-  assert.equal(dayAfter(1, at(11, 8)), "2026-10-12");
-  assert.equal(notYet({ notBefore: "2026-10-11" }, at(11, 1)), true); // a task for the 11th waits until 08:00
-  assert.equal(notYet({ notBefore: "2026-10-11" }, at(11, 7, 59)), true);
-  assert.equal(notYet({ notBefore: "2026-10-11" }, at(11, 8)), false);
-  // An end before the start but past the boundary is nonsense: the default day.
-  assert.equal(dayHours({ dayStart: "10:00", dayEnd: "09:00" }, at(10, 12)).end, 22 * 60);
+  assert.equal(dayAfter(1, at(11, 5)), "2026-10-12");
+  assert.equal(notYet({ notBefore: "2026-10-11" }, at(11, 1)), true); // a task for the 11th waits until 04:00
+  assert.equal(notYet({ notBefore: "2026-10-11" }, at(11, 3, 59)), true);
+  assert.equal(notYet({ notBefore: "2026-10-11" }, at(11, 4)), false);
+  // An end before the start but past LATE_HOUR is nonsense: the default day.
+  assert.equal(dayHours({ dayStart: "10:00", dayEnd: "05:00" }, at(10, 12)).end, 22 * 60);
 });
 
 test("dayEndToday past midnight: 'until 1am' runs on, then it's night (BEHAVIOR_REVIEW #4)", async () => {
