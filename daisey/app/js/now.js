@@ -180,8 +180,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
       weekDots(t),
       !main && t.nextStep && h("p", { className: "now-next" }, "Next: ", bdi(t.nextStep)),
       why && h("p", { className: "now-why" }, ...say(why)),
-      progressBar(t),
-      main && progressPct(t),
+      !main && progressBar(t),
       ...extra);
   }
   const titleButton = (t) => h("button", { type: "button", className: "now-title", dir: "auto", textContent: t.title,
@@ -1080,7 +1079,8 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
         // was crowded on a phone); Pending is the row's first choice.
         action("later", "Not now", `later, or ${task.title} is waiting on something`, { ariaExpanded: String(state.notNow || state.pendAsk),
           onclick: () => { if (state.pendAsk) { state.pendAsk = false; render(); } else toggle("notNow")(); } }),
-        done),
+        // The progress bar sits under Done, as wide as it (Mor, 2026-10-12).
+        h("div", { className: "done-col" }, done, progressBar(task), progressPct(task))),
       // Not now: Waiting on…, three times, then On hold set apart under them,
       // quieter and dashed, since it isn't a time: no date, into the
       // project's On hold list (Mor, 2026-10-10: In 10 min went).
