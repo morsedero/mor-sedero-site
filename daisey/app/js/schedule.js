@@ -145,11 +145,17 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onMissed, onPro
     const b = el.querySelector(".sc-today"), r = nowRow();
     if (!b || focus || view !== "day") return;
     const box = el.getBoundingClientRect(), at = r?.getBoundingClientRect(), headH = el.querySelector(".sc-head")?.offsetHeight || 0;
-    const away = !!at && (at.bottom < box.top + headH || at.top > box.bottom - 36);
+    // Hidden (another page showing), every rect is 0 and the row reads as
+    // off-screen: the button flashed up on today. Judge only with a layout.
+    const away = !!at && box.height > 0 && (at.bottom < box.top + headH || at.top > box.bottom - 36);
     b.classList.toggle("off", !away); b.tabIndex = away ? 0 : -1;
   }
   let awayQ = 0;
-  el.addEventListener("scroll", () => { if (!awayQ) awayQ = requestAnimationFrame(() => { awayQ = 0; nowAway(); }); }, { passive: true });
+  const awayLater = () => { if (!awayQ) awayQ = requestAnimationFrame(() => { awayQ = 0; nowAway(); }); };
+  el.addEventListener("scroll", awayLater, { passive: true });
+  // Shown again or resized (Focus grows the card above) re-judges it too.
+  const sized = typeof ResizeObserver === "function" ? new ResizeObserver(awayLater) : null;
+  sized?.observe(el);
 
   // The events for [from, to): the shared week when it covers it, else a fetch.
   function eventsFor(from, to){
@@ -495,5 +501,5 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onMissed, onPro
   let mark = null;
   const tick = setInterval(() => { const m = Math.floor(Date.now() / 60000); if (m !== mark && !document.hidden) { mark = m; render(); } }, 5000);
   render();
-  return { go, unmount(){ unsubs.forEach((u) => u()); clearInterval(tick); el.replaceChildren(); } };
+  return { go, unmount(){ unsubs.forEach((u) => u()); clearInterval(tick); sized?.disconnect(); el.replaceChildren(); } };
 }
