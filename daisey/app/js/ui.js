@@ -76,6 +76,11 @@ export const progressBar = (t) => {
   const p = progressOf(t);
   return p > 0 && h("div", { className: "task-bar", role: "img", ariaLabel: `${p}% done` }, h("span", { style: `inline-size:${p}%` }));
 };
+// The main card's bar says what it is: "40%" at its end (Mor, 2026-10-12).
+export const progressPct = (t) => {
+  const p = progressOf(t);
+  return p > 0 && h("span", { className: "task-pct", ariaHidden: "true", textContent: `${p}%` });
+};
 
 // Every piece of text that can be Hebrew or English goes in its own <bdi>,
 // so a Hebrew project never drags "5 min" around it or flips it to "min 5".

@@ -34,7 +34,7 @@ import { isRoutine, routineCalendar, eventsToLog, sessionPatch } from "./routine
 import { waitingFor, personOf } from "./nudge.js";
 import { dayHours, isNight, nextMorning, dayEndAt, bookings, sameTitle, minText, gapsToday, planDate, usualHours, dayWord, answerDate } from "./day.js";
 import { collectNeeds, wrapList } from "./needs.js";
-import { h, icon, bdi, pieces, sizeText, sizeChip, heroChip, progressBar, dur, say, nightDivider, flash, weekDots, focusField, dragScroll } from "./ui.js";
+import { h, icon, bdi, pieces, sizeText, sizeChip, heroChip, progressBar, progressPct, dur, say, nightDivider, flash, weekDots, focusField, dragScroll } from "./ui.js";
 import { areaClass, areaName, projectShown, doneToday, moonDaisy, watchProjectColors } from "./look.js";
 
 const LATER_MS = LATER_MINUTES * 60000;
@@ -181,6 +181,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
       !main && t.nextStep && h("p", { className: "now-next" }, "Next: ", bdi(t.nextStep)),
       why && h("p", { className: "now-why" }, ...say(why)),
       progressBar(t),
+      main && progressPct(t),
       ...extra);
   }
   const titleButton = (t) => h("button", { type: "button", className: "now-title", dir: "auto", textContent: t.title,

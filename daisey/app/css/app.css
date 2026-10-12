@@ -1488,7 +1488,8 @@ body.focus #side { display: none; }
 .hero-due::after { content: " ·"; color: var(--sub); font-weight: 500; }
 /* The bar: a thin strip inside the card's bottom edge, clear of the round
    corners (Mor, 2026-10-12: it sat in the top row and ran past the card). */
-.now-card.main > .task-bar { inset-inline: 22px; inset-block-end: 5px; border-radius: 2px; }
+.now-card.main > .task-bar { inset-inline: 22px 58px; inset-block-end: 5px; border-radius: 2px; }
+.now-card.main > .task-pct { position: absolute; inset-inline-end: 22px; inset-block-end: 1px; inline-size: 32px; text-align: end; font-size: 11px; line-height: 1; font-weight: 650; font-variant-numeric: tabular-nums; color: var(--ink-2, currentColor); pointer-events: none; }
 .now-card.main .now-title, .now-card.main button.now-title {
   margin-block-start: 5px; font-size: 20px; font-weight: 650; line-height: 1.2; letter-spacing: -0.2px;
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
