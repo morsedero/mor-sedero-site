@@ -860,14 +860,15 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
             return h("p", { className: "now-why" }, ...(!before && back ? [`${at}, back from `, bdi(main.title)]
               : [`${at}, ${before ? "before" : "after"} `, bdi(main.title), ` (${clock(Date.parse(main.start))}–${clock(Date.parse(main.end))})`]));
           })() : h("p", { className: "now-why", textContent: `Starts ${minText(hrs.start)}` }),
-          // The ride is for the event, not the task above: say whose it is.
-          leaveLine && main && h("p", { className: "now-why" }, "Getting to ", bdi(main.title), ":"),
-          leaveLine,
         ] : [
           main && h("p", { className: "now-why" }, `${clock(Date.parse(main.start))}–${clock(Date.parse(main.end))} `, bdi(main.title)),
           leaveLine,
           h("p", { className: "now-empty", textContent: "Nothing lined up yet." }),
         ])),
+      // The ride is for the event, not the task above: its own card.
+      p && leaveLine && h("section", { className: "now-card main hero night ride", ariaLabel: "Getting there" },
+        h("div", { className: "night-label" }, "Getting to ", bdi(main.title)),
+        leaveLine),
       h("div", { className: "night-foot" },
         h("button", { className: "pill-btn", type: "button", textContent: "I'm free now, show me something",
           ariaLabel: "I'm free now: pick a task anyway", onclick: () => { nightFree = true; render(); } }),
