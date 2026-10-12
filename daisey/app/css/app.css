@@ -2123,8 +2123,11 @@ dialog.tsheet[open] > .ts-laptop + .ts-repeat { margin-block-start: -12px; }
 /* Every card is filled with its colour (Mor, 2026-10-12); Focus tints deeper
    and glows, so what matters now still stands out. */
 .pcard { background: var(--tint); }
-.tier-focus .pcard { background: color-mix(in srgb, var(--aline) 38%, var(--tint)); border-color: var(--aline);
-  box-shadow: 0 0 0 1px var(--aline), 0 4px 22px color-mix(in srgb, var(--aline) 60%, transparent); }
+.tier-focus .pcard { background: color-mix(in srgb, var(--aline) 75%, var(--tint)); border-color: var(--aline);
+  box-shadow: 0 0 0 1.5px var(--aline), 0 4px 24px color-mix(in srgb, var(--aline) 75%, transparent); }
+.tier-keep .pp-tier-name { color: #000; }
+:root[data-theme="dark"] .tier-keep .pp-tier-name, :root.night .tier-keep .pp-tier-name { color: var(--ink); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .tier-keep .pp-tier-name { color: var(--ink); } }
 .pcard .pcard-status { color: var(--ink-2); }
 .pcard-fl { align-self: end; display: flex; justify-content: center; inline-size: 40px; margin-block-end: -6px; }
 .pcard-body { display: flex; flex-direction: column; min-inline-size: 0; }
