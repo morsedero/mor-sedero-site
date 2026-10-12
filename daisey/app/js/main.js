@@ -702,7 +702,7 @@ async function boot(){
               [".now-title", ["marginTop", "fontSize", "lineHeight", "letterSpacing"]],
               [".now-why", ["fontSize", "lineHeight"]],
               [".now-row", ["paddingTop", "columnGap"]],
-              [".now-row .iconbtn", ["width", "minWidth", "height", "minHeight", "borderRadius", "fontSize", "lineHeight", "rowGap", "columnGap"]],
+              [".now-row .iconbtn", ["width", "minWidth", "height", "minHeight", "borderRadius", "fontSize", "lineHeight", "rowGap", "columnGap", "flexBasis"]],
               [".now-row .iconbtn svg", ["width", "height"]],
               [".now-row .btn.start", ["height", "minHeight", "borderRadius"]],
             ];
@@ -710,7 +710,9 @@ async function boot(){
             const grab = (card) => parts(card).map((es, i) => es.map((e) => {
               const cs = getComputedStyle(e);
               // Keywords don't animate (they flip halfway); swap in their px.
-              const v = (p) => (cs[p] === "normal" && p === "letterSpacing") || (cs[p] === "auto" && p.startsWith("min")) ? "0px" : cs[p];
+              // flexBasis: the buttons are "flex: 0 1 46px", so their basis, not their
+              // width, sets the size; animate it as the size they really have.
+              const v = (p) => p === "flexBasis" ? e.getBoundingClientRect().width + "px" : (cs[p] === "normal" && p === "letterSpacing") || (cs[p] === "auto" && p.startsWith("min")) ? "0px" : cs[p];
               return Object.fromEntries(PARTS[i][1].map((p) => [p, v(p)]));
             }));
             const first = pick().map((el) => el?.getBoundingClientRect());
