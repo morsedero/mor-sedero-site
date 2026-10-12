@@ -89,6 +89,11 @@ export const FOCUS_MAX = 3; // projects in Focus at once: a cap makes it a choic
 export const AREA_BALANCE_MAX = 12;
 export const NEGLECT_PER_DAY = 1; // per whole day untouched
 export const NEGLECT_MAX = 8;
+// The nudges (area, window, batch, spot, momentum, neglect, learned) add up
+// to at most this together (2026-10-12): stacked, they reached ~70 and beat
+// a deadline today (35). Below it they still split a close call.
+export const SOFT = ["area", "window", "batch", "spot", "momentum", "neglect", "learned"];
+export const SOFT_MAX = 20;
 
 // ---------- Gate 3 — does it fit this gap? ----------
 export const WINDOW_FIT = {

@@ -378,6 +378,8 @@ export function scoreTask(task, m, ctx = { batches: new Map(), areas: [] }){
   const whyPoints = Object.fromEntries(FACTORS.map((k) => [k, f[k].why ?? f[k].points]));
   parts.skips = -W.SKIP_PENALTY * (m.skipsToday[task.id] || 0);
   parts.ignored = -IGNORED_PENALTY * ignoredDays(task, m.now);
+  // The nudges together never outvote a real reason (W.SOFT_MAX).
+  parts.softCap = -Math.max(0, W.SOFT.reduce((a, k) => a + parts[k], 0) - W.SOFT_MAX);
   const score = Object.values(parts).reduce((a, b) => a + b, 0);
   return { task, score, parts, details, whyPoints };
 }

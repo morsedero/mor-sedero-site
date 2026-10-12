@@ -481,3 +481,13 @@ test("passed over: 2 h on the card with nothing done costs it a turn, for 3 days
   assert.equal(pick([g2, other], { window: 120 }).task.id, other.id);
   assert.equal(E.ignoredDays(g2, at(8)), 0);
 });
+
+test("soft cap: stacked nudges add up to SOFT_MAX at most, and never outvote a deadline today", () => {
+  const long = NOW - 30 * 864e5;
+  const old = task({ project: "Gym", area: "job", createdAt: long, touchedAt: long });
+  const due = dl("2026-10-05", { size: 5 });
+  const r = E.rank([old, due], { now: NOW, window: 60, lastProject: "Gym", areaDone: { work: 4, job: 0 } });
+  const s = r.ranked.find((x) => x.task.id === old.id);
+  assert.equal(s.score, W.TIER.keep + W.SOFT_MAX); // area 12 + fit 12 + momentum 8 + untouched 8 = 40, capped
+  assert.equal(r.pick.task.id, due.id);
+});
