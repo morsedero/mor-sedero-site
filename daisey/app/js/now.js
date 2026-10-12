@@ -860,6 +860,8 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
             return h("p", { className: "now-why" }, ...(!before && back ? [`${at}, back from `, bdi(main.title)]
               : [`${at}, ${before ? "before" : "after"} `, bdi(main.title), ` (${clock(Date.parse(main.start))}–${clock(Date.parse(main.end))})`]));
           })() : h("p", { className: "now-why", textContent: `Starts ${minText(hrs.start)}` }),
+          // The ride is for the event, not the task above: say whose it is.
+          leaveLine && main && h("p", { className: "now-why" }, "Getting to ", bdi(main.title), ":"),
           leaveLine,
         ] : [
           main && h("p", { className: "now-why" }, `${clock(Date.parse(main.start))}–${clock(Date.parse(main.end))} `, bdi(main.title)),
