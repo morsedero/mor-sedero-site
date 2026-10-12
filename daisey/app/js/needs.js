@@ -30,7 +30,7 @@ import { draftFrom } from "./caltask.js";
 import { pickWeekDay, answer, answerSnapshot, effectiveDue, sweepAdvice, daysLate } from "./triage.js";
 import { localDate, logicalDate, pendingCheck, shrunk, shrinkPatch, dayAfter, notYet, pushedTo, bringBack, isGuess, estText } from "./model.js";
 import { sessionPatch, skipSlotPatch, weekState } from "./routine.js";
-import { dayHours, minText, usualHours } from "./day.js";
+import { dayHours, minText, usualHours, answerDate, planDate, dayWord } from "./day.js";
 import { nudgeText, waLink } from "./nudge.js";
 import { daysUntil } from "./engine.js";
 import { collectNeeds, somedayDue, awayDays, AWAY_DAYS } from "./needs-list.js";
@@ -96,7 +96,7 @@ export function mountNeeds(root, uid, { onClose, extra, onAway } = {}){
   // what the button says once armed (answer() below).
   const del = (t) => ["Delete task", () => { dropSeries(t); removeTask(uid, t.id).catch(fail); flash("Deleted ", t.title); next(); }, "Really delete?"];
   // Ids in today's plan (proposed or approved): the sweep keeps those today.
-  const planned = () => new Set(dayPlan?.date === logicalDate() && dayPlan.status !== "dismissed" ? (dayPlan.items || []).map((it) => it.taskId).filter(Boolean) : []);
+  const planned = () => new Set(dayPlan?.date === planDate(Date.now(), dayHours(settings)) && dayPlan.status !== "dismissed" ? (dayPlan.items || []).map((it) => it.taskId).filter(Boolean) : []);
   const sweep = (t, kind) => {
     const now = Date.now();
     const week = kind === "week" ? pickWeekDay(t, { events: cal.events || [], tasks, now, hours: usualHours(settings) }) : null;
@@ -175,7 +175,7 @@ export function mountNeeds(root, uid, { onClose, extra, onAway } = {}){
     if (item.kind === "meal") {
       const m = item.meal, low = m.name.toLowerCase();
       const setMeal = (v) => {
-        const today = logicalDate();
+        const today = answerDate(settings);
         const mealToday = { ...(settings.mealToday?.date === today ? settings.mealToday : {}), date: today, [m.name]: v };
         settings = { ...settings, mealToday };
         saveSettings(uid, { mealToday }).catch(fail);
@@ -203,7 +203,7 @@ export function mountNeeds(root, uid, { onClose, extra, onAway } = {}){
       // one short again, and Daisey offers it in the next free time.
       const e = item.slot, s = weekState(t);
       return { tone: areaClass(t).trim() || "area-personal", ico: "check", q: "Did it?",
-        sub: `${clock(e.start)}–${clock(e.end)}${e.day === logicalDate() ? " today" : `, ${weekday(e.day)}`}.`, item: t.title,
+        sub: `${clock(e.start)}–${clock(e.end)}${["today", "tomorrow"].includes(dayWord(e.day)) ? ` ${dayWord(e.day)}` : `, ${weekday(e.day)}`}.`, item: t.title,
         say: s.done ? `${s.done} of ${s.per} this week so far.` : `Your ${s.per}× a week.`,
         yes: ["Did it", () => { restoreTask(uid, t.id, sessionPatch(t, { ev: e })).catch(fail); next(); }],
         no: ["Skipped it", () => { restoreTask(uid, t.id, skipSlotPatch(t, e.id)).catch(fail); next(); }] };

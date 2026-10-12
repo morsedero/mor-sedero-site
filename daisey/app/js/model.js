@@ -21,6 +21,7 @@
 //   unticked one is written to nextStep, so the engine and the Now card read
 //   the same field they always did.
 import { cleanRoutine, sessionPatch, routineChange } from "./routine.js";
+import { beforeWake } from "./wake.js";
 
 export const SIZES = [5, 15, 30, 60, 90]; // guess buckets; 90 reads as "90+"
 // someday: parked, never on the card until moved back. dropped: let go in the
@@ -77,10 +78,13 @@ export function localDate(ms = Date.now()){
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
 
-// A day can run on past midnight (Tell Daisey "I can work until 1am"), up to
-// LATE_HOUR. Before that hour, the day you're still in is yesterday's date.
+// The day you're in follows the sleep boundary (wake.js): until you wake,
+// it's still yesterday's date. A day itself can run on past midnight (Tell
+// Daisey "I can work until 1am", a usual end of 02:00) only up to LATE_HOUR.
+export { wakeMin, setWake, beforeWake } from "./wake.js";
 export const LATE_HOUR = 4;
-export const logicalDate = (ms = Date.now()) => localDate(new Date(ms).getHours() < LATE_HOUR ? ms - (LATE_HOUR + 1) * 3600000 : ms);
+const back1 = (ms) => { const d = new Date(ms); d.setDate(d.getDate() - 1); return d.getTime(); };
+export const logicalDate = (ms = Date.now()) => localDate(beforeWake(ms) ? back1(ms) : ms);
 
 // ---------- field cleaning ----------
 
@@ -100,8 +104,8 @@ export function toDate(v){
 }
 
 // The day `days` after `ms`, as "YYYY-MM-DD".
-// Counted from the day you're in (logicalDate): at 01:00, tomorrow is the day you wake into.
-export const dayAfter = (days, ms = Date.now()) => { const d = new Date(ms); if (d.getHours() < LATE_HOUR) d.setDate(d.getDate() - 1); d.setDate(d.getDate() + days); return localDate(d.getTime()); };
+// Counted from the day you're in (logicalDate): at 03:00, tomorrow is the day you wake into.
+export const dayAfter = (days, ms = Date.now()) => { const d = new Date(beforeWake(ms) ? back1(ms) : ms); d.setDate(d.getDate() + days); return localDate(d.getTime()); };
 
 // When Pending asks "still pending?": PENDING_CHECK_DAYS on, but for a real
 // deadline no later than the day before it — asking after the date is asking

@@ -278,9 +278,10 @@ async function ask(key, prompt, system = SYSTEM, schema = SCHEMA){
 }
 
 // Said after midnight before sleeping (tell.js upLate: the day they're still
-// in): "tomorrow" is the day they wake into, which is already today's date.
+// in, until the sleep boundary, app/js/wake.js): "tomorrow" is the day they
+// wake into, which is already today's date.
 const upLateLine = (body) => (isDay(body.upLate) && isDay(body.today) && body.upLate < body.today
-  ? `\nIt is after midnight and the user is still up from ${body.upLate}. "Tomorrow" (מחר) means ${body.today}, the day they wake into, not the day after; "today" and "tonight" also mean ${body.today}.` : "");
+  ? `\nIt is after midnight and the user is still up from ${body.upLate}; they haven't slept yet. "Tomorrow" (מחר) means ${body.today}, the morning they wake into, not the day after; "today", "tonight" and "this morning" also mean ${body.today}.` : "");
 
 exports.handler = async (event) => {
   // GET: is it set up? Says only whether a key is present, never the key.

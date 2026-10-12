@@ -5,8 +5,10 @@
 // with only the event's name, or a quiet "2 h free" line for a gap inside the
 // day hours. A day with nothing on it says "Nothing scheduled".
 //
-// Labels follow the real clock: after midnight the coming day is "Today"
-// (with the night divider above it), never "Tomorrow".
+// Labels follow the night-owl day (Mor, 2026-10-12; was the real clock):
+// after midnight and before the sleep boundary (model.js beforeWake) it's
+// still tonight, so the coming morning is "Tomorrow" (with the night divider
+// above it) — the same morning the Now card calls Tomorrow first.
 //
 // Editable from here (Mor, 2026-10-06): an event opens its details (Edit,
 // Remove); a free gap or an empty day opens a new event right there. An event
@@ -23,7 +25,7 @@ import { timeline } from "./proposal.js";
 import { lastActivity } from "./miss.js";
 import { areaClass, watchProjectColors } from "./look.js";
 import { dayHours, minText, planDate, usualHours, dayEndAt } from "./day.js";
-import { localDate, durText } from "./model.js";
+import { localDate, logicalDate, durText } from "./model.js";
 import { h, bdi, nightDivider, icon } from "./ui.js";
 import { withTrips } from "./trips.js";
 
@@ -236,14 +238,15 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onMissed, onPro
     stepBy = (n) => go(localDate(addDays(at, n * range[1]).getTime()));
     const isNow = view === "week" ? from.getTime() === addDays(today, -today.getDay()).getTime() : at.getTime() === today.getTime();
     const future = (view === "week" ? from : at).getTime() > today.getTime(); // today lies behind (left)
-    // Names count from the day you're in: late past midnight that's still
-    // yesterday, so the calendar's today reads Tomorrow, the next day its weekday.
-    const named = real.late ? addDays(today, -1) : today;
+    // Names count from the day you're in: past midnight, until the sleep
+    // boundary, that's still yesterday, so the calendar's today reads
+    // Tomorrow, the next day its weekday (night owls, Mor 2026-10-12).
+    const named = ymdToDate(logicalDate(now)), night = named < today;
     const dayName = (d) => {
       const diff = Math.round((d - named) / 864e5);
       // The whole day shows, morning included, so it reads Today, not Tonight
       // (2026-10-11); past midnight it's all behind you: Earlier today (Mor, 2026-10-12).
-      return diff === 0 ? (real.late ? "Earlier today" : "Today") : diff === 1 ? "Tomorrow" : diff === -1 ? "Yesterday"
+      return diff === 0 ? (night ? "Earlier today" : "Today") : diff === 1 ? "Tomorrow" : diff === -1 ? "Yesterday"
         : d.toLocaleDateString("en-GB", { weekday: "long" });
     };
     const last = addDays(to, -1);

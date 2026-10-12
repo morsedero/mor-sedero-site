@@ -10,13 +10,13 @@
 // still the engine's (engine.rank), so the card and the plan agree until the
 // user changes the order.
 // PURE: no Firebase, no DOM.
-import { gapsToday, bookings, mealsOf, planDate } from "./day.js";
+import { gapsToday, bookings, mealsOf, planDate, answerDate } from "./day.js";
 import { rank, fitsPlace } from "./engine.js";
 import { phoneOkIds } from "./phone.js";
 import { routineCalendar } from "./routine.js";
 import { workBase } from "./context.js";
 import { overruled, eventKey, runState } from "./reality.js";
-import { LABELS, INBOX, notYet, localDate, logicalDate, leftMinutes, durText } from "./model.js";
+import { LABELS, INBOX, notYet, localDate, leftMinutes, durText } from "./model.js";
 import { officeDay } from "./holidays.js";
 import * as W from "./weights.js";
 
@@ -576,7 +576,7 @@ export function moreOf(items = [], ctx = {}){
 // the meal is one). laid: { [name]: answer } already done on this plan, so a
 // later drag isn't undone. → { items, laid }, the same items when nothing to do.
 export function relayMeals(items = [], ctx = {}, laid = {}){
-  const now = ctx.now ?? Date.now(), today = logicalDate(now);
+  const now = ctx.now ?? Date.now(), today = ctx.hours ? planDate(now, ctx.hours) : answerDate(ctx.settings, now);
   const said = ctx.settings?.mealToday?.date === today ? ctx.settings.mealToday : {};
   const meals = ctx.hours?.meals ?? mealsOf(ctx.settings);
   let out = items;

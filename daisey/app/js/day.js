@@ -26,10 +26,13 @@ export const minText = (min) => { const m = ((min % 1440) + 1440) % 1440; return
 // as minutes after midnight; the default when unset or nonsense.
 // "My day can run until 23:00 today" (Tell Daisey): settings.dayEndToday =
 // { date, end } stretches (or shortens) today's end only; tomorrow it's gone.
-// An end before LATE_HOUR runs past midnight ("until 1am", date = the
-// logicalDate it was said on): before midnight the end reads 25:00; after
-// it, until that end, the day is still on, as { start: 0, end, late: true }
-// (late: the plan and today's Laters keep yesterday's date, now.js dayKey).
+// date: the day it stretches, answerDate (the plan's day: after midnight,
+// the morning you wake into unless last night's day is still on).
+// An end before LATE_HOUR runs past midnight ("until 1am"): before midnight
+// the end reads 25:00; after it, until that end, the day is still on, as
+// { start: 0, end, late: true } (late: the plan and today's Laters keep
+// yesterday's date, now.js dayKey); after that end it's gone, and the
+// morning you wake into has its usual end.
 // The usual day can run past midnight too (night owls, Mor 2026-10-11): a
 // dayEnd before LATE_HOUR and before the start ("02:00") reads 26:00, the
 // same way.
@@ -40,9 +43,11 @@ export function dayHours(settings = {}, now = Date.now()){
   const base = s != null && e != null && e > s ? { start: s, end: e } : { ...W.DAY_HOURS };
   const today = settings.dayEndToday, end = toMin(today?.end);
   const d = new Date(now), m = d.getHours() * 60 + d.getMinutes();
-  if (end != null && today?.date === logicalDate(now)) {
+  if (end != null && today?.date === localDate(now)) {
     if (end >= late) { if (end > base.start) base.end = end; }
     else base.end = end + 1440;
+  } else if (end != null && end < late && m < end && today?.date === logicalDate(now)) {
+    return { start: 0, end, late: true, meals: [] }; // last night's "until 1am", still on
   }
   if (m < late && base.end > 1440) {
     if (m < base.end - 1440) return { start: 0, end: base.end - 1440, late: true, meals: [] };
@@ -74,10 +79,11 @@ export const mealsOf = (settings = {}) => mealPrefs(settings).filter((m) => m.on
 
 // Today's answer to the meal question (meals.js, Mor 2026-10-09):
 // settings.mealToday = { date, [name]: "HH:MM" (moved, today only) | "there"
-// (eaten at the event, so the plan adds none) }. Tomorrow it's gone, like
-// dayEndToday.
+// (eaten at the event, so the plan adds none) }; date: answerDate. Tomorrow
+// it's gone, like dayEndToday. Read only for a day that isn't last night's
+// late one (dayHours), so that's the calendar's date.
 export function mealsToday(settings = {}, now = Date.now()){
-  const t = settings.mealToday?.date === logicalDate(now) ? settings.mealToday : {};
+  const t = settings.mealToday?.date === localDate(now) ? settings.mealToday : {};
   return mealsOf(settings).flatMap((m) => {
     if (t[m.name] === "there") return [];
     const at = toMin(t[m.name]);
@@ -92,6 +98,20 @@ export const dayEndAt = (now, hours = W.DAY_HOURS) => atMin(now, hours.end);
 // past midnight is still on (late), else the calendar's — after midnight on
 // the night page that's the day you wake into (now.js dayKey).
 export const planDate = (now = Date.now(), hours = W.DAY_HOURS) => (hours.late ? logicalDate(now) : localDate(now));
+// The date a "today only" answer belongs to (the meal question, "my day runs
+// until 23:00 today"): the plan's day. At 06:00 that's the morning you wake
+// into, not last night (night owls, Mor 2026-10-12).
+export const answerDate = (settings = {}, now = Date.now()) => planDate(now, dayHours(settings, now));
+
+// What a date is called (night owls, Mor 2026-10-12): counted from the day
+// you're in (logicalDate, the sleep boundary in wake.js), not the
+// calendar's, so at 03:00 the coming morning is "tomorrow" — on the Now
+// card, the Schedule and the plan alike. → "today" | "tomorrow" |
+// "yesterday" | null (further off).
+export function dayWord(ymd, now = Date.now()){
+  const d = Math.round((Date.parse(`${ymd}T12:00`) - Date.parse(`${logicalDate(now)}T12:00`)) / 864e5);
+  return d === 0 ? "today" : d === 1 ? "tomorrow" : d === -1 ? "yesterday" : null;
+}
 
 export function isNight(now = Date.now(), hours = W.DAY_HOURS){
   const d = new Date(now), m = d.getHours() * 60 + d.getMinutes();

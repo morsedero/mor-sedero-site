@@ -5,8 +5,8 @@
 // word. Now Needs you asks, once a day per meal, with the nearest free time
 // ready: "Move lunch to 14:20" or "I'll eat there". The answer is today's
 // only, in settings.mealToday (day.js mealsToday). PURE.
-import { mealsOf, gapsToday, dayHours, minText } from "./day.js";
-import { localDate, logicalDate } from "./model.js";
+import { mealsOf, gapsToday, dayHours, minText, answerDate } from "./day.js";
+import { localDate } from "./model.js";
 
 const MIN = 60000;
 export const MEAL_MOVE_MAX = 180; // a move further than this from the meal's time isn't offered
@@ -29,7 +29,7 @@ function freeIn(busy, a, b){
 
 // → [{ key, name, at, minutes, by: [event], move: minutes after midnight | null }]
 export function mealAsks(events = [], settings = {}, now = Date.now()){
-  const today = logicalDate(now), answered = settings.mealToday?.date === today ? settings.mealToday : {};
+  const today = answerDate(settings, now), answered = settings.mealToday?.date === today ? settings.mealToday : {};
   const busy = events.filter((e) => !e.allDay && e.busy !== false && e.start && e.end)
     .map((ev) => ({ ev, s: Date.parse(ev.start), e: Date.parse(ev.end) })).sort((a, b) => a.s - b.s);
   const out = [];

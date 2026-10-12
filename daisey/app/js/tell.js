@@ -18,7 +18,7 @@ import { localDate, logicalDate, LATE_HOUR, LABELS, dayAfter } from "./model.js"
 import { createEvent, watchCalendar } from "./calendar.js";
 import { planDay } from "./plan.js";
 import { planView } from "./plan-view.js";
-import { dayHours, dayStartAt, toMin, usualHours } from "./day.js";
+import { dayHours, dayStartAt, toMin, usualHours, answerDate } from "./day.js";
 import { watchSettings, watchRun, saveSettings } from "./store.js";
 import { rank } from "./engine.js";
 import { workBase } from "./context.js";
@@ -109,8 +109,9 @@ export function mountTell(form, input, mic, uid, { openAdd, openTask, guest = fa
         headers,
         body: JSON.stringify({
           text, today: localDate(), weekday: new Date().toLocaleDateString("en", { weekday: "long" }),
-          // Still up past midnight: the day they mean is the one they wake into, so
-          // "tomorrow" is today's date, not the day after (the chat function says so).
+          // Still up past midnight, before the sleep boundary (wake.js): the day they
+          // mean is the one they wake into, so "tomorrow" is today's date, not the
+          // day after (the chat function says so) — the morning the card calls Tomorrow first.
           ...(logicalDate() !== localDate() ? { upLate: logicalDate() } : {}),
           ...(guest ? { guest: true } : {}),
           tasks: open.map((t) => ({ id: t.id, title: t.title, project: t.project, due: t.due || undefined, status: t.status })),
@@ -267,7 +268,7 @@ export function mountTell(form, input, mic, uid, { openAdd, openTask, guest = fa
         if (tripDay) saveSettings(uid, { tripDay }).catch(() => {});
         a = { ...a, place: null };
       }
-      if (a.kind === "moment") return Promise.all([a.dayEnd ? saveSettings(uid, { dayEndToday: { date: logicalDate(), end: a.dayEnd } }) : null, (a.place || a.minutes) ? saveMoment(uid, { ...(a.place ? { place: { value: a.place, at: now } } : {}), ...(a.minutes ? { free: { minutes: a.minutes, at: now } } : {}) }) : null]);
+      if (a.kind === "moment") return Promise.all([a.dayEnd ? saveSettings(uid, { dayEndToday: { date: answerDate(settings), end: a.dayEnd } }) : null, (a.place || a.minutes) ? saveMoment(uid, { ...(a.place ? { place: { value: a.place, at: now } } : {}), ...(a.minutes ? { free: { minutes: a.minutes, at: now } } : {}) }) : null]);
       return null;
     }).filter(Boolean);
     close();

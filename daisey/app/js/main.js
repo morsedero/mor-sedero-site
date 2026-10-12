@@ -462,7 +462,7 @@ async function boot(){
         // My day as one 24h bar with two handles: drag an end (or tap the bar to
         // pull the nearer end there), arrows nudge 15 min (Shift: 1 h). Saves once,
         // on release, not on every pixel.
-        // The bar runs 04:00 to 04:00 (model.js LATE_HOUR, Mor 2026-10-11), so a
+        // The bar runs 04:00 to 04:00 (Mor 2026-10-11), so a
         // night owl's day can end past midnight: 02:00 is 26:00 here.
         const SNAP = 15, MIN_SPAN = 60, BAR0 = 240, track = $("#dayTrack"), fill = track.querySelector(".db-fill");
         let dayS = 480, dayE = 1320, dayDrag = null;

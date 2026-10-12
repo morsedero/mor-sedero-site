@@ -28,10 +28,10 @@ import { missState, silenceText, lastActivity } from "./miss.js";
 import { takeQuiet } from "./push.js";
 import { findPhoneTasks, phoneOkIds, searching } from "./phone.js";
 import { rank, freeWindow, timeBucket, matchProject, dueAt, keepsCard, passedOver } from "./engine.js";
-import { leftMinutes, toMinutes, progressOf, leftPatch, localDate, logicalDate, LATE_HOUR, skipSnapshot, skipLesson, pendingCheck, notYet, pushedTo, bringBack, dayAfter, doneSnapshot, isGuess, estText } from "./model.js";
+import { leftMinutes, toMinutes, progressOf, leftPatch, localDate, logicalDate, skipSnapshot, skipLesson, pendingCheck, notYet, pushedTo, bringBack, dayAfter, doneSnapshot, isGuess, estText } from "./model.js";
 import { isRoutine, routineCalendar, eventsToLog, sessionPatch } from "./routine.js";
 import { waitingFor, personOf } from "./nudge.js";
-import { dayHours, isNight, nextMorning, dayEndAt, bookings, sameTitle, minText, gapsToday, planDate, usualHours } from "./day.js";
+import { dayHours, isNight, nextMorning, dayEndAt, bookings, sameTitle, minText, gapsToday, planDate, usualHours, dayWord, answerDate } from "./day.js";
 import { collectNeeds, wrapList } from "./needs.js";
 import { h, icon, bdi, pieces, sizeText, sizeChip, progressBar, dur, say, nightDivider, flash, weekDots, focusField, dragScroll } from "./ui.js";
 import { areaClass, areaName, projectShown, doneToday, moonDaisy, watchProjectColors } from "./look.js";
@@ -113,6 +113,13 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
   // The day the plan and today's Laters belong to: yesterday's, after midnight
   // while a day stretched past it is still on (day.js dayHours late).
   const dayKey = () => planDate(Date.now(), dayHours(settings));
+  // What the plan's day is called (night owls, Mor 2026-10-12): its date
+  // counted from the day you're in (day.js dayWord), so after midnight and
+  // before the sleep boundary the plan is for the morning the card calls
+  // Tomorrow first, and every label in the plan flow says tomorrow too.
+  // "I'm free now" plans as day: today.
+  const planWord = () => (!nightFree && dayWord(dayKey()) === "tomorrow" ? "tomorrow" : "today");
+  const PlanWord = () => (planWord() === "today" ? "Today" : "Tomorrow");
   const skipItems = () => (skipDoc?.date === dayKey() ? skipDoc.items || {} : {});
   const hidden = (now = Date.now()) => Object.entries(skipItems()).filter(([, v]) => v.until > now).map(([id]) => id);
   const skipCounts = () => Object.fromEntries(Object.entries(skipItems()).map(([id, v]) => [id, v.count]));
@@ -516,9 +523,8 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
       holdInPlan(task, Date.now() + LATER_MINUTES * 60000);
       stepAside(task, { label: `Later (${dur(LATER_MINUTES)}): `, lesson: true, write: () => Promise.all([skipNow(uid, task), declined(task), extra ? restoreTask(uid, task.id, extra) : null]) });
     } else if (when === "tomorrow") {
-      // Still up past midnight (before 04:00): tomorrow is the day you wake into.
-      const d = new Date(); if (d.getHours() >= LATE_HOUR) d.setDate(d.getDate() + 1);
-      let day = localDate(d.getTime());
+      // Still up past midnight (before the sleep boundary): tomorrow is the day you wake into.
+      let day = dayAfter(1);
       if (task.dateKind === "deadline" && task.due && task.due < day) day = task.due; // never hide it past its deadline
       stepAside(task, { label: "Tomorrow: ", lesson: true, write: () => Promise.all([restoreTask(uid, task.id, { ...pushedTo(task, { notBefore: day }), ...extra }), declined(task)]) });
     } else if (when === "week") {
@@ -768,9 +774,10 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     const now = Date.now(), morning = nextMorning(now, hrs);
     const evs = cal.status === "ok" ? cal.events.filter((e) => e.busy !== false && !e.allDay) : [];
     const fw = cal.status === "ok" ? freeWindow(evs, morning, dayEndAt(morning, hrs)) : null;
-    // Before the day starts it's still "tonight" until 04:00; after that the
-    // morning's plan is today's, not tomorrow's.
-    const early = new Date(now).getHours() >= 4 && localDate(morning) === localDate(now);
+    // Before the day starts it's still "tonight" until the sleep boundary
+    // (wake.js, the usual day start; day.js dayWord); after that the morning's
+    // plan is today's, not tomorrow's.
+    const early = dayWord(localDate(morning), now) === "today";
     // A real deadline that's today and still open (2026-10-06): the night
     // screen said "Nothing needs you tonight" over it, and by morning it read
     // "deadline passed". It gets named, with a Start — the one thing night
@@ -1204,7 +1211,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
   // for a rethink. On demand from the plan line, the Free row or Schedule's
   // "Plan my day". Approved, the card follows it in order.
   // Today's answers to the meal question (meals.js): { [name]: "HH:MM" | "there" }.
-  const mealAnswers = () => { const m = settings.mealToday; if (m?.date !== logicalDate()) return {}; const { date, ...rest } = m; return rest; };
+  const mealAnswers = () => { const m = settings.mealToday; if (m?.date !== answerDate(settings)) return {}; const { date, ...rest } = m; return rest; };
   // The day a plan on screen is laid against, taken when it's laid: taken
   // later, at the first render, a change made in between went unnoticed.
   const daySigNow = () => (cal.status === "ok" ? daySig(cal.events, dayHours(settings)) : null);
@@ -1331,7 +1338,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
         : `Running behind: ${gone.length} won't fit.`;
       return { tone: "area-work", ico: "later", q: "Your plan slipped", sub,
         item: (missed.length ? missed : gone).map((t) => t.title).join(", "),
-        say: `Re-plan lays the rest of today from now${gone.length ? ", and what won't fit goes back in your list" : ""}.`,
+        say: `Re-plan lays the rest of ${planWord()} from now${gone.length ? ", and what won't fit goes back in your list" : ""}.`,
         yes: ["Re-plan from now", () => { replanFrom(c); next(); }],
         no: ["Edit the plan", () => close(() => { prop.replan = true; openProposal(); })] };
     } };
@@ -1401,7 +1408,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
         h("div", { className: "toast-row" },
           h("span", { className: "toast-text" }, ...(got.length === 1 ? ["Time opened up. Add ", bdi(got[0].title), "?"] : [`Time opened up. Add ${got.length} tasks?`])),
           h("span", { className: "toast-acts" },
-            h("button", { className: "toast-undo", type: "button", textContent: "Add", ariaLabel: "Add them to today's plan",
+            h("button", { className: "toast-undo", type: "button", textContent: "Add", ariaLabel: `Add them to ${planWord()}'s plan`,
               // Said back (Mor, 2026-10-10: "I approved and nothing happened"):
               // they go on the plan's end, out of sight of the card.
               onclick: () => {
@@ -1428,7 +1435,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
       h("div", { className: "toast-row" },
         h("span", { className: "toast-text" }, ...(got.length === 1 ? ["Time opened up: added ", bdi(got[0].title), " to the end of your plan."] : [`Added ${got.length} tasks to the end of your plan.`])),
         h("span", { className: "toast-acts" },
-          h("button", { className: "toast-undo", type: "button", textContent: "Undo", ariaLabel: "Undo: take them off today's plan", onclick: undo }),
+          h("button", { className: "toast-undo", type: "button", textContent: "Undo", ariaLabel: `Undo: take them off ${planWord()}'s plan`, onclick: undo }),
           h("button", { className: "toast-undo", type: "button", textContent: "OK", ariaLabel: "OK, got it",
             onclick: () => { savePlan("approved", p.items, { ...keep, added: { ...a, seen: true } }); render(); } }))));
   }
@@ -1478,7 +1485,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
       h("div", { className: "toast-row" },
         h("span", { className: "toast-text" }, ...(n === 1 ? ["Took ", bdi(gone[0].title), " off the plan."] : [`Took ${n} tasks off the plan.`])),
         h("span", { className: "toast-acts" },
-          h("button", { className: "toast-undo", type: "button", textContent: "Undo", ariaLabel: "Undo: put them back in today's plan",
+          h("button", { className: "toast-undo", type: "button", textContent: "Undo", ariaLabel: `Undo: put them back in ${planWord()}'s plan`,
             onclick: () => { savePlan("approved", c.before, { kept: c.before.filter((it) => it.taskId).map((it) => it.taskId) }); render(); } }),
           h("button", { className: "toast-undo", type: "button", textContent: "OK", ariaLabel: "OK, got it",
             onclick: () => { cutSaved({ ...c, seen: true }); render(); } }))),
@@ -1506,7 +1513,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     const was = approvedPlan();
     savePlan("dismissed", []); prop.open = false; prop.replan = false; prop.ask = false; prop.note = ""; reset();
     render();
-    flash("Removed today's plan. Your calendar is untouched.", null, was ? { undo: () => {
+    flash(`Removed ${planWord()}'s plan. Your calendar is untouched.`, null, was ? { undo: () => {
       const { at, ...doc } = was; dayPlan = { ...was, at: Date.now() }; saveDayPlan(uid, doc).catch(fail); render(); } } : {});
   }
 
@@ -1693,10 +1700,10 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
           h("span", { className: "pp-title", dir: "auto", textContent: t.title }),
           // The slot's times already say how long; "not started" is Rethink's
           // job; No room says only the first clause of why (Mor, 2026-10-12).
-          h("span", { className: "pp-meta" }, ...pieces(projectShown(t) ? t.project : "", isOver ? (r.why || "").split(",")[0] || estText(t, r.minutes) : r.of ? `shortened from ${dur(r.of)}` : "", r.ride ? RIDE_ROW[r.ride] : "", !isOver && r.missed ? "did it happen?" : ""))),
+          h("span", { className: "pp-meta" }, ...pieces(projectShown(t) ? t.project : "", isOver ? (r.why || "").split(",")[0].replace(/\btoday\b/, planWord()) || estText(t, r.minutes) : r.of ? `shortened from ${dur(r.of)}` : "", r.ride ? RIDE_ROW[r.ride] : "", !isOver && r.missed ? "did it happen?" : ""))),
         h("span", { className: "pp-ctls" },
           isOver && !r.never && ctl("↑", "Do first", false, () => toFront(i)),
-          ctl("✕", "Take off today's plan", false, () => dropItem(i))));
+          ctl("✕", `Take off ${planWord()}'s plan`, false, () => dropItem(i))));
     };
     // A break is the plan's own item: it comes off like a task. Nothing in
     // the plan drags (Mor, 2026-10-11).
@@ -1729,8 +1736,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     const plural = (n) => (n === 1 ? ["One doesn't", "it"] : [`${n} don't`, "them"]);
     // Past midnight on the night page the plan is the day you wake into,
     // which that page calls tomorrow (Mor, 2026-10-11), so this says so too.
-    const hrs = dayHours(settings), at = Date.now();
-    const day = isNight(at, hrs) && !nightFree && new Date(at).getHours() < 4 && localDate(nextMorning(at, hrs)) === localDate(at) ? "Tomorrow" : "Today";
+    const day = PlanWord();
     return h("section", { className: "now-card main hero proposal", ariaLabel: approved ? `${day}'s plan` : "Proposed schedule" },
       h("div", { className: "hero-top" },
         h("span", { className: "hero-area", textContent: approved ? `${day}'s plan` : `Proposed for ${day.toLowerCase()}` }),
@@ -1761,7 +1767,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
           title: approved && (late || rows.some((r) => r.missed)) ? "Running late: rethink for what's left" : undefined,
           textContent: prop.busy ? "Thinking…" : "Rethink", onclick: () => { prop.ask = true; render(); } }),
         // Approved: Remove plan sits with the others (Mor, 2026-10-10); Close is the header's ✕.
-        approved ? h("button", { className: "btn no-plan", type: "button", textContent: "Remove plan", ariaLabel: "Remove today's plan", disabled: prop.busy, onclick: removePlan })
+        approved ? h("button", { className: "btn no-plan", type: "button", textContent: "Remove plan", ariaLabel: `Remove ${planWord()}'s plan`, disabled: prop.busy, onclick: removePlan })
           : h("button", { className: "btn no-plan", type: "button", textContent: "No plan", onclick: dismiss })));
   }
   // Once a plan is approved, how far along it is goes to the header chip
