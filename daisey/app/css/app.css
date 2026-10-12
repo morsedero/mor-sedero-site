@@ -2281,18 +2281,15 @@ dialog.tsheet[open] > .ts-laptop + .ts-repeat { margin-block-start: -12px; }
 .hglance .bl-done-rows .pj-tick { inline-size: 16px; block-size: 16px; border-width: 1.5px; }
 .hglance .bl-done-rows .pj-tick svg { inline-size: 9px; block-size: 9px; }
 .hglance .bl-done-rows .pj-quiet { min-block-size: 30px; font-size: 13px; }
-/* Routines mini (Mor, 2026-10-12: "too detailed"): one wrapping row of
-   chips, name + count. No week dots, bee or "this week"; the full card
-   stays in the avatar menu. */
-.hglance .bl-routines { flex-direction: row; flex-wrap: wrap; align-items: center; gap: 4px 6px; min-block-size: 32px; padding-block: 6px; }
-.hglance .bl-routines > .bl-h { margin: 0 4px 0 0; }
-.hglance .bl-h-sub, .hglance .bl-dots .wk-dots, .hglance .bl-bee { display: none; }
-.hglance .bl-routine { display: inline-flex; gap: 5px; min-block-size: 22px; padding: 0 8px; border-radius: 999px; background: var(--line); max-inline-size: 100%; }
-.hglance .bl-routine + .bl-routine { border-block-start: 0; }
-.hglance .bl-r-dot { inline-size: 6px; block-size: 6px; flex: none; }
-.hglance .bl-r-title { font-size: 12px; max-inline-size: 14ch; }
-.hglance .bl-r-n { font-size: 11px; min-inline-size: 0; }
-.hglance .bl-routine.met { background: color-mix(in srgb, var(--aink, var(--ink-2)) 16%, transparent); }
+.hglance .bl-routines > .bl-h { margin: 4px 0 0; }
+.hglance .bl-routine { min-block-size: 28px; gap: 8px; grid-template-columns: auto minmax(0, 1fr) auto 14px; }
+.hglance .bl-r-dot { inline-size: 6px; block-size: 6px; }
+.hglance .bl-r-title { font-size: 13px; }
+.hglance .bl-r-n { font-size: 11px; }
+.hglance .bl-dots { gap: 6px; }
+.hglance .bl-dots .wk-dots { gap: 3px; }
+.hglance .bl-dots .wk-dots i { inline-size: 7px; block-size: 7px; border-width: 1.2px; }
+.hglance .bl-bee { font-size: 11px; }
 /* Phone home: the card and the glance sit together mid-screen. */
 :root:not(.night) body.home-float:has(#glance:not([hidden])) .nowrow { flex: 0 1 auto; margin-block-start: auto; }
 :root:not(.night) body.home-float:has(#glance:not([hidden])) #nowcard { padding-block-end: 0; }
