@@ -2243,10 +2243,12 @@ dialog.tsheet[open] > .ts-laptop + .ts-repeat { margin-block-start: -12px; }
 .bl-h { margin: 0 0 8px; font-size: 11px; font-weight: 600; letter-spacing: .6px; text-transform: uppercase; color: var(--ink-2); }
 .bl-h-sub { font-weight: 400; color: var(--ink-2); }
 .bl-card { padding: 12px 12px 10px; border-radius: 18px; background: var(--card); border: 1px solid var(--line); }
-.bl-done { padding-block: 0; }
-.hg-dhead { display: flex; align-items: center; justify-content: space-between; gap: 8px; inline-size: 100%; min-block-size: 44px; padding: 0; border: 0; background: none; font: inherit; color: inherit; text-align: start; cursor: pointer; }
-.hg-dhead:disabled { cursor: default; }
-.hg-dhead .bl-h { margin: 0; }
+.bl-done { display: grid; justify-items: start; gap: 6px; }
+.hg-dpill { display: inline-flex; align-items: center; gap: 6px; min-block-size: 30px; padding: 0 10px 0 8px; border-radius: 999px; border: 1px solid var(--line); background: var(--card); font: inherit; font-size: 12px; font-weight: 600; color: var(--ink-2); cursor: pointer; }
+.hg-dpill:disabled { cursor: default; opacity: .7; }
+.hg-dtick { display: grid; place-items: center; inline-size: 16px; block-size: 16px; border-radius: 50%; background: var(--green); color: #fff; }
+.hg-dtick svg { inline-size: 10px; block-size: 10px; }
+.bl-done-rows.bl-card { justify-self: stretch; padding-block: 2px; }
 .hg-chev { display: grid; color: var(--ink-2); }
 .hg-chev svg { inline-size: 16px; block-size: 16px; transform: rotate(90deg); transition: transform .2s ease; }
 .bl-done.open .hg-chev svg { transform: rotate(-90deg); }
@@ -2274,7 +2276,6 @@ dialog.tsheet[open] > .ts-laptop + .ts-repeat { margin-block-start: -12px; }
 .hglance { gap: 6px; }
 .hglance .bl-card { padding: 6px 12px; border-radius: 14px; }
 .hglance .bl-h { font-size: 10px; letter-spacing: .5px; }
-.hglance .hg-dhead { min-block-size: 32px; }
 .hglance .hg-chev svg { inline-size: 14px; block-size: 14px; }
 .hglance .bl-done-rows { padding-block-end: 2px; }
 .hglance .bl-done-rows .pj-drow { min-block-size: 30px; gap: 8px; }

@@ -165,12 +165,14 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
     const box = els.glance; if (!box) return;
     const ts = tasks || [], done = doneToday(ts).sort((a, b) => a.doneAt - b.doneAt);
     if (!done.length) doneOpen = false;
-    const head = h("button", { type: "button", className: "hg-dhead", disabled: !done.length, ariaExpanded: String(doneOpen),
+    // A small pill (Mor, 2026-10-12); the list opens under it in a card.
+    const head = h("button", { type: "button", className: "hg-dpill", disabled: !done.length, ariaExpanded: String(doneOpen),
       onclick: () => { doneOpen = !doneOpen; paintGlance(); } },
-      h("h3", { className: "bl-h" }, "Done today", h("span", { className: "bl-h-sub", textContent: done.length ? ` · ${done.length}` : " · nothing yet" })),
+      h("span", { className: "hg-dtick", ariaHidden: "true" }, icon("check")),
+      done.length ? `Done today · ${done.length}` : "Nothing done yet",
       done.length > 0 && h("span", { className: "hg-chev", ariaHidden: "true" }, icon("chev")));
-    const doneCard = h("section", { className: "bl-card bl-done" + (doneOpen ? " open" : ""), ariaLabel: "Done today" }, head,
-      doneOpen && h("div", { className: "bl-done-rows" }, ...done.map((t) => h("div", { className: "pj-drow" },
+    const doneCard = h("section", { className: "bl-done" + (doneOpen ? " open" : ""), ariaLabel: "Done today" }, head,
+      doneOpen && h("div", { className: "bl-card bl-done-rows" }, ...done.map((t) => h("div", { className: "pj-drow" },
         h("span", { className: "pj-tick on", ariaHidden: "true" }, icon("check")),
         h("button", { type: "button", className: "pj-quiet", onclick: () => onOpen?.(t) }, bdi(t.title)),
         h("span", { className: "pj-meta", dir: "ltr", textContent: new Date(t.doneAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) })))));
