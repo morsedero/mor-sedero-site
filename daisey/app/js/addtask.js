@@ -127,20 +127,19 @@ export function mountAddTask(dialog, uid, { onStart } = {}){
     stepBtn(-1, "−", "Fewer times a week"), perOut, stepBtn(1, "+", "More times a week"), h("span", { textContent: "times a week" }));
   // Every week or every month (Mor, 2026-10-12: "a monthly task, not only
   // weekly"). A month is one date and nothing else ("just with a date
-  // choice"): its day is every month's, and it takes the Start box's place —
-  // the task waits till that day (notBefore), as a start date would make it.
+  // choice"): the Start box's — its day is every month's, and the task waits
+  // till it (notBefore), as any start date makes it. The event sheet does
+  // the same with its Day (addevent.js), and nothing in the dates row moves
+  // (Mor, 2026-10-12: a hidden Start slid Until left, confusing).
   let every = "week", on = "";
   const everyBtn = (v, text) => h("button", { type: "button", className: "chip", textContent: text, value: v,
     onclick: () => { if (every === v) return; every = v; if (v === "month") { mode = "any"; if (!on) setOn(start.input.value || logicalDate()); changed(); return; }
       // Back to weekly: the month's date was only ever its start, so it goes.
       const was = start.input.value === on; if (was) start.input.value = ""; on = ""; changed(was ? { notBefore: "" } : {}); } });
   const everyRow = h("div", { className: "now-chips ts-every", role: "group", ariaLabel: "How often" }, everyBtn("week", "Every week"), everyBtn("month", "Every month"));
-  const onIn = h("input", { type: "date", className: "ts-input ts-on", ariaLabel: "From which date" });
-  const onHint = h("p", { className: "ts-hint" });
+  const monthBox = h("p", { className: "ts-hint ts-month" });
   const ordinal = (n) => n + (n > 10 && n < 14 ? "th" : ["th", "st", "nd", "rd"][n % 10] || "th");
-  function setOn(v){ on = v; start.input.value = v; }
-  onIn.addEventListener("change", () => { if (/^\d{4}-\d{2}-\d{2}$/.test(onIn.value)) { setOn(onIn.value); changed(); } });
-  const monthBox = h("div", { className: "ts-set ts-month" }, h("label", { className: "ts-at-row" }, h("span", { textContent: "from" }), onIn), onHint);
+  function setOn(v){ on = v; start.input.value = v; start.paint(); }
   // Any days (Daisey finds the time) or Set days (Mor, 2026-10-08): the user
   // picks the weekdays and one time, and Daisey writes them as a weekly event
   // in the "Daisey" calendar when the sheet closes (slots.js). The number of
@@ -198,8 +197,7 @@ export function mountAddTask(dialog, uid, { onStart } = {}){
     perStep.hidden = !per || mode === "set" || every === "month";
     setBox.hidden = !per || mode !== "set" || every === "month";
     monthBox.hidden = !per || every !== "month";
-    if (document.activeElement !== onIn) onIn.value = on;
-    onHint.textContent = on ? `Every month on the ${ordinal(Number(on.slice(8)))}.` : "";
+    monthBox.textContent = on ? `Every month on the ${ordinal(Number(on.slice(8)))}, from Start.` : "Pick a Start date: every month on that day.";
     perOut.textContent = String(per);
     const [less, more] = perStep.querySelectorAll(".ts-step");
     less.disabled = per <= 1; more.disabled = per >= PER_MAX;
@@ -218,7 +216,6 @@ export function mountAddTask(dialog, uid, { onStart } = {}){
   function paintDates(){
     start.paint(); due.paint(); until.paint();
     due.box.hidden = !!per; until.box.hidden = !per;
-    start.box.hidden = !!per && every === "month"; // the month's date is its start
     kindRow.hidden = !due.input.value || !!per;
     kindBtns.forEach((b, i) => { const on = Object.keys(KIND_HELP)[i] === kind; b.ariaPressed = String(on); b.classList.toggle("on", on); });
     kindHelp.textContent = KIND_HELP[kind];
@@ -279,7 +276,8 @@ export function mountAddTask(dialog, uid, { onStart } = {}){
     field("Project", projectSel, newProject),
     field("Task", title),
     h("div", { className: "ts-dates" }, start.box, due.box, until.box, kindRow),
-    field("How long?", chipRow), guessBox, laptopRow, oftenRow, weekNow, pctBox, pendBox, holdBox, researchLine, stateLine,
+    oftenRow, weekNow, // repeats by the dates it changes (Mor, 2026-10-12)
+    field("How long?", chipRow), guessBox, laptopRow, pctBox, pendBox, holdBox, researchLine, stateLine,
     section("Links & notes", h("div", { className: "ts-group" }, linkRow, notes)),
     worked, startBtn, del, msg);
 
@@ -383,7 +381,12 @@ export function mountAddTask(dialog, uid, { onStart } = {}){
       msg.textContent = `Until kept inside the project dates (${rangeText(r)}).`;
     }
   }
-  start.input.addEventListener("change", () => { const c = fenceDates(["notBefore"]); paintDates(); if (editing) save({ notBefore: start.input.value, ...c }); });
+  start.input.addEventListener("change", () => {
+    const c = fenceDates(["notBefore"]);
+    if (per && every === "month") { on = start.input.value; paintOften(); } // a month's date is its Start
+    paintDates();
+    if (editing) save({ notBefore: start.input.value, ...c, ...(per && every === "month" ? { routine: routineOf() } : {}) });
+  });
   due.input.addEventListener("change", () => { const c = fenceDates(["due"]); paintDates(); if (editing) save({ due: due.input.value, dateKind: kind, ...c }); });
   start.time.addEventListener("change", () => { paintDates(); if (editing) save({ startTime: start.time.value }); });
   due.time.addEventListener("change", () => { paintDates(); if (editing) save({ dueTime: due.time.value }); });
