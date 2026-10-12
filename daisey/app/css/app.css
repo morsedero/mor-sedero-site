@@ -2268,6 +2268,27 @@ dialog.tsheet[open] > .ts-laptop + .ts-repeat { margin-block-start: -12px; }
 .bl-dots .wk-dots { gap: 5px; }
 .bl-dots .wk-dots i { inline-size: 9px; block-size: 9px; }
 .bl-bee { font-size: 13px; text-align: center; }
+/* Mini (Mor, 2026-10-12: "taking up too much space"): on the home both cards
+   shrink to slim rows, tighter type and dots. */
+.hglance { gap: 6px; }
+.hglance .bl-card { padding: 6px 12px; border-radius: 14px; }
+.hglance .bl-h { font-size: 10px; letter-spacing: .5px; }
+.hglance .hg-dhead { min-block-size: 32px; }
+.hglance .hg-chev svg { inline-size: 14px; block-size: 14px; }
+.hglance .bl-done-rows { padding-block-end: 2px; }
+.hglance .bl-done-rows .pj-drow { min-block-size: 30px; gap: 8px; }
+.hglance .bl-done-rows .pj-tick { inline-size: 16px; block-size: 16px; border-width: 1.5px; }
+.hglance .bl-done-rows .pj-tick svg { inline-size: 9px; block-size: 9px; }
+.hglance .bl-done-rows .pj-quiet { min-block-size: 30px; font-size: 13px; }
+.hglance .bl-routines > .bl-h { margin: 4px 0 0; }
+.hglance .bl-routine { min-block-size: 28px; gap: 8px; grid-template-columns: auto minmax(0, 1fr) auto 14px; }
+.hglance .bl-r-dot { inline-size: 6px; block-size: 6px; }
+.hglance .bl-r-title { font-size: 13px; }
+.hglance .bl-r-n { font-size: 11px; }
+.hglance .bl-dots { gap: 6px; }
+.hglance .bl-dots .wk-dots { gap: 3px; }
+.hglance .bl-dots .wk-dots i { inline-size: 7px; block-size: 7px; border-width: 1.2px; }
+.hglance .bl-bee { font-size: 11px; }
 /* Phone home: the card and the glance sit together mid-screen. */
 :root:not(.night) body.home-float:has(#glance:not([hidden])) .nowrow { flex: 0 1 auto; margin-block-start: auto; }
 :root:not(.night) body.home-float:has(#glance:not([hidden])) #nowcard { padding-block-end: 0; }
