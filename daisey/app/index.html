@@ -108,8 +108,10 @@
            the bottom instead, over Tell Daisey, and Plan is the wide Today
            tile: the home is the card alone (Mor, 2026-10-12). -->
       <aside id="side" class="side" aria-label="Plan and projects">
-        <button id="planChip" class="hchip plan empty" type="button" hidden><span class="plan-ic"><svg class="ic-add" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3v4M16 3v4M3 10h18"/><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M12 13v5M9.5 15.5h5"/></svg><svg class="ic-ok" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3v4M16 3v4M3 10h18"/><rect x="3" y="5" width="18" height="16" rx="2"/><path d="m9 15.5 2 2 4-4"/></svg><span class="hchip-dot" aria-hidden="true"></span></span><span id="planW" class="hchip-word">Plan my day</span><span id="planNext" class="tile-next" hidden></span></button>
-        <button id="projectsChip" class="hchip plan" type="button" hidden aria-label="Projects" aria-pressed="false"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/></svg><span class="hchip-word">Projects</span></button>
+        <button id="planChip" class="hchip plan empty" type="button" hidden><span class="plan-ic"><svg class="ic-add" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3v4M16 3v4M3 10h18"/><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M12 13v5M9.5 15.5h5"/></svg><svg class="ic-ok" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3v4M16 3v4M3 10h18"/><rect x="3" y="5" width="18" height="16" rx="2"/><path d="m9 15.5 2 2 4-4"/></svg><span class="hchip-dot" aria-hidden="true"></span></span><span id="planW" class="hchip-word">Plan my day</span><span id="planNext" class="tile-next" hidden></span><svg class="tile-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 15 6-6 6 6"/></svg></button>
+        <!-- Projects: stacked layers (Mor, 2026-10-12). On a phone it stands
+             over the mic with + (main.js placeSide, #dockStack). -->
+        <button id="projectsChip" class="hchip plan" type="button" hidden aria-label="Projects" aria-pressed="false"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 3 9 5-9 5-9-5Z"/><path d="m3 13 9 5 9-5"/><path d="m3 17.5 9 5 9-5" opacity=".45"/></svg><span class="hchip-word">Projects</span></button>
         <!-- Week: shows done today + routines under the card, and hides them (Mor, 2026-10-12). -->
         <button id="weekChip" class="hchip plan" type="button" hidden aria-label="Week" aria-pressed="false"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 20V12M12 20V5M19 20v-5"/></svg><span class="hchip-word">Week</span></button>
       </aside>
@@ -117,6 +119,8 @@
     <!-- Under the card on the home: done today and the routines' week
          (projects.js paints, main.js shows; Mor, 2026-10-12: Week went). -->
     <div id="glance" class="hglance" aria-label="Today so far" hidden></div>
+    <!-- Phone, once: how the home works without buttons (main.js seenHint). -->
+    <button id="homeHint" class="home-hint" type="button" hidden>Tap the card to focus · Swipe up for today</button>
     <!-- The home panel: the Schedule, or Projects in its place. The Projects
          button toggles between them (Mor, 2026-10-08). -->
     <section id="panel" class="panel" aria-label="Schedule">
@@ -132,6 +136,8 @@
        as cards and changes nothing until you tap Apply. One pill:
        [ + | Tell Daisey… | mic ]. -->
   <div id="dock" class="dock" hidden>
+    <!-- Phone: Projects over +, over the mic (main.js placeSide moves them in). -->
+    <div id="dockStack" class="dock-stack"></div>
     <form id="tell" class="tellbar">
       <div class="plus-wrap">
         <button id="plus" class="plus" type="button" aria-label="Add" aria-haspopup="true" aria-expanded="false" aria-controls="plusMenu">

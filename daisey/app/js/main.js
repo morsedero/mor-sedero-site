@@ -38,7 +38,11 @@ function paintChip(){
   c.classList.toggle("ready", planReady && !p);
   const day = !!p && phone.matches;
   document.body.classList.toggle("has-plan", !!p);
-  $("#planW").textContent = day ? "Today" : p ? "Plan" : "Plan my day";
+  // Phone: the strip under the card says "Next" over the next task, "Today"
+  // once the day (or a page) is open, where it shuts it (Mor, 2026-10-12).
+  const dayOpen = phone.matches && document.body.classList.contains("day-open");
+  const page = phone.matches && !!document.querySelector("#panel > .ppage:not([hidden]):not(#schedPage):not(.pg-ghost)");
+  $("#planW").textContent = dayOpen ? "Today" : day ? (planNext && !page ? "Next" : "Today") : p ? "Plan" : "Plan my day";
   c.ariaLabel = day ? `Today${planNext ? `: next ${planNext.task.title} at ${hm(planNext.start)}` : ""}` : p ? "Today's plan. Open it to change it" : planReady ? "Plan my day: a plan is ready to look at" : "Plan my day";
   const box = $("#planNext");
   box.hidden = !day || !planNext;
@@ -256,12 +260,52 @@ async function boot(){
   // the card). Wider, they go back to their column beside the card.
   // Focus goes with them on a phone, a square at the row's end (Mor,
   // 2026-10-12); wider, back to the header's start.
+  // The phone's bottom went from 7 targets to 4 (Mor, 2026-10-12): Today is
+  // a slim strip under the card, Projects and + stand over the mic, Week is
+  // gone (the glance always shows), and Focus is a tap on the card. Focus
+  // stays in #side only as the way out of Focus mode.
   const placeSide = () => {
-    if (phone.matches) { $("#board").append($("#side")); $("#side").append($("#focusChip")); }
-    else { $(".nowrow").append($("#side")); $(".hdr-end").prepend($("#focusChip")); }
+    if (phone.matches) { $("#board").append($("#side")); $("#side").append($("#focusChip")); $("#dockStack").append($("#projectsChip"), $(".plus-wrap")); }
+    else { $(".nowrow").append($("#side")); $(".hdr-end").prepend($("#focusChip")); $("#planChip").after($("#projectsChip")); $("#tell").prepend($(".plus-wrap")); }
     paintChip();
   };
   phone.addEventListener("change", placeSide); placeSide();
+  // Phone, once: a hint for the two gestures, gone for good after the first
+  // use of either (or a tap on it).
+  const HINT_KEY = "daisey_home_hint";
+  let hintSeen = false;
+  try { hintSeen = localStorage.getItem(HINT_KEY) === "1"; } catch { /* private window */ }
+  const seenHint = () => {
+    if (hintSeen) return;
+    hintSeen = true; $("#homeHint").hidden = true;
+    try { localStorage.setItem(HINT_KEY, "1"); } catch { /* private window */ }
+  };
+  $("#homeHint").onclick = seenHint;
+  // Tap the Now card (not one of its buttons): Focus mode, in and out.
+  $("#nowcard").addEventListener("click", (e) => {
+    if (!phone.matches || document.documentElement.classList.contains("night")) return;
+    const card = e.target.closest(".deck > .now-card.main");
+    if (!card || card.classList.contains("proposal") || e.target.closest("button, a, input, textarea, select, label, summary, [role=button], [contenteditable], [tabindex]")) return;
+    if (getSelection()?.toString()) return;
+    seenHint(); mounted?.now?.focus();
+  });
+  // Swipe up on the card or the strip: Today opens; down: it shuts. Not on
+  // a card that scrolls, where the swipe is the scroll.
+  let swipe = null;
+  $("#board").addEventListener("touchstart", (e) => {
+    const t = e.touches[0], box = e.target.closest("#nowcard");
+    swipe = phone.matches && e.touches.length === 1 && !document.body.classList.contains("focus-mode")
+      && e.target.closest(".nowrow, #side, #glance, #homeHint") && !(box && box.scrollHeight > box.clientHeight + 2) ? { x: t.clientX, y: t.clientY } : null;
+  }, { passive: true });
+  $("#board").addEventListener("touchend", (e) => {
+    if (!swipe) return;
+    const t = e.changedTouches[0], dx = t.clientX - swipe.x, dy = t.clientY - swipe.y;
+    swipe = null;
+    if (Math.abs(dy) < 50 || Math.abs(dy) < Math.abs(dx) * 1.5) return;
+    const open = document.body.classList.contains("day-open");
+    if (dy < 0 ? open || !document.body.classList.contains("home-float") : !open) return;
+    seenHint(); window.__toggleDay?.();
+  }, { passive: true });
   $("#settingsX").onclick = () => settings.close();
   settings.addEventListener("click", (e) => { if (e.target === settings) settings.close(); });
 
@@ -643,7 +687,9 @@ async function boot(){
           // The glance (done today, routines) only on the home with nothing
           // open (Mor, 2026-10-12); wider, the Schedule under it counts as home.
           // And only while Week is on: the home is the card alone until asked.
-          const glance = weekOn && !(on || plan || (phone.matches && day));
+          // On a phone it always shows: Week is gone there (Mor, 2026-10-12).
+          const glance = (weekOn || phone.matches) && !(on || plan || (phone.matches && day));
+          $("#homeHint").hidden = hintSeen || !(phone.matches && !day && !(on || plan));
           $("#glance").hidden = !glance;
           $("#weekChip").setAttribute("aria-pressed", String(glance));
           $("#projectsChip").setAttribute("aria-pressed", String(on));
@@ -653,6 +699,7 @@ async function boot(){
           const sched = $("#schedPage").getClientRects().length > 0;
           if (sched && !schedShown) m.schedule?.landNow();
           schedShown = sched;
+          paintChip();
           swapAnim();
         };
         // Page swaps animate (Mor, 2026-10-12): the page coming in rises and
@@ -734,7 +781,7 @@ async function boot(){
           onScreen: (name) => { if (name) { screens.open("project"); syncPanel(); } else screens.back(); },
         });
         syncPanel();
-        $("#planChip").onclick = () => phone.matches && planNow ? window.__toggleDay() : m.now?.plan();
+        $("#planChip").onclick = () => { seenHint(); if (phone.matches && (planNow || document.body.classList.contains("day-open"))) window.__toggleDay(); else m.now?.plan(); };
         m.now = mountNow($("#nowcard"), user.uid, {
           name: isGuest ? "" : (user.displayName || "").trim().split(/\s+/)[0], onDone: paintDone, onNeedsCount: paintNeeds, onPlanProgress: paintPlan, onPlanNext: paintNext,
           onPlanReady: paintReady, onPlanApproved: cheerPlan,

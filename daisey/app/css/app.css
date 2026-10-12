@@ -1448,48 +1448,53 @@ body.focus #side { display: none; }
    placeSide): Plan, as the wide Today tile once a plan is approved, then
    Projects. The Schedule waits behind Today (body.day-open). With a
    page open the tiles shrink to one line, a tab bar under it. */
-.tile-next { display: none; }
+.tile-next, .tile-chev, .home-hint, .dock-stack:empty { display: none; }
 .sc-bar .sc-planbtn { display: none; } /* over .sc-weekbtn's inline-flex further down */
 @media (max-width: 599px) {
   body:not(.day-open) #panel:not(:has(> .ppage:not([hidden]):not(#schedPage):not(.pg-ghost))) { display: none; }
-  #board > #side { order: 9; margin-block-start: auto; inline-size: auto; padding: 12px 0 0; display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 10px; }
-  #board > #side .hchip { inline-size: auto; block-size: 96px; min-block-size: 0; padding: 8px; gap: 6px; border-radius: 20px; font-size: 14px; font-weight: 600; }
-  #board > #side .hchip svg { inline-size: 22px; block-size: 22px; }
-  /* Today with a next task: three single lines in the 76px tile (Mor,
-     2026-10-12: "Next · 20:05" wrapped and the task name fell off) —
-     Today, the time, the task. "+N more" stays in the aria-label only. */
-  body.has-plan #board > #side #planChip { display: grid; grid-template-columns: auto minmax(0, 1fr); align-content: center; justify-items: start; column-gap: 6px; row-gap: 3px; padding: 8px 12px; text-align: start; line-height: 1.2; }
-  body.has-plan #board > #side #planChip svg { inline-size: 17px; block-size: 17px; }
-  body.has-plan #board > #side #planW { font-size: 15px; }
-  #planChip .tile-next:not([hidden]) { grid-column: 1 / -1; display: flex; flex-direction: column; gap: 1px; min-inline-size: 0; inline-size: 100%; font-weight: 500; }
-  .tile-next .tn-at { font-size: 12px; opacity: .75; white-space: nowrap; }
+  /* The bottom, 7 targets cut to 4 (Mor, 2026-10-12, canvas "Daisey
+     Minimal Bottom"): under the card one slim strip, Plan my day, or
+     "Next 14:00 task" once a plan is approved, that opens Today (so does a
+     swipe up, main.js). Projects and + stand over the mic (.dock-stack).
+     Week is gone here; Focus is a tap on the card, its chip only the way out. */
+  #board > #side { order: 9; margin-block-start: auto; inline-size: auto; padding: 4px 0 0; display: flex; flex-direction: row; justify-content: center; }
+  #board > #side :is(#projectsChip, #weekChip, #focusChip) { display: none; }
+  #board > #side #planChip:not([hidden]) { display: inline-flex; flex: none; flex-direction: row; align-items: center; gap: 6px; inline-size: auto; max-inline-size: 100%; block-size: 44px; min-block-size: 0; padding: 0 14px; border: 0; border-radius: 22px; background: transparent; box-shadow: none; color: var(--ink-2); font-size: 13px; font-weight: 500; line-height: 1.2; white-space: nowrap; }
+  #board > #side #planChip.ready { border: 1px solid var(--a-admin-line); background: var(--a-admin-tint); color: var(--a-admin-ink); }
+  #board > #side #planChip .plan-ic svg { display: none; }
+  #board > #side #planChip .tile-chev { display: block; inline-size: 18px; block-size: 18px; flex: none; order: -1; }
+  @media (prefers-reduced-motion: no-preference) { #board > #side #planChip .tile-chev { transition: transform .25s ease; } }
+  body.day-open #board > #side #planChip .tile-chev { transform: rotate(180deg); }
+  #board > #side #planChip .hchip-word { display: inline; }
+  #planChip .tile-next:not([hidden]) { display: inline-flex; align-items: center; gap: 6px; min-inline-size: 0; }
+  .tile-next .tn-at { font-variant-numeric: tabular-nums; }
   .tile-next .tn-more { display: none; }
-  .tile-next .tn-row { display: flex; align-items: center; gap: 6px; min-inline-size: 0; inline-size: 100%; font-size: 14px; font-weight: 600; }
+  .tile-next .tn-row { display: inline-flex; align-items: center; gap: 6px; min-inline-size: 0; color: var(--ink); font-weight: 600; }
   .tile-next .tn-dot { inline-size: 8px; block-size: 8px; border-radius: 50%; flex: none; background: var(--aink, currentColor); }
-  .tile-next .tn-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  /* A page open: the tiles go to one slim line. */
-  body.day-open #board > #side .hchip, #board:has(#panel > .ppage:not([hidden]):not(#schedPage):not(.pg-ghost)) > #side .hchip { block-size: 48px; flex-direction: row; display: flex; padding: 4px 8px; }
-  body.has-plan.day-open #board > #side #planChip, body.has-plan #board:has(#panel > .ppage:not([hidden]):not(#schedPage):not(.pg-ghost)) > #side #planChip { display: flex; align-items: center; justify-content: center; padding: 4px 8px; }
+  .tile-next .tn-name { max-inline-size: 48vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   body.day-open #board > #side .tile-next, #board:has(#panel > .ppage:not([hidden]):not(#schedPage):not(.pg-ghost)) > #side .tile-next { display: none; }
-  #board > #side .hchip.ready .hchip-dot { inset-block-start: -3px; inset-inline-end: -5px; }
+  #board > #side .hchip.ready .hchip-dot { position: static; }
+  .home-hint { display: block; order: 8; align-self: center; margin-block-start: 6px; padding: 6px 12px; border: 0; border-radius: 999px; background: var(--chip); color: var(--ink-2); font: inherit; font-size: 12.5px; cursor: pointer; }
+  .home-hint[hidden], body.focus-mode .home-hint { display: none; }
+  @media (prefers-reduced-motion: no-preference) { .home-hint:not([hidden]) { animation: ready-in .35s ease-out; } }
+  .dock:has(.dock-stack:not(:empty)) { padding-block-start: 6px; }
+  .dock-stack { display: flex; flex-direction: column; align-items: flex-end; gap: 10px; padding-inline-end: 6px; margin-block-end: 10px; }
+  .dock-stack:empty { display: none; }
+  .dock-stack .plus-menu { inset-inline-start: auto; inset-inline-end: 0; }
+  .dock-stack .plus { inline-size: 42px; block-size: 42px; border: 1px solid var(--line); background: var(--card); }
+  .dock-stack #projectsChip { inline-size: 42px; block-size: 42px; margin: 0; padding: 0; justify-content: center; border-radius: 50%; }
+  .dock-stack #projectsChip[hidden] { display: none; }
+  .dock-stack #projectsChip svg { inline-size: 20px; block-size: 20px; }
+  .dock-stack #projectsChip .hchip-word { position: absolute; inline-size: 1px; block-size: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .dock-stack #projectsChip::after { inset: 0; }
+  .dock-stack #projectsChip[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); color: var(--card); }
   /* Projects is a full page: no Now card over it (Mor, 2026-10-12). */
   #board:has(#panel > :is(#projPage, #projectview):not([hidden]):not(.pg-ghost)) > .nowrow { display: none; }
-  /* Projects, Week and Focus are icon squares in one row after Today, in
-     every state (Mor, 2026-10-12: Week back as a tile). Home: one 76px row.
-     A page open: one slim line. In Focus mode Focus stays, alone in its
-     spot, with its word back, as the way out. */
+  /* Focus mode: Focus, with its word, alone at the end, the way out. */
   #focusChip { --on: var(--p-teal-ink); }
-  #board > #side { grid-template-columns: 1fr repeat(3, 56px); grid-template-rows: 76px; }
-  #board > #side #planChip { block-size: auto; }
-  #board > #side :is(#projectsChip, #weekChip, #focusChip) { block-size: auto; flex-direction: row; border-radius: 16px; }
-  #board > #side :is(#projectsChip, #weekChip, #focusChip) .hchip-word { position: absolute; inline-size: 1px; block-size: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
-  #board > #side:where(:not(:has(#planChip:not([hidden])))) { grid-template-columns: repeat(3, 1fr); }
-  body.day-open #board > #side, #board:has(#panel > .ppage:not([hidden]):not(#schedPage):not(.pg-ghost)) > #side { grid-template-rows: 48px; }
-  body.day-open #board > #side > :is(#planChip, #projectsChip, #weekChip, #focusChip), #board:has(#panel > .ppage:not([hidden]):not(#schedPage):not(.pg-ghost)) > #side > :is(#planChip, #projectsChip, #weekChip, #focusChip) { border-radius: 20px; }
-  body.focus-mode #board > #side { display: grid; grid-template-columns: 1fr auto; padding-block-end: max(18px, env(safe-area-inset-bottom)); } /* Tell Daisey's room, it being gone */
+  body.focus-mode #board > #side { display: flex; justify-content: flex-end; padding-block-end: max(18px, env(safe-area-inset-bottom)); } /* Tell Daisey's room, it being gone */
   body.focus-mode #board > #side > :not(#focusChip) { display: none !important; }
-  body.focus-mode #board > #side #focusChip { grid-column: 2; grid-row: 2; padding-inline: 18px; }
-  body.focus-mode #board > #side #focusChip .hchip-word { position: static; inline-size: auto; block-size: auto; overflow: visible; clip: auto; }
+  body.focus-mode #board > #side #focusChip:not([hidden]) { display: flex; flex: none; flex-direction: row; inline-size: auto; block-size: 48px; padding-inline: 18px; gap: 6px; border-radius: 20px; font-size: 14px; }
   body.has-plan.day-open .sc-planbtn { display: inline-flex; inline-size: auto; padding-inline: 10px; }
   .sc-bar .sc-planbtn span { display: inline; }
   #panel { margin-block-end: 0; }
