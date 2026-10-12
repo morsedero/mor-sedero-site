@@ -692,30 +692,61 @@ async function boot(){
             if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
             const T = { duration: 650, easing: "cubic-bezier(.4, 0, .2, 1)" };
             const pick = () => [document.querySelector(".deck > .now-card.main"), b];
+            // The card grows into its new size by really growing: its width and
+            // every value the focus-mode CSS changes (padding, type sizes, button
+            // sizes) run from the old value to the new, so the text grows with
+            // it. A scale of the whole card, or a width/height-only grow, left the
+            // text at its new size from the first frame.
+            const PARTS = [
+              ["", ["width", "paddingTop", "paddingRight", "paddingBottom", "paddingLeft", "borderRadius"]],
+              [".now-title", ["marginTop", "fontSize", "lineHeight", "letterSpacing"]],
+              [".now-why", ["fontSize", "lineHeight"]],
+              [".now-row", ["paddingTop", "columnGap"]],
+              [".now-row .iconbtn", ["width", "minWidth", "height", "minHeight", "borderRadius", "fontSize", "lineHeight", "rowGap", "columnGap"]],
+              [".now-row .iconbtn svg", ["width", "height"]],
+              [".now-row .btn.start", ["height", "minHeight", "borderRadius"]],
+            ];
+            const parts = (card) => PARTS.map(([sel]) => (sel ? [...card.querySelectorAll(sel)] : [card]));
+            const grab = (card) => parts(card).map((es, i) => es.map((e) => {
+              const cs = getComputedStyle(e);
+              return Object.fromEntries(PARTS[i][1].map((p) => [p, cs[p] === "normal" ? (p === "letterSpacing" ? "0px" : cs[p]) : cs[p]]));
+            }));
             const first = pick().map((el) => el?.getBoundingClientRect());
+            const old = pick()[0] && grab(pick()[0]);
             queueMicrotask(() => pick().forEach((el, i) => {
               const a = first[i]; if (!el || !a) return;
               const z = el.getBoundingClientRect(), dx = a.left - z.left, dy = a.top - z.top;
               if (Math.abs(dx) < 1 && Math.abs(dy) < 1 && Math.abs(a.width - z.width) < 1 && Math.abs(a.height - z.height) < 1) return;
               if (i) { el.animate([{ transform: `translate(${dx}px, ${dy}px)` }, { transform: "none" }], T); return; }
-              // The card also grows/shrinks from its old size to its new one — as a
-              // scale of the whole card, text and all. Animating width/height
-              // instead left the new (Focus-size) text in the old-size box, so it
-              // snapped bigger and got clipped. The two sizes share a shape, so
-              // the scale stays all but even.
-              const K = [
-                { transformOrigin: "0 0", transform: `translate(${dx}px, ${dy}px) scale(${a.width / z.width}, ${a.height / z.height})` },
-                { transformOrigin: "0 0", transform: "none" },
-              ];
-              let anim = el.animate(K, T);
+              // From/to per part (matched by index; a part whose count changed
+              // just takes its new size). The start offset is measured with the
+              // old values on, since in Focus the card's spot depends on its size.
+              const now = grab(el), K = [];
+              now.forEach((es, p) => es.forEach((to, j) => {
+                const from = old?.[p]?.[j]; if (!from) return;
+                const f = {}, t = {};
+                for (const k in to) if (from[k] !== to[k]) { f[k] = from[k]; t[k] = to[k]; }
+                if (Object.keys(f).length) K.push([p, j, f, t]);
+              }));
+              const set = (card, which) => K.forEach(([p, j, f]) => { const e = parts(card)[p][j]; if (e) for (const k in f) e.style[k] = which ? f[k] : ""; });
+              set(el, 1); const s = el.getBoundingClientRect(); set(el, 0);
+              const move = [{ transform: `translate(${a.left - s.left}px, ${a.top - s.top}px)` }, { transform: "none" }];
+              let anims = [];
+              const run = (card, t) => {
+                const ps = parts(card);
+                anims = [card.animate(move, T), ...K.filter(([p, j]) => ps[p][j]).map(([p, j, f, to]) => ps[p][j].animate([f, to], T))];
+                anims.forEach((x) => { x.currentTime = t; });
+                anims.card = card;
+              };
+              run(el, 0);
               // now.js re-renders #nowcard twice in the next ~50ms, swapping in a
               // new card each time, so the slide ran on a detached card and the
-              // real one just jumped. Hand the running slide to each new card.
+              // real one just jumped. Hand the running animations to each new card.
               const box = $("#nowcard");
               box.style.overflow = "visible"; box.style.position = "relative"; box.style.zIndex = "3";
               const mo = new MutationObserver(() => {
-                const c = pick()[0]; if (!c || c === anim.effect.target) return;
-                const t = anim.currentTime; anim.cancel(); anim = c.animate(K, T); anim.currentTime = t;
+                const c = pick()[0]; if (!c || c === anims.card) return;
+                const t = anims[0].currentTime; anims.forEach((x) => x.cancel()); run(c, t);
               });
               mo.observe(box, { childList: true, subtree: true });
               setTimeout(() => { mo.disconnect(); box.style.overflow = box.style.position = box.style.zIndex = ""; }, T.duration);
