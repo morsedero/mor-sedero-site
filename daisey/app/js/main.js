@@ -868,10 +868,18 @@ async function boot(){
             }));
             const first = pick().map((el) => el?.getBoundingClientRect());
             const old = pick()[0] && grab(pick()[0]);
+            // The card's idle bob rests while it slides (app.css .fm-slide) and
+            // starts again from rest where the slide ends. Run together, Chrome
+            // painted a frame with the slide's offset wrong, a snap on the click
+            // and on each rebuild mid-slide (Mor, 2026-10-12). Measured above
+            // with the bob on, so the slide starts exactly where the card was.
+            document.body.classList.add("fm-slide");
+            const rest = () => { if (!document.body.classList.contains("fm-slide")) return; m.now?.breatheFromRest(); document.body.classList.remove("fm-slide"); };
+            setTimeout(rest, T.duration);
             queueMicrotask(() => pick().forEach((el, i) => {
-              const a = first[i]; if (!el || !a) return;
+              const a = first[i]; if (!el || !a) { if (!i) rest(); return; }
               const z = el.getBoundingClientRect(), dx = a.left - z.left, dy = a.top - z.top;
-              if (Math.abs(dx) < 1 && Math.abs(dy) < 1 && Math.abs(a.width - z.width) < 1 && Math.abs(a.height - z.height) < 1) return;
+              if (Math.abs(dx) < 1 && Math.abs(dy) < 1 && Math.abs(a.width - z.width) < 1 && Math.abs(a.height - z.height) < 1) { if (!i) rest(); return; }
               if (i) { el.animate([{ transform: `translate(${dx}px, ${dy}px)` }, { transform: "none" }], T); return; }
               // From/to per part (matched by index; a part whose count changed
               // just takes its new size). The start offset is measured with the
@@ -889,11 +897,11 @@ async function boot(){
               let anims = [];
               const run = (card, t) => {
                 const ps = parts(card);
-                // Added on top of the idle bob, not in place of it: it took
-                // over the transform and the bob cut back in at its own phase
-                // as the slide ended, a hop of up to 3px.
-                anims = [card.animate(move, { ...T, composite: "add" }), ...K.filter(([p, j]) => ps[p][j]).map(([p, j, f, to]) => ps[p][j].animate([f, to], T))];
-                anims.forEach((x) => { x.currentTime = t; });
+                anims = [card.animate(move, T), ...K.filter(([p, j]) => ps[p][j]).map(([p, j, f, to]) => ps[p][j].animate([f, to], T))];
+                // Started now, not on the next frame (a pending start held the
+                // new card a frame without its slide offset).
+                const now = document.timeline.currentTime;
+                anims.forEach((x) => { x.startTime = now - t; });
                 anims.card = card;
               };
               run(el, 0);

@@ -2289,6 +2289,7 @@ dialog.tsheet[open] > .ts-laptop + .ts-repeat { margin-block-start: -12px; }
   body.fm-out #panel { animation-delay: .1s; }
   body.fm-out .dock { animation-delay: .2s; }
 }
+body.fm-slide .deck > .now-card.main { animation: none !important; } /* main.js: the bob rests while the card slides */
 @keyframes fm-pinch { 0% { transform: scale(1); } 40% { transform: scale(.62); } 100% { transform: scale(1); } }
 @keyframes fm-spread { 0% { transform: scale(1); } 40% { transform: scale(1.3); } 100% { transform: scale(1); } }
 @keyframes fm-back { from { opacity: 0; transform: translateY(12px); } }

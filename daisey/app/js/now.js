@@ -2210,6 +2210,9 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     doneList(){ return doneToday(tasks || []).sort((a, b) => b.doneAt - a.doneAt); },
     // "Plan my day" from the Schedule: the proposal on the card.
     closePlan(){ if (prop.open) closeProposal(); },
+    // Focus mode's slide rested the bob (main.js): it starts again from rest,
+    // and rebuilds carry on from there.
+    breatheFromRest(){ breathEpoch = Date.now(); root.querySelectorAll(".deck > .now-card.main").forEach((c) => { c.style.animationDelay = "0ms"; }); },
     plan(){ if (prop.open) { closeProposal(); return; } if (run) { flash("Finish or stop the running task first."); return; } openProposal(); },
     unmount(){ showing(null); clearTimeout(toastTimer); clearTimeout(upTimer); document.body.classList.remove("focus", "focus-mode"); document.documentElement.classList.remove("night"); unsubs.forEach((u) => u()); clearInterval(tick); document.removeEventListener("visibilitychange", onVisible); root.replaceChildren(); planRoot?.replaceChildren(); root.hidden = true; },
   };
