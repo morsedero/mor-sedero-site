@@ -1500,6 +1500,13 @@ body.focus #side { display: none; }
   background: var(--p-orange-tint); border: 1px solid var(--p-orange-line); }
 .now-card.main > .hero-due.over { background: color-mix(in srgb, var(--danger) 12%, var(--surface)); border-color: color-mix(in srgb, var(--danger) 35%, var(--surface)); }
 .now-card.main > .hero-due::after { content: none; }
+/* Stuck on, not printed (Mor, 2026-10-12): tilted, with a strip of tape
+   across its corner. The tape sits level with the tab, not above it, so the
+   overhang stays inside #nowcard's padding. */
+.now-card.main > .hero-due { inset-block-start: -7px; transform: rotate(-4deg); box-shadow: 0 2px 4px -1px rgb(0 0 0 / .14); }
+.now-card.main > .hero-due::before { content: ""; position: absolute; inset-inline-start: -16px; inset-block-start: calc(50% - 6.5px); inline-size: 28px; block-size: 13px;
+  transform: rotate(-38deg); background: linear-gradient(rgb(255 255 255 / .35), transparent 60%), color-mix(in srgb, #e9dcb8 82%, transparent); pointer-events: none;
+  clip-path: polygon(0 12%, 5% 0, 95% 0, 100% 16%, 96% 36%, 100% 56%, 95% 78%, 100% 100%, 5% 100%, 0 86%, 4% 64%, 0 42%, 5% 22%); }
 /* The bar: a thin strip under Done, as wide as it, its % at the end
    (Mor, 2026-10-12: it sat in the top row and ran past the card, then
    spanned the whole card). */
