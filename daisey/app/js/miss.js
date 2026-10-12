@@ -107,7 +107,7 @@ export function missState({ tasks = [], events = [], run = null, now = Date.now(
     : need > freeBetween(busy, now, dayB) && need <= freeBetween(busy, from, dayB) ? "overload" : null;
   if (why) {
     if (silenceOn === today) return null;
-    return { kind: "silence", key: `silence|${today}`, at: why === "slots" ? slots[1].at : now, since: act >= dayA ? act : null, why };
+    return { kind: "silence", key: `silence|${today}`, at: why === "slots" ? slots[1].at : now, since: act >= dayA ? act : null, why, free: Math.round(freeBetween(busy, now, dayB)) };
   }
   // A miss is asked while its slot is still the one you're in: not hours
   // later, and not across a meeting since (the next slot will speak).

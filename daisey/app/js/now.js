@@ -1619,6 +1619,16 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
   }
   const dueWhy = (card, due) => ({ ...card, whyParts: [Date.now() - due.start < 2 * 60000 ? `planned for ${clock(due.start)}` : `planned for ${clock(due.start)}, not started`] });
   function roughCard(st){
+    // Nothing done yet today (a late start): a warm offer to plan what's left,
+    // not "Rough day?" (Mor, 2026-10-12). Lighter plan stays, as a quiet link.
+    if (st.since == null) {
+      return plainCard("empty quiet", { meta: "Good morning", title: "Here's your day from now",
+        why: st.free >= 15 ? `${dur(st.free)} free today. Want me to fit things in?` : "Want me to fit things in?",
+        action: h("div", { className: "now-actions now-row" },
+          h("button", { className: "btn quiet", type: "button", textContent: "Not now", onclick: () => { silenced(); render(); } }),
+          h("button", { className: "btn primary start", type: "button", onclick: () => { silenced(); openProposal(); } }, h("span", { textContent: "Plan the rest of today" }))),
+        extras: [h("button", { className: "btn quiet", type: "button", textContent: "Or a lighter plan", onclick: lighterPlan })] });
+    }
     return plainCard("empty quiet rough", { meta: "Rough day?", title: "Want a lighter plan?", why: silenceText(st, clock).replace(/ Want a lighter plan.*$/, ""),
       action: h("div", { className: "now-actions now-row" },
         h("button", { className: "btn quiet", type: "button", textContent: "Not today", onclick: () => { silenced(); render(); } }),
