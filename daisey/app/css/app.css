@@ -2386,3 +2386,9 @@ dialog.tsheet[open] > .ts-laptop + .ts-repeat { margin-block-start: -12px; }
 :root:not(.night) body.card-mini #nowcard .now-card.main .hero-area { grid-column: 1; grid-row: 1; }
 :root:not(.night) body.card-mini #nowcard .now-card.main .now-title { grid-column: 2; grid-row: 1; display: block; min-inline-size: 0; max-inline-size: 100%; margin: 0; font-size: 16px; line-height: 1.25; text-align: start; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 :root:not(.night) body.card-mini #nowcard .now-card.main #focusChip { grid-column: 3; grid-row: 1; position: static; margin: 0; inline-size: 44px; block-size: 44px; }
+
+/* Plan screen: the pinned action row sits flush on the screen's bottom edge
+   and is opaque, so nothing scrolls into view beneath or around it (Mor,
+   2026-10-12). No bottom padding or fade-mask on this scroller. */
+#planPage { padding-block-end: 0; -webkit-mask-image: none; mask-image: none; }
+#planPage .pp-actions { padding-block: 8px calc(10px + env(safe-area-inset-bottom, 0px)); margin-inline: -14px; padding-inline: 14px; background: var(--card); box-shadow: 0 -1px 0 var(--line); }
