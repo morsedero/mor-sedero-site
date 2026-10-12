@@ -68,6 +68,9 @@ body {
   color: var(--ink);
   min-block-size: 100dvh;
 }
+/* No pull-to-refresh (Mor, 2026-10-12): a swipe down shuts Today on a
+   phone. Refresh is in the avatar menu. */
+html, body { overscroll-behavior-y: none; }
 /* One anchor for every name, Hebrew or English (Mor, 2026-10-10): text
    keeps its own direction (dir="auto") but starts at the left edge like the
    rest of the app. Fields keep their natural side while typing. */

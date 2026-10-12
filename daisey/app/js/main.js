@@ -249,6 +249,7 @@ async function boot(){
   // A tap on the dim backdrop closes it, like Escape and ✕.
   const settings = $("#settingsdlg");
   $("#settingsBtn").onclick = () => { setMenu(false); settings.showModal(); };
+  $("#refreshBtn").onclick = () => location.reload();
   $("#projectsChip").onclick = () => window.__toggleProjects?.();
   $("#weekChip").onclick = () => window.__toggleWeek?.();
   $("#focusChip").onclick = () => mounted?.now?.focus();
@@ -687,8 +688,9 @@ async function boot(){
           // The glance (done today, routines) only on the home with nothing
           // open (Mor, 2026-10-12); wider, the Schedule under it counts as home.
           // And only while Week is on: the home is the card alone until asked.
-          // On a phone it always shows: Week is gone there (Mor, 2026-10-12).
-          const glance = (weekOn || phone.matches) && !(on || plan || (phone.matches && day));
+          // On a phone (no Week there) it shows with Today open, over the
+          // day, not on the home (Mor, 2026-10-12).
+          const glance = !(on || plan) && (phone.matches ? day : weekOn);
           $("#homeHint").hidden = hintSeen || !(phone.matches && !day && !(on || plan));
           $("#glance").hidden = !glance;
           $("#weekChip").setAttribute("aria-pressed", String(glance));
