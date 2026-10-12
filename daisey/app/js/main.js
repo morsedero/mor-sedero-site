@@ -69,14 +69,17 @@ function paintNeeds(n){
 
 
 // Top-bar clock and date (Mor, 2026-10-08): 24h like the rest of the app,
-// repainted on the minute, and straight away when the tab comes back.
+// repainted every second, and straight away when the tab comes back.
+// Full day name over the time, small seconds after it (Mor, 2026-10-12).
 function paintClock(){
   const d = new Date();
+  $("#hdrDay").textContent = d.toLocaleDateString("en-GB", { weekday: "long" });
+  $("#hdrDate").textContent = d.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
   $("#hdrTime").textContent = d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
-  $("#hdrDate").textContent = d.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" });
+  $("#hdrSec").textContent = ":" + String(d.getSeconds()).padStart(2, "0");
 }
 paintClock();
-setInterval(() => { if (!document.hidden) paintClock(); }, 5000);
+setInterval(() => { if (!document.hidden) paintClock(); }, 1000);
 document.addEventListener("visibilitychange", () => { if (!document.hidden) paintClock(); });
 
 // The home screen is exactly the window's height (app.css .shell). 100dvh

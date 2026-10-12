@@ -1353,8 +1353,15 @@ dialog.tsheet .msg:empty { display: none; }
 .topbar > .brandrow { flex: 1 1 0; }
 .topbar > .hdr-end { flex: none; justify-content: flex-end; }
 .hdr-clock { flex: none; margin-inline-start: 4px; display: flex; flex-direction: column; align-items: flex-start; justify-content: center; line-height: 1; overflow: hidden; white-space: nowrap; }
-.hdr-time { font-size: 18px; font-weight: 600; letter-spacing: -0.3px; font-variant-numeric: tabular-nums; color: var(--ink); }
-.hdr-date { margin-block-start: 3px; font-size: 10px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-2); }
+/* Date over time: "Monday 12 Oct", then a bold 13:17 with small :33 seconds
+   (Mor, 2026-10-12). */
+.hdr-date { max-inline-size: 100%; overflow: hidden; text-overflow: ellipsis; font-size: 11px; font-weight: 500; color: color-mix(in srgb, var(--ink-2) 75%, transparent); }
+/* "Wednesday 30 Sept" is ~36px wider than the old "WED 30 SEPT": on the
+   smallest phones the date gives way first, so the chips never collide. */
+@media (max-width: 359px) { #hdrDate { display: none; } .hdr-clock { flex-shrink: 1; min-inline-size: 0; } }
+.hdr-date b { font-weight: 700; color: var(--ink-2); }
+.hdr-time { margin-block-start: 2px; font-size: 20px; font-weight: 800; letter-spacing: -0.4px; font-variant-numeric: tabular-nums; color: var(--ink); }
+.hdr-sec { margin-inline-start: 2px; font-size: 11px; font-weight: 600; letter-spacing: 0; color: var(--ink-2); }
 .hdr-end .acct { margin-inline-start: 0; display: flex; align-items: center; }
 .hdr-end .hchip, .hdr-end .avatar { block-size: 34px; }
 .hdr-end .hchip { margin: 0; /* the plan chip also matches the plan-panel's .plan {margin:4px 0 10px} */ line-height: 1; padding-block: 0; box-sizing: border-box; }
