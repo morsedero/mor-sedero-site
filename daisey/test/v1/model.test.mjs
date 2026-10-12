@@ -441,7 +441,14 @@ test("bringBack: a passed wish date goes, a deadline stays (2026-10-06)", () => 
     { status: "ready", notBefore: null, touchedAt: now, due: null, dueTime: null, dateKind: null });
   assert.deepEqual(M.bringBack({ due: "2026-10-01", dateKind: "deadline" }, { now }), { status: "ready", notBefore: null, touchedAt: now });
   assert.deepEqual(M.bringBack({ due: "2026-10-09", dateKind: "target" }, { now }), { status: "ready", notBefore: null, touchedAt: now });
-  assert.deepEqual(M.pushedTo({ pushes: 1 }, { notBefore: "2026-10-07" }, { now }), { notBefore: "2026-10-07", pushes: 2, touchedAt: now });
+  assert.deepEqual(M.pushedTo({ pushes: 1 }, { notBefore: "2026-10-07" }, { now }), { notBefore: "2026-10-07", startTime: null, pushes: 2, touchedAt: now });
+  // A start hour: off the card till then that day, on after; a moved day drops it.
+  const at = (h) => new Date(2026, 9, 7, h).getTime();
+  assert.equal(M.notYet({ notBefore: "2026-10-07", startTime: "14:00" }, at(13)), true);
+  assert.equal(M.notYet({ notBefore: "2026-10-07", startTime: "14:00" }, at(14)), false);
+  assert.equal(M.createTask({ title: "x", startTime: "14:00" }, { now }).startTime, null);
+  assert.equal(M.createTask({ title: "x", notBefore: "2026-10-07", startTime: "14:00" }, { now }).startTime, "14:00");
+  assert.deepEqual(M.editTask({ notBefore: "2026-10-07", startTime: "14:00" }, { notBefore: "" }, { now }).startTime, null);
 });
 
 test("againInput: next week / next month copy keeps the user's choices, unticks steps, moves the date (2026-10-06)", () => {

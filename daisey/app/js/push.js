@@ -71,7 +71,7 @@ export const sendTest = () => post({ action: "test" });
 // The snapshot, at most every few seconds and only when it changed.
 let timer = null, lastSent = "";
 const FIELDS = ["id", "title", "project", "area", "type", "where", "laptop", "openHours", "stakes", "status", "dateKind", "due", "dueTime",
-  "notBefore", "checkOn", "size", "spentMinutes", "starts", "skipsSinceStart", "skipCount", "pushes", "createdAt", "touchedAt", "workedAt",
+  "notBefore", "startTime", "checkOn", "size", "spentMinutes", "starts", "skipsSinceStart", "skipCount", "pushes", "createdAt", "touchedAt", "workedAt",
   "doneAt", "canSplit", "notAt", "waitingOn", "again"];
 const RECENT = 2 * 864e5;
 const RUN_FIELDS = ["taskId", "startedAt", "pausedAt", "extra", "batch", "done"];

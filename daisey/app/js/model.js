@@ -441,6 +441,8 @@ export function createTask(input, { now = Date.now(), history = [] } = {}){
     // Not before: Daisey keeps the task off the card until this day. For
     // work that can't start yet — files not sent, venue not booked.
     notBefore: toDate(input.notBefore),
+    // An optional hour on that day (Mor, 2026-10-12): off the card till then.
+    startTime: toDate(input.notBefore) ? toTime(input.startTime) : null,
     status: "ready",
     waitingOn: null,
     checkOn: null, // Pending: the day Daisey asks "still pending?"
@@ -509,6 +511,7 @@ export function editTask(task, changes, { now = Date.now(), history = [] } = {})
   if (has("due")) set("due", toDate(changes.due));
   if (has("notBefore")) set("notBefore", toDate(changes.notBefore));
   if (has("dueTime") || !get("due")) set("dueTime", get("due") ? toTime(changes.dueTime ?? task.dueTime) : null);
+  if (has("startTime") || !get("notBefore")) set("startTime", get("notBefore") ? toTime(changes.startTime ?? task.startTime) : null);
   // A date is a Target unless the user calls it a Deadline; no date, no kind.
   if (!get("due")) set("dateKind", null);
   else if (has("dateKind") && DATE_KINDS.includes(changes.dateKind)) set("dateKind", changes.dateKind);
@@ -671,7 +674,10 @@ export const startedTask = (task, { now = Date.now() } = {}) =>
 // Pushed on to a later day (Later → Tomorrow / This week, the wrap's "Move to
 // tomorrow", the sweep's "Move to …"): counted, so a task that keeps sliding
 // gets asked about (weights PUSHES_ASK). Starting it clears the count.
-export const pushedTo = (task, fields, { now = Date.now() } = {}) => ({ ...fields, pushes: (task.pushes || 0) + 1, touchedAt: now });
+// A day moved drops its hour: "tomorrow" means any time tomorrow.
+export const pushedTo = (task, fields, { now = Date.now() } = {}) => ({
+  ...("notBefore" in fields ? { startTime: null } : {}), ...("due" in fields ? { dueTime: null } : {}),
+  ...fields, pushes: (task.pushes || 0) + 1, touchedAt: now });
 
 // Out of Not now and back on the list. A wish date that passed while it was
 // parked goes with it — otherwise it lands straight in the old-dates sweep.
@@ -746,7 +752,13 @@ export function leftPatch(t, mins, { now = Date.now() } = {}){
 export const isAvailable = (task) => task.status === "ready";
 
 // Still waiting for its day to come round.
-export const notYet = (task, now = Date.now()) => !!task.notBefore && task.notBefore > logicalDate(now);
+export const notYet = (task, now = Date.now()) => !!task.notBefore && (task.notBefore > logicalDate(now)
+  || (!!toTime(task.startTime) && startAt(task) > now));
+// When a task with a start hour opens: that day at that hour, local time.
+export function startAt(task){
+  const [y, mo, d] = task.notBefore.split("-").map(Number), [hh, mm] = task.startTime.split(":").map(Number);
+  return new Date(y, mo - 1, d, hh, mm).getTime();
+}
 
 // A project's dates (Mor, 2026-10-07): it runs from start to due, either
 // optional, and its tasks' start and due dates stay inside. outsideRange says

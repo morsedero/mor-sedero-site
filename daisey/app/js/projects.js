@@ -495,11 +495,11 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
     // Both dates when both apply (Mor, 2026-10-06): the start while it's
     // still ahead (the card is dimmed until then), then the due date.
     // "Starts", not "from": "from" read as the start of a range ending at due.
-    if (notYet(t)) parts.push(`Starts ${shortDay(t.notBefore)}`);
+    if (notYet(t)) parts.push(`Starts ${shortDay(t.notBefore)}${t.startTime ? ` ${t.startTime}` : ""}`);
     if (t.onHold) parts.push(t.onHold.who ? `waiting on ${t.onHold.who}` : "waiting for a reply");
     // Further than 2 weeks: no date in the list, only in the task sheet.
     if (t.due && (isOverdue(t) || daysTo(t.due) <= 14)) {
-      const tone = dueTone(t), text = `${isOverdue(t) ? "was due" : t.dateKind === "deadline" ? "due" : "by"} ${shortDay(t.due)}`;
+      const tone = dueTone(t), text = `${isOverdue(t) ? "was due" : t.dateKind === "deadline" ? "due" : "by"} ${shortDay(t.due)}${t.dueTime ? ` ${t.dueTime}` : ""}`;
       parts.push(tone ? h("span", { className: `pj-date ${tone}`, textContent: text }) : text);
     }
     return parts.flatMap((x, i) => (i ? [" · ", x] : [x]));

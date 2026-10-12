@@ -46,7 +46,7 @@ const cleanTask = (t) => {
   for (const k of TEXT) { const v = str(t?.[k], k === "title" || k === "project" ? 200 : 40); if (v != null) o[k] = v; }
   for (const k of DAYS) o[k] = day(t?.[k]);
   for (const k of NUMS) if (Number.isFinite(t?.[k])) o[k] = t[k];
-  o.dueTime = typeof t?.dueTime === "string" && /^\d{2}:\d{2}$/.test(t.dueTime) ? t.dueTime : null;
+  for (const k of ["dueTime", "startTime"]) o[k] = typeof t?.[k] === "string" && /^\d{2}:\d{2}$/.test(t[k]) ? t[k] : null;
   o.canSplit = !!t?.canSplit;
   if (typeof t?.laptop === "boolean") o.laptop = t.laptop; // Needs laptop, apart from Where (2026-10-12)
   // Places this task was said not to suit ("Not here" on a skip): the engine hides it there.

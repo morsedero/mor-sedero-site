@@ -77,22 +77,38 @@ export function mountAddTask(dialog, uid, { onStart } = {}){
 
   // A date box: the label, what's set (or "Any time"), and a native date
   // input laid over the whole box, so a tap anywhere opens the picker.
-  function dateBox(label, empty){
+  // withTime: an optional hour under it once a day is set (Mor, 2026-10-12:
+  // "the option to input time in the day, not a must") — "Add a time" until
+  // tapped, then a native time input with its own ✕.
+  function dateBox(label, empty, withTime = false){
     const input = h("input", { type: "date", className: "ts-date-in", ariaLabel: label });
     input.addEventListener("click", () => { try { input.showPicker(); } catch { /* opened natively */ } });
     const value = h("span", { className: "ts-date-v" });
     const clear = h("button", { type: "button", className: "ts-date-x", ariaLabel: `Clear ${label}`, onclick: (e) => { e.preventDefault(); input.value = ""; input.dispatchEvent(new Event("change")); } }, icon("close"));
-    const box = field(label, h("div", { className: "ts-date" }, value, clear, input));
+    const time = h("input", { type: "time", className: "ts-input ts-time-in", ariaLabel: `${label} time` });
+    let timeOpen = false;
+    const timeAdd = h("button", { type: "button", className: "linkish ts-time-add", textContent: "Add a time",
+      onclick: () => { timeOpen = true; paint(); time.focus(); try { time.showPicker(); } catch { /* opened natively */ } } });
+    const timeX = h("button", { type: "button", className: "ts-date-x ts-time-x", ariaLabel: `Clear ${label} time`,
+      onclick: (e) => { e.preventDefault(); time.value = ""; timeOpen = false; time.dispatchEvent(new Event("change")); } }, icon("close"));
+    const timeRow = h("div", { className: "ts-time", hidden: true }, timeAdd, time, timeX);
+    const box = field(label, h("div", { className: "ts-date" }, value, clear, input), ...(withTime ? [timeRow] : []));
     box.querySelector("label").htmlFor = input.id = `ts-f${++fieldN}`;
     const paint = () => {
       value.textContent = input.value ? boxDate(input.value) : empty;
-      box.lastChild.classList.toggle("set", !!input.value);
+      box.querySelector(".ts-date").classList.toggle("set", !!input.value);
       clear.hidden = !input.value;
+      if (!input.value) { time.value = ""; timeOpen = false; } // no day, no hour
+      timeRow.hidden = !input.value;
+      time.hidden = !(time.value || timeOpen);
+      timeAdd.hidden = !time.hidden;
+      timeX.hidden = time.hidden;
     };
-    return { input, box, paint };
+    const reset = (t = "") => { time.value = t; timeOpen = false; };
+    return { input, time, box, paint, reset };
   }
-  const start = dateBox("Start", "Any time");
-  const due = dateBox("Due", "No date");
+  const start = dateBox("Start", "Any time", true);
+  const due = dateBox("Due", "No date", true);
   // A routine (routine.js, Mor 2026-10-08): so many times a week. Its end
   // ("Until", the show) takes the Due box's place: a routine has no due date.
   // Made in a project with a due date, it runs until that date.
@@ -344,6 +360,8 @@ export function mountAddTask(dialog, uid, { onStart } = {}){
   }
   start.input.addEventListener("change", () => { const c = fenceDates(["notBefore"]); paintDates(); if (editing) save({ notBefore: start.input.value, ...c }); });
   due.input.addEventListener("change", () => { const c = fenceDates(["due"]); paintDates(); if (editing) save({ due: due.input.value, dateKind: kind, ...c }); });
+  start.time.addEventListener("change", () => { paintDates(); if (editing) save({ startTime: start.time.value }); });
+  due.time.addEventListener("change", () => { paintDates(); if (editing) save({ dueTime: due.time.value }); });
 
   // ---------- chips ----------
   function reguess(){
@@ -487,9 +505,9 @@ export function mountAddTask(dialog, uid, { onStart } = {}){
     if (!title.value.trim()) { msg.textContent = "Give it a name first."; title.focus(); return; }
     fenceDates(["notBefore", "due"]);
     const input = { title: title.value, project: projectOf() };
-    if (start.input.value) input.notBefore = start.input.value;
+    if (start.input.value) { input.notBefore = start.input.value; if (start.time.value) input.startTime = start.time.value; }
     if (per) { fenceUntil(); input.routine = routineOf(); }
-    else if (due.input.value) { input.due = due.input.value; input.dateKind = kind; }
+    else if (due.input.value) { input.due = due.input.value; input.dateKind = kind; if (due.time.value) input.dueTime = due.time.value; }
     if (notes.value.trim()) input.notes = notes.value;
     if (links.length) input.links = links;
     for (const k of mine) input[k] = vals[k];
@@ -511,7 +529,7 @@ export function mountAddTask(dialog, uid, { onStart } = {}){
     vals = {}; mine = new Set(); openChip = null;
     links = []; adding = false; kind = "target";
     title.value = ""; notes.value = ""; newProject.value = ""; waitingOn.value = ""; checkOn.value = "";
-    start.input.value = ""; due.input.value = ""; until.input.value = ""; per = 0; mode = "any"; days = []; at = DEFAULT_AT;
+    start.input.value = ""; due.input.value = ""; until.input.value = ""; start.reset(); due.reset(); per = 0; mode = "any"; days = []; at = DEFAULT_AT;
     msg.textContent = "";
     disarm();
   }
@@ -604,6 +622,7 @@ export function mountAddTask(dialog, uid, { onStart } = {}){
       title.value = task.title;
       start.input.value = task.notBefore || "";
       due.input.value = task.due || "";
+      start.reset(task.startTime || ""); due.reset(task.dueTime || "");
       per = isRoutine(task) ? task.routine.per : 0;
       until.input.value = per ? task.routine.until || "" : "";
       days = per && task.routine.days ? [...task.routine.days] : [];
