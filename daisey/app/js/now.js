@@ -418,26 +418,21 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     const meta = TRIP_ON[riderOf(leg)], side = leg.trip.late ? `past ${clock(leg.trip.late)}` : `until ${clock(leg.end)}`;
     if (restRide === leg.id) return eventCard({ meta, side, title: leg.title, span: leg, why: "Rest. Daisey picks again when you arrive.",
       action: h("button", { className: "btn quiet", type: "button", textContent: "Show tasks again", onclick: () => { restRide = null; render(); } }) });
-    return eventCard({ meta, side, title: leg.title, span: leg,
-      why: leg.trip.late ? "Still on the way. The plan waits until you're there." : "Nothing fits the rest of the ride.",
+    // What's left after the phone search (phoneNow) found nothing that fits:
+    // one tap says this one works on the phone, and it's offered. Minimal
+    // (Mor, 2026-10-12): the question is the card's one sentence, the tasks
+    // are title-only small cards, resting is the one quiet button.
+    const looking = searching();
+    const can = looking ? [] : r.out.filter((o) => o.reason === "place" && needsLaptop(o.task)).slice(0, 3);
+    const why = leg.trip.late ? "Still on the way. The plan waits until you're there."
+      : looking ? "Looking for phone tasks…" : can.length ? "Any of these doable on the phone?" : "Nothing fits the rest of the ride.";
+    return eventCard({ meta, side, title: leg.title, span: leg, why,
       // No "Out right now" / "You seem to be…" here: the ride already says
       // where you are and why nothing fits (Mor, 2026-10-11: five stacked asks).
-      extras: [phoneOk(r, leg), putOffButton(r)] });
-  }
-  // What's left after the phone search (phoneNow) found nothing that fits:
-  // one tap says this one works on the phone, and it's offered. The tasks are
-  // Switch's small cards (switchRow), not chips (Mor, 2026-10-12: "make it
-  // coherent with the app"); resting is the card's one quiet button.
-  function phoneOk(r, leg){
-    if (searching()) return h("p", { className: "muted", textContent: "Looking through your tasks for phone ones…" });
-    const can = r.out.filter((o) => o.reason === "place" && needsLaptop(o.task)).slice(0, 3);
-    const rest = h("button", { type: "button", className: "btn quiet", textContent: can.length ? "None of these" : "Just rest",
-      onclick: () => { restRide = leg.id; render(); } });
-    return h("div", { className: "phone-ok", role: "group", ariaLabel: "Doable on the phone?" },
-      h("p", { className: "phone-q", textContent: can.length ? "Doable on the phone?" : "Nothing here works on the phone." }),
-      can.length ? switchRow(can.map((o) => ({ task: o.task })), (t) => updateTask(uid, t, { laptop: false }, tasks || []).catch(fail),
-        (t) => `${t.title} works on the phone, ${howLong(t)}`) : null,
-      rest);
+      extras: [can.length ? switchRow(can.map((o) => ({ task: o.task })), (t) => updateTask(uid, t, { laptop: false }, tasks || []).catch(fail),
+        (t) => `${t.title} works on the phone`, true) : null, putOffButton(r)],
+      action: looking ? null : h("button", { type: "button", className: "btn quiet", textContent: can.length ? "None of these" : "Just rest",
+        onclick: () => { restRide = leg.id; render(); } }) });
   }
   // Wears its schedule row's look (Mor, 2026-10-11): the trip colour and the
   // light round its edge, and on a running trip leg the time gone filling in.
@@ -1166,15 +1161,16 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
   // as Later's open row that scrolls and drags sideways (ui.js dragScroll),
   // keeping its place across redraws; or the way into On hold when there
   // are none.
-  // onPick: what tapping one does; aria: its label, when it isn't a switch.
-  function switchRow(alts, onPick = (t) => { switchTo(t.id); state.altX = 0; }, aria = null){
+  // onPick: what tapping one does; aria: its label, when it isn't a switch;
+  // mini: title only (the ride card's phone ask).
+  function switchRow(alts, onPick = (t) => { switchTo(t.id); state.altX = 0; }, aria = null, mini = false){
     if (!alts.length) return h("div", { className: "later-ask", role: "group", ariaLabel: "Other tasks" },
       h("span", { className: "muted", textContent: "Nothing else is active." }),
       h("button", { className: "chip", type: "button", textContent: "Pick from On hold", onclick: () => { sd.open = true; state.showAlts = false; render(); } }));
     const row = dragScroll(h("div", { className: "later-ask switch-ask", role: "group", ariaLabel: "Other tasks" }, ...alts.map(({ task: t, why }) => h("button", {
-      type: "button", className: "alt-card" + areaClass(t), ariaLabel: aria ? aria(t) : `Put ${t.title} on the card instead, ${howLong(t)}${why ? `, ${why.map((p) => (typeof p === "string" ? p : p.name)).join("")}` : ""}`,
+      type: "button", className: "alt-card" + (mini ? " mini" : "") + areaClass(t), ariaLabel: aria ? aria(t) : `Put ${t.title} on the card instead, ${howLong(t)}${why ? `, ${why.map((p) => (typeof p === "string" ? p : p.name)).join("")}` : ""}`,
       onclick: () => onPick(t),
-    }, h("span", { className: "hero-top" },
+    }, !mini && h("span", { className: "hero-top" },
         h("span", { className: "hero-area" },
           // How long first, so a long project name is what gets cut short.
           h("span", { className: "alt-at", textContent: howLong(t) }),

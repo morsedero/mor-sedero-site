@@ -965,10 +965,10 @@ body.focus .tell-panel { display: none; }
 .ride-ask { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-block-end: 10px; font-size: 13px; }
 .ride-ask .chip { min-block-size: 36px; padding-inline: 12px; border: none; background: var(--chip); font-size: 13px; }
 .place-fix { margin: 8px 0 0; }
-/* Ride with nothing that fits: the question, Switch's small task cards, then rest. */
-.phone-ok { display: grid; margin-block-start: 10px; }
-.phone-q { margin: 0 0 6px; font-size: 13px; font-weight: 600; color: var(--ink-2); }
-.phone-ok .switch-ask { margin-block-start: 0; }
+/* Ride with nothing that fits: Switch's small cards, title only, one line tall. */
+.now-card.main .switch-ask:has(.alt-card.mini) { margin-block-start: 10px; }
+.alt-card.mini { inline-size: auto; max-inline-size: 70%; block-size: auto; grid-template-rows: auto; align-content: center; padding: 8px 14px; }
+.alt-card.mini .alt-t { -webkit-line-clamp: 1; }
 .place-fix > .muted { flex-basis: 100%; }
 
 
