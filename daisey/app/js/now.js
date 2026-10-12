@@ -1377,6 +1377,40 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
         no: ["Edit the plan", () => close(() => { prop.replan = true; openProposal(); })] };
     } };
   }
+  // A meal the approved plan carried past its time (proposal.js lateMeals,
+  // Mor 2026-10-12: "what if Daisey asks you if you ate?"). Ate → it's off
+  // today's plan; not yet → it moves to now, next in the plan (relayMeals).
+  function mealLateAsk(){
+    const p = approvedPlan();
+    if (!p || !tasks || cal.status !== "ok") return null;
+    const said = mealAnswers(), name = timeline(p.items || [], planCtx()).lateMeals?.find((n) => !said[n]);
+    if (!name) return null;
+    const key = `mealate:${answerDate(settings)}:${name}`, nl = settings.needsLater;
+    if (nl?.date === logicalDate() && (nl.keys || []).includes(key)) return null;
+    const low = name.toLowerCase();
+    return { key, kind: "ext", ask: ({ next }) => {
+      if (mealAnswers()[name]) return null; // answered since
+      const setMeal = (v) => {
+        const today = answerDate(settings);
+        const mealToday = { ...(settings.mealToday?.date === today ? settings.mealToday : {}), date: today, [name]: v };
+        settings = { ...settings, mealToday };
+        saveSettings(uid, { mealToday }).catch(fail);
+        topUpLater(); render(); next();
+      };
+      // Right after the task on the card (relayMeals puts it before the first
+      // row starting then; a plan never starts on a break, so not before it).
+      const after = () => {
+        const r = timeline(approvedPlan()?.items || [], planCtx()).rows.filter((x) => !x.ride).sort((a, b) => a.start - b.start)[0];
+        const d = new Date(r ? r.end : Date.now());
+        return minText(Math.min(d.getHours() * 60 + d.getMinutes(), 1435));
+      };
+      return { tone: "area-home", ico: "check", q: `Did you have ${low}?`,
+        sub: "Its time passed while the plan ran late.", item: "",
+        say: `If not, ${low} goes right after this task.`,
+        yes: ["I ate", () => setMeal("there")],
+        no: [`${name} next`, () => setMeal(after())] };
+    } };
+  }
   // What shrank the day: a busy event added or moved since the plan was saved.
   function squeezedBy(p){
     const now = Date.now(), ev = cal.events.filter((e) => !e.allDay && e.busy !== false && e.updated
@@ -1895,7 +1929,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     const nxKey = nx ? `${nx.task.id}@${nx.start}+${nx.more}` : "";
     if (nxKey !== reportedNext) { reportedNext = nxKey; onPlanNext?.(nx); }
     if (tasks) {
-      const nn = collectNeeds({ tasks, events: cal.events || [], calOk: cal.status === "ok", settings, home: homeAt() }).length + (whereAsk() ? 1 : 0) + (planAsk() ? 1 : 0);
+      const nn = collectNeeds({ tasks, events: cal.events || [], calOk: cal.status === "ok", settings, home: homeAt() }).length + (whereAsk() ? 1 : 0) + (planAsk() ? 1 : 0) + (mealLateAsk() ? 1 : 0);
       if (nn !== reportedNeeds) { reportedNeeds = nn; onNeedsCount?.(nn); }
     }
 
@@ -2129,7 +2163,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
   return {
     refresh: render,
     // Needs you's questions that only the Now screen can work out (planAsk).
-    needsAsks: () => [planAsk()].filter(Boolean),
+    needsAsks: () => [planAsk(), mealLateAsk()].filter(Boolean),
     // The schedule's "?" on a planned task that didn't happen.
     missed: (id, start) => missedSheet(id, start),
     // "Do this now" from the task sheet: the same thing Switch does, driven

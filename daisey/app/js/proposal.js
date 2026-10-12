@@ -332,6 +332,14 @@ function lay(items = [], { tasks = [], events = [], now = Date.now(), hours = W.
   // rest moving up meanwhile (Mor, 2026-10-10: the Today list kept it where
   // it was while the card had moved on).
   const later = [];
+  // A meal the plan carried past its time (Mor, 2026-10-12: lunch at 20:30,
+  // its tasks before it slid): not laid there; Needs you asks if you ate
+  // (now.js mealLateAsk). Late: an hour past its window, breakDue's own limit.
+  const lateMeals = [];
+  const isLate = (meal, at) => {
+    const w = meal && meals.find((x) => x.name === meal);
+    return !!w && at >= new Date(now).setHours(0, w.to + W.BREAKS.mealSlack, 0, 0);
+  };
   const lo = items.findIndex((it) => !isBreak(it)), hi = items.findLastIndex((it) => !isBreak(it));
   for (const [i, it] of items.entries()) {
     if (isBreak(it)) {
@@ -346,6 +354,7 @@ function lay(items = [], { tasks = [], events = [], now = Date.now(), hours = W.
         const g = gaps.findIndex((x) => !x.place && x.end > now);
         if (g < 0 || (isMeal(it) && !meals.length)) continue;
         const meal = isMeal(it) ? mealName(it, meals, doneAt) : null;
+        if (isLate(meal, doneAt)) { lateMeals.push(meal); continue; }
         breaks.push({ kind: "break", type: meal ? "meal" : it.brk, minutes: len / MIN, start: doneAt, end: doneAt + len, i, ...(meal ? { name: meal } : {}) });
         gapEnd.set(breaks[breaks.length - 1], gaps[g].end);
         worked = 0; if (it.brk !== "short") sinceLong = 0;
@@ -358,6 +367,7 @@ function lay(items = [], { tasks = [], events = [], now = Date.now(), hours = W.
         const from = Math.max(cursor, gaps[k].start);
         if (gaps[k].end - from < len) continue;
         const meal = isMeal(it) ? mealName(it, meals, from) : null;
+        if (isLate(meal, from)) { lateMeals.push(meal); break; }
         breaks.push({ kind: "break", type: meal ? "meal" : it.brk, minutes: len / MIN, start: from, end: from + len, i, ...(meal ? { name: meal } : {}) });
         gapEnd.set(breaks[breaks.length - 1], gaps[k].end);
         worked = 0; if (it.brk !== "short") sinceLong = 0;
@@ -451,7 +461,7 @@ function lay(items = [], { tasks = [], events = [], now = Date.now(), hours = W.
     const next = Math.min(gapEnd.get(b), ...starts.filter((s) => s >= b.end));
     if (next > b.end) b.end = next;
   }
-  return { rows: rows.sort((a, b) => a.start - b.start), over, breaks: kept };
+  return { rows: rows.sort((a, b) => a.start - b.start), over, breaks: kept, lateMeals };
 }
 
 // When the day shrinks under an approved plan (an event added, or running

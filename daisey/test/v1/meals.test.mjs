@@ -58,3 +58,23 @@ test("the answer rearranges a plan that already has its breaks: lunch moves to 1
   const gone = { mealToday: { date: "2026-10-09", Lunch: "there" } };
   assert.ok(!relayMeals(re.items, { ...ctx, settings: gone, hours: dayHours(gone) }).items.some((it) => it.brk === "meal"));
 });
+
+test("a meal the plan carried past its time isn't laid there: lateMeals asks; 'Lunch next' lays it after the task", async () => {
+  const { timeline, relayMeals } = await import("../../app/js/proposal.js");
+  const tasks = ["a", "b"].map((id) => ({ id, title: id, status: "ready", size: 60 }));
+  const items = [{ taskId: "a", minutes: 60 }, { brk: "meal", name: "Lunch", minutes: 45 }, { taskId: "b", minutes: 60 }];
+  const hours = { start: 480, end: 1380, meals: mealsToday({}, at(19, 40)) };
+  const tl = timeline(items, { tasks, events: [], now: at(19, 40), hours });
+  assert.deepEqual(tl.lateMeals, ["Lunch"]);
+  assert.ok(!tl.breaks.some((b) => b.type === "meal"));
+  // Still in its hour after the window (breakDue's late lunch): laid, not asked.
+  const ok = timeline(items, { tasks, events: [], now: at(13, 30), hours: { ...hours, meals: mealsToday({}, at(13, 30)) } });
+  assert.deepEqual(ok.lateMeals, []);
+  assert.equal(ok.breaks.find((b) => b.type === "meal").start, at(14, 30));
+  // Not yet → today's answer is a time right after the task on the card.
+  const settings = { dayStart: "08:00", dayEnd: "23:30", mealToday: { date: "2026-10-09", Lunch: "20:40" } };
+  const ctx = { tasks, events: [], now: at(19, 40), settings, hours: dayHours(settings, at(19, 40)) };
+  const re = relayMeals(items, ctx);
+  const brk = timeline(re.items, ctx).breaks.find((b) => b.type === "meal");
+  assert.equal(brk.start, at(20, 40));
+});
