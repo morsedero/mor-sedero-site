@@ -116,7 +116,7 @@ function lanes(items){
 
 // el: the page. onEvent(ev): an event's details. onNew(date, at): a new
 // event on "YYYY-MM-DD", at "HH:MM" when a gap was tapped.
-export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onMissed, onProjects, onWeek, onDay, onNow, mode = "home" } = {}){
+export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onMissed, onProjects, onWeek, onDay, onNow, onPlan, mode = "home" } = {}){
   let cal = { status: "loading", events: [] };
   let settings = {};
   let tasks = null, run = null; // for Plan my day
@@ -276,7 +276,11 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onMissed, onPro
         onclick: () => { const back = view === "week" ? () => go(null) : () => { focus = null; toNow = true; render(); onNow?.(); };
           if (isNow) { scrollToNow(true); onNow?.(); } else flip(future ? 1 : -1, back); } },
         h("span", { className: "sc-pulse", ariaHidden: "true" }), "Now"),
-      mode === "home" && onWeek && weekBtn);
+      mode === "home" && onWeek && weekBtn,
+      // Change plan: the phone's way back into an approved plan, now the
+      // Today tile opens this page instead (Mor, 2026-10-12; CSS shows it
+      // only there, body.has-plan).
+      mode === "home" && onPlan && h("button", { type: "button", className: "sc-weekbtn sc-planbtn", onclick: () => onPlan() }, icon("calendar"), h("span", { textContent: "Change plan" })));
     const head = h("div", { className: "sc-head" + (view === "week" ? " wk" : "") }, bar);
 
     let body;

@@ -7,6 +7,7 @@ const GUEST_UID = "guest-local";
 const guestMode = () => { try { return localStorage.getItem(GUEST_KEY) === "1"; } catch { return false; } };
 
 import { flash, h, bdi, icon } from "./ui.js";
+import { areaClass } from "./look.js";
 
 // The header's chips (round 3, New Design/6): green "✓ N done" today, and
 // amber "N need you", each only when there is something. now.js reports both.
@@ -19,14 +20,28 @@ import { flash, h, bdi, icon } from "./ui.js";
 let planNow = null, planReady = false;
 function paintDone(){}
 function paintPlan(p){ planNow = p; paintChip(); }
+// Phone: the home is the card, and Plan is the Today tile at the bottom
+// (Mor, 2026-10-12). Approved, it says what's next and opens the day.
+const phone = matchMedia("(max-width: 599px)");
+let planNext = null;
+const hm = (ms) => new Date(ms).toTimeString().slice(0, 5);
+function paintNext(nx){ planNext = nx; paintChip(); }
 function paintReady(on){ planReady = !!on; paintChip(); }
 function paintChip(){
   const p = planNow, c = $("#planChip");
   c.hidden = false;
   c.classList.toggle("empty", !p);
   c.classList.toggle("ready", planReady && !p);
-  $("#planW").textContent = p ? "Plan" : "Plan my day";
-  c.ariaLabel = p ? "Today's plan. Open it to change it" : planReady ? "Plan my day: a plan is ready to look at" : "Plan my day";
+  const day = !!p && phone.matches;
+  document.body.classList.toggle("has-plan", !!p);
+  $("#planW").textContent = day ? "Today" : p ? "Plan" : "Plan my day";
+  c.ariaLabel = day ? `Today${planNext ? `: next ${planNext.task.title} at ${hm(planNext.start)}` : ""}` : p ? "Today's plan. Open it to change it" : planReady ? "Plan my day: a plan is ready to look at" : "Plan my day";
+  const box = $("#planNext");
+  box.hidden = !day || !planNext;
+  box.replaceChildren(...(day && planNext ? [
+    h("span", { className: "tn-at", textContent: `Next · ${hm(planNext.start)}` }),
+    h("span", { className: "tn-row" }, h("span", { className: "tn-dot" + areaClass(planNext.task) }), h("bdi", { className: "tn-name", dir: "auto", textContent: planNext.task.title })),
+    h("span", { className: "tn-more", textContent: planNext.more ? `+${planNext.more} more` : "" })] : []));
 }
 // Approving a plan makes the chip celebrate (Mor, 2026-10-12): a pop, a ring
 // out from it and the ✓ drawing itself in, once (app.css .approved).
@@ -229,8 +244,10 @@ async function boot(){
   // On a phone, Plan · Projects · Week move up into the header as icons, so
   // the Now card gets the whole width (Mor, 2026-10-12: the card was crowded).
   // Wider, they go back to their column beside the card.
-  const phone = matchMedia("(max-width: 599px)");
-  const placeSide = () => phone.matches ? $(".hdr-end").insertBefore($("#side"), $("#focusChip")) : $(".nowrow").append($("#side"));
+  // On a phone, Plan · Projects · Week are the tiles at the bottom, over Tell
+  // Daisey, and the Schedule waits behind Today (Mor, 2026-10-12: the home is
+  // the card). Wider, they go back to their column beside the card.
+  const placeSide = () => { phone.matches ? $("#board").append($("#side")) : $(".nowrow").append($("#side")); paintChip(); };
   phone.addEventListener("change", placeSide); placeSide();
   $("#settingsX").onclick = () => settings.close();
   settings.addEventListener("click", (e) => { if (e.target === settings) settings.close(); });
@@ -602,8 +619,10 @@ async function boot(){
         const syncPanel = () => {
           const on = !$("#projPage").hidden || !$("#projectview").hidden, plan = !$("#planPage").hidden, wk = !$("#statsPage").hidden;
           $("#schedPage").hidden = on || plan || wk;
+          if (on || plan || wk) document.body.classList.remove("day-open");
+          const day = document.body.classList.contains("day-open");
           $("#projectsChip").setAttribute("aria-pressed", String(on));
-          $("#planChip").setAttribute("aria-pressed", String(plan));
+          $("#planChip").setAttribute("aria-pressed", String(plan || day));
           $("#weekChip").setAttribute("aria-pressed", String(wk));
           $("#panel").setAttribute("aria-label", plan ? "Plan" : on ? "Projects" : wk ? "This week" : "Schedule");
           swapAnim();
@@ -642,6 +661,12 @@ async function boot(){
           if (history.state?.daisey === "project") history.back();
           const box = $("#statsPage"); box.hidden = false; box.scrollTop = 0; m.projects.stats(box); syncPanel();
         };
+        // Phone: the Today tile opens the day under the card, and shuts it.
+        window.__toggleDay = () => {
+          const open = !document.body.classList.contains("day-open");
+          if (open) { m.now?.closePlan(); closeStats(); m.projects.closeProject(); m.projects.closeAll(); if (history.state?.daisey === "project") history.back(); }
+          document.body.classList.toggle("day-open", open); syncPanel();
+        };
         window.__toggleProjects = () => {
           closeStats();
           if (!$("#planPage").hidden) m.now?.closePlan();
@@ -668,7 +693,7 @@ async function boot(){
             if (q.has("open") || q.has("start") || history.state?.daisey) return;
             m.needs.open(); screens.open("needs");
           } });
-        m.schedule = mountSchedule($("#schedPage"), user.uid, { onEvent: (ev) => m.event.view(ev), onNew: (date, at) => m.event.open(date, at), onOpen: (task) => m.adder.edit(task), onMissed: (id, start) => m.now?.missed(id, start), onNow: flashNow });
+        m.schedule = mountSchedule($("#schedPage"), user.uid, { onEvent: (ev) => m.event.view(ev), onNew: (date, at) => m.event.open(date, at), onOpen: (task) => m.adder.edit(task), onMissed: (id, start) => m.now?.missed(id, start), onNow: flashNow, onPlan: () => m.now?.plan() });
         // ARCHIVED (Mor, 2026-10-08): the Week page is built but switched off until
         // people ask for it. To bring it back: pass onWeek to the mount above
         //   onWeek: () => { $("#weekview").hidden = false; $("#weekPage").scrollTop = 0; screens.open("week"); }
@@ -682,9 +707,9 @@ async function boot(){
           onScreen: (name) => { if (name) { screens.open("project"); syncPanel(); } else screens.back(); },
         });
         syncPanel();
-        $("#planChip").onclick = () => m.now?.plan();
+        $("#planChip").onclick = () => phone.matches && planNow ? window.__toggleDay() : m.now?.plan();
         m.now = mountNow($("#nowcard"), user.uid, {
-          name: isGuest ? "" : (user.displayName || "").trim().split(/\s+/)[0], onDone: paintDone, onNeedsCount: paintNeeds, onPlanProgress: paintPlan,
+          name: isGuest ? "" : (user.displayName || "").trim().split(/\s+/)[0], onDone: paintDone, onNeedsCount: paintNeeds, onPlanProgress: paintPlan, onPlanNext: paintNext,
           onPlanReady: paintReady, onPlanApproved: cheerPlan,
           onFocusMode: (on) => {
             const b = $("#focusChip"), was = b.getAttribute("aria-pressed") === "true";

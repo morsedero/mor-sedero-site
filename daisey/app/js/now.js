@@ -51,7 +51,7 @@ const clock = (ms) => new Date(ms).toLocaleTimeString([], { hour: "2-digit", min
 // how many tasks are done today, for the header's chip. onNeedsCount(n):
 // how many decisions Needs you holds, for the amber chip.
 // onWrap(): the evening wrap (Needs you: each task still open for today).
-export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap, name = "", onDone, onNeedsCount, onPlanProgress, onPlanReady, onPlanApproved, planRoot, onPlanScreen, onReady, onFocusMode, missDialog = null, guest = false } = {}){
+export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap, name = "", onDone, onNeedsCount, onPlanProgress, onPlanNext, onPlanReady, onPlanApproved, planRoot, onPlanScreen, onReady, onFocusMode, missDialog = null, guest = false } = {}){
   let tasks = null; // null until the first snapshot
   let settings = {}; // state/settings: when the sweep was last offered
   let momentDoc = {}, momentKnown = false; // state/moment: place corrections, cardSeen
@@ -1831,7 +1831,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     const ids = new Set(doneToday(tasks || []).map((t) => t.id));
     return ids.size;
   }
-  let reported = null, reportedNeeds = null, reportedPlan = "", reportedFocus = null;
+  let reported = null, reportedNeeds = null, reportedPlan = "", reportedNext = null, reportedFocus = null;
   // nudgeDay: the day the morning's "Plan ready" chip is up for (onPlanReady).
   let nudgeDay = null, reportedNudge = false;
 
@@ -1877,6 +1877,12 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     if (n !== reported) { reported = n; onDone?.(n); }
     const pp = planProgressNow(), ppKey = pp ? `${pp.done}/${pp.total}` : "";
     if (ppKey !== reportedPlan) { reportedPlan = ppKey; onPlanProgress?.(pp); }
+    // The phone's Today tile says what's next in the approved plan (Mor,
+    // 2026-10-12): the first planned task still to start, not the card's own.
+    const ahead = planRowsNow().filter((r) => r.taskId && r.taskId !== shown && r.end > Date.now());
+    const nx = ahead[0] ? { task: ahead[0].task, start: ahead[0].start, more: ahead.length - 1 } : null;
+    const nxKey = nx ? `${nx.task.id}@${nx.start}+${nx.more}` : "";
+    if (nxKey !== reportedNext) { reportedNext = nxKey; onPlanNext?.(nx); }
     if (tasks) {
       const nn = collectNeeds({ tasks, events: cal.events || [], calOk: cal.status === "ok", settings, home: homeAt() }).length + (whereAsk() ? 1 : 0) + (planAsk() ? 1 : 0);
       if (nn !== reportedNeeds) { reportedNeeds = nn; onNeedsCount?.(nn); }

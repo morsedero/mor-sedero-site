@@ -1430,23 +1430,33 @@ dialog.tsheet .msg:empty { display: none; }
 @keyframes plan-ring { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--a-admin-ink) 60%, transparent); } 100% { box-shadow: 0 0 0 12px transparent; } }
 #side .hchip.ready .hchip-dot { display: block; position: absolute; inset-block-start: -2px; inset-inline-end: -4px; outline: 2px solid var(--a-admin-tint); }
 body.focus #side { display: none; }
-/* Phone (main.js placeSide): the column moves into the header, before Focus,
-   as three round icon buttons; the words go to their aria-labels and title
-   (Mor, 2026-10-12: the card gets the whole width). */
-.hdr-end > #side { inline-size: auto; flex-direction: row; gap: 6px; padding: 0; align-self: center; }
-.hdr-end > #side .hchip { flex: none; inline-size: 34px; block-size: 34px; min-block-size: 0; padding: 0; border-radius: 50%; }
-.hdr-end > #side .hchip svg { inline-size: 17px; block-size: 17px; }
-/* Words kept for screen readers only (Plan's name is its word). Focus goes
-   to its icon too when the header runs short: a small phone, or Needs you
-   showing; a small phone with Needs you drops Focus (the task sheet has it). */
-.hdr-end > #side .hchip .hchip-word,
-.hdr-end:has(> #side):has(> #needsChip:not([hidden])) #focusChip .hchip-word { position: absolute; inline-size: 1px; block-size: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
-.hdr-end:has(> #side):has(> #needsChip:not([hidden])) #focusChip { inline-size: 34px; padding: 0; justify-content: center; }
-@media (max-width: 379px) {
-  .hdr-end > #side { gap: 4px; } .hdr-end > #side .hchip { inline-size: 32px; block-size: 32px; }
-  .hdr-end:has(> #side) #focusChip .hchip-word { position: absolute; inline-size: 1px; block-size: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
-  .hdr-end:has(> #side) #focusChip { inline-size: 34px; padding: 0; justify-content: center; }
-  .hdr-end:has(> #side):has(> #needsChip:not([hidden])) #focusChip { display: none; }
+/* Phone (Mor, 2026-10-12, layout "2"): the home is the card alone. The
+   column becomes a row of tiles at the bottom over Tell Daisey (main.js
+   placeSide): Plan, as the wide Today tile once a plan is approved, then
+   Projects and Week. The Schedule waits behind Today (body.day-open). With a
+   page open the tiles shrink to one line, a tab bar under it. */
+.tile-next { display: none; }
+.sc-bar .sc-planbtn { display: none; } /* over .sc-weekbtn's inline-flex further down */
+@media (max-width: 599px) {
+  body:not(.day-open) #panel:not(:has(> .ppage:not([hidden]):not(#schedPage):not(.pg-ghost))) { display: none; }
+  #board > #side { order: 9; margin-block-start: auto; inline-size: auto; padding: 12px 0 0; display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 10px; }
+  #board > #side .hchip { inline-size: auto; block-size: 96px; min-block-size: 0; padding: 8px; gap: 6px; border-radius: 20px; font-size: 14px; font-weight: 600; }
+  #board > #side .hchip svg { inline-size: 22px; block-size: 22px; }
+  body.has-plan #board > #side #planChip { display: grid; grid-template-columns: auto 1fr; align-content: space-between; justify-items: start; column-gap: 6px; padding: 12px 14px; text-align: start; }
+  body.has-plan #board > #side #planChip svg { inline-size: 17px; block-size: 17px; }
+  #planChip .tile-next:not([hidden]) { grid-column: 1 / -1; display: flex; flex-direction: column; gap: 2px; min-inline-size: 0; inline-size: 100%; font-weight: 500; }
+  .tile-next .tn-at, .tile-next .tn-more { font-size: 12px; opacity: .75; }
+  .tile-next .tn-row { display: flex; align-items: center; gap: 6px; min-inline-size: 0; font-size: 14px; font-weight: 600; }
+  .tile-next .tn-dot { inline-size: 8px; block-size: 8px; border-radius: 50%; flex: none; background: var(--aink, currentColor); }
+  .tile-next .tn-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  /* A page open: the tiles go to one slim line. */
+  body.day-open #board > #side .hchip, #board:has(#panel > .ppage:not([hidden]):not(#schedPage)) > #side .hchip { block-size: 48px; flex-direction: row; display: flex; padding: 4px 8px; }
+  body.has-plan.day-open #board > #side #planChip, body.has-plan #board:has(#panel > .ppage:not([hidden]):not(#schedPage)) > #side #planChip { display: flex; align-items: center; justify-content: center; padding: 4px 8px; }
+  body.day-open #board > #side .tile-next, #board:has(#panel > .ppage:not([hidden]):not(#schedPage)) > #side .tile-next { display: none; }
+  #board > #side .hchip.ready .hchip-dot { inset-block-start: -3px; inset-inline-end: -5px; }
+  body.has-plan.day-open .sc-planbtn { display: inline-flex; inline-size: auto; padding-inline: 10px; }
+  .sc-bar .sc-planbtn span { display: inline; }
+  #panel { margin-block-end: 0; }
 }
 /* While Switch, Pending or Later is open under the card, the side buttons
    keep their closed size instead of stretching with the taller card. */
