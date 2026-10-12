@@ -27,7 +27,7 @@ const SCREENS = {
   settings: ["--click", "#avatar", "--click", "#settingsBtn"],
   plan: ["--click", "#planChip"],
   projects: ["--click", "#projectsChip"],
-  week: ["--click", "#weekChip"],
+  week: ["--click", "#projectsChip", "--click", "#pwWeek"],
   schedule: ["--cal", "day"],
   tell: ["--chat", "on", "--click", "#tellInput=add milk, call Uri", "--eval", "new Promise((r) => { document.querySelector('#tell').requestSubmit(); setTimeout(r, 900); })"],
   needs: ["--cal", "day", "--click", "#needsChip"],

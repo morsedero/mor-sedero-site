@@ -248,7 +248,13 @@ async function boot(){
   // On a phone, Plan · Projects · Week are the tiles at the bottom, over Tell
   // Daisey, and the Schedule waits behind Today (Mor, 2026-10-12: the home is
   // the card). Wider, they go back to their column beside the card.
-  const placeSide = () => { phone.matches ? $("#board").append($("#side")) : $(".nowrow").append($("#side")); paintChip(); };
+  // Focus goes with them on a phone, a square at the row's end (Mor,
+  // 2026-10-12); wider, back to the header's start.
+  const placeSide = () => {
+    if (phone.matches) { $("#board").append($("#side")); $("#side").append($("#focusChip")); }
+    else { $(".nowrow").append($("#side")); $(".hdr-end").prepend($("#focusChip")); }
+    paintChip();
+  };
   phone.addEventListener("change", placeSide); placeSide();
   $("#settingsX").onclick = () => settings.close();
   settings.addEventListener("click", (e) => { if (e.target === settings) settings.close(); });

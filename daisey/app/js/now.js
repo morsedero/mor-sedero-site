@@ -1873,8 +1873,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     document.documentElement.classList.toggle("night", night);
     // Not on the late/early pages (Mor, 2026-10-11): no card to focus on, so
     // the mode waits (the setting stays) and its chip hides (CSS :root.night).
-    // Nor on a phone (Mor, 2026-10-12): its home is the card alone already.
-    document.body.classList.toggle("focus-mode", fm && !night && !matchMedia("(max-width: 599px)").matches);
+    document.body.classList.toggle("focus-mode", fm && !night);
     const n = doneCount();
     if (n !== reported) { reported = n; onDone?.(n); }
     const pp = planProgressNow(), ppKey = pp ? `${pp.done}/${pp.total}` : "";
