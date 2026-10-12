@@ -1348,6 +1348,9 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     const { p } = b, gone = b.cut.length;
     savePlan("approved", b.items, { kept: p.kept || [], ...unseen(p, "added"), approvedAt: Date.now(), behindNo: null, unfit: overIds(b.items),
       ...(gone ? { cut: { ids: b.cut, ok: true, before: p.items, asked: [] } } : {}) });
+    // The card lets go of the old plan's task, as approving does (Mor,
+    // 2026-10-12: it stayed on the slipped one instead of the new next).
+    reset();
     flash(gone ? `Re-planned from now. ${gone === 1 ? "One task" : `${gone} tasks`} back in your list.` : "Re-planned from now.");
     render();
   }
