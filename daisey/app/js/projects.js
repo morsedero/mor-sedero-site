@@ -268,20 +268,21 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
           h("span", { className: "pcard-barrow" }, bar(p, "pbar"),
             p.all.length > 0 && h("span", { className: "pcard-pct", textContent: `${Math.round(progress(p) * 100)}% done` })))); };
     const tier = (t) => { const ins = ps.filter((p) => tierOf(p.name) === t);
-      return h("div", { className: `pp-zone tier-${t}`, _tier: t },
+      const z = h("div", { className: `pp-zone tier-${t}`, _tier: t },
         // Each tier a header with how many it holds; no box (Mor, 2026-10-08).
         // The name is the heading; what the tier means sits behind it, shown
         // on hover with a mouse or a tap with a finger (Mor, 2026-10-11).
         h("div", { className: "pp-tier" }, h("button", { type: "button", className: "pp-tier-name", textContent: TIER_TEXT[t][0], ariaExpanded: "false", onclick: tierTip }), h("span", { className: "pp-tier-sub", role: "tooltip", textContent: TIER_TEXT[t][1] }),
-          // Focus's places as dots, filled ones taken (Mor, 2026-10-11). Display
-          // only: the limit is set in Settings, so a full Focus means choosing
-          // which project steps back, not raising the number on the spot.
-          t === "focus"
-            ? h("span", { className: "pp-tier-n" },
-                h("span", { className: "pp-slots", role: "img", ariaLabel: `${ins.length} of ${focusMax} in Focus`, title: `${ins.length} of ${focusMax} in Focus` },
-                  ...Array.from({ length: Math.max(ins.length, focusMax) }, (_, i) => h("i", { className: i < ins.length ? "on" : "" }))))
-            : h("span", { className: "pp-tier-n", textContent: String(ins.length) })),
-        h("span", { className: "pp-tier-empty", textContent: "Drag a project here" }), ...ins.map(card)); };
+          // Focus's places as "2 of 3" (Mor, 2026-10-12: dots read as pages to
+          // swipe). Display only: the limit is set in Settings, so a full Focus
+          // means choosing which project steps back, not raising the number.
+          h("span", { className: "pp-tier-n", textContent: t === "focus" ? `${ins.length} of ${focusMax}` : String(ins.length), title: t === "focus" ? `${ins.length} of ${focusMax} in Focus` : "" })),
+        h("span", { className: "pp-tier-empty", textContent: "Drag a project here" }), ...ins.map(card));
+      // An open Focus place shows as a dashed slot after the cards (CSS ::after,
+      // so a dragged card still lands before it).
+      const room = t === "focus" && ins.length > 0 ? focusMax - ins.length : 0;
+      if (room > 0) z.dataset.room = `Room for ${room} more · drag a project here`;
+      return z; };
     const y = els.grid.scrollTop;
     // No week daisies; routines live in the avatar menu (Mor, 2026-10-10).
     els.grid.replaceChildren(dragProjects(h("div", { className: "pgrid tiers" }, ...TIERS.map(tier))));
