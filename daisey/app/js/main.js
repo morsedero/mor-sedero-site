@@ -683,14 +683,14 @@ async function boot(){
             if (on === was) return;
             document.body.classList.remove("fm-in", "fm-out"); void document.body.offsetWidth;
             document.body.classList.add(on ? "fm-in" : "fm-out");
-            clearTimeout(fmTimer); fmTimer = setTimeout(() => document.body.classList.remove("fm-in", "fm-out"), 2600);
+            clearTimeout(fmTimer); fmTimer = setTimeout(() => document.body.classList.remove("fm-in", "fm-out"), 1900);
             // Slow slide (Mor, 2026-10-12): the Now card and the Focus chip glide
             // from where they were to where the mode puts them. Measured now, and
             // again once now.js has toggled body.focus-mode (after this returns).
             // #nowcard is a scroll box and would clip the card mid-slide, so it
             // lets it out until the slide ends.
             if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-            const T = { duration: 1200, easing: "cubic-bezier(.45, 0, .2, 1)" };
+            const T = { duration: 650, easing: "cubic-bezier(.4, 0, .2, 1)" };
             const pick = () => [document.querySelector(".deck > .now-card.main"), b];
             const first = pick().map((el) => el?.getBoundingClientRect());
             queueMicrotask(() => pick().forEach((el, i) => {
@@ -698,16 +698,14 @@ async function boot(){
               const z = el.getBoundingClientRect(), dx = a.left - z.left, dy = a.top - z.top;
               if (Math.abs(dx) < 1 && Math.abs(dy) < 1 && Math.abs(a.width - z.width) < 1 && Math.abs(a.height - z.height) < 1) return;
               if (i) { el.animate([{ transform: `translate(${dx}px, ${dy}px)` }, { transform: "none" }], T); return; }
-              // The card also grows/shrinks from its old size to its new one. Its
-              // spot depends on its size (centred in Focus), so the start offset
-              // is measured with the old size on; position and size both move on
-              // the same eased progress, so the path stays true all the way.
-              el.style.width = a.width + "px"; el.style.height = a.height + "px";
-              const s = el.getBoundingClientRect();
-              el.style.width = el.style.height = "";
+              // The card also grows/shrinks from its old size to its new one — as a
+              // scale of the whole card, text and all. Animating width/height
+              // instead left the new (Focus-size) text in the old-size box, so it
+              // snapped bigger and got clipped. The two sizes share a shape, so
+              // the scale stays all but even.
               const K = [
-                { transform: `translate(${a.left - s.left}px, ${a.top - s.top}px)`, width: a.width + "px", height: a.height + "px", overflow: "hidden" },
-                { transform: "none", width: z.width + "px", height: z.height + "px", overflow: "hidden" },
+                { transformOrigin: "0 0", transform: `translate(${dx}px, ${dy}px) scale(${a.width / z.width}, ${a.height / z.height})` },
+                { transformOrigin: "0 0", transform: "none" },
               ];
               let anim = el.animate(K, T);
               // now.js re-renders #nowcard twice in the next ~50ms, swapping in a
