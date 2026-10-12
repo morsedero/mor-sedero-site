@@ -1357,8 +1357,9 @@ dialog.tsheet .msg:empty { display: none; }
    (Mor, 2026-10-12). */
 .hdr-date { max-inline-size: 100%; overflow: hidden; text-overflow: ellipsis; font-size: 11px; font-weight: 500; color: color-mix(in srgb, var(--ink-2) 75%, transparent); }
 /* "Wednesday 30 Sept" is ~36px wider than the old "WED 30 SEPT": on the
-   smallest phones the date gives way first, so the chips never collide. */
-@media (max-width: 359px) { #hdrDate { display: none; } .hdr-clock { flex-shrink: 1; min-inline-size: 0; } }
+   smallest phones the date stays (Mor, 2026-10-12), and only if the chips
+   truly run out of room does it trim with an ellipsis instead of colliding. */
+@media (max-width: 359px) { .hdr-clock { flex-shrink: 1; min-inline-size: 0; } }
 .hdr-date b { font-weight: 700; color: var(--ink-2); }
 .hdr-time { margin-block-start: 2px; font-size: 20px; font-weight: 800; letter-spacing: -0.4px; font-variant-numeric: tabular-nums; color: var(--ink); }
 .hdr-sec { margin-inline-start: 2px; font-size: 11px; font-weight: 600; letter-spacing: 0; color: var(--ink-2); }
@@ -1467,23 +1468,25 @@ body.focus #side { display: none; }
   /* Projects is a full page: no Now card over it (Mor, 2026-10-12). */
   #board:has(#panel > :is(#projPage, #projectview, #statsPage):not([hidden]):not(.pg-ghost)) > .nowrow { display: none; }
   /* Week: off the tiles, a toggle at the top of Projects instead. */
-  /* Home (Mor, 2026-10-12): Today tall on the left; Projects over Focus on
-     the right, each half its height, so the block stays one flush 96px.
-     In Focus mode Focus stays, alone in its spot, as the way out. */
+  /* Projects and Focus are icon squares, 64px wide, in every state; Today
+     takes the rest (Mor, 2026-10-12). Home: Today tall, Projects over Focus
+     at half its height, one flush 96px block. A page open: one slim line.
+     In Focus mode Focus stays, alone in its spot, with its word back, as
+     the way out. */
   #focusChip { --on: var(--p-teal-ink); }
-  #board > #side { grid-template-columns: 1fr 1fr; grid-template-rows: 43px 43px; }
+  #board > #side { grid-template-columns: 1fr 64px; grid-template-rows: 43px 43px; }
   #board > #side #planChip { grid-row: 1 / 3; block-size: auto; }
   #board > #side :is(#projectsChip, #focusChip) { block-size: auto; flex-direction: row; border-radius: 16px; }
+  #board > #side :is(#projectsChip, #focusChip) .hchip-word { position: absolute; inline-size: 1px; block-size: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
   #board > #side #focusChip { grid-column: 2; grid-row: 2; }
   #board > #side:where(:not(:has(#projectsChip:not([hidden])))) #focusChip { grid-row: 1 / 3; }
   #board > #side:where(:not(:has(#planChip:not([hidden])))) :is(#projectsChip, #focusChip) { grid-column: 1 / -1; }
-  /* A page open: one slim line, Focus back to an icon square. */
-  body.day-open #board > #side, #board:has(#panel > .ppage:not([hidden]):not(#schedPage):not(.pg-ghost)) > #side { grid-template-columns: 3fr 2fr 64px; grid-template-rows: 48px; }
+  body.day-open #board > #side, #board:has(#panel > .ppage:not([hidden]):not(#schedPage):not(.pg-ghost)) > #side { grid-template-columns: 1fr 64px 64px; grid-template-rows: 48px; }
   body.day-open #board > #side > :is(#planChip, #projectsChip, #focusChip), #board:has(#panel > .ppage:not([hidden]):not(#schedPage):not(.pg-ghost)) > #side > :is(#planChip, #projectsChip, #focusChip) { grid-row: auto; grid-column: auto; border-radius: 20px; }
-  body.day-open #board > #side #focusChip .hchip-word, #board:has(#panel > .ppage:not([hidden]):not(#schedPage):not(.pg-ghost)) > #side #focusChip .hchip-word { position: absolute; inline-size: 1px; block-size: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
-  body.focus-mode #board > #side { display: grid; padding-block-end: max(18px, env(safe-area-inset-bottom)); } /* Tell Daisey's room, it being gone */
+  body.focus-mode #board > #side { display: grid; grid-template-columns: 1fr auto; padding-block-end: max(18px, env(safe-area-inset-bottom)); } /* Tell Daisey's room, it being gone */
   body.focus-mode #board > #side > :not(#focusChip) { display: none !important; }
-  body.focus-mode #board > #side #focusChip { grid-column: 2; grid-row: 2; }
+  body.focus-mode #board > #side #focusChip { grid-column: 2; grid-row: 2; padding-inline: 18px; }
+  body.focus-mode #board > #side #focusChip .hchip-word { position: static; inline-size: auto; block-size: auto; overflow: visible; clip: auto; }
   #board > #side #weekChip { display: none !important; } /* over the slim tiles' display:flex */
   #panel:has(> :is(#projPage, #statsPage):not([hidden]):not(.pg-ghost)) > .pw-toggle { display: flex; }
   body.has-plan.day-open .sc-planbtn { display: inline-flex; inline-size: auto; padding-inline: 10px; }
