@@ -110,6 +110,12 @@ export const MOMENTUM = {
   recent: 4, // project worked on in the last RECENT_DAYS
   recentDays: 2,
 };
+// Flow (Mor, 2026-10-12): just finished something in a project, and another
+// task of it fits the time left → do that next rather than switch projects.
+// Not a nudge (not in SOFT, so the cap can't eat it): it beats area balance
+// and a Focus tier on its own, but a deadline today (35) still comes first.
+// gapMinutes: how long after the last stop/finish it still counts as flow.
+export const FLOW = { points: 15, gapMinutes: 30 };
 // The why line calls a task a "quick win" only up to this many minutes.
 export const QUICK_WIN_MAX = 15;
 // A task naming the saved place you're at (engine spot()).

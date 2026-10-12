@@ -503,3 +503,28 @@ test("learned fades: counts halve every LEARNED_HALF_LIFE_DAYS since the last bu
   assert.equal(learned(NOW - 4 * wk), -2); // four: back near 0
   assert.equal(learned(), -8); // no stamp (written before fading): as it was
 });
+
+test("flow: the project just worked on, if a task of it fits, beats switching (Mor, 2026-10-12)", () => {
+  // Same project, fits: flow, uncapped; momentum stays quiet.
+  const p = parts(task({ project: "Monster Punk", size: 30 }), { flowProject: "Monster Punk", lastProject: "Monster Punk" });
+  assert.equal(p.flow, W.FLOW.points);
+  assert.equal(p.momentum, 0);
+  // Too big for the window, a routine, or the Inbox: no flow.
+  assert.equal(parts(task({ project: "Monster Punk", size: 90 }), { flowProject: "Monster Punk" }).flow, 0);
+  assert.equal(parts(task({ project: "Gym", routine: { per: 3, every: "week" } }), { flowProject: "Gym" }).flow, 0);
+  assert.equal(parts(task({ project: "Inbox" }), { flowProject: "Inbox" }).flow, 0);
+  // Beats an untouched other area, loses to a deadline today.
+  const same = task({ project: "Monster Punk", area: "work" }), other = task({ project: "Reprise", area: "job" });
+  const o = { window: 60, flowProject: "Monster Punk", areaDone: { work: 4, job: 0 } };
+  assert.equal(pick([other, same], o).task.id, same.id);
+  assert.match(pick([other, same], o).why, /Keeps you in Monster Punk, no switching/);
+  const due = dl("2026-10-05", { project: "Reprise" });
+  assert.equal(pick([same, due], o).task.id, due.id);
+});
+
+test("flow: workBase names the project stopped or finished in the last FLOW.gapMinutes", () => {
+  const done = (min, o) => task({ project: "Daisey", status: "done", doneAt: NOW - min * 60000, workedAt: NOW - min * 60000, ...o });
+  assert.equal(C.workBase([done(10)], NOW).flowProject, "Daisey");
+  assert.equal(C.workBase([done(W.FLOW.gapMinutes + 5)], NOW).flowProject, null);
+  assert.equal(C.workBase([done(10, { project: "Inbox" })], NOW).flowProject, null);
+});

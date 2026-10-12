@@ -823,6 +823,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
       now: morning,
       ...(!fw ? { realWindow: false } : { window: fw.current ? 60 : fw.window, nextEvent: fw.next?.title ?? null }),
       ...workBase(tasks || [], now),
+      flowProject: null, // tonight's last task isn't warm by morning
       projectDue,
       place: "home",
       learnStats,

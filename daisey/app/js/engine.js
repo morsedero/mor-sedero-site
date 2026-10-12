@@ -15,7 +15,7 @@ import { cleanRoutine, weekState } from "./routine.js";
 const MIN = 60000;
 const DAY = 86400000;
 // Every scoring factor, in why-line tie order (earlier wins a tie).
-const FACTORS = ["deadline", "routine", "stakes", "office", "progress", "batch", "spot", "priority", "area", "target", "window", "momentum", "neglect", "learned"];
+const FACTORS = ["deadline", "routine", "stakes", "office", "progress", "flow", "batch", "spot", "priority", "area", "target", "window", "momentum", "neglect", "learned"];
 const DAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
@@ -86,6 +86,8 @@ export function matchProject(title, projects){
 //   blockProject    a calendar block named after a project: only its tasks
 //   lastProject     project last started or finished today
 //   recentProjects  projects worked on in the last 2 days
+//   flowProject     project just stopped or finished (W.FLOW.gapMinutes), or
+//                   the plan's previous pick: stay in it if it fits
 //   projectTiers    { project name: "focus" | "keep" | "background" }
 //   areaDone        { area: tasks worked this week } — area balance
 //   sessionSkips    ids hidden by Not now this session
@@ -113,6 +115,7 @@ export function readMoment(input = {}){
     spot: W.PLACES.includes(input.place) && input.place === "spot" && input.spot ? String(input.spot) : null,
     lastProject: input.lastProject || null,
     recentProjects: (input.recentProjects || []).map(key),
+    flowProject: input.flowProject && key(input.flowProject) !== key(INBOX) ? key(input.flowProject) : null,
     projectTiers: Object.fromEntries(Object.entries(input.projectTiers || {}).map(([p, t]) => [key(p), t])),
     projectDue: Object.fromEntries(Object.entries(input.projectDue || {}).filter(([, d]) => /^\d{4}-\d{2}-\d{2}$/.test(d || "")).map(([p, d]) => [key(p), d])),
     areaDone: input.areaDone || {},
@@ -310,7 +313,20 @@ function windowFit(task, m){
   return { points: W.WINDOW_FIT[fit], detail: { fit, window: w, nextEvent: m.nextEvent, need: leftMinutes(task), at: m.anchors[task.id] ?? m.now, end } };
 }
 
+// Flow (Mor, 2026-10-12): another task of the project just worked on, whole
+// in the time there is, keeps you in it instead of switching. A routine
+// isn't project work; a task too big for the window would break off mid-way.
+function flowOn(task, m){
+  return !!m.flowProject && key(task.project) === m.flowProject && !task.routine
+    && (!m.realWindow || leftMinutes(task) <= windowFor(task, m));
+}
+function flow(task, m){
+  return flowOn(task, m) ? { points: W.FLOW.points, detail: { project: task.project } } : { points: 0, detail: null };
+}
+
+// Flow already says it, stronger: momentum stays quiet then.
 function momentum(task, m){
+  if (flowOn(task, m)) return { points: 0, detail: null };
   const p = key(task.project);
   if (m.lastProject && p === key(m.lastProject)) return { points: W.MOMENTUM.lastToday, detail: { kind: "today" } };
   if (m.recentProjects.includes(p)) return { points: W.MOMENTUM.recent, detail: { kind: "recent" } };
@@ -378,7 +394,7 @@ function progress(task){
 export function scoreTask(task, m, ctx = { batches: new Map(), areas: [] }){
   const f = {
     deadline: deadline(task, m, ctx), routine: routine(task, m), target: target(task, m), stakes: stakes(task), priority: priority(task, m), area: areaBalance(task, m, ctx.areas), neglect: neglect(task, m),
-    window: windowFit(task, m), momentum: momentum(task, m), batch: batch(task, ctx.batches), learned: learned(task, m),
+    window: windowFit(task, m), flow: flow(task, m), momentum: momentum(task, m), batch: batch(task, ctx.batches), learned: learned(task, m),
     office: office(task, m), spot: spot(task, m), progress: progress(task),
   };
   const parts = Object.fromEntries(FACTORS.map((k) => [k, f[k].points]));
@@ -460,6 +476,7 @@ const PHRASES = {
   // project; the Inbox isn't one).
   momentum: (s, d) => (key(s.task.project || INBOX) === key(INBOX) ? null
     : ["you worked on ", { name: s.task.project }, d.kind === "today" ? " today" : " in the last 2 days"]),
+  flow: (s, d) => ["keeps you in ", { name: d.project }, ", no switching"],
   neglect: (s, d) => [`untouched for ${d.days} days`],
   spot: (s, d) => ["you're at ", { name: d.name }],
   learned: (s, d) => s.parts.learned > 0 ? [`you usually do these in the ${d.bucket}`] : null,

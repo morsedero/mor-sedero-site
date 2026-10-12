@@ -38,6 +38,7 @@ export function planDay({ tasks = [], events = [], now = Date.now(), hours = W.D
   const routineCal = routineCalendar(tasks, evs, now); // routine sessions already on the calendar
   const taken = new Set(run?.batch || (run?.taskId ? [run.taskId] : []));
   const out = [];
+  const base = workBase(tasks, now);
   for (const part of PARTS) {
     const lo = atMin(now, part.from), hi = atMin(now, PARTS[PARTS.indexOf(part) + 1]?.from ?? 24 * 60);
     const pieces = gaps.map((g) => ({ start: Math.max(g.start, lo), end: Math.min(g.end, hi) }))
@@ -48,14 +49,19 @@ export function planDay({ tasks = [], events = [], now = Date.now(), hours = W.D
     const at = pieces[0].start;
     const picks = [];
     let room = minutes;
+    // Flow: each pick after the first stays in the last one's project if a
+    // task of it fits what's left; the first only carries what was just
+    // worked on into a window starting now.
+    let flowProject = at - now <= W.FLOW.gapMinutes * MIN ? base.flowProject : null;
     while (picks.length < MAX_PICKS && room >= WORTH) {
       const r = rank(tasks, {
-        now: at, window: biggest, nextEvent: null, ...workBase(tasks, now),
+        now: at, window: biggest, nextEvent: null, ...base, flowProject,
         sessionSkips: [...taken], booked, routineCal,
       });
       if (!r.pick) break;
       const t = r.pick.task, need = Math.min(left(t), biggest);
       taken.add(t.id);
+      flowProject = t.routine ? null : t.project || null;
       picks.push({ task: t, why: r.pick.whyParts, minutes: left(t) });
       room -= need;
     }

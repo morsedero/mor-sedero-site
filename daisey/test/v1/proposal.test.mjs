@@ -343,3 +343,12 @@ test("No room: a task too long for the whole day left says so, offers no ↑; Fe
   const kept = fewerOf([{ taskId: "big", minutes: 180 }, { taskId: "a", minutes: 30 }, { taskId: "b", minutes: 30 }], ctx).map((i) => i.taskId);
   assert.ok(!kept.includes("big"), kept.join());
 });
+
+test("flow: a project's tasks run back to back instead of mixing (Mor, 2026-10-12)", () => {
+  const tasks = [
+    t({ id: "m1", project: "Monster Punk", createdAt: at(0, 1) }), t({ id: "r1", project: "Reprise", createdAt: at(0, 2) }),
+    t({ id: "m2", project: "Monster Punk", createdAt: at(0, 3) }), t({ id: "r2", project: "Reprise", createdAt: at(0, 4) }),
+  ];
+  const ids = proposeDay({ tasks, events: [], now: at(9) }).map((i) => i.taskId);
+  assert.deepEqual(ids, ["m1", "m2", "r1", "r2"]);
+});

@@ -104,13 +104,20 @@ export function proposeDay({ tasks = [], events = [], now = Date.now(), hours = 
   }
   // Each ride first, filled with what fits it (a train with the laptop:
   // laptop and phone work; a car: calls), as the card would offer it there.
+  // Flow (2026-10-12): each pick stays in the previous pick's project when a
+  // task of it fits, so the plan runs a project's tasks back to back instead
+  // of mixing; the first carries what was just worked on, if the plan starts now.
+  const base = workBase(tasks, now);
+  const warm = (at) => (at - now <= W.FLOW.gapMinutes * MIN ? base.flowProject : null);
+  const projectOf = (t) => (t.routine ? null : t.project || null);
   const onRide = [];
   for (const g of rides) {
-    let room = Math.floor((g.end - g.start) / MIN);
+    let room = Math.floor((g.end - g.start) / MIN), flowProject = warm(g.start);
     while (items.length + onRide.length < cap && room >= WORTH) {
-      const r = rank(pool, { now: g.start, window: room, place: g.place, nextEvent: null, ...workBase(tasks, now),
+      const r = rank(pool, { now: g.start, window: room, place: g.place, nextEvent: null, ...base, flowProject,
         sessionSkips: [...out, ...waiting()], booked, routineCal, phoneOk: [...phoneOk] });
       if (!r.pick) break;
+      flowProject = projectOf(r.pick.task);
       const m = Math.min(leftOf(r.pick.task), room);
       onRide.push({ it: { taskId: r.pick.task.id, minutes: m }, at: g.start });
       out.add(r.pick.task.id); taken.add(r.pick.task.id); room -= m;
@@ -118,13 +125,17 @@ export function proposeDay({ tasks = [], events = [], now = Date.now(), hours = 
   }
   // Down to the last minutes: a 10-min task still goes in the last 10 free
   // (2026-10-11: it vanished with time left, the loop stopped under 15).
+  // "Start with X" counts as the previous pick.
+  const lastFirst = items.length ? tasks.find((t) => t.id === items[items.length - 1].taskId) : null;
+  let flowProject = lastFirst ? projectOf(lastFirst) : usable.length ? warm(usable[0].start) : null;
   while (usable.length && items.length + onRide.length < cap && budget >= 5) {
     const r = rank(pool, {
-      now: usable[0].start, window: Math.min(biggest, budget), nextEvent: null, ...workBase(tasks, now),
+      now: usable[0].start, window: Math.min(biggest, budget), nextEvent: null, ...base, flowProject,
       sessionSkips: [...out, ...waiting()], booked, routineCal,
     });
     if (!r.pick) break;
     take(r.pick.task);
+    flowProject = projectOf(r.pick.task);
   }
   if (ask.fewer) fewerFirst(items, tasks, today, new Set(ask.first || []));
   if (ask.quickFirst) items.sort((a, b) => a.minutes - b.minutes);
