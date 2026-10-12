@@ -696,10 +696,20 @@ async function boot(){
             queueMicrotask(() => pick().forEach((el, i) => {
               const a = first[i]; if (!el || !a) return;
               const z = el.getBoundingClientRect(), dx = a.left - z.left, dy = a.top - z.top;
-              if (Math.abs(dx) < 1 && Math.abs(dy) < 1) return;
-              const K = [{ transform: `translate(${dx}px, ${dy}px)` }, { transform: "none" }];
+              if (Math.abs(dx) < 1 && Math.abs(dy) < 1 && Math.abs(a.width - z.width) < 1 && Math.abs(a.height - z.height) < 1) return;
+              if (i) { el.animate([{ transform: `translate(${dx}px, ${dy}px)` }, { transform: "none" }], T); return; }
+              // The card also grows/shrinks from its old size to its new one. Its
+              // spot depends on its size (centred in Focus), so the start offset
+              // is measured with the old size on; position and size both move on
+              // the same eased progress, so the path stays true all the way.
+              el.style.width = a.width + "px"; el.style.height = a.height + "px";
+              const s = el.getBoundingClientRect();
+              el.style.width = el.style.height = "";
+              const K = [
+                { transform: `translate(${a.left - s.left}px, ${a.top - s.top}px)`, width: a.width + "px", height: a.height + "px", overflow: "hidden" },
+                { transform: "none", width: z.width + "px", height: z.height + "px", overflow: "hidden" },
+              ];
               let anim = el.animate(K, T);
-              if (i) return;
               // now.js re-renders #nowcard twice in the next ~50ms, swapping in a
               // new card each time, so the slide ran on a detached card and the
               // real one just jumped. Hand the running slide to each new card.
