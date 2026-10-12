@@ -889,7 +889,10 @@ async function boot(){
               let anims = [];
               const run = (card, t) => {
                 const ps = parts(card);
-                anims = [card.animate(move, T), ...K.filter(([p, j]) => ps[p][j]).map(([p, j, f, to]) => ps[p][j].animate([f, to], T))];
+                // Added on top of the idle bob, not in place of it: it took
+                // over the transform and the bob cut back in at its own phase
+                // as the slide ended, a hop of up to 3px.
+                anims = [card.animate(move, { ...T, composite: "add" }), ...K.filter(([p, j]) => ps[p][j]).map(([p, j, f, to]) => ps[p][j].animate([f, to], T))];
                 anims.forEach((x) => { x.currentTime = t; });
                 anims.card = card;
               };
@@ -904,7 +907,9 @@ async function boot(){
                 const t = anims[0].currentTime; anims.forEach((x) => x.cancel()); run(c, t);
               });
               mo.observe(box, { childList: true, subtree: true });
-              setTimeout(() => { mo.disconnect(); box.style.overflow = box.style.position = box.style.zIndex = ""; }, T.duration);
+              // Turning on, the box stays open for the teal ring too (600ms in,
+              // 1.1s long), or the scroll box cut it off square.
+              setTimeout(() => { mo.disconnect(); box.style.overflow = box.style.position = box.style.zIndex = ""; }, on ? 1750 : T.duration);
             }));
           },
           planRoot: $("#planPage"),
