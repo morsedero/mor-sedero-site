@@ -63,7 +63,10 @@ export const PLACE_BLOCKS = {
 };
 
 // ---------- Gate 2 — what does leaving it cost? ----------
-export const DEADLINE = { today: 35, within2: 25, within7: 12 }; // past or today · ≤2 days · ≤7 days
+export const DEADLINE = { today: 35, within2: 25, within7: 12 }; // past or today · 2 days · 7 days
+// A slope through those, out to 0 at 14 days (2026-10-12): steps made a task
+// jump 12 points overnight between 8 and 7 days out. [days, points].
+export const DEADLINE_CURVE = [[0, DEADLINE.today], [2, DEADLINE.within2], [7, DEADLINE.within7], [14, 0]];
 // OURS (2026-10-06): big work starts early. A deadline scores as if it were
 // one day closer for every DEADLINE_LEAD_PER_DAY minutes still to do past
 // the first day's worth — 6 h left reads a deadline 2 days early. Before
@@ -117,6 +120,10 @@ export const LEARNED_MAX = 10;
 // OURS: learned fit = MAX × (starts − skips) / (starts + skips + DAMP), per
 // task type and time of day. DAMP keeps a single start from saying much.
 export const LEARNED_DAMP = 3;
+// Counts halve every this many days since the last start or skip
+// (2026-10-12): a type skipped into −10 got offered less, so it never earned
+// its way back; now it drifts back to 0 on its own.
+export const LEARNED_HALF_LIFE_DAYS = 7;
 export const SKIP_PENALTY = 8; // per skip of this task today
 
 // Missed slots and the silence check (miss.js; Mor, 2026-10-08), minutes.

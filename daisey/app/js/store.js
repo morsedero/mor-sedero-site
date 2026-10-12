@@ -566,8 +566,9 @@ export function bumpLearn(uid, type, part, field){
     data.state.learn ||= {};
     data.state.learn[key] ||= { starts: 0, skips: 0 };
     data.state.learn[key][field] = (data.state.learn[key][field] || 0) + 1;
+    data.state.learn[key].at = Date.now(); // engine fades counts from here
     try { writeGuestData(data); return Promise.resolve(); }
     catch(error){ return Promise.reject(error); }
   }
-  return fb.setDoc(learnDoc(uid), { [`${type || "deep"}|${part}`]: { [field]: fb.increment(1) } }, { merge: true });
+  return fb.setDoc(learnDoc(uid), { [`${type || "deep"}|${part}`]: { [field]: fb.increment(1), at: Date.now() } }, { merge: true });
 }

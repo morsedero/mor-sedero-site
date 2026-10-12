@@ -139,12 +139,15 @@ test("project blocks: an event titled after a project names it (whole words, lon
 
 // ---------- Gate 2: what does leaving it cost? ----------
 
-test("gate 2 deadline: past or today 35, within 2 days 25, within 7 days 12, later 0", () => {
+test("gate 2 deadline: past or today 35, sloping through 25 at 2 days and 12 at 7, to 0 at 14", () => {
   assert.equal(parts(dl("2026-10-01")).deadline, 35);
   assert.equal(parts(dl("2026-10-05")).deadline, 35);
+  assert.equal(parts(dl("2026-10-06")).deadline, 30);
   assert.equal(parts(dl("2026-10-07")).deadline, 25);
   assert.equal(parts(dl("2026-10-12")).deadline, 12);
-  assert.equal(parts(dl("2026-10-13")).deadline, 0);
+  assert.equal(parts(dl("2026-10-13")).deadline, 10); // no 12 → 0 cliff a day later
+  assert.equal(parts(dl("2026-10-19")).deadline, 0);
+  assert.equal(parts(dl("2026-10-30")).deadline, 0);
   assert.equal(parts(task()).deadline, 0);
   assert.equal(parts(tg("2026-10-05")).deadline, 0); // a target is never a deadline
 });
@@ -358,15 +361,15 @@ test("time left, not full size: fits, scores and batches what's still to do (202
 });
 
 test("deadline lead: big work left counts the deadline days earlier (2026-10-06)", () => {
-  // 10 days out: nothing for a small task; 6 h left → 2 days early, still > 7.
-  assert.equal(parts(dl("2026-10-15", { size: 30 })).deadline, 0);
-  assert.equal(parts(dl("2026-10-15", { size: 360 })).deadline, 0);
-  // 9 days out: 6 h left reads as 7 → 12.
+  // 10 days out: 7 for a small task; 6 h left → 2 days early, reads as 8 → 10.
+  assert.equal(parts(dl("2026-10-15", { size: 30 })).deadline, 7);
+  assert.equal(parts(dl("2026-10-15", { size: 360 })).deadline, 10);
+  // 9 days out: 6 h left reads as 7 → 12; a small task 9.
   assert.equal(parts(dl("2026-10-14", { size: 360 })).deadline, W.DEADLINE.within7);
-  assert.equal(parts(dl("2026-10-14", { size: 30 })).deadline, 0);
-  // 4 days out: 6 h left reads as 2 → 25; with 5 h already done, 1 h left → 12.
+  assert.equal(parts(dl("2026-10-14", { size: 30 })).deadline, 9);
+  // 4 days out: 6 h left reads as 2 → 25; with 5 h already done, 1 h left reads as 4 → 20.
   assert.equal(parts(dl("2026-10-09", { size: 360 })).deadline, W.DEADLINE.within2);
-  assert.equal(parts(dl("2026-10-09", { size: 360, spentMinutes: 300 })).deadline, W.DEADLINE.within7);
+  assert.equal(parts(dl("2026-10-09", { size: 360, spentMinutes: 300 })).deadline, 20);
   assert.match(why(dl("2026-10-09", { size: 360, canSplit: true })), /6 h still to do/);
 });
 
@@ -461,11 +464,11 @@ test("deadline lead: a project's work due by then counts together; a project's o
   // No date of its own: the project's due date (Projects) is its deadline.
   const t = task({ project: "Portfolio", size: 60 });
   const s = E.rank([t], { now: NOW, window: 180, projectDue: { Portfolio: "2026-10-06" } }).pick;
-  assert.equal(s.parts.deadline, W.DEADLINE.within2);
+  assert.equal(s.parts.deadline, 30); // tomorrow
   assert.match(E.whyText(s.whyParts), /Portfolio due/);
   // The Inbox isn't a project: its tasks don't add up.
   const inbox = Array.from({ length: 6 }, () => dl("2026-10-10", { project: "Inbox", size: 120 }));
-  assert.equal(E.rank(inbox, { now: NOW, window: 180 }).pick.parts.deadline, W.DEADLINE.within7);
+  assert.equal(E.rank(inbox, { now: NOW, window: 180 }).pick.parts.deadline, 17); // 5 days, alone
 });
 
 test("passed over: 2 h on the card with nothing done costs it a turn, for 3 days (user test #15)", () => {
@@ -490,4 +493,13 @@ test("soft cap: stacked nudges add up to SOFT_MAX at most, and never outvote a d
   const s = r.ranked.find((x) => x.task.id === old.id);
   assert.equal(s.score, W.TIER.keep + W.SOFT_MAX); // area 12 + fit 12 + momentum 8 + untouched 8 = 40, capped
   assert.equal(r.pick.task.id, due.id);
+});
+
+test("learned fades: counts halve every LEARNED_HALF_LIFE_DAYS since the last bump", () => {
+  const t = task({ type: "admin" }), wk = W.LEARNED_HALF_LIFE_DAYS * 864e5;
+  const learned = (at) => parts(t, { learnStats: { "admin|morning": { starts: 0, skips: 10, ...(at != null && { at }) } } }).learned;
+  assert.equal(learned(NOW), -8); // fresh: −10 × 10/13
+  assert.equal(learned(NOW - wk), -6); // one half-life: −10 × 5/8
+  assert.equal(learned(NOW - 4 * wk), -2); // four: back near 0
+  assert.equal(learned(), -8); // no stamp (written before fading): as it was
 });

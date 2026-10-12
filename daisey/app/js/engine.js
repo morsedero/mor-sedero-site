@@ -192,8 +192,8 @@ export function dueAt(task){
   return new Date(y, mo - 1, d, hh, mm).getTime();
 }
 
-// A real deadline: past or today 35, within 2 days 25, within 7 days 12 —
-// counted that many days earlier for big work still to do (DEADLINE_LEAD_PER_DAY).
+// A real deadline: past or today 35, sloping through 25 at 2 days and 12 at
+// 7 to 0 at 14 (W.DEADLINE_CURVE) — counted that many days earlier for big work still to do (DEADLINE_LEAD_PER_DAY).
 // The lead counts the whole project's work due by then, not this task's
 // alone (user test #15: six tasks, ~11 h, due in 5 days, each scored as
 // "5 days out" and lost to the gym every morning). A task with no deadline
@@ -204,15 +204,21 @@ export function deadlineOf(task, m){
   if (pd && (!own || pd < own)) return { due: pd, project: task.project };
   return own ? { due: own } : null;
 }
+// Points at x on a line through [x, y] pairs, flat past both ends.
+function slope(pts, x){
+  if (x <= pts[0][0]) return pts[0][1];
+  const i = pts.findIndex(([px]) => x <= px);
+  if (i < 0) return pts.at(-1)[1];
+  const [[x0, y0], [x1, y1]] = [pts[i - 1], pts[i]];
+  return Math.round(y0 + (y1 - y0) * (x - x0) / (x1 - x0));
+}
 function deadline(task, m, ctx = {}){
   const dl = deadlineOf(task, m);
   if (!dl) return { points: 0, detail: null };
   const days = daysUntil(dl.due, m.now);
   const passed = days < 0 || (days === 0 && !dl.project && !!task.dueTime && m.now >= dueAt(task));
   const left = ctx.dueWork ? ctx.dueWork(task, dl.due) : leftMinutes(task), lead = Math.max(0, Math.ceil(left / W.DEADLINE_LEAD_PER_DAY) - 1);
-  const eff = days - lead;
-  const D = W.DEADLINE;
-  return { points: eff <= 0 ? D.today : eff <= 2 ? D.within2 : eff <= 7 ? D.within7 : 0, detail: { days, passed, lead, left, due: dl.due, project: dl.project || null } };
+  return { points: slope(W.DEADLINE_CURVE, days - lead), detail: { days, passed, lead, left, due: dl.due, project: dl.project || null } };
 }
 // Minutes still to do in a task's project that are due by `due` (the task
 // itself counted once). The Inbox isn't a project: its tasks stand alone.
@@ -346,7 +352,9 @@ function spot(task, m){
 function learned(task, m){
   const s = m.learnStats[`${task.type}|${m.bucket.part}`];
   if (!s) return { points: 0, detail: null };
-  const starts = s.starts || 0, skips = s.skips || 0;
+  // Old evidence fades (W.LEARNED_HALF_LIFE_DAYS from `at`, the last bump).
+  const f = s.at ? 0.5 ** (Math.max(0, m.now - s.at) / (W.LEARNED_HALF_LIFE_DAYS * DAY)) : 1;
+  const starts = (s.starts || 0) * f, skips = (s.skips || 0) * f;
   const v = W.LEARNED_MAX * (starts - skips) / (starts + skips + W.LEARNED_DAMP);
   return { points: clamp(Math.round(v), W.LEARNED_MIN, W.LEARNED_MAX), detail: { bucket: m.bucket.part, type: task.type } };
 }
