@@ -29,7 +29,10 @@ function paintDone(){}
 function paintPlan(p){ planNow = p; paintChip(); }
 // Phone: the home is the card, and Plan is the Today tile at the bottom
 // (Mor, 2026-10-12). Approved, it says what's next and opens the day.
-const phone = matchMedia("(max-width: 599px)");
+// The phone layout is every screen's for now (Mor, 2026-10-12: copy it to
+// all platforms, a PC layout comes after). Was "(max-width: 599px)"; with
+// app.css's PHONE LAYOUT blocks it's the one switch to put back.
+const phone = matchMedia("all");
 let planNext = null;
 const hm = (ms) => new Date(ms).toTimeString().slice(0, 5);
 function paintNext(nx){ planNext = nx; paintChip(); }

@@ -1458,7 +1458,10 @@ body.focus #side { display: none; }
    page open the tiles shrink to one line, a tab bar under it. */
 .tile-next, .tile-chev, .home-hint, .dock-stack:empty { display: none; }
 .sc-bar .sc-planbtn { display: none; } /* over .sc-weekbtn's inline-flex further down */
-@media (max-width: 599px) {
+@media all { /* PHONE LAYOUT, every screen for now (main.js phone); was (max-width: 599px) */
+  /* Wider screens get the phone's own width, a big phone's (Mor, 2026-10-12). */
+  .shell { max-inline-size: 430px; }
+  .screen > * { max-inline-size: 430px; }
   body:not(.day-open) #panel:not(:has(> .ppage:not([hidden]):not(#schedPage):not(.pg-ghost))) { display: none; }
   /* The bottom (Mor, 2026-10-12, canvas "Daisey Bottom Fixes", home B):
      one row over Tell Daisey on every screen, main.js placeSide moves them
@@ -1504,7 +1507,7 @@ body.focus #side { display: none; }
   body:has(#panel > :is(#projPage, #projectview):not([hidden]):not(.pg-ghost)) .dock-stack #planChip { display: none; }
   #board:has(#panel > :is(#projPage, #projectview):not([hidden]):not(.pg-ghost)) > .nowrow { display: none; }
   /* Week: done today + routines float over the row (main.js sets --pop-b). */
-  #glance.pop { position: fixed; z-index: 30; inset-inline-end: 16px; inset-block-end: var(--pop-b, 140px); inline-size: min(320px, calc(100vw - 32px)); max-block-size: 60vh; overflow-y: auto; margin: 0; padding: 14px; box-sizing: border-box; border: 1px solid var(--line); border-radius: 22px; background: var(--card); box-shadow: 0 16px 40px rgb(0 0 0 / .16); }
+  #glance.pop { position: fixed; z-index: 30; inset-inline-end: calc(max(0px, (100vw - 430px) / 2) + 16px); /* the column's edge on a wide screen */ inset-block-end: var(--pop-b, 140px); inline-size: min(320px, calc(100vw - 32px)); max-block-size: 60vh; overflow-y: auto; margin: 0; padding: 14px; box-sizing: border-box; border: 1px solid var(--line); border-radius: 22px; background: var(--card); box-shadow: 0 16px 40px rgb(0 0 0 / .16); }
   @media (prefers-reduced-motion: no-preference) { #glance.pop:not([hidden]) { animation: ready-in .2s ease-out; } }
   .home-hint { display: block; order: 8; align-self: center; margin-block: 6px 0; padding: 6px 12px; border: 0; border-radius: 999px; background: var(--chip); color: var(--ink-2); font: inherit; font-size: 12.5px; cursor: pointer; }
   .home-hint[hidden], body.focus-mode .home-hint { display: none; }
@@ -2241,7 +2244,7 @@ dialog.tsheet[open] > .ts-laptop + .ts-repeat { margin-block-start: -12px; }
    flow (absolute, bottom right) so it doesn't shift the middle. */
 :root:not(.night) body.focus-mode #nowcard { padding-block: 10px calc(max(16px, env(safe-area-inset-top)) + 44px - 3px); } /* -3: measured, the deck's own spacing */
 :root:not(.night) body.focus-mode .shell { position: relative; }
-@media (max-width: 599px) { :root:not(.night) body.focus-mode #board > #side { position: absolute; inset-inline: 16px; inset-block-end: 0; } }
+@media all { /* PHONE LAYOUT, every screen for now (main.js phone); was (max-width: 599px) */ :root:not(.night) body.focus-mode #board > #side { position: absolute; inset-inline: 16px; inset-block-end: 0; } }
 /* Focus too: the same light squares, bigger; Done the one saturated button (2026-10-11). */
 :root:not(.night) body:is(.focus-mode, .home-float) .now-card.main .now-row { gap: 8px; } :root:not(.night) body:is(.focus-mode, .home-float) .now-card.main .now-row .iconbtn { inline-size: 58px; min-inline-size: 58px; block-size: 58px; min-block-size: 58px; border-radius: 14px; font-size: 11px; gap: 3px; } :root:not(.night) body:is(.focus-mode, .home-float) .now-card.main .now-row .iconbtn svg { inline-size: 20px; block-size: 20px; } :root:not(.night) body:is(.focus-mode, .home-float) .now-card.main .now-row .btn.start { block-size: 58px; min-block-size: 58px; border-radius: 14px; }
 
