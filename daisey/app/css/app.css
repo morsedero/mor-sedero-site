@@ -1989,6 +1989,8 @@ body.focus .shell { block-size: auto; min-block-size: 100dvh; overflow: visible;
    swaps into the same slot (now.js rethinkRow). */
 .pp-actions { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr) minmax(0, 1.35fr); gap: 6px; margin-block-start: 6px; padding-block: 6px 0; position: sticky; inset-block-end: 0; z-index: 2; background: var(--card); }
 /* Rethink (2026-10-10): one-tap Fewer | More | ✕, then a field with its own send. */
+.pp-actions:has(> .btn:nth-child(4)) { grid-template-columns: minmax(0, 1.1fr) minmax(0, 1.1fr) minmax(0, 1fr) minmax(0, 1fr); }
+.pp-actions:has(> .btn:nth-child(4)) .btn.start svg { display: none; }
 .pp-actions.pp-ask { display: flex; flex-direction: column; gap: 8px; }
 .pp-ask-quick { display: flex; gap: 6px; }
 .now-card.main .pp-ask-quick .btn { flex: 1 1 0; display: inline-flex; align-items: center; justify-content: center; gap: 6px; }

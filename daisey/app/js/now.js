@@ -1829,9 +1829,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
       h("div", { className: "hero-top" },
         h("span", { className: "hero-area", textContent: approved ? `${day}'s plan` : `Proposed for ${day.toLowerCase()}` }),
         rows.length > 0 && h("span", { className: "hero-side", textContent: `${dur(total)} · until ${clock(last.end)}` }),
-        // Approved: Close is a ✕ in the corner, not a fourth button in the
-        // action row, which ran off a phone's edge (Mor, 2026-10-12).
-        approved && h("button", { className: "pp-ctl pp-close", type: "button", textContent: "✕", title: "Close", ariaLabel: "Close", onclick: closeProposal })),
+        ),
       (rows.length || over.length || evs.length) > 0 && dragRows(h("ol", { className: "pp-list" },
           ...[...rows.map((r) => ({ r, s: r.start })), ...breaks.map((b) => ({ b, s: b.start })), ...evs.map((ev) => ({ ev, s: Date.parse(ev.start) }))]
             .sort((a, b) => a.s - b.s).map((x) => (x.ev ? evRow(x.ev) : x.b ? breakRow(x.b) : row(x.r, false))),
@@ -1848,15 +1846,16 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
       prop.note && h("p", { className: "pp-note", role: "status", textContent: prop.note }),
       prop.ask ? rethinkRow() : h("div", { className: "pp-actions" },
         h("button", { className: "btn primary start", type: "button", disabled: !prop.items.some((it) => !isBreak(it)) || prop.busy, onclick: approve },
-          icon("check"), h("span", { textContent: approved ? "Save plan" : "Approve" })),
+          icon("check"), h("span", { textContent: approved ? "Save" : "Approve" })),
         // Running late (a slot's time came or went with nothing started; No
         // room alone isn't late): Rethink lights up instead of a line saying so.
         h("button", { className: "btn line" + (approved && (late || rows.some((r) => r.missed)) ? " late" : ""), type: "button", ariaExpanded: "false", disabled: prop.busy,
           title: approved && (late || rows.some((r) => r.missed)) ? "Running late: rethink for what's left" : undefined,
           textContent: prop.busy ? "Thinking…" : "Rethink", onclick: () => { prop.ask = true; render(); } }),
-        // Approved: Remove plan sits with the others (Mor, 2026-10-10); Close is the header's ✕.
-        approved ? h("button", { className: "btn no-plan", type: "button", textContent: "Remove plan", ariaLabel: `Remove ${planWord()}'s plan`, disabled: prop.busy, onclick: removePlan })
-          : h("button", { className: "btn no-plan", type: "button", textContent: "No plan", onclick: dismiss })));
+        // Approved: Save, Rethink, Remove, Cancel (Mor, 2026-10-12); no ✕ in the header.
+        approved ? h("button", { className: "btn no-plan", type: "button", textContent: "Remove", ariaLabel: `Remove ${planWord()}'s plan`, disabled: prop.busy, onclick: removePlan })
+          : h("button", { className: "btn no-plan", type: "button", textContent: "No plan", onclick: dismiss }),
+        approved && h("button", { className: "btn line", type: "button", textContent: "Cancel", disabled: prop.busy, onclick: closeProposal })));
   }
   // Once a plan is approved, how far along it is goes to the header chip
   // (next to Needs you); tapping it reopens the plan to change it.
