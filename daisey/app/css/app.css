@@ -1400,7 +1400,7 @@ dialog.tsheet .msg:empty { display: none; }
    Room for the chips is about the screen less 152 px. */
 /* Focus always keeps its word (round 2, 2026-10-11: an icon alone, and a
    first-timer couldn't guess it); on a phone Needs you gives up its word instead. */
-@media (max-width: 429px) {
+@media all { /* PHONE LAYOUT, every screen for now; was (max-width: 429px), the phone width Mor's layout was made at: wider, the Plan chip's old dot showed in Next */
   .hdr-end:has(#focusChip:not([hidden])) #needsChip .hchip-word { display: none; }
   .hchip.plan:not(.empty):not(.focus-chip) .hchip-word, .hchip.plan .hchip-dot { display: none; } .hchip.plan { padding-inline: 9px; } .hdr-end { gap: 6px; }
 }
