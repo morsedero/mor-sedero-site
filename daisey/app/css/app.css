@@ -2443,12 +2443,17 @@ body.fm-slide .deck > .now-card.main { animation: none !important; } /* main.js:
   #side .hchip:hover { background: color-mix(in srgb, var(--surface) 60%, transparent); }
   #side .hchip[aria-pressed="true"] { background: var(--surface); border-color: transparent; color: var(--ink); font-weight: 600; box-shadow: 0 1px 3px rgb(0 0 0 / .06); }
   #side .hchip.ready { background: var(--a-admin-tint); color: var(--a-admin-ink); font-weight: 600; }
+  #side .hchip.ready[aria-pressed="true"] { background: var(--surface); color: var(--ink); } /* open: it reads as where you are */
   .topbar > .hdr-end { margin-block-start: auto; margin-inline-start: 0; flex-direction: column; align-items: stretch; justify-content: flex-start; gap: 8px; padding-block-start: 24px; }
   .hdr-end .hchip { block-size: 44px; justify-content: flex-start; gap: 10px; padding-inline: 12px; border-radius: 12px; font-size: 14px; }
   .hdr-end .hchip::after { inset: 0; }
+  .hdr-end #needsChip { gap: 6px; }
+  .hdr-end #needsChip .hchip-dot { margin-inline-end: 4px; }
   .hdr-end #needsChip .hchip-word { display: inline; }
   .hdr-end .focus-chip:not([aria-pressed="true"]) { border-color: transparent; background: transparent; color: color-mix(in srgb, var(--ink) 80%, var(--ink-2)); }
-  .hdr-end .acct { align-self: flex-start; padding-inline-start: 4px; }
+  .hdr-end .focus-chip { font-size: 15px; font-weight: 500; }
+  .hdr-end .acct { align-self: stretch; gap: 10px; padding-inline-start: 4px; }
+  .acct-name:not(:empty) { display: block; min-inline-size: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 15px; font-weight: 500; cursor: pointer; }
   .hdr-end .avatar { inline-size: 36px; block-size: 36px; }
   .acct-menu { inset-block-start: auto; inset-block-end: calc(100% + 8px); inset-inline-end: auto; inset-inline-start: 0; }
   /* The middle: the card, Week's glance under it, Tell Daisey at the foot. */
@@ -2469,6 +2474,20 @@ body.fm-slide .deck > .now-card.main { animation: none !important; } /* main.js:
   :root:not(.night) body.card-mini #nowcard .now-card.main > .now-row { display: flex; grid-column: 3; grid-row: 1; margin: 0; padding: 0; }
   :root:not(.night) body.card-mini #nowcard .now-card.main > .now-row > :not(.done-col), :root:not(.night) body.card-mini #nowcard .done-col > :not(.btn) { display: none; }
   :root:not(.night) body.card-mini #nowcard .done-col .btn.start { inline-size: auto; block-size: 44px; min-block-size: 44px; margin: 0; padding-inline: 22px; font-size: 15px; }
+  /* Page switches morph (main.js morph): each block glides to its new box,
+     its old and new looks cross-fading unstretched inside it. */
+  .nowrow { view-transition-name: pc-now; }
+  #panel { view-transition-name: pc-panel; }
+  #glance { view-transition-name: pc-glance; }
+  #dock { view-transition-name: pc-dock; }
+  ::view-transition-group(*) { animation-duration: .38s; animation-timing-function: cubic-bezier(.2, .8, .2, 1); }
+  ::view-transition-group(pc-panel), ::view-transition-group(pc-now) { overflow: hidden; border-radius: 24px; }
+  ::view-transition-old(pc-panel), ::view-transition-new(pc-panel), ::view-transition-old(pc-now), ::view-transition-new(pc-now) { inline-size: 100%; block-size: 100%; object-fit: none; object-position: left top; }
+  /* Night: the day stays on the right (it shows tonight, then tomorrow), and
+     the hero spans the column (its 82px gap was for the phone's side column). */
+  :root.night .shell > #board > #panel:not(:has(#planPage:not([hidden]), #projPage:not([hidden]), #projectview:not([hidden]))) { display: flex; }
+  :root.night #panel { margin-block-start: 24px; }
+  :root.night .night-hero { margin-inline-end: 0; }
   /* The greeting over the card; not at night, in Focus or over a page. */
   .pc-greet:not([hidden]) { display: block; margin: 0 0 12px; font-size: 28px; font-weight: 600; letter-spacing: -0.3px; line-height: 1.2; }
   :root.night .pc-greet, body:is(.focus-mode, .card-mini) .pc-greet { display: none; }
@@ -2502,5 +2521,5 @@ body.fm-slide .deck > .now-card.main { animation: none !important; } /* main.js:
   .set-nav button[aria-current="true"] { background: var(--surface); color: var(--ink); font-weight: 600; box-shadow: 0 1px 3px rgb(0 0 0 / .06); }
   dialog.settings .set-nav + .menu-sec { border-block-start: 0; padding-block-start: 4px; }
 }
-:where(.pc-greet, .set-nav) { display: none; } /* PC only: no weight, so the block above wins from 1024px */
+:where(.pc-greet, .set-nav, .acct-name) { display: none; } /* PC only: no weight, so the block above wins from 1024px */
 @keyframes ts-drawer { from { opacity: 0; transform: translateX(32px); } }

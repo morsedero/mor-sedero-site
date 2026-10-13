@@ -33,6 +33,16 @@ function paintPlan(p){ planNow = p; paintChip(); }
 // Layout"): a rail on the left, the card in the middle, the day on the right.
 // app.css's PHONE LAYOUT and PC LAYOUT blocks use the same width.
 const phone = matchMedia("(max-width: 1023px)");
+// PC: switching Today · Plan · Projects · Week morphs instead of snapping
+// (Mor, 2026-10-13): the card, the panel, the glance and Tell Daisey glide
+// to their new places and sizes (a view transition, app.css pc-* names).
+// Phones keep their own page animation (swapAnim), which skips while this runs.
+let morphing = false;
+const morph = (fn) => {
+  if (phone.matches || !document.startViewTransition || matchMedia("(prefers-reduced-motion: reduce)").matches) return fn();
+  morphing = true;
+  document.startViewTransition(() => { try { fn(); } finally { morphing = false; } }).finished.catch(() => {});
+};
 let planNext = null;
 const hm = (ms) => new Date(ms).toTimeString().slice(0, 5);
 function paintNext(nx){ planNext = nx; paintChip(); }
@@ -273,9 +283,9 @@ async function boot(){
   settings.addEventListener("scroll", markNav, { passive: true });
   $("#settingsBtn").onclick = () => { setMenu(false); settings.showModal(); markNav(); };
   $("#refreshBtn").onclick = () => location.reload();
-  $("#projectsChip").onclick = () => window.__toggleProjects?.();
-  $("#weekChip").onclick = () => window.__toggleWeek?.();
-  $("#todayChip").onclick = () => window.__goToday?.();
+  $("#projectsChip").onclick = () => morph(() => window.__toggleProjects?.());
+  $("#weekChip").onclick = () => morph(() => window.__toggleWeek?.());
+  $("#todayChip").onclick = () => morph(() => window.__goToday?.());
   // Focus from the mini card (Today or the plan open on a phone) goes home
   // first, so Focus mode gets the full card (Mor, 2026-10-12).
   focusBtn.onclick = () => {
@@ -381,6 +391,8 @@ async function boot(){
 
     const displayName = user.displayName || user.email || "Guest";
     $("#who").textContent = isGuest ? "Guest · this device" : displayName;
+    $("#acctName").textContent = isGuest ? "Guest" : displayName.trim().split(/\s+/)[0];
+    $("#acctName").onclick = (e) => { e.stopPropagation(); avatar.click(); }; // its own click would shut the menu it just opened
     $("#signout").textContent = isGuest ? "Exit guest mode" : "Sign out";
     avatar.setAttribute("aria-label", isGuest ? "Guest account" : `Account: ${user.email}`);
     avatar.replaceChildren();
@@ -773,7 +785,7 @@ async function boot(){
           const was = shownPage; shownPage = now;
           // A hidden panel (the phone's home) never runs the animation, so its
           // ghost would never go: no swap animation there.
-          if (!was || !now || was === now || !$("#panel").offsetParent || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+          if (morphing || !was || !now || was === now || !$("#panel").offsetParent || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
           const back = now.id === "schedPage";
           $("#panel .pg-ghost")?.remove();
           const g = was.cloneNode(true);
@@ -859,7 +871,7 @@ async function boot(){
           onScreen: (name) => { if (name) { screens.open("project"); syncPanel(); } else screens.back(); },
         });
         syncPanel();
-        $("#planChip").onclick = () => { seenHint(); if (phone.matches && (planNow || document.body.classList.contains("day-open"))) window.__toggleDay(); else m.now?.plan(); };
+        $("#planChip").onclick = () => { seenHint(); if (phone.matches && (planNow || document.body.classList.contains("day-open"))) window.__toggleDay(); else morph(() => m.now?.plan()); };
         m.now = mountNow($("#nowcard"), user.uid, {
           name: isGuest ? "" : (user.displayName || "").trim().split(/\s+/)[0], onDone: paintDone, onNeedsCount: paintNeeds, onPlanProgress: paintPlan, onPlanNext: paintNext,
           onPlanReady: paintReady, onPlanApproved: cheerPlan,
