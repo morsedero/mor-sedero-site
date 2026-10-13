@@ -331,6 +331,7 @@ function lay(items = [], { tasks = [], events = [], now = Date.now(), hours = W.
   const rows = [], over = [], breaks = [];
   // The first start on a round five minutes: 15:55, not 15:52.
   let gi = 0, cursor = Math.ceil((gaps[0]?.start ?? now) / (5 * MIN)) * 5 * MIN;
+  const start0 = cursor;
   // Work since the last break, and since the last long one (a meal counts).
   let worked = 0, sinceLong = 0, lastEnd = null, lastStart = null;
   const mealsDone = new Set(), rideAt = {}; // rideAt: where each ride's next task starts
@@ -452,10 +453,13 @@ function lay(items = [], { tasks = [], events = [], now = Date.now(), hours = W.
       // Why there's no room, in plain facts (2026-10-11: never dropped unsaid).
       const hoursShut = task.openHours && task.openHours !== "anytime"
         && !gaps.slice(gi).some((g) => !g.place && openStart(task, Math.max(cursor, g.start), need) != null);
+      // Shut all day, not just after the rest: ↑ can't help either (Mor,
+      // 2026-10-14: "needs office hours" at 16:24 still offered ↑).
+      const shutAll = hoursShut && !open.some((g) => openStart(task, Math.max(start0, g.start), need) != null);
       const why = hoursShut ? (task.openHours === "office" ? "needs office hours, none left today" : "evening only, no evening time left")
         : never && most >= 5 ? `needs ${durText(need / MIN)}, ${open.length > 1 ? `longest free stretch today is ${durText(most)}` : `only ${durText(most)} left today`}`
         : room >= 5 ? `needs ${durText(need / MIN)}, ${durText(room)} free in one stretch after the rest` : "no free time left today";
-      over.push({ taskId: it.taskId, task, minutes: need / MIN, room: room >= WORTH ? room : 0, i, why, ...(never && !hoursShut ? { never: true } : {}) });
+      over.push({ taskId: it.taskId, task, minutes: need / MIN, room: room >= WORTH ? room : 0, i, why, ...((never && !hoursShut) || shutAll ? { never: true } : {}) });
     }
   }
   // A break runs on to whatever comes next, up to the next meeting: free time
