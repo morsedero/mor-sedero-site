@@ -1127,7 +1127,10 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     // and sparkles go up round it, then it slides out and the next card
     // slides into its spot. The write waits for the slide, as Later's does,
     // so the snapshot it fires can't redraw the card mid-shine.
-    const el = task.id === shown && root.querySelector(".now-card.main");
+    // Not the card's task (the schedule's "?" sheet): no card to shine. null,
+    // not false: false?.classList is undefined, and .contains threw, so
+    // "I did it" did nothing (Mor, 2026-10-14).
+    const el = task.id === shown ? root.querySelector(".now-card.main") : null;
     if (el?.classList.contains("won")) return; // a second tap mid-shine
     if (el && Date.now() - pushAt < PUSH_MS) return; // …or while the next card is still pushing in
     navigator.vibrate?.(15);
