@@ -519,13 +519,13 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
 
   // Later and Pending both move the card on: it slides out, the next slides
   // in, and for 5 seconds a toast offers Undo. Nothing waits on the write.
-  function stepAside(task, { label, write, lesson = false }){
+  function stepAside(task, { label, write, lesson = false, ask = true }){
     const before = skipSnapshot(task);
     const go = () => {
       skips.add(task.id);
       reset();
       slideIn = true;
-      setToast({ task, before, label, lesson, asking: !isRoutine(task) });
+      setToast({ task, before, label, lesson, asking: ask && !isRoutine(task) });
       write().catch(fail);
       render();
     };
@@ -550,22 +550,23 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     savePlan("approved", p.items.map((it) => (it.taskId !== task.id ? it : until ? { ...it, hold: until } : (({ hold, ...rest }) => rest)(it))),
       { kept: p.kept || [], ...unseen(p, "cut"), ...unseen(p, "added") });
   }
-  function later(task, when, extra = null){
+  // ask: false when how much is left is known already (the "?" sheet).
+  function later(task, when, extra = null, { ask = true } = {}){
     if (when === "today") {
       holdInPlan(task, Date.now() + LATER_MINUTES * 60000);
-      stepAside(task, { label: `Later (${dur(LATER_MINUTES)}): `, lesson: true, write: () => Promise.all([skipNow(uid, task), declined(task), extra ? restoreTask(uid, task.id, extra) : null]) });
+      stepAside(task, { label: `Later (${dur(LATER_MINUTES)}): `, lesson: true, ask, write: () => Promise.all([skipNow(uid, task), declined(task), extra ? restoreTask(uid, task.id, extra) : null]) });
     } else if (when === "tomorrow") {
       // Still up past midnight (before 04:00): tomorrow is the day you wake into.
       let day = dayAfter(1);
       if (task.dateKind === "deadline" && task.due && task.due < day) day = task.due; // never hide it past its deadline
-      stepAside(task, { label: "Tomorrow: ", lesson: true, write: () => Promise.all([restoreTask(uid, task.id, { ...pushedTo(task, { notBefore: day }), ...extra }), declined(task)]) });
+      stepAside(task, { label: "Tomorrow: ", lesson: true, ask, write: () => Promise.all([restoreTask(uid, task.id, { ...pushedTo(task, { notBefore: day }), ...extra }), declined(task)]) });
     } else if (when === "week") {
       let day = pickWeekDay(task, { events: cal.status === "ok" ? cal.events : [], tasks: tasks || [], hours: usualHours(settings) }); // other days: no stretch
       if (task.dateKind === "deadline" && task.due && task.due < day) day = task.due; // never hide it past its deadline
       const label = new Date(`${day}T12:00`).toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" });
-      stepAside(task, { label: `This week (${label}): `, lesson: true, write: () => Promise.all([restoreTask(uid, task.id, { ...pushedTo(task, { notBefore: day }), ...extra }), declined(task)]) });
+      stepAside(task, { label: `This week (${label}): `, lesson: true, ask, write: () => Promise.all([restoreTask(uid, task.id, { ...pushedTo(task, { notBefore: day }), ...extra }), declined(task)]) });
     } else if (when === "someday") {
-      stepAside(task, { label: "On hold: ", lesson: true, write: () => Promise.all([restoreTask(uid, task.id, { status: "someday", touchedAt: Date.now(), ...extra }), declined(task)]) });
+      stepAside(task, { label: "On hold: ", lesson: true, ask, write: () => Promise.all([restoreTask(uid, task.id, { status: "someday", touchedAt: Date.now(), ...extra }), declined(task)]) });
     }
   }
   // Pending asks what it's waiting on (Mor, 2026-10-04); the reason is
@@ -1160,7 +1161,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
   function altWhy(s, r, fw, planned){
     const t = s.task, now = Date.now();
     const row = planned.find((x) => x.taskId === t.id);
-    if (row) return [row.missed ? `planned for ${clock(row.start)}, not started`
+    if (row) return [row.missed ? `planned for ${clock(row.start)}, no Done yet`
       : row.start > now + 2 * 60000 ? `in your plan, ${clock(row.start)}–${clock(row.end)}` : `in your plan until ${clock(row.end)}`];
     if (s.whyParts?.length) return s.whyParts;
     const end = r.moment.windowEnd;
@@ -1228,26 +1229,41 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     render();
   }
 
-  // A planned task that didn't happen (the schedule's "?", Mor 2026-10-10):
-  // what now? Done after all, now (Switch), the Later times, or On hold set
-  // apart as in Later. Answering clears the "?" and the Needs you ask with it.
+  // A planned task whose time passed with no Done (the schedule's "?", Mor
+  // 2026-10-10). Daisey doesn't know what happened (Mor, 2026-10-14: you can
+  // be doing it all and just not open the app), so it asks: Done, Some of it
+  // (how much is left, then when), or Not yet (when). Answering clears the
+  // "?" and the Needs you ask with it.
   function missedSheet(id, start){
     const task = (tasks || []).find((t) => t.id === id), dlg = missDialog;
     if (!task || !dlg) return;
+    const row = start ? planRowsNow().find((r) => r.taskId === id) : null;
     const act = (fn) => () => { dlg.close(); fn(); };
-    const chip = (text, fn) => h("button", { className: "chip", type: "button", textContent: text, onclick: act(fn) });
-    dlg.replaceChildren(
-      h("div", { className: "now-head" }, h("h2", { id: "missTitle", textContent: start ? `Didn't happen at ${clock(start)}` : "Didn't happen" }),
-        h("button", { className: "now-x", type: "button", ariaLabel: "Close", textContent: "✕", onclick: () => dlg.close() })),
-      h("p", { className: "miss-task", dir: "auto", textContent: task.title }),
-      h("div", { className: "miss-acts" },
-        // Yellow with a check is Done, as on the card (Mor, 2026-10-10).
-        h("button", { className: "btn primary", type: "button", onclick: act(() => quickDoneNow(task)) }, icon("check"), h("span", { textContent: "I did it" })),
+    const chip = (text, fn) => h("button", { className: "chip", type: "button", textContent: text, onclick: fn });
+    const head = (title) => h("div", { className: "now-head" }, h("h2", { id: "missTitle", textContent: title }),
+      h("button", { className: "now-x", type: "button", ariaLabel: "Close", textContent: "✕", onclick: () => dlg.close() }));
+    const name = h("p", { className: "miss-task", dir: "auto", textContent: task.title });
+    const when = start ? `Planned ${clock(start)}${row?.missed ? `–${clock(row.end)}` : ""}, no Done yet.` : "No Done yet.";
+    // Its time already passed, so the toast after a move doesn't ask again
+    // how much is left: Some of it asked, Not yet means all of it.
+    const paintWhen = () => dlg.replaceChildren(head("When next?"), name,
+      h("div", { className: "miss-acts one" },
         h("button", { className: "btn line", type: "button", onclick: act(() => switchTo(id)) }, icon("play"), h("span", { textContent: "Do it now" }))),
       h("div", { className: "later-ask", role: "group", ariaLabel: "Or later" },
-        ...[["today", "Later today"], ["tomorrow", "Tomorrow"], ["week", "This week"]].map(([w, text]) => chip(text, () => later(task, w))),
-        h("button", { className: "hold-opt", type: "button", ariaLabel: `Put ${task.title} on hold: no date, in the project's On hold list`, onclick: act(() => later(task, "someday")) },
+        ...[["today", "Later today"], ["tomorrow", "Tomorrow"], ["week", "This week"]].map(([w, text]) => chip(text, act(() => later(task, w, null, { ask: false })))),
+        h("button", { className: "hold-opt", type: "button", ariaLabel: `Put ${task.title} on hold: no date, in the project's On hold list`, onclick: act(() => later(task, "someday", null, { ask: false })) },
           icon("someday"), h("span", { textContent: "Put on hold" }), h("span", { className: "hold-opt-s", textContent: "· no date" }))));
+    const setLeftNow = (m) => { if (m) restoreTask(uid, id, leftPatch(task, m)).catch(fail); paintWhen(); };
+    const paintLeft = () => dlg.replaceChildren(head("How much is left?"), name,
+      h("div", { className: "later-ask", role: "group", ariaLabel: "How much is left?" },
+        ...LEFT_OPTIONS.map(([m, text]) => chip(text, () => setLeftNow(m))),
+        h("button", { className: "chip quiet", type: "button", textContent: "Not sure", onclick: () => setLeftNow(null) })));
+    dlg.replaceChildren(head("How did it go?"), name, h("p", { className: "muted miss-when", textContent: when }),
+      h("div", { className: "miss-acts three" },
+        // Yellow with a check is Done, as on the card (Mor, 2026-10-10).
+        h("button", { className: "btn primary", type: "button", onclick: act(() => quickDoneNow(task)) }, icon("check"), h("span", { textContent: "Done" })),
+        h("button", { className: "btn line", type: "button", onclick: paintLeft, textContent: "Some of it" }),
+        h("button", { className: "btn line", type: "button", onclick: paintWhen, textContent: "Not yet" })));
     dlg.showModal();
   }
 
@@ -1388,9 +1404,9 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
       const c = behindNow();
       if (!c || `plan:${c.key}` !== key) return null; // answered or changed since
       const { missed } = c, gone = c.cut.map((id) => tasks.find((t) => t.id === id)).filter(Boolean);
-      const sub = missed.length && gone.length ? `${missed.length} didn't happen, ${gone.length} won't fit.`
-        : missed.length === 1 ? "It didn't happen."
-        : missed.length ? `${missed.length} planned tasks didn't happen.`
+      const sub = missed.length && gone.length ? `${missed.length} passed with no Done, ${gone.length} won't fit.`
+        : missed.length === 1 ? "Its time passed with no Done."
+        : missed.length ? `${missed.length} planned tasks passed with no Done.`
         : `Running behind: ${gone.length} won't fit.`;
       return { tone: "area-work", ico: "later", q: "Your plan slipped", sub,
         item: (missed.length ? missed : gone).map((t) => t.title).join(", "),
@@ -1812,7 +1828,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
           h("span", { className: "pp-title", dir: "auto", textContent: t.title }),
           // The slot's times already say how long; "not started" is Rethink's
           // job; No room says only the first clause of why (Mor, 2026-10-12).
-          h("span", { className: "pp-meta" }, ...pieces(projectShown(t) ? t.project : "", isOver ? (r.why || "").split(",")[0].replace(/\btoday\b/, planWord()) || estText(t, r.minutes) : r.of ? `shortened from ${dur(r.of)}` : "", r.ride ? RIDE_ROW[r.ride] : "", !isOver && r.missed ? "did it happen?" : ""))),
+          h("span", { className: "pp-meta" }, ...pieces(projectShown(t) ? t.project : "", isOver ? (r.why || "").split(",")[0].replace(/\btoday\b/, planWord()) || estText(t, r.minutes) : r.of ? `shortened from ${dur(r.of)}` : "", r.ride ? RIDE_ROW[r.ride] : "", !isOver && r.missed ? "how did it go?" : ""))),
         h("span", { className: "pp-ctls" },
           isOver && !r.never && ctl("↑", "Do first", false, () => toFront(i)),
           ctl("✕", `Take off ${planWord()}'s plan`, false, () => dropItem(i))));

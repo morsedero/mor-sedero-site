@@ -1689,6 +1689,11 @@ body.focus #side { display: none; }
 .miss-acts { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .miss-acts .btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
 .miss-acts .btn svg { inline-size: 16px; block-size: 16px; }
+.miss-acts.three { grid-template-columns: repeat(3, 1fr); }
+.miss-acts.three .btn { white-space: nowrap; padding-inline: 6px; }
+@media (max-width: 380px) { .miss-acts.three .btn { font-size: 14px; padding-inline: 4px; } }
+.miss-acts.one { grid-template-columns: 1fr; }
+.miss-dlg .miss-when { margin: -8px 0 0; font-size: 14px; }
 .miss-dlg .later-ask { margin: 0; }
 .miss-dlg .later-ask .chip { flex: 1 1 0; white-space: nowrap; padding-inline: 6px; }
 .wk-ev.wk-plan.missed::before { content: "? "; font-weight: 700; }
