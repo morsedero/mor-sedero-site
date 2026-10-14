@@ -227,7 +227,7 @@ export function mountNeeds(root, uid, { onClose, onStart, extra, onAway } = {}){
     }
     if (item.kind === "parked") {
       const days = daysUntil(t.due, Date.now());
-      return { tone: "area-job", ico: "someday", q: "Deadline coming up",
+      return { tone: "area-job", ico: "someday", q: days < 0 ? "Deadline passed" : "Deadline coming up",
         sub: `It's on hold. ${days < 0 ? "The deadline was" : "The deadline is"} ${days === 0 ? "today" : days === 1 ? "tomorrow" : shortDay(t.due)}.`,
         item: t.title, say: days < 0 ? "Bring it back, or delete it?" : "I'd bring it back before it's too late.",
         yes: ["Bring it back", () => { restoreTask(uid, t.id, { status: "ready", notBefore: null, touchedAt: Date.now() }).catch(fail); next(); }],
