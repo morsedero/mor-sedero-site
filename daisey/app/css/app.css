@@ -979,7 +979,6 @@ body.focus .tell-panel { display: none; }
 .now-card.main .switch-ask:has(.alt-card.mini) { margin-block-start: 10px; }
 .alt-card.mini { inline-size: auto; max-inline-size: 70%; block-size: auto; grid-template-rows: auto; align-content: center; padding: 8px 14px; }
 .alt-card.mini .alt-t { -webkit-line-clamp: 1; }
-.place-fix > .muted { flex-basis: 100%; }
 
 
 /* ===== Layout round 2 (Mor, 2026-10-05; daisey/New Design/6–10) =====

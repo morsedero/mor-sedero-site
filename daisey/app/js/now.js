@@ -952,24 +952,26 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     return n.place ? h("div", {}, line, placeFix(r.moment)) : line;
   }
   // The place guess was invisible, so a wrong one just read as "nothing
-  // fits" (Mor, 2026-10-06: a free day at home, no tasks). Say where Daisey
-  // thinks you are, and fix it in one tap. "I'm home" re-saves Home right
-  // here: if it's being asked, the saved Home is off or missing.
-  const PLACE_SAID = { out: "out", walk: "walking", ride: "on the move", train: "on a train", bus: "on a bus", car: "driving" };
+  // fits" (Mor, 2026-10-06: a free day at home, no tasks). One yes/no about
+  // it, the answers matching the question (Mor, 2026-10-14: "You seem to be
+  // on the move" + "I'm home / Not moving" didn't read as one). Moving:
+  // "On the move?", No = still. Otherwise "Home?", Yes re-saves Home right
+  // here (if it's being asked, the saved Home is off or missing) and holds
+  // it, so the next noisy read can't flip it straight back. The other
+  // answer just puts the question away while the guess stays the same.
+  let placeOk = null;
   function placeFix(m){
-    // In the car, not driving: "a passenger", not the bus it counts as.
-    const now = Date.now(), rider = m.place === "bus" && cal.status === "ok"
-      && cal.events.some((e) => e.trip?.mode === "car" && e.trip.place === "bus" && Date.parse(e.start) <= now && now < Date.parse(e.end));
-    const where = rider ? "a passenger" : m.place === "spot" ? `at ${m.spot}` : PLACE_SAID[m.place] || m.place;
+    if (placeOk === m.place) return null;
     const chip = (text, onclick) => h("button", { type: "button", className: "chip", textContent: text, onclick });
+    const keep = () => { placeOk = m.place; render(); };
     const moving = ["walk", "ride", "train", "bus", "car"].includes(m.place);
     return h("div", { className: "ride-ask place-fix", role: "group", ariaLabel: "Where are you?" },
-      h("span", { className: "muted" }, "You seem to be ", bdi(where), "."),
-      chip("I'm home", async () => {
-        if (await saveSpot("Home")) setManual("home"); // and hold it, so the next noisy read can't flip it straight back
-        else flash("Couldn't get your location. Allow it for this site and try again.");
-      }),
-      moving && chip("Not moving", () => setStill()));
+      h("span", { className: "muted" }, moving ? "On the move?" : "Home?"),
+      ...(moving ? [chip("Yes", keep), chip("No", () => setStill())]
+        : [chip("Yes", async () => {
+          if (await saveSpot("Home")) setManual("home");
+          else flash("Couldn't get your location. Allow it for this site and try again.");
+        }), chip("No", keep)]));
   }
   // Counts only what the engine is really holding back as put off. Pending,
   // Tomorrow, This week and Someday also hide a task for a while (stepAside),
@@ -2062,8 +2064,9 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     if (!card) {
       day(...head, quietCard(r.empty === "none"
         ? { meta: "Nothing to pick", title: "No tasks yet", why: "Add a few and Daisey will pick." }
-        : { meta: "Nothing fits", title: `Nothing fits the next ${dur(r.moment.window)}`, why: "Take the break.",
-          extras: [outLine(r), putOffButton(r), anywayButton(r)] }), tip);
+        // Minimal (Mor, 2026-10-14): no counts, one question at most.
+        : { meta: "Break", title: `Nothing fits the next ${dur(r.moment.window)}`,
+          extras: [r.out.some((o) => o.reason === "place") && placeFix(r.moment), putOffButton(r), anywayButton(r)] }), tip);
       return;
     }
 
