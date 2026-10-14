@@ -241,6 +241,16 @@ test("10b: a part-done task is booked for the time left, not its full size", () 
   assert.equal(rows[0].minutes, 30);
 });
 
+test("a task made longer after the plan was saved gets its new length; a piece keeps its own", () => {
+  const grew = t({ id: "grew", size: 240 }), next = t({ id: "next", size: 30 });
+  const { rows } = timeline([{ taskId: "grew", minutes: 30 }, { taskId: "next", minutes: 30 }], { tasks: [grew, next], events: [], now: at(9) });
+  assert.equal(rows[0].minutes, 240);
+  assert.ok(rows[1].start >= at(13));
+  const piece = timeline([{ taskId: "grew", minutes: 60, of: 240 }], { tasks: [grew], events: [], now: at(9) }).rows[0];
+  assert.equal(piece.minutes, 60);
+  assert.equal(piece.of, 240);
+});
+
 test("12: inside a project the plan keeps the order tasks were added; a last step goes after its siblings", () => {
   const mk = (id, title, h) => t({ id, title, project: "Reprise", size: 30, createdAt: at(h) });
   const send = mk("send", "Send rough mixes", 1), m1 = mk("m1", "Mix song 1", 2), m2 = mk("m2", "Mix song 2", 3);
@@ -338,7 +348,7 @@ test("No room: a task too long for the whole day left says so, offers no ↑; Fe
   const alone = timeline([{ taskId: "big", minutes: 180 }], ctx).over[0];
   assert.ok(alone.never, "↑ can't help");
   assert.match(alone.why, /only 2 h 30 min left today|longest free stretch today is 2 h 30 min/);
-  const after = timeline([{ taskId: "a", minutes: 30 }, { taskId: "b", minutes: 30 }, { taskId: "big", minutes: 120 }], ctx).over[0];
+  const after = timeline([{ taskId: "a", minutes: 30 }, { taskId: "b", minutes: 30 }, { taskId: "big", minutes: 120, of: 180 }], ctx).over[0];
   assert.ok(after && !after.never && /after the rest/.test(after.why), after?.why);
   const kept = fewerOf([{ taskId: "big", minutes: 180 }, { taskId: "a", minutes: 30 }, { taskId: "b", minutes: 30 }], ctx).map((i) => i.taskId);
   assert.ok(!kept.includes("big"), kept.join());

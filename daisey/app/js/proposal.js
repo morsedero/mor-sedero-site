@@ -119,7 +119,7 @@ export function proposeDay({ tasks = [], events = [], now = Date.now(), hours = 
       if (!r.pick) break;
       flowProject = projectOf(r.pick.task);
       const m = Math.min(leftOf(r.pick.task), room);
-      onRide.push({ it: { taskId: r.pick.task.id, minutes: m }, at: g.start });
+      onRide.push({ it: { taskId: r.pick.task.id, minutes: m, ...(m < leftOf(r.pick.task) ? { of: leftOf(r.pick.task) } : {}) }, at: g.start });
       out.add(r.pick.task.id); taken.add(r.pick.task.id); room -= m;
     }
   }
@@ -400,9 +400,11 @@ function lay(items = [], { tasks = [], events = [], now = Date.now(), hours = W.
   }
   for (const d of later) place(d.it, d.i, byId.get(d.it.taskId));
   function place(it, i, task){
-    // What the item was saved with, but never more than is left: progress
-    // made since the plan was saved shrinks its slot.
-    const need = Math.max(5, Math.min(it.minutes || Infinity, leftOf(task))) * MIN;
+    // What is left of the task. A piece (it.of) keeps its saved length, never
+    // more than is left: progress made since the plan was saved shrinks it.
+    // A whole task follows its size both ways (Mor, 2026-10-14: a 30-min task
+    // made 4 h in the sheet kept its 30-min slot).
+    const need = Math.max(5, it.of ? Math.min(it.minutes || Infinity, leftOf(task)) : leftOf(task)) * MIN;
     let placed = false;
     // The soonest ride that fits it (engine.fitsPlace) and still has room.
     const ride = gaps.map((g, k) => ({ g, k, from: rideAt[k] ?? Math.ceil(g.start / (5 * MIN)) * 5 * MIN }))

@@ -1585,7 +1585,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
   // dropped, the Today list put a Later'd task back at its old time while the
   // card, honouring the Later, skipped it (2026-10-11).
   function approve(){
-    const items = trimBreaks(prop.items).map(({ taskId, brk, minutes, name, at, hold }) => (brk ? { brk, minutes, ...(name ? { name } : {}) } : { taskId, minutes, ...(at ? { at } : {}), ...(hold ? { hold } : {}) }));
+    const items = trimBreaks(prop.items).map(({ taskId, brk, minutes, name, at, hold, of }) => (brk ? { brk, minutes, ...(name ? { name } : {}) } : { taskId, minutes, ...(at ? { at } : {}), ...(hold ? { hold } : {}), ...(of ? { of } : {}) }));
     const unfit = overIds(items), n = items.filter((it) => !isBreak(it) && !unfit.includes(it.taskId)).length;
     savePlan("approved", items, { approvedAt: Date.now(), mealsLaid: mealAnswers(), behindNo: null, offer: null, unfit });
     prop.open = false; prop.replan = false; prop.ask = false; prop.note = ""; reset();
