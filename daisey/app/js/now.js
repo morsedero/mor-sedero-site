@@ -24,7 +24,7 @@ import { withTrips, ridingAs, stillRiding, asPassenger, chainFrom, setTripDay, M
 import { pickWeekDay } from "./triage.js";
 import { sinceMark, runCap, bookedMinutes, celebrate, dropAway, PUSH_MS } from "./focus.js";
 import { watchCalendar } from "./calendar.js";
-import { LATER_MINUTES, DRAIN, CANCEL_KEEP_MINUTES, LIGHTER } from "./weights.js";
+import { LATER_MINUTES, DRAIN, CANCEL_KEEP_MINUTES, LIGHTER, MISS } from "./weights.js";
 import { missState, silenceText, lastActivity } from "./miss.js";
 import { takeQuiet } from "./push.js";
 import { findPhoneTasks, phoneOkIds, searching } from "./phone.js";
@@ -1701,7 +1701,8 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
       action: next && h("button", { className: "btn quiet", type: "button", textContent: "Start it now",
         ariaLabel: `Skip the rest of the break: start ${next.task.title}`, onclick: () => switchTo(next.task.id) }) });
   }
-  const dueWhy = (card, due) => ({ ...card, whyParts: [Date.now() - due.start < 2 * 60000 ? `planned for ${clock(due.start)}` : `planned for ${clock(due.start)}, not started`] });
+  // "not started" only once the slot counts as missed (MISS.after, 10 min): 4 min late is just late (Mor, 2026-10-14).
+  const dueWhy = (card, due) => ({ ...card, whyParts: [Date.now() - due.start < MISS.after * 60000 ? `planned for ${clock(due.start)}` : `planned for ${clock(due.start)}, not started`] });
   function roughCard(st){
     // Nothing done yet today (a late start): a warm offer to plan what's left,
     // not "Rough day?" (Mor, 2026-10-12). Lighter plan stays, as a quiet link.
