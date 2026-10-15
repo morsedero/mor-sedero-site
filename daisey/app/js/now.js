@@ -1720,7 +1720,9 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
       ranked: !!k && r.ranked.some((s) => s.task.id === k.id), switchable: !!k && !!picked(k.id),
       cantNow: !!k && CANT_NOW.has(picked(k.id)?.reason),
       turn: !!planRow && planRow.taskId !== k?.id && planRow.start <= Date.now() }))
-      return asCard(t.id, t, k.until && Date.now() > k.until ? [`still on it? Planned until ${clock(k.until)}`] : k.why);
+      // Its slot as the plan lays it now, not the words saved when it came
+      // up: an Undo or a re-lay moves the times (2026-10-15).
+      return asCard(t.id, t, k.until && Date.now() > k.until ? [`still on it? Planned until ${clock(k.until)}`] : planRow?.taskId === t.id ? planWhy(planRow) : k.why);
     // Only a plan row, once everything has loaded (a first pick made before
     // the plan arrived isn't one): the card and the Today list agree otherwise.
     const until = card && (card.task.id === planRow?.taskId ? planRow.end : k?.id === card.task.id ? k.until : null);
@@ -2067,7 +2069,12 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
       else if (!CANT_NOW.has(why)) chosenOut.why = why;
       else if (why !== chosenOut.why) state.chosen = null;
     }
-    let card = (state.chosen && (r.ranked.find((s) => s.task.id === state.chosen) || (picked(state.chosen) && asCard(state.chosen, picked(state.chosen).task, ["your pick"]))))
+    // A pick that's in the approved plan says its row's times, as the Today
+    // list does (2026-10-15: after Undo the card said "now · 20:05–21:05"
+    // while the list said 20:10–21:10). One timeline, every screen.
+    const chosenRow = state.chosen && approvedPlan() ? planRowsNow().find((x) => x.taskId === state.chosen && !x.missed) : null;
+    let card = (chosenRow && asCard(chosenRow.taskId, chosenRow.task, planWhy(chosenRow)))
+      || (state.chosen && (r.ranked.find((s) => s.task.id === state.chosen) || (picked(state.chosen) && asCard(state.chosen, picked(state.chosen).task, ["your pick"]))))
       || (planned && r.ranked.find((s) => s.task.id === planned))
       || (planRow && asCard(planRow.taskId, planRow.task, planWhy(planRow)))
       || (firstProposed && asCard(firstProposed.taskId, tasks.find((t) => t.id === firstProposed.taskId), [focusOn() ? "first in your plan" : "first in the plan below"]))
