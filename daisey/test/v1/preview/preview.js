@@ -223,6 +223,11 @@ const SCENARIOS = {
     { title: "Mix review for Reprise", project: "Reprise", size: 60, due: day(0), stakes: "high" },
     { title: "Portuguese", project: "Learning", size: 15, routine: { per: 3, log: [{ day: day(-3) }] } },
   ], settings: { deadlinesAsked: true, somedayAsked: new Date().toLocaleDateString("en-CA") } },
+  // The nag with a Hebrew title: the title in its own <bdi>, the English kept in order.
+  naghe: { tasks: [
+    { title: "Mix review for Reprise", project: "Reprise", size: 60, due: day(0), stakes: "high" },
+    { title: "ללמוד פורטוגזית", project: "Learning", size: 15, routine: { per: 3, log: [{ day: day(-3) }] } },
+  ], settings: { deadlinesAsked: true, somedayAsked: new Date().toLocaleDateString("en-CA") } },
   // Bloom (bloom.js): projects in all three tiers, two routines, a week of work.
   bloom: { tiers: { Band: "focus", Reprise: "focus", Admin: "background" }, bloomLog: true, tasks: [
     { title: "Mix chorus", project: "Band", size: 60 },

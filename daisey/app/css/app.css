@@ -594,12 +594,31 @@ dialog.now:focus { outline: none; }
 .learn-row { display: flex; flex-wrap: wrap; gap: 6px; }
 .learn-row .chip { min-block-size: 36px; font-size: 13px; padding-inline: 11px; }
 
-/* The routine nag (now.js routineNag): one line under the card, Now and Later
-   at its end. Late in the week its edge goes amber: what's left barely fits. */
-.routine-nag { display: flex; align-items: center; gap: 6px; margin-block-start: 6px; padding: 6px 6px 6px 12px; border: 1px solid var(--line); border-radius: 12px; }
-.routine-nag p { margin: 0; flex: 1; min-inline-size: 0; font-size: 13px; overflow-wrap: anywhere; }
-.routine-nag .chip { min-block-size: 34px; font-size: 13px; padding-inline: 11px; flex: none; }
-.routine-nag.late { border-color: var(--accent); }
+/* The routine nag (now.js routineNag): a small warm card under the Now card,
+   a daisy swaying at its side (Mor, 2026-10-15: "the cutest and most
+   welcoming card"). Late in the week it warms up a shade: what's left barely
+   fits. Mixed from the theme, so it holds in light and dark. */
+.routine-nag { display: grid; grid-template-columns: auto 1fr; align-items: center; column-gap: 12px; row-gap: 8px; margin-block-start: 10px; padding: 12px 14px;
+  border-radius: 20px; border: 1.5px solid color-mix(in srgb, var(--accent) 35%, var(--line)); background: color-mix(in srgb, var(--accent) 11%, var(--card));
+  box-shadow: 0 6px 18px color-mix(in srgb, var(--accent) 16%, transparent); }
+.routine-nag.late { border-color: color-mix(in srgb, var(--accent) 70%, var(--line)); background: color-mix(in srgb, var(--accent) 20%, var(--card)); }
+.nag-daisy { inline-size: 40px; block-size: 40px; display: grid; place-items: center; animation: nag-sway 6s ease-in-out infinite; transform-origin: 50% 50%; }
+.nag-daisy svg { inline-size: 40px; block-size: 40px; fill: #fff; stroke: color-mix(in srgb, var(--accent) 45%, var(--line)); stroke-width: 1; }
+.nag-daisy .c { fill: var(--accent); stroke: var(--accent-deep); }
+@keyframes nag-sway { 0%, 100% { transform: rotate(-8deg); } 50% { transform: rotate(8deg); } }
+@media (prefers-reduced-motion: reduce) { .nag-daisy { animation: none; } }
+.nag-text { min-inline-size: 0; display: grid; gap: 3px; }
+.nag-text p { margin: 0; }
+.nag-title { font-size: 16px; font-weight: 700; color: var(--ink); overflow-wrap: anywhere; display: flex; flex-wrap: wrap; align-items: baseline; column-gap: 8px; }
+.nag-len { font-size: 12px; font-weight: 600; color: var(--ink); background: color-mix(in srgb, var(--accent) 35%, var(--card)); border-radius: 999px; padding: 1px 8px; }
+.nag-week { font-size: 13px; color: var(--ink-2); display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.nag-week .wk-dots { color: var(--accent-deep); }
+.nag-week .wk-dots i { opacity: 1; }
+.nag-acts { grid-column: 1 / -1; display: flex; justify-content: flex-end; gap: 6px; }
+.nag-acts button { font: inherit; font-size: 14px; font-weight: 600; min-block-size: 38px; padding-inline: 16px; border-radius: 999px; cursor: pointer; }
+.nag-later { border: 0; background: transparent; color: var(--ink-2); }
+.nag-go { border: 0; background: var(--accent); color: var(--on-accent); box-shadow: 0 3px 0 var(--accent-deep); }
+.nag-go:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--accent-deep); }
 
 /* Task sheet: Daisey's guesses as one line; the chips open under it. */
 

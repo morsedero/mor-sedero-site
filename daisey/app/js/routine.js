@@ -229,13 +229,22 @@ export function nagFor(tasks, { day = dayOf(), cal = {}, seen = null } = {}){
   return { task: n.task, late: n.late, s: n.s };
 }
 
-// "Portuguese, 15 min · 1 of 3 this week"; late: "· 2 to go, 3 days left".
-export function nagText({ task, late, s }){
+// The nag's words, apart, so a Hebrew title sits in its own <bdi> and the
+// English around it keeps its order: { title, len: "15 min", tail }.
+// tail: "1 of 3 this week"; late: "2 to go, 3 days left" / "1 to go, last day".
+export function nagParts({ task, late, s }){
   const m = Number(task.size) || 0;
-  const len = m ? `, ${m < 60 ? `${m} min` : `${+(m / 60).toFixed(1)} h`}` : "";
-  const tail = !late ? `${s.done} of ${s.per} this week`
-    : `${s.need} to go, ${s.daysLeft === 1 ? "last day" : `${s.daysLeft} days left`}`;
-  return `${String(task.title || "").trim()}${len} · ${tail}`;
+  return {
+    title: String(task.title || "").trim(),
+    len: m ? (m < 60 ? `${m} min` : `${+(m / 60).toFixed(1)} h`) : "",
+    tail: !late ? `${s.done} of ${s.per} this week`
+      : `${s.need} to go, ${s.daysLeft === 1 ? "last day" : `${s.daysLeft} days left`}`,
+  };
+}
+// One string, for the tests and the aria label: "Portuguese, 15 min · 1 of 3 this week".
+export function nagText(n){
+  const p = nagParts(n);
+  return `${p.title}${p.len ? `, ${p.len}` : ""} · ${p.tail}`;
 }
 
 // ---------- a session ----------

@@ -30,7 +30,7 @@ import { takeQuiet } from "./push.js";
 import { findPhoneTasks, phoneOkIds, searching } from "./phone.js";
 import { rank, freeWindow, timeBucket, matchProject, dueAt, keepsCard, passedOver } from "./engine.js";
 import { leftMinutes, toMinutes, progressOf, leftPatch, localDate, logicalDate, skipSnapshot, skipLesson, pendingCheck, notYet, pushedTo, bringBack, dayAfter, doneSnapshot, isGuess, estText, needsLaptop } from "./model.js";
-import { isRoutine, routineCalendar, eventsToLog, sessionPatch, nagFor, nagText } from "./routine.js";
+import { isRoutine, routineCalendar, eventsToLog, sessionPatch, nagFor, nagText, nagParts } from "./routine.js";
 import { waitingFor, personOf } from "./nudge.js";
 import { dayHours, isNight, nextMorning, dayEndAt, bookings, sameTitle, minText, gapsToday, planDate, usualHours, dayWord, answerDate } from "./day.js";
 import { collectNeeds, wrapList } from "./needs.js";
@@ -1094,10 +1094,22 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     if (!n || n.task.id === card?.task.id || !(r.ranked.some((s) => s.task.id === n.task.id) || picked(n.task.id))) return null;
     const save = (v) => { settings = { ...settings, routineNag: v }; saveSettings(uid, { routineNag: v }).catch(fail); };
     if (seen?.day !== day) save({ day });
-    return h("div", { className: "routine-nag" + (n.late ? " late" : ""), role: "note" },
-      h("p", {}, bdi(nagText(n))),
-      h("button", { className: "chip", type: "button", textContent: "Now", ariaLabel: `${n.task.title} now`, onclick: () => switchTo(n.task.id) }),
-      h("button", { className: "chip quiet", type: "button", textContent: "Later", onclick: () => { save({ day, off: day }); render(); } }));
+    // Cute on purpose (Mor, 2026-10-15: "the cutest and most welcoming
+    // card"): a daisy, the week's dots, a soft yellow. The title alone is
+    // in a <bdi>; the English around it stays put in either direction.
+    const p = nagParts(n);
+    const daisy = h("span", { className: "nag-daisy", ariaHidden: "true" });
+    daisy.innerHTML = '<svg viewBox="0 0 40 40" aria-hidden="true">' + Array.from({ length: 8 }, (_, i) =>
+      `<ellipse cx="20" cy="9" rx="5" ry="8.5" transform="rotate(${i * 45} 20 20)"/>`).join("") + '<circle cx="20" cy="20" r="6.5" class="c"/></svg>';
+    daisy.style.animationDelay = `${-(Date.now() % 6000)}ms`; // a rebuild carries the sway on
+    return h("div", { className: "routine-nag" + (n.late ? " late" : ""), role: "note", ariaLabel: nagText(n) },
+      daisy,
+      h("div", { className: "nag-text" },
+        h("p", { className: "nag-title" }, bdi(p.title), p.len && h("span", { className: "nag-len", textContent: p.len })),
+        h("p", { className: "nag-week" }, weekDots(n.task), h("span", { textContent: n.late ? `${p.tail}, you've got this` : `${p.tail}, a quick one?` }))),
+      h("div", { className: "nag-acts" },
+        h("button", { className: "nag-later", type: "button", textContent: "Later", onclick: () => { save({ day, off: day }); render(); } }),
+        h("button", { className: "nag-go", type: "button", textContent: "Let's go", ariaLabel: `${p.title} now`, onclick: () => switchTo(n.task.id) })));
   }
 
   // Switch · Not now, then Done at the row's far end: the one loud
