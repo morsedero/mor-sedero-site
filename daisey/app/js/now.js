@@ -1170,7 +1170,9 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
       // No Done screen (Mor, 2026-10-11: "confusing, not doing anything good"):
       // the card moves straight on to the next task, and the toast holds Undo.
       reset(); slideIn = el ? "push" : false; render();
-      flash("Done: ", task.title, { undo: () => { undoDone(uid, task.id, before).catch(fail); render(); } });
+      // Undo puts it back on the card, like Later's Undo: the card had moved
+      // on and kept the next task, with that task's times (2026-10-15).
+      flash("Done: ", task.title, { undo: () => { undoDone(uid, task.id, before).catch(fail); reset(); state.chosen = task.id; render(); } });
     };
     if (!el || !motionOK()) return go();
     el.style.animationDelay = "";
