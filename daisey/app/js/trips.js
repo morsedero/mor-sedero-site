@@ -21,7 +21,7 @@
 
 const MIN = 60000;
 export const MODES = ["train", "bus", "car"];
-export const LOCAL_KM = 8; // a city this close to Home is no trip
+export const LOCAL_KM = 5; // a city this close to Home is no trip (Mor, 2026-10-15: Kfar Malal, ~7 km, is a drive)
 // Rough speed from straight-line km: roads wind (×1.25–1.3). A car is time on
 // the road only (the walk and the parking are DOOR); a train or bus adds the
 // walk to the station and the wait.
@@ -94,6 +94,7 @@ export const CITIES = [
   ["Even Yehuda", ["אבן יהודה"], 32.270, 34.888],
   ["Tel Mond", ["תל מונד"], 32.250, 34.917],
   ["Kfar Yona", ["כפר יונה"], 32.316, 34.935],
+  ["Kfar Malal", ["כפר מלל"], 32.117, 34.930],
 ].map(([name, alt, lat, lng]) => ({ name, names: [name.toLowerCase(), ...alt], lat, lng }));
 
 // A city named as whole words. Hebrew may carry a one-letter prefix

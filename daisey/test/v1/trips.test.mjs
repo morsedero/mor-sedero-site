@@ -31,6 +31,9 @@ test("estimates from Home; a city next door is no trip", () => {
   assert.equal(T.estimate(T.cityNamed("Ashkelon"), null), null);
   assert.equal(T.isLocal(T.cityNamed("Ra'anana"), HOME), true);
   assert.equal(T.isLocal(T.cityNamed("Ashkelon"), HOME), false);
+  // Kfar Malal (~7 km) is a drive: the BOBBA rehearsal at "הגרוב כפר מלל" got no ride.
+  assert.equal(T.cityIn("הגרוב כפר מלל")?.name, "Kfar Malal");
+  assert.equal(T.isLocal(T.cityNamed("Kfar Malal"), HOME), false);
 });
 
 test("asks once per series, not for answered or local ones", () => {
