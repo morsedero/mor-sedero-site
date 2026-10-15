@@ -726,8 +726,7 @@ async function boot(){
         const closeScreens = () => { $("#weekPage").hidden = true; m.now?.closePlan(); m.projects?.closeProject(); m.needs?.close(); syncPanel(); };
         // The phone's Back never leaves the app (Mor, 2026-10-15). History
         // holds [base, home]; Back pops home, we close the topmost open
-        // window and push home again. Nothing open: the first Back says so,
-        // a second within 2.5 s really leaves.
+        // window and push home again. Nothing open: Back leaves.
         const topLayer = () => {
           const dlg = [...document.querySelectorAll("dialog[open]")].pop();
           if (dlg) return () => { if (dlg.dispatchEvent(new Event("cancel", { cancelable: true }))) dlg.close(); };
@@ -742,13 +741,11 @@ async function boot(){
           return null;
         };
         const guard = () => history.pushState({ daisey: "home" }, "");
-        let exitAt = 0;
         const onPop = () => {
           if (history.state?.daisey !== "base") return; // forward onto home
           const close = topLayer();
           if (close) { guard(); close(); syncPanel(); return; }
-          if (Date.now() - exitAt < 2500) { window.__backArmed = false; history.back(); return; }
-          exitAt = Date.now(); guard(); flash("Press Back again to exit.");
+          window.__backArmed = false; history.back(); // nothing open: leave
         };
         // Chrome skips history entries made before the first tap, so the guard
         // goes in on it. Touch screens only: a computer's Back stays a Back.
