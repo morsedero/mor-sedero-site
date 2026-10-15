@@ -306,7 +306,7 @@ async function boot(){
   // PC: #side is the rail's nav, under the daisy and the clock: Today, Plan,
   // Projects, Week (Mor, 2026-10-12, layout B).
   const placeSide = () => {
-    if (phone.matches) { $(".nowrow").append($("#side")); $("#dockStack").append($("#planChip"), $("#weekChip"), $("#projectsChip"), $(".plus-wrap")); }
+    if (phone.matches) { $(".nowrow").append($("#side")); $("#dockStack").append($("#planChip"), $("#weekChip"), $("#projectsChip")); $("#tell").prepend($(".plus-wrap")); }
     else { $(".brandrow").after($("#side")); $("#side").append($("#todayChip"), $("#planChip"), $("#projectsChip"), $("#weekChip")); $("#tell").prepend($(".plus-wrap")); }
     placeFocus();
     paintChip();

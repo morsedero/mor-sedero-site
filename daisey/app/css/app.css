@@ -1473,15 +1473,13 @@ body.focus #side { display: none; }
   .dock:has(.dock-stack:not(:empty)) { padding-block-start: 8px; }
   .dock-stack { display: flex; align-items: center; gap: 8px; margin-block-end: 10px; }
   .dock-stack:empty { display: none; }
-  .dock-stack :is(#weekChip, #projectsChip, .plus) { flex: none; inline-size: 46px; block-size: 46px; margin: 0; padding: 0; justify-content: center; border-radius: 50%; border: 1px solid var(--line); background: var(--card); color: var(--ink); }
+  .dock-stack :is(#weekChip, #projectsChip) { flex: none; inline-size: 46px; block-size: 46px; margin: 0; padding: 0; justify-content: center; border-radius: 50%; border: 1px solid var(--line); background: var(--card); color: var(--ink); }
   .dock-stack #weekChip { margin-inline-start: auto; }
   .dock-stack :is(#weekChip, #projectsChip)[hidden] { display: none; }
   .dock-stack :is(#weekChip, #projectsChip) svg { inline-size: 20px; block-size: 20px; }
   .dock-stack :is(#weekChip, #projectsChip) .hchip-word { position: absolute; inline-size: 1px; block-size: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
   .dock-stack :is(#weekChip, #projectsChip)::after { inset: 0; }
   .dock-stack :is(#weekChip, #projectsChip)[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); color: var(--card); }
-  .dock-stack .plus-wrap { flex: none; }
-  .dock-stack .plus-menu { inset-inline-start: auto; inset-inline-end: 0; }
   /* Next: a small card filling the row's start. */
   .dock-stack #planChip:not([hidden]) { flex: 1 1 auto; min-inline-size: 0; block-size: auto; min-block-size: 56px; margin: 0; padding: 7px 12px; display: grid; grid-template-columns: 16px auto minmax(0, 1fr); grid-template-rows: auto auto; align-items: center; align-content: center; column-gap: 8px; row-gap: 2px; border-radius: 18px; border: 1px solid var(--line); background: var(--card); color: var(--ink-2); font-size: 13px; font-weight: 600; line-height: 1.2; text-align: start; white-space: normal; box-shadow: none; }
   .dock-stack #planChip::after { inset: 0; }
