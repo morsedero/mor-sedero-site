@@ -246,3 +246,37 @@ test("nag: behind pace every other day, late every day, Later shuts it", () => {
   assert.equal(R.nagFor([pt()], { day: "2026-10-07", skip: "p" }), null); // the one on the card
   assert.equal(R.nagText({ task: { title: "Read", size: 90 }, late: false, s: { done: 0, per: 2 } }), "Read, 1.5 h · 0 of 2 this week");
 });
+
+// Capture (2026-10-15): "water plants every weekday" was saved as a one-off.
+test("repeatFrom reads a repeat out of captured words", () => {
+  const r = (s) => R.repeatFrom(s, THU);
+  assert.deepEqual(r("water plants every weekday").routine.days, [0, 1, 2, 3, 4]);
+  assert.equal(r("water plants every weekday").title, "water plants");
+  assert.deepEqual(r("gym every Monday and Thursday at 7pm").routine, { per: 2, until: null, log: [], days: [1, 4], at: "19:00" });
+  assert.equal(r("gym every Monday and Thursday at 7pm").title, "gym");
+  assert.deepEqual(r("השקיה כל יום שני וחמישי").routine.days, [1, 4]);
+  assert.deepEqual(r("להשקות עציצים כל יום חול").routine.days, [0, 1, 2, 3, 4]);
+  assert.equal(r("stretch daily").routine.per, 7);
+  assert.equal(r("guitar 3 times a week").routine.per, 3);
+  assert.equal(r("guitar twice a week").routine.per, 2);
+  assert.equal(r("גיטרה פעמיים בשבוע").routine.per, 2);
+  assert.deepEqual(r("pay rent every month on the 1st").routine, { per: 1, every: "month", on: "2026-11-01", until: null, log: [] });
+  assert.equal(r("review budget monthly").routine.on, "2026-10-08");
+  // A date, not a repeat.
+  assert.equal(r("call the bank on Monday"), null);
+  // "monthly report" names the task; "… monthly" at the end is the repeat.
+  assert.equal(r("monthly report draft"), null);
+  assert.equal(r("daily standup notes"), null);
+  assert.equal(r("water the garden weekly").routine.per, 1);
+  assert.equal(r("fix the monitor"), null);
+  assert.equal(R.repeatWords(r("water plants every weekday").routine), "every weekday at 18:00");
+  assert.equal(R.repeatWords({ per: 3 }), "3× a week");
+});
+
+test("a set-days routine comes back on its next day, not tomorrow", () => {
+  const plants = { id: "p", ...createTask({ title: "Water plants", size: 5, routine: { per: 5, days: [0, 1, 2, 3, 4] } }, { now: at("2026-10-01") }) };
+  // Done Thursday: Friday and Saturday aren't its days, so Sunday.
+  assert.equal(completeTask(plants, { now: THU }).notBefore, "2026-10-11");
+  // Done Monday: Tuesday.
+  assert.equal(completeTask(plants, { now: at("2026-10-05") }).notBefore, "2026-10-06");
+});

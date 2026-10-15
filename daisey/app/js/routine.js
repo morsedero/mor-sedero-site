@@ -94,6 +94,76 @@ export function cleanRoutine(r){
 
 export const isRoutine = (task) => !!cleanRoutine(task?.routine);
 
+// A repeat said in words, from capture (Tell Daisey, the Add form's title;
+// 2026-10-15: "water plants every weekday" was saved as a one-off). →
+// { routine, title } with the words taken out of the title, or null.
+// Weekdays are the work week, Sunday to Thursday (weights.WEEKEND_DAYS).
+// Named days are set days, as the form's Set days makes them, at the time
+// said or DEFAULT_AT. "on Monday" is a date, not a repeat: only "every
+// Monday" or "on Mondays".
+export const WORK_WEEK = [0, 1, 2, 3, 4];
+const DAY_RE = [/sun(?:day)?s?/, /mon(?:day)?s?/, /tue(?:s|sday)?s?/, /wed(?:nesday)?s?/, /thu(?:rs?|rsday)?s?/, /fri(?:day)?s?/, /sat(?:urday)?s?/];
+const DAY_WORD = "(?:sun|mon|tue|wed|thu|fri|sat)[a-z]*";
+const HE_DAYS = ["ראשון", "שני", "שלישי", "רביעי", "חמישי", "שישי"];
+const HE_DAY = `(?:${HE_DAYS.join("|")}|שבת)`;
+const COUNT = { once: 1, twice: 2, thrice: 3, one: 1, two: 2, three: 3, four: 4, five: 5, six: 6 };
+const HE_COUNT = { "פעם": 1, "פעמיים": 2 };
+export function repeatFrom(text, now = Date.now()){
+  const s = String(text || "");
+  const found = (re, make) => { const m = s.match(re), r = m && make(m); return r ? { m, r } : null; };
+  const hit =
+    found(/(?:^|\s)(?:every|each|on)?\s*week[\s-]?days?\b/i, () => ({ per: 5, days: WORK_WEEK }))
+    || found(/(?:^|\s)(?:(?:כל\s+)?יום\s+חול|ב?ימי\s+חול)(?=\s|$|[,.])/, () => ({ per: 5, days: WORK_WEEK }))
+    || found(new RegExp(`(?:^|\\s)(?:every|each)\\s+(${DAY_WORD}(?:\\s*(?:,|and|&)\\s*${DAY_WORD})*)\\b|(?:^|\\s)on\\s+(${DAY_WORD}s(?:\\s*(?:,|and|&)\\s*${DAY_WORD}s)*)\\b`, "i"), (m) => {
+      const days = (m[1] || m[2]).toLowerCase().split(/\s*(?:,|and|&)\s*/).map((w) => DAY_RE.findIndex((re) => new RegExp(`^${re.source}$`).test(w))).filter((d) => d >= 0);
+      return days.length ? { per: days.length, days } : null;
+    })
+    || found(new RegExp(`(?:^|\\s)כל\\s+(?:יום\\s+)?(${HE_DAY}(?:\\s*(?:,|ו)\\s*(?:יום\\s+)?${HE_DAY})*)(?=\\s|$|[,.])`), (m) => {
+      const days = m[1].split(/\s*,\s*|\s+ו|^ו/).map((w) => w.replace(/^(?:יום\s+)/, "").trim()).filter(Boolean).map((w) => (w === "שבת" ? 6 : HE_DAYS.indexOf(w))).filter((d) => d >= 0);
+      return days.length ? { per: days.length, days } : null;
+    })
+    || found(/(?:^|\s)(?:every\s*day\b|each\s*day\b|daily(?=\s*(?:$|[,.;]|(?:on|at|until|from)\b)))/i, () => ({ per: 7 }))
+    || found(/(?:^|\s)כל\s+יום(?=\s|$|[,.])/, () => ({ per: 7 }))
+    || found(/(?:^|\s)(?:every\s+month|each\s+month|monthly(?=\s*(?:$|[,.;]|(?:on|at|until|from)\b))|once\s+a\s+month)(?:\s+on\s+the\s+(\d{1,2})(?:st|nd|rd|th)?)?\b/i, (m) => ({ every: "month", onDay: Number(m[1]) || null }))
+    || found(/(?:^|\s)(?:כל\s+חודש|פעם\s+בחודש)(?:\s+ב-?(\d{1,2})\s+לחודש)?(?=\s|$|[,.])/, (m) => ({ every: "month", onDay: Number(m[1]) || null }))
+    || found(/(?:^|\s)(\d|once|twice|thrice|one|two|three|four|five|six)\s*(?:x|×|times)?\s*(?:a|per|\/)\s*week\b/i, (m) => ({ per: Number(m[1]) || COUNT[m[1].toLowerCase()] }))
+    || found(/(?:^|\s)(?:every\s+week\b|each\s+week\b|weekly(?=\s*(?:$|[,.;]|(?:on|at|until|from)\b)))/i, () => ({ per: 1 }))
+    || found(/(?:^|\s)(?:(\d)\s+פעמים|(פעמיים|פעם))\s+בשבוע(?=\s|$|[,.])/, (m) => ({ per: Number(m[1]) || HE_COUNT[m[2]] }))
+    || found(/(?:^|\s)כל\s+שבוע(?=\s|$|[,.])/, () => ({ per: 1 }));
+  if (!hit) return null;
+  let { r, m } = hit, rest = s.slice(0, m.index) + " " + s.slice(m.index + m[0].length);
+  if (r.every === "month") {
+    const today = dayOf(now);
+    let on = today;
+    if (r.onDay >= 1 && r.onDay <= 31) { on = onDayIn({ every: "month", on: `2000-01-${pad(r.onDay)}` }, today); if (on < today) on = onDayIn({ every: "month", on: `2000-01-${pad(r.onDay)}` }, addDays(monthEnd(today), 1)); }
+    r = { per: 1, every: "month", on };
+  } else if (r.days) {
+    // Set days have a time; one said beside the repeat is it.
+    const t = rest.match(/(?:^|\s)(?:at|ב-?|בשעה)\s*(\d{1,2})(?::(\d{2}))?\s*(am|pm)?(?=\s|$|[,.])/i);
+    if (t) {
+      let hr = Number(t[1]); const min = Number(t[2] || 0), ap = (t[3] || "").toLowerCase();
+      if (ap === "pm" && hr < 12) hr += 12; if (ap === "am" && hr === 12) hr = 0;
+      if (hr <= 23 && min <= 59) { r = { ...r, at: `${pad(hr)}:${pad(min)}` }; rest = rest.slice(0, t.index) + " " + rest.slice(t.index + t[0].length); }
+    }
+  }
+  const title = rest.replace(/\s+/g, " ").replace(/\s+([,.])/g, "$1").replace(/^[\s,.\-–—]+|[\s,\-–—]+$/g, "").trim();
+  return { routine: cleanRoutine(r), title };
+}
+// The repeat in a few words, for a card: "every weekday", "every Mon, Thu
+// at 18:00", "3× a week", "every month on the 12th".
+export function repeatWords(r){
+  r = cleanRoutine(r);
+  if (!r) return "";
+  const ord = (n) => n + (n > 10 && n < 14 ? "th" : ["th", "st", "nd", "rd"][n % 10] || "th");
+  if (monthly(r)) return r.on ? `every month on the ${ord(Number(r.on.slice(8)))}` : `${r.per}× a month`;
+  if (r.days) {
+    const names = r.days.join() === WORK_WEEK.join() ? "weekday" : r.days.length === 7 ? "day"
+      : r.days.map((d) => new Date(2026, 9, 4 + d).toLocaleDateString("en", { weekday: "short" })).join(", ");
+    return `every ${names} at ${r.at}`;
+  }
+  return r.per >= 7 ? "every day" : r.per === 1 ? "every week" : `${r.per}× a week`;
+}
+
 // Sessions logged in the week (or month) `day` falls in.
 export function doneThisWeek(task, day = dayOf()){
   const { from, to } = periodOf(task.routine, day);
@@ -258,7 +328,11 @@ export function sessionPatch(task, { now = Date.now(), minutes = 0, ev = null } 
   const min = ev ? ev.min : Math.round(minutes);
   const log = [...r.log, { day: ev?.day || today, ...(min > 0 ? { min } : {}), ...(ev ? { ev: ev.id } : {}) }].slice(-LOG_MAX);
   const nextPeriod = addDays(periodOf(r, today).to, 1);
-  const next = doneThisWeek({ routine: { ...r, log } }, today) < r.per ? addDays(today, 1) : onDayIn(r, nextPeriod) || nextPeriod;
+  const met = doneThisWeek({ routine: { ...r, log } }, today) >= r.per;
+  // Set days: the next one of its days, not tomorrow (2026-10-15: "every
+  // weekday" done on Thursday came back Friday).
+  const nextSet = (from) => { for (let i = 1; i <= 7; i++) { const d = addDays(from, i); if (r.days.includes(noon(d).getDay())) return d; } return addDays(from, 1); };
+  const next = r.days ? nextSet(met ? addDays(nextPeriod, -1) : today) : !met ? addDays(today, 1) : onDayIn(r, nextPeriod) || nextPeriod;
   // A session logged from the calendar never pulls the next one closer.
   const notBefore = task.notBefore && task.notBefore > next ? task.notBefore : next;
   const over = !!r.until && notBefore > r.until;
@@ -291,6 +365,7 @@ export function seriesSig(task){
 // null / false makes it a one-off task again.
 export function routineChange(task, change){
   if (change == null || change === false) return { routine: null };
-  const r = cleanRoutine({ ...(task.routine || {}), ...change, log: task.routine?.log || [] });
+  // A log comes in only when Repeats is switched back on (addtask.js setPer).
+  const r = cleanRoutine({ ...(task.routine || {}), ...change, log: (Array.isArray(change.log) && !task.routine ? change.log : task.routine?.log) || [] });
   return r ? { routine: r } : { routine: null };
 }

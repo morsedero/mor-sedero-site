@@ -1071,7 +1071,7 @@ async function boot(){
           if (mounted !== m) return; // signed out while it loaded
           m.tell = mountTell($("#tell"), $("#tellInput"), $("#mic"), user.uid, {
             guest: isGuest,
-            openAdd: (project, title) => m.adder.open(project ?? tabProject(), title),
+            openAdd: (project, title, pre, opts) => m.adder.open(project ?? tabProject(), title, pre, opts),
             openTask: (task) => m.adder.edit(task),
           });
           if (shared) m.tell.ask(shared.slice(0, 800));

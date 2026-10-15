@@ -27,6 +27,8 @@ import { h, bdi, dur, flash } from "./ui.js";
 import { setManual, RIDES } from "./where.js";
 import { withTrips, asPassenger } from "./trips.js";
 import { eventFrom } from "./tell-event.js";
+import { repeatFrom, repeatWords } from "./routine.js";
+import { syncSeries } from "./slots.js";
 
 const URL_ = "/.netlify/functions/daisey-now-chat";
 const SAID = {
@@ -147,11 +149,13 @@ export function mountTell(form, input, mic, uid, { openAdd, openTask, guest = fa
     // end between that and the day's start ("until 6am") can't be, so it
     // stops at the latest one and says so.
     const endOk = (m) => m < LATE_HOUR * 60 || m > usualHours(settings).start;
-    const list = actions.map((a) => (a.kind === "moment" && a.dayEnd && toMin(a.dayEnd) != null && !endOk(toMin(a.dayEnd))
-      ? { ...a, dayEnd: `0${LATE_HOUR - 1}:59`, latest: true } : a));
+    const list = withRepeats(actions.map((a) => (a.kind === "moment" && a.dayEnd && toMin(a.dayEnd) != null && !endOk(toMin(a.dayEnd))
+      ? { ...a, dayEnd: `0${LATE_HOUR - 1}:59`, latest: true } : a)), text);
     const draw = () => {
       const queries = list.filter((a) => a.kind === "query");
-      const cards = list.map((a, i) => a.kind === "query" ? null : card(a, () => { list.splice(i, 1); draw(); })).filter(Boolean);
+      // Added from the full form (Edit): its card goes, the rest stay; the last one closes the panel.
+      const cards = list.map((a, i) => a.kind === "query" ? null : card(a, () => { list.splice(i, 1); draw(); },
+        () => { list.splice(list.indexOf(a), 1); if (list.some((x) => x.kind !== "query")) draw(); else close(); })).filter(Boolean);
       const applicable = list.filter((a) => a.kind !== "project" && a.kind !== "query"); // a project card has its own button
       show(
         h("div", { className: "tell-head" },
@@ -169,6 +173,25 @@ export function mountTell(form, input, mic, uid, { openAdd, openTask, guest = fa
           h("button", { className: "btn quiet", type: "button", textContent: "Cancel", onclick: close })));
     };
     draw();
+  }
+
+  // A repeat in the words ("water plants every weekday", 2026-10-15: it was
+  // saved as a one-off): read here (routine.repeatFrom), so it holds with or
+  // without the helper. The helper's own read comes first; then the card's
+  // title; then, for a lone new task, the whole message (the helper may have
+  // taken the words out of the title). A routine has no due date: one given
+  // is its end.
+  function withRepeats(actions, text){
+    const adds = actions.filter((a) => a.kind === "add");
+    return actions.map((a) => {
+      if (a.kind !== "add") return a;
+      const inTitle = repeatFrom(a.title);
+      let r = a.routine || inTitle?.routine || (adds.length === 1 ? repeatFrom(text)?.routine : null);
+      if (!r) return a;
+      if (r.every === "month" && !r.on) r = { ...r, on: a.notBefore || logicalDate() }; // its day is every month's
+      const { due, dateKind, ...rest } = a;
+      return { ...rest, title: inTitle?.title || a.title, routine: { ...r, ...(due && !r.until ? { until: due } : {}) } };
+    });
   }
 
   // A question about the list, answered here from the tasks the app already
@@ -205,12 +228,13 @@ export function mountTell(form, input, mic, uid, { openAdd, openTask, guest = fa
   }
 
   // One proposed change, in words. ✕ drops it; a new task can open in the full form.
-  function card(a, drop){
+  function card(a, drop, added){
     const t = a.taskId ? byId(a.taskId) : null;
     const bits = [];
     if (a.kind === "add") {
       if (a.project) bits.push(a.project);
       if (a.size) bits.push(dur(a.size));
+      if (a.routine) bits.push(repeatWords(a.routine) + (a.routine.until ? `, until ${day(a.routine.until)}` : ""));
       if (a.notBefore) bits.push(`starts ${day(a.notBefore)}`);
       if (a.due) bits.push(`${a.dateKind === "deadline" ? "deadline" : "by"} ${day(a.due)}`);
     } else if (a.kind === "update") {
@@ -241,8 +265,11 @@ export function mountTell(form, input, mic, uid, { openAdd, openTask, guest = fa
         bits.length > 0 && h("span", { className: "tell-meta" }, ...bits.flatMap((b, i) => (i ? [" · ", bdi(b)] : [bdi(b)])))),
       a.kind === "project" && h("button", { className: "btn primary small tell-first", type: "button", textContent: "Add first task",
         onclick: () => { close(); input.value = ""; openAdd(a.project, ""); } }),
+      // Edit keeps the batch (2026-10-15: closing the form lost every card):
+      // the form opens over it with what was read, and only an add takes the card away.
       a.kind === "add" && h("button", { className: "tell-edit", type: "button", textContent: "Edit",
-        ariaLabel: `Edit ${a.title} in the full form`, onclick: () => { close(); openAdd(a.project, a.title); } }),
+        ariaLabel: `Edit ${a.title} in the full form`, onclick: () => openAdd(a.project, a.title,
+          { size: a.size, due: a.due, dateKind: a.dateKind, notBefore: a.notBefore, routine: a.routine }, { done: added }) }),
       h("button", { className: "tell-x", type: "button", ariaLabel: "Don't do this one", textContent: "✕", onclick: drop }));
   }
 
@@ -251,7 +278,12 @@ export function mountTell(form, input, mic, uid, { openAdd, openTask, guest = fa
     const jobs = list.map((a) => {
       const t = a.taskId ? byId(a.taskId) : null;
       const pick = (keys) => Object.fromEntries(keys.filter((k) => a[k] != null).map((k) => [k, a[k]]));
-      if (a.kind === "add") return addTask(uid, pick(["title", "project", "size", "due", "dateKind", "notBefore"]), tasks);
+      if (a.kind === "add") {
+        const added = addTask(uid, pick(["title", "project", "size", "due", "dateKind", "notBefore", "routine"]), tasks);
+        // Set days: the weekly event, as the Add form writes it (addtask.js add).
+        if (a.routine?.days?.length) added.then((ref) => ref?.id && syncSeries(uid, { id: ref.id, title: a.title.trim(), size: a.size, routine: a.routine })).catch(() => {});
+        return added;
+      }
       if (a.kind === "event") return createEvent({ title: a.title, date: a.date, at: a.time, minutes: a.minutes, location: a.location });
       if (!t && a.kind !== "moment") return null; // gone since
       if (a.kind === "done") return finishTask(uid, t, { tasks });

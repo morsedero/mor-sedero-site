@@ -56,6 +56,9 @@ const ACTION_FIELDS = {
   dueDate: str("YYYY-MM-DD the task is due (\"by Thursday\", \"עד יום רביעי\"). Only if the user gave one."),
   dateKind: str("deadline only for a hard date with a cost if missed, else target.", { enum: ["deadline", "target"] }),
   startDate: str("YYYY-MM-DD before which the task shouldn't come up (\"next week\", \"after Sunday\")."),
+  repeatDays: { type: "ARRAY", items: { type: "INTEGER" }, description: "add only, when the user says it repeats on set days: the weekdays, 0 = Sunday ... 6 = Saturday (\"every weekday\" → [0,1,2,3,4], the Israeli work week; \"every Monday and Thursday\" → [1,4])." },
+  timesPerWeek: { type: "INTEGER", description: "add only, when it repeats with no set days: times a week (\"3 times a week\" → 3, \"every day\" → 7, \"weekly\" → 1)." },
+  repeatMonthly: { type: "BOOLEAN", description: "add only: true when it repeats every month." },
   waitingFor: str("waiting only: the person or thing it waits on, never a date."),
   dayEnd: str("moment only: HH:MM, 24-hour, when the user says their day runs until a different time today (\"I can work until 11pm\")."),
   place: str("moment only: where the user is right now. On the move: train, bus (also a passenger in a car or taxi), car (driving).", { enum: ["home", "out", "anywhere", "train", "bus", "car"] }),
@@ -102,12 +105,15 @@ Rules:
 - Only use an existing task when the message clearly refers to it. A new thing that only shares a word with an existing task is an add.
 - If more than one existing task could be the one they mean, return NO action for it; ask a question and give the candidate titles as choices.
 - Fill only what the user said. Never invent minutes, dates or projects.
+- A task that repeats ("every weekday", "3 times a week", "כל יום שני", "every month") is one add with repeatDays, timesPerWeek or repeatMonthly, never several tasks or a dueDate. Leave the repeat words out of the title.
 - The reply is in the language of the user's message, short and plain, and says what you suggest.
 - Never put a plain " inside a text value. Hebrew abbreviations take ״ or ׳ (לו״ז, ת״א, ג׳ונתן).
 
 Examples (today is Monday 2026-10-05; tasks: t1 "Mix review for Reprise", t4 "Mix review for Lunitales", t2 "ביטוח לחיות", t3 "Pre-attack cue"):
 Message: lesson prep for Thursday, invoices, call Uri 15 min
 {"reply":"Add 3 tasks?","actions":[{"kind":"add","title":"Lesson prep","dueDate":"2026-10-08"},{"kind":"add","title":"Invoices"},{"kind":"add","title":"Call Uri","minutes":15}]}
+Message: water plants every weekday
+{"reply":"Add a task every weekday?","actions":[{"kind":"add","title":"Water plants","repeatDays":[0,1,2,3,4]}]}
 Message: להתקשר לביטוח לאומי עד יום רביעי
 {"reply":"להוסיף משימה ליום רביעי?","actions":[{"kind":"add","title":"להתקשר לביטוח לאומי","dueDate":"2026-10-07"}]}
 Message: push the mix review to next week
@@ -191,6 +197,13 @@ function tidy(out, ids){
       if (isDay(due)) x.due = due;
       if (isDay(start)) x.notBefore = start;
       if (x.due && ["deadline", "target"].includes(a.dateKind)) x.dateKind = a.dateKind;
+    }
+    if (kind === "add") {
+      const days = [...new Set((Array.isArray(a.repeatDays) ? a.repeatDays : []).filter((d) => Number.isInteger(d) && d >= 0 && d <= 6))].sort();
+      const per = Math.round(Number(a.timesPerWeek));
+      if (days.length) x.routine = { per: days.length, days };
+      else if (per >= 1 && per <= 7) x.routine = { per };
+      else if (a.repeatMonthly === true) x.routine = { per: 1, every: "month" };
     }
     if (kind === "add" && !x.title) return [];
     if (kind === "update" && Object.keys(x).length <= 2) return []; // nothing to change

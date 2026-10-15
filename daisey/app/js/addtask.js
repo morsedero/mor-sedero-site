@@ -27,7 +27,7 @@ import { durText, guessFields, validField, CHOICES, LABELS, INBOX, localDate, lo
 import { keepFile, dropFile, fileUrl } from "./files.js";
 import { h, flash, icon, bdi } from "./ui.js";
 import { projectsOf } from "./projects.js";
-import { isRoutine, weekLine, PER_MAX, DEFAULT_AT, cleanRoutine, seriesSig, monthly } from "./routine.js";
+import { isRoutine, weekLine, PER_MAX, DEFAULT_AT, cleanRoutine, seriesSig, monthly, repeatFrom } from "./routine.js";
 import { syncSeries, dropSeries } from "./slots.js";
 
 // Every field Daisey guesses, and the one the user sees (Mor, 2026-10-07:
@@ -60,6 +60,7 @@ export function mountAddTask(dialog, uid, { onStart } = {}){
   let links = [];
   let kind = "target";
   let settle = 0, armed = false, fieldN = 0;
+  let onAdded = null; // open()'s: told once the new task is added (Tell Daisey drops its card)
   const fail = (e) => console.error("[daisey] task", e);
 
   // ---------- the pieces ----------
@@ -178,16 +179,36 @@ export function mountAddTask(dialog, uid, { onStart } = {}){
     paintDates(); paintOften();
     if (editing) save({ routine: routineOf(), ...(every === "month" && on ? { notBefore: on } : {}), ...extra });
   }
+  // A routine has no due date, only its end, so Repeats on puts the due date
+  // aside and off puts it back (2026-10-15: on then off erased it). Kept
+  // while the sheet is open; saved off only if it closes still repeating.
+  // The same for the repeat itself: off then on brings back its times a
+  // week, days and log, not a fresh once a week.
+  let dueAside = null, repeatAside = null;
   function setPer(n){
     if (n === per) return;
+    const was = per;
+    if (!n && was) repeatAside = { per: was, every, on, mode, days: [...days], at, log: editing?.routine?.log || null };
     per = n;
     if (per && !until.input.value && rangeNow()?.due) until.input.value = rangeNow().due;
-    if (per) due.input.value = ""; // a routine has no due date, only its end
+    if (per && !was && due.input.value) { dueAside = { due: due.input.value, time: due.time.value, kind }; due.input.value = ""; }
+    let back = null;
+    if (!per && dueAside) {
+      back = dueAside; dueAside = null;
+      due.input.value = back.due; due.reset(back.time || ""); kind = back.kind;
+    }
     paintDates(); paintOften();
     if (!per && editing) dropSeries(editing); // off: its weekly event goes now, while the task still names it
-    if (editing) save({ routine: routineOf(), ...(per && editing.due ? { due: "" } : {}) });
+    const log = per && !was && repeatAside?.log?.length ? { log: repeatAside.log } : {};
+    if (per && !was) repeatAside = null;
+    if (editing) save({ routine: per ? { ...routineOf(), ...log } : routineOf(), ...(per && editing.due ? { due: "" } : {}),
+      ...(back ? { due: back.due, dateKind: back.kind, ...(back.time ? { dueTime: back.time } : {}) } : {}) });
   }
-  repeatSwitch.addEventListener("change", () => setPer(repeatSwitch.checked ? PER_ON : 0));
+  repeatSwitch.addEventListener("change", () => {
+    const back = repeatSwitch.checked && repeatAside;
+    if (back) ({ every, on, mode, at } = back), days = [...back.days];
+    setPer(repeatSwitch.checked ? back?.per || PER_ON : 0);
+  });
   function paintOften(){
     repeatSwitch.checked = !!per;
     everyRow.hidden = !per;
@@ -547,6 +568,7 @@ export function mountAddTask(dialog, uid, { onStart } = {}){
       // Set days: the weekly event is written once the task has its id.
       if (input.routine?.days?.length) added.then((ref) => ref?.id && owe({ id: ref.id, title: input.title.trim(), size: vals.size, routine: cleanRoutine(input.routine) }));
       flash("Added ", input.title);
+      const told = onAdded; onAdded = null; told?.();
       dialog.close();
     } catch (e) { msg.textContent = e.message || String(e); }
   }
@@ -555,7 +577,7 @@ export function mountAddTask(dialog, uid, { onStart } = {}){
   function clear(){
     clearTimeout(settle);
     vals = {}; mine = new Set(); openChip = null;
-    links = []; adding = false; kind = "target";
+    links = []; adding = false; kind = "target"; onAdded = null; dueAside = null; repeatAside = null;
     title.value = ""; notes.value = ""; newProject.value = ""; waitingOn.value = ""; checkOn.value = "";
     start.input.value = ""; due.input.value = ""; until.input.value = ""; start.reset(); due.reset(); per = 0; every = "week"; on = ""; mode = "any"; days = []; at = DEFAULT_AT;
     msg.textContent = "";
@@ -628,13 +650,27 @@ export function mountAddTask(dialog, uid, { onStart } = {}){
   return {
     // project: prefill (""/Inbox = Inbox, "__new" = a new project);
     // omitted = keep the last one. title: prefill (Tell Daisey's text).
-    open(project, text = ""){
+    // pre: what Tell Daisey already read ({ size, due, dateKind, notBefore,
+    // routine }), shown as set, not guessed (2026-10-15: a typed "15 min"
+    // opened as a 1 h guess). A repeat in the text is read too.
+    // done: called once the task is added.
+    open(project, text = "", pre = {}, { done } = {}){
       const keep = projectSel.value === NEW_PROJECT ? "" : projectSel.value;
       clear();
       editing = null;
+      onAdded = done || null;
       heading.textContent = "New task";
       showProject(project !== undefined ? project : keep);
-      title.value = text;
+      const said = pre.routine ? null : repeatFrom(text);
+      title.value = said ? said.title : text;
+      const r = cleanRoutine(pre.routine || said?.routine);
+      if (Number(pre.size) > 0) { vals.size = Number(pre.size); mine.add("size"); }
+      if (pre.notBefore) start.input.value = pre.notBefore;
+      if (r) {
+        per = r.per; every = monthly(r) ? "month" : "week"; on = r.on || "";
+        days = r.days ? [...r.days] : []; mode = days.length ? "set" : "any"; at = r.at || DEFAULT_AT;
+        until.input.value = r.until || "";
+      } else if (pre.due) { due.input.value = pre.due; kind = pre.dateKind === "deadline" ? "deadline" : "target"; }
       fenceDates([]);
       if (text) reguess();
       paintAll();
