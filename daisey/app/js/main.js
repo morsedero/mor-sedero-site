@@ -723,18 +723,43 @@ async function boot(){
         m.menu = { unmount(){ stopSettings(); stopCal(); stopBriefTasks(); stopBriefRun(); stopBriefPlan(); clearInterval(seenTick); document.removeEventListener("visibilitychange", seen); settingsDlg.removeEventListener("click", foldMeal); settingsDlg.removeEventListener("close", shutMeal); start.onchange = end.onchange = logSwitch.onchange = pushSwitch.onchange = pushTest.onclick = null;
           kindBoxes.forEach((b) => { b.onchange = null; }); } };
 
-        // Full screens (a project, Needs you) sit on the history stack, so the
-        // phone's Back closes them like a page.
-        const screens = {
-          open(kind){ if (history.state?.daisey !== kind) history.pushState({ daisey: kind }, ""); },
-          back(){ if (history.state?.daisey) history.back(); else closeScreens(); },
-        };
         const closeScreens = () => { $("#weekPage").hidden = true; m.now?.closePlan(); m.projects?.closeProject(); m.needs?.close(); syncPanel(); };
-        const onPop = () => {
-          const at = history.state?.daisey;
-          if (!at) closeScreens();
-          else if (at !== "needs") m.needs?.close();
+        // The phone's Back never leaves the app (Mor, 2026-10-15). History
+        // holds [base, home]; Back pops home, we close the topmost open
+        // window and push home again. Nothing open: the first Back says so,
+        // a second within 2.5 s really leaves.
+        const topLayer = () => {
+          const dlg = [...document.querySelectorAll("dialog[open]")].pop();
+          if (dlg) return () => { if (dlg.dispatchEvent(new Event("cancel", { cancelable: true }))) dlg.close(); };
+          if (!$("#acctMenu").hidden || !$("#plusMenu").hidden) return () => document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
+          if (!$("#needsview").hidden) return () => m.needs.close();
+          if (!$("#projectview").hidden) return () => m.projects.closeProject();
+          if (!$("#projPage").hidden) return () => m.projects.closeAll();
+          if (!$("#planPage").hidden) return () => m.now?.closePlan();
+          if (!$("#weekPage").hidden) return () => { $("#weekPage").hidden = true; };
+          if (weekPop) return () => { weekPop = false; };
+          if (document.body.classList.contains("day-open")) return () => document.body.classList.remove("day-open");
+          return null;
         };
+        const guard = () => history.pushState({ daisey: "home" }, "");
+        let exitAt = 0;
+        const onPop = () => {
+          if (history.state?.daisey !== "base") return; // forward onto home
+          const close = topLayer();
+          if (close) { guard(); close(); syncPanel(); return; }
+          if (Date.now() - exitAt < 2500) { window.__backArmed = false; history.back(); return; }
+          exitAt = Date.now(); guard(); flash("Press Back again to exit.");
+        };
+        // Chrome skips history entries made before the first tap, so the guard
+        // goes in on it. Touch screens only: a computer's Back stays a Back.
+        const armGuard = () => {
+          if (window.__backArmed) return;
+          window.__backArmed = true; history.replaceState({ daisey: "base" }, ""); guard();
+        };
+        if (matchMedia("(pointer: coarse)").matches && !window.__backArmed) {
+          if (navigator.userActivation?.hasBeenActive) armGuard();
+          else addEventListener("pointerdown", armGuard, { once: true, capture: true });
+        }
         // The home panel: the Schedule, or Projects (the grid or one project)
         // in its place. The Projects button toggles between them (Mor, 2026-10-08).
         let schedShown = false;
@@ -807,7 +832,7 @@ async function boot(){
         // Phone: the Today tile opens the day under the card, and shuts it.
         window.__toggleDay = () => {
           const open = !document.body.classList.contains("day-open");
-          if (open) { m.now?.closePlan(); m.projects.closeProject(); m.projects.closeAll(); if (history.state?.daisey === "project") history.back(); }
+          if (open) { m.now?.closePlan(); m.projects.closeProject(); m.projects.closeAll(); }
           document.body.classList.toggle("day-open", open); syncPanel();
         };
         // Week: done today + routines under the card, on or off (Mor,
@@ -822,7 +847,7 @@ async function boot(){
           const open = $("#weekPage").hidden;
           if (!$("#planPage").hidden) m.now?.closePlan();
           m.projects.closeProject(); m.projects.closeAll();
-          if (history.state?.daisey === "project") history.back();
+
           $("#weekPage").hidden = !open;
           if (open) m.week ??= mountSchedule($("#weekPage"), user.uid, { mode: "week", onEvent: (ev) => m.event.view(ev), onNew: (date, at) => m.event.open(date, at), onOpen: (task) => m.adder.edit(task),
             onDay: (ymd) => { $("#weekPage").hidden = true; syncPanel(); m.schedule?.go(ymd); } });
@@ -833,7 +858,7 @@ async function boot(){
           $("#weekPage").hidden = true;
           if (!$("#planPage").hidden) m.now?.closePlan();
           m.projects.closeProject(); m.projects.closeAll(); syncPanel();
-          if (history.state?.daisey === "project") history.back();
+
         };
         window.__toggleProjects = () => {
           if (!$("#planPage").hidden) m.now?.closePlan();
@@ -841,34 +866,33 @@ async function boot(){
           $("#weekPage").hidden = true;
           if (!$("#schedPage").hidden || fromWeek) { m.projects.openAll(); syncPanel(); return; }
           m.projects.closeProject(); m.projects.closeAll(); syncPanel();
-          if (history.state?.daisey === "project") history.back();
+
         };
         addEventListener("popstate", onPop);
         m.history = { unmount(){ removeEventListener("popstate", onPop); } };
         // The task sheet's Focus: back to home, that task on the card, Focus
         // mode on (Mor, 2026-10-10; no clock, no Deep Focus).
-        const startTask = (id) => { if (history.state?.daisey) history.back(); closeScreens(); m.now?.start(id); };
+        const startTask = (id) => { closeScreens(); m.now?.start(id); };
 
         m.adder = mountAddTask($("#addtask"), user.uid, { onStart: startTask });
         m.needs = mountNeeds($("#needsview"), user.uid, {
-          // then: what to open once Needs you is shut. After the back step's
-          // popstate, or the closeScreens it runs would shut that too.
-          onClose: (then) => { const pop = !!history.state?.daisey; if (then && pop) addEventListener("popstate", () => then(), { once: true }); screens.back(); if (then && !pop) then(); },
+          // then: what to open once Needs you is shut.
+          onClose: (then) => { m.needs.close(); syncPanel(); then?.(); },
           onStart: startTask,
           extra: () => m.now?.needsAsks() || [],
           // Back after days away: the catch-up opens by itself (needs.js
           // awayCheck), unless a link or another screen got there first.
           onAway: () => {
             const q = new URL(location.href).searchParams;
-            if (q.has("open") || q.has("start") || history.state?.daisey) return;
-            m.needs.open(); screens.open("needs");
+            if (q.has("open") || q.has("start") || !$("#needsview").hidden || !$("#projectview").hidden) return;
+            m.needs.open();
           } });
         m.schedule = mountSchedule($("#schedPage"), user.uid, { onEvent: (ev) => m.event.view(ev), onNew: (date, at) => m.event.open(date, at), onOpen: (task) => m.adder.edit(task), onMissed: (id, start) => m.now?.missed(id, start), onNow: flashNow, onPlan: () => m.now?.plan() });
         m.projects = mountProjects({ grid: $("#projPage"), page: $("#projPage"), glance: $("#glance"), view: $("#projectview"), dialog: $("#projdlg") }, user.uid, {
           onOpen: (task) => m.adder.edit(task),
           onAdd: (project) => m.adder.open(project),
           onStart: startTask,
-          onScreen: (name) => { if (name) { screens.open("project"); syncPanel(); } else screens.back(); },
+          onScreen: () => syncPanel(),
         });
         syncPanel();
         $("#planChip").onclick = () => { seenHint(); if (phone.matches && (planNow || document.body.classList.contains("day-open"))) window.__toggleDay(); else morph(() => m.now?.plan()); };
@@ -980,24 +1004,24 @@ async function boot(){
           // Two frames so the panel and chips settle under the daisy first.
           onReady: () => requestAnimationFrame(() => requestAnimationFrame(splashOff)),
           onPlanScreen: (open) => {
-            if (open) { m.projects?.closeProject(); m.projects?.closeAll(); if (history.state?.daisey === "project") history.back(); }
+            if (open) { m.projects?.closeProject(); m.projects?.closeAll(); }
             $("#planPage").hidden = !open; if (open) $("#planPage").scrollTop = 0; syncPanel();
           },
           onCard: (id) => m.projects?.setCurrent(id),
           onOpen: (task) => m.adder.edit(task),
           onProject: (name) => m.projects.openProject(name),
           onEvent: (ev) => m.event.view(ev),
-          onWrap: () => { m.needs.open("wrap"); screens.open("needs"); },
+          onWrap: () => { m.needs.open("wrap"); },
           missDialog: $("#missdlg"),
           guest: isGuest,
         });
-        $("#needsChip").onclick = () => { m.needs.open(); screens.open("needs"); };
+        $("#needsChip").onclick = () => { m.needs.open(); };
         // A notification's tap: "?open=wrap" on a fresh start, or a message
         // from sw.js when Daisey was already open.
         // "?open=lighter": the silence check's Lighter plan (notify.js "miss").
         const openFrom = (what) => {
-          if (what === "wrap" || what === "needs") { m.needs.open(what); screens.open("needs"); }
-          if (what === "lighter") { if (history.state?.daisey) history.back(); closeScreens(); m.now.lighter(); }
+          if (what === "wrap" || what === "needs") { m.needs.open(what); }
+          if (what === "lighter") { closeScreens(); m.now.lighter(); }
         };
         const params = new URL(location.href).searchParams;
         const asked = params.get("open"), startId = params.get("start");
@@ -1017,7 +1041,7 @@ async function boot(){
         if (asked || shared || startId) history.replaceState(history.state, "", location.pathname);
         if (asked) openFrom(asked);
         // "Start task" on a notification (sw.js): straight into focus mode.
-        const startFrom = (id) => { if (history.state?.daisey) history.back(); closeScreens(); m.now.startFromNotice(id); };
+        const startFrom = (id) => { closeScreens(); m.now.startFromNotice(id); };
         if (startId) startFrom(startId);
         const onSwMessage = (e) => {
           if (e.data?.daisey === "open") openFrom(e.data.what);
