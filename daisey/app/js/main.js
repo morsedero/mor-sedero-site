@@ -748,14 +748,14 @@ async function boot(){
           window.__backArmed = false; history.back(); // nothing open: leave
         };
         // Chrome skips history entries made before the first tap, so the guard
-        // goes in on it. Touch screens only: a computer's Back stays a Back.
+        // goes in on the first one. Touch screens only: a computer's Back stays a Back.
         const armGuard = () => {
           if (window.__backArmed) return;
           window.__backArmed = true; history.replaceState({ daisey: "base" }, ""); guard();
         };
         if (matchMedia("(pointer: coarse)").matches && !window.__backArmed) {
-          if (navigator.userActivation?.hasBeenActive) armGuard();
-          else addEventListener("pointerdown", armGuard, { once: true, capture: true });
+          // A touch counts as a tap on its release (pointerup), not on pointerdown.
+          for (const t of ["pointerup", "click", "keydown"]) addEventListener(t, armGuard, { capture: true });
         }
         // The home panel: the Schedule, or Projects (the grid or one project)
         // in its place. The Projects button toggles between them (Mor, 2026-10-08).
