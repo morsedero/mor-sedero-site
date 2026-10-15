@@ -558,16 +558,17 @@ dialog.now:focus { outline: none; }
 .switch-ask { flex-wrap: nowrap; justify-content: flex-start; gap: 8px; overflow-x: auto; scrollbar-width: none; touch-action: pan-x pan-y; cursor: grab; margin-inline: -4px; padding: 2px 4px 4px; }
 .switch-ask.dragging, .switch-ask.dragging * { cursor: grabbing; user-select: none; -webkit-user-select: none; }
 .switch-ask::-webkit-scrollbar { display: none; }
-.alt-card { flex: none; inline-size: 52%; block-size: 77px; box-sizing: border-box; display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto 1fr; align-content: start; gap: 4px; padding: 9px 12px; border-radius: 14px; border: 1px solid var(--aline); background: var(--tint); color: var(--ink); font: inherit; text-align: start; cursor: pointer; box-shadow: 0 2px 6px color-mix(in srgb, var(--aink) 10%, transparent); }
+.alt-card { flex: none; inline-size: 52%; block-size: auto; min-block-size: 77px; box-sizing: border-box; display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto auto 1fr; align-content: start; gap: 4px; padding: 9px 12px; border-radius: 14px; border: 1px solid var(--aline); background: var(--tint); color: var(--ink); font: inherit; text-align: start; cursor: pointer; box-shadow: 0 2px 6px color-mix(in srgb, var(--aink) 10%, transparent); }
 .alt-card .hero-top, .alt-card .hero-area { font-size: 12px; }
 .alt-card .alt-at { flex: none; font-weight: 700; font-variant-numeric: tabular-nums; }
 .alt-card .alt-at::after { content: "·"; margin-inline-start: 5px; font-weight: 600; }
 .alt-card .hero-area { gap: 5px; }
 .alt-card .alt-t { font-size: 15px; font-weight: 600; line-height: 1.2; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow-wrap: anywhere; }
 /* Its reason, as the Now card would give it (round 2, 2026-10-11); the card
-   grows to hold it, every card in the row as tall as the tallest. */
-.switch-ask:has(.alt-why) { align-items: stretch; }
-.alt-card:has(.alt-why) { block-size: auto; min-block-size: 77px; grid-template-rows: auto auto 1fr; }
+   grows to hold it, every card in the row as tall as the tallest. No :has()
+   here (2026-10-15): Mor's phone browser lacks it, the cards stayed 77px and
+   the title ran over the reason. Auto height + stretch does it without. */
+.switch-ask { align-items: stretch; }
 .alt-card .alt-why { font-size: 12px; line-height: 1.3; color: var(--ink-2); overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow-wrap: anywhere; }
 /* Pending → "Waiting on what?": one optional line under the actions. */
 .pend-ask { display: grid; gap: 4px; margin-block-start: 4px; }
@@ -594,31 +595,27 @@ dialog.now:focus { outline: none; }
 .learn-row { display: flex; flex-wrap: wrap; gap: 6px; }
 .learn-row .chip { min-block-size: 36px; font-size: 13px; padding-inline: 11px; }
 
-/* The routine nag (now.js routineNag): a small warm card under the Now card,
-   a daisy swaying at its side (Mor, 2026-10-15: "the cutest and most
-   welcoming card"). Late in the week it warms up a shade: what's left barely
-   fits. Mixed from the theme, so it holds in light and dark. */
-.routine-nag { display: grid; grid-template-columns: auto 1fr; align-items: center; column-gap: 12px; row-gap: 8px; margin-block-start: 10px; padding: 12px 14px;
-  border-radius: 20px; border: 1.5px solid color-mix(in srgb, var(--accent) 35%, var(--line)); background: color-mix(in srgb, var(--accent) 11%, var(--card));
-  box-shadow: 0 6px 18px color-mix(in srgb, var(--accent) 16%, transparent); }
-.routine-nag.late { border-color: color-mix(in srgb, var(--accent) 70%, var(--line)); background: color-mix(in srgb, var(--accent) 20%, var(--card)); }
-.nag-daisy { inline-size: 40px; block-size: 40px; display: grid; place-items: center; animation: nag-sway 6s ease-in-out infinite; transform-origin: 50% 50%; }
-.nag-daisy svg { inline-size: 40px; block-size: 40px; fill: #fff; stroke: color-mix(in srgb, var(--accent) 45%, var(--line)); stroke-width: 1; }
+/* The routine nag (now.js routineNag): a small pill under the Now card, a
+   daisy swaying at its start (Mor, 2026-10-15: "really small but really
+   cute"). Late in the week its edge turns yellow: what's left barely fits.
+   Plain tokens, no color-mix() or :has(): Mor's phone browser lacks both. */
+.routine-nag { display: flex; align-items: center; gap: 8px; min-block-size: 48px; box-sizing: border-box; margin-block-start: 8px; padding: 4px 4px 4px 8px;
+  border-radius: 999px; border: 1.5px solid var(--a-job-line); background: var(--a-job-tint); }
+.routine-nag.late { border-color: var(--accent); }
+.nag-daisy { flex: none; inline-size: 26px; block-size: 26px; display: block; animation: nag-sway 6s ease-in-out infinite; }
+.nag-daisy svg { display: block; inline-size: 26px; block-size: 26px; fill: #fff; stroke: var(--a-job-line); stroke-width: 1.5; }
 .nag-daisy .c { fill: var(--accent); stroke: var(--accent-deep); }
-@keyframes nag-sway { 0%, 100% { transform: rotate(-8deg); } 50% { transform: rotate(8deg); } }
+@keyframes nag-sway { 0%, 100% { transform: rotate(-10deg); } 50% { transform: rotate(10deg); } }
 @media (prefers-reduced-motion: reduce) { .nag-daisy { animation: none; } }
-.nag-text { min-inline-size: 0; display: grid; gap: 3px; }
-.nag-text p { margin: 0; }
-.nag-title { font-size: 16px; font-weight: 700; color: var(--ink); overflow-wrap: anywhere; display: flex; flex-wrap: wrap; align-items: baseline; column-gap: 8px; }
-.nag-len { font-size: 12px; font-weight: 600; color: var(--ink); background: color-mix(in srgb, var(--accent) 35%, var(--card)); border-radius: 999px; padding: 1px 8px; }
-.nag-week { font-size: 13px; color: var(--ink-2); display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
-.nag-week .wk-dots { color: var(--accent-deep); }
-.nag-week .wk-dots i { opacity: 1; }
-.nag-acts { grid-column: 1 / -1; display: flex; justify-content: flex-end; gap: 6px; }
-.nag-acts button { font: inherit; font-size: 14px; font-weight: 600; min-block-size: 38px; padding-inline: 16px; border-radius: 999px; cursor: pointer; }
-.nag-later { border: 0; background: transparent; color: var(--ink-2); }
-.nag-go { border: 0; background: var(--accent); color: var(--on-accent); box-shadow: 0 3px 0 var(--accent-deep); }
-.nag-go:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--accent-deep); }
+.nag-text { flex: 1; min-inline-size: 0; display: grid; line-height: 1.25; }
+.nag-title { font-size: 14px; font-weight: 700; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.nag-week { font-size: 11.5px; color: var(--a-job-ink); display: flex; align-items: center; gap: 6px; white-space: nowrap; overflow: hidden; }
+.nag-week .wk-dots { gap: 3px; }
+.nag-week .wk-dots i { inline-size: 7px; block-size: 7px; opacity: 1; }
+.nag-go { flex: none; font: inherit; font-size: 13px; font-weight: 700; min-block-size: 36px; padding-inline: 14px; border: 0; border-radius: 999px; cursor: pointer;
+  background: var(--accent); color: var(--on-accent); box-shadow: 0 2px 0 var(--accent-deep); }
+.nag-go:active { transform: translateY(1px); box-shadow: 0 1px 0 var(--accent-deep); }
+.nag-later { flex: none; font: inherit; font-size: 18px; line-height: 1; inline-size: 36px; block-size: 36px; border: 0; border-radius: 999px; background: transparent; color: var(--ink-2); cursor: pointer; }
 
 /* Task sheet: Daisey's guesses as one line; the chips open under it. */
 

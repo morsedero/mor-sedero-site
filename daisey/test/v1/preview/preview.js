@@ -227,6 +227,8 @@ const SCENARIOS = {
   naghe: { tasks: [
     { title: "Mix review for Reprise", project: "Reprise", size: 60, due: day(0), stakes: "high" },
     { title: "ללמוד פורטוגזית", project: "Learning", size: 15, routine: { per: 3, log: [{ day: day(-3) }] } },
+    { title: "פורטוגזית!", size: 15, routine: { per: 3 } },
+    { title: "דיבור תאמז", project: "Monitor", size: 24 },
   ], settings: { deadlinesAsked: true, somedayAsked: new Date().toLocaleDateString("en-CA") } },
   // Bloom (bloom.js): projects in all three tiers, two routines, a week of work.
   bloom: { tiers: { Band: "focus", Reprise: "focus", Admin: "background" }, bloomLog: true, tasks: [

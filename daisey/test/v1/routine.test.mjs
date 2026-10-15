@@ -243,5 +243,6 @@ test("nag: behind pace every other day, late every day, Later shuts it", () => {
   assert.equal(R.nagFor([pt([d(4), d(5), d(6)])], { day: "2026-10-09" }), null);
   assert.equal(R.nagFor([pt([], { routine: { per: 2, days: [1, 4], log: [] } })], { day: "2026-10-09" }), null);
   assert.equal(R.nagFor([pt([], { status: "done" })], { day: "2026-10-09" }), null);
+  assert.equal(R.nagFor([pt()], { day: "2026-10-07", skip: "p" }), null); // the one on the card
   assert.equal(R.nagText({ task: { title: "Read", size: 90 }, late: false, s: { done: 0, per: 2 } }), "Read, 1.5 h · 0 of 2 this week");
 });

@@ -210,14 +210,15 @@ export function weekLine(task, day = dayOf()){
 // every day and says so. Set-days routines have their own slot,
 // monthly ones their own day: not nagged.
 // `seen`: settings.routineNag, { day, off }: the day it last showed, the day
-// Later shut it. Returns { task, late, s } (s = weekState) or null.
+// Later shut it. `skip`: the one on the card. Returns { task, late, s }
+// (s = weekState) or null.
 export const NAG_GAP = 2;
-export function nagFor(tasks, { day = dayOf(), cal = {}, seen = null } = {}){
+export function nagFor(tasks, { day = dayOf(), cal = {}, seen = null, skip = null } = {}){
   if (seen?.off === day) return null;
   const gap = seen?.day ? Math.round((noon(day) - noon(seen.day)) / 86400000) : Infinity;
   const all = (tasks || []).map((task) => {
     const r = cleanRoutine(task.routine);
-    if (task.status !== "ready" || !r || r.days || monthly(r) || cal[task.id]?.today || r.log.some((e) => e.day === day)) return null;
+    if (task.id === skip || task.status !== "ready" || !r || r.days || monthly(r) || cal[task.id]?.today || r.log.some((e) => e.day === day)) return null;
     const s = weekState(task, day, cal[task.id]);
     if (!s.need || !s.daysLeft) return null;
     const short = Math.floor(s.per * s.gone / s.len) - s.done - s.ahead;

@@ -1088,28 +1088,29 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
   // it on the card, Later shuts it till the next one. Only one Daisey can
   // actually switch to, and never the one already on the card.
   function routineNag(card, r, picked){
-    if (!card || focusOn()) return null;
+    // Never with a row open under the card (Switch, Not now, more): the card
+    // box would scroll (Mor, 2026-10-15: "it should never happen").
+    if (!card || focusOn() || state.showAlts || state.notNow || state.pendAsk || state.more) return null;
     const day = logicalDate(), seen = settings.routineNag || null;
-    const n = nagFor(tasks, { day, cal: routineCal(Date.now()), seen });
-    if (!n || n.task.id === card?.task.id || !(r.ranked.some((s) => s.task.id === n.task.id) || picked(n.task.id))) return null;
+    const n = nagFor(tasks, { day, cal: routineCal(Date.now()), seen, skip: card.task.id });
+    if (!n || !(r.ranked.some((s) => s.task.id === n.task.id) || picked(n.task.id))) return null;
     const save = (v) => { settings = { ...settings, routineNag: v }; saveSettings(uid, { routineNag: v }).catch(fail); };
     if (seen?.day !== day) save({ day });
-    // Cute on purpose (Mor, 2026-10-15: "the cutest and most welcoming
-    // card"): a daisy, the week's dots, a soft yellow. The title alone is
-    // in a <bdi>; the English around it stays put in either direction.
+    // Small and cute (Mor, 2026-10-15): one pill, a daisy, the title over
+    // the week's dots, "Just 15 min" to go, × for Later. The title alone is
+    // in a <bdi>, so a Hebrew one leaves the English around it in order.
     const p = nagParts(n);
     const daisy = h("span", { className: "nag-daisy", ariaHidden: "true" });
     daisy.innerHTML = '<svg viewBox="0 0 40 40" aria-hidden="true">' + Array.from({ length: 8 }, (_, i) =>
-      `<ellipse cx="20" cy="9" rx="5" ry="8.5" transform="rotate(${i * 45} 20 20)"/>`).join("") + '<circle cx="20" cy="20" r="6.5" class="c"/></svg>';
+      `<ellipse cx="20" cy="9.5" rx="5.5" ry="8.5" transform="rotate(${i * 45} 20 20)"/>`).join("") + '<circle cx="20" cy="20" r="7" class="c"/></svg>';
     daisy.style.animationDelay = `${-(Date.now() % 6000)}ms`; // a rebuild carries the sway on
     return h("div", { className: "routine-nag" + (n.late ? " late" : ""), role: "note", ariaLabel: nagText(n) },
       daisy,
-      h("div", { className: "nag-text" },
-        h("p", { className: "nag-title" }, bdi(p.title), p.len && h("span", { className: "nag-len", textContent: p.len })),
-        h("p", { className: "nag-week" }, weekDots(n.task), h("span", { textContent: n.late ? `${p.tail}, you've got this` : `${p.tail}, a quick one?` }))),
-      h("div", { className: "nag-acts" },
-        h("button", { className: "nag-later", type: "button", textContent: "Later", onclick: () => { save({ day, off: day }); render(); } }),
-        h("button", { className: "nag-go", type: "button", textContent: "Let's go", ariaLabel: `${p.title} now`, onclick: () => switchTo(n.task.id) })));
+      h("span", { className: "nag-text" },
+        h("span", { className: "nag-title" }, bdi(p.title)),
+        h("span", { className: "nag-week" }, n.late ? h("span", { textContent: p.tail }) : weekDots(n.task), !n.late && h("span", { textContent: "this week" }))),
+      h("button", { className: "nag-go", type: "button", textContent: p.len ? `Just ${p.len}` : "Let's go", ariaLabel: `${p.title} now`, onclick: () => switchTo(n.task.id) }),
+      h("button", { className: "nag-later", type: "button", textContent: "×", ariaLabel: "Later", title: "Later", onclick: () => { save({ day, off: day }); render(); } }));
   }
 
   // Switch · Not now, then Done at the row's far end: the one loud
@@ -2155,6 +2156,9 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     }
     if (kids.length === root.children.length && kids.every((k, i) => root.children[i] === k)) return;
     root.replaceChildren(...kids);
+    // The nag is the first to go when the box is short: it never makes the card scroll.
+    const nag = root.querySelector(".routine-nag");
+    if (nag && root.scrollHeight > root.clientHeight + 1) nag.remove();
     // A rebuilt card would restart its idle bob (breathe, 5s) from the top and
     // jump; keep the phase on the wall clock so every rebuild carries on.
     // Same for the light round its edge (app.css sc-orbit, 9s).
