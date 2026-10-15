@@ -10,7 +10,7 @@ const GUEST_UID = "guest-local";
 const guestMode = () => { try { return localStorage.getItem(GUEST_KEY) === "1"; } catch { return false; } };
 
 import { flash, h, bdi, icon } from "./ui.js";
-import { areaClass, greeting } from "./look.js";
+import { greeting } from "./look.js";
 // PC: "Good morning, Mor" over the card (Mor, 2026-10-13, layout B); the
 // clock repaints it. app.css shows it from 1024px only.
 let greetName = null;
@@ -43,29 +43,19 @@ const morph = (fn) => {
   morphing = true;
   document.startViewTransition(() => { try { fn(); } finally { morphing = false; } }).finished.catch(() => {});
 };
-let planNext = null;
-const hm = (ms) => new Date(ms).toTimeString().slice(0, 5);
-function paintNext(nx){ planNext = nx; paintChip(); }
 function paintReady(on){ planReady = !!on; paintChip(); }
 function paintChip(){
   const p = planNow, c = $("#planChip");
   c.hidden = false;
   c.classList.toggle("empty", !p);
   c.classList.toggle("ready", planReady && !p);
-  const day = !!p && phone.matches;
   document.body.classList.toggle("has-plan", !!p);
-  // Phone: the strip under the card says "Next" over the next task, "Today"
-  // once the day (or a page) is open, where it shuts it (Mor, 2026-10-12).
-  const dayOpen = phone.matches && document.body.classList.contains("day-open");
-  const page = phone.matches && !!document.querySelector("#panel > .ppage:not([hidden]):not(#schedPage):not(.pg-ghost)");
-  $("#planW").textContent = dayOpen ? "Today" : day ? (planNext && !page ? "Next" : "Today") : p ? "Plan" : "Plan my day";
-  c.ariaLabel = day ? `Today${planNext ? `: next ${planNext.task.title} at ${hm(planNext.start)}` : ""}` : p ? "Today's plan. Open it to change it" : planReady ? "Plan my day: a plan is ready to look at" : "Plan my day";
-  const box = $("#planNext");
-  box.hidden = !day || !planNext;
-  box.replaceChildren(...(day && planNext ? [
-    h("span", { className: "tn-at", textContent: hm(planNext.start) }),
-    h("span", { className: "tn-row" }, h("span", { className: "tn-dot" + areaClass(planNext.task) }), h("bdi", { className: "tn-name", dir: "auto", textContent: planNext.task.title })),
-    h("span", { className: "tn-more", textContent: planNext.more ? `+${planNext.more} more` : "" })] : []));
+  // Phone (Mor, 2026-10-15, canvas "Daisey phone home polish"): the key is
+  // always Today, plan or not; it opens the day, and planning lives in the
+  // day's own button (schedule.js). The old "Next 21:10" strip is gone.
+  $("#planW").textContent = phone.matches ? "Today" : p ? "Plan" : "Plan my day";
+  c.ariaLabel = phone.matches ? (planReady && !p ? "Today: a plan is ready to look at" : "Today")
+    : p ? "Today's plan. Open it to change it" : planReady ? "Plan my day: a plan is ready to look at" : "Plan my day";
 }
 // Approving a plan makes the chip celebrate (Mor, 2026-10-12): a pop, a ring
 // out from it and the ✓ drawing itself in, once (app.css .approved).
@@ -306,8 +296,11 @@ async function boot(){
   // PC: #side is the rail's nav, under the daisy and the clock: Today, Plan,
   // Projects, Week (Mor, 2026-10-12, layout B).
   const placeSide = () => {
-    if (phone.matches) { $(".nowrow").append($("#side")); $("#dockStack").append($("#planChip"), $("#weekChip"), $("#projectsChip")); $("#tell").prepend($(".plus-wrap")); }
+    if (phone.matches) { $(".nowrow").append($("#side")); $("#dockStack").append($("#planChip"), $("#projectsChip"), $("#weekChip")); $("#tell").prepend($(".plus-wrap")); }
     else { $(".brandrow").after($("#side")); $("#side").append($("#todayChip"), $("#planChip"), $("#projectsChip"), $("#weekChip")); $("#tell").prepend($(".plus-wrap")); }
+    // Phone: Week's key is Stats, done today + routines (Mor, 2026-10-15); PC: the week grid.
+    $("#weekChip .hchip-word").textContent = phone.matches ? "Stats" : "Week";
+    $("#weekChip").ariaLabel = phone.matches ? "Stats" : "Week";
     placeFocus();
     paintChip();
   };
@@ -404,8 +397,8 @@ async function boot(){
     } else initial();
     show("signedin"); // no element of its own: just clears loading/sign-in views
 
-    Promise.all([import("./now.js"), import("./projects.js"), import("./addtask.js"), import("./needs.js"), import("./import-trello.js"), import("./addevent.js"), import("./store.js"), import("./deadlines.js"), import("./day.js"), import("./calendar.js"), import("./schedule.js"), import("./push.js"), import("./sample.js")])
-      .then(([{ mountNow }, { mountProjects }, { mountAddTask }, { mountNeeds }, { mountImport, connectTrello, finishTrelloConnect, trelloConnected }, { mountAddEvent }, { migrateTasks, watchSettings, saveSettings, watchTasks, watchRun, watchDayPlan, resetAll, guestFresh, seedGuest, seedAccountOnce }, { mountDeadlines }, { dayHours, minText, mealPrefs, usualHours }, { watchCalendar, connectCalendar, setCalendarHint, listCalendars, saveCalendars }, { mountSchedule }, push, { sampleDay }]) => {
+    Promise.all([import("./now.js"), import("./projects.js"), import("./addtask.js"), import("./needs.js"), import("./import-trello.js"), import("./addevent.js"), import("./store.js"), import("./deadlines.js"), import("./day.js"), import("./calendar.js"), import("./schedule.js"), import("./push.js"), import("./sample.js"), import("./ribbon.js")])
+      .then(([{ mountNow }, { mountProjects }, { mountAddTask }, { mountNeeds }, { mountImport, connectTrello, finishTrelloConnect, trelloConnected }, { mountAddEvent }, { migrateTasks, watchSettings, saveSettings, watchTasks, watchRun, watchDayPlan, resetAll, guestFresh, seedGuest, seedAccountOnce }, { mountDeadlines }, { dayHours, minText, mealPrefs, usualHours }, { watchCalendar, connectCalendar, setCalendarHint, listCalendars, saveCalendars }, { mountSchedule }, push, { sampleDay }, { mountRibbon }]) => {
         if ((!isGuest && fb.currentUid() !== user.uid) || mounted) return;
         const m = mounted = {};
         // A new guest opens to a sample day, not an empty card (sample.js).
@@ -884,7 +877,10 @@ async function boot(){
             if (q.has("open") || q.has("start") || !$("#needsview").hidden || !$("#projectview").hidden) return;
             m.needs.open();
           } });
-        m.schedule = mountSchedule($("#schedPage"), user.uid, { onEvent: (ev) => m.event.view(ev), onNew: (date, at) => m.event.open(date, at), onOpen: (task) => m.adder.edit(task), onMissed: (id, start) => m.now?.missed(id, start), onNow: flashNow, onPlan: () => m.now?.plan() });
+        // The day ribbon under the clock (phone home; app.css shows it): the
+        // schedule works out today's shape and hands it over.
+        m.ribbon = mountRibbon($("#ribbon"), { onPlan: () => morph(() => m.now?.plan()) });
+        m.schedule = mountSchedule($("#schedPage"), user.uid, { onEvent: (ev) => m.event.view(ev), onNew: (date, at) => m.event.open(date, at), onOpen: (task) => m.adder.edit(task), onMissed: (id, start) => m.now?.missed(id, start), onNow: flashNow, onPlan: () => m.now?.plan(), onShape: (d) => m.ribbon.set(d) });
         m.projects = mountProjects({ grid: $("#projPage"), page: $("#projPage"), glance: $("#glance"), view: $("#projectview"), dialog: $("#projdlg") }, user.uid, {
           onOpen: (task) => m.adder.edit(task),
           onAdd: (project) => m.adder.open(project),
@@ -892,9 +888,11 @@ async function boot(){
           onScreen: () => syncPanel(),
         });
         syncPanel();
-        $("#planChip").onclick = () => { seenHint(); if (phone.matches && (planNow || document.body.classList.contains("day-open"))) window.__toggleDay(); else morph(() => m.now?.plan()); };
+        // Phone: Today opens the day with or without a plan (Mor, 2026-10-15);
+        // a morning draft waiting opens straight into it.
+        $("#planChip").onclick = () => { seenHint(); if (phone.matches && (planNow || !planReady || document.body.classList.contains("day-open"))) window.__toggleDay(); else morph(() => m.now?.plan()); };
         m.now = mountNow($("#nowcard"), user.uid, {
-          name: isGuest ? "" : (user.displayName || "").trim().split(/\s+/)[0], onDone: paintDone, onNeedsCount: paintNeeds, onPlanProgress: paintPlan, onPlanNext: paintNext,
+          name: isGuest ? "" : (user.displayName || "").trim().split(/\s+/)[0], onDone: paintDone, onNeedsCount: paintNeeds, onPlanProgress: paintPlan,
           onPlanReady: paintReady, onPlanApproved: cheerPlan,
           onFocusMode: (on) => {
             const b = focusBtn, was = b.getAttribute("aria-pressed") === "true";

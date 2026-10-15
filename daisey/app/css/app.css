@@ -1458,7 +1458,7 @@ dialog.tsheet .msg:empty { display: none; }
 /* Plan's icon: calendar + until a plan is approved, calendar ✓ after; the
    waiting draft's dot sits on its corner like a badge (Mor, 2026-10-12). */
 .plan-ic { position: relative; display: inline-flex; }
-#planChip .ic-ok, #planChip:not(.empty) .ic-add { display: none; }
+#planChip .ic-ok, #planChip:not(.empty) .ic-add, #planChip .ic-cal { display: none; }
 #planChip:not(.empty) .ic-ok { display: block; }
 /* Plan approved (Mor, 2026-10-12): the chip pops, a ring goes out from it
    once and the ✓ draws itself in (main.js cheerPlan). */
@@ -1493,38 +1493,25 @@ body.focus #side { display: none; }
      open, Next steps out. Focus is a button on the card itself (main.js
      placeFocus); #side is empty here. */
   .nowrow > #side, #board > #side { display: none; }
-  .dock:has(.dock-stack:not(:empty)) { padding-block-start: 8px; }
-  .dock-stack { display: flex; align-items: center; gap: 8px; margin-block-end: 10px; }
+  /* The dock (Mor, 2026-10-15, canvas "Daisey phone home polish"): Tell
+     Daisey on top, then one bar of three labelled keys under it, 8px apart:
+     Today (the plan chip; opens the day, plan or not), Projects, Stats
+     (Week's pop-over). The pressed key takes the Today tint. */
+  .dock { display: flex; flex-direction: column; gap: 8px; }
+  .dock > .tellbar { order: 1; }
+  .dock-stack { order: 2; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); block-size: 64px; padding: 4px 8px; box-sizing: border-box; border: 1px solid var(--line); border-radius: 28px; background: var(--card); box-shadow: 0 10px 26px -14px rgb(31 29 26 / .3); }
   .dock-stack:empty { display: none; }
-  .dock-stack :is(#weekChip, #projectsChip) { flex: none; inline-size: 46px; block-size: 46px; margin: 0; padding: 0; justify-content: center; border-radius: 50%; border: 1px solid var(--line); background: var(--card); color: var(--ink); }
-  .dock-stack #weekChip { margin-inline-start: auto; }
-  .dock-stack :is(#weekChip, #projectsChip)[hidden] { display: none; }
-  .dock-stack :is(#weekChip, #projectsChip) svg { inline-size: 20px; block-size: 20px; }
-  .dock-stack :is(#weekChip, #projectsChip) .hchip-word { position: absolute; inline-size: 1px; block-size: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
-  .dock-stack :is(#weekChip, #projectsChip)::after { inset: 0; }
-  .dock-stack :is(#weekChip, #projectsChip)[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); color: var(--card); }
-  /* Next: a small card filling the row's start. */
-  .dock-stack #planChip:not([hidden]) { flex: 1 1 auto; min-inline-size: 0; block-size: auto; min-block-size: 56px; margin: 0; padding: 7px 12px; display: grid; grid-template-columns: 16px auto minmax(0, 1fr); grid-template-rows: auto auto; align-items: center; align-content: center; column-gap: 8px; row-gap: 2px; border-radius: 18px; border: 1px solid var(--line); background: var(--card); color: var(--ink-2); font-size: 13px; font-weight: 600; line-height: 1.2; text-align: start; white-space: normal; box-shadow: none; }
-  .dock-stack #planChip::after { inset: 0; }
-  .dock-stack #planChip .plan-ic svg { display: none; }
-  .dock-stack #planChip .tile-chev { display: block; grid-column: 1; grid-row: 1 / 3; inline-size: 16px; block-size: 16px; }
-  .dock-stack #planChip #planW { display: block; grid-column: 2 / 4; grid-row: 1 / 3; }
-  .dock-stack #planChip .tile-next:not([hidden]) { display: contents; }
-  .dock-stack #planChip:has(.tile-next:not([hidden])) #planW { grid-row: 1; grid-column: 2; font-size: 11px; font-weight: 500; }
-  .tile-next .tn-at { grid-column: 3; grid-row: 1; font-size: 11px; font-weight: 500; font-variant-numeric: tabular-nums; }
-  .tile-next .tn-more { display: none; }
-  .tile-next .tn-row { grid-column: 2 / 4; grid-row: 2; display: flex; align-items: baseline; gap: 6px; min-inline-size: 0; color: var(--ink); font-size: 14px; }
-  .tile-next .tn-dot { inline-size: 8px; block-size: 8px; border-radius: 50%; flex: none; background: var(--aink, currentColor); }
-  .tile-next .tn-name { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
-  .dock-stack #planChip.ready { border-color: var(--a-admin-line); background: var(--a-admin-tint); color: var(--a-admin-ink); }
-  .dock-stack #planChip.ready .hchip-dot { display: none; }
-  @media (prefers-reduced-motion: no-preference) { .dock-stack #planChip .tile-chev { transition: transform .25s ease; } }
-  /* The day open: a dark "Today" pill that shuts it, the buttons stay put. */
-  body.day-open .dock-stack #planChip:not([hidden]) { flex: none; min-block-size: 46px; padding: 0 16px 0 12px; border-radius: 23px; border-color: var(--ink); background: var(--ink); color: var(--card); font-size: 14px; }
-  body.day-open .dock-stack #planChip .tile-next { display: none; }
-  body.day-open .dock-stack #planChip .tile-chev { transform: rotate(180deg); }
-  /* Projects open: no Next, no card; the page gets the room. */
-  body:has(#panel > :is(#projPage, #projectview):not([hidden]):not(.pg-ghost)) .dock-stack #planChip { display: none; }
+  .dock-stack > .hchip:not([hidden]) { inline-size: auto; block-size: auto; min-inline-size: 0; margin: 0; padding: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; border: 0; border-radius: 22px; background: none; box-shadow: none; color: var(--ink-2); font-size: 12px; font-weight: 500; white-space: nowrap; }
+  .dock-stack > .hchip::after { inset: 0; }
+  .dock-stack > .hchip svg { inline-size: 22px; block-size: 22px; }
+  #dockStack > .hchip .hchip-word { display: block; }
+  .dock-stack > .hchip[aria-pressed="true"] { background: var(--a-admin-tint); color: var(--a-admin-ink); font-weight: 600; }
+  .dock-stack #planChip { order: 1; } .dock-stack #projectsChip { order: 2; } .dock-stack #weekChip { order: 3; }
+  .dock-stack #planChip .ic-cal { display: block; } .dock-stack #planChip :is(.ic-add, .ic-ok) { display: none; }
+  .dock-stack #planChip .tile-next, .dock-stack #planChip .tile-chev { display: none; }
+  /* A morning draft waiting: Today in blue, a dot on the calendar's corner. */
+  .dock-stack #planChip.ready { color: var(--a-admin-ink); animation: none; }
+  .dock-stack #planChip.ready .hchip-dot { display: block; position: absolute; inset-block-start: -3px; inset-inline-end: -5px; outline: 2px solid var(--card); }
   #board:has(#panel > :is(#projPage, #projectview):not([hidden]):not(.pg-ghost)) > .nowrow { display: none; }
   /* Week: done today + routines float over the row (main.js sets --pop-b). */
   #glance.pop { position: fixed; z-index: 30; inset-inline-end: calc(max(0px, (100vw - 430px) / 2) + 16px); /* the column's edge on a wide screen */ inset-block-end: var(--pop-b, 140px); inline-size: min(320px, calc(100vw - 32px)); max-block-size: 60vh; overflow-y: auto; margin: 0; padding: 14px; box-sizing: border-box; border: 1px solid var(--line); border-radius: 22px; background: var(--card); box-shadow: 0 16px 40px rgb(0 0 0 / .16); }
@@ -1542,7 +1529,7 @@ body.focus #side { display: none; }
   .now-card.main #focusChip .hchip-word { position: absolute; inline-size: 1px; block-size: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
   .now-card.main #focusChip svg { inline-size: 18px; block-size: 18px; }
   .now-card.main #focusChip[aria-pressed="true"] { background: var(--p-teal-ink); color: var(--card); }
-  body.has-plan.day-open .sc-planbtn { display: inline-flex; inline-size: auto; padding-inline: 10px; }
+  body.day-open .sc-planbtn { display: inline-flex; inline-size: auto; padding-inline: 10px; }
   .sc-bar .sc-planbtn span { display: inline; }
   #panel { margin-block-end: 0; }
 }
@@ -1618,6 +1605,10 @@ body.focus #side { display: none; }
   box-shadow: 0 1px 0 var(--aline), 0 2px 6px -2px color-mix(in srgb, var(--aink) 18%, transparent);
 }
 .now-row .iconbtn svg { inline-size: 16px; block-size: 16px; stroke-width: 2; }
+/* Switch and Not now are icons only (Mor, 2026-10-15); the word stays for
+   screen readers and the tooltip, and the icon grows into its room. */
+.now-row .iconbtn .iconbtn-text { position: absolute; inline-size: 1px; block-size: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.now-row .iconbtn svg { inline-size: 20px; block-size: 20px; }
 @media (max-width: 389px) { .now-card.main { padding-inline: 12px; } .now-row { gap: 4px; } .now-row .iconbtn { min-inline-size: 36px; font-size: 10px; } .now-row .btn.start svg { display: none; } }
 .now-row .iconbtn:hover:not(:disabled), .now-row .iconbtn[aria-expanded="true"] { background: var(--aline); color: var(--ink); border-color: transparent; box-shadow: none; }
 /* A pressed key sinks while held, then springs back with its icon hopping
@@ -2548,3 +2539,42 @@ body.fm-slide .deck > .now-card.main { animation: none !important; } /* main.js:
 }
 :where(.pc-greet, .set-nav, .acct-name) { display: none; } /* PC only: no weight, so the block above wins from 1024px */
 @keyframes ts-drawer { from { opacity: 0; transform: translateX(32px); } }
+
+/* ===== The day ribbon (ribbon.js; Mor, 2026-10-15, canvas "Daisey phone
+   home polish"): phone home only, under the clock. A hairline that fades at
+   both ends, the part already lived in a warm tan; beads (done) raised with
+   a rim of the page and a shadow in their own colour, rings (still planned)
+   hollow, now a yellow dot with a soft halo. ===== */
+.ribbon { display: none; }
+@media (max-width: 1023px) { /* PHONE LAYOUT, every screen up to 1023px (main.js phone) */
+  .ribbon:not([hidden]) { display: block; margin: 2px 10px 6px; }
+  body:is(.card-mini, .focus-mode) .ribbon, :root.night .ribbon { display: none; }
+  .rb-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 11.5px; color: var(--ink-2); letter-spacing: .01em; }
+  .rb-counts { display: inline-flex; align-items: center; gap: 12px; min-block-size: 14px; }
+  .rb-done, .rb-left { display: inline-flex; align-items: center; gap: 4px; }
+  .rb-done svg { inline-size: 13px; block-size: 13px; stroke: var(--a-home-ink); stroke-width: 3; }
+  .rb-ring { inline-size: 8px; block-size: 8px; box-sizing: border-box; border-radius: 50%; border: 1.5px solid color-mix(in srgb, var(--ink-2) 70%, var(--bg)); }
+  .rb-line { position: relative; block-size: 22px; margin-block-start: 8px; }
+  .rb-track, .rb-past { position: absolute; inset-block-start: 10px; block-size: 3px; border-radius: 2px; }
+  .rb-track { inset-inline: -6px; background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--line) 85%, var(--ink-2)) 12% 88%, transparent); box-shadow: 0 1px 0 color-mix(in srgb, #fff 80%, transparent); }
+  .rb-past { inset-inline-start: 0; background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--accent) 22%, var(--ink-2)) 14%); opacity: .55; }
+  .rb-ev { position: absolute; inset-block-start: 6px; block-size: 10px; box-sizing: border-box; border-radius: 5px; border: 1.5px solid color-mix(in srgb, var(--ink-2) 30%, var(--line)); background: var(--chip); }
+  .rb-bead, .rb-hole { position: absolute; inset-block-start: 6px; inline-size: 10px; block-size: 10px; margin-inline-start: -5px; padding: 0; box-sizing: border-box; border-radius: 50%; cursor: pointer; transition: transform .15s ease, box-shadow .15s ease; }
+  .rb-bead::after, .rb-hole::after { content: ""; position: absolute; inset: -12px -6px; } /* a finger's worth */
+  .rb-bead { border: 1.5px solid var(--bg); background: var(--aink, var(--ink-2)); box-shadow: 0 0 0 1px color-mix(in srgb, var(--aink, var(--ink-2)) 25%, transparent), 0 2px 4px -1px color-mix(in srgb, var(--aink, var(--ink-2)) 45%, transparent); }
+  .rb-hole { inset-block-start: 7px; inline-size: 8px; block-size: 8px; margin-inline-start: -4px; border: 1.5px solid color-mix(in srgb, var(--ink-2) 55%, var(--bg)); background: var(--bg); }
+  .rb-bead.on, .rb-hole.on { transform: scale(1.35); box-shadow: 0 0 0 4px color-mix(in srgb, var(--aink, var(--ink-2)) 18%, transparent); z-index: 2; }
+  .rb-now { position: absolute; inset-block-start: 3px; inline-size: 16px; block-size: 16px; margin-inline-start: -8px; box-sizing: border-box; border-radius: 50%; border: 2px solid var(--bg); background: var(--accent); box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 16%, transparent), 0 3px 8px -1px color-mix(in srgb, var(--accent-deep) 60%, transparent); pointer-events: none; }
+  .rb-pop { position: absolute; z-index: 5; inset-block-start: 30px; inline-size: max-content; max-inline-size: 240px; padding: 11px 14px; box-sizing: border-box; border: 1px solid var(--line); border-radius: 16px; background: var(--card); box-shadow: 0 14px 30px -10px rgb(0 0 0 / .3); }
+  .rb-arrow { position: absolute; inset-block-start: -7px; inset-inline-start: calc(var(--arrow, 50%) - 6px); inline-size: 12px; block-size: 12px; background: var(--card); border-inline-start: 1px solid var(--line); border-block-start: 1px solid var(--line); transform: rotate(45deg); }
+  .rb-pop p { margin: 0; }
+  .rb-proj { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; color: var(--aink, var(--ink-2)); }
+  .rb-pdot { inline-size: 7px; block-size: 7px; border-radius: 50%; background: currentColor; flex: none; }
+  .rb-title { margin-block-start: 3px !important; font-size: 15px; font-weight: 700; color: var(--ink); overflow-wrap: anywhere; }
+  .rb-when { margin-block-start: 3px !important; display: flex; align-items: center; gap: 5px; font-size: 12.5px; color: var(--ink-2); }
+  .rb-when svg { inline-size: 12px; block-size: 12px; stroke: var(--a-home-ink); stroke-width: 3; }
+  .rb-act { display: flex; justify-content: flex-end; margin-block-start: 4px; }
+  .rb-plan { display: inline-flex; align-items: center; gap: 5px; block-size: 32px; padding: 0 12px; margin-inline-end: -6px; border: 1px solid var(--a-admin-line); border-radius: 18px; background: var(--a-admin-tint); color: var(--a-admin-ink); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
+  .rb-plan svg { inline-size: 14px; block-size: 14px; }
+  @media (prefers-reduced-motion: no-preference) { .rb-pop { animation: ready-in .18s ease-out; } }
+}

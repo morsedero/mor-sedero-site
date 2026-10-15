@@ -116,7 +116,7 @@ function lanes(items){
 
 // el: the page. onEvent(ev): an event's details. onNew(date, at): a new
 // event on "YYYY-MM-DD", at "HH:MM" when a gap was tapped.
-export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onMissed, onProjects, onWeek, onDay, onNow, onPlan, mode = "home" } = {}){
+export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onMissed, onProjects, onWeek, onDay, onNow, onPlan, onShape, mode = "home" } = {}){
   let cal = { status: "loading", events: [] };
   let settings = {};
   let tasks = null, run = null; // for Plan my day
@@ -216,6 +216,7 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onMissed, onPro
     // calendar's, with its own hours, and what's left of tonight sits on top
     // of it (day(); Mor, 2026-10-11).
     const now = Date.now(), real = dayHours(settings);
+    if (mode === "home") onShape?.(shape(now));
     const hrs = real.late ? usualHours(settings) : real;
     const today = dayStart(now);
     const at = focus ? ymdToDate(focus) : today;
@@ -277,10 +278,11 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onMissed, onPro
           if (isNow) { scrollToNow(true); onNow?.(); } else flip(future ? 1 : -1, back); } },
         h("span", { className: "sc-pulse", ariaHidden: "true" }), "Now"),
       mode === "home" && onWeek && weekBtn,
-      // Change plan: the phone's way back into an approved plan, now the
-      // Today tile opens this page instead (Mor, 2026-10-12; CSS shows it
-      // only there, body.has-plan).
-      mode === "home" && onPlan && h("button", { type: "button", className: "sc-weekbtn sc-planbtn", onclick: () => onPlan() }, icon("calendar"), h("span", { textContent: "Change plan" })));
+      // The plan's way in, on a phone, from the day (CSS shows it only there):
+      // Change plan once one is approved (Mor, 2026-10-12); before that the
+      // Today key opens this page too, so it offers Plan my day, or Plan the
+      // rest once something's done today (Mor, 2026-10-15).
+      mode === "home" && onPlan && h("button", { type: "button", className: "sc-weekbtn sc-planbtn", onclick: () => onPlan() }, icon("calendar"), h("span", { textContent: planWord(now) })));
     const head = h("div", { className: "sc-head" + (view === "week" ? " wk" : "") }, bar);
 
     let body;
@@ -303,6 +305,30 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onMissed, onPro
   // A task's project colour (its area's, failing that) for the event made for
   // it; events with no task keep their calendar colour.
   const tone = (ev) => { const t = ev.taskId && tasks?.find((x) => x.id === ev.taskId); return t ? areaClass(t) : ""; };
+
+  // Today's shape for the home's day ribbon (main.js paintRibbon; Mor,
+  // 2026-10-15): the day's hours, what's done (when, what), what the plan
+  // still holds, and the calendar's timed events. Today only, whatever day
+  // this page shows; null past midnight in a day that's still on.
+  function shape(now){
+    const hrs = dayHours(settings);
+    if (hrs.late || !tasks) return null;
+    const today = dayStart(now), start = atMin(today, hrs.start), end = today.getTime() + hrs.end * 60000;
+    const events = cal.status === "ok" ? (cal.events || []).filter((e) => !e.allDay && !e.taskId && Date.parse(e.end) > start && Date.parse(e.start) < end)
+      .map((e) => ({ start: Math.max(start, Date.parse(e.start)), end: Math.min(end, Date.parse(e.end)), title: e.title || "Busy" })) : [];
+    const day = planDate(now, hrs), planned = dayPlan?.status === "approved" && dayPlan.date === day;
+    const done = tasks.filter((t) => t.status === "done" && t.doneAt && planDate(t.doneAt, hrs) === day).sort((a, b) => a.doneAt - b.doneAt)
+      .map((t) => ({ id: t.id, at: t.doneAt, task: t }));
+    const left = planned ? planRows(cal.status === "ok" ? cal.events || [] : [], now).filter((r) => r.kind === "plan" && r.end > now && r.task.status !== "done")
+      .map((r) => ({ id: r.task.id, at: r.start, end: r.end, task: r.task })) : [];
+    return { start, end, now, done, left, events, planned, word: planWord(now) };
+  }
+
+  function planWord(now){
+    const hrs = dayHours(settings), day = planDate(now, hrs);
+    if (dayPlan?.status === "approved" && dayPlan.date === day) return "Change plan";
+    return tasks?.some((t) => t.status === "done" && t.doneAt && planDate(t.doneAt, hrs) === day) ? "Plan the rest" : "Plan my day";
+  }
 
   // Today's approved plan on the clock (derived, never written to the calendar).
   function planRows(events, now){
