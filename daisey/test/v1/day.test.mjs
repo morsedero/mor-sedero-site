@@ -90,9 +90,11 @@ test("calendar task: what reads like a task, and the deadline forms", () => {
 test("calendar task: offered once, never for Daisey's own events or existing tasks", () => {
   const e1 = { id: "e1", title: "לבטל עד ה20 בחודש את הלינקדאין פרמיום", start: iso(NOW) };
   const e2 = { id: "e2", title: "Call mom", start: iso(NOW), taskId: "x" };
-  const e3 = { id: "e3", title: "Pay rent", start: iso(NOW) };
+  const e3 = { id: "e3", title: "Pay rent", start: iso(NOW), allDay: true };
   assert.equal(C.nextOffer([e1, e2, e3], [], []).id, "e1");
   assert.equal(C.nextOffer([e1, e2, e3], [], ["e1"]).id, "e3");
+  // A timed to-do verb is a set time, not a task: no deadline phrase, no offer.
+  assert.equal(C.nextOffer([{ id: "e4", title: "לאסוף את אסתר מהעבודה", start: iso(NOW) }, { id: "e5", title: "Pay rent", start: iso(NOW) }], [], []), null);
   assert.equal(C.nextOffer([e1, e3], [task({ title: "לבטל את הלינקדאין פרמיום" }), task({ title: "pay rent" })], []), null);
 });
 

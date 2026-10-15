@@ -73,10 +73,13 @@ export function draftFrom(ev, history = []){
 
 // The first event worth offering: reads like a task, wasn't made by Daisey,
 // isn't already a task by title, and hasn't been offered before (`offered`:
-// event ids already asked about, either way).
+// event ids already asked about, either way). A timed event is a set time
+// ("לאסוף את אסתר" at 15:00 is a pickup, not a to-do), so only an all-day one
+// is offered on its verb; a timed one only when its title names a deadline.
 export function nextOffer(events = [], tasks = [], offered = []){
   const asked = new Set(offered);
   const open = tasks.filter((t) => t.status !== "dropped");
-  return events.find((e) => e.id && !asked.has(e.id) && !e.taskId && looksLikeTask(e.title)
+  const fits = (e) => e.allDay ? looksLikeTask(e.title) : DEADLINE_RE.some((re) => re.test(String(e.title || "")));
+  return events.find((e) => e.id && !asked.has(e.id) && !e.taskId && fits(e)
     && !open.some((t) => sameTitle(t.title, e.title) || sameTitle(t.title, taskTitle(e.title)))) || null;
 }
