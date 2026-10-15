@@ -931,7 +931,7 @@ select.ts-project { padding-block: 8px; padding-inline-start: 10px; padding-inli
 /* The event form: Day on its own row, From and To side by side under it
    (Mor, 2026-10-06), so To has room for its length ("11:15 · 1h"). */
 .ev-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px 10px; }
-.ev-grid .field input[type="date"] { padding-inline: 10px; font-size: 16px; }
+.ev-grid .field input[type="date"]:not(.ts-date-in) { padding-inline: 10px; font-size: 16px; }
 .ev-grid .timepick { appearance: none; -webkit-appearance: none; min-block-size: 44px; padding: 8px 4px; text-align: center; text-align-last: center; font-size: 16px; font-weight: 600; cursor: pointer; }
 
 @media (max-width: 420px) { .ev-grid .field input[type="date"]::-webkit-calendar-picker-indicator { display: none; } } /* a tap on the field opens the picker on phones anyway */

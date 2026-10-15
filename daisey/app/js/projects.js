@@ -28,6 +28,7 @@ import { isOverdue } from "./triage.js";
 import { h, bdi, flash, icon, askProgress, sizeChip, progressBar, weekDots, dragScroll } from "./ui.js";
 import { setProjectColors, doneToday } from "./look.js";
 import { setProjectTiers } from "./context.js";
+import { dateBox } from "./datebox.js";
 import { TIERS, FOCUS_MAX } from "./weights.js";
 // How many projects Focus holds: Settings, 1–5 (Mor, 2026-10-10); FOCUS_MAX (3) until set.
 const focusCap = (s) => (Number.isInteger(s?.focusMax) && s.focusMax >= 1 && s.focusMax <= 5 ? s.focusMax : FOCUS_MAX);
@@ -296,8 +297,8 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
   // A project's start and due (Mor, 2026-10-07). Both optional; its tasks'
   // dates can't fall outside them (addtask.js reads the same ranges).
   function dateFields(range){
-    const mk = (label, v) => { const i = h("input", { className: "ts-input", type: "date", ariaLabel: label, value: v || "" });
-      return [i, h("label", { className: "np-date" }, h("span", { textContent: label }), i)]; };
+    const mk = (label, v) => { const i = h("input", { type: "date", ariaLabel: label, value: v || "" });
+      return [i, h("div", { className: "np-date" }, h("span", { textContent: label }), dateBox(i, { empty: "No date", label }))]; };
     const [start, sl] = mk("Start", range?.start), [due, dl] = mk("Due", range?.due);
     const msg = h("p", { className: "msg", role: "alert" });
     // Not a range if due is before start: say so rather than swap them silently.

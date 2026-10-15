@@ -42,6 +42,7 @@ import { localDate } from "./model.js";
 import { cityIn, isLocal } from "./trips.js";
 import { homeAt } from "./where.js";
 import { h, bdi, flash, icon } from "./ui.js";
+import { dateBox } from "./datebox.js";
 
 const DEFAULT_LENGTH = 60;
 const BYDAY = ["SU", "MO", "TU", "WE", "TH", "FR", "SA"];
@@ -73,8 +74,9 @@ const ERROR = {
 
 let n = 0;
 const field = (label, input, wide) => {
-  input.id = `ev-f${++n}`;
-  return h("div", { className: "field" + (wide ? " wide" : "") }, h("label", { htmlFor: input.id, textContent: label }), input);
+  const control = input.matches("input, select") ? input : input.querySelector("input");
+  control.id = `ev-f${++n}`;
+  return h("div", { className: "field" + (wide ? " wide" : "") }, h("label", { htmlFor: control.id, textContent: label }), input);
 };
 
 // A time as ONE picker, "09:00", "09:15" … "23:45" (Mor, 2026-10-06: an hour
@@ -189,7 +191,7 @@ export function mountAddEvent(dialog, { localOnly = false } = {}){
   const submit = h("button", { className: "btn primary", type: "submit", textContent: localOnly ? "Add event" : "Add to calendar" });
   const form = h("form", { className: "form-grid ev-grid" },
     field("Event", f.title, true),
-    field("Day", f.date, true),
+    field("Day", dateBox(f.date, { empty: "Pick a day", label: "day", clearable: false }), true),
     field("From", f.at),
     field("To", f.to),
     repeatField,
