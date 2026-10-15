@@ -213,3 +213,35 @@ test("monthly by date: once a month on its day, waits till next month's", () => 
   assert.equal(p.notBefore, "2026-11-30");
   assert.equal(p.routine.on, "2026-10-31");
 });
+
+// The nag (2026-10-15): behind pace every NAG_GAP days; Thursday on, tight, every day.
+test("nag: behind pace every other day, late every day, Later shuts it", () => {
+  const pt = (log = [], over = {}) => ({ id: "p", ...createTask({ title: "Portuguese", size: 15, routine: { per: 3, log } }, { now: at("2026-10-01") }), ...over });
+  const d = (n) => ({ day: `2026-10-0${n}` }); // 4 = Sunday
+  // Mon, Tue at 0 of 3: not behind yet.
+  assert.equal(R.nagFor([pt()], { day: "2026-10-05" }), null);
+  assert.equal(R.nagFor([pt()], { day: "2026-10-06" }), null);
+  // Wed at 0 of 3: behind, not late; every NAG_GAP days.
+  const wed = R.nagFor([pt()], { day: "2026-10-07" });
+  assert.equal(wed.late, false);
+  assert.equal(R.nagText(wed), "Portuguese, 15 min · 0 of 3 this week");
+  assert.equal(R.nagFor([pt()], { day: "2026-10-07", seen: d(6) }), null);
+  assert.ok(R.nagFor([pt()], { day: "2026-10-07", seen: d(5) }));
+  assert.ok(R.nagFor([pt()], { day: "2026-10-07", seen: d(7) })); // today's stays
+  // On pace: nothing.
+  assert.equal(R.nagFor([pt([d(5)])], { day: "2026-10-07" }), null);
+  // Thu at 1 of 3: 2 left in 3 days, late, daily.
+  const thu = R.nagFor([pt([d(5)])], { day: "2026-10-08", seen: d(7) });
+  assert.equal(thu.late, true);
+  assert.equal(R.nagText(thu), "Portuguese, 15 min · 2 to go, 3 days left");
+  assert.equal(R.nagText(R.nagFor([pt([d(5), d(7)])], { day: "2026-10-10" })), "Portuguese, 15 min · 1 to go, last day");
+  // Later shuts it for today; done today or on today's calendar, none.
+  assert.equal(R.nagFor([pt([d(5)])], { day: "2026-10-08", seen: { day: "2026-10-08", off: "2026-10-08" } }), null);
+  assert.equal(R.nagFor([pt([d(8)])], { day: "2026-10-08" }), null);
+  assert.equal(R.nagFor([pt()], { day: "2026-10-08", cal: { p: { today: true, ahead: 1 } } }), null);
+  // Met, set days, done for good: none.
+  assert.equal(R.nagFor([pt([d(4), d(5), d(6)])], { day: "2026-10-09" }), null);
+  assert.equal(R.nagFor([pt([], { routine: { per: 2, days: [1, 4], log: [] } })], { day: "2026-10-09" }), null);
+  assert.equal(R.nagFor([pt([], { status: "done" })], { day: "2026-10-09" }), null);
+  assert.equal(R.nagText({ task: { title: "Read", size: 90 }, late: false, s: { done: 0, per: 2 } }), "Read, 1.5 h · 0 of 2 this week");
+});

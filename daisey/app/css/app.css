@@ -594,6 +594,13 @@ dialog.now:focus { outline: none; }
 .learn-row { display: flex; flex-wrap: wrap; gap: 6px; }
 .learn-row .chip { min-block-size: 36px; font-size: 13px; padding-inline: 11px; }
 
+/* The routine nag (now.js routineNag): one line under the card, Now and Later
+   at its end. Late in the week its edge goes amber: what's left barely fits. */
+.routine-nag { display: flex; align-items: center; gap: 6px; margin-block-start: 6px; padding: 6px 6px 6px 12px; border: 1px solid var(--line); border-radius: 12px; }
+.routine-nag p { margin: 0; flex: 1; min-inline-size: 0; font-size: 13px; overflow-wrap: anywhere; }
+.routine-nag .chip { min-block-size: 34px; font-size: 13px; padding-inline: 11px; flex: none; }
+.routine-nag.late { border-color: var(--accent); }
+
 /* Task sheet: Daisey's guesses as one line; the chips open under it. */
 
 /* Someday comes back: the pick list. A mark on the ones with stakes. */

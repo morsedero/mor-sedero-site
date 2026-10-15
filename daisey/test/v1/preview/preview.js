@@ -218,6 +218,11 @@ const SCENARIOS = {
     { title: "Band practice", project: "Band", size: 60, routine: { per: 2, until: day(30), log: [{ day: day(-30), min: 60 }] } },
     { title: "Mix review", project: "Reprise", size: 60 },
   ] },
+  // The routine nag (routine.js nagFor): a task on the card, Portuguese behind under it.
+  nag: { tasks: [
+    { title: "Mix review for Reprise", project: "Reprise", size: 60, due: day(0), stakes: "high" },
+    { title: "Portuguese", project: "Learning", size: 15, routine: { per: 3, log: [{ day: day(-3) }] } },
+  ], settings: { deadlinesAsked: true, somedayAsked: new Date().toLocaleDateString("en-CA") } },
   // Bloom (bloom.js): projects in all three tiers, two routines, a week of work.
   bloom: { tiers: { Band: "focus", Reprise: "focus", Admin: "background" }, bloomLog: true, tasks: [
     { title: "Mix chorus", project: "Band", size: 60 },

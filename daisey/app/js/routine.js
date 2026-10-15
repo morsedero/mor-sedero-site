@@ -201,6 +201,43 @@ export function weekLine(task, day = dayOf()){
   return `${done} of ${per} this ${periodWord(task)}${done >= per ? " ✓" : ""}`;
 }
 
+// ---------- the nag ----------
+
+// One line over the card (Mor, 2026-10-15: "every time I see it I think
+// there's something more urgent, even though it's 15 minutes... just a
+// nagger"). A weekly routine behind an even pace shows up every NAG_GAP
+// days; from Thursday, once what's left barely fits the days left, it comes
+// every day and says so. Set-days routines have their own slot,
+// monthly ones their own day: not nagged.
+// `seen`: settings.routineNag, { day, off }: the day it last showed, the day
+// Later shut it. Returns { task, late, s } (s = weekState) or null.
+export const NAG_GAP = 2;
+export function nagFor(tasks, { day = dayOf(), cal = {}, seen = null } = {}){
+  if (seen?.off === day) return null;
+  const gap = seen?.day ? Math.round((noon(day) - noon(seen.day)) / 86400000) : Infinity;
+  const all = (tasks || []).map((task) => {
+    const r = cleanRoutine(task.routine);
+    if (task.status !== "ready" || !r || r.days || monthly(r) || cal[task.id]?.today || r.log.some((e) => e.day === day)) return null;
+    const s = weekState(task, day, cal[task.id]);
+    if (!s.need || !s.daysLeft) return null;
+    const short = Math.floor(s.per * s.gone / s.len) - s.done - s.ahead;
+    const late = s.daysLeft <= 3 && s.need * 2 >= s.daysLeft; // Thursday on, and tight
+    return short > 0 || late ? { task, late, s, short } : null;
+  }).filter(Boolean);
+  const n = all.sort((a, b) => b.late - a.late || b.short - a.short || b.s.need / b.s.daysLeft - a.s.need / a.s.daysLeft)[0];
+  if (!n || !(n.late || gap === 0 || gap >= NAG_GAP)) return null;
+  return { task: n.task, late: n.late, s: n.s };
+}
+
+// "Portuguese, 15 min · 1 of 3 this week"; late: "· 2 to go, 3 days left".
+export function nagText({ task, late, s }){
+  const m = Number(task.size) || 0;
+  const len = m ? `, ${m < 60 ? `${m} min` : `${+(m / 60).toFixed(1)} h`}` : "";
+  const tail = !late ? `${s.done} of ${s.per} this week`
+    : `${s.need} to go, ${s.daysLeft === 1 ? "last day" : `${s.daysLeft} days left`}`;
+  return `${String(task.title || "").trim()}${len} · ${tail}`;
+}
+
 // ---------- a session ----------
 
 // The patch for one session done. `minutes`: the time it took, if timed.

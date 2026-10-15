@@ -30,7 +30,7 @@ import { takeQuiet } from "./push.js";
 import { findPhoneTasks, phoneOkIds, searching } from "./phone.js";
 import { rank, freeWindow, timeBucket, matchProject, dueAt, keepsCard, passedOver } from "./engine.js";
 import { leftMinutes, toMinutes, progressOf, leftPatch, localDate, logicalDate, skipSnapshot, skipLesson, pendingCheck, notYet, pushedTo, bringBack, dayAfter, doneSnapshot, isGuess, estText, needsLaptop } from "./model.js";
-import { isRoutine, routineCalendar, eventsToLog, sessionPatch } from "./routine.js";
+import { isRoutine, routineCalendar, eventsToLog, sessionPatch, nagFor, nagText } from "./routine.js";
 import { waitingFor, personOf } from "./nudge.js";
 import { dayHours, isNight, nextMorning, dayEndAt, bookings, sameTitle, minText, gapsToday, planDate, usualHours, dayWord, answerDate } from "./day.js";
 import { collectNeeds, wrapList } from "./needs.js";
@@ -1084,6 +1084,22 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
         h("button", { className: "chip quiet", type: "button", textContent: sd.picked.length ? "Done" : "Not now", onclick: close })));
   }
 
+  // The routine nag (routine.js nagFor): one line under the card, Now puts
+  // it on the card, Later shuts it till the next one. Only one Daisey can
+  // actually switch to, and never the one already on the card.
+  function routineNag(card, r, picked){
+    if (!card || focusOn()) return null;
+    const day = logicalDate(), seen = settings.routineNag || null;
+    const n = nagFor(tasks, { day, cal: routineCal(Date.now()), seen });
+    if (!n || n.task.id === card?.task.id || !(r.ranked.some((s) => s.task.id === n.task.id) || picked(n.task.id))) return null;
+    const save = (v) => { settings = { ...settings, routineNag: v }; saveSettings(uid, { routineNag: v }).catch(fail); };
+    if (seen?.day !== day) save({ day });
+    return h("div", { className: "routine-nag" + (n.late ? " late" : ""), role: "note" },
+      h("p", {}, bdi(nagText(n))),
+      h("button", { className: "chip", type: "button", textContent: "Now", ariaLabel: `${n.task.title} now`, onclick: () => switchTo(n.task.id) }),
+      h("button", { className: "chip quiet", type: "button", textContent: "Later", onclick: () => { save({ day, off: day }); render(); } }));
+  }
+
   // Switch · Not now, then Done at the row's far end: the one loud
   // button (Mor, 2026-10-10: no Start on the card. The plan already says
   // what's on, so the loop is Done, Done, Later; Focus lives in the task
@@ -2051,7 +2067,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     let behind = null;
     // The plan slipping asks in Needs you now (planAsk), not here.
     behind = behindNow();
-    const tip = (toast && toastView()) || cutView() || addedView() || (sd.open && somedayAsk());
+    const tip = (toast && toastView()) || cutView() || addedView() || (sd.open && somedayAsk()) || routineNag(card, r, picked);
     if (!card && pn?.brk && !fw?.current) { day(...head, breakCard(pn.brk, pn.next), tip); return; }
     // In a meeting, the meeting IS what's happening now, so the card says
     // which one and how much of it is left (Mor, 2026-10-04) instead of
