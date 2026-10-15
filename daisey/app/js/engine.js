@@ -446,7 +446,10 @@ const PHRASES = {
     : d.need >= d.daysLeft && d.daysLeft <= 3
     ? [d.daysLeft === 1 ? `last day to make ${d.per} this ${d.word}` : `${d.need} more this ${d.word}, ${d.daysLeft} days left`]
     : [`keeps your ${d.per}× a ${d.word} going`],
-  target: (s, d) => [`planned for ${d.days <= 0 ? "today" : dateWords(effectiveDue(s.task), d.days)}`],
+  // "target", the date pill's own word: "planned for today" read as being
+  // in today's plan, and stayed after a plan was dropped (2026-10-15).
+  // "Planned" is the plan's word only.
+  target: (s, d) => [`target ${dateWords(effectiveDue(s.task), Math.max(0, d.days))}`],
   // Once the deadline has passed, "if late" is past tense: it's late now.
   stakes: (s, d, late = !!s.details.deadline?.passed) => isGuess(s.task, "stakes") ? null
     : d.kind === "money" ? [late ? "costing money now" : "costs money if late"]

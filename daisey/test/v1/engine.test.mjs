@@ -528,3 +528,14 @@ test("flow: workBase names the project stopped or finished in the last FLOW.gapM
   assert.equal(C.workBase([done(W.FLOW.gapMinutes + 5)], NOW).flowProject, null);
   assert.equal(C.workBase([done(10, { project: "Inbox" })], NOW).flowProject, null);
 });
+
+// A target date is the user's date, not the plan: "planned for today" read
+// as being in today's plan and outlived a dropped plan (2026-10-15).
+test("a target date says target, never planned", () => {
+  const today = new Date(NOW).toLocaleDateString("en-CA"), past = new Date(at(3)).toLocaleDateString("en-CA");
+  for (const due of [today, past]) {
+    const s = E.whyText(pick(task({ due, dateKind: "target" })).whyParts);
+    assert.match(s, /target today/);
+    assert.doesNotMatch(s, /planned/i);
+  }
+});
