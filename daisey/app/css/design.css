@@ -34,32 +34,24 @@
 .now-row.duo .iconbtn svg { inline-size: 16px; block-size: 16px; }
 .now-row.duo .iconbtn .iconbtn-text { position: static; inline-size: auto; block-size: auto; overflow: visible; clip: auto; }
 
-/* The sheet: a scrim over the app, the choices rising from the bottom. */
-.later-sheet-wrap { position: fixed; inset: 0; z-index: 60; }
-.sheet-scrim { position: absolute; inset: 0; background: rgb(31 29 26 / .32); }
-:root[data-theme="dark"] .sheet-scrim, :root.night .sheet-scrim { background: rgb(0 0 0 / .6); }
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .sheet-scrim { background: rgb(0 0 0 / .6); } }
-.later-sheet {
-  position: absolute; inset-inline: 0; inset-block-end: 0; max-inline-size: 560px; margin-inline: auto;
-  padding: 10px 16px max(24px, env(safe-area-inset-bottom)); border-radius: 28px 28px 0 0;
-  background: var(--bg); color: var(--ink); box-shadow: var(--shadow);
+
+/* Later's dropdown: right under the card, where Your day would be; drops
+   from the card's Later key, the card's own tint on its edge. */
+.later-drop {
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1px; overflow: hidden; margin-block-start: 8px;
+  border: 1px solid var(--line); border-radius: 16px; background: var(--line); box-shadow: 0 10px 24px -14px rgb(31 29 26 / .35);
+  transform-origin: top center;
 }
-.sheet-grab { inline-size: 40px; block-size: 5px; margin: 0 auto 14px; border-radius: 3px; background: var(--line); }
-.sheet-head { padding: 0 4px 12px; }
-.sheet-head h2 { margin: 0; font-size: 20px; font-weight: 600; letter-spacing: -0.2px; }
-.sheet-head p { margin: 2px 0 0; font-size: 13px; color: var(--ink-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: start; }
-.sheet-list { display: flex; flex-direction: column; overflow: hidden; border: 1px solid var(--line); border-radius: 16px; background: var(--card); }
 .sheet-opt {
-  display: flex; align-items: center; gap: 14px; min-block-size: 52px; padding-inline: 16px; border: 0;
-  background: transparent; color: var(--ink); font: inherit; font-size: 16px; font-weight: 500; text-align: start; cursor: pointer;
+  display: flex; align-items: center; gap: 10px; min-inline-size: 0; min-block-size: 46px; padding-inline: 14px; border: 0;
+  background: var(--card); color: var(--ink); font: inherit; font-size: 15px; font-weight: 500; text-align: start; white-space: nowrap; cursor: pointer;
 }
-.sheet-opt + .sheet-opt { border-block-start: 1px solid var(--line); }
-.sheet-opt svg { inline-size: 20px; block-size: 20px; flex: none; color: var(--ink-2); }
+.sheet-opt:last-child { grid-column: 1 / -1; justify-content: center; color: var(--ink-2); }
+.sheet-opt svg { inline-size: 18px; block-size: 18px; flex: none; color: var(--ink-2); }
 .sheet-opt:hover, .sheet-opt:focus-visible { background: var(--chip); }
-.later-sheet .pend-ask { margin: 0; padding: 0 4px; }
-@media (prefers-reduced-motion: no-preference) {
-  .later-sheet { animation: sheet-up .22s ease-out; }
-  .sheet-scrim { animation: sheet-fade .22s ease-out; }
-}
-@keyframes sheet-up { from { transform: translateY(100%); } }
-@keyframes sheet-fade { from { opacity: 0; } }
+.later-drop .pend-ask { grid-column: 1 / -1; margin: 0; padding: 12px 14px; background: var(--card); }
+@media (prefers-reduced-motion: no-preference) { .later-drop { animation: drop-in .18s ease-out; } }
+@keyframes drop-in { from { opacity: 0; transform: translateY(-6px) scaleY(.96); } }
+/* Open, the card and its list start at the top of their box instead of
+   centring, so the list never pushes the card's top out of sight. */
+:root:not(.night) body:is(.focus-mode, .home-float) #nowcard:has(.later-drop) { justify-content: flex-start; padding-block-end: 12px; overflow-y: auto; }

@@ -25,11 +25,11 @@ const CHECKS = {
       const t = text("en");
       return ["Done", "Switch", "Later"].every((w) => t.includes(w)) && !/\bStart\b/.test(t) && !t.includes("Not now") && !SECONDS.test(t);
     }],
-    ["Later opens its sheet with the five choices", () => {
+    ["Later opens its dropdown with the five choices", () => {
       const t = text("en", "--click", "[aria-label^='Later:']");
       return ["Later today", "Tomorrow", "This week", "Waiting on…", "Put on hold"].every((w) => t.includes(w));
     }],
-    ["Waiting on… swaps the list for its form", () => {
+    ["Waiting on… swaps the dropdown for its form", () => {
       const t = text("en", "--click", "[aria-label^='Later:']", "--click", "[aria-label^='Pending:']");
       return t.includes("Waiting on what?") && !t.includes("Later today");
     }],

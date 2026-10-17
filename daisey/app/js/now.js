@@ -1140,27 +1140,22 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     ];
   }
 
-  // Later's bottom sheet: Later today, Tomorrow, This week, Waiting on…, Put
-  // on hold, the same choices the row under the card had. Waiting on… swaps
-  // the list for its form in the same sheet. It lives outside the card (fill
-  // adds it): the card's will-change transform would pin a fixed sheet to it.
+  // Later's dropdown (Mor, 2026-10-18: a drop-down under the card, where
+  // Your day would be, not a sheet pulled up): Later today, Tomorrow, This
+  // week, Waiting on…, Put on hold. Waiting on… swaps the list for its form in
+  // the same box. It sits after the card, not in it (fill puts it there): the
+  // card's will-change transform and clipping stay the card's own.
   let sheetFor = null;
   function laterSheet(task){
-    const close = () => { state.notNow = state.pendAsk = false; render(); };
-    const opt = (ico, text, label, onclick, cls = "") => h("button", { className: "sheet-opt" + cls, type: "button", ariaLabel: label, onclick },
+    const opt = (ico, text, label, onclick) => h("button", { className: "sheet-opt", type: "button", ariaLabel: label, onclick },
       icon(ico), h("span", { textContent: text }));
-    return h("div", { className: "later-sheet-wrap" },
-      h("div", { className: "sheet-scrim", ariaHidden: "true", onclick: close }),
-      h("div", { className: "later-sheet", role: "dialog", ariaLabel: state.pendAsk ? "Waiting on" : "Later" },
-        h("div", { className: "sheet-grab", ariaHidden: "true" }),
-        h("div", { className: "sheet-head" },
-          h("h2", { textContent: state.pendAsk ? "Waiting on…" : "Later" }),
-          h("p", { dir: "auto", textContent: task.title })),
-        state.pendAsk ? pendingAsk(task) : h("div", { className: "sheet-list", role: "group", ariaLabel: "Later: when, or why?" },
-          ...[["today", "Later today"], ["tomorrow", "Tomorrow"], ["week", "This week"]].map(([w, text]) =>
-            opt(w === "week" ? "calendar" : "later", text, `${text}: ${task.title}`, () => later(task, w))),
-          opt("pending", "Waiting on…", `Pending: ${task.title} is waiting on something`, () => { state.notNow = false; state.pendAsk = true; render(); }),
-          opt("someday", "Put on hold", `Put ${task.title} on hold: no date, in the project's On hold list`, () => later(task, "someday")))));
+    return h("div", { className: "later-drop", role: "group", ariaLabel: state.pendAsk ? "Waiting on" : "Later: when, or why?" },
+      ...(state.pendAsk ? [pendingAsk(task)] : [
+        ...[["today", "Later today"], ["tomorrow", "Tomorrow"], ["week", "This week"]].map(([w, text]) =>
+          opt(w === "week" ? "calendar" : "later", text, `${text}: ${task.title}`, () => later(task, w))),
+        opt("pending", "Waiting on…", `Pending: ${task.title} is waiting on something`, () => { state.notNow = false; state.pendAsk = true; render(); }),
+        opt("someday", "Put on hold", `Put ${task.title} on hold: no date, in the project's On hold list`, () => later(task, "someday")),
+      ]));
   }
 
   // Done is one tap (Mor, 2026-10-11: the "how much is done" hold went; the
@@ -2169,7 +2164,11 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
   const fill = (...kids) => {
     if (holdCard) return;
     kids = kids.filter(Boolean);
-    if (sheetFor && (state.notNow || state.pendAsk)) kids.push(laterSheet(sheetFor));
+    // Later's dropdown goes right under the card's deck (else at the end).
+    if (sheetFor && (state.notNow || state.pendAsk)) {
+      const at = kids.findIndex((k) => k.classList?.contains("deck"));
+      kids.splice(at < 0 ? kids.length : at + 1, 0, laterSheet(sheetFor));
+    }
     sheetFor = null;
     // One "I'm free now" at a time: the card's own wins over the top line's.
     if (kids.slice(1).some((k) => k.querySelector?.(".free-now"))) {
