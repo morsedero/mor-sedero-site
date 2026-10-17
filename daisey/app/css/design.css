@@ -55,3 +55,14 @@
 /* Open, the card and its list start at the top of their box instead of
    centring, so the list never pushes the card's top out of sight. */
 :root:not(.night) body:is(.focus-mode, .home-float) #nowcard:has(.later-drop) { justify-content: flex-start; padding-block-end: 12px; overflow-y: auto; }
+
+/* ---- The bottom: one panel (Mor, 2026-10-18, option 1) ----
+   Tell Daisey and the Today / Projects / Stats row were two pills, each with
+   its own shadow. Now one rounded panel: Tell Daisey on top, a hairline, the
+   three keys flat under it, one shadow for the whole. Phone layout only. */
+@media (max-width: 1023px) {
+  #dock { gap: 0; }
+  #dock > .tellbar { border-radius: 28px 28px 0 0; border-block-end: 0; box-shadow: none; }
+  #dock > .dock-stack { border-radius: 0 0 28px 28px; border-block-start: 1px solid var(--line); box-shadow: 0 12px 28px -14px rgb(31 29 26 / .35); }
+  #dock:has(> .dock-stack:empty) > .tellbar { border-radius: 28px; border-block-end: 1px solid var(--line); }
+}
