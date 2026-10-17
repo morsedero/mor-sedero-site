@@ -32,7 +32,7 @@ import { rank, freeWindow, timeBucket, matchProject, dueAt, keepsCard, passedOve
 import { leftMinutes, toMinutes, progressOf, leftPatch, localDate, logicalDate, skipSnapshot, skipLesson, pendingCheck, notYet, pushedTo, bringBack, dayAfter, doneSnapshot, isGuess, estText, needsLaptop } from "./model.js";
 import { isRoutine, routineCalendar, eventsToLog, sessionPatch, nagFor, nagText, nagParts } from "./routine.js";
 import { waitingFor, personOf } from "./nudge.js";
-import { dayHours, isNight, nextMorning, dayEndAt, bookings, sameTitle, minText, gapsToday, planDate, usualHours, dayWord, answerDate, nightRange } from "./day.js";
+import { dayHours, isNight, nextMorning, dayEndAt, bookings, sameTitle, minText, gapsToday, planDate, usualHours, dayWord, slotsWord, answerDate, nightRange } from "./day.js";
 import { wrapList } from "./needs.js";
 import { needsCount, nightLine } from "./needs-list.js";
 import { h, icon, bdi, pieces, sizeText, sizeChip, heroChip, progressBar, progressPct, dur, say, nightDivider, flash, weekDots, focusField, dragScroll } from "./ui.js";
@@ -1897,7 +1897,8 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     const plural = (n) => (n === 1 ? ["One doesn't", "it"] : [`${n} don't`, "them"]);
     // Past midnight on the night page the plan is the day you wake into,
     // which that page calls tomorrow (Mor, 2026-10-11), so this says so too.
-    const day = PlanWord();
+    // The label follows where the slots really fall, so it agrees with the Now card (day.js slotsWord).
+    const day = rows.length ? (slotsWord(rows[0].start) === "tomorrow" ? "Tomorrow" : "Today") : PlanWord();
     return h("section", { className: "now-card main hero proposal", ariaLabel: approved ? `${day}'s plan` : "Proposed schedule" },
       h("div", { className: "hero-top" },
         h("span", { className: "hero-area", textContent: approved ? `${day}'s plan` : `Proposed for ${day.toLowerCase()}` }),

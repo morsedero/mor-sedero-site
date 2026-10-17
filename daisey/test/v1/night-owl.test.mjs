@@ -5,8 +5,8 @@
 // in Tell Daisey alike. The day hours themselves are the user's (Settings).
 import test from "node:test";
 import assert from "node:assert/strict";
-import { dayHours, nextMorning, planDate, dayWord, answerDate, dayBoundaryOf } from "../../app/js/day.js";
-import { localDate, logicalDate, dayAfter, setDayBoundary } from "../../app/js/model.js";
+import { dayHours, nextMorning, planDate, dayWord, answerDate } from "../../app/js/day.js";
+import { localDate, logicalDate, dayAfter } from "../../app/js/model.js";
 import { eventFrom } from "../../app/js/tell-event.js";
 import { createRequire } from "node:module";
 const { upLateLine } = createRequire(import.meta.url)("../../functions/daisey-now-chat.js");
@@ -35,17 +35,16 @@ test("(a) 00:00–07:59: card, schedule, plan and buttons all call the morning s
     assert.equal(planDate(now, hrs), "2026-10-13");
     assert.equal(dayAfter(1, now), "2026-10-13");
   }
-  // Mor's own hours (09:00 to 03:59): "My day" start IS the boundary, so at
-  // 08:14 it is still last night; at 09:14 the day is over and it's a new
-  // date, so the morning is today's — every surface says so together.
+  // Mor's own hours (09:00 to 03:59): the day key still switches at the fixed
+  // 08:00, not at "My day" start. At 08:14 it is the 13th, but his day hasn't
+  // begun, so the card's morning (09:00) is today's: "First today".
   const mor = { dayStart: "09:00", dayEnd: "03:59" };
-  setDayBoundary(dayBoundaryOf(mor));
-  try {
-    assert.equal(logicalDate(at(13, 8, 14)), "2026-10-12");
-    assert.deepEqual(names(at(13, 8, 14), mor), { card: "tomorrow", schedule: "tomorrow", plan: "tomorrow", later: "tomorrow" });
-    // 09:14: the day is on. Its morning is behind, the next one is tomorrow's.
-    assert.deepEqual(names(at(13, 9, 14), mor), { card: "tomorrow", schedule: "today", plan: "today", later: "tomorrow" });
-  } finally { setDayBoundary(480); }
+  assert.equal(logicalDate(at(13, 7, 59)), "2026-10-12");
+  assert.deepEqual(names(at(13, 7, 59), mor), { card: "tomorrow", schedule: "tomorrow", plan: "tomorrow", later: "tomorrow" });
+  assert.equal(logicalDate(at(13, 8, 14)), "2026-10-13");
+  assert.deepEqual(names(at(13, 8, 14), mor), { card: "today", schedule: "today", plan: "today", later: "tomorrow" });
+  // 09:14: his day is on. Its morning is behind, the next one is tomorrow's.
+  assert.deepEqual(names(at(13, 9, 14), mor), { card: "tomorrow", schedule: "today", plan: "today", later: "tomorrow" });
 });
 
 test("(b) 'tomorrow at 8am' at 03:44 is the morning the card calls Tomorrow first", () => {

@@ -4,8 +4,7 @@
 // watchTasks, used as history for "similar past tasks" guesses.
 import * as fb from "./firebase.js";
 import { worthChecking, checkOnline } from "./research.js";
-import { dayBoundaryOf } from "./day.js";
-import { setDayBoundary, createTask, editTask, completeTask, startedTask, workedTask, keptTime, skipTask, skipReason, migrateTask, toDate, INBOX, leftMinutes } from "./model.js";
+import { createTask, editTask, completeTask, startedTask, workedTask, keptTime, skipTask, skipReason, migrateTask, toDate, INBOX, leftMinutes } from "./model.js";
 import { logDocKey } from "./bloom-data.js";
 
 const GUEST_UID = "guest-local";
@@ -526,11 +525,9 @@ export function saveProjectRanges(uid, ranges){
 const settingsDoc = (uid) => fb.doc(fb.db, "users", uid, "state", "settings");
 
 export function watchSettings(uid, cb, onError){
-  // Every delivery re-syncs the one day boundary (model.js getDayKey) from "My day" start.
-  const give = (s, meta) => { setDayBoundary(dayBoundaryOf(s)); cb(s, meta); };
-  const guestUnsub = watchGuestState(uid, "settings", (value) => give({ ...(value || {}), logDone: false }, { fromCache: true }), onError);
+  const guestUnsub = watchGuestState(uid, "settings", (value) => cb({ ...(value || {}), logDone: false }, { fromCache: true }), onError);
   if(guestUnsub) return guestUnsub;
-  return fb.onSnapshot(settingsDoc(uid), (snap) => give(snap.exists() ? snap.data() : {}, { fromCache: snap.metadata.fromCache }), onError);
+  return fb.onSnapshot(settingsDoc(uid), (snap) => cb(snap.exists() ? snap.data() : {}, { fromCache: snap.metadata.fromCache }), onError);
 }
 
 export function saveSettings(uid, fields){

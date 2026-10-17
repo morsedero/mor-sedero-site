@@ -27,6 +27,8 @@ import { durText, guessFields, validField, CHOICES, LABELS, INBOX, localDate, lo
 import { keepFile, dropFile, fileUrl } from "./files.js";
 import { h, flash, icon, bdi } from "./ui.js";
 import { projectsOf } from "./projects.js";
+import { durationFrom } from "./duration.js";
+import { doneDayLabel } from "./day.js";
 import { isRoutine, weekLine, PER_MAX, DEFAULT_AT, cleanRoutine, seriesSig, monthly, repeatFrom } from "./routine.js";
 import { syncSeries, dropSeries } from "./slots.js";
 
@@ -523,7 +525,7 @@ export function mountAddTask(dialog, uid, { onStart } = {}){
     }
     stateLine.hidden = !(t && (done || t.status === "someday"));
     stateLine.replaceChildren(...(done
-      ? [`Done ${t.doneAt ? new Date(t.doneAt).toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" }) : ""}. `,
+      ? [`Done ${doneDayLabel(t.doneAt)}. `,
         h("button", { type: "button", className: "linkish", textContent: "Reopen", onclick: () => { unlogReopened(uid, t); save({ status: "ready" }); } })]
       : ["On hold. Focus brings it back."]));
     const r = t?.research;
@@ -662,9 +664,12 @@ export function mountAddTask(dialog, uid, { onStart } = {}){
       heading.textContent = "New task";
       showProject(project !== undefined ? project : keep);
       const said = pre.routine ? null : repeatFrom(text);
-      title.value = said ? said.title : text;
+      // A duration typed in the words is the size, set not guessed, and leaves the title.
+      const spoken = Number(pre.size) > 0 ? null : durationFrom(said ? said.title : text);
+      title.value = spoken ? spoken.rest : said ? said.title : text;
       const r = cleanRoutine(pre.routine || said?.routine);
       if (Number(pre.size) > 0) { vals.size = Number(pre.size); mine.add("size"); }
+      else if (spoken) { vals.size = spoken.minutes; mine.add("size"); }
       if (pre.notBefore) start.input.value = pre.notBefore;
       if (r) {
         per = r.per; every = monthly(r) ? "month" : "week"; on = r.on || "";

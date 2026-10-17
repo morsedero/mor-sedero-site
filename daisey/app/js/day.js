@@ -64,11 +64,9 @@ export function dayHours(settings = {}, now = Date.now()){
 // ({ start: 0, late }): what Settings shows and other days use. Read at noon.
 export const usualHours = (settings = {}) => dayHours({ ...settings, dayEndToday: null }, new Date().setHours(12, 0, 0, 0));
 
-// ONE day model (Mor, 2026-10-18). "My day" start IS the sleep boundary: the
-// minute the day switches (model.js getDayKey) and when night ends. "My day"
-// end is when night starts. The Night pill is derived from both, never stored.
-// Feeds model.js setDayBoundary (store.js watchSettings).
-export const dayBoundaryOf = (settings = {}) => usualHours(settings).start;
+// ONE day model (Mor, 2026-10-18). The day key switches at a FIXED 08:00
+// (model.js getDayKey), whatever "My day" says. "My day" start/end only set
+// the planning window; the Night pill is derived from them, never stored.
 // The Night pill's range as clock text: [night starts, night ends].
 export const nightRange = (hours = W.DAY_HOURS) => [minText(hours.end), minText(hours.start)];
 // Ms until the next whole minute (+ a hair so the clock has turned): the top bar repaints then, not every second.
@@ -130,6 +128,18 @@ export function dayWord(ymd, now = Date.now()){
   const d = Math.round((Date.parse(`${ymd}T12:00`) - Date.parse(`${getDayKey(now)}T12:00`)) / 864e5);
   return d === 0 ? "today" : d === 1 ? "tomorrow" : d === -1 ? "yesterday" : null;
 }
+
+// The day a Done is filed under, as words ("Sat, Oct 17"): the day key of when
+// it was done, the same grouping "Done today" uses (look.js doneToday), so a
+// task finished at 01:11 is Saturday's, not Sunday's.
+export const doneDayLabel = (doneAt, locale) => (doneAt
+  ? new Date(`${getDayKey(doneAt)}T12:00`).toLocaleDateString(locale, { weekday: "short", day: "numeric", month: "short" }) : "");
+
+// What a plan is called by where its slots fall (Mor, 2026-10-18): the day key
+// of its first slot against the day you're in. At 01:10 a plan laid from 08:00
+// is "tomorrow", the same word the Now card's "Tomorrow first" uses; one laid
+// from now (01:30, "I'm free now") is still tonight's, "today". → "today" | "tomorrow".
+export const slotsWord = (start, now = Date.now()) => (dayWord(getDayKey(start), now) === "tomorrow" ? "tomorrow" : "today");
 
 export function isNight(now = Date.now(), hours = W.DAY_HOURS){
   const d = new Date(now), m = d.getHours() * 60 + d.getMinutes();

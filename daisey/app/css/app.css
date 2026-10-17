@@ -1917,6 +1917,8 @@ body.focus #side { display: none; }
 :root.night .night-p { font-size: 14px; line-height: 1.35; }
 :root.night .now-card.main.night { margin-block-start: 20px; }
 :root.night .night-today { margin-block-start: 20px; }
+/* A tall Done today list pushes the cards below it down, inside the page, instead of overlaying the dock (2026-10-18): the row scrolls. */
+:root.night .nowrow { overflow-y: auto; overscroll-behavior: contain; }
 /* Today's wrap at the main page's sizes (Mor, 2026-10-11): the .glance box
    (card fill, 16px corners, 14px sides), a 44px row, a 30px chip-sized button. */
 :root.night .night-today { margin-block-start: 14px; padding: 10px 14px; border-radius: 16px; background: var(--card); }

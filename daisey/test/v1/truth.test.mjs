@@ -7,8 +7,8 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { getDayKey, setDayBoundary, localDate, dayAfter, DEFAULT_DAY_BOUNDARY } from "../../app/js/model.js";
-import { dayHours, usualHours, dayBoundaryOf, nightRange, headerDay, dayWord, msToNextMinute } from "../../app/js/day.js";
+import { getDayKey, localDate, dayAfter } from "../../app/js/model.js";
+import { dayHours, usualHours, nightRange, headerDay, dayWord, msToNextMinute } from "../../app/js/day.js";
 import { needsCount, nightLine, needsPhrase } from "../../app/js/needs-list.js";
 import { daysOverdue, projectState, projectProgress, nextTaskOf, projectSummary, isStarted } from "../../app/js/project-state.js";
 import { reasonLine, reasonPieces, dayWords } from "../../app/js/reason.js";
@@ -16,9 +16,6 @@ import { bdi, say, pieces } from "../../app/js/ui.js";
 
 const APP = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "..", "app");
 const at = (d, h = 12, m = 0) => new Date(2026, 9, d, h, m).getTime(); // Oct 2026; the 18th is a Sunday
-const reset = () => setDayBoundary(DEFAULT_DAY_BOUNDARY);
-test.beforeEach(reset);
-test.afterEach(reset);
 
 // ---------- 1. Day word and boundary ----------
 
@@ -56,12 +53,26 @@ test("1 the header date never reads Tomorrow: header, Today page and Now card sh
 
 // ---------- 2. One day model ----------
 
-test("2 'My day' start IS the sleep boundary; the default is 08:00", () => {
-  assert.equal(dayBoundaryOf({}), 480);
-  assert.equal(dayBoundaryOf({ dayStart: "09:00", dayEnd: "22:30" }), 540);
-  setDayBoundary(dayBoundaryOf({ dayStart: "09:00", dayEnd: "22:30" }));
-  assert.equal(getDayKey(at(18, 8, 59)), "2026-10-17");
-  assert.equal(getDayKey(at(18, 9, 0)), "2026-10-18");
+test("2 the day key is a fixed 08:00: 'My day' start 08:00 and 09:00 give the same key", () => {
+  // hours are read for the same moment, to show the key never depends on them
+  for (const [h, m, key] of [[1, 10, "2026-10-17"], [7, 59, "2026-10-17"], [8, 0, "2026-10-18"], [8, 30, "2026-10-18"]]) {
+    for (const dayStart of ["08:00", "09:00"]) {
+      const now = at(18, h, m);
+      assert.equal(dayHours({ dayStart, dayEnd: "22:30" }, now).start, dayStart === "08:00" ? 480 : 540);
+      assert.equal(getDayKey(now), key, `${h}:${m} with My day ${dayStart}`);
+    }
+  }
+});
+
+test("2 My day = 09:00 at 08:30 is still the new day (the day key is not My day's start)", () => {
+  const now = at(18, 8, 30);
+  assert.equal(getDayKey(now), "2026-10-18");
+  assert.equal(dayWord("2026-10-18", now), "today");
+  assert.equal(dayWord("2026-10-19", now), "tomorrow");
+  // …while the planning window and the Night pill do follow My day.
+  const hrs = dayHours({ dayStart: "09:00", dayEnd: "22:30" }, now);
+  assert.equal(hrs.start, 540);
+  assert.deepEqual(nightRange(hrs), ["22:30", "09:00"]);
 });
 
 test("2 the Night pill is derived: starts at 'My day' end, ends at its start", () => {
@@ -70,17 +81,13 @@ test("2 the Night pill is derived: starts at 'My day' end, ends at its start", (
   assert.deepEqual(nightRange(dayHours({ dayStart: "07:30", dayEnd: "23:15" })), ["23:15", "07:30"]);
 });
 
-test("2 existing settings keep the user's values: no rewrite, same hours, same boundary", () => {
+test("2 existing saved settings keep the user's values: no rewrite, same hours", () => {
   const saved = { dayStart: "09:00", dayEnd: "22:30" };
   const copy = JSON.stringify(saved);
   const u = usualHours(saved);
   assert.deepEqual({ start: u.start, end: u.end }, { start: 540, end: 1350 });
-  assert.equal(dayBoundaryOf(saved), u.start);
   assert.equal(JSON.stringify(saved), copy);
-  // Nonsense falls back to the defaults, not to a broken boundary.
-  assert.equal(dayBoundaryOf({ dayStart: "nope", dayEnd: "x" }), 480);
-  setDayBoundary(-5);
-  assert.equal(getDayKey(at(18, 3)), "2026-10-17");
+  assert.equal(getDayKey(at(18, 8, 30)), "2026-10-18"); // and saving them never moved the key
 });
 
 // ---------- 3. "Needs you" count ----------

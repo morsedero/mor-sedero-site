@@ -75,7 +75,7 @@ const SIZE_HINTS = [
 
 // ---------- dates ----------
 
-export { localDate, getDayKey, setDayBoundary, lastNight, DAY_BOUNDARY, DEFAULT_DAY_BOUNDARY } from "./daybound.js";
+export { localDate, getDayKey, lastNight, DAY_BOUNDARY } from "./daybound.js";
 import { localDate, getDayKey, lastNight, back1 } from "./daybound.js";
 export const logicalDate = getDayKey;
 

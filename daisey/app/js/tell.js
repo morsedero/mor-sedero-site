@@ -15,6 +15,7 @@
 import { idToken } from "./firebase.js";
 import { watchTasks, addTask, updateTask, saveMoment, finishTask } from "./store.js";
 import { localDate, getDayKey, LABELS, dayAfter } from "./model.js";
+import { withSpoken } from "./duration.js";
 import { createEvent, watchCalendar } from "./calendar.js";
 import { planDay } from "./plan.js";
 import { planView } from "./plan-view.js";
@@ -149,7 +150,7 @@ export function mountTell(form, input, mic, uid, { openAdd, openTask, guest = fa
     // end between that and the day's start ("until 6am") can't be, so it
     // stops at the latest one and says so.
     const endOk = (m) => m < LATE_END_MAX || m > usualHours(settings).start;
-    const list = withRepeats(actions.map((a) => (a.kind === "moment" && a.dayEnd && toMin(a.dayEnd) != null && !endOk(toMin(a.dayEnd))
+    const list = withRepeats(withSpoken(actions, text).map((a) => (a.kind === "moment" && a.dayEnd && toMin(a.dayEnd) != null && !endOk(toMin(a.dayEnd))
       ? { ...a, dayEnd: minText(LATE_END_MAX - 1), latest: true } : a)), text);
     const draw = () => {
       const queries = list.filter((a) => a.kind === "query");
