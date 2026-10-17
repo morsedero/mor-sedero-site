@@ -1,0 +1,65 @@
+/* Design round 4 (approved boards, 2026-10-18). Loaded after app.css; only
+   layout and look, every token comes from app.css. One section per slice. */
+
+/* ---- Slice 1: the Now card's keys and Later's sheet ---- */
+
+/* Done is the one full-width key, the progress bar and its % just under it. */
+.done-col.solo { display: block; flex: none; order: 0; margin-block-start: 16px; }
+.done-col.solo > .btn.start, .now-card.main .done-col.solo > .btn.start {
+  inline-size: 100%; min-block-size: 58px; block-size: auto; margin: 0; padding-inline: 12px;
+  border-radius: var(--r-btn); font-size: 18px; font-weight: 600; box-shadow: 0 6px 14px rgb(245 179 1 / .3);
+}
+.done-col.solo > .btn.start svg { inline-size: 18px; block-size: 18px; }
+
+/* Switch and Later beneath it: quiet, with their words, sharing the row. */
+.now-card .now-row.duo { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 6px; margin-block-start: 8px; padding-block-start: 0; }
+.now-card .now-row.duo > .iconbtn { flex: 1 1 0; }
+/* The phone home and Focus enlarge the keys into 58px squares (app.css
+   home-float): here they stay one row of words. */
+:root:not(.night) body:is(.focus-mode, .home-float) .now-card.main .now-row.duo { gap: 6px; padding-block-start: 0; }
+:root:not(.night) body:is(.focus-mode, .home-float) .now-card.main .now-row.duo .iconbtn { inline-size: auto; min-inline-size: 0; block-size: 48px; min-block-size: 44px; border-radius: 12px; font-size: 15px; gap: 6px; }
+:root:not(.night) body:is(.focus-mode, .home-float) .now-card.main .now-row.duo .iconbtn svg { inline-size: 18px; block-size: 18px; }
+/* The wide mini card (Projects or Week open, app.css body.card-mini): still
+   a bar with Done at its end, now that Done sits outside the row. */
+@media (min-width: 1024px) {
+  :root:not(.night) body.card-mini #nowcard .now-card.main > .done-col.solo { display: block; grid-column: 3; grid-row: 1; margin: 0; }
+  :root:not(.night) body.card-mini #nowcard .now-card.main > .now-row.duo { display: none; }
+  :root:not(.night) body.card-mini #nowcard .done-col.solo > .btn.start { min-block-size: 44px; box-shadow: none; }
+}
+.done-col.solo:has(.task-bar) + .now-row.duo { margin-block-start: 14px; }
+.now-row.duo .iconbtn {
+  flex-direction: row; justify-content: center; justify-self: stretch; gap: 6px; inline-size: auto; min-inline-size: 0; block-size: 44px;
+  background: transparent; box-shadow: none; color: var(--sub, var(--ink-2)); font-size: 14px; font-weight: 500;
+}
+.now-row.duo .iconbtn svg { inline-size: 16px; block-size: 16px; }
+.now-row.duo .iconbtn .iconbtn-text { position: static; inline-size: auto; block-size: auto; overflow: visible; clip: auto; }
+
+/* The sheet: a scrim over the app, the choices rising from the bottom. */
+.later-sheet-wrap { position: fixed; inset: 0; z-index: 60; }
+.sheet-scrim { position: absolute; inset: 0; background: rgb(31 29 26 / .32); }
+:root[data-theme="dark"] .sheet-scrim, :root.night .sheet-scrim { background: rgb(0 0 0 / .6); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .sheet-scrim { background: rgb(0 0 0 / .6); } }
+.later-sheet {
+  position: absolute; inset-inline: 0; inset-block-end: 0; max-inline-size: 560px; margin-inline: auto;
+  padding: 10px 16px max(24px, env(safe-area-inset-bottom)); border-radius: 28px 28px 0 0;
+  background: var(--bg); color: var(--ink); box-shadow: var(--shadow);
+}
+.sheet-grab { inline-size: 40px; block-size: 5px; margin: 0 auto 14px; border-radius: 3px; background: var(--line); }
+.sheet-head { padding: 0 4px 12px; }
+.sheet-head h2 { margin: 0; font-size: 20px; font-weight: 600; letter-spacing: -0.2px; }
+.sheet-head p { margin: 2px 0 0; font-size: 13px; color: var(--ink-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: start; }
+.sheet-list { display: flex; flex-direction: column; overflow: hidden; border: 1px solid var(--line); border-radius: 16px; background: var(--card); }
+.sheet-opt {
+  display: flex; align-items: center; gap: 14px; min-block-size: 52px; padding-inline: 16px; border: 0;
+  background: transparent; color: var(--ink); font: inherit; font-size: 16px; font-weight: 500; text-align: start; cursor: pointer;
+}
+.sheet-opt + .sheet-opt { border-block-start: 1px solid var(--line); }
+.sheet-opt svg { inline-size: 20px; block-size: 20px; flex: none; color: var(--ink-2); }
+.sheet-opt:hover, .sheet-opt:focus-visible { background: var(--chip); }
+.later-sheet .pend-ask { margin: 0; padding: 0 4px; }
+@media (prefers-reduced-motion: no-preference) {
+  .later-sheet { animation: sheet-up .22s ease-out; }
+  .sheet-scrim { animation: sheet-fade .22s ease-out; }
+}
+@keyframes sheet-up { from { transform: translateY(100%); } }
+@keyframes sheet-fade { from { opacity: 0; } }

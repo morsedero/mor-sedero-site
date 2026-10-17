@@ -1123,29 +1123,44 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     const chip = (text, onclick) => h("button", { className: "chip", type: "button", textContent: text, onclick });
     const done = h("button", { className: "btn primary start", type: "button", ariaLabel: `Done: ${task.title}`,
       onclick: () => quickDoneNow(task) }, icon("check"), h("span", { textContent: "Done" }));
+    // Design round 4 (2026-10-18): Done is the full-width key on top, the
+    // progress bar under it; Switch and Later share the row beneath, with
+    // their words. Later's choices open in a bottom sheet (laterSheet), not a
+    // row under the card.
+    if (state.notNow || state.pendAsk) sheetFor = task;
     return [
-      h("div", { className: "now-actions now-row" },
+      h("div", { className: "done-col solo" }, done, progressBar(task), progressPct(task)),
+      h("div", { className: "now-actions now-row duo" },
         // Never a dead end while On hold holds tasks (DAISEY_SPEC "Someday comes back").
         (alts.length > 0 || someN > 0) && action("switch", "Switch", `something else instead of ${task.title}`, { ariaExpanded: String(state.showAlts), onclick: toggle("showAlts") }),
-        // Not now: Later and Pending as one key (Mor, 2026-10-12: the card
-        // was crowded on a phone); Pending is the row's first choice.
-        action("later", "Not now", `later, or ${task.title} is waiting on something`, { ariaExpanded: String(state.notNow || state.pendAsk),
-          onclick: () => { if (state.pendAsk) { state.pendAsk = false; render(); } else toggle("notNow")(); } }),
-        // The progress bar sits under Done, as wide as it (Mor, 2026-10-12).
-        h("div", { className: "done-col" }, done, progressBar(task), progressPct(task))),
-      // Not now: Waiting on…, three times, then On hold set apart under them,
-      // quieter and dashed, since it isn't a time: no date, into the
-      // project's On hold list (Mor, 2026-10-10: In 10 min went).
-      state.notNow && h("div", { className: "later-ask", role: "group", ariaLabel: "Not now: why, or when?" },
-        h("button", { className: "chip pend-opt", type: "button", ariaLabel: `Pending: ${task.title} is waiting on something`,
-          onclick: () => { state.notNow = false; state.pendAsk = true; render(); } }, icon("pending"), h("span", { textContent: "Waiting on…" })),
-        ...[["today", "Later today"], ["tomorrow", "Tomorrow"], ["week", "This week"]].map(([w, text]) =>
-          chip(text, () => later(task, w))),
-        h("button", { className: "hold-opt", type: "button", ariaLabel: `Put ${task.title} on hold: no date, in the project's On hold list`, onclick: () => later(task, "someday") },
-          icon("someday"), h("span", { textContent: "Put on hold" }), h("span", { className: "hold-opt-s", textContent: "· no date" }))),
-      state.pendAsk && pendingAsk(task),
+        // Later and Pending as one key (Mor, 2026-10-12); Waiting on… is in its sheet.
+        action("later", "Later", `later, or ${task.title} is waiting on something`, { ariaExpanded: String(state.notNow || state.pendAsk),
+          onclick: () => { if (state.pendAsk) { state.pendAsk = false; render(); } else toggle("notNow")(); } })),
       state.showAlts && switchRow(alts),
     ];
+  }
+
+  // Later's bottom sheet: Later today, Tomorrow, This week, Waiting on…, Put
+  // on hold, the same choices the row under the card had. Waiting on… swaps
+  // the list for its form in the same sheet. It lives outside the card (fill
+  // adds it): the card's will-change transform would pin a fixed sheet to it.
+  let sheetFor = null;
+  function laterSheet(task){
+    const close = () => { state.notNow = state.pendAsk = false; render(); };
+    const opt = (ico, text, label, onclick, cls = "") => h("button", { className: "sheet-opt" + cls, type: "button", ariaLabel: label, onclick },
+      icon(ico), h("span", { textContent: text }));
+    return h("div", { className: "later-sheet-wrap" },
+      h("div", { className: "sheet-scrim", ariaHidden: "true", onclick: close }),
+      h("div", { className: "later-sheet", role: "dialog", ariaLabel: state.pendAsk ? "Waiting on" : "Later" },
+        h("div", { className: "sheet-grab", ariaHidden: "true" }),
+        h("div", { className: "sheet-head" },
+          h("h2", { textContent: state.pendAsk ? "Waiting on…" : "Later" }),
+          h("p", { dir: "auto", textContent: task.title })),
+        state.pendAsk ? pendingAsk(task) : h("div", { className: "sheet-list", role: "group", ariaLabel: "Later: when, or why?" },
+          ...[["today", "Later today"], ["tomorrow", "Tomorrow"], ["week", "This week"]].map(([w, text]) =>
+            opt(w === "week" ? "calendar" : "later", text, `${text}: ${task.title}`, () => later(task, w))),
+          opt("pending", "Waiting on…", `Pending: ${task.title} is waiting on something`, () => { state.notNow = false; state.pendAsk = true; render(); }),
+          opt("someday", "Put on hold", `Put ${task.title} on hold: no date, in the project's On hold list`, () => later(task, "someday")))));
   }
 
   // Done is one tap (Mor, 2026-10-11: the "how much is done" hold went; the
@@ -2154,6 +2169,8 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
   const fill = (...kids) => {
     if (holdCard) return;
     kids = kids.filter(Boolean);
+    if (sheetFor && (state.notNow || state.pendAsk)) kids.push(laterSheet(sheetFor));
+    sheetFor = null;
     // One "I'm free now" at a time: the card's own wins over the top line's.
     if (kids.slice(1).some((k) => k.querySelector?.(".free-now"))) {
       const top = kids[0]?.querySelector?.(".freeline .free-now");
