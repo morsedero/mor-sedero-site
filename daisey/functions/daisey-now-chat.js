@@ -290,11 +290,18 @@ async function ask(key, prompt, system = SYSTEM, schema = SCHEMA){
   }
 }
 
-// Said after midnight before sleeping (tell.js upLate: the day they're still
-// in, before 04:00, app/js/model.js LATE_HOUR): "tomorrow" is the day they
-// wake into, which is already today's date.
-const upLateLine = (body) => (isDay(body.upLate) && isDay(body.today) && body.upLate < body.today
-  ? `\nIt is after midnight and the user is still up from ${body.upLate}; they haven't slept yet. "Tomorrow" (מחר) means ${body.today}, the morning they wake into, not the day after; "today", "tonight" and "this morning" also mean ${body.today}.` : "");
+// Said after midnight, before the fixed 08:00 day boundary (app/js/daybound.js
+// getDayKey, 2026-10-18): body.today is already the day they're still in, the
+// one the cards call today, and body.afterMidnight says so. "Yesterday",
+// "today" and "tomorrow" count from it, one source of truth with the app
+// (daybound.js dateForWord): at 01:51 Sunday, today is Saturday.
+const shiftDay = (ymd, n) => { const d = new Date(`${ymd}T12:00:00Z`); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
+const nightWords = (today, wake) => `\nIt is after midnight, before the 08:00 day boundary, and the user hasn't slept yet: their day is still ${today}. "Today" (היום) and "tonight" (הלילה) mean ${today}; "yesterday" (אתמול) means ${shiftDay(today, -1)}; "tomorrow" (מחר) and "this morning" mean ${wake}, the morning they wake into.`;
+const upLateLine = (body) => {
+  if (body.afterMidnight === true && isDay(body.today)) return nightWords(body.today, shiftDay(body.today, 1));
+  // An older app sends the calendar's date as today and the day they're still in as upLate.
+  return isDay(body.upLate) && isDay(body.today) && body.upLate < body.today ? nightWords(body.upLate, body.today) : "";
+};
 
 exports.handler = async (event) => {
   // GET: is it set up? Says only whether a key is present, never the key.

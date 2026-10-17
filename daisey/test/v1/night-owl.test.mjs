@@ -52,16 +52,16 @@ test("(b) 'tomorrow at 8am' at 03:44 is the morning the card calls Tomorrow firs
   const ev = eventFrom("buy milk tomorrow at 8am", now);
   assert.deepEqual({ date: ev.date, time: ev.time }, { date: morning, time: "08:00" });
   assert.equal(morning, "2026-10-13");
-  // "this morning" and "today" are that morning too; "tonight at 1am" the small hours after this evening.
+  // "this morning" is that morning too; "today" is the day key, the day you're
+  // still in (2026-10-18: the cards' today); "tonight at 1am" the small hours after this evening.
   assert.equal(eventFrom("dentist this morning at 9", now).date, "2026-10-13");
-  assert.equal(eventFrom("call mom today at 10", now).date, "2026-10-13");
+  assert.equal(eventFrom("call mom today at 10", now).date, "2026-10-12");
   assert.equal(eventFrom("mix tonight at 1am", at(12, 23)).date, "2026-10-13");
   assert.equal(eventFrom("mix tonight at 23:00", at(12, 20)).date, "2026-10-12");
   assert.equal(eventFrom("mix tonight at 23:00", now).date, "2026-10-13"); // last night's 23:00 is over
   // The helper gets told: still up from the 12th, so tomorrow means the 13th (tell.js upLate).
   assert.notEqual(logicalDate(now), localDate(now));
-  assert.match(upLateLine({ today: localDate(now), upLate: logicalDate(now) }), /"Tomorrow" \(מחר\) means 2026-10-13/);
-  assert.match(upLateLine({ today: "2026-10-13", upLate: "2026-10-12" }), /"this morning" also mean 2026-10-13/);
+  assert.match(upLateLine({ today: logicalDate(now), afterMidnight: true }), /"tomorrow" \(מחר\) and "this morning" mean 2026-10-13/);
 });
 
 test("(c) from 08:00 the day rolls over normally", () => {

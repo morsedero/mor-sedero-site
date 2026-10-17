@@ -111,11 +111,11 @@ export function mountTell(form, input, mic, uid, { openAdd, openTask, guest = fa
         method: "POST",
         headers,
         body: JSON.stringify({
-          text, today: localDate(), weekday: new Date().toLocaleDateString("en", { weekday: "long" }),
-          // Still up past midnight, before the day boundary (model.js getDayKey): the day they
-          // mean is the one they wake into, so "tomorrow" is today's date, not the
-          // day after (the chat function says so) — the morning the card calls Tomorrow first.
-          ...(getDayKey() !== localDate() ? { upLate: getDayKey() } : {}),
+          // today: the day key (daybound.js), the cards' today. Still up past
+          // midnight, before 08:00, that's yesterday's date, and the helper is told
+          // (afterMidnight): "yesterday", "today" and "tomorrow" count from it.
+          text, today: getDayKey(), weekday: new Date(`${getDayKey()}T12:00`).toLocaleDateString("en", { weekday: "long" }),
+          ...(getDayKey() !== localDate() ? { afterMidnight: true } : {}),
           ...(guest ? { guest: true } : {}),
           tasks: open.map((t) => ({ id: t.id, title: t.title, project: t.project, due: t.due || undefined, status: t.status })),
           projects: [...new Set(open.map((t) => t.project))],
@@ -202,7 +202,7 @@ export function mountTell(form, input, mic, uid, { openAdd, openTask, guest = fa
     if (q.query === "plan") {
       // Another day (2026-10-08, "מה הלו״ז שלי מחר" got today's leftovers):
       // plan from that day's start. The calendar holds the week ahead.
-      const later = q.date && q.date > localDate() && q.date <= dayAfter(7);
+      const later = q.date && q.date > getDayKey() && q.date <= dayAfter(7);
       const hours = later ? usualHours(settings) : dayHours(settings);
       const plan = planDay({ tasks, events: cal.status === "ok" ? cal.events : [], hours, settings,
         ...(later ? { now: dayStartAt(new Date(`${q.date}T12:00`).getTime(), hours), run: null } : { run }) });
@@ -215,7 +215,7 @@ export function mountTell(form, input, mic, uid, { openAdd, openTask, guest = fa
     if (q.query === "next") {
       rows = rank(tasks, { realWindow: false, ...workBase(tasks) }).ranked.slice(0, 3).map((s) => [s.task.title, s.why]);
     } else if (q.query === "due") {
-      const until = q.range === "week" ? dayAfter(6) : localDate();
+      const until = q.range === "week" ? dayAfter(6) : getDayKey();
       rows = open.filter((t) => t.due && effectiveDue(t) <= until).sort((a, b) => effectiveDue(a).localeCompare(effectiveDue(b)))
         .map((t) => [t.title, `${t.dateKind === "deadline" ? "deadline" : "planned"} ${day(effectiveDue(t))}`]);
     } else {

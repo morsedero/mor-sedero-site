@@ -35,6 +35,8 @@ import { waitingFor, personOf } from "./nudge.js";
 import { dayHours, isNight, nextMorning, dayEndAt, bookings, sameTitle, minText, gapsToday, planDate, usualHours, dayWord, slotsWord, answerDate, nightRange } from "./day.js";
 import { wrapList } from "./needs.js";
 import { needsCount, nightLine } from "./needs-list.js";
+import { SWITCH_TOO, CANT_NOW, holdPick, freshPick, offerable } from "./pick.js";
+import { asksLeft } from "./project-state.js";
 import { h, icon, bdi, pieces, sizeText, sizeChip, heroChip, progressBar, progressPct, dur, say, nightDivider, flash, weekDots, focusField, dragScroll } from "./ui.js";
 import { areaClass, areaName, projectShown, doneToday, moonDaisy, watchProjectColors } from "./look.js";
 
@@ -526,7 +528,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
       skips.add(task.id);
       reset();
       slideIn = true;
-      setToast({ task, before, label, lesson, asking: ask && !isRoutine(task) });
+      setToast({ task, before, label, lesson, asking: ask && asksLeft(task) }); // only a started task is asked how much is left
       write().catch(fail);
       render();
     };
@@ -983,7 +985,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
   // hid the one 2 h deadline task with 13 h free): what the moment filtered
   // out is still yours to pick, in Switch's row. A pick is "your pick".
   function anywayButton(r){
-    const alts = r.out.filter((o) => SWITCH_TOO.has(o.reason)).map((o) => ({ task: o.task }));
+    const alts = offerable(r); // only what a tap really puts on the card (pick.js)
     return alts.length > 0 && h("div", { className: "now-anyway" },
       h("button", { className: "btn quiet", type: "button", textContent: "Show me anyway", ariaExpanded: String(state.showAlts),
         onclick: () => { state.showAlts = !state.showAlts; render(); } }),
@@ -1014,11 +1016,8 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
   // Someday, stakes first; tap to select, then bring them back in one go.
   // "Just rest" closes it for the day, the same as the Someday ask's Not now.
   const QUIET = new Set(["waiting", "someday", "notyet", "stale"]);
-  const SWITCH_TOO = new Set(["size", "block", "place", "office", "evening", "booked"]);
-  // Out for good right now: another place, the office shut, not evening yet.
-  // A card holding a task that turns one of these lets go of it (keptCard,
-  // and a Switch pick in renderCard) rather than waiting for a refresh.
-  const CANT_NOW = new Set(["place", "office", "evening"]);
+  // SWITCH_TOO: what Switch may still offer (pick.js).
+  // CANT_NOW: out for good right now (pick.js); keptCard and a Switch pick let go of it.
   function restState(){
     const list = somedaySorted().slice(0, 3);
     const rested = settings.somedayAsked === logicalDate();
@@ -1257,7 +1256,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     // (proposal.js timeline since), so without this the moved task landed in
     // the old head's past slot, "didn't happen", while Now pointed elsewhere.
     if (task) { task.touchedAt = Date.now(); restoreTask(uid, id, { touchedAt: task.touchedAt }).catch(fail); }
-    state.chosen = id; state.showAlts = false; workingFrom = Date.now();
+    ({ chosen: state.chosen, chosenOut } = freshPick(id)); state.showAlts = false; workingFrom = Date.now();
     render();
   }
 
@@ -2067,12 +2066,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     // A pick holds until acted on, but not once it can't be done after it
     // was picked (moved, or set to another place: Mor, 2026-10-12). One
     // picked knowingly from another place stays.
-    if (state.chosen) {
-      const why = picked(state.chosen)?.reason ?? null;
-      if (chosenOut?.id !== state.chosen) chosenOut = { id: state.chosen, why };
-      else if (!CANT_NOW.has(why)) chosenOut.why = why;
-      else if (why !== chosenOut.why) state.chosen = null;
-    }
+    if (state.chosen) ({ chosen: state.chosen, chosenOut } = holdPick({ chosen: state.chosen, chosenOut }, picked(state.chosen)?.reason ?? null));
     // A pick that's in the approved plan says its row's times, as the Today
     // list does (2026-10-15: after Undo the card said "now · 20:05–21:05"
     // while the list said 20:10–21:10). One timeline, every screen.

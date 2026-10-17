@@ -10,6 +10,11 @@ import { isRoutine } from "./routine.js";
 export const isStarted = (t) => t.status === "done" || progressOf(t) > 0 || (t.starts || 0) > 0
   || (t.spentMinutes || 0) > 0 || !!t.workedAt;
 
+// "How much is left?" after Pending / Later (2026-10-18): only for a task
+// that was actually started or had time counted. An untouched one has all of
+// it left, so asking is noise: it just moves. Routines have no "left".
+export const asksLeft = (t) => !!t && t.status !== "done" && !isRoutine(t) && isStarted(t);
+
 // Mean of the tasks' own % (done = 100), 0..1, so half-finished work counts.
 // Routines have no %: they recur, so they'd hold the project at 0 forever.
 export function projectProgress(p){

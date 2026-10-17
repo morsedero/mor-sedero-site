@@ -5,12 +5,12 @@
 //
 // Understands a time ("at 13:00", "13:30", "1pm", "at 9"), a length ("for an
 // hour", "for 90 min", "for 1.5 hours", "for half an hour"; else an hour),
-// and a day ("today", "tonight", "this morning", "tomorrow", a weekday; else
+// and a day ("yesterday", "today", "tonight", "this morning", "tomorrow", a weekday; else
 // today). Day words follow the day boundary (model.js getDayKey, night owls, Mor
 // 2026-10-12): at 03:00 "tomorrow" is the morning you wake into, the one the
 // Now card calls Tomorrow first, not the day after it. The rest, tidied,
 // is the title. → { kind: "event", title, date, time, minutes } or null.
-import { localDate, dayAfter, DAY_BOUNDARY } from "./model.js";
+import { localDate, dayAfter, DAY_BOUNDARY, dateForWord } from "./model.js";
 
 const pad = (n) => String(n).padStart(2, "0");
 const DAYS = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
@@ -43,8 +43,11 @@ export function eventFrom(text = "", now = Date.now()){
 
   // Which day.
   let date = localDate(now);
-  if (cut(/\s(tomorrow|tmrw)\b/i)) date = dayAfter(1, now);
-  else if (cut(/\s(?:today|this morning)\b/i)) date = localDate(now);
+  // yesterday / today / tomorrow: counted from the day key (model.js dateForWord),
+  // the cards' own: at 01:51 Sunday "today" is Saturday, "tomorrow" Sunday.
+  const word = cut(/\s(yesterday|today|tomorrow|tmrw)\b/i);
+  if (word) date = dateForWord(word[1], now);
+  else if (cut(/\sthis morning\b/i)) date = localDate(now); // the coming (or current) morning
   else if (cut(/\stonight\b/i)) {
     // Tonight runs on past midnight until the day boundary (model.js): "tonight at 1am" is
     // the small hours after this evening; one already over is the next one.
