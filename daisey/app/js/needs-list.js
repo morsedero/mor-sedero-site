@@ -96,3 +96,23 @@ export function collectNeeds({ tasks = [], events = [], calOk = false, settings 
     .map((t) => ({ key: `sweep:${t.id}`, kind: "sweep", id: t.id })).filter((item) => !later.has(item.key));
   return away ? [...sweeps, ...out] : [...out, ...sweeps];
 }
+
+// ONE count of what needs the user (Mor, 2026-10-18): the header's "N need
+// you" and the night screen's line both come from here, so they can't
+// disagree. extras: the asks only the open page can see (where / plan / late
+// meal), each a truthy/falsy.
+export function needsCount(ctx = {}, { where = false, plan = false, meal = false } = {}){
+  return collectNeeds(ctx).length + (where ? 1 : 0) + (plan ? 1 : 0) + (meal ? 1 : 0);
+}
+// "3 things need you" / "1 thing needs you" — the same words as the header chip.
+export const needsPhrase = (n) => (n === 1 ? "1 thing needs you" : `${n} things need you`);
+// The night screen's one line under "Late." / "Early.". Only says nothing
+// needs the user when the count is 0. ask: a trip question shown right there.
+// dueTonight: how many deadlines are still open today.
+export function nightLine({ needs = 0, early = false, dueTonight = 0, ask = false, askDay = "tomorrow" } = {}){
+  if (ask) return `One question about ${askDay}.`;
+  const tail = early ? "Here's your day." : "Here's tomorrow.";
+  if (early) return needs > 0 ? `${needsPhrase(needs)}. ${tail}` : `Nothing needs you yet. ${tail}`;
+  if (dueTonight > 0) return dueTonight === 1 ? "One deadline is still open today." : `${dueTonight} deadlines are still open today.`;
+  return needs > 0 ? `${needsPhrase(needs)}. ${tail}` : `Nothing needs you tonight. ${tail}`;
+}

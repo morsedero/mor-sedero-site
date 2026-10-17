@@ -75,23 +75,9 @@ const SIZE_HINTS = [
 
 // ---------- dates ----------
 
-const pad = (n) => String(n).padStart(2, "0");
-
-export function localDate(ms = Date.now()){
-  const d = new Date(ms);
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-}
-
-// The day switches at LATE_HOUR, not midnight (night owls, Mor 2026-10-11/12):
-// before 04:00 it's still last night, yesterday's date, and the coming
-// morning is "tomorrow" — on the Now card, the Schedule, the plan and in Tell
-// Daisey alike (day.js dayWord). A day itself can run on past midnight (Tell
-// Daisey "I can work until 1am", a usual end of 02:00) up to the same hour;
-// the day hours themselves are the user's, from Settings.
-export const LATE_HOUR = 4;
-export const lastNight = (ms = Date.now()) => new Date(ms).getHours() < LATE_HOUR;
-const back1 = (ms) => { const d = new Date(ms); d.setDate(d.getDate() - 1); return d.getTime(); };
-export const logicalDate = (ms = Date.now()) => localDate(lastNight(ms) ? back1(ms) : ms);
+export { localDate, getDayKey, setDayBoundary, lastNight, DAY_BOUNDARY, DEFAULT_DAY_BOUNDARY } from "./daybound.js";
+import { localDate, getDayKey, lastNight, back1 } from "./daybound.js";
+export const logicalDate = getDayKey;
 
 // ---------- field cleaning ----------
 

@@ -21,10 +21,11 @@
 // PALETTE. Names are taken in order, so a colour doesn't move around as
 // counts change. Inbox has none.
 import { watchTasks, watchSettings, finishTask, undoDone, unlogReopened, restoreTask, removeTask, watchProjectNames, saveProjectNames, saveProjectRanges, saveProjectOrder, saveProjectTiers, renameInLog } from "./store.js";
-import { INBOX, progressOf, progressPatch, leftMinutes, pushedTo, notYet, durText, localDate, logicalDate, bringBack, cleanRange, outsideRange, doneSnapshot } from "./model.js";
+import { INBOX, progressOf, progressPatch, leftMinutes, pushedTo, notYet, durText, localDate, logicalDate, dayAfter, bringBack, cleanRange, outsideRange, doneSnapshot } from "./model.js";
 import { isRoutine } from "./routine.js";
 import { dropSeries } from "./slots.js";
 import { isOverdue } from "./triage.js";
+import { projectProgress, nextTaskOf, projectSummary } from "./project-state.js";
 import { h, bdi, flash, icon, askProgress, sizeChip, progressBar, weekDots, dragScroll } from "./ui.js";
 import { setProjectColors, doneToday } from "./look.js";
 import { setProjectTiers } from "./context.js";
@@ -117,7 +118,7 @@ const urgency = (onCard) => (a, b) => (b.id === onCard) - (a.id === onCard)
 
 // The one status line on a grid card.
 function statusLine(p){
-  const now = p.next.find((t) => !notYet(t));
+  const now = nextTaskOf(p);
   if (now) return ["Next: ", bdi(now.title)];
   const parts = [p.pending.length && `${p.pending.length} pending`, p.next.length && `${p.next.length} later`, p.someday.length && `${p.someday.length} on hold`].filter(Boolean);
   return [parts.join(" · ") || (p.all.length ? "All done" : "No tasks yet")];
@@ -128,8 +129,7 @@ function statusLine(p){
 export const minutesLeft = (p) => [...p.next, ...p.pending].reduce((n, t) => n + leftMinutes(t), 0);
 // Mean of the tasks' own % (done = 100), so half-finished work counts.
 // Routines have no %: they recur, so they'd hold the project at 0 forever.
-const progress = (p) => { const ts = p.all.filter((t) => !isRoutine(t) || t.status === "done");
-  return ts.length ? ts.reduce((n, t) => n + progressOf(t), 0) / (100 * ts.length) : 0; };
+const progress = projectProgress; // project-state.js
 const bar = (p, cls) => h("div", { className: cls, role: "img", ariaLabel: `${Math.round(progress(p) * 100)}% done` },
   h("span", { style: `inline-size:${Math.round(progress(p) * 100)}%` }));
 
@@ -436,7 +436,7 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
         flash("Done: ", t.title, { undo: () => undoDone(uid, t.id, before).catch(fail) });
       },
       onPartial: (pct, when) => {
-        const day = (n) => { const d = new Date(); d.setDate(d.getDate() + n); let x = localDate(d.getTime()); if (t.dateKind === "deadline" && t.due && t.due < x) x = t.due; return x; };
+        const day = (n) => { let x = dayAfter(n); if (t.dateKind === "deadline" && t.due && t.due < x) x = t.due; return x; };
         const patch = when === "someday" ? { status: "someday" } : when === "tomorrow" ? { notBefore: day(1) } : when === "week" ? { notBefore: day(3) } : {};
         restoreTask(uid, t.id, { ...progressPatch(pct), ...(when === "today" ? {} : pushedTo(t, patch)) }).catch(fail);
         flash(`${pct}% done: `, t.title, { undo: () => restoreTask(uid, t.id, { ...before, notBefore: t.notBefore ?? null, pushes: t.pushes ?? 0 }).catch(fail) });
@@ -578,7 +578,7 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
           h("span", { className: "pj-pct", textContent: `${Math.round(progress(p) * 100)}%` })),
         h("div", { className: "pj-prog" }, bar(p, "pbar big")),
         p.name !== INBOX && (ranges[p.name]?.start || ranges[p.name]?.due) && h("p", { className: "pj-left", textContent:
-          [ranges[p.name].start ? `Starts ${shortDay(ranges[p.name].start)}` : null, ranges[p.name].due ? `due ${shortDay(ranges[p.name].due)}` : null].filter(Boolean).join(" · ") }),
+          [ranges[p.name].start ? `Starts ${shortDay(ranges[p.name].start)}` : null, ranges[p.name].due ? `${projectSummary(p, ranges[p.name]).overdue ? "was due" : "due"} ${shortDay(ranges[p.name].due)}` : null].filter(Boolean).join(" · ") }),
         p.all.length > 0 && h("div", { className: "pj-tgs" },
           toggle("done", h("span", { className: "pj-ok", ariaHidden: "true" }, icon("check")), h("span", { className: "pj-tg-t", textContent: `${p.done.length} of ${p.all.length} done` })),
           p.someday.length > 0 && toggle("someday", h("span", { className: "pj-zz", ariaHidden: "true" }), h("span", { className: "pj-tg-t", textContent: `On hold · ${p.someday.length}` }))),

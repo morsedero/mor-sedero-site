@@ -14,11 +14,11 @@
 // down the same path as a typed one. Where there's none, it opens the keyboard.
 import { idToken } from "./firebase.js";
 import { watchTasks, addTask, updateTask, saveMoment, finishTask } from "./store.js";
-import { localDate, logicalDate, LATE_HOUR, LABELS, dayAfter } from "./model.js";
+import { localDate, getDayKey, LABELS, dayAfter } from "./model.js";
 import { createEvent, watchCalendar } from "./calendar.js";
 import { planDay } from "./plan.js";
 import { planView } from "./plan-view.js";
-import { dayHours, dayStartAt, toMin, usualHours, answerDate } from "./day.js";
+import { dayHours, dayStartAt, toMin, usualHours, answerDate, minText, LATE_END_MAX } from "./day.js";
 import { watchSettings, watchRun, saveSettings } from "./store.js";
 import { rank } from "./engine.js";
 import { workBase } from "./context.js";
@@ -111,10 +111,10 @@ export function mountTell(form, input, mic, uid, { openAdd, openTask, guest = fa
         headers,
         body: JSON.stringify({
           text, today: localDate(), weekday: new Date().toLocaleDateString("en", { weekday: "long" }),
-          // Still up past midnight, before 04:00 (model.js LATE_HOUR): the day they
+          // Still up past midnight, before the day boundary (model.js getDayKey): the day they
           // mean is the one they wake into, so "tomorrow" is today's date, not the
           // day after (the chat function says so) — the morning the card calls Tomorrow first.
-          ...(logicalDate() !== localDate() ? { upLate: logicalDate() } : {}),
+          ...(getDayKey() !== localDate() ? { upLate: getDayKey() } : {}),
           ...(guest ? { guest: true } : {}),
           tasks: open.map((t) => ({ id: t.id, title: t.title, project: t.project, due: t.due || undefined, status: t.status })),
           projects: [...new Set(open.map((t) => t.project))],
@@ -145,12 +145,12 @@ export function mountTell(form, input, mic, uid, { openAdd, openTask, guest = fa
 
   // The answer: one line, then a card per change, then Apply.
   function proposal(text, { reply, actions = [], question, choices = [] }){
-    // "Until 1am" runs past midnight (day.js dayHours), up to LATE_HOUR; an
+    // "Until 1am" runs past midnight (day.js dayHours), up to 04:00 (LATE_END_MAX); an
     // end between that and the day's start ("until 6am") can't be, so it
     // stops at the latest one and says so.
-    const endOk = (m) => m < LATE_HOUR * 60 || m > usualHours(settings).start;
+    const endOk = (m) => m < LATE_END_MAX || m > usualHours(settings).start;
     const list = withRepeats(actions.map((a) => (a.kind === "moment" && a.dayEnd && toMin(a.dayEnd) != null && !endOk(toMin(a.dayEnd))
-      ? { ...a, dayEnd: `0${LATE_HOUR - 1}:59`, latest: true } : a)), text);
+      ? { ...a, dayEnd: minText(LATE_END_MAX - 1), latest: true } : a)), text);
     const draw = () => {
       const queries = list.filter((a) => a.kind === "query");
       // Added from the full form (Edit): its card goes, the rest stay; the last one closes the panel.
@@ -188,7 +188,7 @@ export function mountTell(form, input, mic, uid, { openAdd, openTask, guest = fa
       const inTitle = repeatFrom(a.title);
       let r = a.routine || inTitle?.routine || (adds.length === 1 ? repeatFrom(text)?.routine : null);
       if (!r) return a;
-      if (r.every === "month" && !r.on) r = { ...r, on: a.notBefore || logicalDate() }; // its day is every month's
+      if (r.every === "month" && !r.on) r = { ...r, on: a.notBefore || getDayKey() }; // its day is every month's
       const { due, dateKind, ...rest } = a;
       return { ...rest, title: inTitle?.title || a.title, routine: { ...r, ...(due && !r.until ? { until: due } : {}) } };
     });

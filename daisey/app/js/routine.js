@@ -44,13 +44,15 @@ export const PER_MAX = 7;
 export const PER_MAX_MONTH = 20;
 const LOG_MAX = 60;
 
+import { getDayKey, localDate } from "./daybound.js";
 const pad = (n) => String(n).padStart(2, "0");
 const validDay = (s) => typeof s === "string" && /^\d{4}-\d{2}-\d{2}$/.test(s);
-// The day you're in: before 04:00 it's still yesterday (model.js LATE_HOUR,
+// The day you're in: before the day boundary it's still yesterday (model.js getDayKey,
 // night owls, Mor 2026-10-11), so 01:00's work counts for the night it was.
-export const dayOf = (ms = Date.now()) => { const d = new Date(ms); if (d.getHours() < 4) d.setDate(d.getDate() - 1); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; };
+export const dayOf = getDayKey;
 const noon = (day) => { const [y, m, d] = day.split("-").map(Number); return new Date(y, m - 1, d, 12); };
-export const addDays = (day, n) => { const d = noon(day); d.setDate(d.getDate() + n); return dayOf(d.getTime()); };
+// Calendar arithmetic on a day string, not "which day am I in": noon is before a late day boundary.
+export const addDays = (day, n) => { const d = noon(day); d.setDate(d.getDate() + n); return localDate(d.getTime()); };
 export const weekStart = (day) => addDays(day, -noon(day).getDay());
 const monthEnd = (day) => { const [y, m] = day.split("-").map(Number); return `${y}-${pad(m)}-${pad(new Date(y, m, 0).getDate())}`; };
 export const monthly = (r) => r?.every === "month";
@@ -212,7 +214,7 @@ export function calendarWeek(task, events = [], now = Date.now()){
   const log = task.routine?.log || [], skipped = new Set(task.routine?.skipped || []);
   for (const ev of events) {
     if (!eventIsRoutine(ev, task)) continue;
-    const start = Date.parse(ev.start), end = Date.parse(ev.end), day = dayOf(start);
+    const start = Date.parse(ev.start), end = Date.parse(ev.end), day = localDate(start); // an event is on its calendar date: a 07:00 gym is that day's
     if (!(day >= from && day <= to)) continue;
     const e = { id: ev.id, day, min: Math.round((end - start) / 60000), start, end };
     if (start > now) { out.ahead++; if (day === today) out.today = true; }

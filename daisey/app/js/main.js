@@ -11,6 +11,7 @@ const guestMode = () => { try { return localStorage.getItem(GUEST_KEY) === "1"; 
 
 import { flash, h, bdi, icon } from "./ui.js";
 import { greeting } from "./look.js";
+import { headerDay, msToNextMinute } from "./day.js";
 // PC: "Good morning, Mor" over the card (Mor, 2026-10-13, layout B); the
 // clock repaints it. app.css shows it from 1024px only.
 let greetName = null;
@@ -83,20 +84,22 @@ function paintNeeds(n){
 
 
 // Top-bar clock and date (Mor, 2026-10-08): 24h like the rest of the app,
-// repainted every second, and straight away when the tab comes back.
-// Full day name over the time, small seconds after it (Mor, 2026-10-12).
+// repainted on the minute (no seconds, 2026-10-18), and straight away when the
+// tab comes back. The day and date are the day you're in (day.js headerDay):
+// before the day boundary that's still yesterday's, as the Today page says.
 function paintClock(){
-  const d = new Date();
-  $("#hdrDay").textContent = d.toLocaleDateString("en-GB", { weekday: "long" });
-  $("#hdrDate").textContent = d.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+  const d = new Date(), day = headerDay(d.getTime());
+  $("#hdrDay").textContent = day.toLocaleDateString("en-GB", { weekday: "long" });
+  $("#hdrDate").textContent = day.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
   $("#hdrTime").textContent = d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
-  $("#hdrSec").textContent = ":" + String(d.getSeconds()).padStart(2, "0");
+  $("#hdrSec").textContent = "";
   const g = $("#pcGreet");
   g.hidden = greetName == null;
   if (greetName != null) g.textContent = greeting(greetName, d.getTime());
 }
 paintClock();
-setInterval(() => { if (!document.hidden) paintClock(); }, 1000);
+// One timeout to the next minute, then again: nothing fires every second.
+(function clockTick(){ setTimeout(() => { if (!document.hidden) paintClock(); clockTick(); }, msToNextMinute(Date.now())); })();
 document.addEventListener("visibilitychange", () => { if (!document.hidden) paintClock(); });
 
 // The home screen is exactly the window's height (app.css .shell). 100dvh

@@ -293,6 +293,7 @@ export function focusView(run, task, cb){
   if (mins > cap && !screen.asking) screen.stillText.textContent = `Still on it? It's been ${dur(Math.round(mins))}. If you stopped earlier, Done and Stop count ${dur(Math.round(cap))}.`;
   pauseState(screen.el, !!run.pausedAt, what);
   screen.paused = !!run.pausedAt;
+  screen.title.dir = "auto";
   screen.title.textContent = task?.title || "That task is gone";
   const awayNow = awayText();
   screen.away.hidden = !awayNow;

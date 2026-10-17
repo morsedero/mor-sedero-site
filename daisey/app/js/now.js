@@ -32,8 +32,9 @@ import { rank, freeWindow, timeBucket, matchProject, dueAt, keepsCard, passedOve
 import { leftMinutes, toMinutes, progressOf, leftPatch, localDate, logicalDate, skipSnapshot, skipLesson, pendingCheck, notYet, pushedTo, bringBack, dayAfter, doneSnapshot, isGuess, estText, needsLaptop } from "./model.js";
 import { isRoutine, routineCalendar, eventsToLog, sessionPatch, nagFor, nagText, nagParts } from "./routine.js";
 import { waitingFor, personOf } from "./nudge.js";
-import { dayHours, isNight, nextMorning, dayEndAt, bookings, sameTitle, minText, gapsToday, planDate, usualHours, dayWord, answerDate } from "./day.js";
-import { collectNeeds, wrapList } from "./needs.js";
+import { dayHours, isNight, nextMorning, dayEndAt, bookings, sameTitle, minText, gapsToday, planDate, usualHours, dayWord, answerDate, nightRange } from "./day.js";
+import { wrapList } from "./needs.js";
+import { needsCount, nightLine } from "./needs-list.js";
 import { h, icon, bdi, pieces, sizeText, sizeChip, heroChip, progressBar, progressPct, dur, say, nightDivider, flash, weekDots, focusField, dragScroll } from "./ui.js";
 import { areaClass, areaName, projectShown, doneToday, moonDaisy, watchProjectColors } from "./look.js";
 
@@ -132,7 +133,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
   const dayKey = () => planDate(Date.now(), dayHours(settings));
   // What the plan's day is called (night owls, Mor 2026-10-12): its date
   // counted from the day you're in (day.js dayWord), so after midnight and
-  // before the 04:00 switch the plan is for the morning the card calls
+  // before the day boundary the plan is for the morning the card calls
   // Tomorrow first, and every label in the plan flow says tomorrow too.
   // "I'm free now" plans as day: today.
   const planWord = () => (!nightFree && dayWord(dayKey()) === "tomorrow" ? "tomorrow" : "today");
@@ -556,7 +557,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
       holdInPlan(task, Date.now() + LATER_MINUTES * 60000);
       stepAside(task, { label: `Later (${dur(LATER_MINUTES)}): `, lesson: true, ask, write: () => Promise.all([skipNow(uid, task), declined(task), extra ? restoreTask(uid, task.id, extra) : null]) });
     } else if (when === "tomorrow") {
-      // Still up past midnight (before 04:00): tomorrow is the day you wake into.
+      // Still up past midnight (before the day boundary): tomorrow is the day you wake into.
       let day = dayAfter(1);
       if (task.dateKind === "deadline" && task.due && task.due < day) day = task.due; // never hide it past its deadline
       stepAside(task, { label: "Tomorrow: ", lesson: true, ask, write: () => Promise.all([restoreTask(uid, task.id, { ...pushedTo(task, { notBefore: day }), ...extra }), declined(task)]) });
@@ -803,12 +804,15 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
   // The whole screen goes dark for it (.night on <html>), whatever the theme:
   // a dimmed daisy under a moon, a few stars, tomorrow's first calendar block
   // and then that first pick.
+  // The one count behind the header chip and the night screen's line (needs-list.js needsCount).
+  const needsNow = () => needsCount({ tasks: tasks || [], events: cal.events || [], calOk: cal.status === "ok", settings, home: homeAt() },
+    { where: !!whereAsk(), plan: !!planAsk(), meal: !!mealLateAsk() });
   function nightView(hrs){
     const now = Date.now(), morning = nextMorning(now, hrs);
     const evs = cal.status === "ok" ? cal.events.filter((e) => e.busy !== false && !e.allDay) : [];
     const fw = cal.status === "ok" ? freeWindow(evs, morning, dayEndAt(morning, hrs)) : null;
-    // Before the day starts it's still "tonight" until 04:00 (model.js
-    // LATE_HOUR, day.js dayWord); after that the morning's
+    // Before the day starts it's still "tonight" until the day boundary (model.js
+    // day boundary, day.js dayWord); after that the morning's
     // plan is today's, not tomorrow's.
     const early = dayWord(localDate(morning), now) === "today";
     // A real deadline that's today and still open (2026-10-06): the night
@@ -859,14 +863,11 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
       loose.length > 0 && onWrap && h("div", { className: "night-loose" },
         h("span", { textContent: loose.length === 1 ? "1 still open for today" : `${loose.length} still open for today` }),
         h("button", { className: "pill-btn", type: "button", textContent: "Sort them", ariaLabel: "Sort what's still open for today", onclick: () => onWrap() })));
-    const lead = dueTonight.length === 1 ? "One deadline is still open today." : `${dueTonight.length} deadlines are still open today.`;
     return [
       h("div", { className: "stars", ariaHidden: "true" }, ...[0, 1, 2, 3].map(() => h("span"))),
       h("div", { className: "night-hero" }, moonDaisy(), h("div", { className: "night-txt" },
         h("h2", { className: "night-h", textContent: early ? `Early${who}.` : `Late${who}.` }),
-        h("p", { className: "night-p", textContent: ask ? `One question about ${early ? "today" : "tomorrow"}.`
-          : early ? "Nothing needs you yet. Here's your day."
-          : dueTonight.length ? lead : "Nothing needs you tonight. Here's tomorrow." }))),
+        h("p", { className: "night-p", textContent: nightLine({ needs: needsNow(), early, dueTonight: dueTonight.length, ask: !!ask, askDay: early ? "today" : "tomorrow" }) }))),
       todayView,
       // Both cards wear the main card's design (Mor, 2026-10-07): hero top row,
       // big title, why line, the same actions. The label is the eyebrow above.
@@ -875,7 +876,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
         heroTop(dueTonight[0], dueTonight[0].dueTime ? `Due ${dueTonight[0].dueTime}` : "Today"),
         onOpen ? titleButton(dueTonight[0]) : h("div", { className: "now-title", dir: "auto", textContent: dueTonight[0].title }),
         h("p", { className: "now-why", textContent: dur(Math.max(5, (dueTonight[0].size || 0) - (dueTonight[0].spentMinutes || 0))) + " left" }),
-        dueTonight.length > 1 && h("p", { className: "now-why", textContent: "Also due: " + dueTonight.slice(1).map((t) => t.title).join(", ") }),
+        dueTonight.length > 1 && h("p", { className: "now-why" }, "Also due: ", ...dueTonight.slice(1).flatMap((t, i) => (i ? [", ", bdi(t.title)] : [bdi(t.title)]))),
         ...cardActions(dueTonight[0], [])),
       h("section", { className: "now-card main hero night" + (p ? areaClass(p.task) : ""), ariaLabel: early ? "First today" : "Tomorrow first" },
         h("div", { className: "night-label", textContent: early ? "First today" : "Tomorrow first" }),
@@ -905,7 +906,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
       h("div", { className: "night-foot" },
         h("button", { className: "pill-btn", type: "button", textContent: "I'm free now, show me something",
           ariaLabel: "I'm free now: pick a task anyway", onclick: () => { nightFree = true; render(); } }),
-        nightDivider(minText(hrs.end), minText(hrs.start))),
+        nightDivider(...nightRange(hrs))),
     ];
   }
 
@@ -1048,7 +1049,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
           ariaPressed: String(on), ariaLabel: `Bring back ${t.title}${mark(t) ? ` (${mark(t)})` : ""}`,
           onclick: () => { sd.sel = on ? sd.sel.filter((id) => id !== t.id) : [...sd.sel, t.id]; render(); } },
         h("span", { className: "sd-text" },
-          h("span", { className: "sd-title", textContent: t.title }),
+          h("span", { className: "sd-title", dir: "auto", textContent: t.title }),
           h("span", { className: "sd-meta", dir: "ltr" }, mark(t) && h("span", { className: "tag", textContent: mark(t) }),
             h("span", { textContent: meta }))),
         h("span", { className: "sd-tick", ariaHidden: "true" }, icon(on ? "check" : "plus"))));
@@ -2000,7 +2001,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     const nxKey = nx ? `${nx.task.id}@${nx.start}+${nx.more}` : "";
     if (nxKey !== reportedNext) { reportedNext = nxKey; onPlanNext?.(nx); }
     if (tasks) {
-      const nn = collectNeeds({ tasks, events: cal.events || [], calOk: cal.status === "ok", settings, home: homeAt() }).length + (whereAsk() ? 1 : 0) + (planAsk() ? 1 : 0) + (mealLateAsk() ? 1 : 0);
+      const nn = needsNow();
       if (nn !== reportedNeeds) { reportedNeeds = nn; onNeedsCount?.(nn); }
     }
 
@@ -2233,7 +2234,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     // nothing above and the card waited for a refresh (2026-10-12).
     if (turned || windowMark(calendarNow()) !== lastWindow) render();
     else if (Date.now() - missAt > 15000) { missAt = Date.now(); const d = planDue(), pr = planNow()?.row, k = `${missNow()?.key ?? ""}|${d ? `${d.taskId}|${d.start}` : ""}|${pr && pr.start <= Date.now() ? pr.taskId : ""}`; if (k !== missKey) { missKey = k; render(); } }
-  }, 1000);
+  }, 5000); // the minute turn lands within 5s; nothing polls every second
   let missAt = 0, missKey = "", tripMin = 0;
   // "Not today" on the silence check's notification (sw.js), saved here.
   const quietCheck = () => takeQuiet().then((d) => { if (d === localDate()) { silenced(d); render(); } });

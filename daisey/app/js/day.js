@@ -9,9 +9,13 @@
 // line — now bounded by the day hours.
 import * as W from "./weights.js";
 import { effectiveDue } from "./triage.js";
-import { localDate, logicalDate, LATE_HOUR, notYet } from "./model.js";
+import { localDate, getDayKey, notYet } from "./model.js";
 
 const MIN = 60000;
+// How far past midnight a day's END may run ("until 1am", a usual end of
+// 02:00): up to 04:00. Not the day boundary (model.js getDayKey), which is the
+// day's START — from midnight to then it is still last night.
+export const LATE_END_MAX = 4 * 60;
 const pad = (n) => String(n).padStart(2, "0");
 
 // "08:00" → 480. Anything else → null.
@@ -28,16 +32,16 @@ export const minText = (min) => { const m = ((min % 1440) + 1440) % 1440; return
 // { date, end } stretches (or shortens) today's end only; tomorrow it's gone.
 // date: the day it stretches, answerDate (the plan's day: after midnight,
 // the morning you wake into unless last night's day is still on).
-// An end before LATE_HOUR runs past midnight ("until 1am"): before midnight
+// An end before 04:00 runs past midnight ("until 1am"): before midnight
 // the end reads 25:00; after it, until that end, the day is still on, as
 // { start: 0, end, late: true } (late: the plan and today's Laters keep
 // yesterday's date, now.js dayKey); after that end it's gone, and the
 // morning you wake into has its usual end.
 // The usual day can run past midnight too (night owls, Mor 2026-10-11): a
-// dayEnd before LATE_HOUR and before the start ("02:00") reads 26:00, the
+// dayEnd before 04:00 and before the start ("02:00") reads 26:00, the
 // same way.
 export function dayHours(settings = {}, now = Date.now()){
-  const late = LATE_HOUR * 60, s = toMin(settings.dayStart);
+  const late = LATE_END_MAX, s = toMin(settings.dayStart);
   let e = toMin(settings.dayEnd);
   if (s != null && e != null && e < late && e <= s) e += 1440;
   const base = s != null && e != null && e > s ? { start: s, end: e } : { ...W.DAY_HOURS };
@@ -46,7 +50,7 @@ export function dayHours(settings = {}, now = Date.now()){
   if (end != null && today?.date === localDate(now)) {
     if (end >= late) { if (end > base.start) base.end = end; }
     else base.end = end + 1440;
-  } else if (end != null && end < late && m < end && today?.date === logicalDate(now)) {
+  } else if (end != null && end < late && m < end && today?.date === getDayKey(now)) {
     return { start: 0, end, late: true, meals: [] }; // last night's "until 1am", still on
   }
   if (m < late && base.end > 1440) {
@@ -59,6 +63,20 @@ export function dayHours(settings = {}, now = Date.now()){
 // The usual day, without today's stretch and not in its after-midnight form
 // ({ start: 0, late }): what Settings shows and other days use. Read at noon.
 export const usualHours = (settings = {}) => dayHours({ ...settings, dayEndToday: null }, new Date().setHours(12, 0, 0, 0));
+
+// ONE day model (Mor, 2026-10-18). "My day" start IS the sleep boundary: the
+// minute the day switches (model.js getDayKey) and when night ends. "My day"
+// end is when night starts. The Night pill is derived from both, never stored.
+// Feeds model.js setDayBoundary (store.js watchSettings).
+export const dayBoundaryOf = (settings = {}) => usualHours(settings).start;
+// The Night pill's range as clock text: [night starts, night ends].
+export const nightRange = (hours = W.DAY_HOURS) => [minText(hours.end), minText(hours.start)];
+// Ms until the next whole minute (+ a hair so the clock has turned): the top bar repaints then, not every second.
+export const msToNextMinute = (now = Date.now()) => MIN - (now % MIN) + 20;
+// The top bar's day and date: the day you're in (getDayKey), not the
+// calendar's — at 00:22 it still shows yesterday's, so it never agrees with a
+// page that calls the calendar's date "Tomorrow".
+export const headerDay = (now = Date.now()) => new Date(`${getDayKey(now)}T12:00`);
 
 // Meal breaks from state/settings (Mor, 2026-10-08): Breakfast, Lunch,
 // Dinner, no others. settings.meals = [{ name, on, at, minutes }] (at:
@@ -97,19 +115,19 @@ export const dayEndAt = (now, hours = W.DAY_HOURS) => atMin(now, hours.end);
 // The date the plan's free time belongs to: yesterday's while a day that ran
 // past midnight is still on (late), else the calendar's — after midnight on
 // the night page that's the day you wake into (now.js dayKey).
-export const planDate = (now = Date.now(), hours = W.DAY_HOURS) => (hours.late ? logicalDate(now) : localDate(now));
+export const planDate = (now = Date.now(), hours = W.DAY_HOURS) => (hours.late ? getDayKey(now) : localDate(now));
 // The date a "today only" answer belongs to (the meal question, "my day runs
 // until 23:00 today"): the plan's day. At 06:00 that's the morning you wake
 // into, not last night (night owls, Mor 2026-10-12).
 export const answerDate = (settings = {}, now = Date.now()) => planDate(now, dayHours(settings, now));
 
 // What a date is called (night owls, Mor 2026-10-12): counted from the day
-// you're in (logicalDate, the 04:00 switch in model.js), not the
+// you're in (getDayKey, the day boundary in model.js), not the
 // calendar's, so at 03:00 the coming morning is "tomorrow" — on the Now
 // card, the Schedule and the plan alike. → "today" | "tomorrow" |
 // "yesterday" | null (further off).
 export function dayWord(ymd, now = Date.now()){
-  const d = Math.round((Date.parse(`${ymd}T12:00`) - Date.parse(`${logicalDate(now)}T12:00`)) / 864e5);
+  const d = Math.round((Date.parse(`${ymd}T12:00`) - Date.parse(`${getDayKey(now)}T12:00`)) / 864e5);
   return d === 0 ? "today" : d === 1 ? "tomorrow" : d === -1 ? "yesterday" : null;
 }
 
@@ -156,7 +174,7 @@ export function gapsToday(events, now = Date.now(), hours = W.DAY_HOURS){
 // smallest. rest: the ones that don't — "Move the rest" sends them to the sweep.
 export function capacity(tasks, events, now = Date.now(), hours = W.DAY_HOURS){
   const free = gapsToday(events, now, hours).reduce((s, g) => s + g.minutes, 0);
-  const today = logicalDate(now);
+  const today = getDayKey(now);
   const open = tasks.filter((t) => t.status === "ready" && t.due && !notYet(t, now) && effectiveDue(t, now) <= today);
   const left = (t) => Math.max(5, (t.size || 0) - (t.spentMinutes || 0));
   const order = [...open].sort((a, b) => (b.dateKind === "deadline") - (a.dateKind === "deadline") || left(a) - left(b));

@@ -6,7 +6,7 @@
 // day hours. A day with nothing on it says "Nothing scheduled".
 //
 // Labels follow the night-owl day (Mor, 2026-10-12; was the real clock):
-// after midnight and before the 04:00 switch (model.js LATE_HOUR) it's
+// after midnight and before the day boundary (model.js getDayKey) it's
 // still tonight, so the coming morning is "Tomorrow" (with the night divider
 // above it) — the same morning the Now card calls Tomorrow first.
 //
@@ -24,7 +24,7 @@ import { watchSettings, watchTasks, watchRun, watchDayPlan } from "./store.js";
 import { timeline } from "./proposal.js";
 import { lastActivity } from "./miss.js";
 import { areaClass, watchProjectColors } from "./look.js";
-import { dayHours, minText, planDate, usualHours, dayEndAt } from "./day.js";
+import { dayHours, minText, planDate, usualHours, dayEndAt, nightRange, dayWord } from "./day.js";
 import { localDate, logicalDate, durText } from "./model.js";
 import { h, bdi, nightDivider, icon } from "./ui.js";
 import { withTrips } from "./trips.js";
@@ -244,10 +244,10 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onMissed, onPro
     // Tomorrow, the next day its weekday (night owls, Mor 2026-10-12).
     const named = ymdToDate(logicalDate(now)), night = named < today;
     const dayName = (d) => {
-      const diff = Math.round((d - named) / 864e5);
+      const w = dayWord(localDate(d.getTime()), now); // the one day word (day.js), same as the card and the header
       // The whole day shows, morning included, so it reads Today, not Tonight
       // (2026-10-11); past midnight it's all behind you: Earlier today (Mor, 2026-10-12).
-      return diff === 0 ? (night ? "Earlier today" : "Today") : diff === 1 ? "Tomorrow" : diff === -1 ? "Yesterday"
+      return w === "today" ? (night ? "Earlier today" : "Today") : w === "tomorrow" ? "Tomorrow" : w === "yesterday" ? "Yesterday"
         : d.toLocaleDateString("en-GB", { weekday: "long" });
     };
     const last = addDays(to, -1);
@@ -385,12 +385,12 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onMissed, onPro
         .filter((x) => x.end > now), planned);
       out.push(h("section", { className: "sc-day", ariaLabel: "Tonight" },
         ...(left.length ? left.map((x) => row(x, now)) : [h("p", { className: "sc-note", textContent: "Nothing left tonight." })])),
-        nightDivider(minText(real.end), minText(hrs.start)),
+        nightDivider(...nightRange({ start: hrs.start, end: real.end })),
         h("div", { className: "sc-label sc-next" }, h("span", { className: "sc-name", textContent: "Tomorrow" }), h("span", { className: "sc-date", textContent: short(date) })));
     }
     // Not on the way somewhere (trips.js): on the 06:10 train the day has begun.
     const riding = events.some((e) => e.trip && Date.parse(e.start) <= now && now < Date.parse(e.end));
-    if (t === t0 && !tonight && now < atMin(today, hrs.start) && !riding) out.push(nightDivider(minText(hrs.end), minText(hrs.start)));
+    if (t === t0 && !tonight && now < atMin(today, hrs.start) && !riding) out.push(nightDivider(...nightRange(hrs)));
     const none = h("button", { type: "button", className: "sc-none", onclick: () => onNew?.(ymd) },
       h("span", { textContent: "Nothing scheduled" }), h("span", { className: "sc-add", ariaHidden: "true", textContent: "+ Add" }));
     out.push(h("section", { className: "sc-day", ariaLabel: short(date) }, ...(rows.length ? rows.map((x) => row(x, now)) : [none]),
@@ -459,7 +459,7 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onMissed, onPro
           col.append(h("div", { className: "wk-ev wk-trip" + (x.end <= now ? " past" : x.start <= now ? " on" : ""), role: "img",
             style: `top:${px(x.s)}px;block-size:${Math.max(18, px(x.e) - px(x.s) - 2)}px;inset-inline-start:${x.lane * w}%;inline-size:calc(${w}% - 2px)`,
             ariaLabel: `${title}, ${short(c.d)} ${time}` },
-            h("span", { className: "wk-evt", textContent: title }), tall && h("span", { className: "wk-evtime", textContent: clock(x.start) })));
+            h("span", { className: "wk-evt", dir: "auto", textContent: title }), tall && h("span", { className: "wk-evtime", textContent: clock(x.start) })));
           continue;
         }
         col.append(h("button", { type: "button", className: "wk-ev" + (done ? " done" : "") + tone(x.ev) + (x.end <= now ? " past" : x.start <= now ? " on" : ""),
