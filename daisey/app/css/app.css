@@ -2503,6 +2503,11 @@ body.fm-slide .deck > .now-card.main { animation: none !important; } /* main.js:
      (Mor, 2026-10-18); the home shows no glance on PC. */
   .shell:has(#panel > #weekPage:not([hidden]):not(.pg-ghost)) { grid-template-columns: var(--rail) minmax(0, 1fr) 300px; grid-template-areas: "rail now now" "rail panel glance" "rail panel glance" "rail dock dock"; }
   .shell:has(#panel > #weekPage:not([hidden]):not(.pg-ghost)) #glance { margin-block: 16px 28px; grid-template-columns: minmax(0, 1fr); }
+  /* Week today: the whole head turns yellow, no column wash, no black dot (Mor, 2026-10-18). */
+  .wk-col.today { background-color: transparent; }
+  .wk-hd.today, .wk-hd.today:hover { background: var(--accent); }
+  .wk-hd.today, .wk-hd.today .wk-n { color: #1a1408; }
+  .wk-hd.today .wk-n { background: none; }
   /* The bar's keys keep their words on a wide screen (Switch, Later, Done). */
   :root:not(.night) body.card-mini #nowcard .now-card.main > .now-row.duo { gap: 6px; }
   :root:not(.night) body.card-mini #nowcard .now-card.main > .now-row.duo > .iconbtn { inline-size: auto; padding-inline: 12px; }
