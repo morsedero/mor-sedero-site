@@ -109,6 +109,17 @@ export function mealsToday(settings = {}, now = Date.now()){
 }
 
 const atMin = (ms, min) => new Date(ms).setHours(0, min, 0, 0);
+// The Week grid's hour span: My day's hours, stretched to fit anything outside
+// them ({ s, e } in minutes from midnight). The first hour is labelled too, so
+// the grid's top row reads My day's start (08:00 → "08", not "09").
+export function gridSpan(hrs = W.DAY_HOURS, timed = []){
+  let h0 = Math.floor(hrs.start / 60), h1 = Math.ceil(hrs.end / 60);
+  if (h1 <= h0) h1 = 24; // day hours past midnight: show to the end of the day
+  for (const x of timed) { h0 = Math.min(h0, Math.floor(x.s / 60)); h1 = Math.max(h1, Math.ceil(x.e / 60)); }
+  h0 = Math.max(0, h0); h1 = Math.min(24, Math.max(h1, h0 + 1));
+  return { h0, h1 };
+}
+
 export const dayStartAt = (now, hours = W.DAY_HOURS) => atMin(now, hours.start);
 export const dayEndAt = (now, hours = W.DAY_HOURS) => atMin(now, hours.end);
 // The date the plan's free time belongs to: yesterday's while a day that ran

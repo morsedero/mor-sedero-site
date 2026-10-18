@@ -344,6 +344,9 @@ const FAKES = {
   // --days N (with --at): that many days from today, for weekday states (the routine nag is midweek).
   if (atFlag) { const [hh, mm] = atFlag.split(":").map(Number); const d = new Date(); d.setDate(d.getDate() + (Number(flag("--days")) || 0)); d.setHours(hh, mm || 0, 0, 0); await page.clock.install({ time: d }); }
   // --ask-deadlines: settings as before the one-time deadline question.
+  // --day-start HH:MM: My day start (Settings), for the day-hours checks.
+  const dayStartFlag = flag("--day-start");
+  if (dayStartFlag) scenario.settings = { ...(scenario.settings || { deadlinesAsked: true, somedayAsked: day(0) }), dayStart: dayStartFlag, dayEnd: "22:00" };
   await page.addInitScript((s) => { window.__FAKE = s; }, args.includes("--ask-deadlines") ? { ...scenario, settings: {} } : scenario);
   if (speedFlag) await page.addInitScript((v) => {
     const fix = () => ({ coords: { latitude: 32.08, longitude: 34.78, accuracy: 10, speed: v }, timestamp: Date.now() });

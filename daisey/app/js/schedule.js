@@ -24,7 +24,7 @@ import { watchSettings, watchTasks, watchRun, watchDayPlan } from "./store.js";
 import { timeline } from "./proposal.js";
 import { lastActivity } from "./miss.js";
 import { areaClass, watchProjectColors } from "./look.js";
-import { dayHours, minText, planDate, usualHours, dayEndAt, nightRange, dayWord } from "./day.js";
+import { dayHours, minText, planDate, usualHours, dayEndAt, nightRange, dayWord, gridSpan } from "./day.js";
 import { localDate, logicalDate, durText } from "./model.js";
 import { h, bdi, nightDivider, icon } from "./ui.js";
 import { withTrips } from "./trips.js";
@@ -414,10 +414,7 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onMissed, onPro
       return { d, ymd, allDay, timed: lanes(timed) };
     });
     // The grid spans the day hours, stretched to fit anything outside them.
-    let h0 = Math.floor(hrs.start / 60), h1 = Math.ceil(hrs.end / 60);
-    if (h1 <= h0) h1 = 24; // day hours past midnight: show to the end of the day
-    for (const c of cols) for (const x of c.timed) { h0 = Math.min(h0, Math.floor(x.s / 60)); h1 = Math.max(h1, Math.ceil(x.e / 60)); }
-    h0 = Math.max(0, h0); h1 = Math.min(24, Math.max(h1, h0 + 1));
+    const { h0, h1 } = gridSpan(hrs, cols.flatMap((c) => c.timed));
     const px = (min) => ((min - h0 * 60) / 60) * HOUR_PX;
 
     // Weekday headings ride in the sticky header, under the bar.
@@ -433,7 +430,7 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onMissed, onPro
         ariaLabel: `${e.title}, all day`, onclick: () => onEvent?.(e) }, bdi(e.title)))))));
 
     const hours = h("div", { className: "wk-hours", ariaHidden: "true" },
-      ...Array.from({ length: h1 - h0 }, (_, i) => h("span", { style: `top:${i * HOUR_PX}px`, textContent: i ? pad(h0 + i) : "" })));
+      ...Array.from({ length: h1 - h0 }, (_, i) => h("span", { style: `top:${i * HOUR_PX}px` + (i ? "" : ";transform:none"), textContent: pad(h0 + i) })));
     const grid = h("div", { className: "wk-grid", style: `--hour:${HOUR_PX}px;block-size:${(h1 - h0) * HOUR_PX}px` }, hours, ...cols.map((c) => {
       const t = c.d.getTime();
       const col = h("div", { className: "wk-col" + (t === t0 ? " today" : "") + (t < t0 ? " past" : ""),
