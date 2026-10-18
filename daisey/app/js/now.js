@@ -104,7 +104,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
   // rebuilds it mid-push picks the push up where it is, and the idle bob
   // then starts from rest at the push's end rather than jumping to the
   // wall clock's phase.
-  let pushAt = 0, breathEpoch = 0, inAt = 0;
+  let pushAt = 0, breathEpoch = 0, inAt = 0, stillAt = 0;
   const pushIn = (c, since) => {
     c.classList.add("push-in"); c.style.setProperty("--push-at", `${-since}ms`);
     c.addEventListener("animationend", (e) => {
@@ -2302,8 +2302,14 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     // A rebuilt card would restart its idle bob (breathe, 5s) from the top and
     // jump; keep the phase on the wall clock so every rebuild carries on.
     // Same for the light round its edge (app.css sc-orbit, 9s).
+    // While a row is open (.deck.still) the bob is paused: freeze its phase at
+    // the moment it opened, and on close shift the epoch by the pause so it
+    // carries on from there instead of jumping to the wall clock's phase.
+    const still = !!root.querySelector(".deck.still > .now-card.main");
+    if (still && !stillAt) stillAt = Date.now();
+    if (!still && stillAt) { breathEpoch += Date.now() - stillAt; stillAt = 0; }
     root.querySelectorAll(".deck > .now-card.main").forEach((c) => {
-      c.style.animationDelay = `${-((Date.now() - breathEpoch) % 5000)}ms`;
+      c.style.animationDelay = `${-(((stillAt || Date.now()) - breathEpoch) % 5000)}ms`;
       c.style.setProperty("--orbit", `${-(Date.now() % 9000)}ms`);
     });
     const since = Date.now() - pushAt;
