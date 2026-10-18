@@ -15,7 +15,7 @@
 import { overruled, eventKey } from "./reality.js";
 import { sortable } from "./ppdrag.js";
 import { addTask, updateTask, watchTasks, watchRun, watchSkips, saveSkips, endBatch, skipNow, blockTask, restoreTask, finishTask, undoDone, watchSettings, saveSettings, watchMoment, saveMoment, watchLearn, bumpLearn, cancelRun, watchDayPlan, saveDayPlan, logWork, watchProjectNames, removeTask } from "./store.js";
-import { proposeDay, timeline, withBreaks, trimBreaks, isBreak, planProgress, planStatus, unfitOf, refit, topUp, daySig, relayMeals } from "./proposal.js";
+import { proposeDay, timeline, shownTaskCount, withBreaks, trimBreaks, isBreak, planProgress, planStatus, unfitOf, refit, topUp, daySig, relayMeals } from "./proposal.js";
 import { rethink } from "./rethink.js";
 import { breakText } from "./schedule.js";
 import { placeNow, workBase, watchProjectTiers } from "./context.js";
@@ -1669,7 +1669,9 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
   // card, honouring the Later, skipped it (2026-10-11).
   function approve(){
     const items = trimBreaks(prop.items).map(({ taskId, brk, minutes, name, at, hold, of }) => (brk ? { brk, minutes, ...(name ? { name } : {}) } : { taskId, minutes, ...(at ? { at } : {}), ...(hold ? { hold } : {}), ...(of ? { of } : {}) }));
-    const unfit = overIds(items), n = items.filter((it) => !isBreak(it) && !unfit.includes(it.taskId)).length;
+    const unfit = overIds(items);
+    // The count the plan card shows: its rows, laid with the same context as proposalCard (proposal.js shownTaskCount).
+    const n = shownTaskCount(prop.items, { ...planCtx(), ...(approvedPlan() && !prop.touched && !prop.replan ? { since: planSince() } : {}) });
     savePlan("approved", items, { approvedAt: Date.now(), mealsLaid: mealAnswers(), behindNo: null, offer: null, unfit });
     prop.open = false; prop.replan = false; prop.ask = false; prop.note = ""; reset();
     render();

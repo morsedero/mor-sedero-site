@@ -28,3 +28,19 @@ for (const [dayStart, min] of [["05:00", 300], ["08:00", 480], ["09:00", 540]]) 
     assert.equal(gridSpan(hours, [{ s: (min - 120), e: min }]).h0, min / 60 - 2, "an earlier event stretches it");
   });
 }
+
+// ---------- "Plan set: N tasks" is the number the plan shows ----------
+import { shownTaskCount } from "../../app/js/proposal.js";
+
+test("plan set count: rows shown, not finished/deleted tasks, not No-room ones, not breaks", () => {
+  const now = at(18, 10, 0), hours = dayHours({ dayStart: "08:00", dayEnd: "12:00" }, now); // 2 h left
+  const t = (id, title, size, o = {}) => ({ ...createTask({ title, project: "Work", size }, { now }), id, ...o });
+  const all = [t("a", "A", 30), t("b", "B", 30), t("c", "C", 30, { status: "done", doneAt: now }), t("d", "D", 600)];
+  const items = [{ taskId: "a", minutes: 30 }, { brk: "short", minutes: 10 }, { taskId: "b", minutes: 30 }, { taskId: "c", minutes: 30 }, { taskId: "gone", minutes: 30 }, { taskId: "d", minutes: 600 }];
+  const ctx = { tasks: all, events: [], now, hours };
+  const tl = timeline(items, ctx);
+  assert.equal(shownTaskCount(items, ctx), tl.rows.length);
+  assert.equal(shownTaskCount(items, ctx), 2, "A and B only");
+  assert.ok(tl.over.some((o) => o.taskId === "d"), "D has no room");
+  assert.equal(shownTaskCount([], ctx), 0);
+});

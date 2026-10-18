@@ -311,6 +311,10 @@ export function withBreaks(items = [], ctx = {}){
 // task runs the plan follows the clock as before. An item's at (ms): not
 // before then ("In 10 min").
 const up5 = (ms) => Math.ceil(ms / (5 * MIN)) * 5 * MIN;
+// How many tasks the plan on screen holds: the rows it shows with a time. Not
+// the items (a finished or deleted task has no row), not the No-room ones.
+// "Plan set: N tasks" says this (Mor, 2026-10-18).
+export const shownTaskCount = (items = [], ctx = {}) => timeline(items, ctx).rows.length;
 export function timeline(items = [], ctx = {}){
   const now = ctx.now ?? Date.now();
   if (ctx.since == null || runState(ctx.run, ctx.tasks || [], now)) return lay(items, ctx);
