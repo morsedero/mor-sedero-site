@@ -2405,7 +2405,7 @@ body.fm-slide .deck > .now-card.main { animation: none !important; } /* main.js:
    the title (it still opens the task) and Focus; everything else waits
    until Today shuts. */
 :root:not(.night) body.card-mini #nowcard .now-card.main { min-block-size: 56px; padding: 6px 6px 6px 16px; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; column-gap: 10px; border-radius: 18px; }
-:root:not(.night) body.card-mini #nowcard .now-card.main > :not(.hero-top, .now-title), :root:not(.night) body.card-mini :is(#nowcard, .deck) > :not(.now-card.main, .deck), :root:not(.night) body.card-mini :is(.now-greet, .now-next-out) { display: none; }
+:root:not(.night) body.card-mini #nowcard .now-card.main > :not(.hero-top, .now-title, .later-ask), :root:not(.night) body.card-mini :is(#nowcard, .deck) > :not(.now-card.main, .deck, .later-drop), :root:not(.night) body.card-mini :is(.now-greet, .now-next-out) { display: none; }
 :root:not(.night) body.card-mini #nowcard .now-card.main .hero-top { display: contents; }
 :root:not(.night) body.card-mini #nowcard .now-card.main .hero-top > :not(.hero-area), :root:not(.night) body.card-mini #nowcard .now-card.main .hero-where { display: none; }
 :root:not(.night) body.card-mini #nowcard .now-card.main .hero-area { grid-column: 1; grid-row: 1; }
@@ -2419,8 +2419,10 @@ body.fm-slide .deck > .now-card.main { animation: none !important; } /* main.js:
 :root:not(.night) body.card-mini #nowcard .now-card.main > .done-col.solo { display: block; grid-column: 4; grid-row: 1; margin: 0; }
 :root:not(.night) body.card-mini #nowcard .done-col.solo > :not(.btn) { display: none; }
 :root:not(.night) body.card-mini #nowcard .done-col.solo > .btn.start { inline-size: auto; block-size: 44px; min-block-size: 44px; margin: 0; padding-inline: 12px; font-size: 15px; box-shadow: none; }
-/* Stats (phone) is a box over the page: it starts under the bar. */
-@media (max-width: 1023px) { :root:not(.night) body.card-mini #glance.pop { inset-block-start: calc(max(16px, env(safe-area-inset-top)) + 56px + 68px); } }
+/* Switch's row opens under the title inside the bar; Later's drop-down under the bar. */
+:root:not(.night) body.card-mini #nowcard .now-card.main > .later-ask { grid-column: 1 / -1; grid-row: 2; min-inline-size: 0; margin: 8px 0 4px; }
+/* Stats (phone) is a box over the page: it starts under the bar, which grows with Switch and Later (main.js popAt). */
+@media (max-width: 1023px) { :root:not(.night) body.card-mini #glance.pop { inset-block-start: var(--pop-t, calc(max(16px, env(safe-area-inset-top)) + 56px + 68px)); } }
 
 /* Plan screen: the pinned action row sits flush on the screen's bottom edge
    and is opaque, so nothing scrolls into view beneath or around it (Mor,

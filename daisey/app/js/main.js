@@ -353,12 +353,14 @@ async function boot(){
   // Phone: Week shows done today + routines in a pop-over over the row,
   // shut by a tap anywhere else (Mor, 2026-10-12: they live in a button).
   let weekPop = false;
-  const popAt = () => $("#glance").style.setProperty("--pop-b", `${Math.round(innerHeight - $("#dockStack").getBoundingClientRect().top + 10)}px`);
+  const popAt = () => { const g = $("#glance").style; g.setProperty("--pop-b", `${Math.round(innerHeight - $("#dockStack").getBoundingClientRect().top + 10)}px`); g.setProperty("--pop-t", `${Math.round($(".nowrow").getBoundingClientRect().bottom + 12)}px`); };
+  // The mini card grows under Switch / Later: Stats' box starts under it, wherever it ends.
+  new ResizeObserver(() => { if (weekPop) popAt(); }).observe($(".nowrow"));
   addEventListener("resize", () => { if (weekPop) popAt(); });
   document.addEventListener("click", (e) => {
     if (!weekPop) return;
     const path = e.composedPath();
-    if (path.includes($("#glance")) || path.includes($("#weekChip"))) return;
+    if (path.includes($("#glance")) || path.includes($("#weekChip")) || path.includes($("#nowcard"))) return;
     weekPop = false; window.__syncPanel?.();
   });
   $("#settingsX").onclick = () => settings.close();
@@ -755,13 +757,16 @@ async function boot(){
         }
         // The home panel: the Schedule, or Projects (the grid or one project)
         // in its place. The Projects button toggles between them (Mor, 2026-10-08).
-        let schedShown = false;
+        let schedShown = false, lastTab = "home";
         const syncPanel = () => {
           const on = !$("#projPage").hidden || !$("#projectview").hidden, plan = !$("#planPage").hidden;
           // PC: Week is its own page, the week grid (Mor, 2026-10-13); the plan
           // or Projects opening shuts it.
           if (on || plan || phone.matches) $("#weekPage").hidden = true;
           const week = !$("#weekPage").hidden;
+          // Another tab: Switch / Later left open on the card shut.
+          const tab = plan ? "plan" : on ? "proj" : (phone.matches ? weekPop : week) ? "stats" : document.body.classList.contains("day-open") ? "day" : "home";
+          if (tab !== lastTab) { lastTab = tab; m.now?.closeRows?.(); }
           $("#schedPage").hidden = on || plan || week;
           if (on || plan) document.body.classList.remove("day-open");
           const day = document.body.classList.contains("day-open");
@@ -798,15 +803,19 @@ async function boot(){
         // it sits after the real ones, so $ never finds it) and fades out; then
         // the page coming in rises and fades in (app.css). Back to the
         // Schedule drops in from above.
-        let shownPage = null, fmTimer = 0;
+        let shownPage = null, fmTimer = 0, panelWas = false;
         const swapAnim = () => {
           const now = [...$("#panel").children].find((p) => p.classList.contains("ppage") && !p.hidden && !p.classList.contains("pg-ghost"));
           const was = shownPage; shownPage = now;
+          // The panel was not on screen before this swap (the phone's home): the
+          // page leaving was never seen, so no ghost of it (it flashed Today for a frame).
+          const seen = panelWas; panelWas = !!$("#panel").offsetParent;
           // A hidden panel (the phone's home) never runs the animation, so its
           // ghost would never go: no swap animation there.
           if (morphing || !was || !now || was === now || !$("#panel").offsetParent || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
           const back = now.id === "schedPage";
           $("#panel .pg-ghost")?.remove();
+          if (!seen) return;
           const g = was.cloneNode(true);
           g.hidden = false; g.inert = true; g.setAttribute("aria-hidden", "true");
           g.classList.add("pg-ghost", back ? "out-down" : "out-up");
@@ -859,14 +868,6 @@ async function boot(){
           if (!$("#planPage").hidden) m.now?.closePlan();
           m.projects.closeProject(); m.projects.closeAll(); syncPanel();
 
-        };
-        // Back to the plain home: no page, no day, no Stats (the mini card's
-        // Switch and Later open their row on the full card).
-        window.__goHome = () => {
-          weekPop = false; $("#weekPage").hidden = true;
-          if (!$("#planPage").hidden) m.now?.closePlan();
-          m.projects.closeProject(); m.projects.closeAll();
-          document.body.classList.remove("day-open"); syncPanel();
         };
         // A tab: tapping another page moves to it, tapping the open one goes
         // home. Judged by what is open, not by what is hidden (a plan or
