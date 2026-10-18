@@ -29,8 +29,28 @@ export function mountRibbon(el, { onPlan } = {}){
         h("span", { className: "rb-li-at" }, kind === "d" ? hm(r.at) : `${hm(r.at)}–${hm(r.end)}`)))));
   }
 
+  // The now dot: the time, what's on right now, what's next.
+  function nowPop(line){
+    const now = data.now, cur = data.left.find((l) => l.at <= now && now < l.end), ev = data.events.find((e) => e.start <= now && now < e.end);
+    const next = data.left.filter((l) => l.at > now).sort((a, b) => a.at - b.at)[0];
+    const box = h("div", { className: "rb-pop rb-nowpop", role: "dialog", ariaLabel: "Now" },
+      h("span", { className: "rb-arrow", ariaHidden: "true" }),
+      h("p", { className: "rb-proj" }, `Now · ${hm(now)}`),
+      h("p", { className: "rb-title" }, cur ? bdi(cur.task.title) : ev ? bdi(ev.title) : "Nothing planned right now"),
+      (cur || ev) && h("p", { className: "rb-when" }, `until ${hm((cur || ev).end)}`),
+      next && h("p", { className: "rb-when" }, "Next: ", bdi(next.task.title), ` at ${hm(next.at)}`));
+    requestAnimationFrame(() => {
+      const dot = line.querySelector(".rb-now");
+      const w = line.clientWidth, pw = box.offsetWidth, x = dot.offsetLeft + dot.offsetWidth / 2;
+      const left = Math.max(-6, Math.min(w - pw + 6, x - pw / 2));
+      box.style.left = `${left}px`; box.style.setProperty("--arrow", `${x - left}px`);
+    });
+    return box;
+  }
+
   function pop(line){
     if (open.startsWith("all:")) return listPop(open.slice(4));
+    if (open === "now") return nowPop(line);
     const [kind, id] = open.split(":");
     const item = (kind === "d" ? data.done : data.left).find((x) => x.id === id);
     if (!item) { open = null; return null; }
@@ -68,7 +88,7 @@ export function mountRibbon(el, { onPlan } = {}){
         ariaLabel: `${d.task.title}, done ${hm(d.at)}`, ariaExpanded: String(open === `d:${d.id}`), onclick: pick(`d:${d.id}`) })),
       ...left.map((l) => h("button", { type: "button", className: "rb-hole" + areaClass(l.task) + (open === `l:${l.id}` ? " on" : ""), style: `inset-inline-start:${pct(l.at)}`,
         ariaLabel: `${l.task.title}, planned ${hm(l.at)}`, ariaExpanded: String(open === `l:${l.id}`), onclick: pick(`l:${l.id}`) })),
-      h("span", { className: "rb-now", ariaHidden: "true", style: `inset-inline-start:${pct(data.now)}` }));
+      h("button", { type: "button", className: "rb-now" + (open === "now" ? " on" : ""), ariaLabel: "Now", ariaExpanded: String(open === "now"), style: `inset-inline-start:${pct(data.now)}`, onclick: pick("now") }));
     if (open) { const p = pop(line); if (p) line.append(p); }
     el.replaceChildren(top, line);
     if (!planned) el.append(h("div", { className: "rb-act" }, h("button", { type: "button", className: "rb-plan", onclick: () => onPlan?.() }, icon("calendar"), h("span", { textContent: data.word }))));
