@@ -1761,10 +1761,11 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     // (2026-10-10). The missed note under the card asks about it instead.
     const rows = tl.rows.filter((x) => !off.has(x.taskId) && !x.task.onHold && !x.missed);
     const brk = !run && tl.breaks.find((b) => b.start <= now && now < b.end);
-    // The break's "Next" is the Today list's next row, a missed one too (user
-    // test: "Next: Call mom 12:15" while the list showed Arnona at 11:30).
-    const listNext = tl.rows.find((x) => !off.has(x.taskId) && !x.task.onHold) || null;
-    if (brk && (!rows[0] || rows[0].start >= brk.end - 60000)) return { brk, next: listNext };
+    // The break's "Next" is the row the schedule tags Next: never a missed one
+    // (Mor, 2026-10-18: "Next: Campaign Transition at 12:50" while that row
+    // sat missed at 11:40 and the UI fix was the real 12:50). The missed note
+    // asks about the missed row.
+    if (brk && (!rows[0] || rows[0].start >= brk.end - 60000)) return { brk, next: rows[0] || null };
     if (rows[0]) return { row: rows[0] };
     return null;
   }
