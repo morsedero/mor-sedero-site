@@ -27,7 +27,7 @@ import { dropSeries } from "./slots.js";
 import { isOverdue } from "./triage.js";
 import { projectProgress, nextTaskOf, projectSummary } from "./project-state.js";
 import { h, bdi, flash, icon, askProgress, sizeChip, progressBar, weekDots, dragScroll } from "./ui.js";
-import { setProjectColors, doneToday } from "./look.js";
+import { setProjectColors, doneToday, daisy } from "./look.js";
 import { setProjectTiers } from "./context.js";
 import { dateBox } from "./datebox.js";
 import { TIERS, FOCUS_MAX } from "./weights.js";
@@ -120,8 +120,10 @@ const urgency = (onCard) => (a, b) => (b.id === onCard) - (a.id === onCard)
 function statusLine(p){
   const now = nextTaskOf(p);
   if (now) return ["Next: ", bdi(now.title)];
-  const parts = [p.pending.length && `${p.pending.length} pending`, p.next.length && `${p.next.length} later`, p.someday.length && `${p.someday.length} on hold`].filter(Boolean);
-  return [parts.join(" · ") || (p.all.length ? "All done" : "No tasks yet")];
+  // Nothing up next (design round 4, 2026-10-18): "Next: pick one", not a
+  // tally of what's pending or on hold; "All done" once everything is.
+  if (p.all.length && !p.next.length && !p.pending.length && !p.someday.length) return ["All done"];
+  return ["Next: ", h("span", { className: "pick-one", textContent: "pick one" })];
 }
 // Effort still to do (master spec s.16, 2026-10-06): the sizes of the open
 // tasks less the time already put in, 5 minutes at least each. Pending ones
@@ -161,24 +163,24 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
   // under the Now card while nothing is open; main.js shows the box). Done
   // today is a list that opens on a tap of its head, oldest first; the
   // routines card is the Week page's, as it was.
-  let doneOpen = false;
   function paintGlance(){
     const box = els.glance; if (!box) return;
     const ts = tasks || [], done = doneToday(ts).sort((a, b) => a.doneAt - b.doneAt);
-    if (!done.length) doneOpen = false;
-    // A small pill (Mor, 2026-10-12); the list opens under it in a card.
-    const head = h("button", { type: "button", className: "hg-dpill", disabled: !done.length, ariaExpanded: String(doneOpen),
-      onclick: () => { doneOpen = !doneOpen; paintGlance(); } },
-      h("span", { className: "hg-dtick", ariaHidden: "true" }, icon("check")),
-      done.length ? `Done today · ${done.length}` : "Nothing done yet",
-      done.length > 0 && h("span", { className: "hg-chev", ariaHidden: "true" }, icon("chev")));
-    const doneCard = h("section", { className: "bl-done" + (doneOpen ? " open" : ""), ariaLabel: "Done today" }, head,
-      doneOpen && h("div", { className: "bl-card bl-done-rows" }, ...done.map((t) => h("div", { className: "pj-drow" },
+    // Stats (design round 4, 2026-10-18): today's daisy, a petal for each
+    // thing done (a closed bud before the first, no guilt), then what got
+    // done by name, then the routines. No counts, no times.
+    const bloom = h("section", { className: "bl-card st-daisy", ariaLabel: "Today's daisy" },
+      daisy(Math.min(8, done.length), { size: 72, cls: "daisy st-flower" + (done.length ? "" : " bud") }),
+      h("div", { className: "st-daisy-t" },
+        h("h3", { className: "bl-h", textContent: "Today's daisy" }),
+        h("p", { textContent: done.length ? "A petal for each thing you finish." : "Still a bud. It opens as you go." })));
+    const doneCard = done.length > 0 && h("section", { className: "bl-card st-done", ariaLabel: "Done today" },
+      h("h3", { className: "bl-h", textContent: "Done today" }),
+      ...done.map((t) => h("div", { className: "pj-drow" },
         h("span", { className: "pj-tick on", ariaHidden: "true" }, icon("check")),
-        h("button", { type: "button", className: "pj-quiet", onclick: () => onOpen?.(t) }, bdi(t.title)),
-        h("span", { className: "pj-meta", dir: "ltr", textContent: new Date(t.doneAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) })))));
+        h("button", { type: "button", className: "pj-quiet", onclick: () => onOpen?.(t) }, bdi(t.title)))));
     const rows = routineRows(ts), colors = new Map(list().map((p) => [p.name, p.color || ""]));
-    box.replaceChildren(doneCard, ...[routinesSection(rows, ts, colors)].filter(Boolean));
+    box.replaceChildren(bloom, ...[doneCard, routinesSection(rows, ts, colors)].filter(Boolean));
   }
 
   // ---------- the Projects page ----------
@@ -269,7 +271,8 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
           h("span", { className: "pcard-row" },
             h("span", { className: "pcard-status" }, ...statusLine(p))),
           h("span", { className: "pcard-barrow" }, bar(p, "pbar"),
-            p.all.length > 0 && h("span", { className: "pcard-pct", textContent: `${Math.round(progress(p) * 100)}% done` })))); };
+            // "not started", never "0% done" (design round 4).
+            p.all.length > 0 && h("span", { className: "pcard-pct", textContent: progress(p) > 0 ? `${Math.round(progress(p) * 100)}% done` : "not started" })))); };
     const tier = (t) => { const ins = ps.filter((p) => tierOf(p.name) === t);
       const z = h("div", { className: `pp-zone tier-${t}`, _tier: t },
         // Each tier a header with how many it holds; no box (Mor, 2026-10-08).
@@ -575,7 +578,7 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
         h("div", { className: "pj-card-top" }, h("h2", { className: "pj-name" + (p.name === INBOX ? "" : " rename"), dir: "auto", textContent: p.name,
           ...(p.name === INBOX ? {} : { role: "button", tabIndex: 0, title: "Edit project", onclick: () => askRename(p.name),
             onkeydown: (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); askRename(p.name); } } }) }),
-          h("span", { className: "pj-pct", textContent: `${Math.round(progress(p) * 100)}%` })),
+          h("span", { className: "pj-pct", textContent: progress(p) > 0 ? `${Math.round(progress(p) * 100)}%` : "not started" })),
         h("div", { className: "pj-prog" }, bar(p, "pbar big")),
         p.name !== INBOX && (ranges[p.name]?.start || ranges[p.name]?.due) && h("p", { className: "pj-left", textContent:
           [ranges[p.name].start ? `Starts ${shortDay(ranges[p.name].start)}` : null, ranges[p.name].due ? `${projectSummary(p, ranges[p.name]).overdue ? "was due" : "due"} ${shortDay(ranges[p.name].due)}` : null].filter(Boolean).join(" · ") }),

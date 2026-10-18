@@ -76,6 +76,33 @@ const CHECKS = {
       return t.includes("BOBBA") && !/tomorrow first/i.test(t);
     }],
   ],
+  4: [
+    ["Projects: 'not started' instead of 0%, 'Next: pick one' when nothing is next", () => {
+      const t = text("old", "--click", "#projectsChip");
+      return t.includes("not started") && t.includes("pick one") && !/\b0% done\b/.test(t);
+    }],
+    ["Project screen: 'not started', not 0%", () => {
+      const t = text("old", "--click", "#projectsChip", "--click", ".pcard");
+      return t.includes("not started") && !/^0%$/m.test(t);
+    }],
+    ["Stats is a page: Today's daisy, a bud and no guilt at 0, no counts", () => {
+      const t = text("empty", "--click", "#weekChip");
+      return /today's daisy/i.test(t) && t.includes("Still a bud") && !t.includes("Nothing done yet") && !/Done today · \d/.test(t);
+    }],
+    ["Stats with work done: the done list by name, no count", () => {
+      const t = text("alldone", "--at", "16:00", "--click", "#weekChip");
+      return /done today/i.test(t) && t.includes("Send invoice to Uri") && !/Done today · \d/.test(t);
+    }],
+    ["Settings: an icon chip on each row", () => {
+      const r = require("child_process").spawnSync(process.execPath, [PREVIEW, "old", "--out", OUT, "--at", "10:42", "--click", "#avatar", "--click", "#settingsBtn",
+        "--eval", "document.querySelectorAll('#settingsdlg .ichip').length"], { encoding: "utf8", timeout: 120000 });
+      return /eval: 4\b/.test(r.stdout + r.stderr);
+    }],
+    ["+ menu: Task, Event, Project", () => {
+      const t = text("old", "--click", "#plus");
+      return ["Task", "Event", "Project"].every((w) => t.includes(w));
+    }],
+  ],
 };
 
 const only = process.argv[2];

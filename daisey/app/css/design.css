@@ -173,3 +173,68 @@
 :root.night:has(body.day-open) .night-hero .moon-daisy { inline-size: 36px; block-size: 36px; }
 :root.night:has(body.day-open) .night-h { margin: 0; font-size: 16px; line-height: 1.25; }
 :root.night:has(body.day-open) .night-p, :root.night:has(body.day-open) #nowcard > .stars { display: none; }
+
+/* ---- Slice 4: pages and forms ---- */
+/* Stats is a page (projects.js paintGlance): on a phone the box fills the
+   page area between the header and the dock instead of popping over it. */
+@media (max-width: 1023px) {
+  #glance.pop {
+    inset-inline: calc(max(0px, (100vw - 430px) / 2) + 16px); inline-size: auto;
+    inset-block-start: calc(max(16px, env(safe-area-inset-top)) + 56px); inset-block-end: calc(var(--pop-b, 140px) + 54px); max-block-size: none;
+    gap: 10px; padding: 14px; box-shadow: 0 10px 26px -14px rgb(31 29 26 / .3);
+  }
+}
+.hglance .bl-h { font-size: 12px; letter-spacing: .04em; }
+.st-daisy { display: flex; align-items: center; gap: 16px; }
+.hglance .bl-card.st-daisy { padding: 12px 16px; }
+.st-daisy-t { min-inline-size: 0; }
+.st-daisy-t p { margin: 4px 0 0; font-size: 14px; line-height: 1.4; color: var(--ink-2); }
+.st-flower { flex: none; }
+.st-flower.bud .daisy-heart { fill: #b9d8a8; stroke: #7fae7f; stroke-width: 1.5; }
+.hglance .st-done .pj-drow { min-block-size: 40px; }
+.hglance .bl-r-n { display: none; } /* no counts on Stats; the dots say it */
+
+/* Projects: the flower grows again on each card (it had shrunk to 26px),
+   "pick one" in the project's own colour. */
+.pcard-fl, .tier-focus .pcard-fl, .tier-background .pcard-fl { inline-size: 46px; margin-block-end: -4px; }
+.pcard-fl .bl-svg, .tier-focus .pcard-fl .bl-svg, .tier-background .pcard-fl .bl-svg { inline-size: 42px; }
+.pcard .pick-one { color: var(--aink, var(--ink)); font-weight: 600; }
+/* Settings: a coloured icon chip leads each row (index.html .ichip), the
+   area's tint and ink, dimmed in dark like every tint. */
+.ichip { display: inline-grid; place-items: center; flex: none; inline-size: 30px; block-size: 30px; border-radius: 9px; background: var(--tint); color: var(--aink); border: 1px solid var(--aline); }
+.ichip svg { inline-size: 16px; block-size: 16px; }
+.settings .menu-label:has(.ichip) { display: flex; align-items: center; gap: 10px; }
+.settings .menu-check:has(> .ichip) { gap: 10px; }
+
+/* The pressed tab (Mor, 2026-10-18, option C: the project's colour only on
+   the card and the active tab): its icon wears the Now card's colour, the
+   chip goes plain. Phone dock only. */
+@media (max-width: 1023px) {
+  #dockStack > .hchip[aria-pressed="true"] { background: var(--chip); color: var(--ink); }
+  :root:has(#nowcard .now-card.main.pc-admin) #dockStack > .hchip[aria-pressed="true"] svg { color: var(--a-admin-ink); }
+  :root:has(#nowcard .now-card.main.pc-work) #dockStack > .hchip[aria-pressed="true"] svg { color: var(--a-work-ink); }
+  :root:has(#nowcard .now-card.main.pc-home) #dockStack > .hchip[aria-pressed="true"] svg { color: var(--a-home-ink); }
+  :root:has(#nowcard .now-card.main.pc-social) #dockStack > .hchip[aria-pressed="true"] svg { color: var(--a-social-ink); }
+  :root:has(#nowcard .now-card.main.pc-job) #dockStack > .hchip[aria-pressed="true"] svg { color: var(--a-job-ink); }
+  :root:has(#nowcard .now-card.main.pc-personal) #dockStack > .hchip[aria-pressed="true"] svg { color: var(--a-personal-ink); }
+  :root:has(#nowcard .now-card.main.pc-teal) #dockStack > .hchip[aria-pressed="true"] svg { color: var(--p-teal-ink); }
+  :root:has(#nowcard .now-card.main.pc-orange) #dockStack > .hchip[aria-pressed="true"] svg { color: var(--p-orange-ink); }
+  :root:has(#nowcard .now-card.main.pc-slate) #dockStack > .hchip[aria-pressed="true"] svg { color: var(--p-slate-ink); }
+  :root:has(#nowcard .now-card.main.pc-brick) #dockStack > .hchip[aria-pressed="true"] svg { color: var(--p-brick-ink); }
+  :root:has(#nowcard .now-card.main.pc-lime) #dockStack > .hchip[aria-pressed="true"] svg { color: var(--p-lime-ink); }
+  :root:has(#nowcard .now-card.main.area-admin) #dockStack > .hchip[aria-pressed="true"] svg { color: var(--a-admin-ink); }
+  :root:has(#nowcard .now-card.main.area-work) #dockStack > .hchip[aria-pressed="true"] svg { color: var(--a-work-ink); }
+  :root:has(#nowcard .now-card.main.area-home) #dockStack > .hchip[aria-pressed="true"] svg { color: var(--a-home-ink); }
+  :root:has(#nowcard .now-card.main.area-social) #dockStack > .hchip[aria-pressed="true"] svg { color: var(--a-social-ink); }
+  :root:has(#nowcard .now-card.main.area-job) #dockStack > .hchip[aria-pressed="true"] svg { color: var(--a-job-ink); }
+  :root:has(#nowcard .now-card.main.area-personal) #dockStack > .hchip[aria-pressed="true"] svg { color: var(--a-personal-ink); }
+}
+
+/* Text is 12px at the least (design round 4): the small labels app.css set
+   at 9–11.5px, same selectors, later file wins. Glyphs (●, carets) stay. */
+.now-meta, .chip-n, .nag-week, .menu-h, .tell-kind, .pj-now, .pj-meta, .brand .beta, .hdr-date, #side .hchip,
+.now-card.main > .hero-due, .done-col > .task-pct, .sc-time, .sc-time .sc-nowtag, .wk-wd, .wk-adl, .wk-hours span, .wk-evt,
+.pp-time small, .plan-line-k, .sc-why, .pcard-time, .bl-h, .hglance .bl-h, .hglance .bl-bee, .rb-top { font-size: 12px; }
+@media (max-width: 359px) { .ts-kind { font-size: 12px; } }
+@media (max-width: 389px) { .now-row .iconbtn { font-size: 12px; } }
+@media (max-width: 1023px) { .rb-top { font-size: 12px; } }
