@@ -542,6 +542,7 @@ export function mountAddTask(dialog, uid, { onStart, onDone } = {}){
     researchLine.textContent = r ? `${r.online === "yes" ? "Daisey checked: can be done online" : "Daisey checked: needs a call or a visit"}${r.why ? ` — ${r.why}` : ""}` : "";
     startBtn.hidden = done;
     doneBtn.hidden = !t || done || !onDone;
+    startBtn.classList.toggle("primary", doneBtn.hidden); // Focus goes plain beside Done: one yellow key, not two
     actRow.hidden = startBtn.hidden && doneBtn.hidden;
     actRow.classList.toggle("duo", !startBtn.hidden && !doneBtn.hidden);
     startBtn.replaceChildren(icon(t ? "focus" : "plus"), h("span", { textContent: t ? "Focus" : "Add task" }));
