@@ -184,6 +184,18 @@ test("topUp: when the day opens up, fresh picks go on the end; what's there stay
   assert.deepEqual(r.added, []);
 });
 
+test("topUp after Later → Tomorrow (now.js fillFreed): the task's freed hour takes a fresh pick, the task itself never", () => {
+  const tasks = [t({ id: "a", size: 60 }), t({ id: "b", size: 30 }), t({ id: "c", size: 30 }), t({ id: "d", size: 45 })];
+  const items = [{ taskId: "b", minutes: 30 }, { taskId: "a", minutes: 60 }];
+  const events = [ev("Gig", [21], [22])];
+  assert.deepEqual(topUp(items, { tasks, events, now: at(19, 30) }).added, []); // full
+  // fillFreed leaves "a" out of the day (its write hasn't landed) and skips it.
+  const r = topUp(items, { tasks: tasks.filter((x) => x.id !== "a"), events, now: at(19, 30) }, ["a"]);
+  assert.equal(r.added.length, 1);
+  assert.ok(["c", "d"].includes(r.added[0]));
+  assert.deepEqual(r.items.slice(0, 2), items);
+});
+
 test("daySig: changes with busy events and hours, not with the clock or free events", () => {
   const evs = [ev("Teaching", [10], [12])];
   const s = daySig(evs, { start: 480, end: 1320 }, at(9));
