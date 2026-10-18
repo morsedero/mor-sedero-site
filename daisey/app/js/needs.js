@@ -98,6 +98,9 @@ export function mountNeeds(root, uid, { onClose, onStart, extra, onAway } = {}){
   // Asks twice (Mor, 2026-10-10), as the sheet does: the third entry is
   // what the button says once armed (answer() below).
   const del = (t) => ["Delete task", () => { dropSeries(t); removeTask(uid, t.id).catch(fail); flash("Deleted ", t.title); next(); }, "Really delete?"];
+  // Waiting on a reply (Mor, 2026-10-18): the answer for a task that is stuck
+  // on someone else. Pending, asked again later like any other pending task.
+  const pend = (t) => ["Pending, waiting on a reply", () => { restoreTask(uid, t.id, { status: "waiting", notBefore: null, checkOn: pendingCheck(t), touchedAt: Date.now() }).catch(fail); next(); }];
   // Ids in today's plan (proposed or approved): the sweep keeps those today.
   const planned = () => new Set(dayPlan?.date === planDate(Date.now(), dayHours(settings)) && dayPlan.status !== "dismissed" ? (dayPlan.items || []).map((it) => it.taskId).filter(Boolean) : []);
   const sweep = (t, kind) => {
@@ -218,14 +221,14 @@ export function mountNeeds(root, uid, { onClose, onStart, extra, onAway } = {}){
         const past = t.due < logicalDate();
         return { tone: "area-job", ico: "later", q: past ? "Deadline passed" : "Deadline today",
           sub: past ? `It was ${shortDay(t.due)}.` : "It's still open.", item: t.title, say: "Tonight, or does the date move?",
-          yes: ["I'll do it tonight", () => next()], no: ["Move it to tomorrow", tomorrow], more: [drop], noLater: true };
+          yes: ["I'll do it tonight", () => next()], no: ["Move it to tomorrow", tomorrow], more: [pend(t), drop], noLater: true };
       }
       return { tone: areaClass(t).trim() || "area-home", ico: "later", q: "Still for today?",
         sub: t.due < logicalDate() ? `It was planned for ${shortDay(t.due)}.` : "It was planned for today.", item: t.title,
         say: "I'd move it to tomorrow.", yes: ["Move to tomorrow", tomorrow],
         no: ["On hold", () => { restoreTask(uid, t.id, { status: "someday", touchedAt: Date.now() }).catch(fail); next(); }],
         // Do it now (Mor, 2026-10-13): whoever opened the app may want to work.
-        more: [...(onStart ? [["Do it now", () => onStart(t.id)]] : []), drop], noLater: true };
+        more: [...(onStart ? [["Do it now", () => onStart(t.id)]] : []), pend(t), drop], noLater: true };
     }
     if (item.kind === "parked") {
       const days = daysUntil(t.due, Date.now());
@@ -233,7 +236,7 @@ export function mountNeeds(root, uid, { onClose, onStart, extra, onAway } = {}){
         sub: `It's on hold. ${days < 0 ? "The deadline was" : "The deadline is"} ${days === 0 ? "today" : days === 1 ? "tomorrow" : shortDay(t.due)}.`,
         item: t.title, say: days < 0 ? "Bring it back, or delete it?" : "I'd bring it back before it's too late.",
         yes: ["Bring it back", () => { restoreTask(uid, t.id, { status: "ready", notBefore: null, touchedAt: Date.now() }).catch(fail); next(); }],
-        no: del(t) };
+        no: del(t), more: [pend(t)] };
     }
     if (item.kind === "stale") {
       const small = shrunk(t.size);
@@ -290,7 +293,7 @@ export function mountNeeds(root, uid, { onClose, onStart, extra, onAway } = {}){
       item: t.title, say,
       yes: ["Do it today", () => sweep(t, "today")],
       no: [`Move to ${weekday(week)}`, () => sweep(t, "week")],
-      more: [["On hold", () => sweep(t, "someday")], del(t)] };
+      more: [["On hold", () => sweep(t, "someday")], pend(t), del(t)] };
   }
 
   const big = (text, cls, onclick) => h("button", { className: `btn ${cls}`, type: "button", textContent: text, onclick });
