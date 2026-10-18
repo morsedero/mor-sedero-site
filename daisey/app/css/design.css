@@ -238,3 +238,19 @@
 @media (max-width: 359px) { .ts-kind { font-size: 12px; } }
 @media (max-width: 389px) { .now-row .iconbtn { font-size: 12px; } }
 @media (max-width: 1023px) { .rb-top { font-size: 12px; } }
+
+/* ---- Done beside Switch and Later (Mor, 2026-10-18: "Done is a huge button") ----
+   One line: Switch and Later with their words, then Done taking the rest at
+   the same height, no glow, the bar under it. Replaces slice 1's full-width
+   Done. In the compact bar the wrapper dissolves (app.css card-mini rules). */
+.now-card .act-line { display: flex; align-items: flex-start; gap: 8px; margin-block-start: 14px; padding-block-end: 8px; }
+.now-card .act-line > .now-row.duo { display: flex; flex: none; gap: 2px; margin: 0; padding: 0; }
+.now-card .act-line > .now-row.duo > .iconbtn { flex: none; padding-inline: 10px; }
+.now-card .act-line > .done-col.solo { flex: 1 1 0; min-inline-size: 0; margin: 0; }
+.now-card.main .act-line .done-col.solo > .btn.start { min-block-size: 46px; block-size: 46px; font-size: 16px; box-shadow: none; }
+:root:not(.night) body:is(.focus-mode, .home-float) .now-card.main .act-line .done-col.solo > .btn.start { min-block-size: 48px; block-size: 48px; }
+@media (max-width: 359px) {
+  .now-card .act-line > .now-row.duo > .iconbtn { inline-size: 40px; padding-inline: 0; }
+  .now-card .act-line > .now-row.duo .iconbtn-text { position: absolute; inline-size: 1px; block-size: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+}
+:root:not(.night) body.card-mini #nowcard .now-card.main > .act-line { display: contents; }

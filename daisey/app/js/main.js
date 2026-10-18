@@ -885,7 +885,7 @@ async function boot(){
         // mode on (Mor, 2026-10-10; no clock, no Deep Focus).
         const startTask = (id) => { closeScreens(); m.now?.start(id); };
 
-        m.adder = mountAddTask($("#addtask"), user.uid, { onStart: startTask });
+        m.adder = mountAddTask($("#addtask"), user.uid, { onStart: startTask, onDone: (id) => m.now?.doneById(id) });
         m.needs = mountNeeds($("#needsview"), user.uid, {
           // then: what to open once Needs you is shut.
           onClose: (then) => { m.needs.close(); syncPanel(); then?.(); },

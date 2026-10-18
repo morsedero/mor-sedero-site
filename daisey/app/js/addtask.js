@@ -55,7 +55,8 @@ const boxDate = (s) => new Date(`${s}T12:00`).toLocaleDateString(undefined, { we
 const workedText = (m) => (m < 60 ? `${m} min` : `${Math.floor(m / 60)} h${m % 60 ? ` ${m % 60}` : ""}`);
 
 // onStart(id): close the sheet, the task on the card, Focus mode on (now.js start).
-export function mountAddTask(dialog, uid, { onStart } = {}){
+// onDone(id): close the sheet, the task done as from the card (now.js doneById).
+export function mountAddTask(dialog, uid, { onStart, onDone } = {}){
   let tasks = [];
   let editing = null; // the open task (kept fresh from the snapshot), or null for a new one
   let vals = {}, mine = new Set(), openChip = null;
@@ -296,6 +297,9 @@ export function mountAddTask(dialog, uid, { onStart } = {}){
   const notes = h("textarea", { className: "ts-notes", dir: "auto", rows: 2, placeholder: "Notes…", ariaLabel: "Notes" });
   const worked = h("p", { className: "ts-worked" });
   const startBtn = h("button", { type: "button", className: "btn primary ts-start" });
+  // Done beside Focus (Mor, 2026-10-18): the card's Done, yellow with a check.
+  const doneBtn = h("button", { type: "button", className: "btn primary ts-start" }, icon("check"), h("span", { textContent: "Done" }));
+  const actRow = h("div", { className: "ts-acts" }, startBtn, doneBtn);
   const del = h("button", { type: "button", className: "ts-del" });
   const msg = h("p", { className: "msg", role: "status" });
   const section = (label, ...kids) => h("div", { className: "field" }, h("h3", { className: "ts-h", textContent: label }), ...kids);
@@ -307,7 +311,7 @@ export function mountAddTask(dialog, uid, { onStart } = {}){
     oftenRow, weekNow, // repeats by the dates it changes (Mor, 2026-10-12)
     field("How long?", chipRow), guessBox, laptopRow, pctBox, pendBox, holdBox, researchLine, stateLine,
     section("Links & notes", h("div", { className: "ts-group" }, linkRow, notes)),
-    worked, startBtn, del, msg);
+    worked, actRow, del, msg);
 
   // ---------- saving ----------
   // Other tasks teach the guesses; the open one must not teach itself.
@@ -537,12 +541,19 @@ export function mountAddTask(dialog, uid, { onStart } = {}){
     researchLine.hidden = !r || r.online === "unsure" || !r.why;
     researchLine.textContent = r ? `${r.online === "yes" ? "Daisey checked: can be done online" : "Daisey checked: needs a call or a visit"}${r.why ? ` — ${r.why}` : ""}` : "";
     startBtn.hidden = done;
+    doneBtn.hidden = !t || done || !onDone;
+    actRow.hidden = startBtn.hidden && doneBtn.hidden;
+    actRow.classList.toggle("duo", !startBtn.hidden && !doneBtn.hidden);
     startBtn.replaceChildren(icon(t ? "focus" : "plus"), h("span", { textContent: t ? "Focus" : "Add task" }));
     del.hidden = !t;
   }
   startBtn.onclick = () => {
     if (editing) { flush(); const id = editing.id; dialog.close(); onStart?.(id); return; }
     add();
+  };
+  doneBtn.onclick = () => {
+    if (!editing) return;
+    flush(); const id = editing.id; dialog.close(); onDone?.(id);
   };
   del.onclick = () => {
     if (!editing) return;

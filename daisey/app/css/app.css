@@ -2439,7 +2439,7 @@ body.fm-slide .deck > .now-card.main { animation: none !important; } /* main.js:
    the title (it still opens the task) and Focus; everything else waits
    until Today shuts. */
 :root:not(.night) body.card-mini #nowcard .now-card.main { min-block-size: 56px; padding: 6px 6px 6px 16px; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; column-gap: 10px; border-radius: 18px; }
-:root:not(.night) body.card-mini #nowcard .now-card.main > :not(.hero-top, .now-title, .later-ask), :root:not(.night) body.card-mini :is(#nowcard, .deck) > :not(.now-card.main, .deck, .later-drop), :root:not(.night) body.card-mini :is(.now-greet, .now-next-out) { display: none; }
+:root:not(.night) body.card-mini #nowcard .now-card.main > :not(.hero-top, .now-title, .later-ask, .act-line), :root:not(.night) body.card-mini :is(#nowcard, .deck) > :not(.now-card.main, .deck, .later-drop), :root:not(.night) body.card-mini :is(.now-greet, .now-next-out) { display: none; }
 :root:not(.night) body.card-mini #nowcard .now-card.main .hero-top { display: contents; }
 :root:not(.night) body.card-mini #nowcard .now-card.main .hero-top > :not(.hero-area), :root:not(.night) body.card-mini #nowcard .now-card.main .hero-where { display: none; }
 :root:not(.night) body.card-mini #nowcard .now-card.main .hero-area { grid-column: 1; grid-row: 1; }
@@ -2447,10 +2447,10 @@ body.fm-slide .deck > .now-card.main { animation: none !important; } /* main.js:
 /* Switch, Later, Done at the bar's end (Mor, 2026-10-18: in place of Focus,
    the same on every page): Switch and Later as 44px icons, Done with its word. */
 :root:not(.night) body.card-mini #nowcard .now-card.main { grid-template-columns: auto minmax(0, 1fr) auto auto; }
-:root:not(.night) body.card-mini #nowcard .now-card.main > .now-row.duo { display: flex; grid-column: 3; grid-row: 1; gap: 0; margin: 0; padding: 0; }
-:root:not(.night) body.card-mini #nowcard .now-card.main > .now-row.duo > .iconbtn { flex: none; inline-size: 44px; block-size: 44px; min-block-size: 44px; padding: 0; }
-:root:not(.night) body.card-mini #nowcard .now-card.main > .now-row.duo > .iconbtn .iconbtn-text { position: absolute; inline-size: 1px; block-size: 1px; overflow: hidden; clip: rect(0 0 0 0); }
-:root:not(.night) body.card-mini #nowcard .now-card.main > .done-col.solo { display: block; grid-column: 4; grid-row: 1; margin: 0; }
+:root:not(.night) body.card-mini #nowcard .now-card.main > .act-line > .now-row.duo { display: flex; grid-column: 3; grid-row: 1; gap: 0; margin: 0; padding: 0; }
+:root:not(.night) body.card-mini #nowcard .now-card.main > .act-line > .now-row.duo > .iconbtn { flex: none; inline-size: 44px; block-size: 44px; min-block-size: 44px; padding: 0; }
+:root:not(.night) body.card-mini #nowcard .now-card.main > .act-line > .now-row.duo > .iconbtn .iconbtn-text { position: absolute; inline-size: 1px; block-size: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+:root:not(.night) body.card-mini #nowcard .now-card.main > .act-line > .done-col.solo { display: block; grid-column: 4; grid-row: 1; margin: 0; }
 :root:not(.night) body.card-mini #nowcard .done-col.solo > :not(.btn) { display: none; }
 :root:not(.night) body.card-mini #nowcard .done-col.solo > .btn.start { inline-size: auto; block-size: 44px; min-block-size: 44px; margin: 0; padding-inline: 12px; font-size: 15px; box-shadow: none; }
 /* Switch's row opens under the title inside the bar; Later's drop-down under the bar. */
@@ -2546,9 +2546,9 @@ body.fm-slide .deck > .now-card.main { animation: none !important; } /* main.js:
   .wk-hd.today, .wk-hd.today .wk-n { color: #1a1408; }
   .wk-hd.today .wk-n { background: none; }
   /* The bar's keys keep their words on a wide screen (Switch, Later, Done). */
-  :root:not(.night) body.card-mini #nowcard .now-card.main > .now-row.duo { gap: 6px; }
-  :root:not(.night) body.card-mini #nowcard .now-card.main > .now-row.duo > .iconbtn { inline-size: auto; padding-inline: 12px; }
-  :root:not(.night) body.card-mini #nowcard .now-card.main > .now-row.duo > .iconbtn .iconbtn-text { position: static; inline-size: auto; block-size: auto; overflow: visible; clip: auto; }
+  :root:not(.night) body.card-mini #nowcard .now-card.main > .act-line > .now-row.duo { gap: 6px; }
+  :root:not(.night) body.card-mini #nowcard .now-card.main > .act-line > .now-row.duo > .iconbtn { inline-size: auto; padding-inline: 12px; }
+  :root:not(.night) body.card-mini #nowcard .now-card.main > .act-line > .now-row.duo > .iconbtn .iconbtn-text { position: static; inline-size: auto; block-size: auto; overflow: visible; clip: auto; }
   :root:not(.night) body.card-mini #nowcard .done-col.solo > .btn.start { padding-inline: 22px; }
   /* Page switches morph (main.js morph): each block glides to its new box,
      its old and new looks cross-fading unstretched inside it. */

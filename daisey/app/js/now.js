@@ -1174,13 +1174,16 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     // row under the card.
     if (state.notNow || state.pendAsk) sheetFor = task;
     return [
-      h("div", { className: "done-col solo" }, done, progressBar(task), progressPct(task)),
-      h("div", { className: "now-actions now-row duo" },
-        // Never a dead end while On hold holds tasks (DAISEY_SPEC "Someday comes back").
-        (alts.length > 0 || someN > 0) && action("switch", "Switch", `something else instead of ${task.title}`, { ariaExpanded: String(state.showAlts), onclick: toggle("showAlts") }),
-        // Later and Pending as one key (Mor, 2026-10-12); Waiting on… is in its sheet.
-        action("later", "Later", `later, or ${task.title} is waiting on something`, { ariaExpanded: String(state.notNow || state.pendAsk),
-          onclick: () => { if (state.pendAsk) { state.pendAsk = false; render(); } else toggle("notNow")(); } })),
+      // One line (Mor, 2026-10-18: Done as a full-width key was huge): Switch,
+      // Later, then Done taking the rest, the bar under it.
+      h("div", { className: "act-line" },
+        h("div", { className: "now-actions now-row duo" },
+          // Never a dead end while On hold holds tasks (DAISEY_SPEC "Someday comes back").
+          (alts.length > 0 || someN > 0) && action("switch", "Switch", `something else instead of ${task.title}`, { ariaExpanded: String(state.showAlts), onclick: toggle("showAlts") }),
+          // Later and Pending as one key (Mor, 2026-10-12); Waiting on… is in its sheet.
+          action("later", "Later", `later, or ${task.title} is waiting on something`, { ariaExpanded: String(state.notNow || state.pendAsk),
+            onclick: () => { if (state.pendAsk) { state.pendAsk = false; render(); } else toggle("notNow")(); } })),
+        h("div", { className: "done-col solo" }, done, progressBar(task), progressPct(task))),
       state.showAlts && switchRow(alts),
     ];
   }
@@ -2377,6 +2380,11 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     needsAsks: () => [planAsk(), mealLateAsk()].filter(Boolean),
     // The schedule's "?" on a planned task that didn't happen.
     missed: (id, start, from) => missedSheet(id, start, from),
+    // Done from the task sheet: the card's Done, Undo in the toast.
+    doneById(id){
+      const task = (tasks || []).find((t) => t.id === id);
+      if (task && task.status !== "done") quickDoneNow(task);
+    },
     // "Do this now" from the task sheet: the same thing Switch does, driven
     // from the list. A task put off today is un-put-off, or the card would
     // ignore the choice.
