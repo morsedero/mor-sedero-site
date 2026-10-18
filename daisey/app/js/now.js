@@ -1826,11 +1826,13 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
         h("button", { className: "chip quiet", type: "button", textContent: "No", onclick: () => { state.moreTime = false; render(); } }))
       : h("button", { className: "upnext-ask", type: "button", ariaLabel: `Need more time on ${t.title}?`, onclick: () => { state.moreTime = true; render(); } },
         icon("plus"), h("span", { textContent: "More time?" }));
+    // More time? sits right under the card, above Next: below it, it read as
+    // more time for the next task (Mor, 2026-10-18).
     return h("div", { className: "now-upnext" + (moreFor === t.id && now - moreAt < 2000 ? " stretched" : "") },
+      more,
       // The card already says "until 10:30": this line is only what's after.
       it ? h("p", { className: "upnext-line" }, "Next at ", h("b", { className: "upnext-k", textContent: clock(it.at) }), " · ", bdi(it.title))
-        : h("p", { className: "upnext-line" }, "Nothing planned after ", h("b", { className: "upnext-k", textContent: clock(row.end) })),
-      more);
+        : h("p", { className: "upnext-line" }, "Nothing planned after ", h("b", { className: "upnext-k", textContent: clock(row.end) })));
   }
   // Stretch the slot (model.moreTimePatch). A running timer gets the minutes
   // too, or it caps out.
