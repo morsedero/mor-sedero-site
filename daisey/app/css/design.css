@@ -47,7 +47,7 @@
 @keyframes drop-in { from { opacity: 0; transform: translateY(-6px) scaleY(.96); } }
 /* Open, the card and its list start at the top of their box instead of
    centring, so the list never pushes the card's top out of sight. */
-:root:not(.night) body:is(.focus-mode, .home-float) #nowcard:has(.later-drop) { justify-content: flex-start; padding-block-end: 12px; overflow-y: auto; }
+:root:not(.night) body.card-mini:is(.focus-mode, .home-float) #nowcard:has(.later-drop) { justify-content: flex-start; padding-block-end: 12px; overflow-y: auto; }
 
 /* ---- The bottom: one panel (Mor, 2026-10-18, option 1) ----
    Tell Daisey and the Today / Projects / Stats row were two pills, each with
@@ -254,3 +254,16 @@
   .now-card .act-line > .now-row.duo .iconbtn-text { position: absolute; inline-size: 1px; block-size: 1px; overflow: hidden; clip: rect(0 0 0 0); }
 }
 :root:not(.night) body.card-mini #nowcard .now-card.main > .act-line { display: contents; }
+
+/* Focus and the phone home centre the card, so anything that grew the box
+   moved it (Mor, 2026-10-18: Later popped the card to the top, Switch's
+   row pushed it up). Here Later's list and Switch's row hang under the card
+   over the empty space instead: no height in the flow, the card stays put.
+   Elsewhere the list stays in the flow and pushes the cards below it down. */
+.drop-anchor { display: contents; }
+:root:not(.night) body:is(.focus-mode, .home-float):not(.card-mini) .drop-anchor { display: block; position: relative; block-size: 0; margin-block-start: -10px; z-index: 6; }
+:root:not(.night) body:is(.focus-mode, .home-float):not(.card-mini) .drop-anchor > .later-drop { position: absolute; inset-inline: 0; inset-block-start: 0; }
+:root:not(.night) body:is(.focus-mode, .home-float):not(.card-mini) .deck > .now-card.main { position: relative; }
+:root:not(.night) body:is(.focus-mode, .home-float):not(.card-mini) .deck > .now-card.main > .switch-ask { position: absolute; inset-inline: 0; inset-block-start: calc(100% + 8px); margin: 0; z-index: 6; }
+/* Done stops growing: the key keeps a hand-sized width, at the row's end. */
+.now-card .act-line > .done-col.solo { flex: 0 1 220px; margin-inline-start: auto; }

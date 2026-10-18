@@ -2286,7 +2286,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     // Later's dropdown goes right under the card's deck (else at the end).
     if (sheetFor && (state.notNow || state.pendAsk)) {
       const at = kids.findIndex((k) => k.classList?.contains("deck"));
-      kids.splice(at < 0 ? kids.length : at + 1, 0, laterSheet(sheetFor));
+      kids.splice(at < 0 ? kids.length : at + 1, 0, h("div", { className: "drop-anchor" }, laterSheet(sheetFor)));
     }
     sheetFor = null;
     // One "I'm free now" at a time: the card's own wins over the top line's.
