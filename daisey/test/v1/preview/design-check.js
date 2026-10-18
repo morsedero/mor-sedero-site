@@ -85,9 +85,9 @@ const CHECKS = {
       const t = text("old", "--click", "#projectsChip", "--click", ".pcard");
       return t.includes("not started") && !/^0%$/m.test(t);
     }],
-    ["Stats is a page: Today's daisy, a bud and no guilt at 0, no counts", () => {
+    ["Stats is a page: Today's Daisey, a bud and no guilt at 0, no counts", () => {
       const t = text("empty", "--click", "#weekChip");
-      return /today's daisy/i.test(t) && t.includes("Still a bud") && !t.includes("Nothing done yet") && !/Done today · \d/.test(t);
+      return /today's daisey/i.test(t) && t.includes("Still a bud") && !t.includes("Nothing done yet") && !/Done today · \d/.test(t);
     }],
     ["Stats with work done: the done list by name, no count", () => {
       const t = text("alldone", "--at", "16:00", "--click", "#weekChip");

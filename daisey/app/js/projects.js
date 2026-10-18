@@ -169,10 +169,10 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
     // Stats (design round 4, 2026-10-18): today's daisy, a petal for each
     // thing done (a closed bud before the first, no guilt), then what got
     // done by name, then the routines. No counts, no times.
-    const bloom = h("section", { className: "bl-card st-daisy", ariaLabel: "Today's daisy" },
+    const bloom = h("section", { className: "bl-card st-daisy", ariaLabel: "Today's Daisey" },
       daisy(Math.min(8, done.length), { size: 72, cls: "daisy st-flower" + (done.length ? "" : " bud") }),
       h("div", { className: "st-daisy-t" },
-        h("h3", { className: "bl-h", textContent: "Today's daisy" }),
+        h("h3", { className: "bl-h", textContent: "Today's Daisey" }),
         h("p", { textContent: done.length ? "A petal for each thing you finish." : "Still a bud. It opens as you go." })));
     const doneCard = done.length > 0 && h("section", { className: "bl-card st-done", ariaLabel: "Done today" },
       h("h3", { className: "bl-h", textContent: "Done today" }),
