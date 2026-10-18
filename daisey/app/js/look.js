@@ -2,6 +2,7 @@
 // daisy, the area colours, the greeting and the free-time line. No state,
 // nothing at import time touches the DOM (focus.js is imported by node tests).
 import { localDate, logicalDate, LABELS, AREAS } from "./model.js";
+import { weekStart } from "./routine.js";
 
 const NS = "http://www.w3.org/2000/svg";
 const svgEl = (tag, attrs = {}) => {
@@ -87,6 +88,12 @@ export function projectShown(task){
 // Tasks finished today (local day).
 export const doneToday = (tasks = [], now = Date.now()) =>
   tasks.filter((t) => t.status === "done" && t.doneAt && logicalDate(t.doneAt) === logicalDate(now));
+
+// Tasks finished this week (Sunday on, the routines' week), Stats' list (Mor, 2026-10-18).
+export const doneThisWeek = (tasks = [], now = Date.now()) => {
+  const from = weekStart(logicalDate(now));
+  return tasks.filter((t) => t.status === "done" && t.doneAt && logicalDate(t.doneAt) >= from && logicalDate(t.doneAt) <= logicalDate(now));
+};
 
 export function greeting(name, now = Date.now()){
   // The real clock, whatever night mode says: after midnight it isn't

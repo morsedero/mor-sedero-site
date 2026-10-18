@@ -27,7 +27,7 @@ import { dropSeries } from "./slots.js";
 import { isOverdue } from "./triage.js";
 import { projectProgress, nextTaskOf, projectSummary } from "./project-state.js";
 import { h, bdi, flash, icon, askProgress, closeOrAsk, askOnEsc, sizeChip, progressBar, weekDots, dragScroll } from "./ui.js";
-import { setProjectColors, doneToday, daisy } from "./look.js";
+import { setProjectColors, doneToday, doneThisWeek, daisy } from "./look.js";
 import { setProjectTiers } from "./context.js";
 import { dateBox } from "./datebox.js";
 import { TIERS, FOCUS_MAX } from "./weights.js";
@@ -174,9 +174,10 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
       h("div", { className: "st-daisy-t" },
         h("h3", { className: "bl-h", textContent: "Today's Daisey" }),
         h("p", { textContent: done.length ? "A petal for each thing you finish." : "Still a bud. It opens as you go." })));
-    const doneCard = done.length > 0 && h("section", { className: "bl-card st-done", ariaLabel: "Done today" },
-      h("h3", { className: "bl-h", textContent: "Done today" }),
-      ...done.map((t) => h("div", { className: "pj-drow" },
+    const week = doneThisWeek(ts).sort((a, b) => a.doneAt - b.doneAt);
+    const doneCard = week.length > 0 && h("section", { className: "bl-card st-done", ariaLabel: "Done this week" },
+      h("h3", { className: "bl-h", textContent: "Done this week" }),
+      ...week.map((t) => h("div", { className: "pj-drow" },
         h("span", { className: "pj-tick on", ariaHidden: "true" }, icon("check")),
         h("button", { type: "button", className: "pj-quiet", onclick: () => onOpen?.(t) }, bdi(t.title)))));
     const rows = routineRows(ts), colors = new Map(list().map((p) => [p.name, p.color || ""]));
