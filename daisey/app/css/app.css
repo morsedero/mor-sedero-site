@@ -1325,6 +1325,10 @@ dialog.tsheet .now-head { margin-block-end: -4px; }
 .wk-dots.met i { color: var(--accent); opacity: 1; }
 .ts-start { display: flex; align-items: center; justify-content: center; gap: 8px; }
 .ts-start svg { inline-size: 16px; block-size: 16px; }
+.ts-acts { display: flex; flex-direction: column; gap: 10px; }
+.ts-acts.duo { flex-direction: row; }
+.ts-acts.duo > .ts-start { flex: 1 1 0; min-inline-size: 0; }
+.ts-acts[hidden] { display: none; }
 .ts-del { flex: none; align-self: center; min-block-size: 40px; margin-block-start: 6px; padding-inline: 14px; border: 0; border-radius: 10px; background: none; color: var(--ink-2); font: inherit; font-size: 13px; cursor: pointer; }
 .ts-del.arm { color: var(--danger); background: color-mix(in srgb, var(--danger) 10%, transparent); font-weight: 600; }
 dialog.tsheet .msg:empty { display: none; }
@@ -1376,7 +1380,7 @@ dialog.tsheet .msg:empty { display: none; }
   block-size: var(--app-h, 100dvh); display: flex; flex-direction: column; overflow: hidden; /* --app-h: main.js fitHeight */
   padding: max(16px, env(safe-area-inset-top)) 16px 0;
 }
-.topbar { flex: none; block-size: 44px; min-block-size: 44px; padding-inline: 4px; gap: 8px; position: relative; z-index: 21; /* over .screen, so its menu opens over pages too */ }
+.topbar { flex: none; block-size: 44px; min-block-size: 44px; padding-inline: 4px; gap: 8px; position: relative; z-index: 31; /* over .screen and the Stats pop-over (30), so its menu opens over pages too */ }
 .logo { inline-size: 30px; block-size: 30px; flex: none; }
 .brand { font-size: 21px; letter-spacing: -0.4px; }
 .brand .beta { margin-inline-start: 4px; font-size: 10px; font-weight: 500; letter-spacing: 0; color: var(--ink-2); vertical-align: super; }
