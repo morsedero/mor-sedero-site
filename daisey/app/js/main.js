@@ -780,8 +780,8 @@ async function boot(){
           document.body.classList.toggle("card-mini", phone.matches ? day || plan || on || weekPop : on || week);
           // The glance (done today, routines): on a phone it's Week's
           // pop-over, over whatever is open (Mor, 2026-10-12: they live in a
-          // button). PC: under the card, and over the week grid (layout B).
-          const glance = phone.matches ? weekPop : !on;
+          // button). PC: under the card, but not over the week grid (Mor, 2026-10-18).
+          const glance = phone.matches ? weekPop : !on && !week;
           $("#homeHint").hidden = hintSeen || glance || !(phone.matches && !day && !(on || plan));
           $("#glance").classList.toggle("pop", phone.matches);
           if (phone.matches && glance) popAt();
