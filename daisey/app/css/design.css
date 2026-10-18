@@ -267,3 +267,10 @@
 :root:not(.night) body:is(.focus-mode, .home-float):not(.card-mini) .deck > .now-card.main > .switch-ask { position: absolute; inset-inline: 0; inset-block-start: calc(100% + 8px); margin: 0; z-index: 6; }
 /* Done stops growing: a hand-sized key right after Later, not pushed to the far end of a wide card. */
 .now-card .act-line > .done-col.solo { flex: 0 1 200px; margin-inline-start: 0; }
+
+/* PC: the card stops at a hand's width instead of stretching across the
+   column (Mor, 2026-10-18); Later's list under it matches. Focus keeps its
+   own 720px box. */
+@media (min-width: 1024px) {
+  :root:not(.night) body:not(.focus-mode):not(.card-mini) #nowcard > :is(.deck, .later-drop, .drop-anchor) { max-inline-size: 560px; }
+}
