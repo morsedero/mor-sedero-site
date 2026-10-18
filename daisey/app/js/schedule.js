@@ -350,7 +350,7 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onMissed, onPro
       .map((t) => ({ id: t.id, at: t.doneAt, task: t }));
     const left = planned ? planRows(cal.status === "ok" ? cal.events || [] : [], now).filter((r) => r.kind === "plan" && r.end > now && r.task.status !== "done")
       .map((r) => ({ id: r.task.id, at: r.start, end: r.end, task: r.task })) : [];
-    return { start, end, now, done, left, events, planned, word: planWord(now) };
+    return { start, end, now, done, left, events, planned, tasks, word: planWord(now) };
   }
 
   function planWord(now){

@@ -1023,7 +1023,7 @@ async function boot(){
             if (open) { m.projects?.closeProject(); m.projects?.closeAll(); }
             $("#planPage").hidden = !open; if (open) $("#planPage").scrollTop = 0; syncPanel();
           },
-          onCard: (id) => m.projects?.setCurrent(id),
+          onCard: (id) => { m.projects?.setCurrent(id); m.ribbon?.setCard(id); },
           onOpen: (task) => m.adder.edit(task),
           onProject: (name) => m.projects.openProject(name),
           onEvent: (ev) => m.event.view(ev),

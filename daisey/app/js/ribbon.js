@@ -13,7 +13,7 @@ const hm = (ms) => new Date(ms).toTimeString().slice(0, 5);
 const ring = () => h("span", { className: "rb-ring", ariaHidden: "true" });
 
 export function mountRibbon(el, { onPlan } = {}){
-  let data = null, open = null; // open: the bead whose pop-over shows ("d:<id>" / "l:<id>")
+  let data = null, open = null, cardId = null; // open: the bead whose pop-over shows ("d:<id>" / "l:<id>")
 
   const pct = (ms) => `${Math.max(0, Math.min(100, ((ms - data.start) / (data.end - data.start)) * 100)).toFixed(2)}%`;
   const pick = (key) => (e) => { e.stopPropagation(); open = open === key ? null : key; paint(); };
@@ -31,13 +31,18 @@ export function mountRibbon(el, { onPlan } = {}){
 
   // The now dot: the time, what's on right now, what's next.
   function nowPop(line){
-    const now = data.now, cur = data.left.find((l) => l.at <= now && now < l.end), ev = data.events.find((e) => e.start <= now && now < e.end);
-    const next = data.left.filter((l) => l.at > now).sort((a, b) => a.at - b.at)[0];
+    const now = data.now, ev = data.events.find((e) => e.start <= now && now < e.end);
+    const card = cardId && (data.tasks || []).find((t) => t.id === cardId);
+    const row = card ? data.left.find((l) => l.id === card.id) : data.left.find((l) => l.at <= now && now < l.end);
+    const task = card || row?.task;
+    const next = data.left.filter((l) => l.at > now && l.id !== task?.id).sort((a, b) => a.at - b.at)[0];
+    const title = task ? task.title : ev ? ev.title : null;
+    const when = row ? (row.at <= now && now < row.end ? `until ${hm(row.end)}` : `planned ${hm(row.at)}–${hm(row.end)}`) : !task && ev ? `until ${hm(ev.end)}` : null;
     const box = h("div", { className: "rb-pop rb-nowpop", role: "dialog", ariaLabel: "Now" },
       h("span", { className: "rb-arrow", ariaHidden: "true" }),
       h("p", { className: "rb-proj" }, `Now · ${hm(now)}`),
-      h("p", { className: "rb-title" }, cur ? bdi(cur.task.title) : ev ? bdi(ev.title) : "Nothing planned right now"),
-      (cur || ev) && h("p", { className: "rb-when" }, `until ${hm((cur || ev).end)}`),
+      h("p", { className: "rb-title" }, title ? bdi(title) : "Nothing planned right now"),
+      when && h("p", { className: "rb-when" }, when),
       next && h("p", { className: "rb-when" }, "Next: ", bdi(next.task.title), ` at ${hm(next.at)}`));
     requestAnimationFrame(() => {
       const dot = line.querySelector(".rb-now");
@@ -100,6 +105,8 @@ export function mountRibbon(el, { onPlan } = {}){
 
   return {
     set(d){ data = d; paint(); },
+    // The task on the Now card, for the now dot's pop-over.
+    setCard(id){ cardId = id; if (open === "now") paint(); },
     unmount(){ document.removeEventListener("click", away); el.replaceChildren(); el.hidden = true; },
   };
 }
