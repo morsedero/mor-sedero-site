@@ -2495,11 +2495,14 @@ body.fm-slide .deck > .now-card.main { animation: none !important; } /* main.js:
   #panel .ppage { margin-inline: -18px; padding-inline: 18px; }
   /* Projects (all, or one) or Week open: the page takes the middle and the
      right, the card a bar over it with Done at its end (body.card-mini,
-     main.js syncPanel); Week keeps done today + routines over its grid. */
+     main.js syncPanel). */
   .shell:has(#panel > :is(#projPage, #projectview, #weekPage):not([hidden]):not(.pg-ghost)) { grid-template-rows: auto auto minmax(0, 1fr) auto; grid-template-areas: "rail now now" "rail glance glance" "rail panel panel" "rail dock dock"; }
   .shell:has(#panel > :is(#projPage, #projectview, #weekPage):not([hidden]):not(.pg-ghost)) #panel { margin-block-start: 16px; }
-  .shell:has(#panel > :is(#projPage, #projectview, #weekPage):not([hidden]):not(.pg-ghost)) #glance { margin-block: 12px 0; grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .shell:has(#panel > :is(#projPage, #projectview, #weekPage):not([hidden]):not(.pg-ghost)) #dock { justify-self: center; inline-size: min(100%, 760px); }
+  /* Week: done today + routines in their own column right of the grid
+     (Mor, 2026-10-18); the home shows no glance on PC. */
+  .shell:has(#panel > #weekPage:not([hidden]):not(.pg-ghost)) { grid-template-columns: var(--rail) minmax(0, 1fr) 300px; grid-template-areas: "rail now now" "rail panel glance" "rail panel glance" "rail dock dock"; }
+  .shell:has(#panel > #weekPage:not([hidden]):not(.pg-ghost)) #glance { margin-block: 16px 28px; grid-template-columns: minmax(0, 1fr); }
   /* The bar's keys keep their words on a wide screen (Switch, Later, Done). */
   :root:not(.night) body.card-mini #nowcard .now-card.main > .now-row.duo { gap: 6px; }
   :root:not(.night) body.card-mini #nowcard .now-card.main > .now-row.duo > .iconbtn { inline-size: auto; padding-inline: 12px; }
