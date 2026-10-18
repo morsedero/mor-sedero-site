@@ -91,7 +91,7 @@ const CHECKS = {
     }],
     ["Stats with work done: the done list by name, no count", () => {
       const t = text("alldone", "--at", "16:00", "--click", "#weekChip");
-      return /done today/i.test(t) && t.includes("Send invoice to Uri") && !/Done today · \d/.test(t);
+      return /done this week/i.test(t) && t.includes("Send invoice to Uri") && !/Done this week · \d/.test(t);
     }],
     ["Settings: an icon chip on each row", () => {
       const r = require("child_process").spawnSync(process.execPath, [PREVIEW, "old", "--out", OUT, "--at", "10:42", "--click", "#avatar", "--click", "#settingsBtn",
