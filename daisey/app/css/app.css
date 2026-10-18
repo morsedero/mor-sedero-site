@@ -2421,6 +2421,9 @@ body.fm-slide .deck > .now-card.main { animation: none !important; } /* main.js:
 :root:not(.night) body.card-mini #nowcard .done-col.solo > .btn.start { inline-size: auto; block-size: 44px; min-block-size: 44px; margin: 0; padding-inline: 12px; font-size: 15px; box-shadow: none; }
 /* Switch's row opens under the title inside the bar; Later's drop-down under the bar. */
 :root:not(.night) body.card-mini #nowcard .now-card.main > .later-ask { grid-column: 1 / -1; grid-row: 2; min-inline-size: 0; margin: 8px 0 4px; }
+/* A quiet card (No tasks yet, That's everything, Nothing fits) has no title,
+   so its bar was an empty strip over Projects (Mor, 2026-10-18): no bar. */
+:root:not(.night) body.card-mini #nowcard:has(.now-card.main.qh) { display: none; }
 /* Stats (phone) is a box over the page: it starts under the bar, which grows with Switch and Later (main.js popAt). */
 @media (max-width: 1023px) { :root:not(.night) body.card-mini #glance.pop { inset-block-start: var(--pop-t, calc(max(16px, env(safe-area-inset-top)) + 56px + 68px)); } }
 
