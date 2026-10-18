@@ -599,6 +599,13 @@ export function moreOf(items = [], ctx = {}){
   return out;
 }
 
+// How many of the open tasks outside the plan "More tasks" would add: 0 when
+// none can fit, so the plan's "+N more · Add" hides instead of doing nothing.
+export const addableCount = (items = [], ctx = {}) => {
+  const have = new Set(items.filter((it) => !isBreak(it)).map((it) => it.taskId));
+  return moreOf(items, ctx).filter((it) => !isBreak(it) && !have.has(it.taskId)).length;
+};
+
 // A meal answered in Needs you (meals.js, Mor 2026-10-09: "it asked, but
 // didn't rearrange my schedule"). A plan's breaks are its own items and
 // don't move by themselves, so the answer moves them, once per answer:

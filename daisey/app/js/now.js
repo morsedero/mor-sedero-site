@@ -15,7 +15,7 @@
 import { overruled, eventKey } from "./reality.js";
 import { sortable } from "./ppdrag.js";
 import { addTask, updateTask, watchTasks, watchRun, watchSkips, saveSkips, endBatch, skipNow, blockTask, restoreTask, finishTask, undoDone, watchSettings, saveSettings, watchMoment, saveMoment, watchLearn, bumpLearn, cancelRun, watchDayPlan, saveDayPlan, logWork, watchProjectNames, removeTask } from "./store.js";
-import { proposeDay, timeline, shownTaskCount, withBreaks, trimBreaks, isBreak, planProgress, planStatus, unfitOf, refit, topUp, daySig, relayMeals } from "./proposal.js";
+import { proposeDay, timeline, shownTaskCount, addableCount, withBreaks, trimBreaks, isBreak, planProgress, planStatus, unfitOf, refit, topUp, daySig, relayMeals } from "./proposal.js";
 import { rethink } from "./rethink.js";
 import { breakText } from "./schedule.js";
 import { placeNow, workBase, watchProjectTiers } from "./context.js";
@@ -1948,7 +1948,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
       over.length > 0 && !approved && h("p", { className: "muted pp-note", textContent: words.over(over.length) }),
       // Open tasks the plan didn't take (it holds a day's worth, MAX_ITEMS):
       // counted, not listed, so nothing sits out of sight unsaid (2026-10-11).
-      notInPlan() > 0 && !prop.ask && h("p", { className: "muted pp-note" },
+      notInPlan() > 0 && !prop.ask && addableCount(prop.items, { ...planCtx(), exclude: prop.exclude }) > 0 && h("p", { className: "muted pp-note" },
         `+${notInPlan()} more · `,
         h("button", { className: "linkish", type: "button", textContent: "Add", ariaLabel: `Add more of the ${notInPlan()} open tasks not in the plan`, disabled: prop.busy, onclick: () => doRethink("More tasks") })),
       prop.note && h("p", { className: "pp-note", role: "status", textContent: prop.note }),

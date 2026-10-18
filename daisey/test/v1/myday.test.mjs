@@ -44,3 +44,22 @@ test("plan set count: rows shown, not finished/deleted tasks, not No-room ones, 
   assert.ok(tl.over.some((o) => o.taskId === "d"), "D has no room");
   assert.equal(shownTaskCount([], ctx), 0);
 });
+
+// ---------- "+N more · Add" only when an unplanned task can fit ----------
+import { addableCount } from "../../app/js/proposal.js";
+
+test("add-more: 0 when the unplanned task can't fit, >0 when it can", () => {
+  const now = at(18, 10, 0), mkT = (id, size) => ({ ...createTask({ title: id, project: "Work", size }, { now }), id });
+  const all = [mkT("a", 60), mkT("b", 60), mkT("c", 90)];
+  const items = [{ taskId: "a", minutes: 60 }, { taskId: "b", minutes: 60 }];
+  // 10:00-12:30 free: A+B take 2 h, C (90 min) can't fit in the 30 min left.
+  const tight = dayHours({ dayStart: "08:00", dayEnd: "12:30" }, now);
+  assert.equal(addableCount(items, { tasks: all, events: [], now, hours: tight }), 0);
+  // 10:00-16:00 free: C fits.
+  const roomy = dayHours({ dayStart: "08:00", dayEnd: "16:00" }, now);
+  assert.equal(addableCount(items, { tasks: all, events: [], now, hours: roomy }), 1);
+  // Nothing unplanned at all.
+  assert.equal(addableCount(items, { tasks: all.slice(0, 2), events: [], now, hours: roomy }), 0);
+  // One the user took off the plan stays off.
+  assert.equal(addableCount(items, { tasks: all, events: [], now, hours: roomy, exclude: ["c"] }), 0);
+});
