@@ -1752,8 +1752,8 @@ body.focus #side { display: none; }
    own colour, a step below Now's (Mor, 2026-10-18). */
 .sc-time .sc-nexttag { display: block; inline-size: fit-content; margin-block-start: 3px; padding: 0 6px; border-radius: 999px; border: 1.5px solid var(--accent); color: var(--ink); font-size: 11px; font-weight: 700; }
 .sc-row.sc-next .sc-time { color: var(--ink); }
-.sc-row.sc-next .sc-ev { box-shadow: 0 0 0 1.5px color-mix(in srgb, var(--ev, #8c8574) 35%, transparent); }
-.sc-row.sc-next .sc-ev:is([class*="pc-"], [class*="area-"]) { box-shadow: 0 0 0 1.5px color-mix(in srgb, var(--aline) 45%, transparent); }
+.sc-row.sc-next .sc-ev { box-shadow: 0 0 0 2px color-mix(in srgb, var(--ev, #8c8574) 70%, transparent); }
+.sc-row.sc-next .sc-ev:is([class*="pc-"], [class*="area-"]) { box-shadow: 0 0 0 2px color-mix(in srgb, var(--aline) 80%, transparent); }
 /* Day / Week header (2026-10-07): ‹ title › and a Day|Week switch, sticky at
    the top while the day or week scrolls under it. In Week the weekday
    headings ride in it too. */
