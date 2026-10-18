@@ -841,7 +841,7 @@ async function boot(){
         // Week: done today + routines under the card, on or off (Mor,
         // 2026-10-12). From a page it closes the page and turns them on.
         window.__syncPanel = syncPanel;
-        window.__homeForFocus = () => { if (!$("#planPage").hidden) m.now?.closePlan(); document.body.classList.remove("day-open"); syncPanel(); };
+        window.__homeForFocus = () => { if (!$("#planPage").hidden) m.now?.closePlan(); m.projects.closeProject(); m.projects.closeAll(); weekPop = false; $("#weekPage").hidden = true; document.body.classList.remove("day-open"); syncPanel(); };
         // PC: Week opens the week grid as its own page (schedule.js mode
         // "week", mounted the first time), over the middle and the right;
         // a weekday's heading opens that day back in Today.
