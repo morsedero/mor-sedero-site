@@ -83,6 +83,8 @@ const SCENARIOS = {
     { title: "Mix review", project: "חתונה", size: 90, over: ago(3) },
   ] },
   empty: { tasks: [] },
+  // Everything open is done (design round 4, quiet "all done"): one task, finished today.
+  alldone: { tasks: [{ title: "Send invoice to Uri", project: "Admin", size: 15, over: { status: "done", doneAt: new Date().setHours(15, 0, 0, 0) } }] }, // run with --at after 15:00
   // 2026-10-06 fixes: a deadline parked in Not now, a task put off five
   // times (both Needs you), a deadline due today (night mode names it).
   fixes: { tasks: [

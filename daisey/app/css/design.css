@@ -113,3 +113,47 @@
 .routine-ask .dc-btns { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .routine-ask .dc-btns .btn.primary.big, .routine-ask .dc-btns .btn.line.big { min-block-size: 52px; font-size: 16px; }
 :root:not(.night) body:is(.focus-mode, .home-float) #nowcard:has(.routine-ask) { justify-content: flex-start; padding-block-end: 12px; overflow-y: auto; }
+
+/* ---- Slice 3: the quiet family (now.js quietHero, the night hero) ----
+   Nothing to do now: a drawing, one headline, one small line, no list. Each
+   state its own soft tint: dusk (night), soft yellow (empty), soft green
+   (all done), soft peach (nothing fits); dark dims them, same hue. */
+.q-sun { --tint: #fff4d6; --aline: #f5dfa0; --aink: #8a5a00; }
+.q-green { --tint: #e7f4ea; --aline: #c9e6d1; --aink: #2f7a47; }
+.q-peach { --tint: #fdede3; --aline: #f6d3bc; --aink: #b4561f; }
+:root[data-theme="dark"] .q-sun, :root.night .q-sun { --tint: #2a2210; --aline: #574414; --aink: #f0c35a; }
+:root[data-theme="dark"] .q-green, :root.night .q-green { --tint: #16241a; --aline: #28482f; --aink: #8ed1a3; }
+:root[data-theme="dark"] .q-peach, :root.night .q-peach { --tint: #2b1c12; --aline: #5a3620; --aink: #f2a877; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .q-sun { --tint: #2a2210; --aline: #574414; --aink: #f0c35a; }
+  :root:not([data-theme="light"]) .q-green { --tint: #16241a; --aline: #28482f; --aink: #8ed1a3; }
+  :root:not([data-theme="light"]) .q-peach { --tint: #2b1c12; --aline: #5a3620; --aink: #f2a877; }
+}
+.now-card.main.qh, :root:not(.night) body:is(.focus-mode, .home-float) .deck > .now-card.main.qh {
+  --sub: color-mix(in srgb, var(--aink) 40%, var(--ink));
+  display: flex; flex-direction: column; align-items: center; text-align: center; padding: 24px 20px 20px;
+  background: var(--tint); border: 1px solid var(--aline); box-shadow: 0 12px 28px color-mix(in srgb, var(--aink) 12%, transparent);
+}
+.qh-art { display: grid; place-items: center; min-block-size: 80px; }
+.qh-art svg { display: block; }
+.qh-h { margin: 14px 0 0; font-size: 22px; font-weight: 600; line-height: 1.25; letter-spacing: -0.2px; overflow-wrap: anywhere; }
+.qh-p { margin: 6px 0 0; font-size: 14px; line-height: 1.4; color: var(--sub); }
+.qh .btn.quiet { min-block-size: 44px; margin-block-start: 14px; padding-inline: 18px; border: 1px solid var(--aline); border-radius: 14px; background: var(--card); color: var(--ink); font-weight: 500; }
+.qh .now-anyway { display: flex; flex-direction: column; align-items: center; inline-size: 100%; }
+.sprout .stem { fill: none; stroke: #7fae7f; stroke-width: 2; stroke-linecap: round; }
+.sprout .leaf { fill: #9cc79c; }
+.sprout .ground { fill: none; stroke: var(--aline); stroke-width: 2; stroke-linecap: round; }
+.daisy.bloom .daisy-petals ellipse { stroke-width: .8; }
+.daisy.bloom .daisy-heart { fill: var(--accent); }
+/* Night: the hero is the dusk card, the moon over the words; Tomorrow first
+   stays its own card below. The day's list (Done today, still open) goes:
+   no list, no counts at night. "I'm free now" stays, as a quiet link. */
+:root.night .night-hero {
+  block-size: auto; margin-inline-end: 0; flex-direction: column; align-items: center; justify-content: center; gap: 0; text-align: center;
+  padding: 24px 20px 20px; border-radius: var(--radius); background: #1d1b2b; border: 1px solid #363159; box-shadow: 0 12px 28px rgb(0 0 0 / .35);
+}
+:root.night .night-hero .moon-daisy { inline-size: 96px; block-size: 96px; }
+:root.night .night-h { margin: 12px 0 0; font-size: 22px; }
+:root.night .night-p { margin: 6px 0 0; color: color-mix(in srgb, #b3aae8 40%, var(--ink)); }
+:root.night .night-today { display: none; }
+:root.night .night-foot .pill-btn { border-color: transparent; background: transparent; color: var(--ink-2); text-decoration: underline; text-underline-offset: 3px; text-decoration-color: color-mix(in srgb, var(--ink-2) 40%, transparent); }

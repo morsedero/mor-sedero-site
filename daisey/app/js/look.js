@@ -35,6 +35,17 @@ export function stemDaisy(){
   return svg;
 }
 
+// Nothing fits the time (design round 4, 2026-10-18): a small sprout, two
+// leaves, not yet a flower.
+export function sprout(){
+  const svg = svgEl("svg", { viewBox: "0 0 40 40", width: 76, height: 76, class: "sprout", "aria-hidden": "true" });
+  svg.append(svgEl("path", { d: "M20 36 C 20 28, 20 24, 20 18", class: "stem" }),
+    svgEl("path", { d: "M20 24 C 13 24, 9 19, 9 13 C 15 13, 20 17, 20 24z", class: "leaf" }),
+    svgEl("path", { d: "M20 20 C 26 20, 31 16, 31 10 C 25 10, 20 14, 20 20z", class: "leaf" }),
+    svgEl("path", { d: "M12 36 H 28", class: "ground" }));
+  return svg;
+}
+
 // Night: a moon with a sleeping daisy in front of it.
 export function moonDaisy(){
   const svg = svgEl("svg", { viewBox: "0 0 40 40", width: 96, height: 96, class: "moon-daisy", "aria-hidden": "true" });

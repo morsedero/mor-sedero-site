@@ -39,7 +39,7 @@ import { needsCount, nightLine } from "./needs-list.js";
 import { SWITCH_TOO, CANT_NOW, holdPick, freshPick, offerable } from "./pick.js";
 import { asksLeft } from "./project-state.js";
 import { h, icon, bdi, pieces, sizeText, sizeChip, heroChip, progressBar, progressPct, dur, say, nightDivider, flash, weekDots, focusField, dragScroll } from "./ui.js";
-import { areaClass, areaName, projectShown, doneToday, moonDaisy, watchProjectColors } from "./look.js";
+import { areaClass, areaName, projectShown, doneToday, moonDaisy, daisy, stemDaisy, sprout, watchProjectColors } from "./look.js";
 
 const LATER_MS = LATER_MINUTES * 60000;
 const UNDO_MS = 3500;
@@ -410,6 +410,15 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
   }
   const eventCard = (o) => plainCard("meeting event", o);
   const quietCard = (o) => plainCard("empty quiet", o);
+  // The quiet family (design round 4, 2026-10-18): nothing to do right now,
+  // so no task layout — a drawing, one headline, one small line, each state
+  // in its own soft tint (design.css q-sun / q-green / q-peach; night's dusk
+  // is the night hero). Buttons only where the state already had one.
+  const quietHero = (tone, art, title, why, ...rest) => h("div", { className: `now-card main hero empty quiet qh q-${tone}` },
+    h("div", { className: "qh-art", ariaHidden: "true" }, art),
+    h("h2", { className: "qh-h", dir: "auto", textContent: title }),
+    why && h("p", { className: "qh-p", textContent: why }),
+    ...rest);
   const freeNowButton = (ev, label) => h("button", { className: "btn quiet free-now", type: "button", textContent: "I'm free now",
     ariaLabel: `I'm free now: ignore ${label} and pick a task anyway`, onclick: () => setFree(ev.start) });
 
@@ -2134,11 +2143,15 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     }
     if (up) { day(...head, up, tip); return; }
     if (!card) {
-      day(...head, quietCard(r.empty === "none"
-        ? { meta: "Nothing to pick", title: "No tasks yet", why: "Add a few and Daisey will pick." }
+      // No open task: all done when something got done today, else an empty
+      // day. Nothing fits keeps its one way out (Show me anyway), quiet.
+      const doneSome = r.empty === "none" && doneToday(tasks || []).length > 0;
+      day(...head, r.empty === "none"
+        ? (doneSome ? quietHero("green", daisy(8, { size: 96, cls: "daisy bloom" }), "That's everything.", "Nothing else needs you today.")
+          : quietHero("sun", stemDaisy(), "No tasks yet", "Add a few and Daisey will pick."))
         // Minimal (Mor, 2026-10-14): no counts, one question at most.
-        : { meta: "Break", title: `Nothing fits the next ${dur(r.moment.window)}`,
-          extras: [r.out.some((o) => o.reason === "place") && placeFix(r.moment), putOffButton(r), anywayButton(r)] }), tip);
+        : quietHero("peach", sprout(), `Nothing fits the next ${dur(r.moment.window)}`, r.moment.windowEnd ? `Free until ${clock(r.moment.windowEnd)}.` : "",
+          r.out.some((o) => o.reason === "place") && placeFix(r.moment), putOffButton(r), anywayButton(r)), tip);
       return;
     }
 

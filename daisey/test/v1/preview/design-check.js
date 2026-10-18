@@ -14,7 +14,8 @@ const PREVIEW = path.join(__dirname, "preview.js");
 const OUT = path.join(os.tmpdir(), "daisey-design-check");
 
 function text(scenario, ...args){
-  return execFileSync(process.execPath, [PREVIEW, scenario, "--out", OUT, "--at", "10:42", "--text", ...args],
+  const at = args.includes("--at") ? [] : ["--at", "10:42"];
+  return execFileSync(process.execPath, [PREVIEW, scenario, "--out", OUT, ...at, "--text", ...args],
     { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"], timeout: 120000 });
 }
 
@@ -51,6 +52,24 @@ const CHECKS = {
     ["Plan ready: every row listed, Approve / Rethink / No plan, no summary line", () => {
       const t = text("squeeze-proposed", "--cal", "squeeze", "--click", "#planChip", "--click", ".sc-planbtn");
       return ["Approve", "Rethink", "No plan", "Mix review for Reprise", "Lesson prep"].every((w) => t.includes(w));
+    }],
+  ],
+  3: [
+    ["Empty day: drawing, one headline, one line, no buttons on the card", () => {
+      const t = text("empty");
+      return t.includes("No tasks yet") && t.includes("Add a few and Daisey will pick.") && !t.includes("Nothing to pick");
+    }],
+    ["All done: 'That's everything.', not 'No tasks yet'", () => {
+      const t = text("alldone", "--at", "16:00");
+      return t.includes("That's everything.") && !t.includes("No tasks yet");
+    }],
+    ["Nothing fits: headline, one line, keeps its one way out", () => {
+      const t = text("breakpick", "--cal", "none", "--at", "19:30");
+      return /Nothing fits the next/.test(t) && t.includes("Free until") && t.includes("Show me anyway") && !/^Break$/m.test(t);
+    }],
+    ["Night: the dusk card, Tomorrow first on its own, no list or counts", () => {
+      const t = text("en", "--at", "23:40");
+      return /Late, /.test(t) && /tomorrow first/i.test(t) && !/still open for today/.test(t) && !/Done today/.test(t);
     }],
   ],
 };
