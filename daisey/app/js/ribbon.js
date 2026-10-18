@@ -18,7 +18,19 @@ export function mountRibbon(el, { onPlan } = {}){
   const pct = (ms) => `${Math.max(0, Math.min(100, ((ms - data.start) / (data.end - data.start)) * 100)).toFixed(2)}%`;
   const pick = (key) => (e) => { e.stopPropagation(); open = open === key ? null : key; paint(); };
 
+  // "3 done" / "2 left" open the whole list, not one bead.
+  function listPop(kind){
+    const rows = (kind === "d" ? data.done : data.left).slice().sort((a, b) => a.at - b.at);
+    if (!rows.length) { open = null; return null; }
+    return h("div", { className: "rb-pop rb-list", role: "dialog", ariaLabel: kind === "d" ? "Done today" : "Still planned", style: "left:-6px" },
+      h("ul", {}, ...rows.map((r) => h("li", { className: areaClass(r.task) },
+        h("span", { className: "rb-pdot", ariaHidden: "true" }),
+        h("span", { className: "rb-li-t" }, bdi(r.task.title)),
+        h("span", { className: "rb-li-at" }, kind === "d" ? hm(r.at) : `${hm(r.at)}–${hm(r.end)}`)))));
+  }
+
   function pop(line){
+    if (open.startsWith("all:")) return listPop(open.slice(4));
     const [kind, id] = open.split(":");
     const item = (kind === "d" ? data.done : data.left).find((x) => x.id === id);
     if (!item) { open = null; return null; }
@@ -30,7 +42,8 @@ export function mountRibbon(el, { onPlan } = {}){
       h("p", { className: "rb-when" }, ...(kind === "d" ? [icon("check"), `Done ${hm(item.at)}`] : [`Planned ${hm(item.at)}–${hm(item.end)}`])));
     // Centred on its bead, kept inside the line; the arrow points at the bead.
     requestAnimationFrame(() => {
-      const w = line.clientWidth, pw = box.offsetWidth, x = (parseFloat(pct(item.at)) / 100) * w;
+      const bead = line.querySelector(".rb-bead.on, .rb-hole.on");
+      const w = line.clientWidth, pw = box.offsetWidth, x = bead ? bead.offsetLeft + bead.offsetWidth / 2 : (parseFloat(pct(item.at)) / 100) * w;
       const left = Math.max(-6, Math.min(w - pw + 6, x - pw / 2));
       box.style.left = `${left}px`; box.style.setProperty("--arrow", `${x - left}px`);
     });
@@ -43,15 +56,15 @@ export function mountRibbon(el, { onPlan } = {}){
     const { done, left, events, planned } = data;
     const top = h("div", { className: "rb-top" },
       h("span", { className: "rb-counts" },
-        done.length > 0 && h("span", { className: "rb-done" }, icon("check"), `${done.length} done`),
-        planned && left.length > 0 && h("span", { className: "rb-left" }, ring(), `${left.length} left`)),
+        done.length > 0 && h("button", { type: "button", className: "rb-done" + (open === "all:d" ? " on" : ""), ariaExpanded: String(open === "all:d"), onclick: pick("all:d") }, icon("check"), `${done.length} done`),
+        planned && left.length > 0 && h("button", { type: "button", className: "rb-left" + (open === "all:l" ? " on" : ""), ariaExpanded: String(open === "all:l"), onclick: pick("all:l") }, ring(), `${left.length} left`)),
       h("span", { className: "rb-until", textContent: `until ${hm(data.end)}` }));
     const line = h("div", { className: "rb-line" },
       h("span", { className: "rb-track", ariaHidden: "true" }),
       h("span", { className: "rb-past", ariaHidden: "true", style: `inline-size:${pct(data.now)}` }),
       // The calendar only while there's no plan; a plan already holds it.
       ...(planned ? [] : events).map((e) => h("span", { className: "rb-ev", title: e.title, ariaHidden: "true", style: `inset-inline-start:${pct(e.start)};inline-size:calc(${pct(e.end)} - ${pct(e.start)})` })),
-      ...done.map((d) => h("button", { type: "button", className: "rb-bead" + areaClass(d.task) + (open === `d:${d.id}` ? " on" : ""), style: `inset-inline-start:${pct(d.at)}`,
+      ...done.map((d) => h("button", { type: "button", className: "rb-bead" + areaClass(d.task) + (open === `d:${d.id}` ? " on" : ""), style: `inset-inline-start:min(${pct(d.at)}, calc(${pct(data.now)} - 15px))`,
         ariaLabel: `${d.task.title}, done ${hm(d.at)}`, ariaExpanded: String(open === `d:${d.id}`), onclick: pick(`d:${d.id}`) })),
       ...left.map((l) => h("button", { type: "button", className: "rb-hole" + areaClass(l.task) + (open === `l:${l.id}` ? " on" : ""), style: `inset-inline-start:${pct(l.at)}`,
         ariaLabel: `${l.task.title}, planned ${hm(l.at)}`, ariaExpanded: String(open === `l:${l.id}`), onclick: pick(`l:${l.id}`) })),
