@@ -191,7 +191,14 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onMissed, onPro
   let stepBy = () => {}, swipe = null;
   el.style.touchAction = "pan-y"; // keep the horizontal drag ours, or the browser cancels it
   // The page follows the finger, then slides off and the next one slides in.
-  const slide = (x, ms) => { el.style.transition = ms ? `transform ${ms}ms ease-out` : "none"; el.style.transform = x ? `translateX(${x}px)` : ""; };
+  // The head (arrows, Now, Week) stays put and only the day under it moves, so it feels anchored.
+  el.style.overflowX = "hidden"; // the sliding day must not widen the box
+  const slide = (x, ms) => {
+    for (const c of el.children) {
+      if (c.classList.contains("sc-head")) continue;
+      c.style.transition = ms ? `transform ${ms}ms ease-out` : "none"; c.style.transform = x ? `translateX(${x}px)` : "";
+    }
+  };
   // Slide the page off toward `side` (-1 left, 1 right), swap it, slide the new one in.
   const flip = (side, swap) => {
     const out = side * (el.clientWidth || innerWidth);
