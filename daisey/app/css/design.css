@@ -114,9 +114,9 @@
 .q-sun { --tint: #fff4d6; --aline: #f5dfa0; --aink: #8a5a00; }
 .q-green { --tint: #e7f4ea; --aline: #c9e6d1; --aink: #2f7a47; }
 .q-peach { --tint: #fdede3; --aline: #f6d3bc; --aink: #b4561f; }
-:root[data-theme="dark"] .q-sun, :root.night .q-sun { --tint: #2a2210; --aline: #574414; --aink: #f0c35a; }
-:root[data-theme="dark"] .q-green, :root.night .q-green { --tint: #16241a; --aline: #28482f; --aink: #8ed1a3; }
-:root[data-theme="dark"] .q-peach, :root.night .q-peach { --tint: #2b1c12; --aline: #5a3620; --aink: #f2a877; }
+:root[data-theme="dark"] .q-sun, :root.night:not([data-theme="light"]) .q-sun { --tint: #2a2210; --aline: #574414; --aink: #f0c35a; }
+:root[data-theme="dark"] .q-green, :root.night:not([data-theme="light"]) .q-green { --tint: #16241a; --aline: #28482f; --aink: #8ed1a3; }
+:root[data-theme="dark"] .q-peach, :root.night:not([data-theme="light"]) .q-peach { --tint: #2b1c12; --aline: #5a3620; --aink: #f2a877; }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) .q-sun { --tint: #2a2210; --aline: #574414; --aink: #f0c35a; }
   :root:not([data-theme="light"]) .q-green { --tint: #16241a; --aline: #28482f; --aink: #8ed1a3; }

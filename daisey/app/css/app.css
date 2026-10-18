@@ -29,8 +29,8 @@
 
 /* Dark: the same paper feel inverted, same yellow. Only tokens change.
    Dark applies when the system asks for it, when the user picked Dark in the
-   account menu (data-theme on <html>, main.js), or at night (.night on
-   <html>, now.js) — night mode is always dark. The blocks repeat the same
+   account menu (data-theme on <html>, main.js), or at night on Auto (.night on
+   <html>, now.js) — a Light pick wins over night. The blocks repeat the same
    declarations because a media-scoped rule and a plain one can't be one. */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
@@ -44,7 +44,7 @@
     --a-personal-tint: #142625; --a-personal-line: #24504d; --a-personal-ink: #7cc9c6;
   }
 }
-:root[data-theme="dark"], :root.night {
+:root[data-theme="dark"], :root.night:not([data-theme="light"]) {
   --bg: #141310; --card: #201e1a; --ink: #f3eee3; --ink-2: #a8a193; --line: #2e2b25; --chip: #2a2721;
   --surface: #26241f; --danger: #ff8a7a; --nowline: #ff7a6b; --accent-deep: #c98f00; --shadow: 0 10px 30px rgb(0 0 0 / .5);
   --a-admin-tint: #18212f; --a-admin-line: #2f4a73; --a-admin-ink: #8fb2ee;
@@ -57,7 +57,7 @@
 /* So the browser's own widgets — date pickers, scrollbars, form controls —
    follow the choice too. */
 :root[data-theme="light"] { color-scheme: light; }
-:root[data-theme="dark"], :root.night { color-scheme: dark; }
+:root[data-theme="dark"], :root.night:not([data-theme="light"]) { color-scheme: dark; }
 
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
@@ -661,8 +661,8 @@ dialog.now:focus { outline: none; }
 .avatar { inline-size: 34px; block-size: 34px; border: none; background: var(--ink); color: var(--bg); font-weight: 600; font-size: 14px; }
 .daisy-petals ellipse { fill: #fff; stroke: #e6dcc3; stroke-width: 1.2; }
 .daisy-heart { fill: var(--accent); }
-:root.night .logo .daisy-petals ellipse { fill: #3a372f; stroke: #4a463c; }
-:root.night .logo .daisy-heart { fill: #b88a1a; }
+:root.night:not([data-theme="light"]) .logo .daisy-petals ellipse { fill: #3a372f; stroke: #4a463c; }
+:root.night:not([data-theme="light"]) .logo .daisy-heart { fill: #b88a1a; }
 
 /* The greeting and the free line, in the header row. */
 .greeting { margin: 0; font-size: 17px; font-weight: 600; letter-spacing: -0.2px; line-height: 1.2; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -727,7 +727,7 @@ dialog.now:focus { outline: none; }
    (Mor, 2026-10-11), and round a running event's card (.going). --orbit comes
    from now.js so a rebuild keeps its place. */
 .now-card.main:is(.deck > *, .going):not(.empty):not(.night) { --glint: color-mix(in srgb, var(--aline) 80%, #000); }
-:root[data-theme="dark"] .now-card.main:is(.deck > *, .going), :root.night .now-card.main:is(.deck > *, .going) { --glint: color-mix(in srgb, var(--aline) 40%, #fff); }
+:root[data-theme="dark"] .now-card.main:is(.deck > *, .going), :root.night:not([data-theme="light"]) .now-card.main:is(.deck > *, .going) { --glint: color-mix(in srgb, var(--aline) 40%, #fff); }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .now-card.main:is(.deck > *, .going) { --glint: color-mix(in srgb, var(--aline) 40%, #fff); } }
 .now-card.main:is(.deck > *, .going):not(.empty):not(.night)::before {
   content: ""; position: absolute; inset: -2px; padding: 2.5px; border-radius: calc(var(--radius) + 2px); pointer-events: none;
@@ -762,7 +762,7 @@ dialog.now:focus { outline: none; }
 .sd-title { font-size: 16px; font-weight: 600; overflow-wrap: anywhere; }
 .sd-meta { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-size: 12px; color: var(--ink-2); }
 .tag { font-size: 12px; font-weight: 500; color: #8a4b00; background: #fff1cc; border-radius: 999px; padding: 2px 8px; }
-:root[data-theme="dark"] .tag, :root.night .tag { color: #f0c35a; background: #2a2210; }
+:root[data-theme="dark"] .tag, :root.night:not([data-theme="light"]) .tag { color: #f0c35a; background: #2a2210; }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .tag { color: #f0c35a; background: #2a2210; } }
 .sd-tick { inline-size: 44px; block-size: 44px; flex: none; display: grid; place-items: center; border-radius: 50%; border: 1.5px solid var(--line); color: var(--ink-2); transition: background-color .15s ease; }
 .sd-row.on .sd-tick { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
@@ -1009,7 +1009,7 @@ body.focus .tell-panel { display: none; }
    approved mockups; DAISEY_SPEC "Visual design" lists them. */
 :root { --cream: #f1ece0; --bud: #cfc4a8; --bud-heart: #e0b23c; --green: #2f7a47; }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --cream: #2a2721; --bud: #4a463c; --bud-heart: #b88a1a; --green: #3f9b5f; } }
-:root[data-theme="dark"], :root.night { --cream: #2a2721; --bud: #4a463c; --bud-heart: #b88a1a; --green: #3f9b5f; }
+:root[data-theme="dark"], :root.night:not([data-theme="light"]) { --cream: #2a2721; --bud: #4a463c; --bud-heart: #b88a1a; --green: #3f9b5f; }
 
 /* Header: daisy + "Daisey" at the start, avatar at the end. */
 .topbar { min-block-size: 44px; margin-block-end: 0; }
@@ -1042,7 +1042,7 @@ button.now-title:focus-visible { outline: 2px solid var(--aink); outline-offset:
 .night-div::before, .night-div::after { content: ""; flex: 1; block-size: 1px; background: var(--line); }
 .night-pill { display: inline-flex; align-items: center; gap: 6px; block-size: 26px; padding-inline: 12px; border-radius: 999px; background: var(--cream); color: var(--ink-2); font-size: 12px; font-weight: 500; white-space: nowrap; font-variant-numeric: tabular-nums; }
 .bud-petals ellipse { fill: #fff; stroke: var(--bud); stroke-width: 1; }
-:root.night .bud-petals ellipse { fill: #3a372f; }
+:root.night:not([data-theme="light"]) .bud-petals ellipse { fill: #3a372f; }
 .bud-heart { fill: var(--bud-heart); }
 .night-foot .night-div { align-self: stretch; }
 
@@ -1267,7 +1267,7 @@ dialog.tsheet .now-head { margin-block-end: -4px; }
 .ts-kind.deadline.on { background: #fff1cc; color: #8a4b00; }
 .ts-kind-help { font-size: 12px; color: var(--ink-2); }
 @media (max-width: 359px) { .ts-kind { padding: 3px 6px; font-size: 11px; } }
-:root[data-theme="dark"] .ts-kind.deadline.on, :root.night .ts-kind.deadline.on { background: #2a2210; color: #f0c35a; }
+:root[data-theme="dark"] .ts-kind.deadline.on, :root.night:not([data-theme="light"]) .ts-kind.deadline.on { background: #2a2210; color: #f0c35a; }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .ts-kind.deadline.on { background: #2a2210; color: #f0c35a; } }
 .ts-chips { margin: 0; }
 /* What else Daisey guessed (addtask.js GUESSES): one quiet line, open to fix. */
@@ -1380,8 +1380,8 @@ dialog.tsheet .msg:empty { display: none; }
 .brand .beta { margin-inline-start: 4px; font-size: 10px; font-weight: 500; letter-spacing: 0; color: var(--ink-2); vertical-align: super; }
 .daisy-petals ellipse { fill: #fff; stroke: #e0d5ba; }
 /* The logo stays a full white daisy at night too, just softer. */
-:root.night .logo .daisy-petals ellipse { fill: #e9e2d2; stroke: none; }
-:root.night .logo .daisy-heart { fill: var(--accent); }
+:root.night:not([data-theme="light"]) .logo .daisy-petals ellipse { fill: #e9e2d2; stroke: none; }
+:root.night:not([data-theme="light"]) .logo .daisy-heart { fill: var(--accent); }
 .hdr-end { display: flex; align-items: center; gap: 8px; margin-inline-start: auto; }
 /* Clock + date between brand and the chips: time over a small spaced date. */
 /* The clock sits beside the daisy, left-aligned (Mor, 2026-10-09). */
@@ -1863,7 +1863,7 @@ body.focus #side { display: none; }
   --p-brick-tint: #2b1715; --p-brick-line: #5a2d27; --p-brick-ink: #f29c8f;
   --p-lime-tint: #1e2412; --p-lime-line: #3c4a20; --p-lime-ink: #b8d67a;
 } }
-:root[data-theme="dark"], :root.night {
+:root[data-theme="dark"], :root.night:not([data-theme="light"]) {
   --p-teal-tint: #12222b; --p-teal-line: #25506a; --p-teal-ink: #7cc4e8;
   --p-orange-tint: #2b1c12; --p-orange-line: #5a3620; --p-orange-ink: #f2a877;
   --p-slate-tint: #1d1f24; --p-slate-line: #373b45; --p-slate-ink: #b4bccb;
@@ -2203,7 +2203,7 @@ dialog.tsheet[open] > .ts-laptop + .ts-repeat { margin-block-start: -12px; }
 @keyframes pf-glow { 50% { box-shadow: inset 0 1px 0 rgb(255 255 255 / .45), 0 0 0 1.5px var(--aline), 0 8px 30px -2px var(--aline); } }
 @keyframes pf-sheen { 0%, 45% { background-position: 150% 0; } 100% { background-position: -50% 0; } }
 .tier-keep .pp-tier-name { color: #000; }
-:root[data-theme="dark"] .tier-keep .pp-tier-name, :root.night .tier-keep .pp-tier-name { color: var(--ink); }
+:root[data-theme="dark"] .tier-keep .pp-tier-name, :root.night:not([data-theme="light"]) .tier-keep .pp-tier-name { color: var(--ink); }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .tier-keep .pp-tier-name { color: var(--ink); } }
 .pcard .pcard-status { color: var(--ink-2); }
 .pcard-fl { align-self: end; display: flex; justify-content: center; inline-size: 40px; margin-block-end: -6px; }
