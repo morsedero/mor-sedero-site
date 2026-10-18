@@ -1838,7 +1838,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
   // too, or it caps out.
   function moreTime(task, row, m){
     const end = row.end + m * 60000, running = !!run && (run.batch || [run.taskId]).includes(task.id);
-    const p = moreTimePatch(task, { start: row.start, end: row.end, minutes: m, running });
+    const p = moreTimePatch(task, m);
     Object.assign(task, p);
     restoreTask(uid, task.id, p).catch(fail);
     if (running) extendRun(uid, run, m).catch(fail);

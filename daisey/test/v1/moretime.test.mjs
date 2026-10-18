@@ -2,27 +2,34 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { moreTimePatch, createTask, leftMinutes } from "../../app/js/model.js";
+import { timeline } from "../../app/js/proposal.js";
 
 const at = (h, m) => new Date(2026, 9, 18, h, m).getTime();
+const hhmm = (ms) => new Date(ms).toTimeString().slice(0, 5);
 
-test("moreTime: no timer, slot 10:00-10:30 at 10:22, +10 → 25 min worked, size 40, 15 left from 10:25", () => {
-  const t = { ...createTask({ title: "Mix", size: 30 }) };
-  const p = moreTimePatch(t, { start: at(10, 0), end: at(10, 30), minutes: 10, now: at(10, 22) });
-  assert.equal(p.spentMinutes, 25);
-  assert.equal(p.size, 40);
-  assert.equal(leftMinutes({ ...t, ...p }), 15);
-  assert.equal(p.touchedAt, at(10, 22));
+test("moreTime: +10 on 30 min → size 40, only the size changes (no touch: the plan keeps its times)", () => {
+  const t = createTask({ title: "Mix", size: 30 });
+  assert.deepEqual(moreTimePatch(t, 10), { size: 40 });
 });
 
-test("moreTime: a running timer only grows the size by m (the timer logs its own minutes)", () => {
-  const t = { ...createTask({ title: "Mix", size: 30 }) };
-  assert.deepEqual(moreTimePatch(t, { start: at(10, 0), end: at(10, 30), minutes: 15, running: true, now: at(10, 22) }), { size: 45 });
+test("moreTime: time already worked stays worked; what's left grows by m", () => {
+  const t = { ...createTask({ title: "Mix", size: 30 }), spentMinutes: 20 };
+  assert.equal(leftMinutes({ ...t, ...moreTimePatch(t, 15) }), 25);
 });
 
 test("moreTime: a progress % the user gave stays; the size grows under it", () => {
   const t = { ...createTask({ title: "Mix", size: 60 }), progress: 50 };
-  const p = moreTimePatch(t, { start: at(10, 0), end: at(10, 30), minutes: 30, now: at(10, 22) });
+  const p = moreTimePatch(t, 30);
   assert.equal(p.progress, undefined);
-  assert.equal(p.size, 70);
-  assert.equal(leftMinutes({ ...t, ...p }), 35); // 10:25 → 11:00
+  assert.equal(leftMinutes({ ...t, ...p }), 60);
+});
+
+test("moreTime: slot 10:00-10:30 at 10:22, +10 → 10:00-10:40, the start doesn't move to now", () => {
+  const since = at(10, 0), now = at(10, 22);
+  const t1 = { id: "t1", ...createTask({ title: "Mix", size: 30 }), touchedAt: since };
+  const t2 = { id: "t2", ...createTask({ title: "Lesson", size: 60 }), touchedAt: at(9, 0) };
+  const items = [{ taskId: "t1", minutes: 30 }, { taskId: "t2", minutes: 60 }];
+  const rows = (tasks) => timeline(items, { tasks, events: [], now, since }).rows.map((r) => `${r.taskId} ${hhmm(r.start)}-${hhmm(r.end)}`);
+  assert.deepEqual(rows([t1, t2]), ["t1 10:00-10:30", "t2 10:30-11:30"]);
+  assert.deepEqual(rows([{ ...t1, ...moreTimePatch(t1, 10) }, t2]), ["t1 10:00-10:40", "t2 10:40-11:40"]);
 });

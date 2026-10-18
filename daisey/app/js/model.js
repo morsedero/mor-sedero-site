@@ -738,20 +738,15 @@ export function leftPatch(t, mins, { now = Date.now() } = {}){
   return p >= 1 ? progressPatch(p, { now }) : { progress: 0, size: m + (t.spentMinutes || 0), touchedAt: now };
 }
 
-// "More time?" under the card (now.js upNextLine, Mor 2026-10-18): the slot
-// [start, end] runs m min longer. With no timer the minutes since the slot
-// began count as worked (asking for more says you're on it), and the write
-// re-lays the plan from now (`from`, the next round 5 min), so what's left is
-// end + m - from. The size grows to hold it, so "30 min" reads "40 min" after
-// +10. A progress % the user gave stays; the size grows under it. A running
-// timer logs its own minutes when it stops: only the size grows, by m.
-export function moreTimePatch(t, { start, end, minutes: m, running = false, now = Date.now() }){
-  const size = toMinutes(t.size) ?? DEFAULT_SIZE, p = progressOf(t);
-  if (running) return { size: size + m };
-  const from = Math.ceil(now / (5 * 60000)) * 5 * 60000, left = Math.max(5, Math.round((end + m * 60000 - from) / 60000));
-  if (p > 0) return { size: Math.max(size, Math.round(left / (1 - p / 100))), touchedAt: now, workedAt: now };
-  const kept = keptTime(t, Math.max(0, (from - start) / 60000), { now });
-  return { ...kept, size: Math.max(size, kept.spentMinutes + left) };
+// "More time?" under the card (now.js upNextLine, Mor 2026-10-18): what's
+// left grows by m, and only that. No touchedAt: a touch is activity, so the
+// plan would re-lay from now and the slot's start jump to the next round 5
+// min, as if just starting (Mor: "remember when I actually started and just
+// make the card longer"). The size grows to hold it ("30 min" reads "40 min"
+// after +10); a progress % the user gave stays, the size grows under it.
+export function moreTimePatch(t, m){
+  const p = progressOf(t), want = leftMinutes(t) + Math.max(0, Math.round(m));
+  return { size: p > 0 ? Math.round(want / (1 - p / 100)) : want + (t.spentMinutes || 0) };
 }
 
 // Ready to be offered at all? engine.js filterOut adds window, skips and
