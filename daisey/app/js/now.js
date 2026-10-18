@@ -33,6 +33,7 @@ import { leftMinutes, toMinutes, progressOf, leftPatch, localDate, logicalDate, 
 import { isRoutine, routineCalendar, eventsToLog, sessionPatch, nagFor, nagText, nagParts } from "./routine.js";
 import { decisionCard } from "./decision.js";
 import { waitingFor, personOf } from "./nudge.js";
+import { UNDO_MS } from "./undo.js";
 import { proposedWhy } from "./reason.js";
 import { dayHours, isNight, nextMorning, dayEndAt, bookings, sameTitle, minText, gapsToday, planDate, usualHours, dayWord, slotsWord, answerDate, nightRange, planLabelDay, planWords, nightLendOver } from "./day.js";
 import { wrapList } from "./needs.js";
@@ -43,7 +44,6 @@ import { h, icon, bdi, pieces, sizeText, sizeChip, heroChip, progressBar, progre
 import { areaClass, areaName, projectShown, doneToday, moonDaisy, daisy, stemDaisy, sprout, watchProjectColors } from "./look.js";
 
 const LATER_MS = LATER_MINUTES * 60000;
-const UNDO_MS = 3500;
 const SLIDE_MS = 140; // matches the card-out animation in app.css
 const IN_MS = 300; // and card-in
 const WON_MS = 560; // Done's shine on the card (.won in app.css) before it slides out

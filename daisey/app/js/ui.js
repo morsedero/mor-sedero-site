@@ -1,4 +1,5 @@
 // Tiny DOM helpers shared by the Now card and the Tasks board.
+import { UNDO_MS } from "./undo.js";
 import { durText, estText, leftMinutes, progressOf, toMinutes } from "./model.js";
 import { isRoutine, doneThisWeek, weekLine } from "./routine.js";
 
@@ -100,7 +101,7 @@ export const pieces = (...parts) => parts.filter(Boolean)
 // copy inside its render (it needs the toast to survive its re-renders); this
 // one is for callers with no such loop, and it is why nothing in the task
 // list has to fall back to the browser's own confirm().
-export const UNDO_MS = 3500;
+export { UNDO_MS };
 let livePop = null, liveTimer = null;
 
 // Every .toast is fixed to the same spot (the card's own Undo/why toasts, the

@@ -396,8 +396,8 @@ input:is([type="checkbox"], [type="radio"]):disabled { opacity: .45; cursor: def
   backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); box-shadow: 0 4px 14px rgb(0 0 0 / .18);
 }
 .toast { display: flex; flex-direction: column; gap: 4px; animation: toast-in .18s ease-out backwards; animation-delay: calc(0ms - var(--age, 0ms)); }
-/* Undo toasts also fade out over the last .3s of their 3.5s (UNDO_MS in ui.js / now.js). */
-.toast.timed { animation: toast-in .18s ease-out backwards, toast-out .3s ease-in 3200ms forwards; animation-delay: calc(0ms - var(--age, 0ms)), calc(3200ms - var(--age, 0ms)); }
+/* Undo toasts also fade out over the last .3s of their 8s (UNDO_MS in undo.js; keep 7700ms = UNDO_MS - .3s). */
+.toast.timed { animation: toast-in .18s ease-out backwards, toast-out .3s ease-in 7700ms forwards; animation-delay: calc(0ms - var(--age, 0ms)), calc(7700ms - var(--age, 0ms)); }
 @keyframes toast-in { from { opacity: 0; transform: translateY(8px); } }
 @keyframes toast-out { to { opacity: 0; transform: translateY(8px); } }
 @media (prefers-reduced-motion: reduce) { .toast, .toast.timed { animation: none; } }
