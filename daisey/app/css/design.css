@@ -265,5 +265,5 @@
 :root:not(.night) body:is(.focus-mode, .home-float):not(.card-mini) .drop-anchor > .later-drop { position: absolute; inset-inline: 0; inset-block-start: 0; }
 :root:not(.night) body:is(.focus-mode, .home-float):not(.card-mini) .deck > .now-card.main { position: relative; }
 :root:not(.night) body:is(.focus-mode, .home-float):not(.card-mini) .deck > .now-card.main > .switch-ask { position: absolute; inset-inline: 0; inset-block-start: calc(100% + 8px); margin: 0; z-index: 6; }
-/* Done stops growing: the key keeps a hand-sized width, at the row's end. */
-.now-card .act-line > .done-col.solo { flex: 0 1 220px; margin-inline-start: auto; }
+/* Done stops growing: a hand-sized key right after Later, not pushed to the far end of a wide card. */
+.now-card .act-line > .done-col.solo { flex: 0 1 200px; margin-inline-start: 0; }
