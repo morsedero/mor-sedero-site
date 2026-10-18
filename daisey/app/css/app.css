@@ -724,8 +724,8 @@ dialog.now:focus { outline: none; }
 @keyframes breathe { 50% { transform: translateY(-3px); } }
 @media (prefers-reduced-motion: no-preference) {
   .deck:not(.still) > .now-card.main:not(.in):not(.out):not(.won):not(.push-in) { animation: breathe 5s ease-in-out infinite; }
-  /* Focus inside (Switch open, a field) pauses the bob where it is: removing the animation snapped the card to rest, and back into phase on close. */
-  .deck:not(.still) > .now-card.main:has(:focus:not(#focusChip, .act-line *)) { animation-play-state: paused; }
+  /* Only a text field pauses the bob (in place, no snap). Buttons never do: Switch / Later rebuild the card, and a frozen old card handed its phase to a running new one with a jump. */
+  .deck:not(.still) > .now-card.main:has(:is(input, textarea, select):focus) { animation-play-state: paused; }
 }
 /* An orbiting light (sc-orbit) travels round the card
    (Mor, 2026-10-11), and round a running event's card (.going). --orbit comes
