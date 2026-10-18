@@ -1,6 +1,6 @@
 // One day model for night owls (Mor, 2026-10-12): the day switched at 04:00;
-// since 2026-10-18 it switches at the day boundary (model.js getDayKey, default
-// 08:00 = "My day" start), not midnight. Before it, it's still tonight and the
+// since 2026-10-18 it switches at the fixed day boundary (model.js getDayKey,
+// 04:00, whatever "My day" says), not midnight. Before it, it's still tonight and the
 // coming morning is "tomorrow" — on the Now card, the Schedule, the plan and
 // in Tell Daisey alike. The day hours themselves are the user's (Settings).
 import test from "node:test";
@@ -25,8 +25,8 @@ function names(now, settings = {}){
   };
 }
 
-test("(a) 00:00–07:59: card, schedule, plan and buttons all call the morning slot tomorrow", () => {
-  for (const [h, m] of [[0, 30], [1, 0], [2, 30], [3, 59], [7, 59]]) {
+test("(a) 00:00–03:59: card, schedule, plan and buttons all call the morning slot tomorrow", () => {
+  for (const [h, m] of [[0, 30], [1, 0], [2, 30], [3, 59]]) {
     const now = at(13, h, m), hrs = dayHours({}, now);
     assert.equal(logicalDate(now), "2026-10-12", `${h}:${m} is still the 12th's night`);
     assert.deepEqual(names(now), { card: "tomorrow", schedule: "tomorrow", plan: "tomorrow", later: "tomorrow" }, `${h}:${m}`);
@@ -36,12 +36,13 @@ test("(a) 00:00–07:59: card, schedule, plan and buttons all call the morning s
     assert.equal(dayAfter(1, now), "2026-10-13");
   }
   // Mor's own hours (09:00 to 03:59): the day key still switches at the fixed
-  // 08:00, not at "My day" start. At 08:14 it is the 13th, but his day hasn't
+  // 04:00, not at "My day" start. At 04:00 it is the 13th, but his day hasn't
   // begun, so the card's morning (09:00) is today's: "First today".
   const mor = { dayStart: "09:00", dayEnd: "03:59" };
-  assert.equal(logicalDate(at(13, 7, 59)), "2026-10-12");
-  assert.deepEqual(names(at(13, 7, 59), mor), { card: "tomorrow", schedule: "tomorrow", plan: "tomorrow", later: "tomorrow" });
-  assert.equal(logicalDate(at(13, 8, 14)), "2026-10-13");
+  assert.equal(logicalDate(at(13, 3, 59)), "2026-10-12");
+  assert.deepEqual(names(at(13, 3, 59), mor), { card: "tomorrow", schedule: "tomorrow", plan: "tomorrow", later: "tomorrow" });
+  assert.equal(logicalDate(at(13, 4, 0)), "2026-10-13");
+  assert.deepEqual(names(at(13, 4, 0), mor), { card: "today", schedule: "today", plan: "today", later: "tomorrow" });
   assert.deepEqual(names(at(13, 8, 14), mor), { card: "today", schedule: "today", plan: "today", later: "tomorrow" });
   // 09:14: his day is on. Its morning is behind, the next one is tomorrow's.
   assert.deepEqual(names(at(13, 9, 14), mor), { card: "tomorrow", schedule: "today", plan: "today", later: "tomorrow" });
@@ -64,8 +65,8 @@ test("(b) 'tomorrow at 8am' at 03:44 is the morning the card calls Tomorrow firs
   assert.match(upLateLine({ today: logicalDate(now), afterMidnight: true }), /"tomorrow" \(מחר\) and "this morning" mean 2026-10-13/);
 });
 
-test("(c) from 08:00 the day rolls over normally", () => {
-  for (const [h, m] of [[8, 0], [9, 0], [14, 0], [23, 30]]) {
+test("(c) from 04:00 the day rolls over normally", () => {
+  for (const [h, m] of [[4, 0], [8, 0], [9, 0], [14, 0], [23, 30]]) {
     const now = at(13, h, m);
     assert.equal(logicalDate(now), "2026-10-13");
     assert.equal(dayWord(localDate(now), now), "today");

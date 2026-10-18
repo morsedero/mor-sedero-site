@@ -41,7 +41,8 @@ export const minText = (min) => { const m = ((min % 1440) + 1440) % 1440; return
 // dayEnd before 04:00 and before the start ("02:00") reads 26:00, the
 // same way.
 export function dayHours(settings = {}, now = Date.now()){
-  const late = LATE_END_MAX, s = toMin(settings.dayStart);
+  // The start never goes below the day boundary (Settings' bar runs 04:00 to 03:59).
+  const late = LATE_END_MAX, s0 = toMin(settings.dayStart), s = s0 == null ? null : Math.max(s0, LATE_END_MAX);
   let e = toMin(settings.dayEnd);
   if (s != null && e != null && e < late && e <= s) e += 1440;
   const base = s != null && e != null && e > s ? { start: s, end: e } : { ...W.DAY_HOURS };
@@ -64,7 +65,7 @@ export function dayHours(settings = {}, now = Date.now()){
 // ({ start: 0, late }): what Settings shows and other days use. Read at noon.
 export const usualHours = (settings = {}) => dayHours({ ...settings, dayEndToday: null }, new Date().setHours(12, 0, 0, 0));
 
-// ONE day model (Mor, 2026-10-18). The day key switches at a FIXED 08:00
+// ONE day model (Mor, 2026-10-18). The day key switches at a FIXED 04:00
 // (model.js getDayKey), whatever "My day" says. "My day" start/end only set
 // the planning window; the Night pill is derived from them, never stored.
 // The Night pill's range as clock text: [night starts, night ends].

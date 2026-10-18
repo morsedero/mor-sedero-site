@@ -290,13 +290,13 @@ async function ask(key, prompt, system = SYSTEM, schema = SCHEMA){
   }
 }
 
-// Said after midnight, before the fixed 08:00 day boundary (app/js/daybound.js
+// Said after midnight, before the fixed 04:00 day boundary (app/js/daybound.js
 // getDayKey, 2026-10-18): body.today is already the day they're still in, the
 // one the cards call today, and body.afterMidnight says so. "Yesterday",
 // "today" and "tomorrow" count from it, one source of truth with the app
 // (daybound.js dateForWord): at 01:51 Sunday, today is Saturday.
 const shiftDay = (ymd, n) => { const d = new Date(`${ymd}T12:00:00Z`); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
-const nightWords = (today, wake) => `\nIt is after midnight, before the 08:00 day boundary, and the user hasn't slept yet: their day is still ${today}. "Today" (היום) and "tonight" (הלילה) mean ${today}; "yesterday" (אתמול) means ${shiftDay(today, -1)}; "tomorrow" (מחר) and "this morning" mean ${wake}, the morning they wake into.`;
+const nightWords = (today, wake) => `\nIt is after midnight, before the 04:00 day boundary, and the user hasn't slept yet: their day is still ${today}. "Today" (היום) and "tonight" (הלילה) mean ${today}; "yesterday" (אתמול) means ${shiftDay(today, -1)}; "tomorrow" (מחר) and "this morning" mean ${wake}, the morning they wake into.`;
 const upLateLine = (body) => {
   if (body.afterMidnight === true && isDay(body.today)) return nightWords(body.today, shiftDay(body.today, 1));
   // An older app sends the calendar's date as today and the day they're still in as upLate.

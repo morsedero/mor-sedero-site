@@ -19,12 +19,12 @@ const at = (d, h = 12, m = 0) => new Date(2026, 9, d, h, m).getTime(); // Oct 20
 
 // ---------- 1. Day word and boundary ----------
 
-test("1 getDayKey: 07:59 is still yesterday, 08:00 is today", () => {
-  assert.equal(getDayKey(at(18, 7, 59)), "2026-10-17");
-  assert.equal(getDayKey(at(18, 8, 0)), "2026-10-18");
+test("1 getDayKey: 03:59 is still yesterday, 04:00 is today", () => {
+  assert.equal(getDayKey(at(18, 3, 59)), "2026-10-17");
+  assert.equal(getDayKey(at(18, 4, 0)), "2026-10-18");
 });
 
-test("1 getDayKey: 00:22 is tonight of the day that started yesterday at 08:00", () => {
+test("1 getDayKey: 00:22 is tonight of the day that started yesterday at 04:00", () => {
   assert.equal(getDayKey(at(18, 0, 22)), "2026-10-17");
   assert.equal(dayAfter(1, at(18, 0, 22)), "2026-10-18"); // the morning you wake into is "tomorrow"
 });
@@ -33,15 +33,15 @@ test("1 getDayKey: 23:59 is still today", () => {
   assert.equal(getDayKey(at(18, 23, 59)), "2026-10-18");
 });
 
-test("1 getDayKey: the date does NOT change at midnight, it changes at 08:00", () => {
+test("1 getDayKey: the date does NOT change at midnight, it changes at 04:00", () => {
   assert.equal(getDayKey(at(18, 23, 59)), getDayKey(at(19, 0, 0)));
   assert.equal(getDayKey(at(19, 0, 0)), "2026-10-18");
-  assert.equal(getDayKey(at(19, 7, 59)), "2026-10-18");
-  assert.equal(getDayKey(at(19, 8, 0)), "2026-10-19");
+  assert.equal(getDayKey(at(19, 3, 59)), "2026-10-18");
+  assert.equal(getDayKey(at(19, 4, 0)), "2026-10-19");
 });
 
 test("1 the header date never reads Tomorrow: header, Today page and Now card share one key", () => {
-  for (const [h, m] of [[0, 22], [3, 0], [7, 59], [8, 0], [12, 0], [23, 59]]) {
+  for (const [h, m] of [[0, 22], [3, 0], [3, 59], [4, 0], [4, 1], [8, 0], [12, 0], [23, 59]]) {
     const now = at(19, h, m), shown = localDate(headerDay(now).getTime());
     assert.equal(shown, getDayKey(now), `${h}:${m} header date is the day key`);
     assert.equal(dayWord(shown, now), "today", `${h}:${m} the header's date is "today", never "tomorrow"`);
@@ -53,12 +53,12 @@ test("1 the header date never reads Tomorrow: header, Today page and Now card sh
 
 // ---------- 2. One day model ----------
 
-test("2 the day key is a fixed 08:00: 'My day' start 08:00 and 09:00 give the same key", () => {
+test("2 the day key is a fixed 04:00: 'My day' start 04:00, 05:00, 08:00 and 09:00 give the same key", () => {
   // hours are read for the same moment, to show the key never depends on them
-  for (const [h, m, key] of [[1, 10, "2026-10-17"], [7, 59, "2026-10-17"], [8, 0, "2026-10-18"], [8, 30, "2026-10-18"]]) {
-    for (const dayStart of ["08:00", "09:00"]) {
+  for (const [h, m, key] of [[1, 10, "2026-10-17"], [3, 59, "2026-10-17"], [4, 0, "2026-10-18"], [4, 1, "2026-10-18"], [8, 30, "2026-10-18"]]) {
+    for (const dayStart of ["04:00", "05:00", "08:00", "09:00"]) {
       const now = at(18, h, m);
-      assert.equal(dayHours({ dayStart, dayEnd: "22:30" }, now).start, dayStart === "08:00" ? 480 : 540);
+      assert.equal(dayHours({ dayStart, dayEnd: "22:30" }, now).start, { "04:00": 240, "05:00": 300, "08:00": 480, "09:00": 540 }[dayStart]);
       assert.equal(getDayKey(now), key, `${h}:${m} with My day ${dayStart}`);
     }
   }

@@ -112,7 +112,7 @@ export function mountTell(form, input, mic, uid, { openAdd, openTask, guest = fa
         headers,
         body: JSON.stringify({
           // today: the day key (daybound.js), the cards' today. Still up past
-          // midnight, before 08:00, that's yesterday's date, and the helper is told
+          // midnight, before 04:00, that's yesterday's date, and the helper is told
           // (afterMidnight): "yesterday", "today" and "tomorrow" count from it.
           text, today: getDayKey(), weekday: new Date(`${getDayKey()}T12:00`).toLocaleDateString("en", { weekday: "long" }),
           ...(getDayKey() !== localDate() ? { afterMidnight: true } : {}),

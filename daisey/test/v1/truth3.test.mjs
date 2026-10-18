@@ -62,17 +62,17 @@ test("1 the button is offered only for a task a tap really puts on the card", ()
 
 // ---------- 2. Day words after midnight ----------
 
-// Saturday night: the day that began Sat 17th 08:00 runs to Sun 18th 08:00.
+// Saturday night: the day that began Sat 17th 04:00 runs to Sun 18th 04:00.
 const CASES = [
   // [label, now, today, yesterday, tomorrow]
   ["01:51 Sun", at(18, 1, 51), "2026-10-17", "2026-10-16", "2026-10-18"],
-  ["07:59 Sun", at(18, 7, 59), "2026-10-17", "2026-10-16", "2026-10-18"],
-  ["08:00 Sun", at(18, 8, 0), "2026-10-18", "2026-10-17", "2026-10-19"],
-  ["08:01 Sun", at(18, 8, 1), "2026-10-18", "2026-10-17", "2026-10-19"],
+  ["03:59 Sun", at(18, 3, 59), "2026-10-17", "2026-10-16", "2026-10-18"],
+  ["04:00 Sun", at(18, 4, 0), "2026-10-18", "2026-10-17", "2026-10-19"],
+  ["04:01 Sun", at(18, 4, 1), "2026-10-18", "2026-10-17", "2026-10-19"],
   ["23:59 Sun", at(18, 23, 59), "2026-10-18", "2026-10-17", "2026-10-19"],
 ];
 
-test("2 dateForWord: yesterday / today / tomorrow count from the day key at 01:51, 07:59, 08:00, 08:01, 23:59", () => {
+test("2 dateForWord: yesterday / today / tomorrow count from the day key at 01:51, 03:59, 04:00, 04:01, 23:59", () => {
   for (const [label, now, today, yesterday, tomorrow] of CASES) {
     assert.equal(dateForWord("today", now), today, `${label} today`);
     assert.equal(dateForWord("yesterday", now), yesterday, `${label} yesterday`);
@@ -88,7 +88,7 @@ test("2 dateForWord: yesterday / today / tomorrow count from the day key at 01:5
   assert.equal(dateForWord("someday", at(18, 1, 51)), null);
 });
 
-test("2 the text parser: 'yesterday', 'today', 'tomorrow' at 01:51, 07:59, 08:00, 08:01, 23:59", () => {
+test("2 the text parser: 'yesterday', 'today', 'tomorrow' at 01:51, 03:59, 04:00, 04:01, 23:59", () => {
   for (const [label, now, today, yesterday, tomorrow] of CASES) {
     assert.equal(eventFrom("dentist today at 10", now).date, today, `${label} today`);
     assert.equal(eventFrom("dentist yesterday at 10", now).date, yesterday, `${label} yesterday`);
@@ -104,7 +104,7 @@ test("2 the helper is told the same dates the app uses (one source of truth)", (
   assert.match(line, new RegExp(`"Today" \\(היום\\) and "tonight" \\(הלילה\\) mean ${dateForWord("today", now)}`));
   assert.match(line, new RegExp(`"yesterday" \\(אתמול\\) means ${dateForWord("yesterday", now)}`));
   assert.match(line, new RegExp(`"tomorrow" \\(מחר\\) and "this morning" mean ${dateForWord("tomorrow", now)}`));
-  assert.equal(upLateLine({ today: getDayKey(at(18, 8, 1)) }), "", "after 08:00 nothing to explain");
+  assert.equal(upLateLine({ today: getDayKey(at(18, 4, 1)) }), "", "after 04:00 nothing to explain");
 });
 
 // ---------- 3. "How much is left?" only for a started task ----------
@@ -127,7 +127,7 @@ test("3 a started task, or one with time counted, is asked", () => {
   assert.equal(asksLeft(null), false);
 });
 
-// ---------- 4. Lock: fixed 08:00 day boundary; My day drives slots and the Night pill ----------
+// ---------- 4. Lock: fixed 04:00 day boundary; My day drives slots and the Night pill ----------
 
 const workTask = (now) => ({ ...createTask({ title: "Mix review", project: "Work", size: 30 }, { now }), id: "w1" });
 const firstSlot = (settings, now) => {
@@ -135,10 +135,10 @@ const firstSlot = (settings, now) => {
   return timeline(proposeDay({ tasks, events: [], now, hours }), { tasks, events: [], now, hours }).rows[0]?.start;
 };
 
-test("4 the day boundary is a fixed 08:00 whatever My day says", () => {
-  for (const dayStart of ["06:00", "08:00", "09:00", "10:30"]) {
+test("4 the day boundary is a fixed 04:00 whatever My day says", () => {
+  for (const dayStart of ["04:00", "05:00", "08:00", "09:00", "10:30"]) {
     const s = { dayStart, dayEnd: "22:30" };
-    for (const [h, m, key] of [[1, 51, "2026-10-17"], [7, 59, "2026-10-17"], [8, 0, "2026-10-18"], [8, 30, "2026-10-18"]]) {
+    for (const [h, m, key] of [[1, 51, "2026-10-17"], [3, 59, "2026-10-17"], [4, 0, "2026-10-18"], [4, 1, "2026-10-18"], [8, 30, "2026-10-18"]]) {
       const now = at(18, h, m);
       dayHours(s, now); // reading the hours never moves the key
       assert.equal(getDayKey(now), key, `My day ${dayStart} at ${h}:${m}`);

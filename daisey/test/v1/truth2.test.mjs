@@ -37,8 +37,8 @@ test("1 the label follows the slots: now-slots at 01:30 are tonight's (today), m
   assert.equal(slotsWord(at(18, 1, 30), at(18, 1, 10)), "today"); // "I'm free now" at night
   assert.equal(slotsWord(at(18, 13, 0), at(18, 12, 0)), "today");
   assert.equal(slotsWord(at(19, 8, 0), at(18, 23, 0)), "tomorrow"); // laid in the evening for the morning
-  assert.equal(slotsWord(at(18, 7, 59), at(18, 1, 10)), "today"); // still last night's day
-  assert.equal(slotsWord(at(18, 8, 0), at(18, 7, 59)), "tomorrow");
+  assert.equal(slotsWord(at(18, 3, 59), at(18, 1, 10)), "today"); // still last night's day
+  assert.equal(slotsWord(at(18, 8, 0), at(18, 3, 59)), "tomorrow");
 });
 
 // ---------- 3. Duration parsing ----------
