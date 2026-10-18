@@ -1512,7 +1512,6 @@ body.focus #side { display: none; }
   /* A morning draft waiting: Today in blue, a dot on the calendar's corner. */
   .dock-stack #planChip.ready { color: var(--a-admin-ink); animation: none; }
   .dock-stack #planChip.ready .hchip-dot { display: block; position: absolute; inset-block-start: -3px; inset-inline-end: -5px; outline: 2px solid var(--card); }
-  #board:has(#panel > :is(#projPage, #projectview):not([hidden]):not(.pg-ghost)) > .nowrow { display: none; }
   /* Week: done today + routines float over the row (main.js sets --pop-b). */
   #glance.pop { position: fixed; z-index: 30; inset-inline-end: calc(max(0px, (100vw - 430px) / 2) + 16px); /* the column's edge on a wide screen */ inset-block-end: var(--pop-b, 140px); inline-size: min(320px, calc(100vw - 32px)); max-block-size: 60vh; overflow-y: auto; margin: 0; padding: 14px; box-sizing: border-box; border: 1px solid var(--line); border-radius: 22px; background: var(--card); box-shadow: 0 16px 40px rgb(0 0 0 / .16); }
   @media (prefers-reduced-motion: no-preference) { #glance.pop:not([hidden]) { animation: ready-in .2s ease-out; } }
@@ -1529,7 +1528,7 @@ body.focus #side { display: none; }
   .now-card.main #focusChip .hchip-word { position: absolute; inline-size: 1px; block-size: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
   .now-card.main #focusChip svg { inline-size: 18px; block-size: 18px; }
   .now-card.main #focusChip[aria-pressed="true"] { background: var(--p-teal-ink); color: var(--card); }
-  body.day-open .sc-planbtn { display: inline-flex; inline-size: auto; padding-inline: 10px; }
+  body.day-open .sc-planbtn { display: inline-flex; inline-size: auto; padding-inline: 12px; border: 1px solid var(--a-admin-line); background: var(--a-admin-tint); color: var(--a-admin-ink); } /* the same light blue as the ribbon's (Mor, 2026-10-15) */
   .sc-bar .sc-planbtn span { display: inline; }
   #panel { margin-block-end: 0; }
 }
@@ -2408,10 +2407,20 @@ body.fm-slide .deck > .now-card.main { animation: none !important; } /* main.js:
 :root:not(.night) body.card-mini #nowcard .now-card.main { min-block-size: 56px; padding: 6px 6px 6px 16px; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; column-gap: 10px; border-radius: 18px; }
 :root:not(.night) body.card-mini #nowcard .now-card.main > :not(.hero-top, .now-title), :root:not(.night) body.card-mini :is(#nowcard, .deck) > :not(.now-card.main, .deck), :root:not(.night) body.card-mini :is(.now-greet, .now-next-out) { display: none; }
 :root:not(.night) body.card-mini #nowcard .now-card.main .hero-top { display: contents; }
-:root:not(.night) body.card-mini #nowcard .now-card.main .hero-top > :not(.hero-area, #focusChip), :root:not(.night) body.card-mini #nowcard .now-card.main .hero-where { display: none; }
+:root:not(.night) body.card-mini #nowcard .now-card.main .hero-top > :not(.hero-area), :root:not(.night) body.card-mini #nowcard .now-card.main .hero-where { display: none; }
 :root:not(.night) body.card-mini #nowcard .now-card.main .hero-area { grid-column: 1; grid-row: 1; }
 :root:not(.night) body.card-mini #nowcard .now-card.main .now-title { grid-column: 2; grid-row: 1; display: block; min-inline-size: 0; max-inline-size: 100%; margin: 0; font-size: 16px; line-height: 1.25; text-align: start; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-:root:not(.night) body.card-mini #nowcard .now-card.main #focusChip { grid-column: 3; grid-row: 1; position: static; margin: 0; inline-size: 44px; block-size: 44px; }
+/* Switch, Later, Done at the bar's end (Mor, 2026-10-18: in place of Focus,
+   the same on every page): Switch and Later as 44px icons, Done with its word. */
+:root:not(.night) body.card-mini #nowcard .now-card.main { grid-template-columns: auto minmax(0, 1fr) auto auto; }
+:root:not(.night) body.card-mini #nowcard .now-card.main > .now-row.duo { display: flex; grid-column: 3; grid-row: 1; gap: 0; margin: 0; padding: 0; }
+:root:not(.night) body.card-mini #nowcard .now-card.main > .now-row.duo > .iconbtn { flex: none; inline-size: 44px; block-size: 44px; min-block-size: 44px; padding: 0; }
+:root:not(.night) body.card-mini #nowcard .now-card.main > .now-row.duo > .iconbtn .iconbtn-text { position: absolute; inline-size: 1px; block-size: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+:root:not(.night) body.card-mini #nowcard .now-card.main > .done-col.solo { display: block; grid-column: 4; grid-row: 1; margin: 0; }
+:root:not(.night) body.card-mini #nowcard .done-col.solo > :not(.btn) { display: none; }
+:root:not(.night) body.card-mini #nowcard .done-col.solo > .btn.start { inline-size: auto; block-size: 44px; min-block-size: 44px; margin: 0; padding-inline: 12px; font-size: 15px; box-shadow: none; }
+/* Stats (phone) is a box over the page: it starts under the bar. */
+@media (max-width: 1023px) { :root:not(.night) body.card-mini #glance.pop { inset-block-start: calc(max(16px, env(safe-area-inset-top)) + 56px + 68px); } }
 
 /* Plan screen: the pinned action row sits flush on the screen's bottom edge
    and is opaque, so nothing scrolls into view beneath or around it (Mor,
@@ -2489,9 +2498,11 @@ body.fm-slide .deck > .now-card.main { animation: none !important; } /* main.js:
   .shell:has(#panel > :is(#projPage, #projectview, #weekPage):not([hidden]):not(.pg-ghost)) #panel { margin-block-start: 16px; }
   .shell:has(#panel > :is(#projPage, #projectview, #weekPage):not([hidden]):not(.pg-ghost)) #glance { margin-block: 12px 0; grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .shell:has(#panel > :is(#projPage, #projectview, #weekPage):not([hidden]):not(.pg-ghost)) #dock { justify-self: center; inline-size: min(100%, 760px); }
-  :root:not(.night) body.card-mini #nowcard .now-card.main > .now-row { display: flex; grid-column: 3; grid-row: 1; margin: 0; padding: 0; }
-  :root:not(.night) body.card-mini #nowcard .now-card.main > .now-row > :not(.done-col), :root:not(.night) body.card-mini #nowcard .done-col > :not(.btn) { display: none; }
-  :root:not(.night) body.card-mini #nowcard .done-col .btn.start { inline-size: auto; block-size: 44px; min-block-size: 44px; margin: 0; padding-inline: 22px; font-size: 15px; }
+  /* The bar's keys keep their words on a wide screen (Switch, Later, Done). */
+  :root:not(.night) body.card-mini #nowcard .now-card.main > .now-row.duo { gap: 6px; }
+  :root:not(.night) body.card-mini #nowcard .now-card.main > .now-row.duo > .iconbtn { inline-size: auto; padding-inline: 12px; }
+  :root:not(.night) body.card-mini #nowcard .now-card.main > .now-row.duo > .iconbtn .iconbtn-text { position: static; inline-size: auto; block-size: auto; overflow: visible; clip: auto; }
+  :root:not(.night) body.card-mini #nowcard .done-col.solo > .btn.start { padding-inline: 22px; }
   /* Page switches morph (main.js morph): each block glides to its new box,
      its old and new looks cross-fading unstretched inside it. */
   .nowrow { view-transition-name: pc-now; }

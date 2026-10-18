@@ -766,12 +766,13 @@ async function boot(){
           if (on || plan) document.body.classList.remove("day-open");
           const day = document.body.classList.contains("day-open");
           // Phone, nothing open: the card floats mid-screen, as Focus mode did (app.css).
-          document.body.classList.toggle("home-float", phone.matches && !day && !(on || plan));
-          // Phone, Today open (the day or the plan): the card goes mini, so the
-          // day gets the room (Mor, 2026-10-12; app.css).
+          document.body.classList.toggle("home-float", phone.matches && !day && !(on || plan || weekPop));
+          // Phone, anything open (the day, the plan, Projects, Stats): the card
+          // goes mini, so the page gets the room (Mor, 2026-10-12; one rule for
+          // every page, 2026-10-18; app.css).
           // PC: with Projects or Week open the card is a bar over the page,
           // Done at its end (Mor, 2026-10-13, layout B).
-          document.body.classList.toggle("card-mini", phone.matches ? day || plan : on || week);
+          document.body.classList.toggle("card-mini", phone.matches ? day || plan || on || weekPop : on || week);
           // The glance (done today, routines): on a phone it's Week's
           // pop-over, over whatever is open (Mor, 2026-10-12: they live in a
           // button). PC: under the card, and over the week grid (layout B).

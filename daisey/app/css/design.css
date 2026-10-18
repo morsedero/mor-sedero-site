@@ -19,13 +19,6 @@
 :root:not(.night) body:is(.focus-mode, .home-float) .now-card.main .now-row.duo { gap: 6px; padding-block-start: 0; }
 :root:not(.night) body:is(.focus-mode, .home-float) .now-card.main .now-row.duo .iconbtn { inline-size: auto; min-inline-size: 0; block-size: 48px; min-block-size: 44px; border-radius: 12px; font-size: 15px; gap: 6px; }
 :root:not(.night) body:is(.focus-mode, .home-float) .now-card.main .now-row.duo .iconbtn svg { inline-size: 18px; block-size: 18px; }
-/* The wide mini card (Projects or Week open, app.css body.card-mini): still
-   a bar with Done at its end, now that Done sits outside the row. */
-@media (min-width: 1024px) {
-  :root:not(.night) body.card-mini #nowcard .now-card.main > .done-col.solo { display: block; grid-column: 3; grid-row: 1; margin: 0; }
-  :root:not(.night) body.card-mini #nowcard .now-card.main > .now-row.duo { display: none; }
-  :root:not(.night) body.card-mini #nowcard .done-col.solo > .btn.start { min-block-size: 44px; box-shadow: none; }
-}
 .done-col.solo:has(.task-bar) + .now-row.duo { margin-block-start: 14px; }
 .now-row.duo .iconbtn {
   flex-direction: row; justify-content: center; justify-self: stretch; gap: 6px; inline-size: auto; min-inline-size: 0; block-size: 44px;
