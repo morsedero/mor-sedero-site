@@ -165,3 +165,11 @@
    Tomorrow-first card (app.css night rules). */
 :root.night:has(body.day-open) #nowcard > .now-card, :root.night:has(body.day-open) #nowcard > .night-foot { display: none; }
 :root.night:has(body.day-open) .nowrow { flex: none; }
+/* With the day open the night hero squeezes into a mini bar, like the day
+   card does (app.css body.card-mini): the moon small, "Late, Mor." beside it. */
+:root.night:has(body.day-open) .night-hero {
+  flex-direction: row; justify-content: flex-start; gap: 12px; min-block-size: 56px; padding: 6px 16px; border-radius: 18px; text-align: start; box-shadow: none;
+}
+:root.night:has(body.day-open) .night-hero .moon-daisy { inline-size: 36px; block-size: 36px; }
+:root.night:has(body.day-open) .night-h { margin: 0; font-size: 16px; line-height: 1.25; }
+:root.night:has(body.day-open) .night-p, :root.night:has(body.day-open) #nowcard > .stars { display: none; }
