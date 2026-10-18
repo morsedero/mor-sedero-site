@@ -36,6 +36,7 @@ import { daysUntil } from "./engine.js";
 import { collectNeeds, somedayDue, awayDays, AWAY_DAYS } from "./needs-list.js";
 export { collectNeeds, somedayDue }; // now.js counts them for the header chip
 import { h, icon, dur, flash } from "./ui.js";
+import { decisionCard } from "./decision.js";
 import { whereAsk, setRide, setStill, saveSpot, notHomeHere, quietHere, reservedName, homeAt } from "./where.js";
 import { estimate, answer as tripAnswer, noTrip } from "./trips.js";
 import { areaClass } from "./look.js";
@@ -72,7 +73,8 @@ export function mountNeeds(root, uid, { onClose, onStart, extra, onAway } = {}){
   const fail = (e) => console.error("[daisey] needs", e);
   const find = (id) => tasks.find((t) => t.id === id);
 
-  const next = () => { follow = null; i++; paint(); };
+  let moreOpen = false; // the card's More list (decision.js)
+  const next = () => { follow = null; moreOpen = false; i++; paint(); };
   const later = (key) => {
     const today = logicalDate();
     const keys = settings.needsLater?.date === today ? [...(settings.needsLater.keys || [])] : [];
@@ -298,8 +300,8 @@ export function mountNeeds(root, uid, { onClose, onStart, extra, onAway } = {}){
     while (i < list.length && !follow && !question(list[i])) i++;
     const top = h("div", { className: "ny-top" },
       h("button", { className: "ny-x", type: "button", ariaLabel: "Close", onclick: () => onClose?.() }, icon("close")),
-      list.length > 1 && i < list.length && h("div", { className: "ny-dots", role: "img", ariaLabel: `Question ${i + 1} of ${list.length}` },
-        ...list.map((_, k) => h("span", { className: k === i ? "on" : k < i ? "past" : "" }))),
+      // The pager says where you are (design round 4): "1 of 3".
+      list.length > 1 && i < list.length && h("div", { className: "ny-pager", ariaLabel: `Question ${i + 1} of ${list.length}`, textContent: `${i + 1} of ${list.length}` }),
       h("span", { className: "ny-pad", ariaHidden: "true" }));
     if (i >= list.length) {
       root.replaceChildren(top, h("div", { className: "ny-end" },
@@ -316,16 +318,12 @@ export function mountNeeds(root, uid, { onClose, onStart, extra, onAway } = {}){
         yes: ["Keep it in the calendar", () => next()],
         no: ev.editable !== false && ["Delete the event", () => { deleteEvent(ev).catch(fail); next(); }], noLater: true };
     } else q = question(list[i]);
-    const left = list.length - i - 1;
-    const card = h("section", { className: `ny-card ${q.tone}`, ariaLabel: "Question" },
-      h("span", { className: "ny-ico" }, icon(q.ico)),
-      h("h2", { className: "ny-q", textContent: q.q }),
-      h("p", { className: "ny-sub", textContent: q.sub }),
-      q.item && h("div", { className: "ny-item", dir: "auto", textContent: q.item }),
-      h("p", { className: "ny-say", textContent: q.say }),
-      q.field && (field = h("input", { id: q.field.id, className: "ny-field", dir: "auto", autocomplete: "off", enterkeyhint: "done", placeholder: q.field.placeholder, ariaLabel: q.field.placeholder || q.sub,
-        ...(q.field.inputmode ? { inputMode: q.field.inputmode } : {}) })));
-    if (field) field.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); q.yes[1](field.value); } });
+    // The field (a place name, a trip time…) answers with the main key.
+    if (q.field) {
+      field = h("input", { id: q.field.id, className: "ny-field", dir: "auto", autocomplete: "off", enterkeyhint: "done", placeholder: q.field.placeholder, ariaLabel: q.field.placeholder || q.sub,
+        ...(q.field.inputmode ? { inputMode: q.field.inputmode } : {}) });
+      field.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); q.yes[1](field.value); } });
+    }
     // [text, go, again]: with `again`, the first tap only arms the button
     // ("Really delete?") and the second one answers.
     const answer = ([text, go, again], cls) => {
@@ -336,14 +334,14 @@ export function mountNeeds(root, uid, { onClose, onStart, extra, onAway } = {}){
       });
       return b;
     };
+    // One card, design round 4 (decision.js): the question, the thing, one
+    // line of why (Daisey's own suggestion only when there is no why line),
+    // the two answers on the card, the rest (and Ask me later) under More.
+    const more = [...(q.more || []).map((a) => answer(a, "dc-opt")), ...(!q.noLater ? [big("Ask me later", "dc-opt", () => later(list[i].key))] : [])];
     root.replaceChildren(top,
-      h("div", { className: "ny-stack" + (left > 1 ? " two" : left ? " one" : "") }, card),
-      h("div", { className: "ny-spacer" }),
-      h("div", { className: "ny-btns" },
-        big(q.yes[0], "primary big", () => q.yes[1](field?.value)),
-        q.no && answer(q.no, "line big"),
-        q.more && h("div", { className: "ny-more" }, ...q.more.map((a) => answer(a, "quiet"))),
-        !q.noLater && big("Ask me later", "quiet", () => later(list[i].key))));
+      h("div", { className: "ny-stage" }, decisionCard({ tone: q.tone, ico: q.ico, q: q.q, item: q.item, why: q.sub || q.say, field,
+        yes: big(q.yes[0], "primary big", () => q.yes[1](field?.value)), no: q.no && answer(q.no, "line big"),
+        more, open: moreOpen, onMore: () => { moreOpen = !moreOpen; paint(); } })));
   }
 
   // Away catch-up opens by itself (Mor approved 2026-10-08; user test

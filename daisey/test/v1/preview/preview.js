@@ -339,7 +339,8 @@ const FAKES = {
   page.on("console", (m) => { if (m.type() === "error") console.error("console:", m.text()); });
   // --at HH:MM: the page's clock, today at that time (Playwright's fake clock).
   const atFlag = flag("--at");
-  if (atFlag) { const [hh, mm] = atFlag.split(":").map(Number); const d = new Date(); d.setHours(hh, mm || 0, 0, 0); await page.clock.install({ time: d }); }
+  // --days N (with --at): that many days from today, for weekday states (the routine nag is midweek).
+  if (atFlag) { const [hh, mm] = atFlag.split(":").map(Number); const d = new Date(); d.setDate(d.getDate() + (Number(flag("--days")) || 0)); d.setHours(hh, mm || 0, 0, 0); await page.clock.install({ time: d }); }
   // --ask-deadlines: settings as before the one-time deadline question.
   await page.addInitScript((s) => { window.__FAKE = s; }, args.includes("--ask-deadlines") ? { ...scenario, settings: {} } : scenario);
   if (speedFlag) await page.addInitScript((v) => {

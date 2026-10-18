@@ -34,6 +34,25 @@ const CHECKS = {
       return t.includes("Waiting on what?") && !t.includes("Later today");
     }],
   ],
+  2: [
+    ["Needs you: one card, pager '1 of N', main answer on the card, More holds the rest", () => {
+      const t = text("old", "--click", "#needsChip");
+      return /\b1 of \d+\b/.test(t) && t.includes("More") && !t.includes("Ask me later");
+    }],
+    ["More opens On hold, Delete task and Ask me later", () => {
+      const t = text("old", "--click", "#needsChip", "--click", ".dc-more", "--click", ".dc-list .btn:last-child", "--click", ".dc-more");
+      return t.includes("Still doing this?") && ["On hold", "Delete task", "Ask me later"].every((w) => t.includes(w));
+    }],
+    ["Routine nudge: one line, no zero count; a tap opens the card", () => {
+      const line = text("nag", "--days", "3");
+      const card = text("nag", "--days", "3", "--click", ".routine-nag");
+      return line.includes("Portuguese") && !/\b0 of \d/.test(line) && card.includes("Routine") && card.includes("Just 15 min");
+    }],
+    ["Plan ready: every row listed, Approve / Rethink / No plan, no summary line", () => {
+      const t = text("squeeze-proposed", "--cal", "squeeze", "--click", "#planChip", "--click", ".sc-planbtn");
+      return ["Approve", "Rethink", "No plan", "Mix review for Reprise", "Lesson prep"].every((w) => t.includes(w));
+    }],
+  ],
 };
 
 const only = process.argv[2];

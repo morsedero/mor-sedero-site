@@ -31,6 +31,7 @@ import { findPhoneTasks, phoneOkIds, searching } from "./phone.js";
 import { rank, freeWindow, timeBucket, matchProject, dueAt, keepsCard, passedOver } from "./engine.js";
 import { leftMinutes, toMinutes, progressOf, leftPatch, localDate, logicalDate, skipSnapshot, skipLesson, pendingCheck, notYet, pushedTo, bringBack, dayAfter, doneSnapshot, isGuess, estText, needsLaptop } from "./model.js";
 import { isRoutine, routineCalendar, eventsToLog, sessionPatch, nagFor, nagText, nagParts } from "./routine.js";
+import { decisionCard } from "./decision.js";
 import { waitingFor, personOf } from "./nudge.js";
 import { dayHours, isNight, nextMorning, dayEndAt, bookings, sameTitle, minText, gapsToday, planDate, usualHours, dayWord, slotsWord, answerDate, nightRange } from "./day.js";
 import { wrapList } from "./needs.js";
@@ -1100,17 +1101,24 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     // the week's dots, "Just 15 min" to go, × for Later. The title alone is
     // in a <bdi>, so a Hebrew one leaves the English around it in order.
     const p = nagParts(n);
-    const daisy = h("span", { className: "nag-daisy", ariaHidden: "true" });
-    daisy.innerHTML = '<svg viewBox="0 0 40 40" aria-hidden="true">' + Array.from({ length: 8 }, (_, i) =>
-      `<ellipse cx="20" cy="9.5" rx="5.5" ry="8.5" transform="rotate(${i * 45} 20 20)"/>`).join("") + '<circle cx="20" cy="20" r="7" class="c"/></svg>';
-    daisy.style.animationDelay = `${-(Date.now() % 6000)}ms`; // a rebuild carries the sway on
-    return h("div", { className: "routine-nag" + (n.late ? " late" : ""), role: "note", ariaLabel: nagText(n) },
-      daisy,
-      h("span", { className: "nag-text" },
-        h("span", { className: "nag-title" }, bdi(p.title)),
-        h("span", { className: "nag-week" }, n.late ? h("span", { textContent: p.tail }) : weekDots(n.task), !n.late && h("span", { textContent: "this week" }))),
-      h("button", { className: "nag-go", type: "button", textContent: p.len ? `Just ${p.len}` : "Let's go", ariaLabel: `${p.title} now`, onclick: () => switchTo(n.task.id) }),
-      h("button", { className: "nag-later", type: "button", textContent: "×", ariaLabel: "Later", title: "Later", onclick: () => { save({ day, off: day }); render(); } }));
+    // No zero count on Home ("0 of 3 this week"): before the first session it says the week's aim.
+    if (!n.late && !n.s.done) p.tail = `${n.s.per} this week`;
+    const go = () => { state.nagOpen = null; switchTo(n.task.id); };
+    const off = () => { state.nagOpen = null; save({ day, off: day }); render(); };
+    // Design round 4 (2026-10-18): one small line in the routine's tint (not
+    // a bubble); a tap opens the decision card in its place, same answers as
+    // before: the main one puts it on the card, Later shuts it for today.
+    if (state.nagOpen === n.task.id) {
+      return h("div", { className: "routine-ask" }, decisionCard({ tone: areaClass(n.task).trim(), ico: "later", kicker: "Routine",
+        q: p.title, why: p.tail,
+        yes: h("button", { className: "btn primary big", type: "button", textContent: p.len ? `Just ${p.len}` : "Let's go", ariaLabel: `${p.title} now`, onclick: go }),
+        no: h("button", { className: "btn line big", type: "button", textContent: "Later", ariaLabel: `${p.title} later`, onclick: off }) }));
+    }
+    return h("button", { className: "routine-nag line" + areaClass(n.task) + (n.late ? " late" : ""), type: "button", ariaLabel: `Routine: ${nagText(n)}`,
+      onclick: () => { state.nagOpen = n.task.id; render(); } },
+      h("span", { className: "dot", ariaHidden: "true" }),
+      h("span", { className: "nag-text" }, bdi(p.title), p.len ? `, ${p.len}` : "", ` · ${p.tail}`),
+      icon("chev"));
   }
 
   // Switch · Not now, then Done at the row's far end: the one loud
