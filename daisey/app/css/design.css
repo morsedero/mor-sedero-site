@@ -133,6 +133,13 @@
 .qh-p { margin: 6px 0 0; font-size: 14px; line-height: 1.4; color: var(--sub); }
 .qh .btn.quiet { min-block-size: 44px; margin-block-start: 14px; padding-inline: 18px; border: 1px solid var(--aline); border-radius: 14px; background: var(--card); color: var(--ink); font-weight: 500; }
 .qh .now-anyway { display: flex; flex-direction: column; align-items: center; inline-size: 100%; }
+/* Show me anyway's tasks: the row spans the card (it shrank to one tiny chip,
+   "Call de…", Mor 2026-10-18), each chip wide enough for a 2-line title.
+   Auto margins centre one chip and still let several scroll from the start. */
+.qh .now-anyway > .switch-ask { align-self: stretch; margin-block-start: 12px; }
+.qh .now-anyway .alt-card { inline-size: min(260px, 78%); text-align: start; }
+.qh .now-anyway .alt-card:first-child { margin-inline-start: auto; }
+.qh .now-anyway .alt-card:last-child { margin-inline-end: auto; }
 .sprout .stem { fill: none; stroke: #7fae7f; stroke-width: 2; stroke-linecap: round; }
 .sprout .leaf { fill: #9cc79c; }
 .sprout .ground { fill: none; stroke: var(--aline); stroke-width: 2; stroke-linecap: round; }
