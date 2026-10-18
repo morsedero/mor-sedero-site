@@ -1329,7 +1329,7 @@ dialog.tsheet .now-head { margin-block-end: -4px; }
 .ts-acts.duo { flex-direction: row; }
 .ts-acts.duo > .ts-start { flex: 1 1 0; min-inline-size: 0; }
 .ts-acts[hidden] { display: none; }
-.ts-del { flex: none; align-self: center; min-block-size: 40px; margin-block-start: 6px; padding-inline: 14px; border: 0; border-radius: 10px; background: none; color: var(--ink-2); font: inherit; font-size: 13px; cursor: pointer; }
+.ts-del { flex: none; align-self: center; min-block-size: 40px; margin-block-start: 6px; padding-inline: 14px; border: 0; border-radius: 10px; background: none; color: var(--danger); font: inherit; font-size: 13px; cursor: pointer; }
 .ts-del.arm { color: var(--danger); background: color-mix(in srgb, var(--danger) 10%, transparent); font-weight: 600; }
 dialog.tsheet .msg:empty { display: none; }
 
