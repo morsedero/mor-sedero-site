@@ -36,3 +36,19 @@ test("My day start never goes below 04:00 and never moves the boundary", () => {
   assert.equal(dayHours({ dayStart: "03:59", dayEnd: "22:00" }, at(18, 12)).start, 240);
   assert.equal(dayHours({}, at(18, 12)).start, 480, "default unchanged");
 });
+
+// ---------- Plan label when nothing fits ----------
+import { planLabelDay } from "../../app/js/day.js";
+
+test("plan label: at night with nothing fittable it says tomorrow, matching Home", () => {
+  const hours = dayHours({}, at(18, 23));
+  for (const now of [at(18, 22, 0), at(18, 23, 0), at(19, 1, 30), at(19, 3, 59)]) {
+    assert.equal(planLabelDay({ rows: [], now, hours: dayHours({}, now) }), "tomorrow", `${new Date(now).toTimeString().slice(0, 5)}`);
+  }
+  // In the day it keeps the fallback (today); "I'm free now" at night is today's too.
+  assert.equal(planLabelDay({ rows: [], now: at(18, 12), hours: dayHours({}, at(18, 12)) }), "today");
+  assert.equal(planLabelDay({ rows: [], now: at(18, 23), hours, nightFree: true }), "today");
+  // With slots it follows them (the Now card's word).
+  assert.equal(planLabelDay({ rows: [{ start: at(19, 8) }], now: at(18, 23), hours }), "tomorrow");
+  assert.equal(planLabelDay({ rows: [{ start: at(18, 13) }], now: at(18, 12), hours }), "today");
+});

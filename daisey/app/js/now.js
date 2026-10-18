@@ -33,7 +33,7 @@ import { leftMinutes, toMinutes, progressOf, leftPatch, localDate, logicalDate, 
 import { isRoutine, routineCalendar, eventsToLog, sessionPatch, nagFor, nagText, nagParts } from "./routine.js";
 import { decisionCard } from "./decision.js";
 import { waitingFor, personOf } from "./nudge.js";
-import { dayHours, isNight, nextMorning, dayEndAt, bookings, sameTitle, minText, gapsToday, planDate, usualHours, dayWord, slotsWord, answerDate, nightRange } from "./day.js";
+import { dayHours, isNight, nextMorning, dayEndAt, bookings, sameTitle, minText, gapsToday, planDate, usualHours, dayWord, slotsWord, answerDate, nightRange, planLabelDay } from "./day.js";
 import { wrapList } from "./needs.js";
 import { needsCount, nightLine } from "./needs-list.js";
 import { SWITCH_TOO, CANT_NOW, holdPick, freshPick, offerable } from "./pick.js";
@@ -140,7 +140,6 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
   // Tomorrow first, and every label in the plan flow says tomorrow too.
   // "I'm free now" plans as day: today.
   const planWord = () => (!nightFree && dayWord(dayKey()) === "tomorrow" ? "tomorrow" : "today");
-  const PlanWord = () => (planWord() === "today" ? "Today" : "Tomorrow");
   const skipItems = () => (skipDoc?.date === dayKey() ? skipDoc.items || {} : {});
   const hidden = (now = Date.now()) => Object.entries(skipItems()).filter(([, v]) => v.until > now).map(([id]) => id);
   const skipCounts = () => Object.fromEntries(Object.entries(skipItems()).map(([id, v]) => [id, v.count]));
@@ -1924,7 +1923,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     // Past midnight on the night page the plan is the day you wake into,
     // which that page calls tomorrow (Mor, 2026-10-11), so this says so too.
     // The label follows where the slots really fall, so it agrees with the Now card (day.js slotsWord).
-    const day = rows.length ? (slotsWord(rows[0].start) === "tomorrow" ? "Tomorrow" : "Today") : PlanWord();
+    const day = (planLabelDay({ rows, now: Date.now(), hours: ph, nightFree, fallback: planWord() }) === "tomorrow") ? "Tomorrow" : "Today";
     return h("section", { className: "now-card main hero proposal", ariaLabel: approved ? `${day}'s plan` : "Proposed schedule" },
       h("div", { className: "hero-top" },
         h("span", { className: "hero-area", textContent: approved ? `${day}'s plan` : `Proposed for ${day.toLowerCase()}` }),

@@ -153,6 +153,15 @@ export const doneDayLabel = (doneAt, locale) => (doneAt
 // from now (01:30, "I'm free now") is still tonight's, "today". → "today" | "tomorrow".
 export const slotsWord = (start, now = Date.now()) => (dayWord(getDayKey(start), now) === "tomorrow" ? "tomorrow" : "today");
 
+// The day a plan screen names ("Proposed for …"): where its first slot falls
+// when it has one; with nothing fitting, at night (and not "I'm free now") it is
+// the coming morning, "tomorrow", the same word the Now card's "Tomorrow first"
+// uses - never "today" (Mor, 2026-10-18). → "today" | "tomorrow".
+export function planLabelDay({ rows = [], now = Date.now(), hours = W.DAY_HOURS, nightFree = false, fallback = "today" } = {}){
+  if (rows.length) return slotsWord(rows[0].start, now);
+  return !nightFree && isNight(now, hours) ? "tomorrow" : fallback;
+}
+
 export function isNight(now = Date.now(), hours = W.DAY_HOURS){
   const d = new Date(now), m = d.getHours() * 60 + d.getMinutes();
   return m < hours.start || m >= hours.end;
