@@ -517,7 +517,7 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onMissed, onPro
     // like what happened, and not red either ("negative"): a quiet "?" until
     // it's re-planned.
     if (x.kind === "plan") { const pe = h("div", { className: "sc-row" + (x.missed ? " sc-missed" : on ? " sc-on" + areaClass(x.task) : past ? " sc-past" : nextCls), style: orbit },
-      h("span", { className: "sc-time strong" }, time, x.missed ? h("button", { type: "button", className: "sc-misstag", textContent: "?", title: "No Done yet: how did it go?", ariaLabel: `${x.task.title}: no Done yet. How did it go?`, onclick: () => onMissed?.(x.task.id, x.start) }) : tag(on)),
+      h("span", { className: "sc-time strong" }, time, x.missed ? h("button", { type: "button", className: "sc-misstag", textContent: "?", title: "No Done yet: how did it go?", ariaLabel: `${x.task.title}: no Done yet. How did it go?`, onclick: (e) => onMissed?.(x.task.id, x.start, e.currentTarget.closest(".sc-row")?.querySelector(".sc-ev")) }) : tag(on)),
       h("button", { type: "button", className: "sc-ev sc-plan" + areaClass(x.task), ariaLabel: `${nextAria}Planned: ${x.task.title}, ${time}`, onclick: () => onOpen?.(x.task) },
         h("span", { className: "sc-dot" }), x.of ? h("span", { className: "sc-tt" }, bdi(x.task.title),
           h("small", { className: "sc-why", textContent: `${durText(x.minutes)} of ${durText(x.of)}, shortened to fit` })) : bdi(x.task.title)));

@@ -1207,7 +1207,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
   // toast's Undo covers a mis-tap). A routine's tap is one whole session.
   // Done on a task that was never started here (already finished, or done
   // elsewhere): finished with no time booked, with an Undo.
-  function quickDoneNow(task){
+  function quickDoneNow(task, from){
     // Done on the card itself (Mor, 2026-10-11): the card shines, confetti
     // and sparkles go up round it, then it slides out and the next card
     // slides into its spot. The write waits for the slide, as Later's does,
@@ -1229,6 +1229,16 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
       // on and kept the next task, with that task's times (2026-10-15).
       flash("Done: ", task.title, { undo: () => { undoDone(uid, task.id, before).catch(fail); reset(); state.chosen = task.id; render(); } });
     };
+    // From the schedule's "?" sheet (Mor, 2026-10-18): the same shine and
+    // confetti on the schedule box that had the "?", and it falls from there.
+    // The copy falls; the box itself hides until the snapshot redraws the row.
+    if (!el && from?.isConnected && motionOK()){
+      if (from.classList.contains("won")) return;
+      from.classList.add("won");
+      from.append(h("span", { className: "won-shine", ariaHidden: "true" }));
+      celebrate(from);
+      return void setTimeout(() => { if (from.isConnected) { dropAway(from); from.style.visibility = "hidden"; } go(); }, WON_MS);
+    }
     if (!el || !motionOK()) return go();
     el.style.animationDelay = "";
     el.classList.add("won");
@@ -1320,7 +1330,8 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
   // be doing it all and just not open the app), so it asks: Done, Some of it
   // (how much is left, then when), or Not yet (when). Answering clears the
   // "?" and the Needs you ask with it.
-  function missedSheet(id, start){
+  // from: the schedule box whose "?" was tapped, so Done celebrates it.
+  function missedSheet(id, start, from){
     const task = (tasks || []).find((t) => t.id === id), dlg = missDialog;
     if (!task || !dlg) return;
     const row = start ? planRowsNow().find((r) => r.taskId === id) : null;
@@ -1347,7 +1358,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     dlg.replaceChildren(head("How did it go?"), name, h("p", { className: "muted miss-when", textContent: when }),
       h("div", { className: "miss-acts three" },
         // Yellow with a check is Done, as on the card (Mor, 2026-10-10).
-        h("button", { className: "btn primary", type: "button", onclick: act(() => quickDoneNow(task)) }, icon("check"), h("span", { textContent: "Done" })),
+        h("button", { className: "btn primary", type: "button", onclick: act(() => quickDoneNow(task, from)) }, icon("check"), h("span", { textContent: "Done" })),
         h("button", { className: "btn line", type: "button", onclick: paintLeft, textContent: "Some of it" }),
         h("button", { className: "btn line", type: "button", onclick: paintWhen, textContent: "Not yet" })));
     dlg.showModal();
@@ -2365,7 +2376,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     // Needs you's questions that only the Now screen can work out (planAsk).
     needsAsks: () => [planAsk(), mealLateAsk()].filter(Boolean),
     // The schedule's "?" on a planned task that didn't happen.
-    missed: (id, start) => missedSheet(id, start),
+    missed: (id, start, from) => missedSheet(id, start, from),
     // "Do this now" from the task sheet: the same thing Switch does, driven
     // from the list. A task put off today is un-put-off, or the card would
     // ignore the choice.

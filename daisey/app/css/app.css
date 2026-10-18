@@ -368,6 +368,8 @@ input:is([type="checkbox"], [type="radio"]):disabled { opacity: .45; cursor: def
   30% { transform: scale(1.035); box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 55%, transparent), 0 0 36px color-mix(in srgb, var(--accent) 60%, transparent); }
   100% { transform: scale(1); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 35%, transparent), 0 0 24px color-mix(in srgb, var(--accent) 40%, transparent); }
 }
+/* The same Done on a schedule box, from its "?" sheet (2026-10-18). */
+.sc-ev.won { position: relative; overflow: hidden; pointer-events: none; animation: won-pop .56s cubic-bezier(.3, 1.4, .5, 1) forwards; }
 .won-shine { position: absolute; inset: 0; z-index: 2; border-radius: inherit; pointer-events: none;
   background: linear-gradient(105deg, transparent 38%, rgb(255 255 255 / .55) 47%, rgb(255 255 255 / .85) 50%, rgb(255 255 255 / .55) 53%, transparent 62%) no-repeat;
   background-size: 260% 100%; background-position: 130% 0; animation: won-shine .5s ease-out .05s forwards; }
