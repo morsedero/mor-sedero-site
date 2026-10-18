@@ -354,7 +354,7 @@ input:is([type="checkbox"], [type="radio"]):disabled { opacity: .45; cursor: def
    position:fixed trip menu (breathe stops then too). The Focus chip riding
    in the phone's card is the exception: tapping it stopped the bob, a hop
    right as Focus mode's slide began. */
-.deck > .now-card.main:not(:has(:focus:not(#focusChip))) { will-change: transform; }
+.deck > .now-card.main:not(:has(:focus:not(#focusChip, .act-line *))) { will-change: transform; }
 .now-card.main.push-in { animation: card-push-in 1.1s cubic-bezier(.4, 0, .2, 1) both; animation-delay: var(--push-at, 0s) !important; }
 :dir(rtl) .now-card.main.push-in { animation-name: card-push-in-rtl; }
 @keyframes card-push-in { from { transform: translateX(-100%); } }
@@ -723,7 +723,7 @@ dialog.now:focus { outline: none; }
 .deck > .now-card { position: relative; touch-action: pan-y; }
 @keyframes breathe { 50% { transform: translateY(-3px); } }
 @media (prefers-reduced-motion: no-preference) {
-  .deck:not(.still) > .now-card.main:not(.in):not(.out):not(.won):not(.push-in):not(:has(:focus:not(#focusChip))) { animation: breathe 5s ease-in-out infinite; }
+  .deck:not(.still) > .now-card.main:not(.in):not(.out):not(.won):not(.push-in):not(:has(:focus:not(#focusChip, .act-line *))) { animation: breathe 5s ease-in-out infinite; }
 }
 /* An orbiting light (sc-orbit) travels round the card
    (Mor, 2026-10-11), and round a running event's card (.going). --orbit comes
