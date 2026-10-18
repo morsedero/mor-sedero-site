@@ -35,6 +35,20 @@ const short = (d) => d.toLocaleDateString("en-GB", { weekday: "short", day: "num
 const atMin = (d, min) => { const x = new Date(d); x.setHours(Math.floor(min / 60), min % 60, 0, 0); return x.getTime(); };
 
 const quarterUp = (ms) => { const q = 15 * 60000; return Math.ceil(ms / q) * q; };
+// Nothing on right now (Mor, 2026-10-18): the first task or event still to
+// come wears a "Next · 25m" tag where Now would sit. Free time doesn't count
+// as on; a break does (it's the Now card's too).
+export function upNext(rows, now){
+  if (rows.some((x) => !x.allDay && x.kind !== "free" && x.start <= now && now < x.end)) return null;
+  return rows.find((x) => !x.allDay && (x.kind === "plan" || x.kind === "event") && x.start > now) || null;
+}
+// Short enough for the 80px time column: "25m", "1h 30m", past 3 h just "4h".
+export function untilText(ms){
+  const m = Math.max(1, Math.ceil(ms / 60000));
+  if (m < 60) return `${m}m`;
+  const hr = Math.floor(m / 60), rest = m % 60;
+  return hr >= 3 || rest < 5 ? `${hr}h` : `${hr}h ${rest}m`;
+}
 const hm = (ms) => clock(ms);
 // A break says what it's for, warmly (Mor, 2026-10-10: "more fun"): "☕ Breather · 15 min", "🥗 Lunch · 45 min".
 // Free time reads the same way, "🌿 Free · 2 h", and all three sit light (Mor, 2026-10-11).
@@ -379,12 +393,14 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onMissed, onPro
     const rows = tonight ? dayRows(events, date, hrs, fromMs) : withPlan(dayRows(events, date, hrs, fromMs), planned);
     const ymd = localDate(t);
     const out = [];
+    let nx = null;
     if (tonight) {
       const close = dayEndAt(now, real);
       const left = withPlan(dayRows(events.filter((e) => !e.allDay && Date.parse(e.start) < close), date, real, now)
         .filter((x) => x.end > now), planned);
+      nx = upNext([...left, ...rows], now);
       out.push(h("section", { className: "sc-day", ariaLabel: "Tonight" },
-        ...(left.length ? left.map((x) => row(x, now)) : [h("p", { className: "sc-note", textContent: "Nothing left tonight." })])),
+        ...(left.length ? left.map((x) => row(x, now, x === nx)) : [h("p", { className: "sc-note", textContent: "Nothing left tonight." })])),
         nightDivider(...nightRange({ start: hrs.start, end: real.end })),
         h("div", { className: "sc-label sc-next" }, h("span", { className: "sc-name", textContent: "Tomorrow" }), h("span", { className: "sc-date", textContent: short(date) })));
     }
@@ -393,7 +409,8 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onMissed, onPro
     if (t === t0 && !tonight && now < atMin(today, hrs.start) && !riding) out.push(nightDivider(...nightRange(hrs)));
     const none = h("button", { type: "button", className: "sc-none", onclick: () => onNew?.(ymd) },
       h("span", { textContent: "Nothing scheduled" }), h("span", { className: "sc-add", ariaHidden: "true", textContent: "+ Add" }));
-    out.push(h("section", { className: "sc-day", ariaLabel: short(date) }, ...(rows.length ? rows.map((x) => row(x, now)) : [none]),
+    if (!tonight && t === t0) nx = upNext(rows, now);
+    out.push(h("section", { className: "sc-day", ariaLabel: short(date) }, ...(rows.length ? rows.map((x) => row(x, now, x === nx)) : [none]),
       ...(tonight ? [] : noRoom.map(noRoomRow))));
     return out;
   }
@@ -473,8 +490,12 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onMissed, onPro
     return [grid];
   }
 
-  function row(x, now){
+  function row(x, now, next = false){
     const time = x.allDay ? "All day" : `${clock(x.start)}–${clock(x.end)}`;
+    const until = next ? untilText(x.start - now) : "";
+    const tag = (on) => on ? h("span", { className: "sc-nowtag", textContent: "Now" })
+      : next && h("span", { className: "sc-nexttag", textContent: `Next · ${until}` });
+    const nextCls = next ? " sc-next" : "", nextAria = next ? `Next, in ${until}: ` : "";
     // Free time is quiet (Mor, 2026-10-06: the dashed boxes read as slots to
     // fill): no box, no times, just how long, on a hairline.
     // Tapping it adds an event there.
@@ -495,26 +516,26 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onMissed, onPro
     // Planned and never started isn't "over" (Mor, 2026-10-10): not dimmed
     // like what happened, and not red either ("negative"): a quiet "?" until
     // it's re-planned.
-    if (x.kind === "plan") { const pe = h("div", { className: "sc-row" + (x.missed ? " sc-missed" : on ? " sc-on" + areaClass(x.task) : past ? " sc-past" : ""), style: orbit },
-      h("span", { className: "sc-time strong" }, time, x.missed ? h("button", { type: "button", className: "sc-misstag", textContent: "?", title: "No Done yet: how did it go?", ariaLabel: `${x.task.title}: no Done yet. How did it go?`, onclick: () => onMissed?.(x.task.id, x.start) }) : on && h("span", { className: "sc-nowtag", textContent: "Now" })),
-      h("button", { type: "button", className: "sc-ev sc-plan" + areaClass(x.task), ariaLabel: `Planned: ${x.task.title}, ${time}`, onclick: () => onOpen?.(x.task) },
+    if (x.kind === "plan") { const pe = h("div", { className: "sc-row" + (x.missed ? " sc-missed" : on ? " sc-on" + areaClass(x.task) : past ? " sc-past" : nextCls), style: orbit },
+      h("span", { className: "sc-time strong" }, time, x.missed ? h("button", { type: "button", className: "sc-misstag", textContent: "?", title: "No Done yet: how did it go?", ariaLabel: `${x.task.title}: no Done yet. How did it go?`, onclick: () => onMissed?.(x.task.id, x.start) }) : tag(on)),
+      h("button", { type: "button", className: "sc-ev sc-plan" + areaClass(x.task), ariaLabel: `${nextAria}Planned: ${x.task.title}, ${time}`, onclick: () => onOpen?.(x.task) },
         h("span", { className: "sc-dot" }), x.of ? h("span", { className: "sc-tt" }, bdi(x.task.title),
           h("small", { className: "sc-why", textContent: `${durText(x.minutes)} of ${durText(x.of)}, shortened to fit` })) : bdi(x.task.title)));
       return pe; }
     // The way to an event in another city and back (trips.js): Daisey's own
     // block, not the calendar's, so it doesn't open, drag or delete.
-    if (x.ev?.trip) return h("div", { className: "sc-row" + (on ? " sc-on" : past ? " sc-past" : ""), style: orbit },
-      h("span", { className: "sc-time strong" }, time, on && h("span", { className: "sc-nowtag", textContent: "Now" })),
-      h("span", { className: "sc-ev sc-trip", ariaLabel: `${x.ev.title}, ${time}` }, h("span", { className: "sc-evi" }, icon("later")), x.ev.title));
+    if (x.ev?.trip) return h("div", { className: "sc-row" + (on ? " sc-on" : past ? " sc-past" : nextCls), style: orbit },
+      h("span", { className: "sc-time strong" }, time, tag(on)),
+      h("span", { className: "sc-ev sc-trip", ariaLabel: `${nextAria}${x.ev.title}, ${time}` }, h("span", { className: "sc-evi" }, icon("later")), x.ev.title));
     // A finished task is logged as a "✓ title" event (calendar.js logDone).
     const done = /^✓\s*/u.test(x.ev.title), title = done ? x.ev.title.replace(/^✓\s*/u, "") : x.ev.title;
     // Just added or moved: it drops into place with a glow (Mor, 2026-10-10),
     // phased off when it landed so the write's reload doesn't replay it.
     const land = landedAgo(x.ev);
-    const rowEl = h("div", { className: "sc-row" + (on ? " sc-on" + tone(x.ev) : past ? " sc-past" : "") + (land != null ? " sc-land" : "") + (x.ev.leaving ? " sc-leave" : ""),
-      style: orbit + (on && x.ev.color ? `--ev:${x.ev.color}` : "") + (land != null ? `--land:-${land}ms;` : "") }, h("span", { className: "sc-time strong" }, time, on && h("span", { className: "sc-nowtag", textContent: "Now" })),
+    const rowEl = h("div", { className: "sc-row" + (on ? " sc-on" + tone(x.ev) : past ? " sc-past" : nextCls) + (land != null ? " sc-land" : "") + (x.ev.leaving ? " sc-leave" : ""),
+      style: orbit + (on && x.ev.color ? `--ev:${x.ev.color}` : "") + (land != null ? `--land:-${land}ms;` : "") }, h("span", { className: "sc-time strong" }, time, tag(on)),
       h("button", { type: "button", className: "sc-ev" + (done ? " sc-done" : "") + tone(x.ev), style: x.ev.color ? `--ev:${x.ev.color}` : "",
-        ariaLabel: `${done ? "Finished task: " : ""}${on ? "Now: " : ""}${title}, ${time}`, onclick: () => onEvent?.(x.ev) },
+        ariaLabel: `${done ? "Finished task: " : ""}${on ? "Now: " : nextAria}${title}, ${time}`, onclick: () => onEvent?.(x.ev) },
         done ? h("span", { className: "sc-dot" }) : h("span", { className: "sc-evi" }, icon("calendar")), bdi(title)));
     return rowEl;
   }
