@@ -25,7 +25,7 @@ import { nudgeText, waLink } from "./nudge.js";
 import { watchTasks, addTask, updateTask, removeTask, watchProjectNames, unlogReopened } from "./store.js";
 import { durText, guessFields, validField, CHOICES, LABELS, INBOX, localDate, logicalDate, clampDate, outsideRange, progressOf, isLink } from "./model.js";
 import { keepFile, dropFile, fileUrl } from "./files.js";
-import { h, flash, icon, bdi } from "./ui.js";
+import { h, flash, icon, bdi, closeOrAsk, askOnEsc } from "./ui.js";
 import { projectsOf } from "./projects.js";
 import { durationFrom } from "./duration.js";
 import { doneDayLabel } from "./day.js";
@@ -69,7 +69,10 @@ export function mountAddTask(dialog, uid, { onStart } = {}){
   // The sheet is built like the event sheet (addevent.js) — same card, head,
   // labelled fields and button (Mor, 2026-10-06: "make it identical").
   const heading = h("h2", { id: "addTitle", textContent: "New task" });
-  const closeX = h("button", { className: "now-x", type: "button", ariaLabel: "Close", textContent: "✕", onclick: () => dialog.close() });
+  // A new task with something typed asks Save / Don't save before closing (ui.js).
+  const unsaved = () => !editing && !!(title.value.trim() || notes.value.trim() || links.length);
+  const closeSheet = () => closeOrAsk(dialog, "task", unsaved, add);
+  const closeX = h("button", { className: "now-x", type: "button", ariaLabel: "Close", textContent: "✕", onclick: closeSheet });
   const field = (label, input, ...more) => {
     input.id ||= `ts-f${++fieldN}`;
     return h("div", { className: "field" }, h("label", { htmlFor: input.id, textContent: label }), input, ...more);
@@ -601,9 +604,10 @@ export function mountAddTask(dialog, uid, { onStart } = {}){
     editing = null;
   });
   dialog.addEventListener("click", (e) => {
-    if (e.target === dialog) { dialog.close(); return; }
+    if (e.target === dialog) { closeSheet(); return; }
     if (openChip && !e.target.closest(".gchip-wrap")) { openChip = null; paintChips(); }
   });
+  askOnEsc(dialog, "task", unsaved, add);
   dialog.addEventListener("keydown", (e) => { if (e.key === "Escape" && openChip) { e.preventDefault(); openChip = null; paintChips(); } });
 
   // The project list: every project a task names, plus the empty ones

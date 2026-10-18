@@ -2634,3 +2634,10 @@ body.fm-slide .deck > .now-card.main { animation: none !important; } /* main.js:
   .rb-plan svg { inline-size: 14px; block-size: 14px; }
   @media (prefers-reduced-motion: no-preference) { .rb-pop { animation: ready-in .18s ease-out; } }
 }
+
+/* Closing a new sheet with something typed: Save / Don't save / Keep editing (ui.js closeOrAsk). */
+.ask-save { inline-size: min(340px, calc(100vw - 32px)); }
+.ask-save[open] { display: grid; gap: 14px; }
+.ask-save-q { margin: 0; font-size: 18px; font-weight: 600; }
+.ask-save-acts { display: flex; flex-wrap: wrap; gap: 8px; }
+.ask-save-acts .btn { flex: 1 1 auto; }

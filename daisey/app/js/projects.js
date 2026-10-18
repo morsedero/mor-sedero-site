@@ -26,7 +26,7 @@ import { isRoutine } from "./routine.js";
 import { dropSeries } from "./slots.js";
 import { isOverdue } from "./triage.js";
 import { projectProgress, nextTaskOf, projectSummary } from "./project-state.js";
-import { h, bdi, flash, icon, askProgress, sizeChip, progressBar, weekDots, dragScroll } from "./ui.js";
+import { h, bdi, flash, icon, askProgress, closeOrAsk, askOnEsc, sizeChip, progressBar, weekDots, dragScroll } from "./ui.js";
 import { setProjectColors, doneToday, daisy } from "./look.js";
 import { setProjectTiers } from "./context.js";
 import { dateBox } from "./datebox.js";
@@ -335,14 +335,19 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
       paintGrid();
       d.close();
     };
+    // A name typed and ✕ / a tap outside / Esc: Save / Don't save first (ui.js).
+    const unsaved = () => !!name.value.trim();
+    const saveNew = () => d.querySelector(".np-form").requestSubmit();
+    const closeSheet = () => closeOrAsk(d, "project", unsaved, saveNew);
     d.replaceChildren(
       h("div", { className: "now-head" }, h("h2", { id: "npTitle", textContent: "New project" }),
-        h("button", { className: "now-x", type: "button", ariaLabel: "Close", textContent: "✕", onclick: () => d.close() })),
+        h("button", { className: "now-x", type: "button", ariaLabel: "Close", textContent: "✕", onclick: closeSheet })),
       h("form", { className: "np-form", onsubmit: create }, name, msg, dates.box, dates.msg,
         h("div", { className: "sheet-actions" },
           h("button", { className: "btn primary", type: "submit", textContent: "Add project" }),
           h("button", { className: "btn quiet", type: "button", textContent: "Cancel", onclick: () => d.close() }))));
-    d.onclick = (e) => { if (e.target === d) d.close(); };
+    d.onclick = (e) => { if (e.target === d) closeSheet(); };
+    askOnEsc(d, "project", unsaved, saveNew);
     d.showModal();
   }
 
@@ -402,6 +407,7 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
           h("button", { className: "btn quiet", type: "button", textContent: "Cancel", onclick: () => d.close() }),
           del)));
     d.onclick = (e) => { if (e.target === d) d.close(); };
+    d.oncancel = null; // New project's Esc question doesn't carry over
     d.showModal();
     name.select();
   }

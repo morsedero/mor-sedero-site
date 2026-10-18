@@ -141,6 +141,37 @@ export function flash(label, title, { undo } = {}){
   liveTimer = setTimeout(dismissFlash, UNDO_MS);
 }
 
+// Closing a NEW task, event or project sheet with something typed in it (✕, a
+// tap outside, Esc) asks first: Save / Don't save / Keep editing (Mor,
+// 2026-10-18). An empty sheet, or an open item (those save as they go), just
+// closes. dirty() says whether there's anything to lose; save() is the sheet's
+// own Add, which closes it when the item is good and says why when it isn't.
+export function closeOrAsk(dialog, what, dirty, save){
+  if (!dirty()) { dialog.close(); return; }
+  const ask = h("dialog", { className: "now ask-save", ariaLabel: `Save this ${what}?` });
+  let pick = null;
+  const btn = (cls, text, v) => h("button", { className: `btn ${cls}`, type: "button", textContent: text, onclick: () => { pick = v; ask.close(); } });
+  ask.append(h("p", { className: "ask-save-q", textContent: `Save this ${what}?` }),
+    h("div", { className: "ask-save-acts" }, btn("primary", "Save", "save"), btn("quiet", "Don't save", "discard"), btn("quiet", "Keep editing", null)));
+  ask.addEventListener("click", (e) => { if (e.target === ask) ask.close(); });
+  ask.addEventListener("close", () => {
+    ask.remove();
+    if (pick === "save") save();
+    else if (pick === "discard") dialog.close();
+  });
+  document.body.append(ask);
+  ask.showModal();
+}
+// The same question for Esc: the sheet's cancel is held back and asked about.
+// oncancel, not a listener, so a dialog shared by two sheets (projects.js) holds one.
+export function askOnEsc(dialog, what, dirty, save){
+  dialog.oncancel = (e) => {
+    if (!dirty()) return;
+    e.preventDefault();
+    closeOrAsk(dialog, what, dirty, save);
+  };
+}
+
 // Inline icons: the card's three quiet actions, and one per guessed field so
 // the guess line can say "Work" without also spelling out "Area". One path
 // each, drawn on a 24-grid and stroked in currentColor so they follow the

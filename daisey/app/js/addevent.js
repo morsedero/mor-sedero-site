@@ -41,7 +41,7 @@ import { createEvent, deleteEvent, editEvent } from "./calendar.js";
 import { localDate } from "./model.js";
 import { cityIn, isLocal } from "./trips.js";
 import { homeAt } from "./where.js";
-import { h, bdi, flash, icon } from "./ui.js";
+import { h, bdi, flash, icon, closeOrAsk, askOnEsc } from "./ui.js";
 import { dateBox } from "./datebox.js";
 
 const DEFAULT_LENGTH = 60;
@@ -201,7 +201,11 @@ export function mountAddEvent(dialog, { localOnly = false } = {}){
     ? "Saved on this device only."
     : "Goes in your main Google calendar. Guests and the rest are a tap away in Google Calendar." });
   const heading = h("h2", { id: "evTitle", textContent: "New event" });
-  const close = h("button", { className: "now-x", type: "button", ariaLabel: "Close", textContent: "✕", onclick: () => dialog.close() });
+  // A new event with a name typed asks Save / Don't save before closing (ui.js).
+  const unsaved = () => !editing && !form.hidden && !!f.title.value.trim();
+  const saveNew = () => form.requestSubmit();
+  const closeSheet = () => closeOrAsk(dialog, "event", unsaved, saveNew);
+  const close = h("button", { className: "now-x", type: "button", ariaLabel: "Close", textContent: "✕", onclick: closeSheet });
   const details = h("div", { className: "ev-detail" });
   const scopeBox = h("div", { className: "ev-scope", hidden: true });
 
@@ -374,7 +378,8 @@ export function mountAddEvent(dialog, { localOnly = false } = {}){
   }
 
   dialog.replaceChildren(h("div", { className: "now-head" }, heading, close), details, scopeBox, form, msg, note);
-  dialog.addEventListener("click", (e) => { if (e.target === dialog) dialog.close(); });
+  dialog.addEventListener("click", (e) => { if (e.target === dialog) closeSheet(); });
+  askOnEsc(dialog, "event", unsaved, saveNew);
 
   return {
     // date: the day the Schedule panel is on ("YYYY-MM-DD"); defaults to today.
