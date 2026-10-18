@@ -157,3 +157,11 @@
 :root.night .night-p { margin: 6px 0 0; color: color-mix(in srgb, #b3aae8 40%, var(--ink)); }
 :root.night .night-today { display: none; }
 :root.night .night-foot .pill-btn { border-color: transparent; background: transparent; color: var(--ink-2); text-decoration: underline; text-underline-offset: 3px; text-decoration-color: color-mix(in srgb, var(--ink-2) 40%, transparent); }
+
+/* Night: Today opens the day too (it did nothing: the night panel rule only
+   let Plan and Projects through, app.css). The doubled id outranks it. */
+:root.night body.day-open #panel#panel { display: flex; }
+/* …and, like Plan and Projects at night, the day takes the place of the
+   Tomorrow-first card (app.css night rules). */
+:root.night:has(body.day-open) #nowcard > .now-card, :root.night:has(body.day-open) #nowcard > .night-foot { display: none; }
+:root.night:has(body.day-open) .nowrow { flex: none; }

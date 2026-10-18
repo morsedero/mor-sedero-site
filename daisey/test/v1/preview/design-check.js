@@ -71,6 +71,10 @@ const CHECKS = {
       const t = text("en", "--at", "23:40");
       return /Late, /.test(t) && /tomorrow first/i.test(t) && !/still open for today/.test(t) && !/Done today/.test(t);
     }],
+    ["Night: Today opens the day in place of Tomorrow first", () => {
+      const t = text("en", "--cal", "squeeze", "--at", "23:40", "--click", "#planChip");
+      return t.includes("BOBBA") && !/tomorrow first/i.test(t);
+    }],
   ],
 };
 
