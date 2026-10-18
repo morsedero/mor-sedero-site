@@ -178,6 +178,12 @@ export function planWords(word = "today", approved = false){
   };
 }
 
+// "I'm free now" / Focus at night lend the day card, but only while there IS a
+// card: once there is none (it was finished, switched away, nothing fits), Home
+// goes back to the night card until the day starts, not to "Nothing fits the
+// next 3 h" (Mor, 2026-10-18). → true when the lend should end.
+export const nightLendOver = ({ dark = false, lent = false, hasCard = false } = {}) => dark && lent && !hasCard;
+
 export function isNight(now = Date.now(), hours = W.DAY_HOURS){
   const d = new Date(now), m = d.getHours() * 60 + d.getMinutes();
   return m < hours.start || m >= hours.end;

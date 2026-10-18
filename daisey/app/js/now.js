@@ -33,7 +33,7 @@ import { leftMinutes, toMinutes, progressOf, leftPatch, localDate, logicalDate, 
 import { isRoutine, routineCalendar, eventsToLog, sessionPatch, nagFor, nagText, nagParts } from "./routine.js";
 import { decisionCard } from "./decision.js";
 import { waitingFor, personOf } from "./nudge.js";
-import { dayHours, isNight, nextMorning, dayEndAt, bookings, sameTitle, minText, gapsToday, planDate, usualHours, dayWord, slotsWord, answerDate, nightRange, planLabelDay, planWords } from "./day.js";
+import { dayHours, isNight, nextMorning, dayEndAt, bookings, sameTitle, minText, gapsToday, planDate, usualHours, dayWord, slotsWord, answerDate, nightRange, planLabelDay, planWords, nightLendOver } from "./day.js";
 import { wrapList } from "./needs.js";
 import { needsCount, nightLine } from "./needs-list.js";
 import { SWITCH_TOO, CANT_NOW, holdPick, freshPick, offerable } from "./pick.js";
@@ -2163,6 +2163,8 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     // later. Its own calm card, with Someday right there (restState).
     // With something coming up today, that is the card in both cases below
     // (Mor, 2026-10-07): the next event, and how long until it.
+    // Lent by "I'm free now" or Focus, and nothing left to show: back to the night card (day.js nightLendOver).
+    if (nightLendOver({ dark, lent: nightFree, hasCard: !!card })) { nightFree = false; render(); return; }
     const up = !card && fw?.next ? upcomingCard(fw.next, r) : null;
     if (!card && r.out.length && r.out.every((o) => QUIET.has(o.reason))) {
       const [rest, ...more] = restState();

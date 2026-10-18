@@ -71,3 +71,13 @@ test("plan words: label, status, notes, reasons and the x all name the same day"
   assert.equal(planWords("tomorrow").why("evening only, no evening time left"), "evening only, no evening time left");
   assert.equal(planWords("nonsense").word, "today");
 });
+
+// ---------- Stable night card ----------
+import { nightLendOver } from "../../app/js/day.js";
+
+test("night card: the day card lent at night ends when there is no card, never otherwise", () => {
+  assert.equal(nightLendOver({ dark: true, lent: true, hasCard: false }), true, "nothing to show: back to the night card");
+  assert.equal(nightLendOver({ dark: true, lent: true, hasCard: true }), false, "a task is on the card: keep it");
+  assert.equal(nightLendOver({ dark: true, lent: false, hasCard: false }), false, "not lent: already the night card");
+  assert.equal(nightLendOver({ dark: false, lent: true, hasCard: false }), false, "daytime: not a night matter");
+});

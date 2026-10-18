@@ -26,6 +26,14 @@ const SCENARIOS = {
   miss: { tasks: missTasks(25), dayplan: { date: day(0), status: "dismissed", items: [] } },
   // Two slots ignored (--cal none): nothing done for 75 minutes.
   silence: { tasks: missTasks(75), dayplan: { date: day(0), status: "dismissed", items: [] } },
+  // A real deadline due today and still open, at night (--at 23:00): the night page's "Due today" card.
+  duenight: { tasks: [
+    { title: "Submit the grant form", project: "Admin", size: 30, due: day(0), dateKind: "deadline" },
+    { title: "Mix review for Reprise", project: "Reprise", size: 90, due: day(2) },
+    { title: "Lesson prep", project: "Teaching", size: 30, due: day(4) },
+  ] },
+  // One task only: Done leaves no card, to see what Home falls back to.
+  solo: { tasks: [{ title: "Mix review for Reprise", project: "Reprise", size: 30 }] },
   en: { tasks: [
     { title: "Mix review for Reprise", project: "Reprise", size: 90, due: day(2) },
     { title: "Send invoice to Uri", project: "Admin", size: 5, due: day(0) },
