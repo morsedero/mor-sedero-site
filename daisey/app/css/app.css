@@ -1787,6 +1787,12 @@ body.focus #side { display: none; }
 .sc-title .sc-date { overflow: hidden; text-overflow: ellipsis; }
 .sc-today { flex: none; margin-inline-start: auto; display: inline-flex; align-items: center; gap: 6px; padding: 2px 9px 2px 8px; border: 0; border-radius: 999px; background: var(--chip); font: inherit; font-size: 12px; font-weight: 600; color: var(--ink); cursor: pointer; }
 .sc-today.off { visibility: hidden; pointer-events: none; }
+/* Day arrows at both ends of the bar: the drag works too, these say so. */
+.sc-step { flex: none; display: inline-flex; align-items: center; justify-content: center; inline-size: 30px; block-size: 30px; padding: 0; border: 0; border-radius: 50%; background: var(--chip); color: var(--ink); cursor: pointer; }
+.sc-step svg { inline-size: 18px; block-size: 18px; }
+.sc-step:first-child { margin-inline-end: 4px; }
+.sc-step:last-child { margin-inline-start: 3px; }
+.sc-step:active { transform: scale(.92); }
 /* "● Now" (Mor, 2026-10-12): a live dot in the card's yellow, slowly pulsing. */
 .sc-pulse { inline-size: 7px; block-size: 7px; border-radius: 50%; background: var(--accent); flex: none; }
 @media (prefers-reduced-motion: no-preference) { .sc-pulse { animation: sc-pulse 2s ease-in-out infinite; } }

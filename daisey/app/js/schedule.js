@@ -187,7 +187,7 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onMissed, onPro
     return extra;
   }
 
-  // Drag sideways to change day (week: change week); no arrows.
+  // Drag sideways to change day (week: change week), or the arrows in the bar.
   let stepBy = () => {}, swipe = null;
   el.style.touchAction = "pan-y"; // keep the horizontal drag ours, or the browser cancels it
   // The page follows the finger, then slides off and the next one slides in.
@@ -280,7 +280,14 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onMissed, onPro
     const weekBtn = h("button", { type: "button", className: "sc-weekbtn", ariaLabel: "Week", onclick: () => onWeek?.() }, icon("calendar"), h("span", { textContent: "Week" }));
     // One row (Mor, 2026-10-07). Today keeps its place (just unseen on
     // today), so the arrows and the switch never shift under the finger.
+    // Arrows at both ends (Mor, 2026-10-18) beside the drag: the same step and
+    // the same slide as a swipe, so the gesture reads as possible. They sit
+    // at the bar's start and end, so in RTL "previous" is on the right.
+    const rtl = getComputedStyle(el).direction === "rtl";
+    const stepBtn = (n, label) => h("button", { type: "button", className: "sc-step", ariaLabel: label,
+      onclick: () => flip(rtl ? n : -n, () => stepBy(n)) }, icon((n < 0) !== rtl ? "back" : "chev"));
     const bar = h("div", { className: "sc-bar" },
+      stepBtn(-1, view === "week" ? "Previous week" : "Previous day"),
       h("button", { type: "button", className: "sc-title" + (isNow ? "" : " away"), ariaLabel: isNow ? title : `${title} — back to today`, onclick: () => go(null) },
         h("span", { className: "sc-name", textContent: title }), h("span", { className: "sc-name sc-name-s", textContent: narrow }), sub && h("span", { className: "sc-date", textContent: sub })),
       // "● Now" (Mor, 2026-10-12): back to the present, not to a date; past
@@ -296,7 +303,8 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onMissed, onPro
       // Change plan once one is approved (Mor, 2026-10-12); before that the
       // Today key opens this page too, so it offers Plan my day, or Plan the
       // rest once something's done today (Mor, 2026-10-15).
-      mode === "home" && onPlan && h("button", { type: "button", className: "sc-weekbtn sc-planbtn", onclick: () => onPlan() }, icon("calendar"), h("span", { textContent: planWord(now) })));
+      mode === "home" && onPlan && h("button", { type: "button", className: "sc-weekbtn sc-planbtn", onclick: () => onPlan() }, icon("calendar"), h("span", { textContent: planWord(now) })),
+      stepBtn(1, view === "week" ? "Next week" : "Next day"));
     const head = h("div", { className: "sc-head" + (view === "week" ? " wk" : "") }, bar);
 
     let body;
