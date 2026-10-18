@@ -217,7 +217,7 @@ test("held plan: the next task's start doesn't slide while you're idle", () => {
   assert.equal(before.rows[0].start, at(9, 5)); assert.equal(before.late, undefined);
   const idle = timeline(items, { ...ctx, now: at(9, 17) });
   assert.equal(idle.rows[0].start, at(9, 5)); assert.equal(idle.rows[1].start, at(9, 35));
-  assert.deepEqual(idle.late, { taskId: "a", start: at(9, 5) });
+  assert.deepEqual(idle.late, { taskId: "a", start: at(9, 5), end: at(9, 35) });
   // Old behaviour, no since: laid from now.
   assert.equal(timeline(items, { ...ctx, since: undefined, now: at(9, 17) }).rows[0].start, at(9, 20));
   // Something done since: from then again.

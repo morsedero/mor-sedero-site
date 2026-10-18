@@ -305,7 +305,7 @@ export function withBreaks(items = [], ctx = {}){
 // started slid forward with the clock forever. ctx.since: when you last did
 // anything (miss.lastActivity). The plan is laid from then; when its next
 // task's start has come with nothing started, it stays there, the whole plan
-// with it, and the result says late: { taskId, start } so the card can ask
+// with it, and the result says late: { taskId, start, end } so the card can ask
 // (Start / In 10 min / Move); once a planned row's whole time has passed
 // it's missed. Any activity lays it from now again. While a
 // task runs the plan follows the clock as before. An item's at (ms): not
@@ -326,7 +326,7 @@ export function timeline(items = [], ctx = {}){
   // happened"): row.missed, and missed lists their ids in plan order.
   const missed = held.rows.filter((r) => !r.ride && r.end <= now).sort((a, b) => a.i - b.i);
   for (const r of missed) r.missed = true;
-  return { ...held, late: { taskId: head.taskId, start: head.start }, missed: missed.map((r) => r.taskId) };
+  return { ...held, late: { taskId: head.taskId, start: head.start, end: head.end }, missed: missed.map((r) => r.taskId) };
 }
 function lay(items = [], { tasks = [], events = [], now = Date.now(), hours = W.DAY_HOURS, run = null, rides = true, phoneOk = phoneOkIds(tasks) } = {}){
   const { evs, gaps } = freeGaps({ tasks, events, now, hours, run, rides });

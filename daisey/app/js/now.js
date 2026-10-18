@@ -24,7 +24,7 @@ import { withTrips, ridingAs, stillRiding, asPassenger, chainFrom, setTripDay, M
 import { pickWeekDay } from "./triage.js";
 import { sinceMark, runCap, bookedMinutes, celebrate, dropAway, PUSH_MS } from "./focus.js";
 import { watchCalendar } from "./calendar.js";
-import { LATER_MINUTES, DRAIN, CANCEL_KEEP_MINUTES, LIGHTER, MISS } from "./weights.js";
+import { LATER_MINUTES, DRAIN, CANCEL_KEEP_MINUTES, LIGHTER } from "./weights.js";
 import { missState, silenceText, lastActivity } from "./miss.js";
 import { takeQuiet } from "./push.js";
 import { findPhoneTasks, phoneOkIds, searching } from "./phone.js";
@@ -1736,7 +1736,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
   // 2026-10-08). A miss is the task's own card saying so, with its usual
   // actions; the silence check is a card of its own. No Shorten (Mor,
   // 2026-10-11): being late doesn't make the task any smaller.
-  const missWhy = (card, st) => ({ ...card, whyParts: [`up since ${clock(st.start)} and not started`] });
+  const missWhy = (card, st) => ({ ...card, whyParts: [`up since ${clock(st.start)}, no Done yet`] });
   // The approved plan holds its times (proposal.timeline, 2026-10-10): when
   // the next task's start comes with nothing started, the card asks right
   // then (Mor: "more proactive"), before any miss would. → { taskId, start }
@@ -1809,8 +1809,10 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
       action: next && h("button", { className: "btn quiet", type: "button", textContent: "Start it now",
         ariaLabel: `Skip the rest of the break: start ${next.task.title}`, onclick: () => switchTo(next.task.id) }) });
   }
-  // "not started" only once the slot counts as missed (MISS.after, 10 min): 4 min late is just late (Mor, 2026-10-14).
-  const dueWhy = (card, due) => ({ ...card, whyParts: [Date.now() - due.start < MISS.after * 60000 ? `planned for ${clock(due.start)}` : `planned for ${clock(due.start)}, not started`] });
+  // The slot, start to end: how long you've got. Never "not started": Daisey
+  // can't see you working, only taps (Mor, 2026-10-18: "I'm on it, and it's
+  // not clear until when I can work on it").
+  const dueWhy = (card, due) => ({ ...card, whyParts: [due.end ? `planned ${clock(due.start)}–${clock(due.end)}` : `planned for ${clock(due.start)}`] });
   function roughCard(st){
     // Nothing done yet today (a late start): a warm offer to plan what's left,
     // not "Rough day?" (Mor, 2026-10-12). Lighter plan stays, as a quiet link.
