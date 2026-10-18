@@ -2299,6 +2299,15 @@ dialog.tsheet[open] > .ts-laptop + .ts-repeat { margin-block-start: -12px; }
 @keyframes pg-back { from { opacity: 0; transform: translateY(-10px); } }
 @keyframes pg-out-up { to { opacity: 0; transform: translateY(-8px) scale(.985); } }
 @keyframes pg-out-down { to { opacity: 0; transform: translateY(14px) scale(.985); } }
+/* Plan my day: no blank frame (Mor, 2026-10-18, a black flash). The fade
+   above left the panel empty between the old page going and the plan
+   coming; the plan is there, opaque, from the first frame, only rising,
+   and the page it replaces is gone at once. */
+@media (prefers-reduced-motion: no-preference) {
+  #planPage.pg-in { animation: pg-rise .22s cubic-bezier(.2, .8, .3, 1); }
+}
+#panel:has(> #planPage:not([hidden]):not(.pg-ghost)) > .pg-ghost { display: none; }
+@keyframes pg-rise { from { transform: translateY(14px) scale(.985); } }
 
 /* Focus (Mor, 2026-10-12): on, the chip goes deep teal, not black. Turning it
    on, its corner brackets pinch in, the Now card slides slowly to its spot
