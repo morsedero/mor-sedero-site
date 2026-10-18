@@ -464,6 +464,11 @@ const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 // project, or any other classification field.
 export function editTask(task, changes, { now = Date.now(), history = [] } = {}){
   const patch = {};
+  // Clearing "Waiting on" on a pending task brings it back to active (Mor,
+  // 2026-10-18): the same Pending -> ready change as the Edit panel's
+  // "Back to active", nothing new.
+  if (changes.status === undefined && Object.prototype.hasOwnProperty.call(changes, "waitingOn")
+    && !text(changes.waitingOn) && task.waitingOn && task.status === "waiting") changes = { ...changes, status: "ready" };
   const set = (k, v) => { if (!same(task[k], v)) patch[k] = v; };
   const has = (k) => Object.prototype.hasOwnProperty.call(changes, k);
   const get = (k) => (k in patch ? patch[k] : task[k]);

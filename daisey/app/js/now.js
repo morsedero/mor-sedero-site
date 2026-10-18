@@ -538,13 +538,14 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
 
   // Later and Pending both move the card on: it slides out, the next slides
   // in, and for 5 seconds a toast offers Undo. Nothing waits on the write.
-  function stepAside(task, { label, write, lesson = false, ask = true }){
+  function stepAside(task, { label, write, lesson = false, ask = true, fill = false }){
     const before = skipSnapshot(task);
     const go = () => {
       skips.add(task.id);
       reset();
       slideIn = true;
-      setToast({ task, before, label, lesson, asking: ask && asksLeft(task) }); // only a started task is asked how much is left
+      const filled = fill ? fillFreed(task) : null;
+      setToast({ task, before, label, lesson, filled, asking: ask && asksLeft(task) }); // only a started task is asked how much is left
       write().catch(fail);
       render();
     };
@@ -569,6 +570,23 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     savePlan("approved", p.items.map((it) => (it.taskId !== task.id ? it : until ? { ...it, hold: until } : (({ hold, ...rest }) => rest)(it))),
       { kept: p.kept || [], ...unseen(p, "cut"), ...unseen(p, "added") });
   }
+  // Tomorrow, This week, On hold or Pending on a planned task frees its time
+  // today (Mor, 2026-10-18: "doesn't insert a new card in the free time that
+  // just opened up"): what fits goes on the plan at once, as when the day
+  // opens up (topUpNow): one task just goes in, more are asked (addedView).
+  // The task's own write hasn't landed yet, so it's left out of the day
+  // here. → the plan as it was, for the step-aside's Undo; null: nothing added.
+  function fillFreed(task){
+    const p = approvedPlan();
+    if (!p?.items?.some((it) => it.taskId === task.id) || !tasks || cal.status !== "ok" || prop.open || ppDragging) return null;
+    const ctx = { ...planCtx(), tasks: tasks.filter((t) => t.id !== task.id) };
+    const { items, added } = topUp(p.items, ctx, [...(p.declined || []), task.id]);
+    if (!added.length) return null;
+    const was = { items: p.items, kept: p.kept || [], cut: p.cut, added: p.added, offer: p.offer || null };
+    if (added.length === 1) savePlan("approved", items, { kept: p.kept || [], ...unseen(p, "cut"), added: { ids: added } });
+    else savePlan("approved", p.items, { kept: p.kept || [], ...unseen(p, "cut"), ...unseen(p, "added"), offer: { ids: added, add: items.slice(p.items.length) } });
+    return was;
+  }
   // ask: false when how much is left is known already (the "?" sheet).
   function later(task, when, extra = null, { ask = true } = {}){
     if (when === "today") {
@@ -578,21 +596,21 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
       // Still up past midnight (before the day boundary): tomorrow is the day you wake into.
       let day = dayAfter(1);
       if (task.dateKind === "deadline" && task.due && task.due < day) day = task.due; // never hide it past its deadline
-      stepAside(task, { label: "Tomorrow: ", lesson: true, ask, write: () => Promise.all([restoreTask(uid, task.id, { ...pushedTo(task, { notBefore: day }), ...extra }), declined(task)]) });
+      stepAside(task, { label: "Tomorrow: ", lesson: true, ask, fill: true, write: () => Promise.all([restoreTask(uid, task.id, { ...pushedTo(task, { notBefore: day }), ...extra }), declined(task)]) });
     } else if (when === "week") {
       let day = pickWeekDay(task, { events: cal.status === "ok" ? cal.events : [], tasks: tasks || [], hours: usualHours(settings) }); // other days: no stretch
       if (task.dateKind === "deadline" && task.due && task.due < day) day = task.due; // never hide it past its deadline
       const label = new Date(`${day}T12:00`).toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" });
-      stepAside(task, { label: `This week (${label}): `, lesson: true, ask, write: () => Promise.all([restoreTask(uid, task.id, { ...pushedTo(task, { notBefore: day }), ...extra }), declined(task)]) });
+      stepAside(task, { label: `This week (${label}): `, lesson: true, ask, fill: true, write: () => Promise.all([restoreTask(uid, task.id, { ...pushedTo(task, { notBefore: day }), ...extra }), declined(task)]) });
     } else if (when === "someday") {
-      stepAside(task, { label: "On hold: ", lesson: true, ask, write: () => Promise.all([restoreTask(uid, task.id, { status: "someday", touchedAt: Date.now(), ...extra }), declined(task)]) });
+      stepAside(task, { label: "On hold: ", lesson: true, ask, fill: true, write: () => Promise.all([restoreTask(uid, task.id, { status: "someday", touchedAt: Date.now(), ...extra }), declined(task)]) });
     }
   }
   // Pending asks what it's waiting on (Mor, 2026-10-04); the reason is
   // optional and lands in the task's "Waiting on".
   // The check date (Mor, 2026-10-05): when Needs you asks "still pending?";
   // PENDING_CHECK_DAYS on (or the day before a deadline) unless changed here.
-  const pending = (task, why = "", checkOn = "") => stepAside(task, { label: "Pending: ", write: () => blockTask(uid, task, why, checkOn) });
+  const pending = (task, why = "", checkOn = "") => stepAside(task, { label: "Pending: ", fill: true, write: () => blockTask(uid, task, why, checkOn) });
 
   function pendingAsk(task){
     // The card redraws on every snapshot and each minute; what's typed lives
@@ -621,8 +639,10 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
   }
 
   function undo(){
-    const { task, before } = toast;
+    const { task, before, filled: f } = toast;
     holdInPlan(task, null);
+    // What its freed time took (fillFreed) comes off again: the time is its.
+    if (f) savePlan("approved", f.items, { kept: f.kept, ...(f.cut ? { cut: f.cut } : {}), ...(f.added ? { added: f.added } : {}), offer: f.offer });
     skips.delete(task.id);
     state.chosen = task.id;
     setToast(null);

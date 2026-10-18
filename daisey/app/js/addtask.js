@@ -261,7 +261,9 @@ export function mountAddTask(dialog, uid, { onStart } = {}){
   const pendBox = h("div", { className: "ts-pend" },
     h("label", {}, h("span", { textContent: "Waiting on" }), waitingOn),
     h("label", {}, h("span", { textContent: "Ask me again" }), checkOn),
-    nudgeBtn);
+    nudgeBtn,
+    // The way back out of Pending (Mor, 2026-10-18): the same ready change as Reopen, no new state.
+    h("button", { className: "linkish ts-unpend", type: "button", textContent: "Back to active", onclick: () => { waitingOn.value = ""; save({ status: "ready" }); } }));
   // Waiting for a reply (Mor, 2026-10-07): the same hold as the running
   // card's Waiting — on hold, off the card, and if it's the running task its
   // timer keeps going. A switch plus who; not Pending (that has its own box).
