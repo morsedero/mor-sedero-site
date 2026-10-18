@@ -2085,7 +2085,8 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     // Focus mode (Mor, 2026-10-10): the same card and actions, nothing
     // around it (CSS body.focus-mode). Done goes straight to the next card.
     const fm = focusOn();
-    if (fm !== reportedFocus) { reportedFocus = fm; onFocusMode?.(fm); }
+    // Going in or out of it shuts More time?'s chips (Mor, 2026-10-18).
+    if (fm !== reportedFocus) { reportedFocus = fm; state.moreTime = false; onFocusMode?.(fm); }
     const hrs = dayHours(settings);
     const dark = isNight(Date.now(), hrs);
     if (!dark) nightFree = false;
