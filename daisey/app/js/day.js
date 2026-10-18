@@ -162,6 +162,22 @@ export function planLabelDay({ rows = [], now = Date.now(), hours = W.DAY_HOURS,
   return !nightFree && isNight(now, hours) ? "tomorrow" : fallback;
 }
 
+// Every line of one plan screen names the plan's day with the SAME word (Mor,
+// 2026-10-18): the label, the status line, the "don't fit" note, the empty line
+// and the reasons. word: planLabelDay's answer.
+export function planWords(word = "today", approved = false){
+  const w = word === "tomorrow" ? "tomorrow" : "today", W_ = w === "today" ? "Today" : "Tomorrow";
+  return {
+    word: w,
+    label: approved ? `${W_}'s plan` : `Proposed for ${w}`,
+    empty: w === "today" ? "No open task fits the free time left today." : "No open task fits tomorrow.",
+    nothingFits: w === "today" ? "Nothing fits what's left of today." : "Nothing fits tomorrow.",
+    over: (n) => `${n === 1 ? "One doesn't" : `${n} don't`} fit ${w}. ↑ does one first, ✕ takes it off.`,
+    why: (text = "") => String(text).replace(/\btoday\b/, w),
+    takeOff: `Take off ${w}'s plan`,
+  };
+}
+
 export function isNight(now = Date.now(), hours = W.DAY_HOURS){
   const d = new Date(now), m = d.getHours() * 60 + d.getMinutes();
   return m < hours.start || m >= hours.end;

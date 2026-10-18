@@ -52,3 +52,22 @@ test("plan label: at night with nothing fittable it says tomorrow, matching Home
   assert.equal(planLabelDay({ rows: [{ start: at(19, 8) }], now: at(18, 23), hours }), "tomorrow");
   assert.equal(planLabelDay({ rows: [{ start: at(18, 13) }], now: at(18, 12), hours }), "today");
 });
+
+// ---------- Rethink coherence: one word for the plan's day ----------
+import { planWords } from "../../app/js/day.js";
+
+test("plan words: label, status, notes, reasons and the x all name the same day", () => {
+  for (const word of ["today", "tomorrow"]) {
+    const w = planWords(word), other = word === "today" ? "tomorrow" : "today";
+    const all = [w.label, w.empty, w.nothingFits, w.over(1), w.over(3), w.takeOff, w.why("needs office hours, none left today")].join(" | ");
+    assert.ok(all.includes(word), all);
+    assert.ok(!all.includes(other), `${word}: no '${other}' anywhere: ${all}`);
+  }
+  assert.equal(planWords("tomorrow").label, "Proposed for tomorrow");
+  assert.equal(planWords("tomorrow", true).label, "Tomorrow's plan");
+  assert.equal(planWords("today", true).label, "Today's plan");
+  assert.equal(planWords("tomorrow").over(1), "One doesn't fit tomorrow. ↑ does one first, ✕ takes it off.");
+  assert.equal(planWords("today").over(2), "2 don't fit today. ↑ does one first, ✕ takes it off.");
+  assert.equal(planWords("tomorrow").why("evening only, no evening time left"), "evening only, no evening time left");
+  assert.equal(planWords("nonsense").word, "today");
+});

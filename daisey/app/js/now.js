@@ -33,7 +33,7 @@ import { leftMinutes, toMinutes, progressOf, leftPatch, localDate, logicalDate, 
 import { isRoutine, routineCalendar, eventsToLog, sessionPatch, nagFor, nagText, nagParts } from "./routine.js";
 import { decisionCard } from "./decision.js";
 import { waitingFor, personOf } from "./nudge.js";
-import { dayHours, isNight, nextMorning, dayEndAt, bookings, sameTitle, minText, gapsToday, planDate, usualHours, dayWord, slotsWord, answerDate, nightRange, planLabelDay } from "./day.js";
+import { dayHours, isNight, nextMorning, dayEndAt, bookings, sameTitle, minText, gapsToday, planDate, usualHours, dayWord, slotsWord, answerDate, nightRange, planLabelDay, planWords } from "./day.js";
 import { wrapList } from "./needs.js";
 import { needsCount, nightLine } from "./needs-list.js";
 import { SWITCH_TOO, CANT_NOW, holdPick, freshPick, offerable } from "./pick.js";
@@ -139,7 +139,14 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
   // before the day boundary the plan is for the morning the card calls
   // Tomorrow first, and every label in the plan flow says tomorrow too.
   // "I'm free now" plans as day: today.
-  const planWord = () => (!nightFree && dayWord(dayKey()) === "tomorrow" ? "tomorrow" : "today");
+  // With slots on screen it follows them (day.js planLabelDay), so a toast, a
+  // note and the label never name different days.
+  const planWordBase = () => (!nightFree && dayWord(dayKey()) === "tomorrow" ? "tomorrow" : "today");
+  const planWord = () => {
+    const items = (approvedPlan()?.items || prop.items || []);
+    const rows = items.length && tasks ? timeline(items, planCtx()).rows : [];
+    return planLabelDay({ rows, now: Date.now(), hours: dayHours(settings), nightFree, fallback: planWordBase() });
+  };
   const skipItems = () => (skipDoc?.date === dayKey() ? skipDoc.items || {} : {});
   const hidden = (now = Date.now()) => Object.entries(skipItems()).filter(([, v]) => v.until > now).map(([id]) => id);
   const skipCounts = () => Object.fromEntries(Object.entries(skipItems()).map(([id, v]) => [id, v.count]));
@@ -1831,7 +1838,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
         : before.join() === after.join() ? "Same plan. Tell me what to change, like “lighter” or “start with …”."
         : [added.length && `Added ${list(added)}.`, gone.length && `Removed ${list(gone)}.`,
            !added.length && !gone.length && "Same tasks, new order."].filter(Boolean).join(" ");
-      prop.note = r.note || diff || (r.items.length ? "" : "Nothing fits what's left of today.");
+      prop.note = r.note || diff || (r.items.length ? "" : planWords(planWord()).nothingFits);
       prop.text = ""; prop.ask = false;
     } catch (e) { fail(e); prop.note = "Couldn't rethink it. Try again."; }
     prop.busy = false; render();
@@ -1877,6 +1884,8 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     const { rows, over, breaks, late } = timeline(prop.items, { ...planCtx(), ...(approved && !prop.touched && !prop.replan ? { since: planSince() } : {}) });
     const total = rows.reduce((t, r) => t + r.minutes, 0);
     const last = rows[rows.length - 1];
+    // One word for the plan's day: label, notes, reasons and the x all say it (day.js planWords).
+    const words = planWords(planLabelDay({ rows, now: Date.now(), hours: dayHours(settings), nightFree, fallback: planWordBase() }), approved);
     const row = (r, isOver) => {
       const i = r.i, t = r.task;
       const ctl = (text, label, disabled, onclick) => h("button", { type: "button", className: "pp-ctl", textContent: text, title: label, ariaLabel: `${label}: ${t.title}`, disabled, onclick });
@@ -1887,10 +1896,10 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
           h("span", { className: "pp-title", dir: "auto", textContent: t.title }),
           // The slot's times already say how long; "not started" is Rethink's
           // job; No room says only the first clause of why (Mor, 2026-10-12).
-          h("span", { className: "pp-meta" }, ...pieces(projectShown(t) ? t.project : "", isOver ? (r.why || "").split(",")[0].replace(/\btoday\b/, planWord()) || estText(t, r.minutes) : r.of ? `shortened from ${dur(r.of)}` : "", r.ride ? RIDE_ROW[r.ride] : "", !isOver && r.missed ? "how did it go?" : ""))),
+          h("span", { className: "pp-meta" }, ...pieces(projectShown(t) ? t.project : "", isOver ? words.why((r.why || "").split(",")[0]) || estText(t, r.minutes) : r.of ? `shortened from ${dur(r.of)}` : "", r.ride ? RIDE_ROW[r.ride] : "", !isOver && r.missed ? "how did it go?" : ""))),
         h("span", { className: "pp-ctls" },
           isOver && !r.never && ctl("↑", "Do first", false, () => toFront(i)),
-          ctl("✕", `Take off ${planWord()}'s plan`, false, () => dropItem(i))));
+          ctl("✕", words.takeOff, false, () => dropItem(i))));
     };
     // A break is the plan's own item: it drags and comes off like a task.
     const breakRow = (b) => {
@@ -1919,24 +1928,22 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     const night = ph.late ? dayEndAt(Date.now(), ph) : Math.max(midnight, dayEndAt(Date.now(), ph));
     const evs = cal.status !== "ok" ? [] : cal.events.filter((e) => !e.allDay && !/^✓\s*/u.test(e.title || "")
       && Date.parse(e.end) > Date.now() && Date.parse(e.start) < night);
-    const plural = (n) => (n === 1 ? ["One doesn't", "it"] : [`${n} don't`, "them"]);
     // Past midnight on the night page the plan is the day you wake into,
     // which that page calls tomorrow (Mor, 2026-10-11), so this says so too.
     // The label follows where the slots really fall, so it agrees with the Now card (day.js slotsWord).
-    const day = (planLabelDay({ rows, now: Date.now(), hours: ph, nightFree, fallback: planWord() }) === "tomorrow") ? "Tomorrow" : "Today";
-    return h("section", { className: "now-card main hero proposal", ariaLabel: approved ? `${day}'s plan` : "Proposed schedule" },
+    return h("section", { className: "now-card main hero proposal", ariaLabel: approved ? words.label : "Proposed schedule" },
       h("div", { className: "hero-top" },
-        h("span", { className: "hero-area", textContent: approved ? `${day}'s plan` : `Proposed for ${day.toLowerCase()}` }),
+        h("span", { className: "hero-area", textContent: words.label }),
         rows.length > 0 && h("span", { className: "hero-side", textContent: `${dur(total)} · until ${clock(last.end)}` }),
         ),
       (rows.length || over.length || evs.length) > 0 && dragRows(h("ol", { className: "pp-list" },
           ...[...rows.map((r) => ({ r, s: r.start })), ...breaks.map((b) => ({ b, s: b.start })), ...evs.map((ev) => ({ ev, s: Date.parse(ev.start) }))]
             .sort((a, b) => a.s - b.s).map((x) => (x.ev ? evRow(x.ev) : x.b ? breakRow(x.b) : row(x.r, false))),
           ...over.map((r) => row(r, true)))),
-      !rows.length && !over.length && h("p", { className: "now-empty", textContent: "No open task fits the free time left today." }),
+      !rows.length && !over.length && h("p", { className: "now-empty", textContent: words.empty }),
       // Overflow: Daisey asks before cutting anything (planAsk,
       // 2026-10-10), so until it's answered, what doesn't fit shows here.
-      over.length > 0 && !approved && h("p", { className: "muted pp-note", textContent: `${plural(over.length)[0]} fit today. ↑ does one first, ✕ takes it off.` }),
+      over.length > 0 && !approved && h("p", { className: "muted pp-note", textContent: words.over(over.length) }),
       // Open tasks the plan didn't take (it holds a day's worth, MAX_ITEMS):
       // counted, not listed, so nothing sits out of sight unsaid (2026-10-11).
       notInPlan() > 0 && !prop.ask && h("p", { className: "muted pp-note" },
