@@ -340,10 +340,14 @@ export function mountNeeds(root, uid, { onClose, onStart, extra, onAway } = {}){
     // One card, design round 4 (decision.js): the question, the thing, one
     // line of why (Daisey's own suggestion only when there is no why line),
     // the two answers on the card, the rest (and Ask me later) under More.
-    const more = [...(q.more || []).map((a) => answer(a, "dc-opt")), ...(!q.noLater ? [big("Ask me later", "dc-opt", () => later(list[i].key))] : [])];
+    // Ask me later alone isn't worth a More key: it sits on the card.
+    const laterBtn = (cls) => big("Ask me later", cls, () => later(list[i].key));
+    const lone = !q.noLater && !(q.more || []).length;
+    const more = lone ? [] : [...(q.more || []).map((a) => answer(a, "dc-opt")), ...(!q.noLater ? [laterBtn("dc-opt")] : [])];
+    const noBtn = q.no && answer(q.no, "line big");
     root.replaceChildren(top,
       h("div", { className: "ny-stage" }, decisionCard({ tone: q.tone, ico: q.ico, q: q.q, item: q.item, why: q.sub || q.say, field,
-        yes: big(q.yes[0], "primary big", () => q.yes[1](field?.value)), no: q.no && answer(q.no, "line big"),
+        yes: big(q.yes[0], "primary big", () => q.yes[1](field?.value)), no: noBtn || (lone ? laterBtn("line big") : null), tail: noBtn && lone ? laterBtn("line big") : null,
         more, open: moreOpen, onMore: () => { moreOpen = !moreOpen; paint(); } })));
   }
 
