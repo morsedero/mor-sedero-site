@@ -1136,7 +1136,10 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
   // sheet). Each opens its own row under the card; a second tap shuts it.
   function cardActions(task, alts){
     const someN = somedayTasks().length;
-    const toggle = (key) => () => { const was = state[key]; state.more = state.notNow = state.pendAsk = state.showAlts = false; state[key] = !was; state.altX = 0; render(); };
+    const toggle = (key) => () => {
+      // From the mini bar the row has no room: home first, the row opens on the full card.
+      const mini = document.body.classList.contains("card-mini"); if (mini) window.__goHome?.();
+      const was = !mini && state[key]; state.more = state.notNow = state.pendAsk = state.showAlts = false; state[key] = !was; state.altX = 0; render(); };
     const chip = (text, onclick) => h("button", { className: "chip", type: "button", textContent: text, onclick });
     const done = h("button", { className: "btn primary start", type: "button", ariaLabel: `Done: ${task.title}`,
       onclick: () => quickDoneNow(task) }, icon("check"), h("span", { textContent: "Done" }));
@@ -1152,7 +1155,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
         (alts.length > 0 || someN > 0) && action("switch", "Switch", `something else instead of ${task.title}`, { ariaExpanded: String(state.showAlts), onclick: toggle("showAlts") }),
         // Later and Pending as one key (Mor, 2026-10-12); Waiting on… is in its sheet.
         action("later", "Later", `later, or ${task.title} is waiting on something`, { ariaExpanded: String(state.notNow || state.pendAsk),
-          onclick: () => { if (state.pendAsk) { state.pendAsk = false; render(); } else toggle("notNow")(); } })),
+          onclick: () => { if (state.pendAsk && !document.body.classList.contains("card-mini")) { state.pendAsk = false; render(); } else toggle("notNow")(); } })),
       state.showAlts && switchRow(alts),
     ];
   }

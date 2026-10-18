@@ -837,7 +837,13 @@ async function boot(){
         // "week", mounted the first time), over the middle and the right;
         // a weekday's heading opens that day back in Today.
         window.__toggleWeek = () => {
-          if (phone.matches) { weekPop = !weekPop; syncPanel(); return; }
+          // Phone: Stats is one tab among Today, Projects, Stats (2026-10-18):
+          // opening it shuts whatever else was open, never two at once.
+          if (phone.matches) {
+            weekPop = !weekPop;
+            if (weekPop) { if (!$("#planPage").hidden) m.now?.closePlan(); m.projects.closeProject(); m.projects.closeAll(); document.body.classList.remove("day-open"); }
+            syncPanel(); return;
+          }
           const open = $("#weekPage").hidden;
           if (!$("#planPage").hidden) m.now?.closePlan();
           m.projects.closeProject(); m.projects.closeAll();
@@ -854,13 +860,22 @@ async function boot(){
           m.projects.closeProject(); m.projects.closeAll(); syncPanel();
 
         };
-        window.__toggleProjects = () => {
+        // Back to the plain home: no page, no day, no Stats (the mini card's
+        // Switch and Later open their row on the full card).
+        window.__goHome = () => {
+          weekPop = false; $("#weekPage").hidden = true;
           if (!$("#planPage").hidden) m.now?.closePlan();
-          const fromWeek = !$("#weekPage").hidden;
-          $("#weekPage").hidden = true;
-          if (!$("#schedPage").hidden || fromWeek) { m.projects.openAll(); syncPanel(); return; }
-          m.projects.closeProject(); m.projects.closeAll(); syncPanel();
-
+          m.projects.closeProject(); m.projects.closeAll();
+          document.body.classList.remove("day-open"); syncPanel();
+        };
+        // A tab: tapping another page moves to it, tapping the open one goes
+        // home. Judged by what is open, not by what is hidden (a plan or
+        // Stats open used to read as "Projects open" and send it home).
+        window.__toggleProjects = () => {
+          if (!$("#projPage").hidden || !$("#projectview").hidden) { m.projects.closeProject(); m.projects.closeAll(); syncPanel(); return; }
+          weekPop = false; $("#weekPage").hidden = true; document.body.classList.remove("day-open");
+          if (!$("#planPage").hidden) m.now?.closePlan();
+          m.projects.openAll(); syncPanel();
         };
         addEventListener("popstate", onPop);
         m.history = { unmount(){ removeEventListener("popstate", onPop); } };
