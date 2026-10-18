@@ -1802,6 +1802,19 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     const p = passedOver(task, s, { now, today: day });
     if (p) { Object.assign(task, p); restoreTask(uid, task.id, p).catch(fail); }
   }
+  // The card's plan slot ending in 10 min or less: what comes after it, the
+  // plan's next row or an event before that (Mor, 2026-10-18: "what's the
+  // next task if the current card is about to end"). The minute tick keeps it.
+  function upNextLine(card, fw){
+    const now = Date.now(), rows = planRowsNow(), row = rows.find((x) => x.taskId === card.task.id && !x.missed);
+    if (!row?.end || row.start > now || row.end <= now || row.end - now > 10 * 60000) return null;
+    const off = new Set(hidden(now));
+    const nx = rows.filter((x) => x !== row && !x.missed && !x.task.onHold && !off.has(x.taskId) && x.start >= row.end - 60000)
+      .sort((a, b) => a.start - b.start)[0];
+    const ev = fw?.next && fw.next.start >= now && (!nx || fw.next.start < nx.start) ? fw.next : null;
+    const it = ev ? { title: ev.title, at: ev.start } : nx ? { title: nx.task.title, at: Math.max(nx.start, row.end) } : null;
+    return it && h("p", { className: "now-next-out now-upnext" }, `Up next at ${clock(it.at)}: `, bdi(it.title));
+  }
   const planWhy = (row) => [row.start > Date.now() + 2 * 60000 ? `next in your plan, ${clock(row.start)}–${clock(row.end)}` : `until ${clock(row.end)}`];
   function breakCard(b, next){
     const name = b.name || (b.type === "meal" ? "Meal" : "Breather"); // the Today list's words
@@ -2205,7 +2218,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     // Done is the one loud thing on the tab; Switch, Pending and Later stay quiet beside it.
     day(...head, deck(taskCard(dueNow ? dueWhy(card, dueNow) : missed ? missWhy(card, missed) : card, true,
       ...cardActions(card.task, alts)), asking()),
-      nextLine(card.task), tip);
+      nextLine(card.task), upNextLine(card, fw), tip);
     // One slide-in per step-aside: later snapshots must not replay it.
     if (slideIn) { const push = slideIn === "push"; slideIn = false; if (motionOK()) { const c = root.querySelector(".now-card.main"); if (c) { c.style.animationDelay = ""; if (push) { pushAt = Date.now(); pushIn(c, 0); } else { inAt = Date.now(); slideCardIn(c, 0); } } } }
     // The render rebuilt the key just pressed, so its press pops here, once.

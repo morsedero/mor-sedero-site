@@ -1622,6 +1622,7 @@ body.focus #side { display: none; }
 @keyframes key-hop { 40% { transform: translateY(-3px) rotate(-10deg); } 75% { transform: translateY(1px) rotate(4deg); } }
 .now-card.main .later-ask, .now-card.main .pend-ask, .now-card.main .now-out { margin-block-start: 10px; }
 .now-next-out { margin: 10px 0 0; padding-inline: 4px; font-size: 13px; color: var(--sub); text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.now-next-out + .now-upnext { margin-top: 4px; }
 .now-card.main.meeting, .now-card.main.empty, .now-card.main.night { min-block-size: 0; }
 /* Nothing active: same footprint as a task's card, not taller (Mor, 2026-10-06). */
 .now-card.main.batch .btn.start { margin-block-start: auto; }
