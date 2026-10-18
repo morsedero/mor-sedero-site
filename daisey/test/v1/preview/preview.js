@@ -165,6 +165,13 @@ const SCENARIOS = {
       notes: "Waiting on the final mixes from Yuval." },
     { title: "Send invoice to Uri", project: "Admin", size: 5 },
   ] },
+  // The card's last 10 min (--at 10:22; --click ".upnext-ask" for the chips):
+  // "Until 10:30 · next at 10:30" and More time? under the card (now.js upNextLine).
+  upnext: { tasks: [
+    { title: "Mix review for Reprise", project: "Reprise", size: 30, over: { touchedAt: new Date().setHours(10, 0, 0, 0) } },
+    { title: "Lesson prep", project: "Teaching", size: 60, over: { touchedAt: new Date().setHours(9, 0, 0, 0) } },
+  ], dayplan: { date: day(0), status: "approved", at: new Date().setHours(10, 0, 0, 0),
+    items: [{ taskId: "t1", minutes: 30 }, { taskId: "t2", minutes: 60 }] } },
   // An approved plan an event added since squeezes (use with --cal squeeze --at 10:00):
   // Daisey cuts what matters least and says so under the card (proposal.refit).
   squeeze: { tasks: [

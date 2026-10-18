@@ -14,7 +14,7 @@
 // the same timer.
 import { overruled, eventKey } from "./reality.js";
 import { sortable } from "./ppdrag.js";
-import { addTask, updateTask, watchTasks, watchRun, watchSkips, saveSkips, endBatch, skipNow, blockTask, restoreTask, finishTask, undoDone, watchSettings, saveSettings, watchMoment, saveMoment, watchLearn, bumpLearn, cancelRun, watchDayPlan, saveDayPlan, logWork, watchProjectNames, removeTask } from "./store.js";
+import { addTask, updateTask, watchTasks, watchRun, extendRun, watchSkips, saveSkips, endBatch, skipNow, blockTask, restoreTask, finishTask, undoDone, watchSettings, saveSettings, watchMoment, saveMoment, watchLearn, bumpLearn, cancelRun, watchDayPlan, saveDayPlan, logWork, watchProjectNames, removeTask } from "./store.js";
 import { proposeDay, timeline, shownTaskCount, addableCount, withBreaks, trimBreaks, isBreak, planProgress, planStatus, unfitOf, refit, topUp, daySig, relayMeals } from "./proposal.js";
 import { rethink } from "./rethink.js";
 import { breakText } from "./schedule.js";
@@ -29,7 +29,7 @@ import { missState, silenceText, lastActivity } from "./miss.js";
 import { takeQuiet } from "./push.js";
 import { findPhoneTasks, phoneOkIds, searching } from "./phone.js";
 import { rank, freeWindow, timeBucket, matchProject, dueAt, keepsCard, passedOver } from "./engine.js";
-import { leftMinutes, toMinutes, progressOf, leftPatch, localDate, logicalDate, skipSnapshot, skipLesson, pendingCheck, notYet, pushedTo, bringBack, dayAfter, doneSnapshot, isGuess, estText, needsLaptop } from "./model.js";
+import { leftMinutes, toMinutes, progressOf, leftPatch, moreTimePatch, localDate, logicalDate, skipSnapshot, skipLesson, pendingCheck, notYet, pushedTo, bringBack, dayAfter, doneSnapshot, isGuess, estText, needsLaptop } from "./model.js";
 import { isRoutine, routineCalendar, eventsToLog, sessionPatch, nagFor, nagText, nagParts } from "./routine.js";
 import { decisionCard } from "./decision.js";
 import { waitingFor, personOf } from "./nudge.js";
@@ -176,10 +176,11 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
   let seenAt = new Map(); // task id → when it came up (heldAnchors, below)
   const reset = () => { state.chosen = null; state.showAlts = false; state.laterAsk = false; state.pendAsk = false; state.notNow = false; state.more = false; state.pendText = ""; state.pendCheck = ""; state.single = false; kept = null; seenAt = new Map(); };
   let shown, kept = null; // kept: keptCard
+  let moreFor = null, moreAt = 0; // the task "More time?" last stretched, and when (upNextLine)
   let chosenOut = null; // { id, why }: why state.chosen was out when picked (renderCard)
   let projectDue = {}; // { project: "YYYY-MM-DD" }, from Projects' dates
   // A new task on the card shuts the rows opened under the last one.
-  const showing = (id) => { if (id !== shown) { if (shown !== undefined) state.showAlts = state.notNow = state.pendAsk = state.more = false; shown = id; onCard?.(id); } };
+  const showing = (id) => { if (id !== shown) { if (shown !== undefined) state.showAlts = state.notNow = state.pendAsk = state.more = state.moreTime = false; if (id !== moreFor) moreFor = null; shown = id; onCard?.(id); } };
   // Escape shuts an open row under the card (Switch, Later, Pending), unless a dialog has it.
   function escRow(e){
     if (e.key !== "Escape" || !asking() || document.querySelector("dialog[open]")) return;
@@ -1805,17 +1806,48 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
   // The card's plan slot ending in 10 min or less: what comes after it, the
   // plan's next row or an event before that (Mor, 2026-10-18: "what's the
   // next task if the current card is about to end"). The minute tick keeps it.
+  // Beside it, "More time?" (Mor, 2026-10-18: like the schedule's "?", but
+  // before the time is up): +10/+15/+30 min stretch the slot and the plan
+  // after it moves. Once stretched, the line stays for that task, so what was
+  // tapped doesn't vanish when its end leaves the 10 min.
   function upNextLine(card, fw){
     const now = Date.now(), rows = planRowsNow(), row = rows.find((x) => x.taskId === card.task.id && !x.missed);
-    if (!row?.end || row.start > now || row.end <= now || row.end - now > 10 * 60000) return null;
+    if (!row?.end || row.start > now + 5 * 60000 || row.end <= now || (row.end - now > 10 * 60000 && moreFor !== card.task.id)) return null;
     const off = new Set(hidden(now));
     const nx = rows.filter((x) => x !== row && !x.missed && !x.task.onHold && !off.has(x.taskId) && x.start >= row.end - 60000)
       .sort((a, b) => a.start - b.start)[0];
     const ev = fw?.next && fw.next.start >= now && (!nx || fw.next.start < nx.start) ? fw.next : null;
     const it = ev ? { title: ev.title, at: ev.start } : nx ? { title: nx.task.title, at: Math.max(nx.start, row.end) } : null;
-    return it && h("p", { className: "now-next-out now-upnext" }, `Up next at ${clock(it.at)}: `, bdi(it.title));
+    const t = card.task;
+    const more = state.moreTime
+      ? h("div", { className: "later-ask upnext-more", role: "group", ariaLabel: `More time on ${t.title}` },
+        ...[10, 15, 30].map((m) => h("button", { className: "chip", type: "button", textContent: `+${m} min`,
+          ariaLabel: `${m} more minutes on ${t.title}`, onclick: () => moreTime(t, row, m) })),
+        h("button", { className: "chip quiet", type: "button", textContent: "No", onclick: () => { state.moreTime = false; render(); } }))
+      : h("button", { className: "upnext-ask", type: "button", ariaLabel: `Need more time on ${t.title}?`, onclick: () => { state.moreTime = true; render(); } },
+        icon("plus"), h("span", { textContent: "More time?" }));
+    return h("div", { className: "now-upnext" + (moreFor === t.id && now - moreAt < 2000 ? " stretched" : "") },
+      // The card already says "until 10:30": this line is only what's after.
+      it ? h("p", { className: "upnext-line" }, "Next at ", h("b", { className: "upnext-k", textContent: clock(it.at) }), " · ", bdi(it.title))
+        : h("p", { className: "upnext-line" }, "Nothing planned after ", h("b", { className: "upnext-k", textContent: clock(row.end) })),
+      more);
   }
-  const planWhy = (row) => [row.start > Date.now() + 2 * 60000 ? `next in your plan, ${clock(row.start)}–${clock(row.end)}` : `until ${clock(row.end)}`];
+  // Stretch the slot (model.moreTimePatch). A running timer gets the minutes
+  // too, or it caps out.
+  function moreTime(task, row, m){
+    const end = row.end + m * 60000, running = !!run && (run.batch || [run.taskId]).includes(task.id);
+    const p = moreTimePatch(task, { start: row.start, end: row.end, minutes: m, running });
+    Object.assign(task, p);
+    restoreTask(uid, task.id, p).catch(fail);
+    if (running) extendRun(uid, run, m).catch(fail);
+    if (kept?.id === task.id) kept.until = end;
+    moreFor = task.id; moreAt = Date.now(); state.moreTime = false;
+    render();
+  }
+  // Within 5 min is now: a re-lay starts on the next round 5 min (proposal.js
+  // lay), so a running or just-stretched task read "next in your plan, 10:25"
+  // at 10:22 (2026-10-18).
+  const planWhy = (row) => [row.start > Date.now() + 5 * 60000 ? `next in your plan, ${clock(row.start)}–${clock(row.end)}` : `until ${clock(row.end)}`];
   function breakCard(b, next){
     const name = b.name || (b.type === "meal" ? "Meal" : "Breather"); // the Today list's words
     return quietCard({ meta: "Break", side: `until ${clock(b.end)}`, title: name,

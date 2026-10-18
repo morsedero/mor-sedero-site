@@ -1622,7 +1622,19 @@ body.focus #side { display: none; }
 @keyframes key-hop { 40% { transform: translateY(-3px) rotate(-10deg); } 75% { transform: translateY(1px) rotate(4deg); } }
 .now-card.main .later-ask, .now-card.main .pend-ask, .now-card.main .now-out { margin-block-start: 10px; }
 .now-next-out { margin: 10px 0 0; padding-inline: 4px; font-size: 13px; color: var(--sub); text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.now-next-out + .now-upnext { margin-top: 4px; }
+/* Up next, the card's last 10 min (now.js upNextLine): one quiet line, and
+   "More time?" a dashed pill under it that opens +10/+15/+30 in place. */
+.now-upnext { display: flex; flex-direction: column; align-items: center; gap: 6px; margin: 10px 0 0; padding-inline: 4px; font-size: 13px; color: var(--sub); text-align: center; }
+.now-next-out + .now-upnext { margin-top: 6px; }
+.upnext-line { margin: 0; max-inline-size: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.upnext-k { font-weight: 700; color: var(--ink-2); padding-inline: 2px; }
+.upnext-ask { display: inline-flex; align-items: center; gap: 5px; min-block-size: 32px; padding-inline: 12px; font: inherit; font-size: 13px; font-weight: 600; color: var(--sub); background: none; border: 1px dashed var(--aline, var(--line)); border-radius: 999px; cursor: pointer; }
+.upnext-ask:hover { color: var(--ink); border-color: var(--ink-2); }
+.upnext-ask svg { inline-size: 14px; block-size: 14px; flex: none; }
+.upnext-more { margin: 0; }
+.now-upnext.stretched .upnext-k { animation: upnext-glow 1.2s ease-out 1; border-radius: 6px; }
+@keyframes upnext-glow { from { background: color-mix(in srgb, var(--accent) 35%, transparent); } to { background: transparent; } }
+@media (prefers-reduced-motion: reduce) { .now-upnext.stretched .upnext-k { animation: none; } }
 .now-card.main.meeting, .now-card.main.empty, .now-card.main.night { min-block-size: 0; }
 /* Nothing active: same footprint as a task's card, not taller (Mor, 2026-10-06). */
 .now-card.main.batch .btn.start { margin-block-start: auto; }
