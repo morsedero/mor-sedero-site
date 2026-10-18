@@ -66,3 +66,13 @@ export function reasonLine(task, ctx = {}){
   const pieces = reasonPieces(task, ctx), lines = pieces.map((p) => flat(p) + ".");
   return { text: lines.join(" "), lines, pieces };
 }
+
+// The reason on the card while a proposed plan is open and the card shows the
+// plan's first task (Mor, 2026-10-18). "First in the plan below" says the card
+// follows the plan; a task that is already the current Now commitment (the
+// engine's pick, "Now · 12:00-13:30") keeps its own reason instead, never both.
+// → the pieces, or null when the card's own reason stands.
+export function proposedWhy({ firstId = null, pickId = null, focus = false } = {}){
+  if (!firstId || firstId === pickId) return null;
+  return [focus ? "first in your plan" : "first in the plan below"];
+}

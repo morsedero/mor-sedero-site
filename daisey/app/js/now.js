@@ -33,6 +33,7 @@ import { leftMinutes, toMinutes, progressOf, leftPatch, localDate, logicalDate, 
 import { isRoutine, routineCalendar, eventsToLog, sessionPatch, nagFor, nagText, nagParts } from "./routine.js";
 import { decisionCard } from "./decision.js";
 import { waitingFor, personOf } from "./nudge.js";
+import { proposedWhy } from "./reason.js";
 import { dayHours, isNight, nextMorning, dayEndAt, bookings, sameTitle, minText, gapsToday, planDate, usualHours, dayWord, slotsWord, answerDate, nightRange, planLabelDay, planWords, nightLendOver } from "./day.js";
 import { wrapList } from "./needs.js";
 import { needsCount, nightLine } from "./needs-list.js";
@@ -2126,11 +2127,13 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     // list does (2026-10-15: after Undo the card said "now · 20:05–21:05"
     // while the list said 20:10–21:10). One timeline, every screen.
     const chosenRow = state.chosen && approvedPlan() ? planRowsNow().find((x) => x.taskId === state.chosen && !x.missed) : null;
+    // "First in the plan below" only when the plan's first task isn't already the Now pick (reason.js proposedWhy).
+    const proposedPick = proposedWhy({ firstId: firstProposed?.taskId, pickId: r.pick?.task.id, focus: focusOn() });
     let card = (chosenRow && asCard(chosenRow.taskId, chosenRow.task, planWhy(chosenRow)))
       || (state.chosen && (r.ranked.find((s) => s.task.id === state.chosen) || (picked(state.chosen) && asCard(state.chosen, picked(state.chosen).task, ["your pick"]))))
       || (planned && r.ranked.find((s) => s.task.id === planned))
       || (planRow && asCard(planRow.taskId, planRow.task, planWhy(planRow)))
-      || (firstProposed && asCard(firstProposed.taskId, tasks.find((t) => t.id === firstProposed.taskId), [focusOn() ? "first in your plan" : "first in the plan below"]))
+      || (proposedPick && asCard(firstProposed.taskId, tasks.find((t) => t.id === firstProposed.taskId), proposedPick))
       || (pn ? null : r.pick);
     card = keptCard(card, { r, fw, asCard, picked, planRow });
     showing(card?.task.id ?? null);

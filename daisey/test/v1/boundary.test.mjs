@@ -81,3 +81,15 @@ test("night card: the day card lent at night ends when there is no card, never o
   assert.equal(nightLendOver({ dark: true, lent: false, hasCard: false }), false, "not lent: already the night card");
   assert.equal(nightLendOver({ dark: false, lent: true, hasCard: false }), false, "daytime: not a night matter");
 });
+
+// ---------- Reason coherence ----------
+import { proposedWhy } from "../../app/js/reason.js";
+
+test("reason: the Now pick never also says 'first in the plan below'", () => {
+  assert.equal(proposedWhy({ firstId: "a", pickId: "a" }), null, "same task: its own Now reason stands");
+  assert.deepEqual(proposedWhy({ firstId: "a", pickId: "b" }), ["first in the plan below"]);
+  assert.deepEqual(proposedWhy({ firstId: "a", pickId: null }), ["first in the plan below"]);
+  assert.deepEqual(proposedWhy({ firstId: "a", pickId: "b", focus: true }), ["first in your plan"]);
+  assert.equal(proposedWhy({ firstId: null, pickId: "b" }), null);
+  assert.equal(proposedWhy(), null);
+});
