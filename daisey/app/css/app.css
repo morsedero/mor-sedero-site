@@ -2731,8 +2731,10 @@ body.fm-slide .deck > .now-card.main { animation: none !important; } /* main.js:
   .rb-now { transition: transform .18s ease; }
   @media (hover: hover) {
     .rb-bead:not(.on):hover, .rb-hole:not(.on):hover { transform: scale(1.3); }
-    .rb-now:hover { transform: scale(1.15); }
+    .rb-now:not(.on):hover { transform: scale(1.15); }
   }
+  /* Open, every dot holds its open size and hover leaves it alone. */
+  .rb-now.on { transform: scale(1.15); }
   .rb-bead:active, .rb-hole:active, .rb-now:active { transform: scale(.85); transition-duration: .06s; }
   @media (prefers-reduced-motion: no-preference) {
     .rb-now { animation: rb-glow 2.8s ease-in-out var(--glow-at, 0s) infinite; }
@@ -2748,6 +2750,7 @@ body.fm-slide .deck > .now-card.main { animation: none !important; } /* main.js:
     .rb-now.pick { animation: rb-glow 2.8s ease-in-out var(--glow-at, 0s) infinite, rb-tap-tf .45s cubic-bezier(.3, 1.6, .5, 1); }
     .rb-bead.pick, .rb-hole.pick { animation: rb-tap-tf .45s cubic-bezier(.3, 1.6, .5, 1); }
     .rb-bead.on.pick, .rb-hole.on.pick { animation: rb-tap-on-tf .45s cubic-bezier(.3, 1.6, .5, 1); }
+    .rb-now.on.pick { animation: rb-glow 2.8s ease-in-out var(--glow-at, 0s) infinite, rb-tap-now-on-tf .45s cubic-bezier(.3, 1.6, .5, 1); }
   }
 }
   @keyframes rb-glow {
@@ -2757,6 +2760,7 @@ body.fm-slide .deck > .now-card.main { animation: none !important; } /* main.js:
   @keyframes rb-tap { 0% { scale: .8; } 55% { scale: 1.2; } 100% { scale: 1; } }
   @keyframes rb-tap-tf { 0% { transform: scale(.8); } 55% { transform: scale(1.25); } 100% { transform: scale(1); } }
   @keyframes rb-tap-on-tf { 0% { transform: scale(.8); } 55% { transform: scale(1.6); } 100% { transform: scale(1.35); } }
+  @keyframes rb-tap-now-on-tf { 0% { transform: scale(.8); } 55% { transform: scale(1.4); } 100% { transform: scale(1.15); } }
   .rb-pop { position: absolute; z-index: 5; inset-block-start: 30px; inline-size: max-content; max-inline-size: 240px; padding: 11px 14px; box-sizing: border-box; border: 1px solid var(--line); border-radius: 16px; background: var(--card); box-shadow: 0 14px 30px -10px rgb(0 0 0 / .3); }
   .rb-arrow { position: absolute; inset-block-start: -7px; inset-inline-start: calc(var(--arrow, 50%) - 6px); inline-size: 12px; block-size: 12px; background: var(--card); border-inline-start: 1px solid var(--line); border-block-start: 1px solid var(--line); transform: rotate(45deg); }
   .rb-pop p { margin: 0; }
