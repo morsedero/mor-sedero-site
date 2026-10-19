@@ -161,9 +161,9 @@ textarea {
 input:is([type="checkbox"], [type="radio"]) {
   appearance: none; -webkit-appearance: none; flex: none; display: inline-grid; place-content: center;
   inline-size: 20px; block-size: 20px; margin: 0; vertical-align: middle; cursor: pointer;
-  border: 1.5px solid var(--ink-2);
-  border: 1.5px solid color-mix(in srgb, var(--ink-2) 65%, transparent); border-radius: 6px; background: var(--surface);
+  border: 1.5px solid var(--ink-2); border-radius: 6px; background: var(--surface);
 }
+@supports (color: color-mix(in srgb, red, blue)) { input:is([type="checkbox"], [type="radio"]) { border: 1.5px solid color-mix(in srgb, var(--ink-2) 65%, transparent); } }
 input[type="radio"] { border-radius: 50%; }
 input:is([type="checkbox"], [type="radio"])::before { content: ""; inline-size: 10px; block-size: 10px; background: var(--on-accent); transform: scale(0); transition: transform .12s ease; }
 input[type="checkbox"]::before { clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0, 43% 62%); }
@@ -195,7 +195,8 @@ input:is([type="checkbox"], [type="radio"]):disabled { opacity: .45; cursor: def
   padding: 9px 12px; border: 1px solid var(--line); border-radius: 12px;
   background: var(--bg); color: var(--ink-2);
 }
-.gsum:hover { border-color: var(--line); border-color: color-mix(in srgb, var(--ink-2) 40%, var(--line)); }
+.gsum:hover { border-color: var(--line); }
+@supports (color: color-mix(in srgb, red, blue)) { .gsum:hover { border-color: color-mix(in srgb, var(--ink-2) 40%, var(--line)); } }
 .gsum[aria-expanded="true"] { border-color: var(--accent); }
 .gsum-k { font-weight: 600; color: var(--ink-2); }
 .gsum-vals { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; min-inline-size: 0; }
@@ -208,9 +209,9 @@ input:is([type="checkbox"], [type="radio"]):disabled { opacity: .45; cursor: def
 .gchip {
   font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; min-block-size: 36px;
   display: inline-flex; align-items: center; gap: 6px; padding-inline: 11px; border-radius: 999px;
-  border: 1.5px dashed var(--line);
-  border: 1.5px dashed color-mix(in srgb, var(--ink-2) 45%, var(--line)); background: transparent; color: var(--ink);
+  border: 1.5px dashed var(--line); background: transparent; color: var(--ink);
 }
+@supports (color: color-mix(in srgb, red, blue)) { .gchip { border: 1.5px dashed color-mix(in srgb, var(--ink-2) 45%, var(--line)); } }
 .gchip svg { inline-size: 16px; block-size: 16px; flex: none; opacity: .7; }
 .gchip.mine { border-style: solid; border-color: var(--ink); color: var(--ink); background: var(--surface); }
 .gchip.mine svg { opacity: 1; }
@@ -367,8 +368,8 @@ input:is([type="checkbox"], [type="radio"]):disabled { opacity: .45; cursor: def
 .now-card.main.won { pointer-events: none; animation: won-pop .56s cubic-bezier(.3, 1.4, .5, 1) forwards; animation-delay: 0s !important; }
 @keyframes won-pop {
   0% { transform: scale(1); }
-  30% { transform: scale(1.035); box-shadow: 0 0 0 4px rgb(245 179 1 / .55), 0 0 36px rgb(245 179 1 / .60); box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 55%, transparent), 0 0 36px color-mix(in srgb, var(--accent) 60%, transparent); }
-  100% { transform: scale(1); box-shadow: 0 0 0 2px rgb(245 179 1 / .35), 0 0 24px rgb(245 179 1 / .40); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 35%, transparent), 0 0 24px color-mix(in srgb, var(--accent) 40%, transparent); }
+  30% { transform: scale(1.035); box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 55%, transparent), 0 0 36px color-mix(in srgb, var(--accent) 60%, transparent); }
+  100% { transform: scale(1); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 35%, transparent), 0 0 24px color-mix(in srgb, var(--accent) 40%, transparent); }
 }
 /* The same Done on a schedule box, from its "?" sheet (2026-10-18). */
 .sc-ev.won { position: relative; overflow: hidden; pointer-events: none; animation: won-pop .56s cubic-bezier(.3, 1.4, .5, 1) forwards; }
@@ -396,10 +397,10 @@ input:is([type="checkbox"], [type="radio"]):disabled { opacity: .45; cursor: def
   position: fixed; z-index: 7; inset-block-end: max(20px, env(safe-area-inset-bottom));
   inset-inline: 16px; margin-inline: auto; inline-size: fit-content; max-inline-size: 360px;
   padding: 6px 8px 6px 14px; border-radius: 12px;
-  background: var(--ink);
-  background: color-mix(in srgb, var(--ink) 72%, transparent); color: var(--card);
+  background: var(--ink); color: var(--card);
   backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); box-shadow: 0 4px 14px rgb(0 0 0 / .18);
 }
+@supports (color: color-mix(in srgb, red, blue)) { .toast { background: color-mix(in srgb, var(--ink) 72%, transparent); } }
 .toast { display: flex; flex-direction: column; gap: 4px; animation: toast-in .18s ease-out backwards; animation-delay: calc(0ms - var(--age, 0ms)); }
 /* Undo toasts also fade out over the last .3s of their 8s (UNDO_MS in undo.js; keep 7700ms = UNDO_MS - .3s). */
 .toast.timed { animation: toast-in .18s ease-out backwards, toast-out .3s ease-in 7700ms forwards; animation-delay: calc(0ms - var(--age, 0ms)), calc(7700ms - var(--age, 0ms)); }
@@ -523,12 +524,14 @@ a.ev-place small { text-decoration: underline; text-underline-offset: 3px; }
 .pg-row .btn { flex: none; margin-inline-start: auto; white-space: nowrap; font-variant-numeric: tabular-nums; }
 .sheet-actions .btn.wide { flex: 1; }
 .sheet-actions .btn.danger { margin-inline-start: auto; color: var(--danger); background: none; }
-.sheet-actions .btn.danger:hover:not(:disabled) { background: transparent; background: color-mix(in srgb, var(--danger) 8%, transparent); }
+.sheet-actions .btn.danger:hover:not(:disabled) { background: transparent; }
+@supports (color: color-mix(in srgb, red, blue)) { .sheet-actions .btn.danger:hover:not(:disabled) { background: color-mix(in srgb, var(--danger) 8%, transparent); } }
 /* The last line of the sheet: Delete at one end, Add/Save at the other. */
 .sheet-bottom { display: flex; align-items: center; gap: 10px; margin-block-start: 14px; }
 .sheet-bottom .btn.danger { color: var(--danger); }
 .sheet-bottom .btn.primary { margin-inline-start: auto; min-inline-size: 120px; }
-.sheet-actions .btn.danger.arm, .sheet-actions .btn.danger.arm:hover:not(:disabled) { border-color: var(--danger); background: transparent; background: color-mix(in srgb, var(--danger) 14%, transparent); font-weight: 700; }
+.sheet-actions .btn.danger.arm, .sheet-actions .btn.danger.arm:hover:not(:disabled) { border-color: var(--danger); background: transparent; font-weight: 700; }
+@supports (color: color-mix(in srgb, red, blue)) { .sheet-actions .btn.danger.arm, .sheet-actions .btn.danger.arm:hover:not(:disabled) { background: color-mix(in srgb, var(--danger) 14%, transparent); } }
 .field.wide { grid-column: 1 / -1; }
 /* The event form's first two rows aren't both full-width: only .wide is. */
 .ev-grid > :nth-child(-n+2):not(.wide) { grid-column: auto; }
@@ -563,7 +566,8 @@ dialog.now:focus { outline: none; }
 .switch-ask { flex-wrap: nowrap; justify-content: flex-start; gap: 8px; overflow-x: auto; scrollbar-width: none; touch-action: pan-x pan-y; cursor: grab; margin-inline: -4px; padding: 2px 4px 4px; }
 .switch-ask.dragging, .switch-ask.dragging * { cursor: grabbing; user-select: none; -webkit-user-select: none; }
 .switch-ask::-webkit-scrollbar { display: none; }
-.alt-card { flex: none; inline-size: 52%; block-size: auto; min-block-size: 77px; box-sizing: border-box; display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto auto 1fr; align-content: start; gap: 4px; padding: 9px 12px; border-radius: 14px; border: 1px solid var(--aline); background: var(--tint); color: var(--ink); font: inherit; text-align: start; cursor: pointer; box-shadow: 0 2px 6px rgb(0 0 0 / .08); box-shadow: 0 2px 6px color-mix(in srgb, var(--aink) 10%, transparent); }
+.alt-card { flex: none; inline-size: 52%; block-size: auto; min-block-size: 77px; box-sizing: border-box; display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto auto 1fr; align-content: start; gap: 4px; padding: 9px 12px; border-radius: 14px; border: 1px solid var(--aline); background: var(--tint); color: var(--ink); font: inherit; text-align: start; cursor: pointer; box-shadow: 0 2px 6px rgb(0 0 0 / .08); }
+@supports (color: color-mix(in srgb, red, blue)) { .alt-card { box-shadow: 0 2px 6px color-mix(in srgb, var(--aink) 10%, transparent); } }
 .alt-card .hero-top, .alt-card .hero-area { font-size: 12px; }
 .alt-card .alt-at { flex: none; font-weight: 700; font-variant-numeric: tabular-nums; }
 .alt-card .alt-at::after { content: "·"; margin-inline-start: 5px; font-weight: 600; }
@@ -682,8 +686,8 @@ dialog.now:focus { outline: none; }
   position: relative; gap: 0; padding: 16px 18px 8px; border-radius: var(--radius);
   background: var(--tint); border: 1px solid var(--aline); color: var(--ink);
   box-shadow: 0 12px 28px rgb(0 0 0 / .11);
-  box-shadow: 0 12px 28px color-mix(in srgb, var(--aink) 14%, transparent);
 }
+@supports (color: color-mix(in srgb, red, blue)) { .now-card.main { box-shadow: 0 12px 28px color-mix(in srgb, var(--aink) 14%, transparent); } }
 .hero-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 13px; }
 .hero-area { display: inline-flex; align-items: center; gap: 6px; min-inline-size: 0; font-size: 13px; font-weight: 600; color: var(--aink); }
 .hero-area .dot { inline-size: 8px; block-size: 8px; border-radius: 50%; background: currentColor; flex: none; }
@@ -695,7 +699,8 @@ dialog.now:focus { outline: none; }
 .now-card.main .now-why { margin: 6px 0 0; font-size: 14px; line-height: 1.4; color: var(--sub); }
 .now-card.main .now-meta { font-size: 13px; font-weight: 600; text-transform: none; letter-spacing: 0; color: var(--aink); }
 /* An event's header wears its schedule colour (the same mix .sc-ev text uses). */
-.now-card.main.event .now-title { color: var(--ev, var(--ink-2)); color: color-mix(in srgb, var(--ev, var(--ink-2)) 55%, var(--ink)); }
+.now-card.main.event .now-title { color: var(--ev, var(--ink-2)); }
+@supports (color: color-mix(in srgb, red, blue)) { .now-card.main.event .now-title { color: color-mix(in srgb, var(--ev, var(--ink-2)) 55%, var(--ink)); } }
 /* The whole event card wears the event's colour, not an area's. */
 .now-card.main.event {
   --tint: color-mix(in srgb, var(--ev, var(--card)) 16%, var(--card));
@@ -714,7 +719,8 @@ dialog.now:focus { outline: none; }
   border: none; border-radius: 12px; font-size: 14px; font-weight: 500; color: var(--sub);
 }
 .trio .iconbtn svg { inline-size: 16px; block-size: 16px; flex: none; stroke-width: 2; }
-.trio .iconbtn:hover:not(:disabled), .trio .iconbtn[aria-expanded="true"] { background: rgb(0 0 0 / .07); background: color-mix(in srgb, var(--aink) 9%, transparent); border-color: transparent; color: var(--ink); }
+.trio .iconbtn:hover:not(:disabled), .trio .iconbtn[aria-expanded="true"] { background: rgb(0 0 0 / .07); border-color: transparent; color: var(--ink); }
+@supports (color: color-mix(in srgb, red, blue)) { .trio .iconbtn:hover:not(:disabled), .trio .iconbtn[aria-expanded="true"] { background: color-mix(in srgb, var(--aink) 9%, transparent); } }
 .now-card.main .later-ask, .now-card.main .pend-ask { margin-block-start: 8px; }
 .now-card.main .btn.quiet { color: var(--sub); }
 .now-card.main.meeting .btn, .now-card.main.empty .btn.quiet { justify-self: start; margin-block-start: 10px; }
@@ -743,11 +749,11 @@ dialog.now:focus { outline: none; }
   content: ""; position: absolute; inset: -2px; padding: 2.5px; border-radius: calc(var(--radius) + 2px); pointer-events: none;
   background: conic-gradient(from var(--sc-ang), transparent 66deg, var(--aline) 80deg,
     var(--glint) 90deg, var(--aline) 100deg, transparent 114deg);
-  background: conic-gradient(from var(--sc-ang), transparent 66deg, color-mix(in srgb, var(--aline) 70%, transparent) 80deg,
-    var(--glint) 90deg, color-mix(in srgb, var(--aline) 70%, transparent) 100deg, transparent 114deg);
   -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor;
   mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
   animation: sc-orbit 9s linear var(--orbit, 0s) infinite; }
+@supports (color: color-mix(in srgb, red, blue)) { .now-card.main:is(.deck > *, .going):not(.empty):not(.night)::before { background: conic-gradient(from var(--sc-ang), transparent 66deg, color-mix(in srgb, var(--aline) 70%, transparent) 80deg,
+    var(--glint) 90deg, color-mix(in srgb, var(--aline) 70%, transparent) 100deg, transparent 114deg); } }
 @media (prefers-reduced-motion: reduce) { .now-card.main:is(.deck > *, .going)::before { animation: none; } }
 /* The time-gone fill moved to the schedule's now-row chip (Mor, 2026-10-11). */
 
@@ -942,15 +948,17 @@ select.ts-project { padding-block: 8px; padding-inline-start: 10px; padding-inli
 .trip-chips { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-block-start: 12px; }
 .trip-chip, .trip-opt { font: inherit; font-size: 13px; line-height: 1; cursor: pointer; border-radius: 999px; min-block-size: 34px;
   display: inline-flex; align-items: center; gap: 6px; padding: 0 12px; color: inherit;
-  background: transparent;
-  background: color-mix(in srgb, currentColor 8%, transparent); border: 1px solid var(--line); border: 1px solid color-mix(in srgb, currentColor 18%, transparent); }
+  background: transparent; border: 1px solid var(--line); }
+@supports (color: color-mix(in srgb, red, blue)) { .trip-chip, .trip-opt { background: color-mix(in srgb, currentColor 8%, transparent); border: 1px solid color-mix(in srgb, currentColor 18%, transparent); } }
 .trip-chip { font-weight: 600; }
-.trip-chip:hover, .trip-opt:hover { background: transparent; background: color-mix(in srgb, currentColor 14%, transparent); }
+.trip-chip:hover, .trip-opt:hover { background: transparent; }
+@supports (color: color-mix(in srgb, red, blue)) { .trip-chip:hover, .trip-opt:hover { background: color-mix(in srgb, currentColor 14%, transparent); } }
 .trip-ok { display: inline-grid; place-items: center; inline-size: 16px; block-size: 16px; border-radius: 50%; font-size: 10px; font-weight: 800;
   background: var(--accent); color: var(--on-accent); }
 .trip-caret { opacity: .55; font-size: 11px; }
 .trip-chip.ask { border-style: dashed; }
-.trip-chip[aria-expanded="true"] { background: transparent; background: color-mix(in srgb, currentColor 16%, transparent); }
+.trip-chip[aria-expanded="true"] { background: transparent; }
+@supports (color: color-mix(in srgb, red, blue)) { .trip-chip[aria-expanded="true"] { background: color-mix(in srgb, currentColor 16%, transparent); } }
 .trip-chip[aria-expanded="true"] .trip-caret { transform: rotate(180deg); }
 .trip-menu { position: fixed; z-index: 70; visibility: hidden; min-inline-size: 180px; padding: 6px; display: grid; gap: 2px;
   background: var(--surface); color: var(--ink); border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow); }
@@ -1036,7 +1044,8 @@ body.focus .tell-panel { display: none; }
 .freeline { font-size: 13px; }
 
 /* The Now card. */
-.now-card.main { padding: 20px; box-shadow: 0 12px 28px rgb(0 0 0 / .10); box-shadow: 0 12px 28px color-mix(in srgb, var(--aink) 12%, transparent); }
+.now-card.main { padding: 20px; box-shadow: 0 12px 28px rgb(0 0 0 / .10); }
+@supports (color: color-mix(in srgb, red, blue)) { .now-card.main { box-shadow: 0 12px 28px color-mix(in srgb, var(--aink) 12%, transparent); } }
 .hero-area { flex: 1; }
 .hero-where { min-inline-size: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .now-card.main .now-title { margin-block-start: 14px; font-size: 32px; font-weight: 600; letter-spacing: -0.3px; line-height: 1.15; }
@@ -1105,41 +1114,48 @@ button.now-title:focus-visible { outline: 2px solid var(--aink); outline-offset:
 .pp-zone { display: grid; grid-template-columns: minmax(0, 1fr); align-content: start; gap: 10px; padding: 8px; margin-inline: -8px; border-radius: 20px; transition: background-color .2s ease, box-shadow .2s ease; }
 .pgrid.tiers { gap: 14px; }
 .tier-focus .pp-tier-name { padding-block-end: 2px; border-block-end: 2px solid var(--accent); }
-.zone-dragging .pp-zone { background: rgb(0 0 0 / .02); background: color-mix(in srgb, var(--ink) 3%, transparent); box-shadow: inset 0 0 0 1px var(--line); }
+.zone-dragging .pp-zone { background: rgb(0 0 0 / .02); box-shadow: inset 0 0 0 1px var(--line); }
+@supports (color: color-mix(in srgb, red, blue)) { .zone-dragging .pp-zone { background: color-mix(in srgb, var(--ink) 3%, transparent); } }
 .pp-tier-n { margin-inline-start: auto; font-size: 12px; font-weight: 600; color: var(--ink-2); font-variant-numeric: tabular-nums; }
 /* Focus's open places (Mor, 2026-10-12: the dots read as pages): one dashed
    slot after the cards, gone while a card is dragged (the zone lights then). */
 .tier-focus[data-room]::after { content: attr(data-room); padding: 12px; border: 1.5px dashed var(--line); border-radius: 14px; text-align: center; font-size: 12px; color: var(--ink-2); }
 .zone-dragging .tier-focus[data-room]::after { display: none; }
-.tier-focus .pp-tier-name, .tier-focus .pp-tier-n { color: var(--accent); color: color-mix(in srgb, var(--accent) 70%, var(--ink)); }
+.tier-focus .pp-tier-name, .tier-focus .pp-tier-n { color: var(--accent); }
+@supports (color: color-mix(in srgb, red, blue)) { .tier-focus .pp-tier-name, .tier-focus .pp-tier-n { color: color-mix(in srgb, var(--accent) 70%, var(--ink)); } }
 .pp-tier { position: relative; z-index: 2; display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; }
 /* Tier names are headings; what each means is a tip behind the name, on
    hover with a mouse or a tap with a finger (Mor, 2026-10-11). The small ?
    says there's more there. */
 .pp-tier-name { appearance: none; -webkit-appearance: none; line-height: 1.2; display: inline-flex; align-items: center; gap: 6px; padding: 0; border: 0; border-radius: 0; background: none; font: inherit; font-size: 18px; font-weight: 800; letter-spacing: -.01em; color: var(--ink-2); cursor: help; }
 .tier-focus .pp-tier-name { color: var(--ink); }
-.pp-tier-sub { position: absolute; inset-block-start: calc(100% + 6px); inset-inline-start: 0; max-inline-size: min(280px, 100%); padding: 7px 11px; border-radius: 10px; background: var(--ink); color: var(--card); font-size: 13px; font-weight: 600; line-height: 1.35; box-shadow: 0 6px 18px rgb(0 0 0 / .18); box-shadow: 0 6px 18px color-mix(in srgb, var(--ink) 22%, transparent); opacity: 0; visibility: hidden; transform: translateY(-3px); transition: opacity .15s ease, transform .15s ease, visibility .15s; pointer-events: none; }
+.pp-tier-sub { position: absolute; inset-block-start: calc(100% + 6px); inset-inline-start: 0; max-inline-size: min(280px, 100%); padding: 7px 11px; border-radius: 10px; background: var(--ink); color: var(--card); font-size: 13px; font-weight: 600; line-height: 1.35; box-shadow: 0 6px 18px rgb(0 0 0 / .18); opacity: 0; visibility: hidden; transform: translateY(-3px); transition: opacity .15s ease, transform .15s ease, visibility .15s; pointer-events: none; }
+@supports (color: color-mix(in srgb, red, blue)) { .pp-tier-sub { box-shadow: 0 6px 18px color-mix(in srgb, var(--ink) 22%, transparent); } }
 .pp-tier.open .pp-tier-sub, .pp-tier-name:focus-visible + .pp-tier-sub { opacity: 1; visibility: visible; transform: none; }
 @media (hover: hover) { .pp-tier-name:hover + .pp-tier-sub { opacity: 1; visibility: visible; transform: none; } }
 @media (prefers-reduced-motion: reduce) { .pp-tier-sub { transition: none; } }
 .pp-tier-empty { display: none; padding: 14px; border: 1.5px dashed var(--line); border-radius: 14px; text-align: center; font-size: 12px; color: var(--ink-2); }
 .pp-zone:not(.h-drag) > .pp-tier-empty { display: block; }
-.zone-dragging .pp-zone:not(.on):not(.h-drag) > .pp-tier-empty { border-color: var(--line); border-color: color-mix(in srgb, var(--ink-2) 45%, transparent); }
-.pp-zone.on { background: rgb(245 179 1 / .16); background: color-mix(in srgb, var(--accent) 16%, transparent); box-shadow: inset 0 0 0 2px var(--accent); }
+.zone-dragging .pp-zone:not(.on):not(.h-drag) > .pp-tier-empty { border-color: var(--line); }
+@supports (color: color-mix(in srgb, red, blue)) { .zone-dragging .pp-zone:not(.on):not(.h-drag) > .pp-tier-empty { border-color: color-mix(in srgb, var(--ink-2) 45%, transparent); } }
+.pp-zone.on { background: rgb(245 179 1 / .16); box-shadow: inset 0 0 0 2px var(--accent); }
+@supports (color: color-mix(in srgb, red, blue)) { .pp-zone.on { background: color-mix(in srgb, var(--accent) 16%, transparent); } }
 .pp-zone.on .pp-tier-name { color: var(--ink); }
-.pp-zone.full { background: transparent; background: color-mix(in srgb, var(--danger) 10%, transparent); box-shadow: inset 0 0 0 2px var(--danger); }
+.pp-zone.full { background: transparent; box-shadow: inset 0 0 0 2px var(--danger); }
+@supports (color: color-mix(in srgb, red, blue)) { .pp-zone.full { background: color-mix(in srgb, var(--danger) 10%, transparent); } }
 .zone-dragging .pcard.pp-dragging { transition: none; }
 @media (prefers-reduced-motion: no-preference) {
   .pcard.landed { animation: pp-landed 1.4s ease-out; }
 }
 @media (prefers-reduced-motion: reduce) { .pcard.landed { box-shadow: 0 0 0 2px var(--accent); } }
 @keyframes pp-landed {
-  0% { box-shadow: 0 0 0 0 rgb(245 179 1 / .90), 0 0 0 0 rgb(245 179 1 / .50); box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 90%, transparent), 0 0 0 0 color-mix(in srgb, var(--accent) 50%, transparent); scale: 1.03; }
-  35% { box-shadow: 0 0 0 3px var(--accent), 0 0 22px 6px rgb(245 179 1 / .45); box-shadow: 0 0 0 3px var(--accent), 0 0 22px 6px color-mix(in srgb, var(--accent) 45%, transparent); scale: 1; }
+  0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 90%, transparent), 0 0 0 0 color-mix(in srgb, var(--accent) 50%, transparent); scale: 1.03; }
+  35% { box-shadow: 0 0 0 3px var(--accent), 0 0 22px 6px color-mix(in srgb, var(--accent) 45%, transparent); scale: 1; }
   100% { box-shadow: 0 0 0 0 transparent, 0 0 0 0 transparent; }
 }
 .pcard-name { min-inline-size: 0; font-size: 15px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.pcard-status { margin-block-start: 6px; font-size: 12px; color: var(--ink); color: color-mix(in srgb, var(--aink) 45%, var(--ink)); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pcard-status { margin-block-start: 6px; font-size: 12px; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@supports (color: color-mix(in srgb, red, blue)) { .pcard-status { color: color-mix(in srgb, var(--aink) 45%, var(--ink)); } }
 .pbar { display: block; block-size: 4px; margin-block-start: 8px; border-radius: 2px; background: var(--aline); overflow: hidden; }
 .pbar > span { display: block; block-size: 100%; border-radius: inherit; background: var(--aink); }
 .pbar.big { flex: 1; block-size: 6px; margin: 0; border-radius: 3px; }
@@ -1169,11 +1185,13 @@ body.h-screen { overflow: hidden; }
 .pj-chip[aria-selected="true"] { background: var(--aink); color: var(--card); font-weight: 600; }
 /* Children of .screen keep its centring (margin-inline: auto): the 20px
    gutter is a narrower width, not a side margin, or wide screens pin them left. */
-.pj-card { margin: 8px max(20px, (100% - 520px) / 2) 0 max(20px, (100% - 520px) / 2); margin-right: auto; inline-size: 67%; max-inline-size: 373px; padding: 11px 14px 10px; border-radius: 16px; background: var(--surface); border: 1px solid var(--aline); box-shadow: 0 6px 20px rgb(0 0 0 / .10); box-shadow: 0 6px 20px color-mix(in srgb, var(--aink) 12%, transparent); }
+.pj-card { margin: 8px max(20px, (100% - 520px) / 2) 0 max(20px, (100% - 520px) / 2); margin-right: auto; inline-size: 67%; max-inline-size: 373px; padding: 11px 14px 10px; border-radius: 16px; background: var(--surface); border: 1px solid var(--aline); box-shadow: 0 6px 20px rgb(0 0 0 / .10); }
+@supports (color: color-mix(in srgb, red, blue)) { .pj-card { box-shadow: 0 6px 20px color-mix(in srgb, var(--aink) 12%, transparent); } }
 .pj-card-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .pj-name { margin: 0; min-inline-size: 0; font-size: 18px; font-weight: 700; letter-spacing: -0.3px; line-height: 1.15; overflow-wrap: anywhere; }
 .pj-name.rename { cursor: pointer; flex: 1 1 auto; padding-block: 10px; margin-block: -10px; }
-.pj-prog { display: flex; align-items: center; gap: 10px; margin-block-start: 8px; font-size: 12px; color: var(--ink); color: color-mix(in srgb, var(--aink) 45%, var(--ink)); }
+.pj-prog { display: flex; align-items: center; gap: 10px; margin-block-start: 8px; font-size: 12px; color: var(--ink); }
+@supports (color: color-mix(in srgb, red, blue)) { .pj-prog { color: color-mix(in srgb, var(--aink) 45%, var(--ink)); } }
 .pj-sec { padding-inline: 20px; }
 .pj-one { max-inline-size: 560px; margin: 10px auto 0; }
 /* Done / Not now: toggles under the bar, each opening a drawer in the card. */
@@ -1229,7 +1247,8 @@ body.h-screen { overflow: hidden; }
 /* Meta is English chrome: ltr keeps "1h · from Wed" in order, aligned to an RTL title's side. */
 .pj-who { flex: none; display: grid; place-items: center; inline-size: 24px; block-size: 24px; border-radius: 50%; background: var(--chip); color: var(--ink); font-size: 11px; font-weight: 600; }
 .pj-del { display: block; margin: 20px auto 0; min-block-size: 36px; padding-inline: 14px; border: 0; border-radius: 10px; background: none; color: var(--danger); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
-.pj-add { inline-size: 100%; min-block-size: 36px; margin-block-start: 6px; padding-inline: 12px; border: 1px solid var(--aline); border-radius: 12px; background: var(--tint); background: color-mix(in srgb, var(--tint) 60%, var(--surface)); color: var(--aink); font: inherit; font-size: 13px; font-weight: 600; text-align: start; cursor: pointer; }
+.pj-add { inline-size: 100%; min-block-size: 36px; margin-block-start: 6px; padding-inline: 12px; border: 1px solid var(--aline); border-radius: 12px; background: var(--tint); color: var(--aink); font: inherit; font-size: 13px; font-weight: 600; text-align: start; cursor: pointer; }
+@supports (color: color-mix(in srgb, red, blue)) { .pj-add { background: color-mix(in srgb, var(--tint) 60%, var(--surface)); } }
 .pj-tick { position: absolute; z-index: 1; inset-block-start: 50%; inset-inline-start: 10px; translate: 0 -50%; display: grid; place-items: center; inline-size: 22px; block-size: 22px; padding: 0; border: 2px solid var(--aline); border-radius: 50%; background: var(--surface); color: transparent; cursor: pointer; transition: background .15s, color .15s, border-color .15s; }
 .pj-tick::after { content: ""; position: absolute; inset: -9px; }
 .pj-tick svg { inline-size: 12px; block-size: 12px; stroke-width: 3; }
@@ -1341,9 +1360,12 @@ dialog.tsheet .now-head { margin-block-end: -4px; }
 /* Done · Focus · Delete share a row; a new task's lone Add task fills it. */
 .ts-row { display: flex; gap: 8px; }
 .ts-row > .btn { flex: 1 1 0; min-inline-size: 0; padding-inline: 6px; white-space: nowrap; }
-.ts-done { color: var(--green); border-color: var(--line); border-color: color-mix(in srgb, var(--green) 35%, var(--line)); background: var(--surface); background: color-mix(in srgb, var(--green) 10%, var(--surface)); }
-.ts-del { color: var(--danger); border-color: var(--line); border-color: color-mix(in srgb, var(--danger) 25%, var(--line)); }
-.ts-del.arm { background: var(--surface); background: color-mix(in srgb, var(--danger) 12%, var(--surface)); border-color: var(--danger); }
+.ts-done { color: var(--green); border-color: var(--line); background: var(--surface); }
+@supports (color: color-mix(in srgb, red, blue)) { .ts-done { border-color: color-mix(in srgb, var(--green) 35%, var(--line)); background: color-mix(in srgb, var(--green) 10%, var(--surface)); } }
+.ts-del { color: var(--danger); border-color: var(--line); }
+@supports (color: color-mix(in srgb, red, blue)) { .ts-del { border-color: color-mix(in srgb, var(--danger) 25%, var(--line)); } }
+.ts-del.arm { background: var(--surface); border-color: var(--danger); }
+@supports (color: color-mix(in srgb, red, blue)) { .ts-del.arm { background: color-mix(in srgb, var(--danger) 12%, var(--surface)); } }
 dialog.tsheet .msg:empty { display: none; }
 
 /* Needs you: one decision at a time. */
@@ -1356,11 +1378,13 @@ dialog.tsheet .msg:empty { display: none; }
 .ny-pad { inline-size: 44px; }
 .ny-dots { display: flex; gap: 6px; }
 .ny-dots span { inline-size: 6px; block-size: 6px; border-radius: 3px; background: #cfc7b4; }
-.ny-dots span.past { background: rgb(0 0 0 / .36); background: color-mix(in srgb, var(--ink) 45%, transparent); }
+.ny-dots span.past { background: rgb(0 0 0 / .36); }
+@supports (color: color-mix(in srgb, red, blue)) { .ny-dots span.past { background: color-mix(in srgb, var(--ink) 45%, transparent); } }
 .ny-dots span.on { inline-size: 22px; background: var(--ink); }
 .ny-stack { position: relative; isolation: isolate; margin-block-start: 40px; }
 .ny-stack.one::before, .ny-stack.two::before, .ny-stack.two::after { content: ""; position: absolute; z-index: -1; border-radius: 28px; }
-.ny-stack.one::before, .ny-stack.two::before { inset: 10px 10px -10px; background: var(--bg); background: color-mix(in srgb, var(--bg) 70%, var(--line)); }
+.ny-stack.one::before, .ny-stack.two::before { inset: 10px 10px -10px; background: var(--bg); }
+@supports (color: color-mix(in srgb, red, blue)) { .ny-stack.one::before, .ny-stack.two::before { background: color-mix(in srgb, var(--bg) 70%, var(--line)); } }
 .ny-stack.two::after { inset: 20px 20px -20px; z-index: -2; background: var(--line); }
 .ny-card { position: relative; display: flex; flex-direction: column; align-items: center; padding: 26px 22px; border-radius: 28px; background: var(--tint); border: 1px solid var(--aline); text-align: center; }
 @media (prefers-reduced-motion: no-preference) { .ny-card { animation: ny-rise .35s ease-out both; } }
@@ -1368,16 +1392,19 @@ dialog.tsheet .msg:empty { display: none; }
 .ny-ico { display: grid; place-items: center; inline-size: 56px; block-size: 56px; border-radius: 18px; background: var(--card); color: var(--aink); }
 .ny-ico svg { inline-size: 26px; block-size: 26px; stroke-width: 2; }
 .ny-q { margin: 18px 0 0; font-size: 28px; font-weight: 600; letter-spacing: -0.4px; }
-.ny-sub { margin: 8px 0 0; font-size: 15px; color: var(--ink); color: color-mix(in srgb, var(--aink) 45%, var(--ink)); }
+.ny-sub { margin: 8px 0 0; font-size: 15px; color: var(--ink); }
+@supports (color: color-mix(in srgb, red, blue)) { .ny-sub { color: color-mix(in srgb, var(--aink) 45%, var(--ink)); } }
 .ny-item { margin-block-start: 18px; inline-size: 100%; padding: 14px; border-radius: 16px; background: var(--card); font-size: 17px; font-weight: 600; line-height: 1.35; overflow-wrap: anywhere; }
-.ny-say { margin: 14px 0 0; font-size: 14px; color: var(--aink); color: color-mix(in srgb, var(--aink) 70%, var(--ink)); }
+.ny-say { margin: 14px 0 0; font-size: 14px; color: var(--aink); }
+@supports (color: color-mix(in srgb, red, blue)) { .ny-say { color: color-mix(in srgb, var(--aink) 70%, var(--ink)); } }
 .ny-spacer { flex: 1; min-block-size: 24px; }
 .ny-btns { display: grid; gap: 8px; }
 .ny-btns .btn.primary.big { min-block-size: 58px; }
 .ny-btns .btn.line.big { min-block-size: 52px; font-size: 16px; }
 .ny-btns .btn.quiet { min-block-size: 44px; font-size: 14px; }
 .ny-more { display: flex; justify-content: center; gap: 8px; }
-.ny-btns .btn.arm { color: var(--danger); border-color: var(--danger); background: transparent; background: color-mix(in srgb, var(--danger) 12%, transparent); font-weight: 700; }
+.ny-btns .btn.arm { color: var(--danger); border-color: var(--danger); background: transparent; font-weight: 700; }
+@supports (color: color-mix(in srgb, red, blue)) { .ny-btns .btn.arm { background: color-mix(in srgb, var(--danger) 12%, transparent); } }
 .ny-end { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 6px; text-align: center; }
 .ny-end h2 { margin: 0; font-size: 28px; font-weight: 600; }
 .ny-end p { margin: 0 0 24px; font-size: 15px; color: var(--ink-2); }
@@ -1409,7 +1436,8 @@ dialog.tsheet .msg:empty { display: none; }
 .hdr-clock { flex: none; margin-inline-start: 4px; display: flex; flex-direction: column; align-items: flex-start; justify-content: center; line-height: 1; overflow: hidden; white-space: nowrap; }
 /* Date over time: "Monday 12 Oct", then a bold 13:17 with small :33 seconds
    (Mor, 2026-10-12). */
-.hdr-date { max-inline-size: 100%; overflow: hidden; text-overflow: ellipsis; font-size: 11px; font-weight: 500; color: var(--ink-2); color: color-mix(in srgb, var(--ink-2) 75%, transparent); }
+.hdr-date { max-inline-size: 100%; overflow: hidden; text-overflow: ellipsis; font-size: 11px; font-weight: 500; color: var(--ink-2); }
+@supports (color: color-mix(in srgb, red, blue)) { .hdr-date { color: color-mix(in srgb, var(--ink-2) 75%, transparent); } }
 /* "Wednesday 30 Sept" is ~36px wider than the old "WED 30 SEPT": on the
    smallest phones the date stays (Mor, 2026-10-12), and only if the chips
    truly run out of room does it trim with an ellipsis instead of colliding. */
@@ -1423,7 +1451,8 @@ dialog.tsheet .msg:empty { display: none; }
 .hdr-end .hchip > span { display: inline-flex; align-items: center; line-height: 1; }
 .avatar { inline-size: 34px; block-size: 34px; font-size: 13px; }
 .hchip { position: relative; display: inline-flex; white-space: nowrap; align-items: center; gap: 5px; block-size: 30px; padding-inline: 10px; border-radius: 999px; font: inherit; font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums; }
-.hchip.needs { border: 1px solid var(--a-job-line); background: var(--a-job-tint); color: var(--a-job-ink); color: color-mix(in srgb, var(--a-job-ink) 80%, var(--ink)); cursor: pointer; }
+.hchip.needs { border: 1px solid var(--a-job-line); background: var(--a-job-tint); color: var(--a-job-ink); cursor: pointer; }
+@supports (color: color-mix(in srgb, red, blue)) { .hchip.needs { color: color-mix(in srgb, var(--a-job-ink) 80%, var(--ink)); } }
 .hchip.needs::after { content: ""; position: absolute; inset: -7px -2px; } /* 44px to the finger */
 .hchip-dot { inline-size: 7px; block-size: 7px; border-radius: 50%; background: var(--accent); }
 /* Plan ready: the Plan chip turns blue, apart from Needs you's amber; the dot pings. */
@@ -1431,7 +1460,7 @@ dialog.tsheet .msg:empty { display: none; }
 .hchip.ready::after { content: ""; position: absolute; inset: -7px -2px; } /* 44px to the finger */
 .hchip.ready .hchip-dot { background: var(--a-admin-ink); animation: ready-ping 2.4s ease-out infinite; }
 @keyframes ready-in { from { opacity: 0; transform: translateY(-4px) scale(.96); } }
-@keyframes ready-ping { 0% { box-shadow: 0 0 0 0 rgb(0 0 0 / .44); box-shadow: 0 0 0 0 color-mix(in srgb, var(--a-admin-ink) 55%, transparent); } 70%, 100% { box-shadow: 0 0 0 7px transparent; } }
+@keyframes ready-ping { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--a-admin-ink) 55%, transparent); } 70%, 100% { box-shadow: 0 0 0 7px transparent; } }
 @media (prefers-reduced-motion: reduce) { .hchip.ready, .hchip.ready .hchip-dot { animation: none; } }
 .hchip.plan { border: 1px solid var(--line); background: var(--card); color: var(--ink); cursor: pointer; }
 .hchip.plan::after { content: ""; position: absolute; inset: -7px -2px; } /* 44px to the finger */
@@ -1489,7 +1518,7 @@ dialog.tsheet .msg:empty { display: none; }
 @keyframes plan-pop { 0% { transform: scale(1); } 35% { transform: scale(1.12); } 100% { transform: scale(1); } }
 @keyframes plan-ic-pop { 0% { transform: scale(.6) rotate(-12deg); } 60% { transform: scale(1.25) rotate(4deg); } 100% { transform: none; } }
 @keyframes plan-tick { to { stroke-dashoffset: 0; } }
-@keyframes plan-ring { 0% { box-shadow: 0 0 0 0 rgb(0 0 0 / .48); box-shadow: 0 0 0 0 color-mix(in srgb, var(--a-admin-ink) 60%, transparent); } 100% { box-shadow: 0 0 0 12px transparent; } }
+@keyframes plan-ring { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--a-admin-ink) 60%, transparent); } 100% { box-shadow: 0 0 0 12px transparent; } }
 #side .hchip.ready .hchip-dot { display: block; position: absolute; inset-block-start: -2px; inset-inline-end: -4px; outline: 2px solid var(--a-admin-tint); }
 body.focus #side { display: none; }
 /* Phone (Mor, 2026-10-12, layout "2"): the home is the card alone. The
@@ -1564,8 +1593,8 @@ body.focus #side { display: none; }
    Done the one loud button, Switch, Pending and Later quiet text beside it. */
 .now-card.main { min-block-size: 146px; display: flex; flex-direction: column; gap: 0; padding: 11px 16px 13px; border-radius: 22px;
   /* Fits #nowcard's scroll box (12px below, 6px each side) so it isn't clipped into a visible edge (2026-10-11). */
-  box-shadow: 0 6px 12px -6px rgb(0 0 0 / .18);
-  box-shadow: 0 6px 12px -6px color-mix(in srgb, var(--aink) 22%, transparent); }
+  box-shadow: 0 6px 12px -6px rgb(0 0 0 / .18); }
+@supports (color: color-mix(in srgb, red, blue)) { .now-card.main { box-shadow: 0 6px 12px -6px color-mix(in srgb, var(--aink) 22%, transparent); } }
 .now-card.main .hero-top, .now-card.main .hero-area { font-size: 13px; }
 .now-card.main .hero-side { font-size: 12px; display: inline-flex; align-items: center; gap: 6px; }
 .hero-due { color: var(--p-orange-ink); font-weight: 600; }
@@ -1577,7 +1606,8 @@ body.focus #side { display: none; }
 .now-card.main > .hero-due { position: absolute; inset-block-start: -10px; inset-inline-end: 20px; z-index: 1;
   padding: 2px 9px; border-radius: 7px; font-size: 11px; line-height: 15px; font-weight: 700; letter-spacing: .2px; white-space: nowrap;
   background: var(--p-orange-tint); border: 1px solid var(--p-orange-line); }
-.now-card.main > .hero-due.over { background: var(--surface); background: color-mix(in srgb, var(--danger) 12%, var(--surface)); border-color: var(--surface); border-color: color-mix(in srgb, var(--danger) 35%, var(--surface)); }
+.now-card.main > .hero-due.over { background: var(--surface); border-color: var(--surface); }
+@supports (color: color-mix(in srgb, red, blue)) { .now-card.main > .hero-due.over { background: color-mix(in srgb, var(--danger) 12%, var(--surface)); border-color: color-mix(in srgb, var(--danger) 35%, var(--surface)); } }
 .now-card.main > .hero-due::after { content: none; }
 /* Stuck on, not printed (Mor, 2026-10-12): tilted, with a strip of tape
    across its corner. The tape sits level with the tab, not above it, so the
@@ -1587,9 +1617,9 @@ body.focus #side { display: none; }
   inline-size: 28px; block-size: 13px; transform: rotate(-38deg); pointer-events: none; }
 .now-card.main > .hero-due::before {
   background: linear-gradient(rgb(255 255 255 / .35), transparent 60%), #e9dcb8;
-  background: linear-gradient(rgb(255 255 255 / .35), transparent 60%), color-mix(in srgb, #e9dcb8 82%, transparent);
   /* Torn ends, and the corner on the card cut off where it peeled up. */
   clip-path: polygon(0 12%, 5% 0, 95% 0, 100% 16%, 96% 36%, 100% 56%, 95% 78%, 100% 100%, 20% 100%, 0 40%, 5% 22%); }
+@supports (color: color-mix(in srgb, red, blue)) { .now-card.main > .hero-due::before { background: linear-gradient(rgb(255 255 255 / .35), transparent 60%), color-mix(in srgb, #e9dcb8 82%, transparent); } }
 /* Stuck on in a hurry (Mor, 2026-10-12): that corner folded back over the
    tape, its sticky side up — lighter, shaded along the fold. The triangle is
    the cut-off corner mirrored across the cut. */
@@ -1622,11 +1652,10 @@ body.focus #side { display: none; }
 .now-row .iconbtn {
   flex: 0 1 46px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px;
   inline-size: 46px; min-inline-size: 38px; block-size: 46px; min-block-size: 44px; padding: 0; border: 0; border-radius: 12px;
-  background: var(--surface);
-  background: color-mix(in srgb, var(--surface) 72%, var(--tint)); color: var(--aink); font-size: 11px; font-weight: 500;
+  background: var(--surface); color: var(--aink); font-size: 11px; font-weight: 500;
   box-shadow: 0 1px 0 var(--aline), 0 2px 6px -2px rgb(0 0 0 / .14);
-  box-shadow: 0 1px 0 var(--aline), 0 2px 6px -2px color-mix(in srgb, var(--aink) 18%, transparent);
 }
+@supports (color: color-mix(in srgb, red, blue)) { .now-row .iconbtn { background: color-mix(in srgb, var(--surface) 72%, var(--tint)); box-shadow: 0 1px 0 var(--aline), 0 2px 6px -2px color-mix(in srgb, var(--aink) 18%, transparent); } }
 .now-row .iconbtn svg { inline-size: 16px; block-size: 16px; stroke-width: 2; }
 /* Switch and Not now are icons only (Mor, 2026-10-15); the word stays for
    screen readers and the tooltip, and the icon grows into its room. */
@@ -1657,7 +1686,7 @@ body.focus #side { display: none; }
 .upnext-ask svg { inline-size: 14px; block-size: 14px; flex: none; }
 .upnext-more { margin: 0; }
 .now-upnext.stretched .upnext-k { animation: upnext-glow 1.2s ease-out 1; border-radius: 6px; }
-@keyframes upnext-glow { from { background: rgb(245 179 1 / .35); background: color-mix(in srgb, var(--accent) 35%, transparent); } to { background: transparent; } }
+@keyframes upnext-glow { from { background: color-mix(in srgb, var(--accent) 35%, transparent); } to { background: transparent; } }
 @media (prefers-reduced-motion: reduce) { .now-upnext.stretched .upnext-k { animation: none; } }
 .now-card.main.meeting, .now-card.main.empty, .now-card.main.night { min-block-size: 0; }
 /* Nothing active: same footprint as a task's card, not taller (Mor, 2026-10-06). */
@@ -1690,12 +1719,14 @@ body.focus #side { display: none; }
 .sc-day + .night-div { margin-block-start: 14px; }
 .sc-label.sc-next { justify-content: flex-start; margin-block: 12px 0; }
 .sc-next .sc-name { font-size: 15px; font-weight: 700; color: var(--ink); }
-.sc-name { font-size: 13px; font-weight: 600; color: var(--ink); color: color-mix(in srgb, var(--ink) 85%, var(--ink-2)); }
+.sc-name { font-size: 13px; font-weight: 600; color: var(--ink); }
+@supports (color: color-mix(in srgb, red, blue)) { .sc-name { color: color-mix(in srgb, var(--ink) 85%, var(--ink-2)); } }
 .sc-date { font-size: 12px; color: var(--ink-2); }
 .sc-row { display: flex; align-items: center; gap: 8px; margin-block-start: 5px; }
 /* Times small and narrow so the events get the room (Mor, 2026-10-11). */
 .sc-time { flex: none; inline-size: 80px; font-size: 11.5px; white-space: nowrap; color: var(--ink-2); font-variant-numeric: tabular-nums; }
-.sc-time.strong { color: var(--ink); color: color-mix(in srgb, var(--ink) 85%, var(--ink-2)); }
+.sc-time.strong { color: var(--ink); }
+@supports (color: color-mix(in srgb, red, blue)) { .sc-time.strong { color: color-mix(in srgb, var(--ink) 85%, var(--ink-2)); } }
 .sc-gap { inline-size: 100%; margin-block: 2px; padding-block: 0; padding-inline: 88px 0; border: 0; background: none; font: inherit; color: inherit; text-align: start; cursor: pointer; }
 .sc-gap.sc-break { cursor: default; }
 .sc-gap .sc-add { order: 2; font-size: 14px; }
@@ -1706,10 +1737,10 @@ body.focus #side { display: none; }
 .sc-gap .sc-free::after { content: ""; flex: 1; border-block-start: 1.5px dotted currentColor; opacity: .35; }
 .sc-ev {
   flex: 1; min-inline-size: 0; display: flex; align-items: center; min-block-size: 30px; padding: 4px 10px; border: 0; border-radius: 8px;
-  background: var(--card);
-  background: color-mix(in srgb, var(--ev, #8c8574) 16%, var(--card)); color: var(--ev, var(--ink-2)); color: color-mix(in srgb, var(--ev, var(--ink-2)) 55%, var(--ink));
+  background: var(--card); color: var(--ev, var(--ink-2));
   font: inherit; font-size: 13.5px; font-weight: 600; text-align: start; cursor: pointer; overflow-wrap: anywhere;
 }
+@supports (color: color-mix(in srgb, red, blue)) { .sc-ev { background: color-mix(in srgb, var(--ev, #8c8574) 16%, var(--card)); color: color-mix(in srgb, var(--ev, var(--ink-2)) 55%, var(--ink)); } }
 .sc-ev[class*="pc-"], .sc-ev[class*="area-"] { background: var(--tint); color: var(--aink); box-shadow: inset 3px 0 0 var(--aline); }
 .wk-ev[class*="pc-"], .wk-ev[class*="area-"] { background: var(--tint); color: var(--aink); box-shadow: inset 2px 0 0 var(--aline); }
 .sc-ev.sc-done[class*="pc-"], .wk-ev.done[class*="pc-"] { background: none; color: var(--ink-2); }
@@ -1719,8 +1750,9 @@ body.focus #side { display: none; }
 .sc-ev.sc-plan[class*="pc-"], .sc-ev.sc-plan[class*="area-"] { background: var(--tint); color: var(--aink); }
 /* The way to an event in another city and back (trips.js): Daisey's, not the
    calendar's — a hatched, quiet block that doesn't open. */
-.sc-ev.sc-trip, .wk-ev.wk-trip { background: repeating-linear-gradient(135deg, var(--card) 0 6px, var(--card) 6px 12px); background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--ink-2) 9%, var(--card)) 0 6px, var(--card) 6px 12px);
-  color: var(--ink-2); font-weight: 500; cursor: default; box-shadow: inset 0 0 0 1px rgb(0 0 0 / .14); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ink-2) 18%, transparent); }
+.sc-ev.sc-trip, .wk-ev.wk-trip { background: repeating-linear-gradient(135deg, var(--card) 0 6px, var(--card) 6px 12px);
+  color: var(--ink-2); font-weight: 500; cursor: default; box-shadow: inset 0 0 0 1px rgb(0 0 0 / .14); }
+@supports (color: color-mix(in srgb, red, blue)) { .sc-ev.sc-trip, .wk-ev.wk-trip { background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--ink-2) 9%, var(--card)) 0 6px, var(--card) 6px 12px); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ink-2) 18%, transparent); } }
 .sc-none { display: flex; align-items: center; justify-content: space-between; inline-size: 100%; margin: 4px 0 0; padding: 4px 0; border: 0; background: none; font: inherit; font-size: 14px; color: var(--ink-2); text-align: start; cursor: pointer; }
 .sc-add { font-size: 12px; font-weight: 600; color: var(--ink-2); opacity: 0; transition: opacity .15s; }
 .sc-none:hover .sc-add, .sc-none:focus-visible .sc-add, .sc-gap:hover .sc-add, .sc-gap:focus-visible .sc-add { opacity: 1; }
@@ -1755,7 +1787,8 @@ body.focus #side { display: none; }
 @keyframes sc-orbit { to { --sc-ang: 360deg; } }
 @property --sc-prog { syntax: "<percentage>"; inherits: false; initial-value: 0%; }
 @keyframes sc-prog { to { --sc-prog: 100%; } }
-.sc-row.sc-on:not(.sc-gap) .sc-ev { box-shadow: 0 0 0 1.5px rgb(0 0 0 / .48); box-shadow: 0 0 0 1.5px color-mix(in srgb, var(--ev, #8c8574) 60%, transparent); }
+.sc-row.sc-on:not(.sc-gap) .sc-ev { box-shadow: 0 0 0 1.5px rgb(0 0 0 / .48); }
+@supports (color: color-mix(in srgb, red, blue)) { .sc-row.sc-on:not(.sc-gap) .sc-ev { box-shadow: 0 0 0 1.5px color-mix(in srgb, var(--ev, #8c8574) 60%, transparent); } }
 .sc-row.sc-on:not(.sc-gap) .sc-ev:is([class*="pc-"], [class*="area-"]) { box-shadow: inset 3px 0 0 var(--aline), 0 0 0 1.5px var(--aline); }
 .sc-row.sc-on:not(.sc-gap) .sc-ev.sc-plan { border-style: solid; }
 /* Time gone fills the chip in deeper, start to end, under its text (Mor,
@@ -1776,10 +1809,10 @@ body.focus #side { display: none; }
 .sc-row.sc-on:not(.sc-gap) .sc-ev::before {
   content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit; pointer-events: none;
   background: linear-gradient(to right, transparent 35%, rgb(255 255 255 / .45) 50%, transparent 65%) 150% 0 / 200% 100% no-repeat;
-  background: linear-gradient(to right, transparent 35%, color-mix(in srgb, #fff 45%, transparent) 50%, transparent 65%) 150% 0 / 200% 100% no-repeat;
   -webkit-mask: linear-gradient(to right, #000 var(--sc-prog), transparent var(--sc-prog));
   mask: linear-gradient(to right, #000 var(--sc-prog), transparent var(--sc-prog));
   animation: sc-prog var(--dur, 1s) linear var(--el, 0s) both, sc-shine 4s ease-in-out infinite; }
+@supports (color: color-mix(in srgb, red, blue)) { .sc-row.sc-on:not(.sc-gap) .sc-ev::before { background: linear-gradient(to right, transparent 35%, color-mix(in srgb, #fff 45%, transparent) 50%, transparent 65%) 150% 0 / 200% 100% no-repeat; } }
 .sc-row.sc-on:not(.sc-gap) .sc-ev:dir(rtl)::before {
   -webkit-mask: linear-gradient(to left, #000 var(--sc-prog), transparent var(--sc-prog));
   mask: linear-gradient(to left, #000 var(--sc-prog), transparent var(--sc-prog));
@@ -1791,8 +1824,10 @@ body.focus #side { display: none; }
    own colour, a step below Now's (Mor, 2026-10-18). */
 .sc-time .sc-nexttag { display: block; inline-size: fit-content; margin-block-start: 3px; padding: 0 6px; border-radius: 999px; border: 1.5px solid var(--accent); color: var(--ink); font-size: 11px; font-weight: 700; }
 .sc-row.sc-next .sc-time { color: var(--ink); }
-.sc-row.sc-next .sc-ev { box-shadow: 0 0 0 2px rgb(0 0 0 / .50); box-shadow: 0 0 0 2px color-mix(in srgb, var(--ev, #8c8574) 70%, transparent); }
-.sc-row.sc-next .sc-ev:is([class*="pc-"], [class*="area-"]) { box-shadow: 0 0 0 2px rgb(0 0 0 / .50); box-shadow: 0 0 0 2px color-mix(in srgb, var(--aline) 80%, transparent); }
+.sc-row.sc-next .sc-ev { box-shadow: 0 0 0 2px rgb(0 0 0 / .50); }
+@supports (color: color-mix(in srgb, red, blue)) { .sc-row.sc-next .sc-ev { box-shadow: 0 0 0 2px color-mix(in srgb, var(--ev, #8c8574) 70%, transparent); } }
+.sc-row.sc-next .sc-ev:is([class*="pc-"], [class*="area-"]) { box-shadow: 0 0 0 2px rgb(0 0 0 / .50); }
+@supports (color: color-mix(in srgb, red, blue)) { .sc-row.sc-next .sc-ev:is([class*="pc-"], [class*="area-"]) { box-shadow: 0 0 0 2px color-mix(in srgb, var(--aline) 80%, transparent); } }
 /* Day / Week header (2026-10-07): ‹ title › and a Day|Week switch, sticky at
    the top while the day or week scrolls under it. In Week the weekday
    headings ride in it too. */
@@ -1816,7 +1851,7 @@ body.focus #side { display: none; }
 /* "● Now" (Mor, 2026-10-12): a live dot in the card's yellow, slowly pulsing. */
 .sc-pulse { inline-size: 7px; block-size: 7px; border-radius: 50%; background: var(--accent); flex: none; }
 @media (prefers-reduced-motion: no-preference) { .sc-pulse { animation: sc-pulse 2s ease-in-out infinite; } }
-@keyframes sc-pulse { 0% { box-shadow: 0 0 0 0 rgb(245 179 1 / .60); box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 60%, transparent); } 70%, 100% { box-shadow: 0 0 0 5px transparent; } }
+@keyframes sc-pulse { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 60%, transparent); } 70%, 100% { box-shadow: 0 0 0 5px transparent; } }
 /* Back to now: the card's edge flashes once (main.js flashNow). */
 @media (prefers-reduced-motion: no-preference) { .now-card.main.now-flash { animation: now-flash 1.1s ease-out; } }
 @keyframes now-flash { 0%, 100% { outline: 2px solid transparent; outline-offset: 2px; } 25% { outline: 2px solid var(--accent); outline-offset: 3px; } }
@@ -1824,7 +1859,7 @@ body.focus #side { display: none; }
 .sc-row.sc-land .sc-ev { animation: sc-land .9s cubic-bezier(.2, .9, .3, 1.25) var(--land, 0ms) both; outline: 3px solid transparent; outline-offset: 2px; }
 @keyframes sc-land {
   0% { opacity: 0; transform: translateY(-16px) scale(.94); }
-  45% { opacity: 1; transform: translateY(2px) scale(1.03); outline-color: var(--ev, var(--accent)); outline-color: color-mix(in srgb, var(--ev, var(--accent)) 55%, transparent); }
+  45% { opacity: 1; transform: translateY(2px) scale(1.03); outline-color: color-mix(in srgb, var(--ev, var(--accent)) 55%, transparent); }
   100% { transform: none; outline-color: transparent; }
 }
 /* A removed one slides off and the gap closes (calendar.js LEAVE_MS). */
@@ -1851,30 +1886,34 @@ body.focus #side { display: none; }
 .wk-hd { display: flex; flex-direction: column; align-items: center; gap: 1px; min-inline-size: 0; padding: 2px 0; border: 0; border-radius: 10px; background: none; font: inherit; color: var(--ink-2); cursor: pointer; }
 .wk-hd:hover { background: var(--chip); }
 .wk-wd { font-size: 11px; }
-.wk-n { display: inline-flex; align-items: center; justify-content: center; inline-size: 26px; block-size: 26px; border-radius: 50%; font-size: 14px; font-weight: 600; color: var(--ink); color: color-mix(in srgb, var(--ink) 85%, var(--ink-2)); font-variant-numeric: tabular-nums; }
+.wk-n { display: inline-flex; align-items: center; justify-content: center; inline-size: 26px; block-size: 26px; border-radius: 50%; font-size: 14px; font-weight: 600; color: var(--ink); font-variant-numeric: tabular-nums; }
+@supports (color: color-mix(in srgb, red, blue)) { .wk-n { color: color-mix(in srgb, var(--ink) 85%, var(--ink-2)); } }
 .wk-hd.past .wk-n { color: var(--ink-2); font-weight: 500; }
 .wk-hd.sat, .wk-hd.sat .wk-n { color: var(--nowline); }
 .wk-hd.today .wk-n { background: var(--ink); color: var(--card); }
 .wk-allday { margin-block-start: 4px; align-items: start; }
 .wk-adl { font-size: 9px; line-height: 1.1; color: var(--ink-2); }
 .wk-adc { display: flex; flex-direction: column; gap: 2px; min-inline-size: 0; padding-inline: 1px; }
-.wk-ad { min-inline-size: 0; padding: 1px 4px; border: 0; border-radius: 5px; background: var(--card); background: color-mix(in srgb, var(--ev, #8c8574) 22%, var(--card)); color: var(--ev, var(--ink-2)); color: color-mix(in srgb, var(--ev, var(--ink-2)) 55%, var(--ink)); font: inherit; font-size: 10px; font-weight: 600; text-align: start; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; }
+.wk-ad { min-inline-size: 0; padding: 1px 4px; border: 0; border-radius: 5px; background: var(--card); color: var(--ev, var(--ink-2)); font: inherit; font-size: 10px; font-weight: 600; text-align: start; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; }
+@supports (color: color-mix(in srgb, red, blue)) { .wk-ad { background: color-mix(in srgb, var(--ev, #8c8574) 22%, var(--card)); color: color-mix(in srgb, var(--ev, var(--ink-2)) 55%, var(--ink)); } }
 .wk-grid { position: relative; }
 .wk-hours { position: relative; }
 .wk-hours span { position: absolute; inset-inline-end: 4px; transform: translateY(-50%); font-size: 10px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
 .wk-col { position: relative; min-inline-size: 0; border-inline-start: 1px solid var(--line); cursor: pointer;
   background: repeating-linear-gradient(to bottom, var(--line) 0 1px, transparent 1px var(--hour)); }
-.wk-col.past { background-color: transparent; background-color: color-mix(in srgb, var(--chip) 45%, transparent); }
-.wk-col.today { background-color: rgb(245 179 1 / .07); background-color: color-mix(in srgb, var(--accent) 7%, transparent); }
+.wk-col.past { background-color: transparent; }
+@supports (color: color-mix(in srgb, red, blue)) { .wk-col.past { background-color: color-mix(in srgb, var(--chip) 45%, transparent); } }
+.wk-col.today { background-color: rgb(245 179 1 / .07); }
+@supports (color: color-mix(in srgb, red, blue)) { .wk-col.today { background-color: color-mix(in srgb, var(--accent) 7%, transparent); } }
 .wk-ev { position: absolute; display: flex; flex-direction: column; align-items: stretch; gap: 1px; min-inline-size: 0; margin-inline-start: 1px; padding: 2px 3px; border: 0; border-radius: 6px; overflow: hidden;
-  background: var(--card);
-  background: color-mix(in srgb, var(--ev, #8c8574) 22%, var(--card)); border-inline-start: 2.5px solid var(--ev, #8c8574);
-  color: var(--ev, var(--ink-2));
-  color: color-mix(in srgb, var(--ev, var(--ink-2)) 55%, var(--ink)); font: inherit; text-align: start; cursor: pointer; }
+  background: var(--card); border-inline-start: 2.5px solid var(--ev, #8c8574);
+  color: var(--ev, var(--ink-2)); font: inherit; text-align: start; cursor: pointer; }
+@supports (color: color-mix(in srgb, red, blue)) { .wk-ev { background: color-mix(in srgb, var(--ev, #8c8574) 22%, var(--card)); color: color-mix(in srgb, var(--ev, var(--ink-2)) 55%, var(--ink)); } }
 .wk-evt { font-size: 10.5px; font-weight: 600; line-height: 1.2; overflow: hidden; } /* a word too long for the column is clipped, not split */
 .wk-evtime { font-size: 9.5px; opacity: .8; font-variant-numeric: tabular-nums; }
 .wk-ev.past { opacity: .5; }
-.wk-ev.on { box-shadow: 0 0 0 1.5px var(--ev, var(--ink-2)); box-shadow: 0 0 0 1.5px color-mix(in srgb, var(--ev, var(--ink-2)) 70%, var(--card)); }
+.wk-ev.on { box-shadow: 0 0 0 1.5px var(--ev, var(--ink-2)); }
+@supports (color: color-mix(in srgb, red, blue)) { .wk-ev.on { box-shadow: 0 0 0 1.5px color-mix(in srgb, var(--ev, var(--ink-2)) 70%, var(--card)); } }
 .wk-ev.done { background: none; border: 1px solid var(--line); color: var(--ink-2); text-decoration: line-through; }
 .wk-now { position: absolute; inset-inline: -1px 0; z-index: 1; block-size: 2px; background: var(--nowline); pointer-events: none; }
 .wk-now::before { content: ""; position: absolute; inset-inline-start: -4px; inset-block-start: -3px; inline-size: 8px; block-size: 8px; border-radius: 50%; background: var(--nowline); }
@@ -2025,7 +2064,8 @@ body.focus .shell { block-size: auto; min-block-size: 100dvh; overflow: visible;
    each row time | task | ↑ ↓ ✕, then Approve / Rethink / Not today. */
 .now-card.main.proposal { min-block-size: 0; }
 .pp-list { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 6px; }
-.pp-row { display: grid; grid-template-columns: 44px minmax(0, 1fr) auto; align-items: center; gap: 8px; padding: 6px 6px 6px 10px; border-radius: 12px; background: var(--card); background: color-mix(in srgb, var(--card) 70%, var(--tint)); border: 1px solid var(--aline); }
+.pp-row { display: grid; grid-template-columns: 44px minmax(0, 1fr) auto; align-items: center; gap: 8px; padding: 6px 6px 6px 10px; border-radius: 12px; background: var(--card); border: 1px solid var(--aline); }
+@supports (color: color-mix(in srgb, red, blue)) { .pp-row { background: color-mix(in srgb, var(--card) 70%, var(--tint)); } }
 .pp-row.over { border-style: dashed; }
 /* A calendar event in the plan (2026-10-10): the Schedule's own block, no row box; taps open it, never drags. */
 .pp-row.pp-event { background: none; border-color: transparent; padding-block: 0; padding-inline-end: 0; }
@@ -2085,7 +2125,8 @@ body.focus .shell { block-size: auto; min-block-size: 100dvh; overflow: visible;
 .proposal .hero-top .hero-side { margin-inline-start: auto; }
 .proposal .hero-top .pp-close { flex: none; inline-size: 30px; block-size: 30px; margin-block: 2px; border: 1px solid var(--line); background: var(--card); }
 /* Running late: Rethink lights up in place of a "Running late" line (2026-10-12). */
-.now-card.main .pp-actions .btn.line.late { border: 2px solid var(--accent); font-weight: 600; background: var(--card); background: color-mix(in srgb, var(--accent) 14%, var(--card)); }
+.now-card.main .pp-actions .btn.line.late { border: 2px solid var(--accent); font-weight: 600; background: var(--card); }
+@supports (color: color-mix(in srgb, red, blue)) { .now-card.main .pp-actions .btn.line.late { background: color-mix(in srgb, var(--accent) 14%, var(--card)); } }
 /* "No plan" (was "Not today", 2026-10-10): a soft brick tint, so declining reads as a choice, not an alarm. */
 .now-card.main .pp-actions .btn.no-plan { background: var(--p-brick-tint); border: 1px solid var(--p-brick-line); color: var(--p-brick-ink); font-weight: 600; }
 @media (max-width: 359px) { .pp-ctl { inline-size: 28px; } }
@@ -2103,7 +2144,8 @@ body.focus .shell { block-size: auto; min-block-size: 100dvh; overflow: visible;
 /* After Done: every option, not just Start / Not now. */
 
 /* Running, waiting for a reply: on hold, the clock still going. */
-.now-card.running.on-hold { background: repeating-linear-gradient(-45deg, var(--tint) 0 12px, var(--tint) 12px 24px); background: repeating-linear-gradient(-45deg, var(--tint) 0 12px, color-mix(in srgb, var(--tint) 70%, var(--card)) 12px 24px); }
+.now-card.running.on-hold { background: repeating-linear-gradient(-45deg, var(--tint) 0 12px, var(--tint) 12px 24px); }
+@supports (color: color-mix(in srgb, red, blue)) { .now-card.running.on-hold { background: repeating-linear-gradient(-45deg, var(--tint) 0 12px, color-mix(in srgb, var(--tint) 70%, var(--card)) 12px 24px); } }
 .now-card.running.on-hold .inl-time { opacity: .75; }
 .hold-line { display: flex; align-items: center; gap: 6px; margin: 4px 0 0; font-size: 13px; font-weight: 500; color: var(--ink); }
 .hold-line svg { inline-size: 15px; block-size: 15px; flex: none; stroke-width: 2; }
@@ -2130,8 +2172,10 @@ dialog.tsheet[open] > .ts-laptop + .ts-repeat { margin-block-start: -12px; }
 .reset-panel .btn.danger { background: var(--nowline); color: #fff; border-color: transparent; font-weight: 600; }
 .reset-panel .btn.danger:disabled { opacity: .6; }
 /* Remove event / Delete project in dialogs: red text on soft red, not solid. */
-.btn.quiet.danger { background: transparent; background: color-mix(in srgb, var(--danger) 10%, transparent); color: var(--danger); font-weight: 600; }
-.btn.quiet.danger:hover:not(:disabled) { background: transparent; background: color-mix(in srgb, var(--danger) 18%, transparent); color: var(--danger); }
+.btn.quiet.danger { background: transparent; color: var(--danger); font-weight: 600; }
+@supports (color: color-mix(in srgb, red, blue)) { .btn.quiet.danger { background: color-mix(in srgb, var(--danger) 10%, transparent); } }
+.btn.quiet.danger:hover:not(:disabled) { background: transparent; color: var(--danger); }
+@supports (color: color-mix(in srgb, red, blue)) { .btn.quiet.danger:hover:not(:disabled) { background: color-mix(in srgb, var(--danger) 18%, transparent); } }
 
 /* Choose calendars (2026-10-07), Settings → Integrations. */
 .pick-list { display: grid; gap: 2px; }
@@ -2231,24 +2275,24 @@ dialog.tsheet[open] > .ts-laptop + .ts-repeat { margin-block-start: -12px; }
 /* Calmer (Mor, 2026-10-12: "something feels off"): the colour lives in the
    edge and the done part of the bar only. Warm fill, neutral shadow, plain
    ink name; the empty track is grey so 0% no longer reads as full. */
-.pcard { background: var(--surface); background: color-mix(in srgb, var(--surface) 55%, var(--card)); border-color: var(--aline); box-shadow: 0 1px 2px rgb(0 0 0 / .04), 0 4px 14px rgb(0 0 0 / .05); }
+.pcard { background: var(--surface); border-color: var(--aline); box-shadow: 0 1px 2px rgb(0 0 0 / .04), 0 4px 14px rgb(0 0 0 / .05); }
+@supports (color: color-mix(in srgb, red, blue)) { .pcard { background: color-mix(in srgb, var(--surface) 55%, var(--card)); } }
 .pcard[class*="pc-"] .pcard-name { color: var(--ink); }
 /* Every card is filled with its colour (Mor, 2026-10-12); Focus tints deeper
    and glows, so what matters now still stands out. */
 .pcard { background: var(--tint); }
-.tier-focus .pcard { background: var(--aline); background: color-mix(in srgb, var(--aline) 75%, var(--tint)); border-color: var(--aline);
-  box-shadow: 0 0 0 1.5px var(--aline), 0 4px 24px rgb(0 0 0 / .50);
-  box-shadow: 0 0 0 1.5px var(--aline), 0 4px 24px color-mix(in srgb, var(--aline) 75%, transparent); }
+.tier-focus .pcard { background: var(--aline); border-color: var(--aline);
+  box-shadow: 0 0 0 1.5px var(--aline), 0 4px 24px rgb(0 0 0 / .50); }
+@supports (color: color-mix(in srgb, red, blue)) { .tier-focus .pcard { background: color-mix(in srgb, var(--aline) 75%, var(--tint)); box-shadow: 0 0 0 1.5px var(--aline), 0 4px 24px color-mix(in srgb, var(--aline) 75%, transparent); } }
 /* Cooler Focus cards (Mor, 2026-10-12): a lit diagonal fill, a light edge
    on top, a slow breathing glow and a sheen that sweeps across now and then.
    The sheen is a pseudo over the card (no overflow clip: the flower pokes
    out of the padding). */
 .tier-focus .pcard { position: relative; isolation: isolate;
   background: linear-gradient(135deg, var(--aline) 0%, var(--aline) 100%);
-  background: linear-gradient(135deg, color-mix(in srgb, var(--aline) 55%, var(--tint)) 0%, color-mix(in srgb, var(--aline) 90%, var(--tint)) 100%);
   box-shadow: inset 0 1px 0 rgb(255 255 255 / .45), 0 0 0 1.5px var(--aline), 0 6px 22px -4px rgb(0 0 0 / .50);
-  box-shadow: inset 0 1px 0 rgb(255 255 255 / .45), 0 0 0 1.5px var(--aline), 0 6px 22px -4px color-mix(in srgb, var(--aline) 85%, transparent);
   transition: translate .2s ease, box-shadow .2s ease; }
+@supports (color: color-mix(in srgb, red, blue)) { .tier-focus .pcard { background: linear-gradient(135deg, color-mix(in srgb, var(--aline) 55%, var(--tint)) 0%, color-mix(in srgb, var(--aline) 90%, var(--tint)) 100%); box-shadow: inset 0 1px 0 rgb(255 255 255 / .45), 0 0 0 1.5px var(--aline), 0 6px 22px -4px color-mix(in srgb, var(--aline) 85%, transparent); } }
 .tier-focus .pcard::after { content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit; pointer-events: none;
   background: linear-gradient(105deg, transparent 35%, rgb(255 255 255 / .38) 50%, transparent 65%) no-repeat; background-size: 250% 100%; background-position: 150% 0; }
 @media (hover: hover) { .tier-focus .pcard:not(.pp-dragging):hover { translate: 0 -2px; box-shadow: inset 0 1px 0 rgb(255 255 255 / .5), 0 0 0 1.5px var(--aline), 0 10px 28px -4px var(--aline); } }
@@ -2276,15 +2320,19 @@ dialog.tsheet[open] > .ts-laptop + .ts-repeat { margin-block-start: -12px; }
 .pcard-barrow { display: flex; align-items: center; gap: 8px; margin-block-start: 6px; }
 /* Same thin line (Mor, 2026-10-10: "bolder colors", not thicker): the done
    part in the project's ink, the rest a neutral track. */
-.pcard .pcard-barrow .pbar { flex: 1; block-size: 4px; margin: 0; border-radius: 2px; background: rgb(0 0 0 / .07); background: color-mix(in srgb, var(--ink) 9%, transparent); }
+.pcard .pcard-barrow .pbar { flex: 1; block-size: 4px; margin: 0; border-radius: 2px; background: rgb(0 0 0 / .07); }
+@supports (color: color-mix(in srgb, red, blue)) { .pcard .pcard-barrow .pbar { background: color-mix(in srgb, var(--ink) 9%, transparent); } }
 .bl-svg { display: block; flex: none; inline-size: 36px; block-size: auto; overflow: visible; transform-origin: 50% 100%; }
 .tier-focus .bl-svg { inline-size: 40px; }
 .tier-background .bl-svg { inline-size: 32px; }
 .bl-stem { stroke: #6fa56f; stroke-width: 2.6; fill: none; stroke-linecap: round; }
 .bl-leaf { fill: #8fc08f; }
-.bl-soil { fill: transparent; fill: color-mix(in srgb, #b89a6a 35%, transparent); }
-.bl-petal { fill: var(--tint); fill: color-mix(in srgb, var(--aink) 28%, var(--tint)); stroke: var(--aink); stroke-width: 1.1; }
-.bl-petal.empty { fill: var(--tint); fill: color-mix(in srgb, var(--tint) 60%, transparent); stroke: var(--aline); stroke-width: .8; opacity: .55; }
+.bl-soil { fill: transparent; }
+@supports (color: color-mix(in srgb, red, blue)) { .bl-soil { fill: color-mix(in srgb, #b89a6a 35%, transparent); } }
+.bl-petal { fill: var(--tint); stroke: var(--aink); stroke-width: 1.1; }
+@supports (color: color-mix(in srgb, red, blue)) { .bl-petal { fill: color-mix(in srgb, var(--aink) 28%, var(--tint)); } }
+.bl-petal.empty { fill: var(--tint); stroke: var(--aline); stroke-width: .8; opacity: .55; }
+@supports (color: color-mix(in srgb, red, blue)) { .bl-petal.empty { fill: color-mix(in srgb, var(--tint) 60%, transparent); } }
 .bl-heart { fill: var(--accent); }
 .bl-bud { fill: var(--tint); stroke: var(--aink); stroke-width: 1.1; }
 .bl-bud:not(.warm) { fill: var(--bud, #cfc4a8); stroke: none; }
@@ -2329,7 +2377,8 @@ dialog.tsheet[open] > .ts-laptop + .ts-repeat { margin-block-start: -12px; }
 #projectsChip { --on: var(--a-work-ink); }
 #weekChip { --on: var(--a-home-ink); }
 #side .hchip { transition: background-color .22s ease, border-color .22s ease, color .22s ease, box-shadow .22s ease, transform .15s ease; }
-#side .hchip[aria-pressed="true"] { background: var(--on); border-color: var(--on); color: var(--on-ink, var(--card)); box-shadow: 0 4px 12px rgb(0 0 0 / .24); box-shadow: 0 4px 12px color-mix(in srgb, var(--on) 30%, transparent); }
+#side .hchip[aria-pressed="true"] { background: var(--on); border-color: var(--on); color: var(--on-ink, var(--card)); box-shadow: 0 4px 12px rgb(0 0 0 / .24); }
+@supports (color: color-mix(in srgb, red, blue)) { #side .hchip[aria-pressed="true"] { box-shadow: 0 4px 12px color-mix(in srgb, var(--on) 30%, transparent); } }
 #side .hchip:active { transform: scale(.95); }
 
 /* Panel pages open and close (main.js swapAnim): the leaving one's inert copy
@@ -2366,7 +2415,8 @@ dialog.tsheet[open] > .ts-laptop + .ts-repeat { margin-block-start: -12px; }
    mostly never showed, and it stopped the bob, which jumped back after); turning it off, the side, panel and dock rise back in
    (main.js onFocusMode sets fm-in / fm-out for the moment). */
 .hdr-end .hchip.focus-chip { transition: background-color .22s ease, border-color .22s ease, color .22s ease; }
-.hdr-end .hchip.focus-chip[aria-pressed="true"] { background: var(--p-teal-ink); border-color: var(--p-teal-ink); color: var(--card); box-shadow: 0 4px 12px rgb(0 0 0 / .24); box-shadow: 0 4px 12px color-mix(in srgb, var(--p-teal-ink) 30%, transparent); }
+.hdr-end .hchip.focus-chip[aria-pressed="true"] { background: var(--p-teal-ink); border-color: var(--p-teal-ink); color: var(--card); box-shadow: 0 4px 12px rgb(0 0 0 / .24); }
+@supports (color: color-mix(in srgb, red, blue)) { .hdr-end .hchip.focus-chip[aria-pressed="true"] { box-shadow: 0 4px 12px color-mix(in srgb, var(--p-teal-ink) 30%, transparent); } }
 @media (prefers-reduced-motion: no-preference) {
   body.fm-in .focus-chip svg { animation: fm-pinch .5s cubic-bezier(.3, 1.5, .5, 1); }
   body.fm-out .focus-chip svg { animation: fm-spread .45s cubic-bezier(.3, 1.5, .5, 1); }
@@ -2524,21 +2574,23 @@ body.fm-slide .deck > .now-card.main { animation: none !important; } /* main.js:
   .topbar {
     grid-area: rail; flex-direction: column; align-items: stretch; gap: 4px; block-size: auto; min-block-size: 0; margin: 0;
     padding: 24px 16px max(20px, env(safe-area-inset-bottom)); overflow-y: auto;
-    background: var(--bg);
-    background: color-mix(in srgb, var(--chip) 45%, var(--bg)); border-inline-end: 1px solid var(--line);
+    background: var(--bg); border-inline-end: 1px solid var(--line);
   }
+@supports (color: color-mix(in srgb, red, blue)) { .topbar { background: color-mix(in srgb, var(--chip) 45%, var(--bg)); } }
   .topbar > .brandrow { flex: none; gap: 12px; padding: 0 8px 18px; }
   .topbar .logo { inline-size: 34px; block-size: 34px; }
   .hdr-time { font-size: 22px; }
   .topbar > #side { flex: none; align-self: stretch; inline-size: auto; padding: 0; gap: 4px; }
   #side .hchip {
     flex: none; flex-direction: row; justify-content: flex-start; gap: 12px; block-size: 44px; min-block-size: 44px; padding: 0 12px;
-    border: 0; border-radius: 12px; background: transparent; color: var(--ink); color: color-mix(in srgb, var(--ink) 80%, var(--ink-2));
+    border: 0; border-radius: 12px; background: transparent; color: var(--ink);
     font-size: 15px; font-weight: 500; line-height: 1.2; text-align: start; white-space: nowrap;
   }
+@supports (color: color-mix(in srgb, red, blue)) { #side .hchip { color: color-mix(in srgb, var(--ink) 80%, var(--ink-2)); } }
   #side .hchip svg { inline-size: 18px; block-size: 18px; }
   #side .hchip::after { inset: 0; }
-  #side .hchip:hover { background: var(--surface); background: color-mix(in srgb, var(--surface) 60%, transparent); }
+  #side .hchip:hover { background: var(--surface); }
+@supports (color: color-mix(in srgb, red, blue)) { #side .hchip:hover { background: color-mix(in srgb, var(--surface) 60%, transparent); } }
   #side .hchip[aria-pressed="true"] { background: var(--surface); border-color: transparent; color: var(--ink); font-weight: 600; box-shadow: 0 1px 3px rgb(0 0 0 / .06); }
   #side .hchip.ready { background: var(--a-admin-tint); color: var(--a-admin-ink); font-weight: 600; }
   #side .hchip.ready[aria-pressed="true"] { background: var(--surface); color: var(--ink); } /* open: it reads as where you are */
@@ -2548,7 +2600,8 @@ body.fm-slide .deck > .now-card.main { animation: none !important; } /* main.js:
   .hdr-end #needsChip { gap: 6px; }
   .hdr-end #needsChip .hchip-dot { margin-inline-end: 4px; }
   .hdr-end #needsChip .hchip-word { display: inline; }
-  .hdr-end .focus-chip:not([aria-pressed="true"]) { border-color: transparent; background: transparent; color: var(--ink); color: color-mix(in srgb, var(--ink) 80%, var(--ink-2)); }
+  .hdr-end .focus-chip:not([aria-pressed="true"]) { border-color: transparent; background: transparent; color: var(--ink); }
+@supports (color: color-mix(in srgb, red, blue)) { .hdr-end .focus-chip:not([aria-pressed="true"]) { color: color-mix(in srgb, var(--ink) 80%, var(--ink-2)); } }
   .hdr-end .focus-chip { font-size: 15px; font-weight: 500; }
   .hdr-end .acct { align-self: stretch; gap: 10px; padding-inline-start: 4px; }
   .acct-name:not(:empty) { display: block; min-inline-size: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 15px; font-weight: 500; cursor: pointer; }
@@ -2623,9 +2676,12 @@ body.fm-slide .deck > .now-card.main { animation: none !important; } /* main.js:
   dialog.settings[open] { display: grid; grid-template-columns: 220px minmax(0, 1fr); column-gap: 28px; align-content: start; }
   dialog.settings > :not(.set-nav) { grid-column: 2; }
   dialog.settings > .now-head { position: sticky; inset-block-start: 0; z-index: 1; margin: 0; padding-block: 22px 8px; background: var(--card); }
-  .set-nav { grid-column: 1; grid-row: 1 / span 9; align-self: start; position: sticky; inset-block-start: 0; display: flex; flex-direction: column; gap: 4px; min-block-size: min(680px, calc(100dvh - 64px)); box-sizing: border-box; padding: 22px 14px; background: var(--bg); background: color-mix(in srgb, var(--chip) 45%, var(--bg)); border-inline-end: 1px solid var(--line); }
-  .set-nav button { min-block-size: 42px; padding-inline: 12px; border: 0; border-radius: 12px; background: transparent; color: var(--ink); color: color-mix(in srgb, var(--ink) 80%, var(--ink-2)); font: inherit; font-size: 15px; text-align: start; cursor: pointer; }
-  .set-nav button:hover { background: var(--surface); background: color-mix(in srgb, var(--surface) 60%, transparent); }
+  .set-nav { grid-column: 1; grid-row: 1 / span 9; align-self: start; position: sticky; inset-block-start: 0; display: flex; flex-direction: column; gap: 4px; min-block-size: min(680px, calc(100dvh - 64px)); box-sizing: border-box; padding: 22px 14px; background: var(--bg); border-inline-end: 1px solid var(--line); }
+@supports (color: color-mix(in srgb, red, blue)) { .set-nav { background: color-mix(in srgb, var(--chip) 45%, var(--bg)); } }
+  .set-nav button { min-block-size: 42px; padding-inline: 12px; border: 0; border-radius: 12px; background: transparent; color: var(--ink); font: inherit; font-size: 15px; text-align: start; cursor: pointer; }
+@supports (color: color-mix(in srgb, red, blue)) { .set-nav button { color: color-mix(in srgb, var(--ink) 80%, var(--ink-2)); } }
+  .set-nav button:hover { background: var(--surface); }
+@supports (color: color-mix(in srgb, red, blue)) { .set-nav button:hover { background: color-mix(in srgb, var(--surface) 60%, transparent); } }
   .set-nav button[aria-current="true"] { background: var(--surface); color: var(--ink); font-weight: 600; box-shadow: 0 1px 3px rgb(0 0 0 / .06); }
   dialog.settings .set-nav + .menu-sec { border-block-start: 0; padding-block-start: 4px; }
 }
@@ -2645,20 +2701,29 @@ body.fm-slide .deck > .now-card.main { animation: none !important; } /* main.js:
   .rb-counts { display: inline-flex; align-items: center; gap: 12px; min-block-size: 14px; }
   .rb-done, .rb-left { display: inline-flex; align-items: center; gap: 4px; }
   button.rb-done, button.rb-left { margin: 0; padding: 4px 6px; margin-inline: -6px; border: 0; border-radius: 8px; background: none; font: inherit; color: inherit; cursor: pointer; }
-  button.rb-done.on, button.rb-left.on { background: rgb(0 0 0 / .08); background: color-mix(in srgb, var(--ink-2) 10%, transparent); }
+  button.rb-done.on, button.rb-left.on { background: rgb(0 0 0 / .08); }
+@supports (color: color-mix(in srgb, red, blue)) { button.rb-done.on, button.rb-left.on { background: color-mix(in srgb, var(--ink-2) 10%, transparent); } }
   .rb-done svg { inline-size: 13px; block-size: 13px; stroke: var(--a-home-ink); stroke-width: 3; }
-  .rb-ring { inline-size: 8px; block-size: 8px; box-sizing: border-box; border-radius: 50%; border: 1.5px solid var(--ink-2); border: 1.5px solid color-mix(in srgb, var(--ink-2) 70%, var(--bg)); }
+  .rb-ring { inline-size: 8px; block-size: 8px; box-sizing: border-box; border-radius: 50%; border: 1.5px solid var(--ink-2); }
+@supports (color: color-mix(in srgb, red, blue)) { .rb-ring { border: 1.5px solid color-mix(in srgb, var(--ink-2) 70%, var(--bg)); } }
   .rb-line { position: relative; block-size: 22px; margin-block-start: 8px; }
   .rb-track, .rb-past { position: absolute; inset-block-start: 10px; block-size: 3px; border-radius: 2px; }
-  .rb-track { inset-inline: -6px; background: linear-gradient(90deg, transparent, var(--line) 12% 88%, transparent); background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--line) 85%, var(--ink-2)) 12% 88%, transparent); box-shadow: 0 1px 0 rgb(255 255 255 / .80); box-shadow: 0 1px 0 color-mix(in srgb, #fff 80%, transparent); }
-  .rb-past { inset-inline-start: 0; background: linear-gradient(90deg, transparent, var(--ink-2) 14%); background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--accent) 22%, var(--ink-2)) 14%); opacity: .55; }
-  .rb-ev { position: absolute; inset-block-start: 6px; block-size: 10px; box-sizing: border-box; border-radius: 5px; border: 1.5px solid var(--line); border: 1.5px solid color-mix(in srgb, var(--ink-2) 30%, var(--line)); background: var(--chip); }
+  .rb-track { inset-inline: -6px; background: linear-gradient(90deg, transparent, var(--line) 12% 88%, transparent); box-shadow: 0 1px 0 rgb(255 255 255 / .80); }
+@supports (color: color-mix(in srgb, red, blue)) { .rb-track { background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--line) 85%, var(--ink-2)) 12% 88%, transparent); box-shadow: 0 1px 0 color-mix(in srgb, #fff 80%, transparent); } }
+  .rb-past { inset-inline-start: 0; background: linear-gradient(90deg, transparent, var(--ink-2) 14%); opacity: .55; }
+@supports (color: color-mix(in srgb, red, blue)) { .rb-past { background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--accent) 22%, var(--ink-2)) 14%); } }
+  .rb-ev { position: absolute; inset-block-start: 6px; block-size: 10px; box-sizing: border-box; border-radius: 5px; border: 1.5px solid var(--line); background: var(--chip); }
+@supports (color: color-mix(in srgb, red, blue)) { .rb-ev { border: 1.5px solid color-mix(in srgb, var(--ink-2) 30%, var(--line)); } }
   .rb-bead, .rb-hole { position: absolute; inset-block-start: 6px; inline-size: 10px; block-size: 10px; margin-inline-start: -5px; padding: 0; box-sizing: border-box; border-radius: 50%; cursor: pointer; transition: transform .15s ease, box-shadow .15s ease; }
   .rb-bead::after, .rb-hole::after { content: ""; position: absolute; inset: -12px -6px; } /* a finger's worth */
-  .rb-bead { border: 1.5px solid var(--bg); background: var(--aink, var(--ink-2)); box-shadow: 0 0 0 1px rgb(0 0 0 / .20), 0 2px 4px -1px rgb(0 0 0 / .36); box-shadow: 0 0 0 1px color-mix(in srgb, var(--aink, var(--ink-2)) 25%, transparent), 0 2px 4px -1px color-mix(in srgb, var(--aink, var(--ink-2)) 45%, transparent); }
-  .rb-hole { inset-block-start: 7px; inline-size: 8px; block-size: 8px; margin-inline-start: -4px; border: 1.5px solid var(--ink-2); border: 1.5px solid color-mix(in srgb, var(--ink-2) 55%, var(--bg)); background: var(--bg); }
-  .rb-bead.on, .rb-hole.on { transform: scale(1.35); box-shadow: 0 0 0 4px rgb(0 0 0 / .14); box-shadow: 0 0 0 4px color-mix(in srgb, var(--aink, var(--ink-2)) 18%, transparent); z-index: 2; }
-  .rb-now { position: absolute; inset-block-start: 3px; inline-size: 16px; block-size: 16px; margin-inline-start: -8px; box-sizing: border-box; border-radius: 50%; border: 2px solid var(--bg); background: var(--accent); box-shadow: 0 0 0 4px rgb(245 179 1 / .16), 0 3px 8px -1px rgb(0 0 0 / .48); box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 16%, transparent), 0 3px 8px -1px color-mix(in srgb, var(--accent-deep) 60%, transparent); padding: 0; cursor: pointer; }
+  .rb-bead { border: 1.5px solid var(--bg); background: var(--aink, var(--ink-2)); box-shadow: 0 0 0 1px rgb(0 0 0 / .20), 0 2px 4px -1px rgb(0 0 0 / .36); }
+@supports (color: color-mix(in srgb, red, blue)) { .rb-bead { box-shadow: 0 0 0 1px color-mix(in srgb, var(--aink, var(--ink-2)) 25%, transparent), 0 2px 4px -1px color-mix(in srgb, var(--aink, var(--ink-2)) 45%, transparent); } }
+  .rb-hole { inset-block-start: 7px; inline-size: 8px; block-size: 8px; margin-inline-start: -4px; border: 1.5px solid var(--ink-2); background: var(--bg); }
+@supports (color: color-mix(in srgb, red, blue)) { .rb-hole { border: 1.5px solid color-mix(in srgb, var(--ink-2) 55%, var(--bg)); } }
+  .rb-bead.on, .rb-hole.on { transform: scale(1.35); box-shadow: 0 0 0 4px rgb(0 0 0 / .14); z-index: 2; }
+@supports (color: color-mix(in srgb, red, blue)) { .rb-bead.on, .rb-hole.on { box-shadow: 0 0 0 4px color-mix(in srgb, var(--aink, var(--ink-2)) 18%, transparent); } }
+  .rb-now { position: absolute; inset-block-start: 3px; inline-size: 16px; block-size: 16px; margin-inline-start: -8px; box-sizing: border-box; border-radius: 50%; border: 2px solid var(--bg); background: var(--accent); box-shadow: 0 0 0 4px rgb(245 179 1 / .16), 0 3px 8px -1px rgb(0 0 0 / .48); padding: 0; cursor: pointer; }
+@supports (color: color-mix(in srgb, red, blue)) { .rb-now { box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 16%, transparent), 0 3px 8px -1px color-mix(in srgb, var(--accent-deep) 60%, transparent); } }
   .rb-now::after { content: ""; position: absolute; inset: -3px; }
   .rb-pop { position: absolute; z-index: 5; inset-block-start: 30px; inline-size: max-content; max-inline-size: 240px; padding: 11px 14px; box-sizing: border-box; border: 1px solid var(--line); border-radius: 16px; background: var(--card); box-shadow: 0 14px 30px -10px rgb(0 0 0 / .3); }
   .rb-arrow { position: absolute; inset-block-start: -7px; inset-inline-start: calc(var(--arrow, 50%) - 6px); inline-size: 12px; block-size: 12px; background: var(--card); border-inline-start: 1px solid var(--line); border-block-start: 1px solid var(--line); transform: rotate(45deg); }

@@ -19,12 +19,16 @@ module.exports = function stripHas(css) {
   return out.join("");
 };
 
-/* The same for color-mix(): a declaration that uses it is dropped; a custom
-   property that uses it stays but goes invalid when read (var() of nothing),
-   as in a browser without color-mix(). preview.js --no-color-mix. */
+/* The same for color-mix(): in a browser without it a declaration that has
+   var() in it is still accepted when the sheet is read and goes invalid only
+   when it is used, so it does NOT fall back to an earlier line (the
+   property just resets); one without var() is thrown out whole and does
+   fall back. This does both, and drops the "@supports (color-mix)" blocks
+   (turning the "not" ones on), since this Chromium has it.
+   preview.js --no-color-mix. */
 module.exports.stripColorMix = function stripColorMix(css) {
-  const parts = [];
   const splitDecls = (body) => { const out = []; let depth = 0, cur = ""; for (const c of body) { if (c === "(") depth++; else if (c === ")") depth--; if (c === ";" && depth === 0) { out.push(cur); cur = ""; } else cur += c; } out.push(cur); return out; };
+  const mixOnly = (d) => d.replace(/\/\*[\s\S]*?\*\//g, "");
   const walk = (text) => {
     let res = "", i = 0;
     while (i < text.length) {
@@ -33,12 +37,13 @@ module.exports.stripColorMix = function stripColorMix(css) {
       let depth = 1, j = open + 1;
       while (j < text.length && depth) { if (text[j] === "{") depth++; else if (text[j] === "}") depth--; j++; }
       const prelude = text.slice(i, open), body = text.slice(open + 1, j - 1);
-      if (/^\s*@(media|supports|layer)/.test(prelude) || body.includes("{")) res += prelude + "{" + walk(body) + "}";
-      else res += prelude + "{" + splitDecls(body).filter((d) => !(d.includes("color-mix(") && !/^\s*--/.test(d))).map((d) => d.replace(/color-mix\((?:[^()]|\([^()]*\))*\)/g, "var(--no-such-token)")).join(";") + "}";
+      if (/@supports\s*\(color:\s*color-mix/.test(prelude)) { i = j; continue; }
+      if (/@supports\s+not\s*\(color:\s*color-mix/.test(prelude)) res += prelude.replace(/not\s*\(color:\s*color-mix\([^)]*\)\)/, "(color: red)") + "{" + walk(body) + "}";
+      else if (/^\s*@(media|supports|layer)/.test(prelude) || body.includes("{")) res += prelude + "{" + walk(body) + "}";
+      else res += prelude + "{" + splitDecls(body).filter((d) => { const m = mixOnly(d); return !(m.includes("color-mix(") && !/^\s*--/.test(m) && !m.includes("var(")); }).map((d) => d.replace(/color-mix\((?:[^()]|\([^()]*\))*\)/g, "var(--no-such-token)")).join(";") + "}";
       i = j;
     }
     return res;
   };
-  // This Chromium has color-mix(), so the app's "@supports not (color-mix)" blocks would stay off: switch them on.
-  return walk(css.replace(/@supports not \(color: color-mix\([^)]*\)\)/g, "@supports (color: red)"));
+  return walk(css);
 };
