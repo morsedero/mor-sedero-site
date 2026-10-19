@@ -1330,11 +1330,13 @@ dialog.tsheet .now-head { margin-block-end: -4px; }
 .ts-start { display: flex; align-items: center; justify-content: center; gap: 8px; }
 .ts-start svg { inline-size: 16px; block-size: 16px; }
 .ts-acts { display: flex; flex-direction: column; gap: 10px; }
-.ts-acts.duo { flex-direction: row; }
-.ts-acts.duo > .ts-start { flex: 1 1 0; min-inline-size: 0; }
-.ts-acts[hidden] { display: none; }
-.ts-del { flex: none; align-self: center; min-block-size: 40px; margin-block-start: 6px; padding-inline: 14px; border: 0; border-radius: 10px; background: none; color: var(--danger); font: inherit; font-size: 13px; cursor: pointer; }
-.ts-del.arm { color: var(--danger); background: color-mix(in srgb, var(--danger) 10%, transparent); font-weight: 600; }
+.ts-save { min-block-size: 52px; font-size: 17px; }
+/* Done · Focus · Delete share a row; a new task's lone Add task fills it. */
+.ts-row { display: flex; gap: 8px; }
+.ts-row > .btn { flex: 1 1 0; min-inline-size: 0; padding-inline: 6px; white-space: nowrap; }
+.ts-done { color: var(--green); border-color: color-mix(in srgb, var(--green) 35%, var(--line)); background: color-mix(in srgb, var(--green) 10%, var(--surface)); }
+.ts-del { color: var(--danger); border-color: color-mix(in srgb, var(--danger) 25%, var(--line)); }
+.ts-del.arm { background: color-mix(in srgb, var(--danger) 12%, var(--surface)); border-color: var(--danger); }
 dialog.tsheet .msg:empty { display: none; }
 
 /* Needs you: one decision at a time. */

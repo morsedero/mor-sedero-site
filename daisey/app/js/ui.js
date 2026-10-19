@@ -203,6 +203,7 @@ const PATHS = {
   inbox: "M4 13l3-8h10l3 8v6H4zM4 13h5l1 2h4l1-2h5",
   chev: "M9 6l6 6-6 6",
   close: "M6 6l12 12M18 6L6 18",
+  trash: "M4 7h16M9.5 7V4.5h5V7M6.5 7l1 12.5h9l1-12.5", // Delete, in the task sheet
   file: "M7 3h7l5 5v13H7zM14 3v5h5", // a page with its corner folded: a file kept on this phone
   link: "M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1",
   details: "M4 7h10M18 7h2M4 17h4M12 17h8M14 7a2 2 0 1 0 4 0 2 2 0 1 0-4 0M8 17a2 2 0 1 0 4 0 2 2 0 1 0-4 0",

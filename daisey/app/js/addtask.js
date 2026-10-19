@@ -297,10 +297,13 @@ export function mountAddTask(dialog, uid, { onStart, onDone } = {}){
   const notes = h("textarea", { className: "ts-notes", dir: "auto", rows: 2, placeholder: "Notes…", ariaLabel: "Notes" });
   const worked = h("p", { className: "ts-worked" });
   const startBtn = h("button", { type: "button", className: "btn primary ts-start" });
-  // Done beside Focus (Mor, 2026-10-18): the card's Done, yellow with a check.
-  const doneBtn = h("button", { type: "button", className: "btn primary ts-start" }, icon("check"), h("span", { textContent: "Done" }));
-  const actRow = h("div", { className: "ts-acts" }, startBtn, doneBtn);
-  const del = h("button", { type: "button", className: "ts-del" });
+  // Editing: Save on top, then Done · Focus · Delete (Mor, 2026-10-19: the
+  // yellow Done at the bottom read as the sheet's Save and finished a task by
+  // mistake). Edits save as you go; Save closes, which writes what's left.
+  const saveBtn = h("button", { type: "button", className: "btn primary ts-save", textContent: "Save" });
+  const doneBtn = h("button", { type: "button", className: "btn ts-start ts-done" }, icon("check"), h("span", { textContent: "Done" }));
+  const del = h("button", { type: "button", className: "btn ts-start ts-del" });
+  const actRow = h("div", { className: "ts-acts" }, saveBtn, h("div", { className: "ts-row" }, doneBtn, startBtn, del));
   const msg = h("p", { className: "msg", role: "status" });
   const section = (label, ...kids) => h("div", { className: "field" }, h("h3", { className: "ts-h", textContent: label }), ...kids);
 
@@ -311,7 +314,7 @@ export function mountAddTask(dialog, uid, { onStart, onDone } = {}){
     oftenRow, weekNow, // repeats by the dates it changes (Mor, 2026-10-12)
     field("How long?", chipRow), guessBox, laptopRow, pctBox, pendBox, holdBox, researchLine, stateLine,
     section("Links & notes", h("div", { className: "ts-group" }, linkRow, notes)),
-    worked, actRow, del, msg);
+    worked, actRow, msg);
 
   // ---------- saving ----------
   // Other tasks teach the guesses; the open one must not teach itself.
@@ -540,11 +543,10 @@ export function mountAddTask(dialog, uid, { onStart, onDone } = {}){
     const r = t?.research;
     researchLine.hidden = !r || r.online === "unsure" || !r.why;
     researchLine.textContent = r ? `${r.online === "yes" ? "Daisey checked: can be done online" : "Daisey checked: needs a call or a visit"}${r.why ? ` — ${r.why}` : ""}` : "";
+    saveBtn.hidden = !t;
     startBtn.hidden = done;
     doneBtn.hidden = !t || done || !onDone;
-    startBtn.classList.toggle("primary", doneBtn.hidden); // Focus goes plain beside Done: one yellow key, not two
-    actRow.hidden = startBtn.hidden && doneBtn.hidden;
-    actRow.classList.toggle("duo", !startBtn.hidden && !doneBtn.hidden);
+    startBtn.classList.toggle("primary", !t); // a new task's Add task; editing, Save is the one yellow key
     startBtn.replaceChildren(icon(t ? "focus" : "plus"), h("span", { textContent: t ? "Focus" : "Add task" }));
     del.hidden = !t;
   }
@@ -552,13 +554,14 @@ export function mountAddTask(dialog, uid, { onStart, onDone } = {}){
     if (editing) { flush(); const id = editing.id; dialog.close(); onStart?.(id); return; }
     add();
   };
+  saveBtn.onclick = () => dialog.close(); // close flushes
   doneBtn.onclick = () => {
     if (!editing) return;
     flush(); const id = editing.id; dialog.close(); onDone?.(id);
   };
   del.onclick = () => {
     if (!editing) return;
-    if (!armed) { armed = true; del.textContent = "Really delete?"; del.classList.add("arm"); return; }
+    if (!armed) { armed = true; del.replaceChildren(h("span", { textContent: "Sure?" })); del.ariaLabel = "Really delete?"; del.classList.add("arm"); return; }
     const gone = editing;
     editing = null;
     dialog.close();
@@ -566,7 +569,7 @@ export function mountAddTask(dialog, uid, { onStart, onDone } = {}){
     removeTask(uid, gone.id).catch((e) => { fail(e); flash("Couldn't delete ", gone.title); });
     flash("Deleted ", gone.title);
   };
-  const disarm = () => { armed = false; del.textContent = "Delete task"; del.classList.remove("arm"); };
+  const disarm = () => { armed = false; del.replaceChildren(icon("trash"), h("span", { textContent: "Delete" })); del.ariaLabel = "Delete task"; del.classList.remove("arm"); };
 
   function add(){
     if (projectSel.value === NEW_PROJECT && !newProject.value.trim()) { msg.textContent = "Name the new project, or pick one from the list."; newProject.focus(); return; }
