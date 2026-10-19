@@ -2324,8 +2324,11 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
         // The time is named only when length is what's in the way: a 30 min
         // task held back by its place, office hours or a block "not fitting
         // the next 51 min" read as a mistake (Mor, 2026-10-19).
+        // "Free until" only when something ends the free time before the
+        // day does: "Free until 00:00" at a 00:00 day end says nothing (Mor, 2026-10-19).
         : quietHero("peach", sprout(), r.out.some((o) => SWITCH_TOO.has(o.reason) && o.reason !== "size" && o.reason !== "booked")
-          ? "Nothing fits right now" : `Nothing fits the next ${dur(r.moment.window)}`, r.moment.windowEnd ? `Free until ${clock(r.moment.windowEnd)}.` : "",
+          ? "Nothing fits right now" : `Nothing fits the next ${dur(r.moment.window)}`,
+          r.moment.windowEnd && r.moment.windowEnd < dayEndAt(Date.now(), dayHours(settings)) ? `Free until ${clock(r.moment.windowEnd)}.` : "",
           r.out.some((o) => o.reason === "place") && placeFix(r.moment), putOffButton(r), anywayButton(r)), tip);
       return;
     }
