@@ -320,7 +320,7 @@ test("edit: a picked field stays put; handing it back re-guesses", () => {
   assert.equal(lp.where, undefined);
   assert.equal(M.editTask({ ...t, ...lp }, { where: "home" }, opts).laptop, undefined);
   // Editing notes alone re-guesses nothing.
-  assert.deepEqual(Object.keys(M.editTask(t, { notes: "hi" }, opts)).sort(), ["notes", "touchedAt"]);
+  assert.deepEqual(Object.keys(M.editTask(t, { notes: "hi" }, opts)).sort(), ["editedAt", "notes", "touchedAt"]);
 });
 
 test("edit: date kind is Target by default, Deadline on request, gone with the date", () => {

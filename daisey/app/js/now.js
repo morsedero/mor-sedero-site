@@ -25,7 +25,7 @@ import { pickWeekDay } from "./triage.js";
 import { sinceMark, runCap, bookedMinutes, celebrate, dropAway, PUSH_MS } from "./focus.js";
 import { watchCalendar } from "./calendar.js";
 import { LATER_MINUTES, DRAIN, CANCEL_KEEP_MINUTES, LIGHTER, TIERS } from "./weights.js";
-import { missState, silenceText, lastActivity } from "./miss.js";
+import { missState, silenceText, lastActivity, planActivity } from "./miss.js";
 import { takeQuiet } from "./push.js";
 import { findPhoneTasks, phoneOkIds, searching } from "./phone.js";
 import { rank, freeWindow, timeBucket, matchProject, dueAt, keepsCard, passedOver } from "./engine.js";
@@ -1824,7 +1824,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
   // the next task's start comes with nothing started, the card asks right
   // then (Mor: "more proactive"), before any miss would. → { taskId, start }
   // or null. In 10 min: that item's at, and a touch (an answer).
-  const planSince = () => lastActivity(tasks || [], run, todaysPlan()?.approvedAt || 0);
+  const planSince = () => planActivity(tasks || [], run, todaysPlan()?.approvedAt || 0);
   function planDue(){
     const p = approvedPlan();
     if (!p || !tasks || cal.status !== "ok" || prop.open) return null;

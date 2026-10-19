@@ -5,7 +5,8 @@ import test from "node:test";
 import assert from "node:assert/strict";
 process.env.TZ = "Asia/Jerusalem";
 const { timeline, planStatus, planProgress, unfitOf, refit } = await import("../../app/js/proposal.js");
-const { lastActivity } = await import("../../app/js/miss.js");
+const { lastActivity, planActivity } = await import("../../app/js/miss.js");
+const { editTask } = await import("../../app/js/model.js");
 
 const at = (h, m = 0) => Date.UTC(2026, 9, 12, h - 3, m); // a Monday
 const il = (h, m = 0) => new Date(at(h, m)).toISOString();
@@ -76,4 +77,23 @@ test("(c) Done on the first task: the rest is laid again from now", () => {
   const ctx2 = { tasks: late, events: [], now: at(9, 40) }, since2 = lastActivity(late, null, plan.approvedAt);
   assert.deepEqual(timeline(items, { ...ctx2, since: since2 }).rows.map((r) => [r.taskId, r.start]), [["b", at(9, 40)], ["c", at(10, 10)]]);
   assert.equal(planStatus(plan, ctx2, since2).behind, false);
+});
+
+// Mor, 2026-10-19: a plan from 11:00, nothing done for two hours, a task
+// shown "?". Editing it (the sheet's Done) moved the whole plan to start now,
+// no ask, no undo. An edit isn't doing the plan: it stays where it was.
+test("(d) An edit doesn't move the plan; a switch or Done still does", () => {
+  const tasks = [t({ id: "a" }), t({ id: "b" }), t({ id: "c" })];
+  const items = [{ taskId: "a", minutes: 30 }, { taskId: "b", minutes: 30 }, { taskId: "c", minutes: 30 }];
+  const plan = approve(items, { tasks, events: [], now: at(10, 50) });
+  const now = at(13);
+  const edited = tasks.map((x) => (x.id === "b" ? { ...x, ...editTask(x, { title: "Renamed" }, { now }) } : x));
+  const since = planActivity(edited, null, plan.approvedAt);
+  assert.equal(since, plan.approvedAt);
+  const tl = timeline(items, { tasks: edited, events: [], now, since });
+  assert.deepEqual(tl.missed, ["a", "b", "c"]);
+  assert.ok(lastActivity(edited, null, plan.approvedAt) === now); // the silence check still sees it
+  // A touch that isn't an edit (Switch, Later, skip) still counts.
+  const switched = edited.map((x) => (x.id === "c" ? { ...x, touchedAt: now } : x));
+  assert.equal(planActivity(switched, null, plan.approvedAt), now);
 });

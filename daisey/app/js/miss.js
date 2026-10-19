@@ -35,6 +35,16 @@ export function lastActivity(tasks = [], run = null, planAt = 0){
   return a;
 }
 
+// What the approved plan is laid from (proposal.timeline since): the same,
+// minus a touch that was only an edit (Mor, 2026-10-19: editing a missed task
+// moved the whole 11:00 plan to start now, no ask, no undo). An edit isn't
+// doing the plan; a start, Done, Switch, Later or skip is.
+export function planActivity(tasks = [], run = null, planAt = 0){
+  let a = Math.max(0, planAt || 0, run?.startedAt || 0);
+  for (const t of tasks || []) a = Math.max(a, t.touchedAt && t.touchedAt !== t.editedAt ? t.touchedAt : 0, t.workedAt || 0, t.doneAt || 0);
+  return a;
+}
+
 const busyOf = (events, { tasks, run, now }) => {
   const over = overruled(events, { tasks, run, now });
   return (events || []).filter((e) => !e.allDay && e.busy !== false && e.start && e.end && !over.has(eventKey(e)))

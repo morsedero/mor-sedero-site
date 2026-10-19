@@ -537,7 +537,8 @@ export function editTask(task, changes, { now = Date.now(), history = [] } = {})
 
   const order = GUESSABLE.filter((k) => guessed.has(k));
   if (!same([...order].sort(), [...(task.guessed || [])].sort())) patch.guessed = order;
-  if (Object.keys(patch).length) patch.touchedAt = now;
+  // editedAt: this touch was an edit (miss.planActivity doesn't count it).
+  if (Object.keys(patch).length) { patch.touchedAt = now; patch.editedAt = now; }
   return patch;
 }
 

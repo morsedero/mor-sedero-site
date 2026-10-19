@@ -22,7 +22,7 @@
 import { watchCalendar, connectCalendar, fetchRange, landedAgo } from "./calendar.js";
 import { watchSettings, watchTasks, watchRun, watchDayPlan } from "./store.js";
 import { timeline } from "./proposal.js";
-import { lastActivity } from "./miss.js";
+import { planActivity } from "./miss.js";
 import { areaClass, watchProjectColors } from "./look.js";
 import { dayHours, minText, planDate, usualHours, dayEndAt, nightRange, dayWord, gridSpan } from "./day.js";
 import { localDate, logicalDate, durText } from "./model.js";
@@ -365,7 +365,7 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onMissed, onPro
     if (dayPlan?.status !== "approved" || dayPlan.date !== planDate(now, hrs) || !tasks) return [];
     // Held like the Now card's (proposal.timeline since): a task you haven't
     // started stays at its time, it doesn't slide with the clock.
-    const tl = timeline(dayPlan.items || [], { tasks, events, now, hours: hrs, run, since: lastActivity(tasks, run, dayPlan.approvedAt || 0) });
+    const tl = timeline(dayPlan.items || [], { tasks, events, now, hours: hrs, run, since: planActivity(tasks, run, dayPlan.approvedAt || 0) });
     noRoom = tl.over.map((o) => ({ kind: "noroom", task: o.task, why: o.why }));
     return [...tl.rows.map((r) => ({ kind: "plan", start: r.start, end: r.end, task: r.task, missed: !!r.missed, of: r.of, minutes: r.minutes })),
       ...tl.breaks.map((b) => ({ kind: "break", start: b.start, end: b.end, type: b.type, name: b.name }))];
