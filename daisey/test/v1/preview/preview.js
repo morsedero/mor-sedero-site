@@ -11,7 +11,7 @@ const fs = require("fs");
 const path = require("path");
 const pw = require(path.join(__dirname, "..", "..", "node_modules", "playwright"));
 
-const APP = path.join(__dirname, "..", "..", "..", "app");
+const APP = process.env.DAISEY_APP || path.join(__dirname, "..", "..", "..", "app"); // DAISEY_APP: another checkout of daisey/app, to compare
 const ORIGIN = "http://daisey.preview";
 const day = (n) => { const d = new Date(Date.now() + n * 864e5); return d.toLocaleDateString("en-CA"); };
 const ago = (days) => ({ touchedAt: Date.now() - days * 864e5 });
@@ -351,7 +351,7 @@ const FAKES = {
     ? "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1"
     : "Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Mobile Safari/537.36" } : {};
   const page = await browser.newPage({ ...mobile, viewport: wide ? { width: 1200, height: 900 } : { width: Number(widthFlag) || 390, height: Number(heightFlag) || 844 }, deviceScaleFactor: 2,
-    colorScheme: args.includes("--dark") ? "dark" : "light" });
+    colorScheme: args.includes("--dark") ? "dark" : "light", ...(args.includes("--still") ? { reducedMotion: "reduce" } : {}) }); // --still: no bobbing/animation, so two shots can be compared
   page.on("pageerror", (e) => console.error("pageerror:", e.message));
   page.on("console", (m) => { if (m.type() === "error") console.error("console:", m.text()); });
   // --at HH:MM: the page's clock, today at that time (Playwright's fake clock).
@@ -403,9 +403,12 @@ const FAKES = {
     if (FAKES[rel]) return route.fulfill({ contentType: "text/javascript", body: FAKES[rel] });
     const file = path.join(APP, rel);
     if (!fs.existsSync(file)) return route.fulfill({ status: 404, body: "" });
+    // --no-has: the CSS as a browser without :has() reads it (Mor's phone, 2026-10-19).
+    if (args.includes("--no-has") && file.endsWith(".css")) return route.fulfill({ contentType: "text/css", body: require("./strip-has")(fs.readFileSync(file, "utf8")) });
     route.fulfill({ path: file });
   });
   await page.goto(ORIGIN + "/" + query);
+  if (args.includes("--still")) await page.addStyleTag({ content: "*, *::before, *::after { animation: none !important; transition: none !important; }" });
   await page.waitForSelector(".now-card, .focus, .now-empty, .tk-empty");
   // The opening daisy stays at least 900 ms (main.js splashOff): wait it out.
   await page.waitForSelector("#splash", { state: "detached", timeout: 3000 }).catch(() => {});

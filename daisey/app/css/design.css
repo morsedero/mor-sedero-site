@@ -19,7 +19,7 @@
 :root:not(.night) body:is(.focus-mode, .home-float) .now-card.main .now-row.duo { gap: 6px; padding-block-start: 0; }
 :root:not(.night) body:is(.focus-mode, .home-float) .now-card.main .now-row.duo .iconbtn { inline-size: auto; min-inline-size: 0; block-size: 48px; min-block-size: 44px; border-radius: 12px; font-size: 15px; gap: 6px; }
 :root:not(.night) body:is(.focus-mode, .home-float) .now-card.main .now-row.duo .iconbtn svg { inline-size: 18px; block-size: 18px; }
-.done-col.solo:has(.task-bar) + .now-row.duo { margin-block-start: 14px; }
+.done-col.solo.h-taskbar + .now-row.duo { margin-block-start: 14px; }
 .now-row.duo .iconbtn {
   flex-direction: row; justify-content: center; justify-self: stretch; gap: 6px; inline-size: auto; min-inline-size: 0; block-size: 44px;
   background: transparent; box-shadow: none; color: var(--sub, var(--ink-2)); font-size: 14px; font-weight: 500;
@@ -47,7 +47,7 @@
 @keyframes drop-in { from { opacity: 0; transform: translateY(-6px) scaleY(.96); } }
 /* Open, the card and its list start at the top of their box instead of
    centring, so the list never pushes the card's top out of sight. */
-:root:not(.night) body.card-mini:is(.focus-mode, .home-float) #nowcard:has(.later-drop) { justify-content: flex-start; padding-block-end: 12px; overflow-y: auto; }
+:root:not(.night) body.card-mini:is(.focus-mode, .home-float) #nowcard.h-drop { justify-content: flex-start; padding-block-end: 12px; overflow-y: auto; }
 
 /* ---- The bottom: one panel (Mor, 2026-10-18, option 1) ----
    Tell Daisey and the Today / Projects / Stats row were two pills, each with
@@ -57,7 +57,7 @@
   #dock { gap: 0; }
   #dock > .tellbar { border-radius: 28px 28px 0 0; border-block-end: 0; box-shadow: none; }
   #dock > .dock-stack { border-radius: 0 0 28px 28px; border-block-start: 1px solid var(--line); box-shadow: 0 12px 28px -14px rgb(31 29 26 / .35); }
-  #dock:has(> .dock-stack:empty) > .tellbar { border-radius: 28px; border-block-end: 1px solid var(--line); }
+  #dock.h-stackempty > .tellbar { border-radius: 28px; border-block-end: 1px solid var(--line); }
 }
 
 /* ---- Slice 2: the one decision card (decision.js) ----
@@ -105,7 +105,7 @@
 .routine-ask .dc-q { font-size: 20px; }
 .routine-ask .dc-btns { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .routine-ask .dc-btns .btn.primary.big, .routine-ask .dc-btns .btn.line.big { min-block-size: 52px; font-size: 16px; }
-:root:not(.night) body:is(.focus-mode, .home-float) #nowcard:has(.routine-ask) { justify-content: flex-start; padding-block-end: 12px; overflow-y: auto; }
+:root:not(.night) body:is(.focus-mode, .home-float) #nowcard.h-routine { justify-content: flex-start; padding-block-end: 12px; overflow-y: auto; }
 
 /* ---- Slice 3: the quiet family (now.js quietHero, the night hero) ----
    Nothing to do now: a drawing, one headline, one small line, no list. Each
@@ -163,16 +163,16 @@
 :root.night body.day-open #panel#panel { display: flex; }
 /* …and, like Plan and Projects at night, the day takes the place of the
    Tomorrow-first card (app.css night rules). */
-:root.night:has(body.day-open) #nowcard > .now-card, :root.night:has(body.day-open) #nowcard > .night-foot { display: none; }
-:root.night:has(body.day-open) .nowrow { flex: none; }
+:root.night.h-dayopen #nowcard > .now-card, :root.night.h-dayopen #nowcard > .night-foot { display: none; }
+:root.night.h-dayopen .nowrow { flex: none; }
 /* With the day open the night hero squeezes into a mini bar, like the day
    card does (app.css body.card-mini): the moon small, "Late, Mor." beside it. */
-:root.night:has(body.day-open) .night-hero {
+:root.night.h-dayopen .night-hero {
   flex-direction: row; justify-content: flex-start; gap: 12px; min-block-size: 56px; padding: 6px 16px; border-radius: 18px; text-align: start; box-shadow: none;
 }
-:root.night:has(body.day-open) .night-hero .moon-daisy { inline-size: 36px; block-size: 36px; }
-:root.night:has(body.day-open) .night-h { margin: 0; font-size: 16px; line-height: 1.25; }
-:root.night:has(body.day-open) .night-p, :root.night:has(body.day-open) #nowcard > .stars { display: none; }
+:root.night.h-dayopen .night-hero .moon-daisy { inline-size: 36px; block-size: 36px; }
+:root.night.h-dayopen .night-h { margin: 0; font-size: 16px; line-height: 1.25; }
+:root.night.h-dayopen .night-p, :root.night.h-dayopen #nowcard > .stars { display: none; }
 
 /* ---- Slice 4: pages and forms ---- */
 /* Stats is a page (projects.js paintGlance): on a phone the box fills the
@@ -203,31 +203,31 @@
    area's tint and ink, dimmed in dark like every tint. */
 .ichip { display: inline-grid; place-items: center; flex: none; inline-size: 30px; block-size: 30px; border-radius: 9px; background: var(--tint); color: var(--aink); border: 1px solid var(--aline); }
 .ichip svg { inline-size: 16px; block-size: 16px; }
-.settings .menu-label:has(.ichip) { display: flex; align-items: center; gap: 10px; }
-.settings .menu-check:has(> .ichip) { gap: 10px; }
+.settings .menu-label.h-ichip { display: flex; align-items: center; gap: 10px; }
+.settings .menu-check.h-ichipkid { gap: 10px; }
 
 /* The pressed tab (Mor, 2026-10-18, option C: the project's colour only on
    the card and the active tab): its icon wears the Now card's colour, the
    chip goes plain. Phone dock only. */
 @media (max-width: 1023px) {
   #dockStack > .hchip[aria-pressed="true"] { background: var(--chip); color: var(--ink); }
-  :root:has(#nowcard .now-card.main.pc-admin) #dockStack > .hchip[aria-pressed="true"] svg { color: var(--a-admin-ink); }
-  :root:has(#nowcard .now-card.main.pc-work) #dockStack > .hchip[aria-pressed="true"] svg { color: var(--a-work-ink); }
-  :root:has(#nowcard .now-card.main.pc-home) #dockStack > .hchip[aria-pressed="true"] svg { color: var(--a-home-ink); }
-  :root:has(#nowcard .now-card.main.pc-social) #dockStack > .hchip[aria-pressed="true"] svg { color: var(--a-social-ink); }
-  :root:has(#nowcard .now-card.main.pc-job) #dockStack > .hchip[aria-pressed="true"] svg { color: var(--a-job-ink); }
-  :root:has(#nowcard .now-card.main.pc-personal) #dockStack > .hchip[aria-pressed="true"] svg { color: var(--a-personal-ink); }
-  :root:has(#nowcard .now-card.main.pc-teal) #dockStack > .hchip[aria-pressed="true"] svg { color: var(--p-teal-ink); }
-  :root:has(#nowcard .now-card.main.pc-orange) #dockStack > .hchip[aria-pressed="true"] svg { color: var(--p-orange-ink); }
-  :root:has(#nowcard .now-card.main.pc-slate) #dockStack > .hchip[aria-pressed="true"] svg { color: var(--p-slate-ink); }
-  :root:has(#nowcard .now-card.main.pc-brick) #dockStack > .hchip[aria-pressed="true"] svg { color: var(--p-brick-ink); }
-  :root:has(#nowcard .now-card.main.pc-lime) #dockStack > .hchip[aria-pressed="true"] svg { color: var(--p-lime-ink); }
-  :root:has(#nowcard .now-card.main.area-admin) #dockStack > .hchip[aria-pressed="true"] svg { color: var(--a-admin-ink); }
-  :root:has(#nowcard .now-card.main.area-work) #dockStack > .hchip[aria-pressed="true"] svg { color: var(--a-work-ink); }
-  :root:has(#nowcard .now-card.main.area-home) #dockStack > .hchip[aria-pressed="true"] svg { color: var(--a-home-ink); }
-  :root:has(#nowcard .now-card.main.area-social) #dockStack > .hchip[aria-pressed="true"] svg { color: var(--a-social-ink); }
-  :root:has(#nowcard .now-card.main.area-job) #dockStack > .hchip[aria-pressed="true"] svg { color: var(--a-job-ink); }
-  :root:has(#nowcard .now-card.main.area-personal) #dockStack > .hchip[aria-pressed="true"] svg { color: var(--a-personal-ink); }
+  :root.h-tone-pc-admin #dockStack > .hchip[aria-pressed="true"] svg { color: var(--a-admin-ink); }
+  :root.h-tone-pc-work #dockStack > .hchip[aria-pressed="true"] svg { color: var(--a-work-ink); }
+  :root.h-tone-pc-home #dockStack > .hchip[aria-pressed="true"] svg { color: var(--a-home-ink); }
+  :root.h-tone-pc-social #dockStack > .hchip[aria-pressed="true"] svg { color: var(--a-social-ink); }
+  :root.h-tone-pc-job #dockStack > .hchip[aria-pressed="true"] svg { color: var(--a-job-ink); }
+  :root.h-tone-pc-personal #dockStack > .hchip[aria-pressed="true"] svg { color: var(--a-personal-ink); }
+  :root.h-tone-pc-teal #dockStack > .hchip[aria-pressed="true"] svg { color: var(--p-teal-ink); }
+  :root.h-tone-pc-orange #dockStack > .hchip[aria-pressed="true"] svg { color: var(--p-orange-ink); }
+  :root.h-tone-pc-slate #dockStack > .hchip[aria-pressed="true"] svg { color: var(--p-slate-ink); }
+  :root.h-tone-pc-brick #dockStack > .hchip[aria-pressed="true"] svg { color: var(--p-brick-ink); }
+  :root.h-tone-pc-lime #dockStack > .hchip[aria-pressed="true"] svg { color: var(--p-lime-ink); }
+  :root.h-tone-area-admin #dockStack > .hchip[aria-pressed="true"] svg { color: var(--a-admin-ink); }
+  :root.h-tone-area-work #dockStack > .hchip[aria-pressed="true"] svg { color: var(--a-work-ink); }
+  :root.h-tone-area-home #dockStack > .hchip[aria-pressed="true"] svg { color: var(--a-home-ink); }
+  :root.h-tone-area-social #dockStack > .hchip[aria-pressed="true"] svg { color: var(--a-social-ink); }
+  :root.h-tone-area-job #dockStack > .hchip[aria-pressed="true"] svg { color: var(--a-job-ink); }
+  :root.h-tone-area-personal #dockStack > .hchip[aria-pressed="true"] svg { color: var(--a-personal-ink); }
 }
 
 /* Text is 12px at the least (design round 4): the small labels app.css set

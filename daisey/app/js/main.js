@@ -1,5 +1,7 @@
 // Boot: sign-in → load data → show card.
 import { configured } from "./config.js";
+import { hasShim } from "./has-shim.js";
+hasShim(); // app.css reads .h-* classes in place of :has(); see has-shim.js
 
 const $ = (s) => document.querySelector(s);
 // Focus rides inside the Now card on a phone (placeFocus), so between a
