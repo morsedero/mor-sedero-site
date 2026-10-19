@@ -2725,6 +2725,27 @@ body.fm-slide .deck > .now-card.main { animation: none !important; } /* main.js:
   .rb-now { position: absolute; inset-block-start: 3px; inline-size: 16px; block-size: 16px; margin-inline-start: -8px; box-sizing: border-box; border-radius: 50%; border: 2px solid var(--bg); background: var(--accent); box-shadow: 0 0 0 4px rgb(245 179 1 / .16), 0 3px 8px -1px rgb(0 0 0 / .48); padding: 0; cursor: pointer; }
 @supports (color: color-mix(in srgb, red, blue)) { .rb-now { box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 16%, transparent), 0 3px 8px -1px color-mix(in srgb, var(--accent-deep) 60%, transparent); } }
   .rb-now::after { content: ""; position: absolute; inset: -3px; }
+  /* The dots answer the hand (Mor, 2026-10-19): grow under a mouse, squish
+     on press, pop once when tapped (.pick, ribbon.js); the now dot's halo
+     breathes all the time, its phase kept across repaints by --glow-at. */
+  .rb-now { transition: transform .18s ease; }
+  @media (hover: hover) {
+    .rb-bead:not(.on):hover, .rb-hole:not(.on):hover { transform: scale(1.3); }
+    .rb-now:hover { transform: scale(1.15); }
+  }
+  .rb-bead:active, .rb-hole:active, .rb-now:active { transform: scale(.85); transition-duration: .06s; }
+  @media (prefers-reduced-motion: no-preference) {
+    .rb-now { animation: rb-glow 2.8s ease-in-out var(--glow-at, 0s) infinite; }
+    .rb-now.pick { animation: rb-glow 2.8s ease-in-out var(--glow-at, 0s) infinite, rb-tap .45s cubic-bezier(.3, 1.6, .5, 1); }
+    .rb-bead.pick, .rb-hole.pick { animation: rb-tap .45s cubic-bezier(.3, 1.6, .5, 1); }
+    .rb-bead.on.pick, .rb-hole.on.pick { animation: rb-tap-on .45s cubic-bezier(.3, 1.6, .5, 1); }
+  }
+  @keyframes rb-glow {
+    0%, 100% { box-shadow: 0 0 0 3px rgb(245 179 1 / .20), 0 0 6px 1px rgb(245 179 1 / .30), 0 3px 8px -1px rgb(150 100 0 / .45); }
+    50% { box-shadow: 0 0 0 7px rgb(245 179 1 / .10), 0 0 16px 5px rgb(245 179 1 / .55), 0 3px 8px -1px rgb(150 100 0 / .45); }
+  }
+  @keyframes rb-tap { 0% { transform: scale(.8); } 55% { transform: scale(1.25); } 100% { transform: scale(1); } }
+  @keyframes rb-tap-on { 0% { transform: scale(.8); } 55% { transform: scale(1.6); } 100% { transform: scale(1.35); } }
   .rb-pop { position: absolute; z-index: 5; inset-block-start: 30px; inline-size: max-content; max-inline-size: 240px; padding: 11px 14px; box-sizing: border-box; border: 1px solid var(--line); border-radius: 16px; background: var(--card); box-shadow: 0 14px 30px -10px rgb(0 0 0 / .3); }
   .rb-arrow { position: absolute; inset-block-start: -7px; inset-inline-start: calc(var(--arrow, 50%) - 6px); inline-size: 12px; block-size: 12px; background: var(--card); border-inline-start: 1px solid var(--line); border-block-start: 1px solid var(--line); transform: rotate(45deg); }
   .rb-pop p { margin: 0; }

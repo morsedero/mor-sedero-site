@@ -14,9 +14,11 @@ const ring = () => h("span", { className: "rb-ring", ariaHidden: "true" });
 
 export function mountRibbon(el, { onPlan } = {}){
   let data = null, open = null, cardId = null; // open: the bead whose pop-over shows ("d:<id>" / "l:<id>")
+  let fresh = null; // the dot just tapped: it pops once (.pick), not on every repaint after
 
   const pct = (ms) => `${Math.max(0, Math.min(100, ((ms - data.start) / (data.end - data.start)) * 100)).toFixed(2)}%`;
-  const pick = (key) => (e) => { e.stopPropagation(); open = open === key ? null : key; paint(); };
+  const pick = (key) => (e) => { e.stopPropagation(); open = open === key ? null : key; fresh = key; paint(); };
+  const state = (key) => (open === key ? " on" : "") + (fresh === key ? " pick" : "");
 
   // "3 done" / "2 left" open the whole list, not one bead.
   function listPop(kind){
@@ -89,13 +91,15 @@ export function mountRibbon(el, { onPlan } = {}){
       h("span", { className: "rb-past", ariaHidden: "true", style: `inline-size:${pct(data.now)}` }),
       // The calendar only while there's no plan; a plan already holds it.
       ...(planned ? [] : events).map((e) => h("span", { className: "rb-ev", title: e.title, ariaHidden: "true", style: `inset-inline-start:${pct(e.start)};inline-size:calc(${pct(e.end)} - ${pct(e.start)})` })),
-      ...done.map((d) => h("button", { type: "button", className: "rb-bead" + areaClass(d.task) + (open === `d:${d.id}` ? " on" : ""), style: `inset-inline-start:min(${pct(d.at)}, calc(${pct(data.now)} - 15px))`,
+      ...done.map((d) => h("button", { type: "button", className: "rb-bead" + areaClass(d.task) + state(`d:${d.id}`), style: `inset-inline-start:min(${pct(d.at)}, calc(${pct(data.now)} - 15px))`,
         ariaLabel: `${d.task.title}, done ${hm(d.at)}`, ariaExpanded: String(open === `d:${d.id}`), onclick: pick(`d:${d.id}`) })),
-      ...left.map((l) => h("button", { type: "button", className: "rb-hole" + areaClass(l.task) + (open === `l:${l.id}` ? " on" : ""), style: `inset-inline-start:${pct(l.at)}`,
+      ...left.map((l) => h("button", { type: "button", className: "rb-hole" + areaClass(l.task) + state(`l:${l.id}`), style: `inset-inline-start:${pct(l.at)}`,
         ariaLabel: `${l.task.title}, planned ${hm(l.at)}`, ariaExpanded: String(open === `l:${l.id}`), onclick: pick(`l:${l.id}`) })),
-      h("button", { type: "button", className: "rb-now" + (open === "now" ? " on" : ""), ariaLabel: "Now", ariaExpanded: String(open === "now"), style: `inset-inline-start:${pct(data.now)}`, onclick: pick("now") }));
+      // The glow's phase follows the clock, so a repaint doesn't restart it.
+      h("button", { type: "button", className: "rb-now" + state("now"), ariaLabel: "Now", ariaExpanded: String(open === "now"), style: `inset-inline-start:${pct(data.now)};--glow-at:-${Math.round(performance.now() % 2800)}ms`, onclick: pick("now") }));
     if (open) { const p = pop(line); if (p) line.append(p); }
     el.replaceChildren(top, line);
+    fresh = null;
     if (!planned) el.append(h("div", { className: "rb-act" }, h("button", { type: "button", className: "rb-plan", onclick: () => onPlan?.() }, icon("calendar"), h("span", { textContent: data.word }))));
   }
 
