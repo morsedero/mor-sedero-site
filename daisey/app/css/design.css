@@ -147,16 +147,18 @@
 .sprout .ground { fill: none; stroke: var(--aline); stroke-width: 2; stroke-linecap: round; }
 .daisy.bloom .daisy-petals ellipse { stroke-width: .8; }
 .daisy.bloom .daisy-heart { fill: var(--accent); }
-/* Night: the hero is the dusk card, the moon over the words; Tomorrow first
-   stays its own card below. The day's list (Done today, still open) goes:
-   no list, no counts at night. "I'm free now" stays, as a quiet link. */
+/* Night: the hero is the dusk card; Tomorrow first stays its own card below.
+   The day's list (Done today, still open) goes: no list, no counts at night.
+   "I'm free now" stays, as a quiet link. The moon sits beside the words, not
+   over them (Mor, 2026-10-20: moon-over-words at 96px stood 204px, taller
+   than the main card under it, and took too much of the screen). */
 :root.night .night-hero {
-  block-size: auto; margin-inline-end: 0; flex-direction: column; align-items: center; justify-content: center; gap: 0; text-align: center;
-  padding: 24px 20px 20px; border-radius: var(--radius); background: #1d1b2b; border: 1px solid #363159; box-shadow: 0 12px 28px rgb(0 0 0 / .35);
+  block-size: auto; margin-inline-end: 0; flex-direction: row; align-items: center; justify-content: flex-start; gap: 14px; text-align: start;
+  padding: 14px 18px; border-radius: var(--radius); background: #1d1b2b; border: 1px solid #363159; box-shadow: 0 12px 28px rgb(0 0 0 / .35);
 }
-:root.night .night-hero .moon-daisy { inline-size: 96px; block-size: 96px; }
-:root.night .night-h { margin: 12px 0 0; font-size: 22px; }
-:root.night .night-p { margin: 6px 0 0; color: var(--ink); }
+:root.night .night-hero .moon-daisy { inline-size: 52px; block-size: 52px; }
+:root.night .night-h { margin: 0; font-size: 20px; line-height: 1.2; }
+:root.night .night-p { margin: 2px 0 0; color: var(--ink); }
 @supports (color: color-mix(in srgb, red, blue)) { :root.night .night-p { color: color-mix(in srgb, #b3aae8 40%, var(--ink)); } }
 :root.night .night-today { display: none; }
 :root.night .night-foot .pill-btn { border-color: transparent; background: transparent; color: var(--ink-2); text-decoration: underline; text-underline-offset: 3px; text-decoration-color: transparent; }
