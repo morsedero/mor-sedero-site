@@ -194,10 +194,20 @@
 .st-daisy-t { min-inline-size: 0; }
 .st-daisy-t p { margin: 4px 0 0; font-size: 14px; line-height: 1.4; color: var(--ink-2); }
 .st-flower { flex: none; }
-.st-flower.bud .daisy-heart { fill: #b9d8a8; stroke: #7fae7f; stroke-width: 1.5; }
-.st-flower .stem { fill: none; stroke: #7fae7f; stroke-width: 2; stroke-linecap: round; }
-.st-flower .leaf { fill: #9cc79c; }
-.st-flower .daisy-petals ellipse { stroke-width: .8; }
+/* The stalk flower (look.js stalkDaisy): plain colours, no color-mix (Mor's phone). */
+.st-flower { overflow: visible; }
+.st-flower .stem { fill: none; stroke: #6fa56f; stroke-width: 2.2; stroke-linecap: round; }
+.st-flower .st-leaf-a .leaf { fill: #8fc48f; }
+.st-flower .st-leaf-b .leaf { fill: #a9d3a0; }
+.st-flower .vein { fill: none; stroke: #e9f4e4; stroke-width: .6; stroke-linecap: round; opacity: .8; }
+.st-flower .daisy-petals ellipse { stroke: #e6d9b8; stroke-width: .6; }
+.st-flower .st-seed { fill: #b97800; opacity: .45; }
+.st-flower .st-ground { fill: var(--line); }
+.st-flower .st-bud-tip { fill: #fffaf0; stroke: #e6d9b8; stroke-width: .6; }
+.st-flower .st-sepal { fill: #7fb57f; }
+.st-flower .st-sway { transform-box: view-box; transform-origin: 28px 70px; }
+@keyframes st-sway { 0%, 100% { transform: rotate(-2deg); } 50% { transform: rotate(2deg); } }
+@media (prefers-reduced-motion: no-preference) { .st-flower .st-sway { animation: st-sway 5s ease-in-out infinite; } }
 .hglance .st-done .pj-drow { min-block-size: 40px; }
 .hglance .bl-r-n { display: none; } /* no counts on Stats; the dots say it */
 

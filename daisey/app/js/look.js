@@ -45,17 +45,48 @@ function seeded(key){ // mulberry32 over an FNV-1a hash of the key
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
 }
-export function stalkDaisy(petals, leaves = [], { size = 96, cls = "daisy" } = {}){
-  const n = Math.max(0, Math.min(8, petals | 0));
-  const svg = svgEl("svg", { viewBox: "-8 0 56 72", width: Math.round(size * 56 / 72), height: size, class: cls, "aria-hidden": "true" });
-  svg.append(svgEl("path", { d: "M20 26 C 20 40, 21 56, 20 71", class: "stem" }));
-  for (const key of leaves.slice(0, LEAF_MAX)) {
+let stalkIds = 0;
+export function stalkDaisy(petals, leaves = [], { size = 112, cls = "daisy" } = {}){
+  const n = Math.max(0, Math.min(8, petals | 0)), id = `stk${++stalkIds}`;
+  const svg = svgEl("svg", { viewBox: "0 0 56 72", width: Math.round(size * 56 / 72), height: size, class: cls, "aria-hidden": "true" });
+  // Soft gradients: petals cream at the heart, white at the tips; the heart
+  // lit from the top left. Inline fills, so the stylesheet's flat ones lose.
+  const defs = svgEl("defs");
+  const radial = (gid, attrs, stops) => {
+    const g = svgEl("radialGradient", { id: gid, ...attrs });
+    for (const [o, c] of stops) g.append(svgEl("stop", { offset: o, "stop-color": c }));
+    defs.append(g);
+  };
+  radial(`${id}p`, { cx: 20, cy: 20, r: 17, gradientUnits: "userSpaceOnUse" }, [["0.35", "#f3e6c4"], ["0.7", "#fffdf6"], ["1", "#ffffff"]]);
+  radial(`${id}h`, { cx: "0.35", cy: "0.3", r: "0.75" }, [["0", "#ffd95a"], ["0.6", "#f5b301"], ["1", "#d99200"]]);
+  // The ground, then everything that sways from where the stalk meets it.
+  svg.append(defs, svgEl("ellipse", { cx: 28, cy: 70, rx: 14, ry: 2, class: "st-ground" }));
+  const sway = svgEl("g", { class: "st-sway" }), plant = svgEl("g", { transform: "translate(8 0)" });
+  sway.append(plant); svg.append(sway);
+  plant.append(svgEl("path", { d: "M20 27 C 19 40, 22.5 54, 20 70", class: "stem" }));
+  const shown = leaves.slice(0, LEAF_MAX), crowd = Math.min(1, Math.sqrt(6 / Math.max(1, shown.length))); // many leaves: smaller, not a bush
+  for (const key of shown) {
     const rnd = seeded(String(key)), side = rnd() < 0.5 ? -1 : 1;
-    const y = 36 + rnd() * 30, k = 0.7 + rnd() * 0.7, tilt = (rnd() - 0.5) * 30;
-    svg.append(svgEl("path", { d: "M0 0 C 5 -4, 11 -4, 15 -8 C 12 0, 6 4, 0 0z", class: "leaf",
-      transform: `translate(20 ${y.toFixed(1)}) rotate(${tilt.toFixed(1)}) scale(${side * k} ${k.toFixed(2)})` }));
+    const y = 38 + rnd() * 28, k = (0.75 + rnd() * 0.6) * crowd, tilt = -(4 + rnd() * 22), tone = rnd() < 0.5 ? "a" : "b";
+    const x = 20 + 1.6 * Math.sin(((y - 27) / 43) * Math.PI) * 0.9; // on the stalk's curve, near enough
+    const leaf = svgEl("g", { class: `st-leaf st-leaf-${tone}`, transform: `translate(${x.toFixed(1)} ${y.toFixed(1)}) scale(${side} 1) rotate(${tilt.toFixed(1)}) scale(${k.toFixed(2)})` });
+    leaf.append(svgEl("path", { d: "M0 0 C 3 -5, 10 -7, 17 -6 C 12 -1, 6 3, 0 0z", class: "leaf" }),
+      svgEl("path", { d: "M0.5 -0.3 C 6 -3, 11 -5, 15.5 -5.8", class: "vein" }));
+    plant.append(leaf);
   }
-  svg.append(petalRing(n), svgEl("circle", { cx: 20, cy: 20, r: 6.5, class: "daisy-heart" }));
+  if (n) {
+    // Few petals start off the vertical (two read as a bow, not a stick).
+    const g = svgEl("g", { class: "daisy-petals" });
+    for (let i = 0; i < n; i++) {
+      g.append(svgEl("ellipse", { cx: 20, cy: 9, rx: 4.4, ry: 8.2, style: `fill:url(#${id}p)`, transform: `rotate(${-30 + (360 / n) * i} 20 20)` }));
+    }
+    plant.append(g, svgEl("circle", { cx: 20, cy: 20, r: 6.5, class: "daisy-heart", style: `fill:url(#${id}h)` }));
+    for (const [dx, dy] of [[-2, -1.5], [1.5, -2.5], [2.5, 1], [-1, 2], [0, 0]]) plant.append(svgEl("circle", { cx: 20 + dx, cy: 20 + dy, r: 0.6, class: "st-seed" }));
+  } else {
+    // A closed bud: green sepals holding a white tip.
+    plant.append(svgEl("path", { d: "M20 12 C 24 15, 24.5 20, 20 26 C 15.5 20, 16 15, 20 12z", class: "st-bud-tip" }),
+      svgEl("path", { d: "M20 27 C 15 25, 14.5 19, 17 15.5 C 17.5 20, 18.5 23, 20 27z M20 27 C 25 25, 25.5 19, 23 15.5 C 22.5 20, 21.5 23, 20 27z", class: "st-sepal" }));
+  }
   return svg;
 }
 

@@ -266,6 +266,12 @@ const SCENARIOS = {
     { title: "Exercise", project: "Health", size: 45, routine: { per: 3, log: [{ day: day(0) }, { day: day(-1) }] } },
     { title: "Portuguese", project: "Learning", size: 15, routine: { per: 3, log: [{ day: day(0) }, { day: day(0) }, { day: day(-1) }] } },
   ] },
+  // The same flower closed (no one-offs yet, leaves only) and full (8 one-offs, 12 sessions).
+  statsbud: { tasks: [{ title: "Exercise", project: "Health", size: 45, routine: { per: 3, log: [{ day: day(0) }, { day: day(-1) }] } }] },
+  statsfull: { tasks: [
+    ...Array.from({ length: 9 }, (_, i) => ({ title: `Cue ${i + 1}`, project: "Reprise", size: 15, over: { status: "done", doneAt: Date.now() - i * 60000 } })),
+    ...Array.from({ length: 4 }, (_, i) => ({ title: `Routine ${i + 1}`, project: "Health", size: 15, routine: { per: 3, log: [{ day: day(0) }, { day: day(0) }, { day: day(-1) }] } })),
+  ] },
   // Bloom (bloom.js): projects in all three tiers, two routines, a week of work.
   bloom: { tiers: { Band: "focus", Reprise: "focus", Admin: "background" }, bloomLog: true, tasks: [
     { title: "Mix chorus", project: "Band", size: 60 },

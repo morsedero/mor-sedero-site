@@ -173,7 +173,7 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
     // session), then what got done by name, then the routines. No counts,
     // no times.
     const bloom = h("section", { className: "bl-card st-daisy", ariaLabel: "This week's Daisey" },
-      stalkDaisy(petals, leaves, { size: 96, cls: "daisy st-flower" + (petals ? "" : " bud") }),
+      stalkDaisy(petals, leaves, { size: 112, cls: "daisy st-flower" + (petals ? "" : " bud") }),
       h("div", { className: "st-daisy-t" },
         h("h3", { className: "bl-h", textContent: "This week's Daisey" }),
         h("p", { textContent: petals ? "A petal for each thing you finish, a leaf for each routine." : "Still a bud. It opens as you go." })));
