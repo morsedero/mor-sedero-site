@@ -67,6 +67,7 @@
   --sub: color-mix(in srgb, var(--aink, var(--ink-2)) 40%, var(--ink));
   display: flex; flex-direction: column; padding: 16px 18px 12px; border-radius: var(--radius);
   background: var(--tint, var(--card)); border: 1px solid var(--aline, var(--line)); color: var(--ink); text-align: start;
+  box-shadow: 0 12px 28px rgb(0 0 0 / .11);
   box-shadow: 0 12px 28px color-mix(in srgb, var(--aink, var(--ink-2)) 14%, transparent);
 }
 .dc-kick { display: flex; align-items: center; gap: 8px; min-block-size: 28px; font-size: 13px; font-weight: 600; color: var(--aink, var(--ink-2)); }
@@ -125,7 +126,7 @@
 .now-card.main.qh, :root:not(.night) body:is(.focus-mode, .home-float) .deck > .now-card.main.qh {
   --sub: color-mix(in srgb, var(--aink) 40%, var(--ink));
   display: flex; flex-direction: column; align-items: center; text-align: center; padding: 24px 20px 20px;
-  background: var(--tint); border: 1px solid var(--aline); box-shadow: 0 12px 28px color-mix(in srgb, var(--aink) 12%, transparent);
+  background: var(--tint); border: 1px solid var(--aline); box-shadow: 0 12px 28px rgb(0 0 0 / .10); box-shadow: 0 12px 28px color-mix(in srgb, var(--aink) 12%, transparent);
 }
 .qh-art { display: grid; place-items: center; min-block-size: 80px; }
 .qh-art svg { display: block; }
@@ -154,9 +155,9 @@
 }
 :root.night .night-hero .moon-daisy { inline-size: 96px; block-size: 96px; }
 :root.night .night-h { margin: 12px 0 0; font-size: 22px; }
-:root.night .night-p { margin: 6px 0 0; color: color-mix(in srgb, #b3aae8 40%, var(--ink)); }
+:root.night .night-p { margin: 6px 0 0; color: var(--ink); color: color-mix(in srgb, #b3aae8 40%, var(--ink)); }
 :root.night .night-today { display: none; }
-:root.night .night-foot .pill-btn { border-color: transparent; background: transparent; color: var(--ink-2); text-decoration: underline; text-underline-offset: 3px; text-decoration-color: color-mix(in srgb, var(--ink-2) 40%, transparent); }
+:root.night .night-foot .pill-btn { border-color: transparent; background: transparent; color: var(--ink-2); text-decoration: underline; text-underline-offset: 3px; text-decoration-color: transparent; text-decoration-color: color-mix(in srgb, var(--ink-2) 40%, transparent); }
 
 /* Night: Today opens the day too (it did nothing: the night panel rule only
    let Plan and Projects through, app.css). The doubled id outranks it. */
@@ -273,4 +274,9 @@
    own 720px box. */
 @media (min-width: 1024px) {
   :root:not(.night) body:not(.focus-mode):not(.card-mini) #nowcard > :is(.deck, .later-drop, .drop-anchor) { max-inline-size: 560px; }
+}
+
+/* No color-mix() (Mor's phone): plain --sub where design.css set one with it; see the block at the end of app.css. */
+@supports not (color: color-mix(in srgb, red, blue)) {
+  .dc-card, .routine-nag.line, .now-card.main.qh, :root:not(.night) body:is(.focus-mode, .home-float) .deck > .now-card.main.qh { --sub: var(--aink, var(--ink-2)); }
 }

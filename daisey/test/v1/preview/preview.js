@@ -404,7 +404,12 @@ const FAKES = {
     const file = path.join(APP, rel);
     if (!fs.existsSync(file)) return route.fulfill({ status: 404, body: "" });
     // --no-has: the CSS as a browser without :has() reads it (Mor's phone, 2026-10-19).
-    if (args.includes("--no-has") && file.endsWith(".css")) return route.fulfill({ contentType: "text/css", body: require("./strip-has")(fs.readFileSync(file, "utf8")) });
+    if ((args.includes("--no-has") || args.includes("--no-color-mix")) && file.endsWith(".css")) {
+      const sh = require("./strip-has"); let css = fs.readFileSync(file, "utf8");
+      if (args.includes("--no-has")) css = sh(css);
+      if (args.includes("--no-color-mix")) css = sh.stripColorMix(css); // browsers without color-mix(): Mor's phone
+      return route.fulfill({ contentType: "text/css", body: css });
+    }
     route.fulfill({ path: file });
   });
   await page.goto(ORIGIN + "/" + query);
