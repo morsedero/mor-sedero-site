@@ -65,7 +65,8 @@ const CHECKS = {
     }],
     ["Nothing fits: headline, one line, keeps its one way out", () => {
       const t = text("breakpick", "--cal", "none", "--at", "19:30");
-      return /Nothing fits the next/.test(t) && t.includes("Free until") && t.includes("Show me anyway") && !/^Break$/m.test(t);
+      // Its one task is held by office hours, not length: no time named (Mor, 2026-10-19).
+      return t.includes("Nothing fits right now") && !/Nothing fits the next/.test(t) && t.includes("Free until") && t.includes("Show me anyway") && !/^Break$/m.test(t);
     }],
     ["Night: the dusk card, Tomorrow first on its own, no list or counts", () => {
       const t = text("en", "--at", "23:40");

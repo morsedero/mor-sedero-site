@@ -2321,7 +2321,11 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
         ? (doneSome ? quietHero("green", daisy(8, { size: 96, cls: "daisy bloom" }), "That's everything.", "Nothing else needs you today.")
           : quietHero("sun", stemDaisy(), "No tasks yet", "Add a few and Daisey will pick."))
         // Minimal (Mor, 2026-10-14): no counts, one question at most.
-        : quietHero("peach", sprout(), `Nothing fits the next ${dur(r.moment.window)}`, r.moment.windowEnd ? `Free until ${clock(r.moment.windowEnd)}.` : "",
+        // The time is named only when length is what's in the way: a 30 min
+        // task held back by its place, office hours or a block "not fitting
+        // the next 51 min" read as a mistake (Mor, 2026-10-19).
+        : quietHero("peach", sprout(), r.out.some((o) => SWITCH_TOO.has(o.reason) && o.reason !== "size" && o.reason !== "booked")
+          ? "Nothing fits right now" : `Nothing fits the next ${dur(r.moment.window)}`, r.moment.windowEnd ? `Free until ${clock(r.moment.windowEnd)}.` : "",
           r.out.some((o) => o.reason === "place") && placeFix(r.moment), putOffButton(r), anywayButton(r)), tip);
       return;
     }

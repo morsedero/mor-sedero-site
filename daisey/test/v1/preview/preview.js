@@ -145,7 +145,7 @@ const SCENARIOS = {
   booked: { tasks: [{ title: "Mix review", project: "Reprise", size: 60 },
     { title: "Call the bank", project: "Admin", size: 15, type: "call", openHours: "office" }] },
   one: { tasks: [{ title: "Send invoice to Uri", project: "Admin", size: 5, due: day(0) }] },
-  // The Break card ("Nothing fits the next …") at --at 19:30: only an office-hours task is open, so
+  // The Break card ("Nothing fits right now") at --at 19:30: only an office-hours task is open, so
   // "Show me anyway" offers it and "Put … on the card instead" must put it there.
   breakpick: { tasks: [{ title: "Call the bank", project: "Admin", size: 15, openHours: "office", guessed: [] }] },
   // A weekly job in Ashkelon, answered "train" (trips.js; use with --cal trip).
