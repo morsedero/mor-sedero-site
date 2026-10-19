@@ -22,7 +22,7 @@
 // sheet, "Daisey guesses" hands a field back, dashed = a guess, solid = yours.
 // While typing a new task's title they catch up only once typing stops.
 import { nudgeText, waLink } from "./nudge.js";
-import { watchTasks, addTask, updateTask, removeTask, watchProjectNames, unlogReopened } from "./store.js";
+import { watchTasks, addTask, updateTask, removeTask, restoreTask, watchProjectNames, unlogReopened } from "./store.js";
 import { durText, guessFields, validField, CHOICES, LABELS, INBOX, localDate, logicalDate, clampDate, outsideRange, progressOf, isLink } from "./model.js";
 import { keepFile, dropFile, fileUrl } from "./files.js";
 import { h, flash, icon, bdi, closeOrAsk, askOnEsc } from "./ui.js";
@@ -71,8 +71,21 @@ export function mountAddTask(dialog, uid, { onStart, onDone } = {}){
   // labelled fields and button (Mor, 2026-10-06: "make it identical").
   const heading = h("h2", { id: "addTitle", textContent: "New task" });
   // A new task with something typed asks Save / Don't save before closing (ui.js).
-  const unsaved = () => !editing && !!(title.value.trim() || notes.value.trim() || links.length);
-  const closeSheet = () => closeOrAsk(dialog, "task", unsaved, add);
+  // So does an edit that changed something (Mor, 2026-10-19: ✕ as in the new
+  // task sheet). Its fields save as they go, so Don't save writes back the
+  // task as it opened (`opened`; close below).
+  let opened = null, discard = false;
+  const changedSince = () => {
+    const back = {};
+    if (!opened || !editing) return back;
+    for (const k of new Set([...Object.keys(opened), ...Object.keys(editing)]))
+      if (k !== "id" && JSON.stringify(opened[k] ?? null) !== JSON.stringify(editing[k] ?? null)) back[k] = opened[k] ?? null;
+    return back;
+  };
+  const unsaved = () => (editing ? Object.keys(typed()).length + Object.keys(changedSince()).length > 0
+    : !!(title.value.trim() || notes.value.trim() || links.length));
+  const saveOrAdd = () => (editing ? dialog.close() : add());
+  const closeSheet = () => closeOrAsk(dialog, "task", unsaved, saveOrAdd, () => { discard = true; });
   const closeX = h("button", { className: "now-x", type: "button", ariaLabel: "Close", textContent: "✕", onclick: closeSheet });
   const field = (label, input, ...more) => {
     input.id ||= `ts-f${++fieldN}`;
@@ -328,14 +341,19 @@ export function mountAddTask(dialog, uid, { onStart, onDone } = {}){
   }
   // Typed fields save when you leave them, and on close (flush).
   function flush(){
-    if (!editing) return;
+    const c = typed();
+    if (Object.keys(c).length) save(c);
+  }
+  // What's typed but not saved yet.
+  function typed(){
     const c = {};
+    if (!editing) return c;
     const t = title.value.trim();
     if (t && t !== editing.title) c.title = t;
     if ((notes.value.trim() || null) !== (editing.notes || null)) c.notes = notes.value;
     if (editing.status === "waiting" && (waitingOn.value.trim() || null) !== (editing.waitingOn || null)) c.waitingOn = waitingOn.value;
     if (projectSel.value === NEW_PROJECT && newProject.value.trim() && newProject.value.trim() !== editing.project) c.project = newProject.value.trim();
-    if (Object.keys(c).length) save(c);
+    return c;
   }
 
   // ---------- project ----------
@@ -609,6 +627,23 @@ export function mountAddTask(dialog, uid, { onStart, onDone } = {}){
   const show = () => { if (!dialog.open) dialog.showModal(); requestAnimationFrame(fit); };
 
   dialog.addEventListener("close", () => {
+    if (discard) {
+      discard = false;
+      const back = changedSince();
+      if (editing && Object.keys(back).length) {
+        // Repeats turned off dropped the weekly event already: the routine
+        // comes back without it, and the event is made again.
+        if (back.routine?.series && !editing.routine?.series) { const { series, ...r } = back.routine; back.routine = r; }
+        const id = editing.id;
+        restoreTask(uid, id, back).then(() => {
+          const t = (tasks || []).find((x) => x.id === id);
+          if (t && t.status !== "done" && seriesSig(t) && !t.routine.series) owe(t);
+        }).catch(fail);
+      }
+      editing = opened = null;
+      return;
+    }
+    opened = null;
     flush();
     // The weekly event follows what the sheet now says (slots.js): written,
     // rewritten or deleted only if its days, time, end, title or length changed.
@@ -622,7 +657,7 @@ export function mountAddTask(dialog, uid, { onStart, onDone } = {}){
     if (e.target === dialog) { closeSheet(); return; }
     if (openChip && !e.target.closest(".gchip-wrap")) { openChip = null; paintChips(); }
   });
-  askOnEsc(dialog, "task", unsaved, add);
+  askOnEsc(dialog, "task", unsaved, saveOrAdd, () => { discard = true; });
   dialog.addEventListener("keydown", (e) => { if (e.key === "Escape" && openChip) { e.preventDefault(); openChip = null; paintChips(); } });
 
   // The project list: every project a task names, plus the empty ones
@@ -707,6 +742,7 @@ export function mountAddTask(dialog, uid, { onStart, onDone } = {}){
     edit(task){
       clear();
       editing = task;
+      opened = JSON.parse(JSON.stringify(task));
       heading.textContent = "Edit task";
       showProject(task.project);
       title.value = task.title;

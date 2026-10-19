@@ -146,7 +146,9 @@ export function flash(label, title, { undo } = {}){
 // 2026-10-18). An empty sheet, or an open item (those save as they go), just
 // closes. dirty() says whether there's anything to lose; save() is the sheet's
 // own Add, which closes it when the item is good and says why when it isn't.
-export function closeOrAsk(dialog, what, dirty, save){
+// onDiscard: told before a Don't save closes it (the task sheet's edit undoes
+// what it already saved).
+export function closeOrAsk(dialog, what, dirty, save, onDiscard){
   if (!dirty()) { dialog.close(); return; }
   const ask = h("dialog", { className: "now ask-save", ariaLabel: `Save this ${what}?` });
   let pick = null;
@@ -157,18 +159,18 @@ export function closeOrAsk(dialog, what, dirty, save){
   ask.addEventListener("close", () => {
     ask.remove();
     if (pick === "save") save();
-    else if (pick === "discard") dialog.close();
+    else if (pick === "discard") { onDiscard?.(); dialog.close(); }
   });
   document.body.append(ask);
   ask.showModal();
 }
 // The same question for Esc: the sheet's cancel is held back and asked about.
 // oncancel, not a listener, so a dialog shared by two sheets (projects.js) holds one.
-export function askOnEsc(dialog, what, dirty, save){
+export function askOnEsc(dialog, what, dirty, save, onDiscard){
   dialog.oncancel = (e) => {
     if (!dirty()) return;
     e.preventDefault();
-    closeOrAsk(dialog, what, dirty, save);
+    closeOrAsk(dialog, what, dirty, save, onDiscard);
   };
 }
 
