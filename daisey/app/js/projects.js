@@ -264,7 +264,7 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
     // the bar with its "% done" beside it. No time this week on the card (the
     // Week page has it).
     const card = (p, i) => { const f = g.flowers.get(p.name);
-      return h("button", { type: "button", className: "pcard pp-drag" + colorClass(p) + (glow(p) ? " landed" : ""), style: glow(p) ? `animation-delay:-${Date.now() - landed.at}ms` : "", _name: p.name, onclick: () => openProject(p.name) },
+      return h("button", { type: "button", className: "pcard pp-drag" + (f ? " has-fl" : "") + colorClass(p) + (glow(p) ? " landed" : ""), style: glow(p) ? `animation-delay:-${Date.now() - landed.at}ms` : "", _name: p.name, onclick: () => openProject(p.name) },
         f && h("span", { className: "pcard-fl" + (f.bud ? " bud" : "") + (g.pops.has(p.name) ? " pop" : ""), style: `--d:-${(swayAt() + i * 0.9).toFixed(2)}s` }, flowerSvg(f)),
         h("span", { className: "pcard-body" },
           h("span", { className: "pcard-top" },

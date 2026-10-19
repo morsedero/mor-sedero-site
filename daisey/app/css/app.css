@@ -2207,7 +2207,7 @@ dialog.tsheet[open] > .ts-laptop + .ts-repeat { margin-block-start: -12px; }
 .pp-inbox-chip svg { inline-size: 14px; block-size: 14px; color: var(--ink-2); stroke-width: 2; }
 
 /* The card: flower standing on its bottom edge, the rest beside it. */
-.pcard:has(> .pcard-fl) { grid-template-columns: auto minmax(0, 1fr); column-gap: 10px; }
+.pcard.has-fl { grid-template-columns: auto minmax(0, 1fr); column-gap: 10px; }
 /* Bolder project colours (Mor, 2026-10-10: the pastel tint read pale): the
    card sits between its tint and its line colour, edged in the line. */
 /* The project screen's header card, copied (Mor, 2026-10-12): surface fill,
@@ -2247,7 +2247,7 @@ dialog.tsheet[open] > .ts-laptop + .ts-repeat { margin-block-start: -12px; }
 .pcard-fl { align-self: end; display: flex; justify-content: center; inline-size: 40px; margin-block-end: -6px; }
 .pcard-body { display: flex; flex-direction: column; min-inline-size: 0; }
 /* Compact card (Mor, 2026-10-10): two labelled rows and a thin bar. */
-.pcard:has(> .pcard-fl) { padding: 8px 10px; }
+.pcard.has-fl { padding: 8px 10px; }
 .pcard-fl .bl-svg, .tier-focus .pcard-fl .bl-svg, .tier-background .pcard-fl .bl-svg { inline-size: 26px; }
 .pcard-fl { inline-size: 28px; margin-block-end: -4px; }
 .pcard .pcard-name { font-size: 14px; }
