@@ -142,8 +142,12 @@ export function mountNeeds(root, uid, { onClose, onStart, extra, onAway } = {}){
         yes: ["Yes, I'm home", async () => { if (await saveSpot("Home")) next(); else failed(); }],
         no: ["No", () => { notHomeHere(); next(); }] };
     }
-    if (item.kind === "place") return { tone: "area-home", ico: "someday", q: "You're here a lot", sub: "Name this place?",
-      item: "", say: "Tasks that mention it come first here.", noLater: true,
+    // Asked only once the phone has read you standing still (where.js placeAsk),
+    // so the card says so: a stop on a commute is "just passing", not a place
+    // (Mor, 2026-10-19: "You're here a lot / Name this place?" read as
+    // confusing when he was between places).
+    if (item.kind === "place") return { tone: "area-home", ico: "pin", q: "Is this a place you go to?", sub: "Your phone says you've stopped here before.",
+      item: "", say: "Name it and tasks that mention it come first when you're here. Just passing through? Say so and I won't ask again.", noLater: true,
       field: { id: "placeHere", placeholder: "Work, Studio, Gym…" },
       yes: ["Save", async (name) => {
         const n = String(name || "").trim();
@@ -151,7 +155,7 @@ export function mountNeeds(root, uid, { onClose, onStart, extra, onAway } = {}){
         if (reservedName(n)) { flash(`"${n}" is taken. Pick another name.`); return; }
         if (await saveSpot(n)) { flash(`Saved. I'll know when you're at ${n}.`); next(); } else flash("Couldn't get your location. Allow it for this site and try again.");
       }],
-      no: ["Not now", () => { quietHere(); next(); }] };
+      no: ["Just passing through", () => { quietHere(); next(); }] };
     // An event in another city (trips.js): how you get there, once per series.
     // The field takes minutes each way; empty = the estimate from Home.
     if (item.kind === "trip") {
