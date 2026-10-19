@@ -1497,6 +1497,7 @@ body.focus #side { display: none; }
   .shell { max-inline-size: 430px; }
   .screen > * { max-inline-size: 430px; }
   body:not(.day-open) #panel:not(:has(> .ppage:not([hidden]):not(#schedPage):not(.pg-ghost))) { display: none; }
+  body.no-panel #panel { display: none; } /* main.js syncPanel: the same rule for a browser without :has() */
   /* The bottom (Mor, 2026-10-12, canvas "Daisey Bottom Fixes", home B):
      one row over Tell Daisey on every screen, main.js placeSide moves them
      into .dock-stack: Next (the plan chip: "Next 21:10" over the task, or

@@ -772,6 +772,10 @@ async function boot(){
           const day = document.body.classList.contains("day-open");
           // Phone, nothing open: the card floats mid-screen, as Focus mode did (app.css).
           document.body.classList.toggle("home-float", phone.matches && !day && !(on || plan || weekPop));
+          // The panel is only there with the day, Plan or Projects open. A class, not
+          // app.css's :has() rule alone: a browser without :has() drops that whole rule
+          // and left Today half open under the card on Mor's phone (2026-10-19).
+          document.body.classList.toggle("no-panel", phone.matches && !(day || on || plan));
           // Phone, anything open (the day, the plan, Projects, Stats): the card
           // goes mini, so the page gets the room (Mor, 2026-10-12; one rule for
           // every page, 2026-10-18; app.css).
