@@ -28,7 +28,7 @@ import { LATER_MINUTES, DRAIN, CANCEL_KEEP_MINUTES, LIGHTER, TIERS } from "./wei
 import { missState, silenceText, lastActivity, planActivity } from "./miss.js";
 import { takeQuiet } from "./push.js";
 import { findPhoneTasks, phoneOkIds, searching } from "./phone.js";
-import { rank, freeWindow, timeBucket, matchProject, dueAt, keepsCard, passedOver } from "./engine.js";
+import { rank, freeWindow, timeBucket, matchProject, dueAt, keepsCard, passedOver, fitsPlace } from "./engine.js";
 import { leftMinutes, toMinutes, progressOf, leftPatch, moreTimePatch, localDate, logicalDate, skipSnapshot, skipLesson, pendingCheck, notYet, pushedTo, bringBack, dayAfter, doneSnapshot, isGuess, estText, needsLaptop } from "./model.js";
 import { isRoutine, routineCalendar, eventsToLog, sessionPatch, nagFor, nagText, nagParts } from "./routine.js";
 import { decisionCard } from "./decision.js";
@@ -2240,13 +2240,18 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     // said "Next in your plan, 21:50" instead of the drive).
     const later = fw?.current && pn?.row && pn.row.start > Date.now()
       && (!fw.current.trip || pn.row.start >= fw.current.end);
-    const planRow = pn?.row && !later ? pn.row : null;
+    // A row the plan laid for another place waits there: on a bus a laptop
+    // task's row isn't the card, the engine's pick for the bus is (Mor,
+    // 2026-10-19: said "Bus", the card kept a laptop task from the plan).
+    const fitsHere = (id) => { const t = (tasks || []).find((x) => x.id === id); return !t || fitsPlace(t, r.moment.place, r.moment.phoneOk); };
+    const rowAway = !!(pn?.row && !later && !fitsHere(pn.row.taskId));
+    const planRow = pn?.row && !later && !rowAway ? pn.row : null;
     const asCard = (id, task, whyParts) => ({ ...(r.ranked.find((s) => s.task.id === id) || { task }), whyParts });
     // The first row the plan below actually fits in, by time: never one it
     // says has No room (Mor, 2026-10-11).
     const firstProposed = !pn && prop.open && !approvedPlan()
       ? [...timeline(prop.items, planCtx()).rows].sort((a, b) => a.start - b.start)
-        .find((it) => (tasks || []).some((t) => t.id === it.taskId && t.status === "ready")) : null;
+        .find((it) => (tasks || []).some((t) => t.id === it.taskId && t.status === "ready") && fitsHere(it.taskId)) : null;
     // Switch offers the rest of what's open too (Mor, 2026-10-10: not only
     // On hold when nothing else fits): what the moment filters out (too long
     // for the gap, office hours, another place, its own slot later) is still
@@ -2267,7 +2272,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
       || (planned && r.ranked.find((s) => s.task.id === planned))
       || (planRow && asCard(planRow.taskId, planRow.task, planWhy(planRow)))
       || (proposedPick && asCard(firstProposed.taskId, tasks.find((t) => t.id === firstProposed.taskId), proposedPick))
-      || (pn ? null : r.pick);
+      || (pn && !rowAway ? null : r.pick);
     card = keptCard(card, { r, fw, asCard, picked, planRow });
     showing(card?.task.id ?? null);
     if (card && card === r.pick) noteSeen(card.task);
