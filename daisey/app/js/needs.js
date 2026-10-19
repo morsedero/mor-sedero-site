@@ -37,7 +37,7 @@ import { collectNeeds, somedayDue, awayDays, AWAY_DAYS } from "./needs-list.js";
 export { collectNeeds, somedayDue }; // now.js counts them for the header chip
 import { h, icon, dur, flash } from "./ui.js";
 import { decisionCard } from "./decision.js";
-import { whereAsk, setRide, setStill, saveSpot, notHomeHere, quietHere, reservedName, homeAt } from "./where.js";
+import { whereAsk, placeAskInfo, setRide, setStill, saveSpot, notHomeHere, quietHere, reservedName, homeAt } from "./where.js";
 import { estimate, answer as tripAnswer, noTrip } from "./trips.js";
 import { areaClass } from "./look.js";
 
@@ -137,25 +137,32 @@ export function mountNeeds(root, uid, { onClose, onStart, extra, onAway } = {}){
       more: [["Driving", () => { setRide("car"); next(); }], ["Not moving", () => { setStill(); next(); }]] };
     if (item.kind === "home") {
       const failed = () => flash("Couldn't get your location. Allow it for this site and try again.");
-      return { tone: "area-home", ico: "someday", q: "Are you home right now?", sub: "I don't have a Home saved yet.",
+      const w = placeAskInfo(), ago = w && !w.fresh; // a reading from a while ago: you may have left
+      return { tone: "area-home", ico: "pin", q: ago ? `Were you home at ${clock(w.t)}?` : "Are you home right now?", sub: "I don't have a Home saved yet.",
         item: "", say: "Then I'll know when tasks that need home fit.", noLater: true,
-        yes: ["Yes, I'm home", async () => { if (await saveSpot("Home")) next(); else failed(); }],
+        more: ago ? [["Show it on a map", () => window.open(`https://www.google.com/maps?q=${w.at.lat},${w.at.lng}`, "_blank", "noopener")]] : [],
+        yes: [ago ? "Yes, I was" : "Yes, I'm home", async () => { if (await saveSpot("Home", ago ? w.at : null)) next(); else failed(); }],
         no: ["No", () => { notHomeHere(); next(); }] };
     }
-    // Asked only once the phone has read you standing still (where.js placeAsk),
-    // so the card says so: a stop on a commute is "just passing", not a place
-    // (Mor, 2026-10-19: "You're here a lot / Name this place?" read as
-    // confusing when he was between places).
-    if (item.kind === "place") return { tone: "area-home", ico: "pin", q: "Is this a place you go to?", sub: "Your phone says you've stopped here before.",
-      item: "", say: "Name it and tasks that mention it come first when you're here. Just passing through? Say so and I won't ask again.", noLater: true,
-      field: { id: "placeHere", placeholder: "Work, Studio, Gym…" },
-      yes: ["Save", async (name) => {
-        const n = String(name || "").trim();
-        if (!n) return;
-        if (reservedName(n)) { flash(`"${n}" is taken. Pick another name.`); return; }
-        if (await saveSpot(n)) { flash(`Saved. I'll know when you're at ${n}.`); next(); } else flash("Couldn't get your location. Allow it for this site and try again.");
-      }],
-      no: ["Just passing through", () => { quietHere(); next(); }] };
+    // Asked from a past reading, so the card names WHEN and WHERE (a time, how
+    // long you stood still, a map link): you may be on the bus by the time you
+    // see it (Mor, 2026-10-19: "it's not the wording"). Naming saves that spot.
+    if (item.kind === "place") {
+      const w = placeAskInfo(), t = w ? clock(w.t) : "", ago = w && !w.fresh;
+      const stay = !w ? "" : w.mins >= 10 ? `You stood still there about ${dur(w.mins)}.` : `You've stopped there on ${w.days} days.`;
+      return { tone: "area-home", ico: "pin", q: ago ? `Where were you at ${t}?` : "Is this a place you go to?",
+        sub: w ? (ago ? `${stay} Name that place?` : `You've been still here since ${clock(w.t - Math.max(0, w.mins) * 60000)}.`) : "Name this place?",
+        item: "", say: "Tasks that mention it come first when you're there.", noLater: true,
+        field: { id: "placeHere", placeholder: "Work, Studio, Gym…" },
+        yes: ["Save", async (name) => {
+          const n = String(name || "").trim();
+          if (!n) return;
+          if (reservedName(n)) { flash(`"${n}" is taken. Pick another name.`); return; }
+          if (await saveSpot(n, w?.at)) { flash(`Saved. I'll know when you're at ${n}.`); next(); } else flash("Couldn't get your location. Allow it for this site and try again.");
+        }],
+        more: w ? [["Show it on a map", () => window.open(`https://www.google.com/maps?q=${w.at.lat},${w.at.lng}`, "_blank", "noopener")]] : [],
+        no: ["Just passing through", () => { quietHere(); next(); }] };
+    }
     // An event in another city (trips.js): how you get there, once per series.
     // The field takes minutes each way; empty = the estimate from Home.
     if (item.kind === "trip") {

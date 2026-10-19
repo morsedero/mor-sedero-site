@@ -62,3 +62,18 @@ test("reservedName: mode names can't be place names", () => {
   assert.equal(W.reservedName(" Train "), true);
   assert.equal(W.reservedName("Studio"), false);
 });
+
+test("placeAskInfo + saveSpot(name, at): naming a spot you've left saves that spot, not where you are now", async () => {
+  here = { lat: 32.6, lng: 35.1 };
+  await redetect();
+  edit((d) => { const s = d.seen.find((x) => Math.abs(x.lat - 32.6) < 0.001); s.days = ["2000-01-01", s.days.at(-1)]; });
+  const info = W.placeAskInfo();
+  assert.equal(info.fresh, true);
+  assert.ok(Math.abs(info.at.lat - 32.6) < 0.001);
+  edit((d) => { d.last.t -= 20 * 60000; });
+  assert.equal(W.placeAskInfo().fresh, false, "a reading 20 min old isn't 'here'");
+  here = { lat: 33.0, lng: 35.5 }; // moved on
+  assert.equal(await W.saveSpot("Gym", info.at), true);
+  const gym = data().places.find((p) => p.name === "Gym");
+  assert.ok(Math.abs(gym.lat - 32.6) < 0.001, "saved the visit, not the current fix");
+});

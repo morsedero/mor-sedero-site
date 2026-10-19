@@ -25,6 +25,7 @@ const MANUAL_MS = 45 * 60000; // a hand-picked place outranks the location this 
 export const RIDES = ["train", "bus", "car"];
 const WINDOW_MS = 10000;     // how long to collect fixes for a speed
 const REDETECT_MS = 5 * 60000;
+const FRESH_MS = 2 * 60000; // a reading this young still says where you are
 // Fixes vaguer than this don't count toward a speed. Opening the app, the
 // first fix is often a Wi-Fi guess tens of metres off, and the jump to the
 // GPS fix a second later read as a ride (Mor, 2026-10-06: sitting at home,
@@ -156,6 +157,18 @@ export function placeAsk(){
   return s.days.length >= 2 || s.at - s.since >= DWELL_MS ? "name" : null;
 }
 
+// The spot placeAsk is about, for the card: when you were last read there,
+// how long you stood still today, how many days, and whether the reading is
+// fresh (you're likely still there) or a while ago (you may have moved on).
+// `at` is its position, so naming it saves THAT place, not wherever you are
+// by the time you answer (Mor, 2026-10-19: the card came up after he'd left).
+export function placeAskInfo(){
+  const d = load(), s = d.last && seenAt(d, d.last);
+  if (!s) return null;
+  return { t: d.last.t, mins: Math.round((s.at - s.since) / 60000), days: s.days.length,
+    fresh: Date.now() - d.last.t <= FRESH_MS, at: { lat: s.lat, lng: s.lng, acc: d.last.acc || 0 } };
+}
+
 // Answers to placeAsk. "Not home": this spot is never asked as Home again.
 // "Not now": this spot is never asked about again.
 function markHere(patch){
@@ -226,12 +239,19 @@ export function setManual(value){
   }
 }
 
-// Saves where you are now under `name` (Home, Studio, …), replacing a place
+// Saves where you are now (or the spot `at`) under `name` (Home, Studio, …), replacing a place
 // of the same name; a fresh fix if there's none from the last minute.
 // Resolves true when saved, false with no location.
-export async function saveSpot(name){
+export async function saveSpot(name, at = null){
   name = String(name || "").trim();
   if (!name) return false;
+  if (at) { // a remembered spot (placeAskInfo): no fresh fix, you may have left
+    const d = load();
+    const places = d.places.filter((p) => p.name.toLowerCase() !== name.toLowerCase()).concat({ name, lat: at.lat, lng: at.lng, acc: at.acc || 0 });
+    save({ ...d, places, seen: (d.seen || []).filter((x) => dist(at, x) > NEAR_M) });
+    detect();
+    return true;
+  }
   let fix = load().last;
   if (!fix || Date.now() - fix.t > 60000) { await fixes().then((fs) => fs.length && save({ ...load(), last: fs.at(-1) })); fix = load().last; }
   if (!fix || Date.now() - fix.t > 60000) return false;
