@@ -1,0 +1,118 @@
+Phrase bank · dev · 42 rows · 2026-10-19T11:06Z
+model gemini-3.5-flash-lite · prompt 2026-10-19 phrase-bank examples · sha e2bf77bf
+clock Asia/Jerusalem, default Mon 2026-10-19 10:00, day boundary 04:00 · Now card t2 · last task t6
+
+FAIL  #2 [Capture] "call the dentist and book a cleaning"
+       → add "Call the dentist"; add "Book a cleaning"
+       ✗ changed what it shouldn't: add "Book a cleaning"
+PASS  #4 [Capture] "new project: album mixing"
+       → nothing ("Album mixing already exists.")
+PASS  #7 [Capture] "every weekday review the inbox"
+       → add "Review the inbox" routine={"per":5,"days":[0,1,2,3,4]}
+       ⚑ CSV says Mon-Fri; the prompt's rule is the Israeli Sun-Thu week. Both accepted.
+PASS  #9 [Capture] "add to my quick list: batteries, stamps, charger"
+       → add "Batteries"; add "Stamps"; add "Charger"
+FAIL  #12 [Capture] "idea: daisy petals nav"
+       → add "Daisy petals nav"
+       ✗ changed what it shouldn't: add "Daisy petals nav"
+PASS  #14 [Durations] "write the report 2 hours and email Yoni 10 minutes"
+       → add "Write the report" size=120; add "Email Yoni" size=10
+PASS  #18 [Durations] "half an hour for emails"
+       → add "Emails" size=30
+PASS  #21 [Durations] "edit video, maybe 2 hours maybe 3"
+       → add "Edit video" size=120
+PASS  #24 [Durations] "it took me 40 minutes"
+       → nothing ("Add 40 minutes?")
+PASS  #26 [Durations] "two tasks: slides 1h, notes 20m"
+       → add "Slides" size=60; add "Notes" size=20
+PASS  #29 [Dates and day words] @Tue 01:30 "do it today"
+       → ask "Which task should be done today?" [Invoice | Master track 2 | Coffee with Dan | Book studio]
+FAIL  #32 [Dates and day words] @Tue 03:44 "call Dana tomorrow at 8"
+       → event "Call Dana" minutes=60 date=2026-10-20 time=08:00
+       ✗ didn't ask · changed what it shouldn't: event "Call Dana" minutes=60 date=2026-10-20 time=08:00
+PASS  #34 [Dates and day words] @Mon 10:00 "Thursday"
+       → query date=2026-10-22 query=plan part=day
+FAIL  #36 [Dates and day words] "in 3 days"
+       → nothing ("When are you free for 3 days, or did you mean a task?")
+       ✗ no date read (want 2026-10-22)
+PASS  #38 [Dates and day words] "by Friday 5pm"
+       → add "By Friday 5pm" due=2026-10-23
+PASS  #40 [Dates and day words] "first thing tomorrow"
+       → query date=2026-10-20 query=plan part=morning
+FAIL  #42 [Dates and day words] "in two weeks"
+       → nothing ("Free for two weeks? Got it?")
+       ✗ no date read (want 2026-11-02)
+FAIL  #43 [Corrections] "no, make it 30"
+       → update t7 size=30
+       ✗ missing update(taskId:"t6" size:30) · changed what it shouldn't: update t7 size=30
+FAIL  #45 [Corrections] "actually call it 'Send quote'"
+       → nothing ("Which task would you like to rename?")
+       ✗ missing update(taskId:"t6" title:^send quote$ due:null size:null)
+FAIL  #47 [Corrections] "no, mom not Dana"
+       → nothing ("OK, updated.")
+       ✗ missing update(taskId:"t6" title:mom not:dana)
+FAIL  #51 [Corrections] "remove the second one"
+       → drop t2
+       ✗ changed what it shouldn't: drop t2
+PASS  #54 [Hebrew / mixed] "להתקשר לדנה מחר ב-10"
+       → event "להתקשר לדנה" minutes=60 date=2026-10-20 time=10:00
+FAIL  #56 [Hebrew / mixed] "שלח reminder ליוני tomorrow"
+       → add "Reminder to Yoni" due=2026-10-20
+       ✗ missing add(title:… due:"2026-10-20") · changed what it shouldn't: add "Reminder to Yoni" due=2026-10-20
+FAIL  #59 [Hebrew / mixed] "לא, תעשה את זה 30"
+       → nothing ("עדכן ל-30 דקות?")
+       ✗ missing update(taskId:"t6" size:30)
+FAIL  #62 [Hebrew / mixed] "אחרי חצות, בשתיים בלילה"
+       → moment dayEnd=02:00
+       ✗ changed what it shouldn't: moment dayEnd=02:00
+PASS  #64 [Hebrew / mixed] "call דנה about the quote 15 דקות"
+       → add "Call דנה about the quote" size=15
+PASS  #66 [Hebrew / mixed] "אחר כך"
+       → nothing ("OK, let's skip that for now.")
+PASS  #67 [Voice and mumbling] "um so like remind me to uh call Dana tomorrow I think"
+       → add "Call Dana" due=2026-10-20
+PASS  #70 [Voice and mumbling] "twenty minutes... no thirty for the report"
+       → update t2 size=30
+FAIL  #72 [Voice and mumbling] "call at ate"
+       → add "Call at ate"
+       ✗ changed what it shouldn't: add "Call at ate"
+PASS  #75 [Voice and mumbling] "[silence/noise]"
+       → nothing
+FAIL  #77 [Exits] "done"
+       → ask "Which task did you finish?" [Invoice | Report for Yoni | Master track 2 | Send stems to Dana]
+       ✗ missing done(taskId:"t2")
+PASS  #80 [Exits] "not now"
+       → nothing ("OK, nothing changed.")
+FAIL  #82 [Exits] "push it to tomorrow"
+       → ask "Which task?" [Invoice | Report for Yoni | Master track 2 | Send stems to Dana]
+       ✗ missing update(taskId:"t2" notBefore:"2026-10-20" due:null)
+FAIL  #84 [Exits] "waiting on Dana until Thursday"
+       → waiting t4 waitingOn=Dana
+       ✗ missing waiting(taskId:"t2" waitingOn:dana checkOn:"2026-10-22") · changed what it shouldn't: waiting t4 waitingOn=Dana
+FAIL  #86 [Exits] "cancel this task"
+       → nothing ("Which task do you want to cancel?")
+       ✗ missing drop(taskId:"t2")
+FAIL  #88 [Exits] "I'm done for today"
+       → moment place=out
+       ✗ needs "endDay" (no such action yet) · changed what it shouldn't: moment place=out
+PASS  #91 [Ambiguity: ask, don't guess] @Oct 19 "do it on the 3rd"
+       → ask "Which task do you mean?" [Invoice | Report for Yoni | Master track 2 | Send stems to Dana]
+PASS  #94 [Ambiguity: ask, don't guess] "Dana wants it by tomorrow"
+       → ask "Which task for Dana?" [Report for Yoni | Send stems to Dana | Email Dana the quote]
+PASS  #96 [Ambiguity: ask, don't guess] "delete the project"
+       → ask "Which project?" [Album mixing]
+PASS  #99 [Ambiguity: ask, don't guess] "call Dan"
+       → add "Call Dan"
+PASS  #101 [Ambiguity: ask, don't guess] "make it urgent"
+       → ask "Which task is urgent?" [Invoice | Report for Yoni | Master track 2 | Send stems to Dana]
+
+Category                       Pass     False mutations
+Capture                        3/5      2
+Durations                      5/5      0
+Dates and day words            4/7      1
+Corrections                    0/4      2
+Hebrew / mixed                 3/6      2
+Voice and mumbling             3/4      1
+Exits                          1/6      2
+Ambiguity: ask, don't guess    5/5      0
+TOTAL                          24/42    10 (in 10 rows)

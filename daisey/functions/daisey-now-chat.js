@@ -36,6 +36,8 @@ const MAX_TASKS = 120;
 // done / event / query (2026-10-06): tick a task off, put something at a
 // fixed time in the calendar, or ask about the list (answered in the app).
 const KINDS = ["add", "update", "waiting", "drop", "moment", "project", "done", "event", "query"];
+// Bump on any change to SYSTEM; test/phrases/run.mjs prints it with a hash of the text.
+const PROMPT_VERSION = "2026-10-19 phrase-bank examples";
 
 const reply = (statusCode, body) => ({
   statusCode,
@@ -141,7 +143,49 @@ Message: what's due this week?
 Message: plan my afternoon
 {"reply":"Here's the afternoon:","actions":[{"kind":"query","query":"plan","part":"afternoon"}]}
 Message: מה הלו״ז שלי מחר?
-{"reply":"הנה הלו״ז למחר:","actions":[{"kind":"query","query":"plan","part":"day","planDate":"2026-10-06"}]}`;
+{"reply":"הנה הלו״ז למחר:","actions":[{"kind":"query","query":"plan","part":"day","planDate":"2026-10-06"}]}
+
+More examples, from the phrase bank's example rows (test/phrases, split "example"; only those rows go here). Same day; tasks: a1 "Invoice for the studio", a2 "Cue sheet for Yoni":
+Message: buy milk
+{"reply":"Add a task?","actions":[{"kind":"add","title":"Buy milk"}]}
+Message: fmod session for the game, project Cave Run
+{"reply":"New project Cave Run, with 1 task?","actions":[{"kind":"project","project":"Cave Run"},{"kind":"add","title":"FMOD session for the game","project":"Cave Run"}]}
+Message: meeting with Dana Thursday 14:00
+{"reply":"Add to the calendar Thursday 14:00?","actions":[{"kind":"event","title":"Meeting with Dana","eventDate":"2026-10-08","time":"14:00"}]}
+Message: call mom and pay rent, 15 min each
+{"reply":"Add 2 tasks, 15 min each?","actions":[{"kind":"add","title":"Call mom","minutes":15},{"kind":"add","title":"Pay rent","minutes":15}]}
+Message: call mom, pay rent, 30 min total
+{"reply":"30 min each, or 30 split across both?","question":"30 min each, or 30 split across both?","choices":["30 min each","30 min total"],"actions":[]}
+Message: practice guitar 45
+{"reply":"Add a 45 min task?","actions":[{"kind":"add","title":"Practice guitar","minutes":45}]}
+Message: report 3 hours, due Friday
+{"reply":"Add a 3 h task due Friday?","actions":[{"kind":"add","title":"Report","minutes":180,"dueDate":"2026-10-09"}]}
+Message: send the invoice tomorrow
+{"reply":"Move it to tomorrow?","actions":[{"kind":"update","taskId":"a1","dueDate":"2026-10-06"}]}
+Message: call Dana tomorrow at 8
+{"reply":"Add to the calendar tomorrow 08:00?","actions":[{"kind":"event","title":"Call Dana","eventDate":"2026-10-06","time":"08:00"}]}
+Message: scratch that
+{"reply":"OK, nothing changed.","actions":[]}
+Message: no no, the other one
+{"reply":"Which one do you mean?","actions":[]}
+Message: לקנות חלב
+{"reply":"להוסיף משימה?","actions":[{"kind":"add","title":"לקנות חלב"}]}
+Message: mix לשיר 3, שעה וחצי
+{"reply":"להוסיף משימה של שעה וחצי?","actions":[{"kind":"add","title":"mix לשיר 3","minutes":90}]}
+Message: ביום חמישי הבא
+{"reply":"איזה יום חמישי?","question":"יום חמישי הקרוב או זה שאחריו?","choices":["יום חמישי 8.10","יום חמישי 15.10"],"actions":[]}
+Message: buy milk and eggs and uh no wait just milk
+{"reply":"Add a task?","actions":[{"kind":"add","title":"Buy milk"}]}
+Message: hmm what's next
+{"reply":"Here's what's next:","actions":[{"kind":"query","query":"next"}]}
+Message: finished the invoice
+{"reply":"Mark it done?","actions":[{"kind":"done","taskId":"a1"}]}
+Message: actually start it
+{"reply":"Already on it.","actions":[]}
+Message: the report is due soon
+{"reply":"When is it due?","actions":[]}
+Message: add 2 hours
+{"reply":"Add 2 hours to which task?","actions":[]}`;
 
 // mode "plan" (2026-10-07): Rethink on the day's proposed schedule. The app
 // sends the open tasks, the free minutes left today, the current order and
@@ -368,6 +412,16 @@ Instruction: ${text}`;
     return reply(200, { order, note: clean(out.note, 200) });
   }
 
+  const out = await understand(body, key);
+  if (!out) return fail(502, "model");
+  return reply(200, out);
+};
+
+// One message, no session or cap: the prompt, the model, tidy(). The handler's
+// last step, and what test/phrases/run.mjs drives with its own clock and tasks.
+// → tidy()'s answer, or null when the model failed twice.
+async function understand(body, key){
+  const text = clean(body.text, MAX_TEXT);
   const tasks = (Array.isArray(body.tasks) ? body.tasks : []).slice(0, MAX_TASKS)
     .map((t) => ({ id: clean(t.id, 60), title: clean(t.title, 120), project: clean(t.project, 60), due: isDay(t.due) ? t.due : undefined, status: clean(t.status, 12) }))
     .filter((t) => t.id && t.title);
@@ -376,9 +430,12 @@ Instruction: ${text}`;
   const prompt = `Today: ${clean(body.weekday, 12)} ${body.today}.${late}\nProjects: ${JSON.stringify(projects)}\nTasks: ${JSON.stringify(tasks)}\n\nMessage: ${text}`;
 
   const out = (await ask(key, prompt)) || (await ask(key, prompt)); // one retry
-  if (!out) return fail(502, "model");
-  return reply(200, tidy(out, new Set(tasks.map((t) => t.id))));
-};
+  return out ? tidy(out, new Set(tasks.map((t) => t.id))) : null;
+}
 
 exports.tidy = tidy; // for the tests
 exports.upLateLine = upLateLine;
+exports.understand = understand; // for test/phrases/run.mjs
+exports.MODEL = MODEL;
+exports.SYSTEM = SYSTEM;
+exports.PROMPT_VERSION = PROMPT_VERSION;

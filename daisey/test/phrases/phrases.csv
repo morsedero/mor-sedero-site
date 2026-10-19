@@ -1,0 +1,123 @@
+id,category,clock_at_input,phrase,daisey_should,review,split
+1,Capture,,buy milk,"New task: Buy milk. No date, no duration (default size later). Preview, then Apply.",,example
+2,Capture,,call the dentist and book a cleaning,1 task: Call dentist to book cleaning. No date.,,dev
+3,Capture,,"invoice for Dana, send report to Yoni, renew passport","3 separate tasks in one preview. No dates, no durations invented.",,holdout
+4,Capture,,new project: album mixing,New project 'Album mixing'. No tasks yet. Ask nothing.,,dev
+5,Capture,,add to the album mixing project: master track 3,New task 'Master track 3' under project Album mixing.,,holdout
+6,Capture,,"fmod session for the game, project Cave Run","Task 'FMOD session' under project Cave Run (create project if missing, say so in preview).",,example
+7,Capture,,every weekday review the inbox,"Recurring task 'Review inbox', repeats Mon-Fri. No time invented.",,dev
+8,Capture,,remind me to stretch,Task 'Stretch'. A reminder is not a calendar event. No time unless said.,,holdout
+9,Capture,,"add to my quick list: batteries, stamps, charger","3 quick-list lines, silent default size, no dates.",,dev
+10,Capture,,"lesson 5 portuguese, 15 min","Task 'Portuguese lesson 5', 15 min. Duration binds to this task.",,holdout
+11,Capture,,meeting with Dana Thursday 14:00,"Calendar-like item, not a task. Ask once: make it a task too? (the 'needs you' chip).",,example
+12,Capture,,idea: daisy petals nav,"No task. Save as note/idea if Daisey has one, else ask 'Make this a task?'.",,dev
+13,Durations,,20 min for the invoice,"Task 'Invoice', estimate 20 min.",,holdout
+14,Durations,,write the report 2 hours and email Yoni 10 minutes,"Report=120 min, Email Yoni=10 min. Each duration stays with its own task.",,dev
+15,Durations,,"call mom and pay rent, 15 min each",Both tasks 15 min.,,example
+16,Durations,,"call mom, pay rent, 30 min total","Ask: 30 min for each, or split 30 across both? Do not guess.",,example
+17,Durations,,an hour and a half on the mix,Mix = 90 min.,,holdout
+18,Durations,,half an hour for emails,Emails = 30 min.,,dev
+19,Durations,,quick call with Dana,"Task 'Call Dana', no duration typed. Use default small size, mark as estimate, never as fact.",,holdout
+20,Durations,,practice guitar 45,"'Practice guitar', 45 min (bare number after a task = minutes).",,example
+21,Durations,,"edit video, maybe 2 hours maybe 3","Estimate 120 min (the first number). Keep 'could be 3h' as a note, don't average.",,dev
+22,Durations,,1.5h for the deck,Deck = 90 min.,,holdout
+23,Durations,,"report 3 hours, due Friday","Report 180 min, deadline Friday. Both on the same task.",,example
+24,Durations,,it took me 40 minutes,"Estimate only. Pure Done: no counted time credited. Optionally update estimate, never the Done.",,dev
+25,Durations,,5 min for the thing with Yoni,"Duration 5 min, but 'the thing' is vague: ask which task.",,holdout
+26,Durations,,"two tasks: slides 1h, notes 20m","Slides 60, Notes 20.",,dev
+27,Dates and day words,Tue 14:00,send the invoice tomorrow,Due = next day-key after today.,,example
+28,Dates and day words,Tue 01:30 (night),send the invoice tomorrow,Still 'tonight' (before 04:00). Tomorrow = Wednesday (the next day after the evening's day). Say the date in the preview.,,holdout
+29,Dates and day words,Tue 01:30,do it today,"Today = the current day-key. At 01:30 Tue night, today = Monday's day (flips at 04:00).",,dev
+30,Dates and day words,Sat 01:51,yesterday I forgot to pay rent,"At 01:51 Sat night, yesterday = Friday (day model, not calendar date).",,holdout
+31,Dates and day words,Mon 15:00,call Dana tomorrow at 8,At 04:00 or later: 08:00 the next day. Show the exact date in preview.,,example
+32,Dates and day words,Tue 03:44,call Dana tomorrow at 8,"At 03:44: ambiguous (open fork). Show date, ask confirm: Tue 08:00 or Wed 08:00?",,dev
+33,Dates and day words,Sun 10:00,next Sunday,"Not this Sunday: the Sunday after the coming one. If today is Sunday, +7 days. Code computes it, AI only outputs 'next Sunday'.",,holdout
+34,Dates and day words,Mon 10:00,Thursday,The next Thursday after today (today if Thursday and still before the time). Ask only if today is Thursday and it is late.,,dev
+35,Dates and day words,,end of the week,Deadline = last day of the user's week. Ask if week start unclear (Sun vs Mon).,,holdout
+36,Dates and day words,,in 3 days,Today's day-key + 3.,,dev
+37,Dates and day words,Oct 26,on the 25th,"Next 25th of the month. If already past this month, next month.",,holdout
+38,Dates and day words,,by Friday 5pm,Deadline Friday 17:00.,,dev
+39,Dates and day words,Tue 02:00,this evening,Today's evening window. At 02:00 (still 'tonight') ask: the evening just gone or the coming one?,,holdout
+40,Dates and day words,,first thing tomorrow,"Tomorrow at My day start (setting), not at the 04:00 boundary.",,dev
+41,Dates and day words,Mon 20:00,tonight at 23:30,"Today's day-key, 23:30. Fine at 20:00. At 01:00 means the same night, still before 04:00.",,holdout
+42,Dates and day words,,in two weeks,+14 days from today's day-key.,,dev
+43,Corrections,,"no, make it 30","Change the duration of the LAST edited task to 30 min. Edit in place, no new task.",,dev
+44,Corrections,,"not Thursday, Friday",Move the date of the last task from Thursday to Friday.,,holdout
+45,Corrections,,actually call it 'Send quote',Rename last task. Keep duration and date.,,dev
+46,Corrections,,"wait, that's for the album project",Move last task to project Album mixing.,,holdout
+47,Corrections,,"no, mom not Dana",Change the person in the last task title: Dana to Mom.,,dev
+48,Corrections,,scratch that,"Cancel the last preview. Nothing applied. If already applied, offer Undo.",,example
+49,Corrections,,make both of them 15,Set the last two tasks in the preview to 15 min.,,holdout
+50,Corrections,,"no no, the other one",Ask: which one? List last 2-3 candidates.,,example
+51,Corrections,,remove the second one,Delete item #2 from the current preview only.,,dev
+52,Corrections,,add 10 more minutes,Duration +10 on last task. Needs a clear 'last task'; else ask.,,holdout
+53,Hebrew / mixed,,לקנות חלב,Task 'לקנות חלב'. Keep the language as typed.,,example
+54,Hebrew / mixed,,להתקשר לדנה מחר ב-10,"Task 'להתקשר לדנה', tomorrow 10:00. Show date in preview.",,dev
+55,Hebrew / mixed,,חשבונית ל-20 דקות,"Task 'חשבונית', 20 min.",,holdout
+56,Hebrew / mixed,,שלח reminder ליוני tomorrow,"Task 'שלח reminder ליוני', due tomorrow. Mixed words kept as typed.",,dev
+57,Hebrew / mixed,,"mix לשיר 3, שעה וחצי","Task 'mix לשיר 3', 90 min.",,example
+58,Hebrew / mixed,,תוסיף לפרויקט האלבום: master,"Task 'master' under project 'האלבום' (match project by name, fuzzy).",,holdout
+59,Hebrew / mixed,,"לא, תעשה את זה 30",Correction: last task duration 30 min.,,dev
+60,Hebrew / mixed,,מחרתיים,Today +2 days.,,holdout
+61,Hebrew / mixed,,ביום חמישי הבא,The Thursday of next week? 'הבא' is ambiguous: ask if it's the coming Thursday or the one after.,,example
+62,Hebrew / mixed,,"אחרי חצות, בשתיים בלילה",2:00 at night: same night-day (before 04:00 boundary). Confirm date in preview.,,dev
+63,Hebrew / mixed,,בסוף היום,Deadline end of the day. Ask 'end of today?' only if after 20:00.,,holdout
+64,Hebrew / mixed,,call דנה about the quote 15 דקות,"Task 'call דנה about the quote', 15 min.",,dev
+65,Hebrew / mixed,,סיימתי,Exit: Done on the current Now card. Pure Done.,,holdout
+66,Hebrew / mixed,,אחר כך,Exit: Later on the current card. Ask which bucket if the sheet isn't open.,,dev
+67,Voice and mumbling,,um so like remind me to uh call Dana tomorrow I think,"Task 'Call Dana', tomorrow. Fillers dropped, 'I think' not a hedge on the date, but flag 'low confidence' only if recognition was uncertain.",,dev
+68,Voice and mumbling,,buy milk and eggs and uh no wait just milk,Task 'Buy milk' only. Spoken self-correction wins.,,example
+69,Voice and mumbling,,call... Dina? Dana. tomorrow,Task 'Call Dana'. Use the corrected name.,,holdout
+70,Voice and mumbling,,twenty minutes... no thirty for the report,Report = 30 min.,,dev
+71,Voice and mumbling,,invoice for twenty fifteen,"Ambiguous: 20 min and a 15-something, or an amount? Ask. Do not guess.",,holdout
+72,Voice and mumbling,,call at ate,"Likely 'call at 8'. Low-confidence transcription: ask 'Call what, at 8:00?'.",,dev
+73,Voice and mumbling,,hmm what's next,Not a task. Open the Now card.,,example
+74,Voice and mumbling,,yeah add that,Needs referent. Apply the pending preview if there is one; else ask 'add what?'.,,holdout
+75,Voice and mumbling,,[silence/noise],"Nothing captured. Reply 'Didn't catch that', create nothing.",,dev
+76,Voice and mumbling,,i dunno maybe later,"Exit: Later on the Now card (soft). Ask bucket: later today, tomorrow?",,holdout
+77,Exits,,done,"Done on the Now card. Pure completion, no time credited. Toast + Undo.",,dev
+78,Exits,,finished the invoice,Done on task 'Invoice' (even if not the Now card). Match by name.,,example
+79,Exits,,skip this,Switch: show the next best task. Original stays open. No deletion.,,holdout
+80,Exits,,not now,Switch/Later. Ask nothing; offer 'Later today / Tomorrow'.,,dev
+81,Exits,,later today,"Later: move to later today, keep the deadline.",,holdout
+82,Exits,,push it to tomorrow,Move planning day to tomorrow. Deadline NOT moved unless it was the same.,,dev
+83,Exits,,"pending, waiting on Yoni","Pending/Waiting on: Yoni, Now card leaves. Ask check-in date only if none set.",,holdout
+84,Exits,,waiting on Dana until Thursday,"Waiting on Dana, check-in Thursday.",,dev
+85,Exits,,on hold,"Put on hold. Out of the plan, still open.",,holdout
+86,Exits,,cancel this task,Delete after confirm (or Undo toast). Not Done.,,dev
+87,Exits,,undo,Undo the last Done. Now card and schedule both restored.,,holdout
+88,Exits,,I'm done for today,"Not a task Done. End-of-day: move unfinished items to tomorrow, no deadlines moved.",,dev
+89,Exits,,Dana replied,Pending item 'waiting on Dana': back to active. Ask which if several.,,holdout
+90,Exits,,actually start it,No Start button in Daisey. The Now card is already the commitment: just say 'Already on it'.,,example
+91,"Ambiguity: ask, don't guess",Oct 19,do it on the 3rd,"Ask: Nov 3 or Oct 3? (Oct 3 is past). Probably Nov 3, but confirm.",,dev
+92,"Ambiguity: ask, don't guess",,meeting next Friday,Ask: this coming Friday or the one after?,,holdout
+93,"Ambiguity: ask, don't guess",,the report is due soon,Ask for a date. Don't invent one.,,example
+94,"Ambiguity: ask, don't guess",,Dana wants it by tomorrow,Task is yours or Dana's? Ask which task; then deadline tomorrow.,,dev
+95,"Ambiguity: ask, don't guess",,push everything,Ask: push all open tasks to when? Confirm before moving anything.,,holdout
+96,"Ambiguity: ask, don't guess",,delete the project,"Ask: which project, and what happens to its tasks.",,dev
+97,"Ambiguity: ask, don't guess",,add 2 hours,Ask: to what? No clear task.,,example
+98,"Ambiguity: ask, don't guess",,"mix song 3, master song 4, 2 hours","Ask: 2 hours for each, or total?",,holdout
+99,"Ambiguity: ask, don't guess",,call Dan,"Two matches (Dana, Dan): ask who, or keep title as typed. Don't swap names.",,dev
+100,"Ambiguity: ask, don't guess",,at 7,Ask AM or PM unless the day makes it clear.,,holdout
+101,"Ambiguity: ask, don't guess",,make it urgent,"Ask: put it on the Now card, or give it a deadline today? Don't invent a new flag.",,dev
+102,"Ambiguity: ask, don't guess",,I didn't do it,"Not Done. Ask: later, tomorrow, or drop it?",,holdout
+103,Capture,,grab some milk,"New task: Buy milk. No date, no duration (default size later). Preview, then Apply.",paraphrase of #1,holdout
+104,Capture,,"three things: pay the electric bill, book flights, return the library books","3 separate tasks in one preview. No dates, no durations invented.",paraphrase of #3,holdout
+105,Capture,,"portuguese lesson six, quarter of an hour","Task 'Portuguese lesson 5', 15 min. Duration binds to this task.",paraphrase of #10,holdout
+106,Durations,,draft the proposal 90 minutes and text Yoni 5 minutes,"Report=120 min, Email Yoni=10 min. Each duration stays with its own task.",paraphrase of #14,holdout
+107,Durations,,"water the plants and take out the trash, 10 min each",Both tasks 15 min.,paraphrase of #15,holdout
+108,Durations,,"groceries and laundry, an hour altogether","Ask: 30 min for each, or split 30 across both? Do not guess.",paraphrase of #16,holdout
+109,Durations,,two and a half hours on the mix,Mix = 90 min.,paraphrase of #17,holdout
+110,Durations,,0.5h for the slides,Deck = 90 min.,paraphrase of #22,holdout
+111,Dates and day words,Tue 14:00,email the invoice to Dana tomorrow,Due = next day-key after today.,paraphrase of #27,holdout
+112,Dates and day words,Wed 02:10 (night),pay the gas bill tomorrow,Still 'tonight' (before 04:00). Tomorrow = Wednesday (the next day after the evening's day). Say the date in the preview.,paraphrase of #28,holdout
+113,Dates and day words,,in four days,Today's day-key + 3.,paraphrase of #36,holdout
+114,Dates and day words,,a week from today,+14 days from today's day-key.,paraphrase of #42,holdout
+115,Corrections,,change that to 45 minutes,"Change the duration of the LAST edited task to 30 min. Edit in place, no new task.",paraphrase of #43,holdout
+116,Corrections,,"not Dana, Yoni",Change the person in the last task title: Dana to Mom.,paraphrase of #47,holdout
+117,Hebrew / mixed,,"לסדר את המחסן, שעה","Task 'חשבונית', 20 min.",paraphrase of #55,holdout
+118,Hebrew / mixed,,לשלוח לדנה את הקובץ מחר,"Task 'להתקשר לדנה', tomorrow 10:00. Show date in preview.",paraphrase of #54,holdout
+119,Voice and mumbling,,"call the bank and uh actually no, call the insurance",Task 'Buy milk' only. Spoken self-correction wins.,paraphrase of #68,holdout
+120,Exits,,the invoice is done,Done on task 'Invoice' (even if not the Now card). Match by name.,paraphrase of #78,holdout
+121,Exits,,stuck waiting on Yoni for this,"Pending/Waiting on: Yoni, Now card leaves. Ask check-in date only if none set.",paraphrase of #83,holdout
+122,"Ambiguity: ask, don't guess",,add 45 minutes,Ask: to what? No clear task.,paraphrase of #97,holdout

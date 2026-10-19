@@ -14,12 +14,11 @@
 // down the same path as a typed one. Where there's none, it opens the keyboard.
 import { idToken } from "./firebase.js";
 import { watchTasks, addTask, updateTask, saveMoment, finishTask } from "./store.js";
-import { localDate, getDayKey, LABELS, dayAfter } from "./model.js";
-import { withSpoken } from "./duration.js";
+import { getDayKey, LABELS, dayAfter } from "./model.js";
 import { createEvent, watchCalendar } from "./calendar.js";
 import { planDay } from "./plan.js";
 import { planView } from "./plan-view.js";
-import { dayHours, dayStartAt, toMin, usualHours, answerDate, minText, LATE_END_MAX } from "./day.js";
+import { dayHours, dayStartAt, usualHours, answerDate } from "./day.js";
 import { watchSettings, watchRun, saveSettings } from "./store.js";
 import { rank } from "./engine.js";
 import { workBase } from "./context.js";
@@ -28,8 +27,9 @@ import { h, bdi, dur, flash } from "./ui.js";
 import { setManual, RIDES } from "./where.js";
 import { withTrips, asPassenger } from "./trips.js";
 import { eventFrom } from "./tell-event.js";
-import { repeatFrom, repeatWords } from "./routine.js";
+import { repeatWords } from "./routine.js";
 import { syncSeries } from "./slots.js";
+import { requestBody, understood } from "./tell-read.js";
 
 const URL_ = "/.netlify/functions/daisey-now-chat";
 const SAID = {
@@ -101,7 +101,6 @@ export function mountTell(form, input, mic, uid, { openAdd, openTask, guest = fa
     // Android keyboard still composing the last word puts it straight back.
     if (input.value.trim() === text) { input.blur(); input.value = ""; }
     show(h("p", { className: "tell-said", dir: "auto", textContent: `“${text}”` }), h("p", { className: "tell-thinking", textContent: "Reading…" }));
-    const open = tasks.filter((t) => t.status !== "done" && t.status !== "dropped");
     let res, body;
     try {
       const headers = { "Content-Type": "application/json" };
@@ -110,16 +109,7 @@ export function mountTell(form, input, mic, uid, { openAdd, openTask, guest = fa
       res = await fetch(URL_, {
         method: "POST",
         headers,
-        body: JSON.stringify({
-          // today: the day key (daybound.js), the cards' today. Still up past
-          // midnight, before 04:00, that's yesterday's date, and the helper is told
-          // (afterMidnight): "yesterday", "today" and "tomorrow" count from it.
-          text, today: getDayKey(), weekday: new Date(`${getDayKey()}T12:00`).toLocaleDateString("en", { weekday: "long" }),
-          ...(getDayKey() !== localDate() ? { afterMidnight: true } : {}),
-          ...(guest ? { guest: true } : {}),
-          tasks: open.map((t) => ({ id: t.id, title: t.title, project: t.project, due: t.due || undefined, status: t.status })),
-          projects: [...new Set(open.map((t) => t.project))],
-        }),
+        body: JSON.stringify(requestBody(text, tasks, { guest })), // tell-read.js
       });
       body = await res.json().catch(() => ({}));
     } catch {
@@ -146,12 +136,7 @@ export function mountTell(form, input, mic, uid, { openAdd, openTask, guest = fa
 
   // The answer: one line, then a card per change, then Apply.
   function proposal(text, { reply, actions = [], question, choices = [] }){
-    // "Until 1am" runs past midnight (day.js dayHours), up to 04:00 (LATE_END_MAX); an
-    // end between that and the day's start ("until 6am") can't be, so it
-    // stops at the latest one and says so.
-    const endOk = (m) => m < LATE_END_MAX || m > usualHours(settings).start;
-    const list = withRepeats(withSpoken(actions, text).map((a) => (a.kind === "moment" && a.dayEnd && toMin(a.dayEnd) != null && !endOk(toMin(a.dayEnd))
-      ? { ...a, dayEnd: minText(LATE_END_MAX - 1), latest: true } : a)), text);
+    const list = understood(actions, text, settings); // tell-read.js
     const draw = () => {
       const queries = list.filter((a) => a.kind === "query");
       // Added from the full form (Edit): its card goes, the rest stay; the last one closes the panel.
@@ -174,25 +159,6 @@ export function mountTell(form, input, mic, uid, { openAdd, openTask, guest = fa
           h("button", { className: "btn quiet", type: "button", textContent: "Cancel", onclick: close })));
     };
     draw();
-  }
-
-  // A repeat in the words ("water plants every weekday", 2026-10-15: it was
-  // saved as a one-off): read here (routine.repeatFrom), so it holds with or
-  // without the helper. The helper's own read comes first; then the card's
-  // title; then, for a lone new task, the whole message (the helper may have
-  // taken the words out of the title). A routine has no due date: one given
-  // is its end.
-  function withRepeats(actions, text){
-    const adds = actions.filter((a) => a.kind === "add");
-    return actions.map((a) => {
-      if (a.kind !== "add") return a;
-      const inTitle = repeatFrom(a.title);
-      let r = a.routine || inTitle?.routine || (adds.length === 1 ? repeatFrom(text)?.routine : null);
-      if (!r) return a;
-      if (r.every === "month" && !r.on) r = { ...r, on: a.notBefore || getDayKey() }; // its day is every month's
-      const { due, dateKind, ...rest } = a;
-      return { ...rest, title: inTitle?.title || a.title, routine: { ...r, ...(due && !r.until ? { until: due } : {}) } };
-    });
   }
 
   // A question about the list, answered here from the tasks the app already

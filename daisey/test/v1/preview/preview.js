@@ -412,9 +412,13 @@ const FAKES = {
   await page.waitForTimeout(150);
   if (clockRun && atFlag) { await page.clock.runFor(Number(clockRun)); await page.waitForTimeout(300); }
   for (const sel of clicks) {
-    // "sel=text" types into a field instead of clicking it.
+    // "sel=text" types into a field instead of clicking it; "sel=text⏎" then presses Enter.
     const eq = sel.indexOf("=");
-    if (eq > 0 && !sel.startsWith("[")) await page.fill(sel.slice(0, eq), sel.slice(eq + 1)); else await page.click(sel, { force: true }); // force: the hero breathes, so it is never "stable"
+    if (eq > 0 && !sel.startsWith("[")) {
+      const val = sel.slice(eq + 1), enter = val.endsWith("⏎");
+      await page.fill(sel.slice(0, eq), enter ? val.slice(0, -1) : val);
+      if (enter) await page.press(sel.slice(0, eq), "Enter");
+    } else await page.click(sel, { force: true }); // force: the hero breathes, so it is never "stable"
     await page.waitForTimeout(450); // past the sheet and card animations
   }
   // --hold "sel": press and hold it for 1.5 s (Hold to finish).
