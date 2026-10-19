@@ -363,6 +363,8 @@ async function boot(){
     if (!weekPop) return;
     const path = e.composedPath();
     if (path.includes($("#glance")) || path.includes($("#weekChip")) || path.includes($("#nowcard"))) return;
+    // A task opened from Stats: its sheet's clicks (Save, backdrop) are not "elsewhere" (Mor, 2026-10-19).
+    if (path.some((n) => n.tagName === "DIALOG")) return;
     weekPop = false; window.__syncPanel?.();
   });
   $("#settingsX").onclick = () => settings.close();
