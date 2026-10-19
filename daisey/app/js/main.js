@@ -733,6 +733,7 @@ async function boot(){
           const dlg = [...document.querySelectorAll("dialog[open]")].pop();
           if (dlg) return () => { if (dlg.dispatchEvent(new Event("cancel", { cancelable: true }))) dlg.close(); };
           if (!$("#acctMenu").hidden || !$("#plusMenu").hidden) return () => document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
+          if (m.ribbon?.isOpen()) return () => m.ribbon.close();
           if (!$("#needsview").hidden) return () => m.needs.close();
           if (!$("#projectview").hidden) return () => m.projects.closeProject();
           if (!$("#projPage").hidden) return () => m.projects.closeAll();

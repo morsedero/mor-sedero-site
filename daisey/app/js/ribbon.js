@@ -145,6 +145,9 @@ export function mountRibbon(el, { onPlan } = {}){
     set(d){ data = d; paint(); },
     // The task on the Now card, for the now dot's pop-over.
     setCard(id){ cardId = id; if (open === "now") paint(); },
+    // A pop-over open: the phone's Back shuts it (main.js topLayer).
+    isOpen: () => !!open && !el.hidden,
+    close(){ open = null; paint(); },
     unmount(){ document.removeEventListener("click", away); el.replaceChildren(); el.hidden = true; },
   };
 }
