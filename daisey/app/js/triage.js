@@ -21,8 +21,12 @@ export const isRolled = (t, now = Date.now()) => isOpen(t) && t.dateKind !== "de
 export const effectiveDue = (t, now = Date.now()) => (isRolled(t, now) ? logicalDate(now) : t.due);
 
 // What the sweep goes through: passed deadlines first, then passed targets,
-// oldest first in each.
-export function sweepList(tasks, now = Date.now()){
+// oldest first in each. Not a pending task (Mor, 2026-10-19: Pending did
+// nothing, the card came straight back): it's asked again by its own
+// "Still pending?" on checkOn.
+const unpended = (tasks) => tasks.filter((t) => t.status !== "waiting");
+export function sweepList(all, now = Date.now()){
+  const tasks = unpended(all);
   const old = (a, b) => a.due.localeCompare(b.due) || (a.createdAt || 0) - (b.createdAt || 0);
   return [...tasks.filter((t) => isOverdue(t, now)).sort(old), ...tasks.filter((t) => isRolled(t, now)).sort(old)];
 }
@@ -31,6 +35,7 @@ export function sweepList(tasks, now = Date.now()){
 // SWEEP.targets passed targets, and not already answered today.
 export function shouldOffer(tasks, now = Date.now(), settings = {}){
   if (settings.sweepAnswered === logicalDate(now)) return false;
+  tasks = unpended(tasks);
   const deadlines = tasks.filter((t) => isOverdue(t, now)).length;
   const targets = tasks.filter((t) => isRolled(t, now)).length;
   return deadlines > W.SWEEP.deadlines || targets > W.SWEEP.targets;

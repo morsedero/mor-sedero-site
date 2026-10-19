@@ -46,7 +46,10 @@ export function collectNeeds({ tasks = [], events = [], calOk = false, settings 
   const later = settings.needsLater?.date === logicalDate(now) ? new Set(settings.needsLater.keys || []) : new Set();
   const out = [];
   const add = (item) => { if (!later.has(item.key)) out.push(item); };
-  const parked = tasks.filter((t) => t.status === "someday" && deadlineWithin(t, now, SOMEDAY_DEADLINE_DAYS))
+  // Not one put on hold today (Mor, 2026-10-19): On hold used to ask
+  // "Bring it back?" straight after, here and in the someday ask below.
+  const heldToday = (t) => !!t.touchedAt && logicalDate(t.touchedAt) === logicalDate(now);
+  const parked = tasks.filter((t) => t.status === "someday" && deadlineWithin(t, now, SOMEDAY_DEADLINE_DAYS) && !heldToday(t))
     .sort((a, b) => a.due.localeCompare(b.due));
   parked.forEach((t) => add({ key: `parked:${t.id}`, kind: "parked", id: t.id }));
   // An event in another city (trips.js): how do you get there? Once per
@@ -84,7 +87,7 @@ export function collectNeeds({ tasks = [], events = [], calOk = false, settings 
   tasks.filter((t) => t.status === "ready" && (t.pushes || 0) >= PUSHES_ASK && (t.skipsSinceStart || 0) < STALE_SKIPS)
     .forEach((t) => add({ key: `pushed:${t.id}`, kind: "pushed", id: t.id }));
   if (somedayDue(tasks, settings, now)) {
-    const t = somedayTop(tasks.filter((x) => !parked.includes(x))); // a parked deadline is already asked about
+    const t = somedayTop(tasks.filter((x) => !parked.includes(x) && !heldToday(x))); // a parked deadline is already asked about
     if (t) add({ key: "someday", kind: "someday", id: t.id });
   }
   // Passed deadlines always; passed targets only once they pile up (the
