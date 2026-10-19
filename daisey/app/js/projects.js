@@ -27,7 +27,7 @@ import { dropSeries } from "./slots.js";
 import { isOverdue } from "./triage.js";
 import { projectProgress, nextTaskOf, projectSummary } from "./project-state.js";
 import { h, bdi, flash, icon, askProgress, closeOrAsk, askOnEsc, sizeChip, progressBar, weekDots, dragScroll } from "./ui.js";
-import { setProjectColors, doneToday, doneThisWeek, daisy } from "./look.js";
+import { setProjectColors, doneThisWeek, daisy } from "./look.js";
 import { setProjectTiers } from "./context.js";
 import { dateBox } from "./datebox.js";
 import { TIERS, FOCUS_MAX } from "./weights.js";
@@ -165,16 +165,16 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
   // routines card is the Week page's, as it was.
   function paintGlance(){
     const box = els.glance; if (!box) return;
-    const ts = tasks || [], done = doneToday(ts).sort((a, b) => a.doneAt - b.doneAt);
-    // Stats (design round 4, 2026-10-18): today's daisy, a petal for each
-    // thing done (a closed bud before the first, no guilt), then what got
-    // done by name, then the routines. No counts, no times.
-    const bloom = h("section", { className: "bl-card st-daisy", ariaLabel: "Today's Daisey" },
-      daisy(Math.min(8, done.length), { size: 72, cls: "daisy st-flower" + (done.length ? "" : " bud") }),
+    const ts = tasks || [], week = doneThisWeek(ts).sort((a, b) => a.doneAt - b.doneAt);
+    // Stats (design round 4, 2026-10-18; Mor, 2026-10-19: this week's, not
+    // today's): the week's daisy, a petal for each thing done (a closed bud
+    // before the first, no guilt), then what got done by name, then the
+    // routines. No counts, no times.
+    const bloom = h("section", { className: "bl-card st-daisy", ariaLabel: "This week's Daisey" },
+      daisy(Math.min(8, week.length), { size: 72, cls: "daisy st-flower" + (week.length ? "" : " bud") }),
       h("div", { className: "st-daisy-t" },
-        h("h3", { className: "bl-h", textContent: "Today's Daisey" }),
-        h("p", { textContent: done.length ? "A petal for each thing you finish." : "Still a bud. It opens as you go." })));
-    const week = doneThisWeek(ts).sort((a, b) => a.doneAt - b.doneAt);
+        h("h3", { className: "bl-h", textContent: "This week's Daisey" }),
+        h("p", { textContent: week.length ? "A petal for each thing you finish." : "Still a bud. It opens as you go." })));
     const doneCard = week.length > 0 && h("section", { className: "bl-card st-done", ariaLabel: "Done this week" },
       h("h3", { className: "bl-h", textContent: "Done this week" }),
       ...week.map((t) => h("div", { className: "pj-drow" },
