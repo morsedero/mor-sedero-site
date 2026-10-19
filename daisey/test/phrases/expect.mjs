@@ -12,7 +12,7 @@
 // { dates: [ymd…], needDate } every date said must be one of these (needDate:
 //   at least one), for a bare date phrase ("Thursday") whatever it lands on.
 // { extra: [kind…] } kinds tolerated beyond the matchers. { time } an event's.
-// { flag } a row whose CSV wording disagrees with the shipped day logic.
+// { flag } a row whose CSV wording disagrees with the app: the app's logic wins (Mor, 2026-10-19).
 // Matcher { kind, …fields }: kind "change" = add or update; `task` tests the
 // title (an update's: the existing task's); `not` a title that must not match.
 // A kind the parser doesn't have (later, switch, hold, undo, endDay, resume)
@@ -54,8 +54,8 @@ export const EXPECT = {
   4: either(one({ kind: "project", project: /^album mixing$/i }), none), // it exists already
   5: one(add({ title: /master track 3/i, project: /^album mixing$/i })),
   6: { expect: [add({ title: /fmod/i, project: /cave run/i })], extra: ["project"] },
-  7: { ...one(add({ title: /inbox/i, routine: onDays([0, 1, 2, 3, 4], [1, 2, 3, 4, 5]), due: null })),
-    flag: "CSV says Mon-Fri; the prompt's rule is the Israeli Sun-Thu week. Both accepted." },
+  7: { ...one(add({ title: /inbox/i, routine: onDays([0, 1, 2, 3, 4]), due: null })),
+    flag: "CSV says Mon-Fri; scored by app logic: weekday = Sun-Thu." },
   8: one(add({ title: /stretch/i, size: null, due: null })),
   9: one(add({ title: /batter/i, ...blank }), add({ title: /stamp/i, ...blank }), add({ title: /charger/i, ...blank })),
   10: one(add({ title: /portuguese/i, size: 15 })),
@@ -79,15 +79,15 @@ export const EXPECT = {
   // Dates and day words
   27: one(change(/invoice/i, { due: "2026-10-21" })),
   28: { ...one(change(/invoice/i, { due: "2026-10-20" })),
-    flag: "CSV says Wednesday; at Tue 01:30 the day is still Monday, so the day model's tomorrow is Tuesday 10-20 (scored as Tuesday)." },
+    flag: "CSV says Wednesday; scored by app logic: at Tue 01:30 the day is still Monday, so tomorrow is Tuesday 10-20." },
   29: either(none, bare("2026-10-19")),
-  30: { expect: [change(/rent/i)], dates: ["2026-10-22", "2026-10-23"],
-    flag: "CSV says yesterday = Friday; at Sat 01:51 the day model's today is Friday, so yesterday is Thursday 10-22 (Thu or Fri accepted)." },
+  30: { expect: [change(/rent/i)], dates: ["2026-10-22"],
+    flag: "CSV says yesterday = Friday; scored by app logic: at Sat 01:51 today is Friday, so yesterday is Thursday 10-22." },
   31: one({ kind: "event", title: /dana/i, date: "2026-10-20", time: "08:00" }),
   32: { expect: [], ask: true }, // do-not-regress: ask, never pick Tue or Wed
   33: bare("2026-10-25"),
   34: bare("2026-10-22"),
-  35: { ...either(none, bare("2026-10-22", "2026-10-23", "2026-10-24")), flag: "Week end: Thu, Fri or Sat accepted until the week is settled." },
+  35: { ...bare("2026-10-24"), flag: "Scored by app logic: the week ends Saturday (weights.js)." },
   36: bare("2026-10-22"),
   37: bare("2026-11-25"),
   38: bare("2026-10-23"),
