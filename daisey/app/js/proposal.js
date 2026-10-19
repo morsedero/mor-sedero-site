@@ -100,8 +100,10 @@ export function proposeDay({ tasks = [], events = [], now = Date.now(), hours = 
   // Background picks (the engine's "waits": no deadline, no target) go after
   // the rest of the plan, rides' picks included (Mor, 2026-10-19: a project
   // just moved to Background opened the fresh plan with 3 h of it).
-  const later = new Set();
+  const later = new Set(), score = new Map();
   const waits = (r) => tierOf(r.pick.task, r.moment) === "background" && !r.pick.parts.deadline && !r.pick.parts.target;
+  const picked = (r) => { score.set(r.pick.task.id, r.pick.score - r.pick.parts.flow); if (waits(r)) later.add(r.pick.task.id); };
+  const first = new Set(ask.first || []);
 
   // "Start with X": those go first, whatever the engine thinks, as long as
   // they're open and allowed today.
@@ -126,8 +128,8 @@ export function proposeDay({ tasks = [], events = [], now = Date.now(), hours = 
       if (!r.pick) break;
       flowProject = projectOf(r.pick.task);
       const m = Math.min(leftOf(r.pick.task), room);
-      onRide.push({ it: { taskId: r.pick.task.id, minutes: m, ...(m < leftOf(r.pick.task) ? { of: leftOf(r.pick.task) } : {}) }, at: g.start });
-      out.add(r.pick.task.id); taken.add(r.pick.task.id); room -= m;
+      onRide.push({ taskId: r.pick.task.id, minutes: m, ...(m < leftOf(r.pick.task) ? { of: leftOf(r.pick.task) } : {}) });
+      picked(r); out.add(r.pick.task.id); taken.add(r.pick.task.id); room -= m;
     }
   }
   // Down to the last minutes: a 10-min task still goes in the last 10 free
@@ -142,12 +144,19 @@ export function proposeDay({ tasks = [], events = [], now = Date.now(), hours = 
     });
     if (!r.pick) break;
     take(r.pick.task);
-    if (waits(r)) later.add(r.pick.task.id);
+    picked(r);
     flowProject = projectOf(r.pick.task);
   }
-  if (ask.fewer) fewerFirst(items, tasks, today, new Set(ask.first || []));
+  // Most pressing first, the ride's picks with the rest (Mor, 2026-10-19: a
+  // Keep going task opened the plan, the Focus ones picked for the train
+  // came after it): the two lists merged by the engine's score, each keeping
+  // its own order so a project's run (flow) stays whole; "start with X" first.
+  const pri = (it) => (first.has(it.taskId) ? Infinity : score.get(it.taskId) ?? 0);
+  const desk = items.splice(0), ride = [...onRide];
+  while (desk.length || ride.length) items.push((!ride.length || (desk.length && pri(desk[0]) >= pri(ride[0])) ? desk : ride).shift());
+  if (ask.fewer) fewerFirst(items, tasks, today, first);
   if (ask.quickFirst) items.sort((a, b) => a.minutes - b.minutes);
-  inProjectOrder(items, tasks, new Set(ask.first || []));
+  inProjectOrder(items, tasks, first);
   hoursFirst(items, { tasks, events, now, hours, run, rides: false });
   // Nothing due today is dropped without a word (2026-10-11): what the picks
   // left out goes on the end, laid if it fits after all, else No room with
@@ -158,14 +167,27 @@ export function proposeDay({ tasks = [], events = [], now = Date.now(), hours = 
       || waitsOnSiblings(t, tasks, taken, today)) continue; // a last step still waits for its project's other work
     items.push({ taskId: t.id, minutes: leftOf(t) }); out.add(t.id);
   }
-  const last = (list) => [...list.filter((it) => !later.has(it.taskId)), ...list.filter((it) => later.has(it.taskId))];
-  if (!onRide.length) return last(items);
-  // In time order, so the timeline lays each where it was meant: the
-  // others where they'd fall without the rides, the ride's own on the ride.
-  const sim = timeline(items, { tasks, events, now, hours, run, rides: false });
-  const at = (i) => sim.rows.find((q) => q.i === i)?.start ?? Infinity;
-  return last([...items.map((it, i) => ({ it, at: at(i) })), ...onRide]
-    .map((x, k) => ({ ...x, k })).sort((a, b) => a.at - b.at || a.k - b.k).map((x) => x.it));
+  const plan = [...items.filter((it) => !later.has(it.taskId)), ...items.filter((it) => later.has(it.taskId))];
+  const ctx = { tasks, events, now, hours, run, phoneOk }, byId = new Map(tasks.map((t) => [t.id, t]));
+  // Desk time short (Background waiting for it, or something without room):
+  // the quick ones go on the ride (onRide, lay) and the desk keeps the rest
+  // (Mor, 2026-10-19: both trains empty, the plan short of room).
+  if (rides.length && (later.size || timeline(plan, ctx).over.length)) {
+    for (const it of plan) if (!later.has(it.taskId) && !first.has(it.taskId) && it.minutes <= WORTH) it.onRide = true;
+  }
+  // Background is filler: whatever room is left, a piece of it if it can
+  // split, else it stays out — never a No room row (Mor, 2026-10-19).
+  for (const it of plan) if (later.has(it.taskId)) { it.minutes = leftOf(byId.get(it.taskId)); delete it.of; }
+  for (let n = 0; n < 4 * later.size; n++) {
+    const o = timeline(plan, ctx).over.find((x) => later.has(x.taskId));
+    if (!o) break;
+    const i = plan.findIndex((it) => it.taskId === o.taskId), t = byId.get(o.taskId);
+    // A second try leaves room for the break the first one ran into.
+    const m = !t.canSplit ? 0 : plan[i].of ? plan[i].minutes - 10 : o.room;
+    if (m < WORTH) plan.splice(i, 1);
+    else plan[i] = { ...plan[i], minutes: m, of: leftOf(t) };
+  }
+  return plan;
 }
 
 // Inside one project the plan keeps the project's own order: as dragged in
@@ -424,7 +446,8 @@ function lay(items = [], { tasks = [], events = [], now = Date.now(), hours = W.
     // The soonest ride that fits it (engine.fitsPlace) and still has room.
     const ride = gaps.map((g, k) => ({ g, k, from: rideAt[k] ?? Math.ceil(g.start / (5 * MIN)) * 5 * MIN }))
       .find(({ g, from }) => g.place && fitsPlace(task, g.place, phoneOk) && g.end - from >= need && openStart(task, from, need) === from);
-    for (let k = gi; k < gaps.length; k++) {
+    // Put on the ride (proposeDay: desk time was short), it goes there if it fits.
+    for (let k = it.onRide && ride ? gaps.length : gi; k < gaps.length; k++) {
       if (gaps[k].place) continue; // rides: above
       let from = Math.max(cursor, gaps[k].start, up5(it.at || 0));
       if (ride && ride.from <= from) break;

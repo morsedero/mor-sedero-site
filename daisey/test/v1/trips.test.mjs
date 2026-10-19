@@ -209,3 +209,23 @@ test("still moving after the way back's planned end: the drive runs on and the p
   const rows = timeline([{ taskId: "mix", minutes: 45 }], { tasks, events: late, now, hours: { start: 8 * 60, end: 22 * 60 } }).rows;
   assert.ok(rows[0].start >= at("14:45"), "the plan starts after the stretched drive");
 });
+
+test("a plan with a train: Focus before Keep going, quick ones on the train, Background fills the rest (Mor, 2026-10-19)", async () => {
+  const C = await import("../../app/js/context.js");
+  C.setProjectTiers({ F: "focus", K: "keep", BG: "background" });
+  try {
+    const trips = { "s:abc": { city: "Ashkelon", mode: "train", min: { train: 110, bus: 125, car: 80 } } };
+    const t = (o) => ({ status: "ready", type: "deep", where: "computer", size: 30, spentMinutes: 0, createdAt: 0, due: null, dateKind: null, ...o });
+    const tasks = [t({ id: "k1", project: "K" }), t({ id: "f1", project: "F" }), t({ id: "k2", project: "K", size: 10 }), t({ id: "f2", project: "F", size: 10 }),
+      t({ id: "bg", project: "BG", size: 600, canSplit: true })];
+    const now = at("08:00"), hours = { start: 8 * 60, end: 22 * 60 };
+    const events = T.withTrips([{ ...ash, start: iso("15:00"), end: iso("19:00") }], trips, [], true);
+    const items = proposeDay({ tasks, events, now, hours });
+    const { rows, over } = timeline(items, { tasks, events, now, hours });
+    const desk = rows.filter((r) => !r.ride).map((r) => r.taskId), train = rows.filter((r) => r.ride).map((r) => r.taskId);
+    assert.deepEqual(desk, ["f1", "k1", "bg"], `desk: ${desk}`);
+    assert.deepEqual(train.sort(), ["f2", "k2"], `train: ${train}`);
+    assert.ok(rows.find((r) => r.taskId === "bg").of, "Background as a piece of it");
+    assert.equal(over.length, 0, "no No room row for Background");
+  } finally { C.setProjectTiers({}); }
+});
