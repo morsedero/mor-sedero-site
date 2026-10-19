@@ -11,7 +11,7 @@
 // user changes the order.
 // PURE: no Firebase, no DOM.
 import { gapsToday, bookings, mealsOf, planDate, answerDate } from "./day.js";
-import { rank, fitsPlace } from "./engine.js";
+import { rank, fitsPlace, tierOf } from "./engine.js";
 import { phoneOkIds } from "./phone.js";
 import { routineCalendar } from "./routine.js";
 import { workBase } from "./context.js";
@@ -93,8 +93,15 @@ export function proposeDay({ tasks = [], events = [], now = Date.now(), hours = 
   // A task longer than the longest free stretch goes in as a piece of it
   // (the engine only offers that when it can split), and the piece says so
   // (of: its whole length): 2 h never quietly reads 1 h 27 min (2026-10-11).
-  const take = (t) => { const left = leftOf(t), m = Math.min(left, biggest);
+  // A task that can split takes no more than the time left (Mor, 2026-10-19:
+  // a 3 h pick with 1 h 45 left didn't fit and went to No room).
+  const take = (t) => { const left = leftOf(t), m = Math.min(left, biggest, t.canSplit && budget >= WORTH ? budget : Infinity);
     items.push({ taskId: t.id, minutes: m, ...(m < left ? { of: left } : {}) }); out.add(t.id); taken.add(t.id); budget -= m; };
+  // Background picks (the engine's "waits": no deadline, no target) go after
+  // the rest of the plan, rides' picks included (Mor, 2026-10-19: a project
+  // just moved to Background opened the fresh plan with 3 h of it).
+  const later = new Set();
+  const waits = (r) => tierOf(r.pick.task, r.moment) === "background" && !r.pick.parts.deadline && !r.pick.parts.target;
 
   // "Start with X": those go first, whatever the engine thinks, as long as
   // they're open and allowed today.
@@ -135,6 +142,7 @@ export function proposeDay({ tasks = [], events = [], now = Date.now(), hours = 
     });
     if (!r.pick) break;
     take(r.pick.task);
+    if (waits(r)) later.add(r.pick.task.id);
     flowProject = projectOf(r.pick.task);
   }
   if (ask.fewer) fewerFirst(items, tasks, today, new Set(ask.first || []));
@@ -150,13 +158,14 @@ export function proposeDay({ tasks = [], events = [], now = Date.now(), hours = 
       || waitsOnSiblings(t, tasks, taken, today)) continue; // a last step still waits for its project's other work
     items.push({ taskId: t.id, minutes: leftOf(t) }); out.add(t.id);
   }
-  if (!onRide.length) return items;
+  const last = (list) => [...list.filter((it) => !later.has(it.taskId)), ...list.filter((it) => later.has(it.taskId))];
+  if (!onRide.length) return last(items);
   // In time order, so the timeline lays each where it was meant: the
   // others where they'd fall without the rides, the ride's own on the ride.
   const sim = timeline(items, { tasks, events, now, hours, run, rides: false });
   const at = (i) => sim.rows.find((q) => q.i === i)?.start ?? Infinity;
-  return [...items.map((it, i) => ({ it, at: at(i) })), ...onRide]
-    .map((x, k) => ({ ...x, k })).sort((a, b) => a.at - b.at || a.k - b.k).map((x) => x.it);
+  return last([...items.map((it, i) => ({ it, at: at(i) })), ...onRide]
+    .map((x, k) => ({ ...x, k })).sort((a, b) => a.at - b.at || a.k - b.k).map((x) => x.it));
 }
 
 // Inside one project the plan keeps the project's own order: as dragged in
@@ -187,10 +196,12 @@ export function inProjectOrder(items, tasks, fixed = new Set()){
 }
 // A task with set hours the plan's order pushed out of them (an office call
 // after 16:00) moves up to the first place it fits, rather than not at all.
+// "anytime" isn't set hours: a 3 h task that didn't fit jumped to the front
+// of the plan (Mor, 2026-10-19).
 function hoursFirst(items, ctx){
   const byId = new Map(ctx.tasks.map((t) => [t.id, t]));
   for (const o of timeline(items, ctx).over) {
-    if (!byId.get(o.taskId)?.openHours) continue;
+    if (!["office", "evening"].includes(byId.get(o.taskId)?.openHours)) continue;
     const from = items.findIndex((it) => it.taskId === o.taskId);
     const rest = items.filter((_, i) => i !== from);
     for (let k = 0; k < from; k++) {

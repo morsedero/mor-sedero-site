@@ -374,3 +374,21 @@ test("flow: a project's tasks run back to back instead of mixing (Mor, 2026-10-1
   const ids = proposeDay({ tasks, events: [], now: at(9) }).map((i) => i.taskId);
   assert.deepEqual(ids, ["m1", "m2", "r1", "r2"]);
 });
+
+test("Background waits in the plan: after the rest, never hoisted to the front for not fitting (Mor, 2026-10-19)", async () => {
+  const C = await import("../../app/js/context.js");
+  C.setProjectTiers({ Focus: "focus", Keep: "keep", BG: "background" });
+  try {
+    const none = { due: null, dateKind: null, openHours: "anytime" };
+    const tasks = [
+      t({ id: "a", project: "Focus", size: 30, ...none }), t({ id: "b", project: "Keep", size: 30, ...none }),
+      t({ id: "c", project: "BG", size: 180, canSplit: true, ...none }),
+    ];
+    const ctx = { tasks, events: [ev("Out", [12], [23, 30])], now: at(10) };
+    const items = proposeDay(ctx);
+    assert.equal(items.at(-1).taskId, "c");
+    assert.ok(items.at(-1).minutes < 180, "a piece that fits what's left, not all 3 h");
+    const { rows } = timeline(withBreaks(items, ctx), ctx);
+    assert.notEqual(rows[0].taskId, "c");
+  } finally { C.setProjectTiers({}); }
+});
