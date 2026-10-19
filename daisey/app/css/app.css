@@ -2761,18 +2761,20 @@ body.fm-slide .deck > .now-card.main { animation: none !important; } /* main.js:
   @keyframes rb-tap-tf { 0% { transform: scale(.8); } 55% { transform: scale(1.25); } 100% { transform: scale(1); } }
   @keyframes rb-tap-on-tf { 0% { transform: scale(.8); } 55% { transform: scale(1.6); } 100% { transform: scale(1.35); } }
   @keyframes rb-tap-now-on-tf { 0% { transform: scale(.8); } 55% { transform: scale(1.4); } 100% { transform: scale(1.15); } }
-  .rb-pop { position: absolute; z-index: 5; inset-block-start: 30px; inline-size: max-content; max-inline-size: 240px; padding: 11px 14px; box-sizing: border-box; border: 1px solid var(--line); border-radius: 16px; background: var(--card); box-shadow: 0 14px 30px -10px rgb(0 0 0 / .3); }
-  .rb-arrow { position: absolute; inset-block-start: -7px; inset-inline-start: calc(var(--arrow, 50%) - 6px); inline-size: 12px; block-size: 12px; background: var(--card); border-inline-start: 1px solid var(--line); border-block-start: 1px solid var(--line); transform: rotate(45deg); }
+  /* Every pop-over hangs from its dots by stalks (ribbon.js hang; Mor,
+     2026-10-19): a dot, "3 done" or "2 left" opens its group's list, a
+     tapped dot's row picked out with its stalk bold and the rest faint; the
+     now dot's card hangs from one yellow stalk. Done stalks solid and drawn
+     in, planned ones dashed and faded in; .still: the same card repainted. */
+  .rb-pop { position: absolute; z-index: 5; inset-block-start: 46px; inline-size: max-content; max-inline-size: 240px; padding: 11px 14px; box-sizing: border-box; border: 1px solid var(--line); border-radius: 16px; background: var(--card); box-shadow: 0 14px 30px -10px rgb(0 0 0 / .3); }
   .rb-pop p { margin: 0; }
   .rb-list { padding: 8px 6px; min-inline-size: 190px; }
-  .rb-list .rb-arrow { display: none; }
-  /* The list's stalks (ribbon.js listPop): from each dot down into the card,
-     done ones solid in their colour and drawn in, planned ones dashed. */
-  .rb-list { inset-block-start: 46px; }
   .rb-stalks { position: absolute; inset: 0; inline-size: 100%; block-size: 100%; overflow: visible; pointer-events: none; }
   .rb-stalk { fill: none; stroke: var(--aink, var(--ink-2)); stroke-width: 1.6; stroke-linecap: round; opacity: .7; transition: stroke-width .15s ease, opacity .15s ease; }
+  .rb-stalk.rb-stalk-now { stroke: var(--accent); stroke-width: 2; opacity: .9; }
   .rb-stalks.left .rb-stalk { stroke-dasharray: 3 4; }
-  .rb-stalk.hot { stroke-width: 2.6; opacity: 1; }
+  .rb-stalk.faint { opacity: .25; }
+  .rb-stalk.picked, .rb-stalk.hot { stroke-width: 2.6; opacity: 1; }
   .rb-bead.hot, .rb-hole.hot { transform: scale(1.3); }
   @media (prefers-reduced-motion: no-preference) {
     .rb-stalks.grow:not(.left) .rb-stalk { stroke-dasharray: 1; animation: rb-stalk .5s ease-out calc(var(--i) * 60ms) backwards; }
@@ -2781,10 +2783,15 @@ body.fm-slide .deck > .now-card.main { animation: none !important; } /* main.js:
   @keyframes rb-stalk { from { stroke-dashoffset: 1; } }
   @keyframes rb-stalk-fade { from { opacity: 0; } }
   .rb-list ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
-  .rb-list li { display: grid; grid-template-columns: 7px 1fr auto; align-items: baseline; gap: 8px; padding: 5px 8px; font-size: 14px; color: var(--ink); }
+  .rb-list li { display: grid; grid-template-columns: 7px 1fr auto; align-items: baseline; gap: 8px; padding: 5px 8px; border-radius: 10px; font-size: 14px; color: var(--ink); cursor: pointer; transition: background-color .15s ease; }
+  .rb-list li.picked { background: rgb(0 0 0 / .06); }
+@supports (color: color-mix(in srgb, red, blue)) { .rb-list li.picked { background: color-mix(in srgb, var(--aink, var(--ink-2)) 12%, transparent); } }
   .rb-list .rb-pdot { color: var(--aink, var(--ink-2)); align-self: center; }
   .rb-li-t { font-weight: 600; overflow-wrap: anywhere; }
+  .rb-li-p { display: block; font-size: 12px; color: var(--aink, var(--ink-2)); }
   .rb-li-at { font-size: 12px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+  .rb-list li.rb-more { display: block; padding: 0; cursor: default; }
+  .rb-more button { margin: 0; padding: 2px 8px; border: 0; background: none; font: inherit; font-size: 12px; color: var(--ink-2); cursor: pointer; }
   .rb-proj { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; color: var(--aink, var(--ink-2)); }
   .rb-pdot { inline-size: 7px; block-size: 7px; border-radius: 50%; background: currentColor; flex: none; }
   .rb-title { margin-block-start: 3px !important; font-size: 15px; font-weight: 700; color: var(--ink); overflow-wrap: anywhere; }
@@ -2793,7 +2800,7 @@ body.fm-slide .deck > .now-card.main { animation: none !important; } /* main.js:
   .rb-act { display: flex; justify-content: flex-end; margin-block-start: 4px; }
   .rb-plan { display: inline-flex; align-items: center; gap: 5px; block-size: 32px; padding: 0 12px; margin-inline-end: -6px; border: 1px solid var(--a-admin-line); border-radius: 18px; background: var(--a-admin-tint); color: var(--a-admin-ink); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
   .rb-plan svg { inline-size: 14px; block-size: 14px; }
-  @media (prefers-reduced-motion: no-preference) { .rb-pop { animation: ready-in .18s ease-out; } }
+  @media (prefers-reduced-motion: no-preference) { .rb-pop:not(.still) { animation: ready-in .18s ease-out; } }
 }
 
 /* Closing a new sheet with something typed: Save / Don't save / Keep editing (ui.js closeOrAsk). */

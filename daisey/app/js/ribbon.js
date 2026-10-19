@@ -20,46 +20,67 @@ export function mountRibbon(el, { onPlan } = {}){
   const pick = (key) => (e) => { e.stopPropagation(); open = open === key ? null : key; fresh = key; paint(); };
   const state = (key) => (open === key ? " on" : "") + (fresh === key ? " pick" : "");
 
-  // "3 done" / "2 left" open the whole list, not one bead. Its dots hang it
-  // from the line by stalks (Mor, 2026-10-19), a bouquet tied at the card's
-  // top: the card sits under the dots' middle, a row under the mouse lights
-  // its stalk and dot.
-  function listPop(kind, line){
+  // Every pop-over hangs from its dots by stalks (Mor, 2026-10-19): one card,
+  // one language. A dot, "3 done" or "2 left" opens its group's list ("d" /
+  // "l"); a tapped dot's row is picked out, its stalk bold and the others
+  // faint. The now dot hangs its own card from one yellow stalk.
+  const group = (key) => !key ? null : key.startsWith("all:") ? key.slice(4) : key.split(":")[0];
+  let drawn = null; // the group on screen last paint: a new one draws its stalks in, the same one stays still
+  const MAX = 5; // a picked dot shows at most this many rows, around its own
+
+  // Stalks from each point (dot middles, left to right) into the card's top,
+  // tied side by side in that order so none cross; the card centres under them.
+  function hang(line, box, pts, { cls = "", solid = true, grow } = {}){
+    if (!pts.length || !box.isConnected) return;
+    const w = line.clientWidth, pw = box.offsetWidth, n = pts.length;
+    const mid = pts.reduce((s, p) => s + p.x, 0) / n;
+    const left = Math.max(-6, Math.min(w - pw + 6, mid - pw / 2));
+    box.style.left = `${left}px`;
+    const top = box.offsetTop + 8, gap = Math.min(6, (pw - 48) / Math.max(1, n - 1)), half = gap * (n - 1) / 2;
+    const tie = Math.max(left + 24 + half, Math.min(left + pw - 24 - half, mid));
+    const NS = "http://www.w3.org/2000/svg", svg = document.createElementNS(NS, "svg");
+    svg.setAttribute("class", "rb-stalks" + cls + (solid ? "" : " left") + (grow ? " grow" : ""));
+    svg.setAttribute("aria-hidden", "true");
+    pts.forEach((p, i) => {
+      const tx = tie - half + i * gap, k = (top - p.y) * .55, path = document.createElementNS(NS, "path");
+      path.setAttribute("d", `M${p.x} ${p.y} C${p.x} ${p.y + k} ${tx} ${top - k} ${tx} ${top}`);
+      path.setAttribute("class", "rb-stalk" + (p.cls || ""));
+      if (solid) path.setAttribute("pathLength", "1"); // the draw-in; a planned stalk is dashed and fades in instead
+      path.style.setProperty("--i", i);
+      svg.append(path); p.stalk = path;
+    });
+    line.insertBefore(svg, line.querySelector(".rb-bead, .rb-hole, .rb-now")); // over the line, under the dots
+  }
+  const centre = (dot) => ({ dot, x: dot.offsetLeft + dot.offsetWidth / 2, y: dot.offsetTop + dot.offsetHeight / 2 });
+
+  function listPop(kind, line, focus){
     const all = kind === "d" ? data.done : data.left;
     const rows = all.slice().sort((a, b) => a.at - b.at);
-    if (!rows.length) { open = null; return null; }
-    const grow = fresh === open; // just opened: the stalks draw in, not on every repaint
-    const stalks = new Map(); // id → [stalk, dot]
-    const hot = (id, on) => stalks.get(id)?.forEach((n) => n.classList.toggle("hot", on));
-    const box = h("div", { className: "rb-pop rb-list", role: "dialog", ariaLabel: kind === "d" ? "Done today" : "Still planned", style: "left:-6px" },
-      h("ul", {}, ...rows.map((r) => h("li", { className: areaClass(r.task), onmouseenter: () => hot(r.id, true), onmouseleave: () => hot(r.id, false) },
-        h("span", { className: "rb-pdot", ariaHidden: "true" }),
-        h("span", { className: "rb-li-t" }, bdi(r.task.title)),
-        h("span", { className: "rb-li-at" }, kind === "d" ? hm(r.at) : `${hm(r.at)}–${hm(r.end)}`)))));
+    if (!rows.length || (focus && !rows.some((r) => r.id === focus))) { open = null; return null; }
+    // Picked from a long day: the rows around it, the rest a "+N" that opens them all.
+    let from = 0, to = rows.length;
+    if (focus && rows.length > MAX) { const at = rows.findIndex((r) => r.id === focus); from = Math.max(0, Math.min(rows.length - MAX, at - 2)); to = from + MAX; }
+    const shown = rows.slice(from, to), grow = group(open) !== drawn;
+    const parts = new Map(); // id → [stalk, dot]
+    const hot = (id, on) => parts.get(id)?.forEach((n) => n.classList.toggle("hot", on));
+    const more = (n, word) => n > 0 && h("li", { className: "rb-more" }, h("button", { type: "button", onclick: (e) => { e.stopPropagation(); open = `all:${kind}`; paint(); } }, `+${n} ${word}`));
+    const box = h("div", { className: "rb-pop rb-list" + (focus ? " picking" : "") + (grow ? "" : " still"), role: "dialog", ariaLabel: kind === "d" ? "Done today" : "Still planned", style: "left:-6px" },
+      h("ul", {}, more(from, "earlier"), ...shown.map((r) => {
+        const picked = r.id === focus, proj = picked && projectShown(r.task);
+        return h("li", { className: areaClass(r.task) + (picked ? " picked" : ""), onmouseenter: () => hot(r.id, true), onmouseleave: () => hot(r.id, false),
+          // A row picks itself; the picked one again lets go.
+          onclick: (e) => { e.stopPropagation(); open = picked ? `all:${kind}` : `${kind}:${r.id}`; paint(); } },
+          h("span", { className: "rb-pdot", ariaHidden: "true" }),
+          h("span", { className: "rb-li-t" }, bdi(r.task.title), proj && h("span", { className: "rb-li-p" }, bdi(proj))),
+          h("span", { className: "rb-li-at" }, kind === "d" ? hm(r.at) : `${hm(r.at)}–${hm(r.end)}`));
+      }), more(rows.length - to, "later")));
     requestAnimationFrame(() => {
       const dots = line.querySelectorAll(kind === "d" ? ".rb-bead" : ".rb-hole"); // in the order of `all`
-      const pts = all.map((r, i) => dots[i] && { id: r.id, task: r.task, dot: dots[i], x: dots[i].offsetLeft + dots[i].offsetWidth / 2, y: dots[i].offsetTop + dots[i].offsetHeight / 2 })
+      const ids = new Set(shown.map((r) => r.id));
+      const pts = all.map((r, i) => dots[i] && ids.has(r.id) && { ...centre(dots[i]), id: r.id, cls: areaClass(r.task) + (focus ? (r.id === focus ? " picked" : " faint") : "") })
         .filter(Boolean).sort((a, b) => a.x - b.x);
-      if (!pts.length || !box.isConnected) return;
-      const w = line.clientWidth, pw = box.offsetWidth, n = pts.length;
-      const mid = pts.reduce((s, p) => s + p.x, 0) / n;
-      const left = Math.max(-6, Math.min(w - pw + 6, mid - pw / 2));
-      box.style.left = `${left}px`;
-      // The stalks end a little under the card's edge, side by side in the dots' order so none cross.
-      const top = box.offsetTop + 8, gap = Math.min(6, (pw - 48) / Math.max(1, n - 1)), half = gap * (n - 1) / 2;
-      const tie = Math.max(left + 24 + half, Math.min(left + pw - 24 - half, mid));
-      const NS = "http://www.w3.org/2000/svg", svg = document.createElementNS(NS, "svg");
-      svg.setAttribute("class", "rb-stalks" + (kind === "l" ? " left" : "") + (grow ? " grow" : ""));
-      svg.setAttribute("aria-hidden", "true");
-      pts.forEach((p, i) => {
-        const tx = tie - half + i * gap, k = (top - p.y) * .55, path = document.createElementNS(NS, "path");
-        path.setAttribute("d", `M${p.x} ${p.y} C${p.x} ${p.y + k} ${tx} ${top - k} ${tx} ${top}`);
-        path.setAttribute("class", "rb-stalk" + areaClass(p.task));
-        if (kind === "d") path.setAttribute("pathLength", "1"); // the draw-in; a planned stalk is dashed and fades in instead
-        path.style.setProperty("--i", i);
-        svg.append(path); stalks.set(p.id, [path, p.dot]);
-      });
-      line.insertBefore(svg, dots[0]); // over the line, under the dots
+      hang(line, box, pts, { solid: kind === "d", grow });
+      pts.forEach((p) => parts.set(p.id, [p.stalk, p.dot]));
     });
     return box;
   }
@@ -73,41 +94,21 @@ export function mountRibbon(el, { onPlan } = {}){
     const next = data.left.filter((l) => l.at > now && l.id !== task?.id).sort((a, b) => a.at - b.at)[0];
     const title = task ? task.title : ev ? ev.title : null;
     const when = row ? (row.at <= now && now < row.end ? `until ${hm(row.end)}` : `planned ${hm(row.at)}–${hm(row.end)}`) : !task && ev ? `until ${hm(ev.end)}` : null;
-    const box = h("div", { className: "rb-pop rb-nowpop", role: "dialog", ariaLabel: "Now" },
-      h("span", { className: "rb-arrow", ariaHidden: "true" }),
+    const grow = drawn !== "now";
+    const box = h("div", { className: "rb-pop rb-nowpop" + (grow ? "" : " still"), role: "dialog", ariaLabel: "Now" },
       h("p", { className: "rb-proj" }, `Now · ${hm(now)}`),
       h("p", { className: "rb-title" }, title ? bdi(title) : "Nothing planned right now"),
       when && h("p", { className: "rb-when" }, when),
       next && h("p", { className: "rb-when" }, "Next: ", bdi(next.task.title), ` at ${hm(next.at)}`));
-    requestAnimationFrame(() => {
-      const dot = line.querySelector(".rb-now");
-      const w = line.clientWidth, pw = box.offsetWidth, x = dot.offsetLeft + dot.offsetWidth / 2;
-      const left = Math.max(-6, Math.min(w - pw + 6, x - pw / 2));
-      box.style.left = `${left}px`; box.style.setProperty("--arrow", `${x - left}px`);
-    });
+    requestAnimationFrame(() => { const dot = line.querySelector(".rb-now"); if (dot) hang(line, box, [{ ...centre(dot), cls: " rb-stalk-now" }], { grow }); });
     return box;
   }
 
   function pop(line){
-    if (open.startsWith("all:")) return listPop(open.slice(4), line);
     if (open === "now") return nowPop(line);
+    if (open.startsWith("all:")) return listPop(open.slice(4), line, null);
     const [kind, id] = open.split(":");
-    const item = (kind === "d" ? data.done : data.left).find((x) => x.id === id);
-    if (!item) { open = null; return null; }
-    const t = item.task, proj = projectShown(t);
-    const box = h("div", { className: "rb-pop" + areaClass(t), role: "dialog", ariaLabel: t.title },
-      h("span", { className: "rb-arrow", ariaHidden: "true" }),
-      proj && h("p", { className: "rb-proj" }, h("span", { className: "rb-pdot", ariaHidden: "true" }), bdi(proj)),
-      h("p", { className: "rb-title" }, bdi(t.title)),
-      h("p", { className: "rb-when" }, ...(kind === "d" ? [icon("check"), `Done ${hm(item.at)}`] : [`Planned ${hm(item.at)}–${hm(item.end)}`])));
-    // Centred on its bead, kept inside the line; the arrow points at the bead.
-    requestAnimationFrame(() => {
-      const bead = line.querySelector(".rb-bead.on, .rb-hole.on");
-      const w = line.clientWidth, pw = box.offsetWidth, x = bead ? bead.offsetLeft + bead.offsetWidth / 2 : (parseFloat(pct(item.at)) / 100) * w;
-      const left = Math.max(-6, Math.min(w - pw + 6, x - pw / 2));
-      box.style.left = `${left}px`; box.style.setProperty("--arrow", `${x - left}px`);
-    });
-    return box;
+    return listPop(kind, line, id);
   }
 
   function paint(){
@@ -116,8 +117,8 @@ export function mountRibbon(el, { onPlan } = {}){
     const { done, left, events, planned } = data;
     const top = h("div", { className: "rb-top" },
       h("span", { className: "rb-counts" },
-        done.length > 0 && h("button", { type: "button", className: "rb-done" + (open === "all:d" ? " on" : ""), ariaExpanded: String(open === "all:d"), onclick: pick("all:d") }, icon("check"), `${done.length} done`),
-        planned && left.length > 0 && h("button", { type: "button", className: "rb-left" + (open === "all:l" ? " on" : ""), ariaExpanded: String(open === "all:l"), onclick: pick("all:l") }, ring(), `${left.length} left`)),
+        done.length > 0 && h("button", { type: "button", className: "rb-done" + (group(open) === "d" ? " on" : ""), ariaExpanded: String(group(open) === "d"), onclick: pick("all:d") }, icon("check"), `${done.length} done`),
+        planned && left.length > 0 && h("button", { type: "button", className: "rb-left" + (group(open) === "l" ? " on" : ""), ariaExpanded: String(group(open) === "l"), onclick: pick("all:l") }, ring(), `${left.length} left`)),
       h("span", { className: "rb-until", textContent: `until ${hm(data.end)}` }));
     const line = h("div", { className: "rb-line" },
       h("span", { className: "rb-track", ariaHidden: "true" }),
@@ -132,7 +133,7 @@ export function mountRibbon(el, { onPlan } = {}){
       h("button", { type: "button", className: "rb-now" + state("now"), ariaLabel: "Now", ariaExpanded: String(open === "now"), style: `inset-inline-start:${pct(data.now)};--glow-at:-${Math.round(performance.now() % 2800)}ms`, onclick: pick("now") }));
     if (open) { const p = pop(line); if (p) line.append(p); }
     el.replaceChildren(top, line);
-    fresh = null;
+    fresh = null; drawn = group(open);
     if (!planned) el.append(h("div", { className: "rb-act" }, h("button", { type: "button", className: "rb-plan", onclick: () => onPlan?.() }, icon("calendar"), h("span", { textContent: data.word }))));
   }
 
