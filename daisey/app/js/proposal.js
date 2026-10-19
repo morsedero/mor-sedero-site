@@ -169,10 +169,10 @@ export function proposeDay({ tasks = [], events = [], now = Date.now(), hours = 
   }
   const plan = [...items.filter((it) => !later.has(it.taskId)), ...items.filter((it) => later.has(it.taskId))];
   const ctx = { tasks, events, now, hours, run, phoneOk }, byId = new Map(tasks.map((t) => [t.id, t]));
-  // Desk time short (Background waiting for it, or something without room):
-  // the quick ones go on the ride (onRide, lay) and the desk keeps the rest
-  // (Mor, 2026-10-19: both trains empty, the plan short of room).
-  if (rides.length && (later.size || timeline(plan, ctx).over.length)) {
+  // Desk time short for the plan's own work (not for Background: all of it
+  // comes first, Mor 2026-10-19): the quick ones go on the ride (onRide, lay)
+  // and the desk keeps the rest.
+  if (rides.length && timeline(plan, ctx).over.some((o) => !later.has(o.taskId))) {
     for (const it of plan) if (!later.has(it.taskId) && !first.has(it.taskId) && it.minutes <= WORTH) it.onRide = true;
   }
   // Background is filler: whatever room is left, a piece of it if it can
