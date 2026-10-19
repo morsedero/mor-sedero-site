@@ -18,13 +18,13 @@ import { addTask, updateTask, watchTasks, watchRun, extendRun, watchSkips, saveS
 import { proposeDay, timeline, shownTaskCount, addableCount, withBreaks, trimBreaks, isBreak, planProgress, planStatus, unfitOf, refit, topUp, daySig, relayMeals } from "./proposal.js";
 import { rethink } from "./rethink.js";
 import { breakText } from "./schedule.js";
-import { placeNow, workBase, watchProjectTiers } from "./context.js";
+import { placeNow, workBase, watchProjectTiers, currentTiers } from "./context.js";
 import { watchWhere, setManual, setStill, saveSpot, whereAsk, homeAt } from "./where.js";
 import { withTrips, ridingAs, stillRiding, asPassenger, chainFrom, setTripDay, MODES, tripAsks, answer as tripAnswer, noTrip } from "./trips.js";
 import { pickWeekDay } from "./triage.js";
 import { sinceMark, runCap, bookedMinutes, celebrate, dropAway, PUSH_MS } from "./focus.js";
 import { watchCalendar } from "./calendar.js";
-import { LATER_MINUTES, DRAIN, CANCEL_KEEP_MINUTES, LIGHTER } from "./weights.js";
+import { LATER_MINUTES, DRAIN, CANCEL_KEEP_MINUTES, LIGHTER, TIERS } from "./weights.js";
 import { missState, silenceText, lastActivity } from "./miss.js";
 import { takeQuiet } from "./push.js";
 import { findPhoneTasks, phoneOkIds, searching } from "./phone.js";
@@ -846,7 +846,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
   // and then that first pick.
   // The one count behind the header chip and the night screen's line (needs-list.js needsCount).
   const needsNow = () => needsCount({ tasks: tasks || [], events: cal.events || [], calOk: cal.status === "ok", settings, home: homeAt() },
-    { where: !!whereAsk(), plan: !!planAsk(), meal: !!mealLateAsk() });
+    { where: !!whereAsk(), plan: !!planAsk() + !!tierAsk(), meal: !!mealLateAsk() });
   function nightView(hrs){
     const now = Date.now(), morning = nextMorning(now, hrs);
     const evs = cal.status === "ok" ? cal.events.filter((e) => e.busy !== false && !e.allDay) : [];
@@ -1401,6 +1401,11 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
   const approvedPlan = () => (todaysPlan()?.status === "approved" ? dayPlan : null);
   function openProposal(){
     const saved = todaysPlan(), ctx = planCtx(), reuse = saved?.items?.length && saved.status !== "dismissed";
+    // Priorities moved since it was approved (tierShift): a fresh take, not
+    // the old plan relaid (Mor, 2026-10-19: a project moved to Background
+    // came back with the same tasks).
+    const shift = reuse && saved.status === "approved" ? tierShift(saved) : null;
+    if (shift) return openFresh(shiftNote(shift));
     const re = reuse ? relayMeals(stillOpen(saved.items), ctx, saved.mealsLaid || {}) : null;
     // A proposal you changed and closed unanswered comes back as you left it.
     const parked = !reuse && prop.parked === dayKey() && prop.items.length > 0;
@@ -1414,6 +1419,46 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     // nudged its text, Mor 2026-10-08).
     paintPlanScreen();
   }
+  // A fresh proposal laid from now, over an approved plan (replan: the
+  // timeline lays it from now, not from when the old one was approved).
+  // Approve saves it as the plan; closing keeps the old one.
+  function openFresh(note = ""){
+    const ctx = planCtx();
+    prop.items = withBreaks(proposeDay({ ...ctx, exclude: prop.exclude }), ctx);
+    prop.mealsLaid = mealAnswers();
+    prop.touched = false; prop.parked = null; prop.sig = daySigNow(); prop.known = null; prop.askOpts = null;
+    prop.open = true; prop.replan = true; prop.ask = false; prop.note = note; nudgeDay = null;
+    paintPlanScreen();
+  }
+  // Projects moved between Focus / Keep going / Background since the plan
+  // was approved (it keeps the tiers it was laid with, plan.tiers), where
+  // that changes it: a project with tasks in the plan moved down, or one
+  // with open tasks outside it moved up. A plan saved before it kept tiers
+  // only notices its projects now in Background. tierNo: "Keep this plan"
+  // for exactly these moves.
+  const TIER_RANK = { focus: 2, keep: 1, background: 0 };
+  const lowKeys = (map) => Object.fromEntries(Object.entries(map || {}).map(([k, v]) => [k.trim().toLowerCase(), v]));
+  const tierIn = (map, k) => (TIERS.includes(map[k]) ? map[k] : "keep");
+  function tierShift(p){
+    if (!p || !tasks) return null;
+    const now = lowKeys(currentTiers()), was = p.tiers ? lowKeys(p.tiers) : null;
+    const inPlan = new Set((p.items || []).map((it) => it.taskId).filter(Boolean));
+    const moved = new Map();
+    for (const t of tasks) {
+      if (t.status !== "ready") continue;
+      const k = String(t.project || "").trim().toLowerCase() || "inbox", to = tierIn(now, k);
+      const from = was ? tierIn(was, k) : to === "background" ? "keep" : to;
+      if (from === to) continue;
+      if (TIER_RANK[to] < TIER_RANK[from] ? inPlan.has(t.id) : !inPlan.has(t.id)) moved.set(k, { name: t.project || "Inbox", to });
+    }
+    if (!moved.size) return null;
+    const key = [...moved].map(([k, m]) => `${k}:${m.to}`).sort().join(",");
+    return p.tierNo === key ? null : { key, moved: [...moved.values()] };
+  }
+  const TIER_NAME = { focus: "Focus", keep: "Keep going", background: "Background" };
+  const shiftNote = (s) => (s.moved.length === 1
+    ? `${s.moved[0].name} moved to ${TIER_NAME[s.moved[0].to]}, so this is a fresh plan.`
+    : "Your project priorities changed, so this is a fresh plan.");
   // A saved plan's open tasks, and its breaks (a break whose work before it
   // is all finished was had, so it goes too).
   function stillOpen(items){
@@ -1450,6 +1495,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     const was = todaysPlan();
     const approvedAt = was?.approvedAt ?? null, declined = was?.declined || [], mealsLaid = was?.mealsLaid || {};
     extra = { ...(was?.behindNo ? { behindNo: was.behindNo } : {}), ...(was?.offer ? { offer: was.offer } : {}),
+      ...(was?.tiers ? { tiers: was.tiers } : {}), ...(was?.tierNo ? { tierNo: was.tierNo } : {}),
       ...(Array.isArray(was?.unfit) ? { unfit: was.unfit } : {}), ...extra };
     const sig = cal.status === "ok" ? daySig(cal.events, dayHours(settings)) : null;
     dayPlan = { date: dayKey(), status, items, approvedAt, declined, mealsLaid, sig, ...extra, at: Date.now() };
@@ -1513,6 +1559,28 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
         say: `Re-plan lays the rest of ${planWord()} from now${gone.length ? ", and what won't fit goes back in your list" : ""}.`,
         yes: ["Re-plan from now", () => { replanFrom(c); next(); }],
         no: ["Edit the plan", () => close(() => { prop.replan = true; openProposal(); })] };
+    } };
+  }
+  // Priorities changed under an approved plan (tierShift; Mor, 2026-10-19:
+  // a project moved to Background and the plan never offered to change).
+  // Re-plan opens a fresh take to approve; Keep this plan stays quiet
+  // until the moves change.
+  function tierAsk(){
+    const p = approvedPlan();
+    if (!p || !tasks || cal.status !== "ok" || prop.open || ppDragging) return null;
+    const s = tierShift(p);
+    if (!s) return null;
+    const key = `tiers:${s.key}`, nl = settings.needsLater;
+    if (nl?.date === logicalDate() && (nl.keys || []).includes(key)) return null;
+    return { key, kind: "ext", ask: ({ next, close }) => {
+      const c = tierShift(approvedPlan());
+      if (!c || `tiers:${c.key}` !== key) return null; // answered or changed since
+      const one = c.moved.length === 1 ? c.moved[0] : null;
+      return { tone: "area-work", ico: "later", q: "Your priorities changed", sub: one ? `Moved to ${TIER_NAME[one.to]}.` : `${c.moved.length} projects moved.`,
+        item: c.moved.map((m) => m.name).join(", "),
+        say: `Re-plan lays the rest of ${planWord()} again with the new order, for you to approve.`,
+        yes: ["Re-plan", () => close(() => openFresh(shiftNote(c)))],
+        no: ["Keep this plan", () => { const q = approvedPlan(); savePlan("approved", q.items, { kept: q.kept || [], tierNo: c.key }); next(); }] };
     } };
   }
   // A meal the approved plan carried past its time (proposal.js lateMeals,
@@ -1708,7 +1776,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     const unfit = overIds(items);
     // The count the plan card shows: its rows, laid with the same context as proposalCard (proposal.js shownTaskCount).
     const n = shownTaskCount(prop.items, { ...planCtx(), ...(approvedPlan() && !prop.touched && !prop.replan ? { since: planSince() } : {}) });
-    savePlan("approved", items, { approvedAt: Date.now(), mealsLaid: mealAnswers(), behindNo: null, offer: null, unfit });
+    savePlan("approved", items, { approvedAt: Date.now(), mealsLaid: mealAnswers(), behindNo: null, offer: null, unfit, tiers: currentTiers(), tierNo: null });
     prop.open = false; prop.replan = false; prop.ask = false; prop.note = ""; reset();
     render();
     onPlanApproved?.();
@@ -2383,7 +2451,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
   return {
     refresh: render,
     // Needs you's questions that only the Now screen can work out (planAsk).
-    needsAsks: () => [planAsk(), mealLateAsk()].filter(Boolean),
+    needsAsks: () => [planAsk(), tierAsk(), mealLateAsk()].filter(Boolean),
     // The schedule's "?" on a planned task that didn't happen.
     missed: (id, start, from) => missedSheet(id, start, from),
     // Done from the task sheet: the card's Done, Undo in the toast.

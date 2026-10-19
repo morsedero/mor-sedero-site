@@ -100,9 +100,9 @@ export function collectNeeds({ tasks = [], events = [], calOk = false, settings 
 // ONE count of what needs the user (Mor, 2026-10-18): the header's "N need
 // you" and the night screen's line both come from here, so they can't
 // disagree. extras: the asks only the open page can see (where / plan / late
-// meal), each a truthy/falsy.
+// meal), each a truthy/falsy (plan may be a count: several plan asks).
 export function needsCount(ctx = {}, { where = false, plan = false, meal = false } = {}){
-  return collectNeeds(ctx).length + (where ? 1 : 0) + (plan ? 1 : 0) + (meal ? 1 : 0);
+  return collectNeeds(ctx).length + (where ? 1 : 0) + (plan ? Number(plan) : 0) + (meal ? 1 : 0);
 }
 // "3 things need you" / "1 thing needs you" — the same words as the header chip.
 export const needsPhrase = (n) => (n === 1 ? "1 thing needs you" : `${n} things need you`);

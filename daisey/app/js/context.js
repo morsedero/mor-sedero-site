@@ -45,6 +45,7 @@ export function setProjectTiers(map){
   tierSubs.forEach((cb) => cb());
 }
 export function watchProjectTiers(cb){ tierSubs.add(cb); return () => tierSubs.delete(cb); }
+export const currentTiers = () => tiers;
 
 // What the engine needs from the task history, shared by the Now card and
 // night mode so the two can't disagree: momentum (the project last worked
