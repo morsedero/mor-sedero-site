@@ -293,7 +293,7 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onMissed, onPro
     const rtl = getComputedStyle(el).direction === "rtl";
     const stepBtn = (n, label) => h("button", { type: "button", className: "sc-step", ariaLabel: label,
       onclick: () => flip(rtl ? n : -n, () => stepBy(n)) }, icon((n < 0) !== rtl ? "back" : "chev"));
-    const bar = h("div", { className: "sc-bar" },
+    const bar = h("div", { className: "sc-bar" + (isNow ? "" : " away") },
       stepBtn(-1, view === "week" ? "Previous week" : "Previous day"),
       h("button", { type: "button", className: "sc-title" + (isNow ? "" : " away"), ariaLabel: isNow ? title : `${title} — back to today`, onclick: () => go(null) },
         h("span", { className: "sc-name", textContent: title }), h("span", { className: "sc-name sc-name-s", textContent: narrow }), sub && h("span", { className: "sc-date", textContent: sub })),
