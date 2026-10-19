@@ -20,15 +20,48 @@ export function mountRibbon(el, { onPlan } = {}){
   const pick = (key) => (e) => { e.stopPropagation(); open = open === key ? null : key; fresh = key; paint(); };
   const state = (key) => (open === key ? " on" : "") + (fresh === key ? " pick" : "");
 
-  // "3 done" / "2 left" open the whole list, not one bead.
-  function listPop(kind){
-    const rows = (kind === "d" ? data.done : data.left).slice().sort((a, b) => a.at - b.at);
+  // "3 done" / "2 left" open the whole list, not one bead. Its dots hang it
+  // from the line by stalks (Mor, 2026-10-19), a bouquet tied at the card's
+  // top: the card sits under the dots' middle, a row under the mouse lights
+  // its stalk and dot.
+  function listPop(kind, line){
+    const all = kind === "d" ? data.done : data.left;
+    const rows = all.slice().sort((a, b) => a.at - b.at);
     if (!rows.length) { open = null; return null; }
-    return h("div", { className: "rb-pop rb-list", role: "dialog", ariaLabel: kind === "d" ? "Done today" : "Still planned", style: "left:-6px" },
-      h("ul", {}, ...rows.map((r) => h("li", { className: areaClass(r.task) },
+    const grow = fresh === open; // just opened: the stalks draw in, not on every repaint
+    const stalks = new Map(); // id → [stalk, dot]
+    const hot = (id, on) => stalks.get(id)?.forEach((n) => n.classList.toggle("hot", on));
+    const box = h("div", { className: "rb-pop rb-list", role: "dialog", ariaLabel: kind === "d" ? "Done today" : "Still planned", style: "left:-6px" },
+      h("ul", {}, ...rows.map((r) => h("li", { className: areaClass(r.task), onmouseenter: () => hot(r.id, true), onmouseleave: () => hot(r.id, false) },
         h("span", { className: "rb-pdot", ariaHidden: "true" }),
         h("span", { className: "rb-li-t" }, bdi(r.task.title)),
         h("span", { className: "rb-li-at" }, kind === "d" ? hm(r.at) : `${hm(r.at)}–${hm(r.end)}`)))));
+    requestAnimationFrame(() => {
+      const dots = line.querySelectorAll(kind === "d" ? ".rb-bead" : ".rb-hole"); // in the order of `all`
+      const pts = all.map((r, i) => dots[i] && { id: r.id, task: r.task, dot: dots[i], x: dots[i].offsetLeft + dots[i].offsetWidth / 2, y: dots[i].offsetTop + dots[i].offsetHeight / 2 })
+        .filter(Boolean).sort((a, b) => a.x - b.x);
+      if (!pts.length || !box.isConnected) return;
+      const w = line.clientWidth, pw = box.offsetWidth, n = pts.length;
+      const mid = pts.reduce((s, p) => s + p.x, 0) / n;
+      const left = Math.max(-6, Math.min(w - pw + 6, mid - pw / 2));
+      box.style.left = `${left}px`;
+      // The stalks end a little under the card's edge, side by side in the dots' order so none cross.
+      const top = box.offsetTop + 8, gap = Math.min(6, (pw - 48) / Math.max(1, n - 1)), half = gap * (n - 1) / 2;
+      const tie = Math.max(left + 24 + half, Math.min(left + pw - 24 - half, mid));
+      const NS = "http://www.w3.org/2000/svg", svg = document.createElementNS(NS, "svg");
+      svg.setAttribute("class", "rb-stalks" + (kind === "l" ? " left" : "") + (grow ? " grow" : ""));
+      svg.setAttribute("aria-hidden", "true");
+      pts.forEach((p, i) => {
+        const tx = tie - half + i * gap, k = (top - p.y) * .55, path = document.createElementNS(NS, "path");
+        path.setAttribute("d", `M${p.x} ${p.y} C${p.x} ${p.y + k} ${tx} ${top - k} ${tx} ${top}`);
+        path.setAttribute("class", "rb-stalk" + areaClass(p.task));
+        if (kind === "d") path.setAttribute("pathLength", "1"); // the draw-in; a planned stalk is dashed and fades in instead
+        path.style.setProperty("--i", i);
+        svg.append(path); stalks.set(p.id, [path, p.dot]);
+      });
+      line.insertBefore(svg, dots[0]); // over the line, under the dots
+    });
+    return box;
   }
 
   // The now dot: the time, what's on right now, what's next.
@@ -56,7 +89,7 @@ export function mountRibbon(el, { onPlan } = {}){
   }
 
   function pop(line){
-    if (open.startsWith("all:")) return listPop(open.slice(4));
+    if (open.startsWith("all:")) return listPop(open.slice(4), line);
     if (open === "now") return nowPop(line);
     const [kind, id] = open.split(":");
     const item = (kind === "d" ? data.done : data.left).find((x) => x.id === id);
