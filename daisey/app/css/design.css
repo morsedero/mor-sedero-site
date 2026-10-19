@@ -195,6 +195,9 @@
 .st-daisy-t p { margin: 4px 0 0; font-size: 14px; line-height: 1.4; color: var(--ink-2); }
 .st-flower { flex: none; }
 .st-flower.bud .daisy-heart { fill: #b9d8a8; stroke: #7fae7f; stroke-width: 1.5; }
+.st-flower .stem { fill: none; stroke: #7fae7f; stroke-width: 2; stroke-linecap: round; }
+.st-flower .leaf { fill: #9cc79c; }
+.st-flower .daisy-petals ellipse { stroke-width: .8; }
 .hglance .st-done .pj-drow { min-block-size: 40px; }
 .hglance .bl-r-n { display: none; } /* no counts on Stats; the dots say it */
 

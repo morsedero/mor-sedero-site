@@ -2,7 +2,7 @@
 // daisy, the area colours, the greeting and the free-time line. No state,
 // nothing at import time touches the DOM (focus.js is imported by node tests).
 import { localDate, logicalDate, LABELS, AREAS } from "./model.js";
-import { weekStart } from "./routine.js";
+import { weekStart, cleanRoutine } from "./routine.js";
 
 const NS = "http://www.w3.org/2000/svg";
 const svgEl = (tag, attrs = {}) => {
@@ -11,19 +11,64 @@ const svgEl = (tag, attrs = {}) => {
   return el;
 };
 
-// One petal per task done today, max 8, and never an empty slot: however
+// One petal per one-off task done, max 8, and never an empty slot: however
 // many there are, they spread evenly round the heart, so any count reads as
 // a whole flower rather than one with gaps.
-export function daisy(petals, { size = 30, cls = "daisy" } = {}){
-  const n = Math.max(0, Math.min(8, petals | 0));
-  const svg = svgEl("svg", { viewBox: "0 0 40 40", width: size, height: size, class: cls, "aria-hidden": "true" });
+const petalRing = (n) => {
   const g = svgEl("g", { class: "daisy-petals" });
   for (let i = 0; i < n; i++) {
     g.append(svgEl("ellipse", { cx: 20, cy: 9, rx: 4.2, ry: 8, transform: `rotate(${(360 / n) * i} 20 20)` }));
   }
-  svg.append(g, svgEl("circle", { cx: 20, cy: 20, r: 6.5, class: "daisy-heart" }));
+  return g;
+};
+export function daisy(petals, { size = 30, cls = "daisy" } = {}){
+  const n = Math.max(0, Math.min(8, petals | 0));
+  const svg = svgEl("svg", { viewBox: "0 0 40 40", width: size, height: size, class: cls, "aria-hidden": "true" });
+  svg.append(petalRing(n), svgEl("circle", { cx: 20, cy: 20, r: 6.5, class: "daisy-heart" }));
   return svg;
 }
+
+// Stats' flower on its stalk (Mor, 2026-10-19): petals for one-off things
+// done, and a leaf off the stalk for each routine session. `leaves` are keys
+// (strings); a leaf's side, height, size and tilt come from its own key, so
+// it never moves when another leaf is added or the page repaints. Same
+// flower as daisy(), same coordinates, in a taller box.
+const LEAF_MAX = 14;
+function seeded(key){ // mulberry32 over an FNV-1a hash of the key
+  let h = 2166136261;
+  for (let i = 0; i < key.length; i++) h = Math.imul(h ^ key.charCodeAt(i), 16777619);
+  h ^= h >>> 16; h = Math.imul(h, 0x85ebca6b); h ^= h >>> 13; h = Math.imul(h, 0xc2b2ae35); h ^= h >>> 16; // keys differ in their last characters: mix them through
+  return () => {
+    h = (h + 0x6D2B79F5) | 0;
+    let t = Math.imul(h ^ (h >>> 15), 1 | h);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+export function stalkDaisy(petals, leaves = [], { size = 96, cls = "daisy" } = {}){
+  const n = Math.max(0, Math.min(8, petals | 0));
+  const svg = svgEl("svg", { viewBox: "-8 0 56 72", width: Math.round(size * 56 / 72), height: size, class: cls, "aria-hidden": "true" });
+  svg.append(svgEl("path", { d: "M20 26 C 20 40, 21 56, 20 71", class: "stem" }));
+  for (const key of leaves.slice(0, LEAF_MAX)) {
+    const rnd = seeded(String(key)), side = rnd() < 0.5 ? -1 : 1;
+    const y = 36 + rnd() * 30, k = 0.7 + rnd() * 0.7, tilt = (rnd() - 0.5) * 30;
+    svg.append(svgEl("path", { d: "M0 0 C 5 -4, 11 -4, 15 -8 C 12 0, 6 4, 0 0z", class: "leaf",
+      transform: `translate(20 ${y.toFixed(1)}) rotate(${tilt.toFixed(1)}) scale(${side * k} ${k.toFixed(2)})` }));
+  }
+  svg.append(petalRing(n), svgEl("circle", { cx: 20, cy: 20, r: 6.5, class: "daisy-heart" }));
+  return svg;
+}
+
+// One key per routine session logged this week (Sunday on), for stalkDaisy.
+export const routineLeaves = (tasks = [], now = Date.now()) => {
+  const from = weekStart(logicalDate(now)), to = logicalDate(now), out = [];
+  for (const t of tasks) {
+    const r = cleanRoutine(t.routine);
+    if (!r) continue;
+    r.log.filter((e) => e.day >= from && e.day <= to).forEach((e, i) => out.push(`${t.id}:${e.day}:${i}`));
+  }
+  return out.sort();
+};
 
 // The empty state's daisy on a stem, which sways (CSS).
 export function stemDaisy(){

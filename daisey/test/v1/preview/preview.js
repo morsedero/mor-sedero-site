@@ -259,6 +259,13 @@ const SCENARIOS = {
     { title: "פורטוגזית!", size: 15, routine: { per: 3 } },
     { title: "דיבור תאמז", project: "Monitor", size: 24 },
   ], settings: { deadlinesAsked: true, somedayAsked: new Date().toLocaleDateString("en-CA") } },
+  // Stats flower (projects.js paintGlance; --click "#weekChip"): two one-offs done, five routine sessions this week.
+  statsweek: { tasks: [
+    { title: "Send CV to Ubisoft", project: "Job search", size: 30, over: { status: "done", doneAt: Date.now() } },
+    { title: "Pay water bill", project: "Home", size: 15, over: { status: "done", doneAt: Date.now() } },
+    { title: "Exercise", project: "Health", size: 45, routine: { per: 3, log: [{ day: day(0) }, { day: day(-1) }] } },
+    { title: "Portuguese", project: "Learning", size: 15, routine: { per: 3, log: [{ day: day(0) }, { day: day(0) }, { day: day(-1) }] } },
+  ] },
   // Bloom (bloom.js): projects in all three tiers, two routines, a week of work.
   bloom: { tiers: { Band: "focus", Reprise: "focus", Admin: "background" }, bloomLog: true, tasks: [
     { title: "Mix chorus", project: "Band", size: 60 },
