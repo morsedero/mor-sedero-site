@@ -37,7 +37,7 @@ const MAX_TASKS = 120;
 // fixed time in the calendar, or ask about the list (answered in the app).
 const KINDS = ["add", "update", "waiting", "drop", "moment", "project", "done", "event", "query"];
 // Bump on any change to SYSTEM; test/phrases/run.mjs prints it with a hash of the text.
-const PROMPT_VERSION = "2026-10-19 phrase-bank examples";
+const PROMPT_VERSION = "2026-10-19 now card + last tasks 3";
 
 const reply = (statusCode, body) => ({
   statusCode,
@@ -62,6 +62,7 @@ const ACTION_FIELDS = {
   timesPerWeek: { type: "INTEGER", description: "add only, when it repeats with no set days: times a week (\"3 times a week\" → 3, \"every day\" → 7, \"weekly\" → 1)." },
   repeatMonthly: { type: "BOOLEAN", description: "add only: true when it repeats every month." },
   waitingFor: str("waiting only: the person or thing it waits on, never a date."),
+  checkOn: str("waiting only: YYYY-MM-DD to check on it again, when the user says until when (\"till Sunday\", \"עד יום שני\")."),
   dayEnd: str("moment only: HH:MM, 24-hour, when the user says their day runs until a different time today (\"I can work until 11pm\")."),
   place: str("moment only: where the user is right now. On the move: train, bus (also a passenger in a car or taxi), car (driving).", { enum: ["home", "out", "anywhere", "train", "bus", "car"] }),
   eventDate: str("event only: YYYY-MM-DD the event happens."),
@@ -105,7 +106,11 @@ Rules:
 - Each value goes only in its own field. Dates go in dueDate or startDate as YYYY-MM-DD, never in waitingFor or title.
 - Work out dates from today's date given below. "Next week" with no day means startDate = the coming Sunday.
 - Only use an existing task when the message clearly refers to it. A new thing that only shares a word with an existing task is an add.
-- If more than one existing task could be the one they mean, return NO action for it; ask a question and give the candidate titles as choices.
+- The Now card (given below, when there is one) is the task the user is on right now. With no task named, "it", "this" and a bare finished / cancel / move / pending message mean the Now card task. A person's name alone doesn't name a task.
+- A message that only corrects what was just added (a size, a date, a name, a person or a project, with no task named) changes the newest of the last tasks (given below, newest first); "both" means the two newest. A correction is an update of only that task (those two), never an add.
+- Pushing or moving a task to a later day sets startDate (when it comes up again); its dueDate stays unless the user talks about the deadline.
+- "The first one", "the second one" point at the cards of your own proposal, not at tasks: return no action for them.
+- If more than one existing task could be the one they mean, and neither rule above settles it, return NO action for it; ask a question and give the candidate titles as choices.
 - Fill only what the user said. Never invent minutes, dates or projects.
 - A task that repeats ("every weekday", "3 times a week", "כל יום שני", "every month") is one add with repeatDays, timesPerWeek or repeatMonthly, never several tasks or a dueDate. Leave the repeat words out of the title.
 - The reply is in the language of the user's message, short and plain, and says what you suggest.
@@ -145,7 +150,7 @@ Message: plan my afternoon
 Message: מה הלו״ז שלי מחר?
 {"reply":"הנה הלו״ז למחר:","actions":[{"kind":"query","query":"plan","part":"day","planDate":"2026-10-06"}]}
 
-More examples, from the phrase bank's example rows (test/phrases, split "example"; only those rows go here). Same day; tasks: a1 "Invoice for the studio", a2 "Cue sheet for Yoni":
+More examples, from the phrase bank's example rows (test/phrases, split "example"; only those rows go here). Same day; tasks: a1 "Invoice for the studio", a2 "Cue sheet for Yoni"; Now card: a2:
 Message: buy milk
 {"reply":"Add a task?","actions":[{"kind":"add","title":"Buy milk"}]}
 Message: fmod session for the game, project Cave Run
@@ -254,6 +259,7 @@ function tidy(out, ids){
     if (kind === "waiting") {
       const on = clean(a.waitingFor ?? a.waitingOn, 80);
       if (on && !looksLikeDate(on)) x.waitingOn = on;
+      if (isDay(a.checkOn)) x.checkOn = a.checkOn;
     }
     if (kind === "project") {
       const name = clean(a.project, 60);
@@ -427,7 +433,12 @@ async function understand(body, key){
     .filter((t) => t.id && t.title);
   const projects = (Array.isArray(body.projects) ? body.projects : []).map((p) => clean(p, 60)).filter(Boolean).slice(0, 60);
   const late = upLateLine(body);
-  const prompt = `Today: ${clean(body.weekday, 12)} ${body.today}.${late}\nProjects: ${JSON.stringify(projects)}\nTasks: ${JSON.stringify(tasks)}\n\nMessage: ${text}`;
+  // The Now card and the last tasks added or edited (tell-read.js requestBody): what "done" and "make it 30" point at.
+  const byId = new Map(tasks.map((t) => [t.id, t]));
+  const card = byId.get(clean(body.now, 60));
+  const recent = (Array.isArray(body.recent) ? body.recent : []).map((x) => clean(x, 60)).filter((x) => byId.has(x)).slice(0, 3);
+  const context = `${card ? `\nNow card: ${card.id} ${JSON.stringify(card.title)}` : ""}${recent.length ? `\nLast tasks added or edited, newest first: ${recent.map((id) => `${id} ${JSON.stringify(byId.get(id).title)}`).join(", ")}` : ""}`;
+  const prompt = `Today: ${clean(body.weekday, 12)} ${body.today}.${late}\nProjects: ${JSON.stringify(projects)}\nTasks: ${JSON.stringify(tasks)}${context}\n\nMessage: ${text}`;
 
   const out = (await ask(key, prompt)) || (await ask(key, prompt)); // one retry
   return out ? tidy(out, new Set(tasks.map((t) => t.id))) : null;

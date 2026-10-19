@@ -7,9 +7,17 @@ import { withSpoken } from "./duration.js";
 import { toMin, usualHours, minText, LATE_END_MAX } from "./day.js";
 import { repeatFrom } from "./routine.js";
 
-export function requestBody(text, tasks, { guest = false } = {}){
+// now: the task id on the Now card. With recent (the 3 open tasks added or
+// edited last, newest first) it's what "done", "push it", "no, make it 30"
+// point at when no task is named (phrase bank 2026-10-19: without them the
+// helper asked "which task?" or changed the wrong one).
+export function requestBody(text, tasks, { guest = false, now = null } = {}){
   const open = tasks.filter((t) => t.status !== "done" && t.status !== "dropped");
+  const at = (t) => Math.max(Number(t.editedAt) || 0, Number(t.createdAt) || 0);
+  const recent = open.filter(at).sort((a, b) => at(b) - at(a)).slice(0, 3).map((t) => t.id);
   return {
+    ...(now && open.some((t) => t.id === now) ? { now } : {}),
+    ...(recent.length ? { recent } : {}),
     // today: the day key (daybound.js), the cards' today. Still up past
     // midnight, before 04:00, that's yesterday's date, and the helper is told
     // (afterMidnight): "yesterday", "today" and "tomorrow" count from it.

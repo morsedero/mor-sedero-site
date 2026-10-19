@@ -20,17 +20,18 @@
 
 // Default clock: Monday 2026-10-19 10:00, Asia/Jerusalem. "Tue 14:00" etc.
 // are that week (Sun 10-18 … Sat 10-24); "Oct 26" is Monday 10-26 10:00.
+const OLD = new Date(2026, 9, 12, 9).getTime(), T = (h, m) => new Date(2026, 9, 18, h, m).getTime();
 export const STATE = {
   now: "t2",            // what the Now card shows
-  recent: ["t6", "t7"], // the last tasks added, newest first ("make it 30")
+  recent: ["t6", "t7"], // the last tasks added, newest first ("make it 30"): from createdAt, as the app reads it
   tasks: [
-    { id: "t1", title: "Invoice", status: "ready" },
-    { id: "t2", title: "Report for Yoni", status: "ready", due: "2026-10-23", size: 120 },
-    { id: "t3", title: "Master track 2", status: "ready", project: "Album mixing" },
-    { id: "t4", title: "Send stems to Dana", status: "waiting", waitingOn: "Dana" },
-    { id: "t5", title: "Coffee with Dan", status: "ready" },
-    { id: "t6", title: "Email Dana the quote", status: "ready", due: "2026-10-22", size: 20 },
-    { id: "t7", title: "Book studio", status: "ready", size: 60 },
+    { id: "t1", title: "Invoice", status: "ready", createdAt: OLD },
+    { id: "t2", title: "Report for Yoni", status: "ready", due: "2026-10-23", size: 120, createdAt: OLD },
+    { id: "t3", title: "Master track 2", status: "ready", project: "Album mixing", createdAt: OLD },
+    { id: "t4", title: "Send stems to Dana", status: "waiting", waitingOn: "Dana", createdAt: OLD },
+    { id: "t5", title: "Coffee with Dan", status: "ready", createdAt: OLD },
+    { id: "t6", title: "Email Dana the quote", status: "ready", due: "2026-10-22", size: 20, createdAt: T(9, 30) },
+    { id: "t7", title: "Book studio", status: "ready", size: 60, createdAt: T(9, 0) },
   ],
 };
 

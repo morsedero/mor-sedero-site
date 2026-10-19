@@ -1023,7 +1023,7 @@ async function boot(){
             if (open) { m.projects?.closeProject(); m.projects?.closeAll(); }
             $("#planPage").hidden = !open; if (open) $("#planPage").scrollTop = 0; syncPanel();
           },
-          onCard: (id) => { m.projects?.setCurrent(id); m.ribbon?.setCard(id); },
+          onCard: (id) => { m.card = id; m.projects?.setCurrent(id); m.ribbon?.setCard(id); },
           onOpen: (task) => m.adder.edit(task),
           onProject: (name) => m.projects.openProject(name),
           onEvent: (ev) => m.event.view(ev),
@@ -1090,6 +1090,7 @@ async function boot(){
           if (mounted !== m) return; // signed out while it loaded
           m.tell = mountTell($("#tell"), $("#tellInput"), $("#mic"), user.uid, {
             guest: isGuest,
+            nowCard: () => m.card, // "done", "push it": the task on the Now card
             openAdd: (project, title, pre, opts) => m.adder.open(project ?? tabProject(), title, pre, opts),
             openTask: (task) => m.adder.edit(task),
           });

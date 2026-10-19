@@ -138,7 +138,7 @@ if (!DRY && !key) { console.error("No key: set GEMINI_API_KEY or put it in daise
 
 const rows = parseCsv(fs.readFileSync(path.join(HERE, "phrases.csv"), "utf8"))
   .filter((r) => (IDS ? IDS.includes(Number(r.id)) : SPLIT === "all" || r.split === SPLIT));
-const sha = crypto.createHash("sha256").update(chat.SYSTEM).digest("hex").slice(0, 8);
+const sha = crypto.createHash("sha256").update(chat.SYSTEM + chat.understand.toString()).digest("hex").slice(0, 8); // the prompt text and how it is built
 const pause = (ms) => new Promise((ok) => setTimeout(ok, ms));
 const out = [], lines = [];
 const log = (s = "") => { lines.push(s); console.log(s); };
@@ -155,14 +155,15 @@ for (const row of rows) {
   const at = clockOf(row.clock_at_input);
   let res = { reply: "", actions: [] }, error = null;
   if (text && !DRY) {
-    for (let attempt = 0; attempt < 3; attempt++) {
+    const WAITS = [30, 60, 120, 240]; // s: busy or rate-limited, back off (an outage once took 15 rows in a row)
+    for (let attempt = 0; attempt <= WAITS.length; attempt++) {
       freeze(at);
-      const body = requestBody(text, STATE.tasks);
+      const body = requestBody(text, STATE.tasks, { now: STATE.now });
       thaw();
       const got = await chat.understand(body, key);
       if (got) { res = got; break; }
-      if (attempt === 2) error = "model failed 3 times";
-      else await pause(30000); // busy or rate-limited: back off
+      if (attempt === WAITS.length) error = `model failed ${attempt + 1} times`;
+      else await pause(WAITS[attempt] * 1000);
     }
   }
   freeze(at);

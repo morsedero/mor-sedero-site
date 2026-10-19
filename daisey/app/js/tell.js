@@ -72,7 +72,7 @@ const HINT_MS = 4500;
 
 // form/input/mic: the bar's own elements (index.html). openAdd(project, title):
 // the Add task form, prefilled.
-export function mountTell(form, input, mic, uid, { openAdd, openTask, guest = false }){
+export function mountTell(form, input, mic, uid, { openAdd, openTask, nowCard = () => null, guest = false }){
   let tasks = [];
   const panel = h("section", { className: "tell-panel", ariaLabel: "What Daisey understood", ariaLive: "polite", hidden: true });
   form.before(panel);
@@ -109,7 +109,7 @@ export function mountTell(form, input, mic, uid, { openAdd, openTask, guest = fa
       res = await fetch(URL_, {
         method: "POST",
         headers,
-        body: JSON.stringify(requestBody(text, tasks, { guest })), // tell-read.js
+        body: JSON.stringify(requestBody(text, tasks, { guest, now: nowCard() })), // tell-read.js
       });
       body = await res.json().catch(() => ({}));
     } catch {
@@ -212,6 +212,7 @@ export function mountTell(form, input, mic, uid, { openAdd, openTask, guest = fa
       if (a.notBefore) bits.push(`not before ${day(a.notBefore)}`);
     } else if (a.kind === "waiting") {
       bits.push(a.waitingOn ? `pending: waiting on ${a.waitingOn}` : "pending");
+      if (a.checkOn) bits.push(`check ${day(a.checkOn)}`);
     } else if (a.kind === "event") {
       bits.push(`${day(a.date)} ${a.time}`, dur(a.minutes));
       if (a.location) bits.push(a.location);
@@ -255,7 +256,7 @@ export function mountTell(form, input, mic, uid, { openAdd, openTask, guest = fa
       if (!t && a.kind !== "moment") return null; // gone since
       if (a.kind === "done") return finishTask(uid, t, { tasks });
       if (a.kind === "update") return updateTask(uid, t, pick(["title", "project", "size", "due", "dateKind", "notBefore"]), tasks);
-      if (a.kind === "waiting") return updateTask(uid, t, { status: "waiting", waitingOn: a.waitingOn || "" }, tasks);
+      if (a.kind === "waiting") return updateTask(uid, t, { status: "waiting", waitingOn: a.waitingOn || "", ...(a.checkOn ? { checkOn: a.checkOn } : {}) }, tasks);
       if (a.kind === "drop") return updateTask(uid, t, { status: "dropped" }, tasks);
       // A ride ("I'm a passenger" = bus) is held in where.js, as the Driving
       // card's button does, not in the moment doc (home/out/anywhere only).
