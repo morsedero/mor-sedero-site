@@ -2738,14 +2738,25 @@ body.fm-slide .deck > .now-card.main { animation: none !important; } /* main.js:
     .rb-now { animation: rb-glow 2.8s ease-in-out var(--glow-at, 0s) infinite; }
     .rb-now.pick { animation: rb-glow 2.8s ease-in-out var(--glow-at, 0s) infinite, rb-tap .45s cubic-bezier(.3, 1.6, .5, 1); }
     .rb-bead.pick, .rb-hole.pick { animation: rb-tap .45s cubic-bezier(.3, 1.6, .5, 1); }
-    .rb-bead.on.pick, .rb-hole.on.pick { animation: rb-tap-on .45s cubic-bezier(.3, 1.6, .5, 1); }
   }
+  /* The pop runs on `scale`, which multiplies with the transform that hover
+     and .on set, so a dot closed under the mouse pops straight into its hover
+     size instead of settling at 1 and then growing. A browser without the
+     scale property pops on transform, the hover jump with it. */
+@supports not (scale: 1) {
+  @media (prefers-reduced-motion: no-preference) {
+    .rb-now.pick { animation: rb-glow 2.8s ease-in-out var(--glow-at, 0s) infinite, rb-tap-tf .45s cubic-bezier(.3, 1.6, .5, 1); }
+    .rb-bead.pick, .rb-hole.pick { animation: rb-tap-tf .45s cubic-bezier(.3, 1.6, .5, 1); }
+    .rb-bead.on.pick, .rb-hole.on.pick { animation: rb-tap-on-tf .45s cubic-bezier(.3, 1.6, .5, 1); }
+  }
+}
   @keyframes rb-glow {
     0%, 100% { box-shadow: 0 0 0 3px rgb(245 179 1 / .20), 0 0 6px 1px rgb(245 179 1 / .30), 0 3px 8px -1px rgb(150 100 0 / .45); }
     50% { box-shadow: 0 0 0 7px rgb(245 179 1 / .10), 0 0 16px 5px rgb(245 179 1 / .55), 0 3px 8px -1px rgb(150 100 0 / .45); }
   }
-  @keyframes rb-tap { 0% { transform: scale(.8); } 55% { transform: scale(1.25); } 100% { transform: scale(1); } }
-  @keyframes rb-tap-on { 0% { transform: scale(.8); } 55% { transform: scale(1.6); } 100% { transform: scale(1.35); } }
+  @keyframes rb-tap { 0% { scale: .8; } 55% { scale: 1.2; } 100% { scale: 1; } }
+  @keyframes rb-tap-tf { 0% { transform: scale(.8); } 55% { transform: scale(1.25); } 100% { transform: scale(1); } }
+  @keyframes rb-tap-on-tf { 0% { transform: scale(.8); } 55% { transform: scale(1.6); } 100% { transform: scale(1.35); } }
   .rb-pop { position: absolute; z-index: 5; inset-block-start: 30px; inline-size: max-content; max-inline-size: 240px; padding: 11px 14px; box-sizing: border-box; border: 1px solid var(--line); border-radius: 16px; background: var(--card); box-shadow: 0 14px 30px -10px rgb(0 0 0 / .3); }
   .rb-arrow { position: absolute; inset-block-start: -7px; inset-inline-start: calc(var(--arrow, 50%) - 6px); inline-size: 12px; block-size: 12px; background: var(--card); border-inline-start: 1px solid var(--line); border-block-start: 1px solid var(--line); transform: rotate(45deg); }
   .rb-pop p { margin: 0; }
