@@ -31,3 +31,34 @@ test("waiting keeps a check-in day, drops one that isn't a date", () => {
   assert.equal(tidy({ actions: [{ kind: "waiting", taskId: "a", waitingFor: "Dana", checkOn: "2026-10-22" }] }, ids).actions[0].checkOn, "2026-10-22");
   assert.equal(tidy({ actions: [{ kind: "waiting", taskId: "a", waitingFor: "Dana", checkOn: "Thursday" }] }, ids).actions[0].checkOn, undefined);
 });
+
+// readAnswer: days from the user's words, a night fork as a question, no Done on "didn't".
+import { readAnswer } from "../../app/js/tell-read.js";
+const RealDate = Date;
+const at = (ms, fn) => { globalThis.Date = class extends RealDate { constructor(...a){ if (a.length) super(...a); else super(ms); } static now(){ return ms; } }; try { return fn(); } finally { globalThis.Date = RealDate; } };
+const MON = new Date(2026, 9, 19, 10).getTime();
+
+test("the words set the day, over the helper's own sum", () => {
+  const r = at(new Date(2026, 9, 26, 10).getTime(), () => readAnswer({ actions: [{ kind: "update", taskId: "a", when: "on the 25th", due: "2026-10-25" }] }, "on the 25th"));
+  assert.equal(r.actions[0].due, "2026-11-25");
+  assert.equal(r.actions[0].when, undefined);
+  const s = at(MON, () => readAnswer({ actions: [{ kind: "update", taskId: "a", when: "in 3 days" }] }, "in 3 days"));
+  assert.equal(s.actions[0].due, "2026-10-22", "no date from the helper: due");
+});
+
+test("tomorrow at 8, said at 03:44: a question, then the chip's answer settles it", () => {
+  const night = new Date(2026, 9, 20, 3, 44).getTime();
+  const ev = { kind: "event", title: "Call Dana", date: "2026-10-20", time: "08:00", minutes: 60, when: "tomorrow" };
+  const q = at(night, () => readAnswer({ reply: "Add?", actions: [ev] }, "call Dana tomorrow at 8"));
+  assert.equal(q.actions.length, 0);
+  assert.equal(q.choices.length, 2);
+  const a = at(night, () => readAnswer({ actions: [ev] }, `call Dana tomorrow at 8\n(${q.question} → ${q.choices[1]})`));
+  assert.equal(a.actions[0].date, "2026-10-21");
+  assert.equal(a.question, undefined);
+});
+
+test("\"I didn't do it\" is never a Done", () => {
+  assert.equal(at(MON, () => readAnswer({ actions: [{ kind: "done", taskId: "a" }] }, "I didn't do it")).actions.length, 0);
+  assert.equal(at(MON, () => readAnswer({ actions: [{ kind: "done", taskId: "a" }] }, "לא סיימתי")).actions.length, 0);
+  assert.equal(at(MON, () => readAnswer({ actions: [{ kind: "done", taskId: "a" }] }, "finished it")).actions.length, 1);
+});

@@ -1,7 +1,7 @@
 // Phrase-bank harness for Tell Daisey (2026-10-19). Each phrases.csv row runs
 // through the same steps as the bar: tell-read.js requestBody() with the
 // row's clock and a fixed task list (expect.mjs STATE), the server's
-// understand() (prompt → Gemini → tidy), then tell-read.js understood(). The
+// understand() (prompt → Gemini → tidy), then tell-read.js readAnswer(). The
 // structured answer is scored against expect.mjs, never the wording.
 //
 //   node daisey/test/phrases/run.mjs                 dev rows (the default)
@@ -21,7 +21,7 @@ import path from "node:path";
 import crypto from "node:crypto";
 import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
-import { requestBody, understood } from "../../app/js/tell-read.js";
+import { requestBody, readAnswer } from "../../app/js/tell-read.js";
 import { STATE, EXPECT } from "./expect.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -167,9 +167,8 @@ for (const row of rows) {
     }
   }
   freeze(at);
-  const actions = understood(res.actions || [], text, {});
+  const r = readAnswer(res, text, {});
   thaw();
-  const r = { ...res, actions };
   const sc = error ? { pass: false, why: [error], falses: 0, error: true } : score(spec, r);
   const tag = error ? "ERROR" : sc.pass ? "PASS " : "FAIL ";
   out.push({ id, category: row.category, split: row.split, pass: sc.pass, error: !!error, falses: sc.falses, asked: asked(r) });

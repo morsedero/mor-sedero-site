@@ -37,7 +37,7 @@ const MAX_TASKS = 120;
 // fixed time in the calendar, or ask about the list (answered in the app).
 const KINDS = ["add", "update", "waiting", "drop", "moment", "project", "done", "event", "query"];
 // Bump on any change to SYSTEM; test/phrases/run.mjs prints it with a hash of the text.
-const PROMPT_VERSION = "2026-10-19 now card + last tasks 3";
+const PROMPT_VERSION = "2026-10-19 date words";
 
 const reply = (statusCode, body) => ({
   statusCode,
@@ -55,6 +55,7 @@ const ACTION_FIELDS = {
   title: str("add: the new task's title in the user's own words. update: only when renaming."),
   project: str("An existing project when one clearly fits, or a new project the user names. Otherwise leave empty."),
   minutes: { type: "INTEGER", description: "add/update/event: how long it takes, only if the user said (\"15 min\" → 15, \"2 hours\" → 120). moment: how many minutes the user has free right now." },
+  dateWords: str("Whenever you fill a date: the user's own words for that day, copied as said (\"tomorrow\", \"in 3 days\", \"by Friday\", \"on the 25th\", \"סוף השבוע\"). The app works the day out from them."),
   dueDate: str("YYYY-MM-DD the task is due (\"by Thursday\", \"עד יום רביעי\"). Only if the user gave one."),
   dateKind: str("deadline only for a hard date with a cost if missed, else target.", { enum: ["deadline", "target"] }),
   startDate: str("YYYY-MM-DD before which the task shouldn't come up (\"next week\", \"after Sunday\")."),
@@ -104,7 +105,8 @@ Kinds:
 
 Rules:
 - Each value goes only in its own field. Dates go in dueDate or startDate as YYYY-MM-DD, never in waitingFor or title.
-- Work out dates from today's date given below. "Next week" with no day means startDate = the coming Sunday.
+- Work out dates from today's date given below, and copy the words you read them from into dateWords.
+- A message that is only a day or a time, with no task named, is about the Now card task: "by …" or an end ("end of …") sets its dueDate, any other day its startDate. "Next week" with no day means startDate = the coming Sunday.
 - Only use an existing task when the message clearly refers to it. A new thing that only shares a word with an existing task is an add.
 - The Now card (given below, when there is one) is the task the user is on right now. With no task named, "it", "this" and a bare finished / cancel / move / pending message mean the Now card task. A person's name alone doesn't name a task.
 - A message that only corrects what was just added (a size, a date, a name, a person or a project, with no task named) changes the newest of the last tasks (given below, newest first); "both" means the two newest. A correction is an update of only that task (those two), never an add.
@@ -118,11 +120,11 @@ Rules:
 
 Examples (today is Monday 2026-10-05; tasks: t1 "Mix review for Reprise", t4 "Mix review for Lunitales", t2 "ביטוח לחיות", t3 "Pre-attack cue"):
 Message: lesson prep for Thursday, invoices, call Uri 15 min
-{"reply":"Add 3 tasks?","actions":[{"kind":"add","title":"Lesson prep","dueDate":"2026-10-08"},{"kind":"add","title":"Invoices"},{"kind":"add","title":"Call Uri","minutes":15}]}
+{"reply":"Add 3 tasks?","actions":[{"kind":"add","title":"Lesson prep","dateWords":"for Thursday","dueDate":"2026-10-08"},{"kind":"add","title":"Invoices"},{"kind":"add","title":"Call Uri","minutes":15}]}
 Message: water plants every weekday
 {"reply":"Add a task every weekday?","actions":[{"kind":"add","title":"Water plants","repeatDays":[0,1,2,3,4]}]}
 Message: להתקשר לביטוח לאומי עד יום רביעי
-{"reply":"להוסיף משימה ליום רביעי?","actions":[{"kind":"add","title":"להתקשר לביטוח לאומי","dueDate":"2026-10-07"}]}
+{"reply":"להוסיף משימה ליום רביעי?","actions":[{"kind":"add","title":"להתקשר לביטוח לאומי","dateWords":"עד יום רביעי","dueDate":"2026-10-07"}]}
 Message: push the mix review to next week
 {"reply":"Which mix review?","question":"Which mix review?","choices":["Mix review for Reprise","Mix review for Lunitales"],"actions":[]}
 Message: waiting on Yuval for the pre-attack cue
@@ -142,13 +144,13 @@ Message: my day can extend to 11 pm today
 Message: sent the pre-attack cue
 {"reply":"Mark it done?","actions":[{"kind":"done","taskId":"t3"}]}
 Message: רופא שיניים ביום חמישי ב-15:00
-{"reply":"להוסיף ליומן ביום חמישי ב-15:00?","actions":[{"kind":"event","title":"רופא שיניים","eventDate":"2026-10-08","time":"15:00"}]}
+{"reply":"להוסיף ליומן ביום חמישי ב-15:00?","actions":[{"kind":"event","title":"רופא שיניים","dateWords":"ביום חמישי","eventDate":"2026-10-08","time":"15:00"}]}
 Message: what's due this week?
 {"reply":"Here's what's due this week:","actions":[{"kind":"query","query":"due","range":"week"}]}
 Message: plan my afternoon
 {"reply":"Here's the afternoon:","actions":[{"kind":"query","query":"plan","part":"afternoon"}]}
 Message: מה הלו״ז שלי מחר?
-{"reply":"הנה הלו״ז למחר:","actions":[{"kind":"query","query":"plan","part":"day","planDate":"2026-10-06"}]}
+{"reply":"הנה הלו״ז למחר:","actions":[{"kind":"query","query":"plan","part":"day","dateWords":"מחר","planDate":"2026-10-06"}]}
 
 More examples, from the phrase bank's example rows (test/phrases, split "example"; only those rows go here). Same day; tasks: a1 "Invoice for the studio", a2 "Cue sheet for Yoni"; Now card: a2:
 Message: buy milk
@@ -156,7 +158,7 @@ Message: buy milk
 Message: fmod session for the game, project Cave Run
 {"reply":"New project Cave Run, with 1 task?","actions":[{"kind":"project","project":"Cave Run"},{"kind":"add","title":"FMOD session for the game","project":"Cave Run"}]}
 Message: meeting with Dana Thursday 14:00
-{"reply":"Add to the calendar Thursday 14:00?","actions":[{"kind":"event","title":"Meeting with Dana","eventDate":"2026-10-08","time":"14:00"}]}
+{"reply":"Add to the calendar Thursday 14:00?","actions":[{"kind":"event","title":"Meeting with Dana","dateWords":"Thursday","eventDate":"2026-10-08","time":"14:00"}]}
 Message: call mom and pay rent, 15 min each
 {"reply":"Add 2 tasks, 15 min each?","actions":[{"kind":"add","title":"Call mom","minutes":15},{"kind":"add","title":"Pay rent","minutes":15}]}
 Message: call mom, pay rent, 30 min total
@@ -164,11 +166,11 @@ Message: call mom, pay rent, 30 min total
 Message: practice guitar 45
 {"reply":"Add a 45 min task?","actions":[{"kind":"add","title":"Practice guitar","minutes":45}]}
 Message: report 3 hours, due Friday
-{"reply":"Add a 3 h task due Friday?","actions":[{"kind":"add","title":"Report","minutes":180,"dueDate":"2026-10-09"}]}
+{"reply":"Add a 3 h task due Friday?","actions":[{"kind":"add","title":"Report","minutes":180,"dateWords":"due Friday","dueDate":"2026-10-09"}]}
 Message: send the invoice tomorrow
-{"reply":"Move it to tomorrow?","actions":[{"kind":"update","taskId":"a1","dueDate":"2026-10-06"}]}
+{"reply":"Move it to tomorrow?","actions":[{"kind":"update","taskId":"a1","dateWords":"tomorrow","dueDate":"2026-10-06"}]}
 Message: call Dana tomorrow at 8
-{"reply":"Add to the calendar tomorrow 08:00?","actions":[{"kind":"event","title":"Call Dana","eventDate":"2026-10-06","time":"08:00"}]}
+{"reply":"Add to the calendar tomorrow 08:00?","actions":[{"kind":"event","title":"Call Dana","dateWords":"tomorrow","eventDate":"2026-10-06","time":"08:00"}]}
 Message: scratch that
 {"reply":"OK, nothing changed.","actions":[]}
 Message: no no, the other one
@@ -236,6 +238,8 @@ function tidy(out, ids){
     const onTask = kind === "update" || kind === "waiting" || kind === "drop" || kind === "done";
     if (onTask && !ids.has(a.taskId)) return [];
     const x = { kind };
+    const when = clean(a.dateWords, 60); // the user's words for the day: tell-read.js withDates works it out
+    if (when && !["drop", "done", "project", "moment"].includes(kind)) x.when = when;
     if (onTask) x.taskId = a.taskId;
     if (kind === "add" || kind === "update") {
       if (clean(a.title)) x.title = clean(a.title);
@@ -270,13 +274,13 @@ function tidy(out, ids){
       if (!title || !isDay(date) || !/^([01]\d|2[0-3]):[0-5]\d$/.test(time)) return [];
       const size = a.minutes ?? a.size;
       const location = clean(a.location, 300);
-      return [{ kind, title, date, time, minutes: Number.isFinite(size) && size > 0 && size <= 24 * 60 ? Math.round(size) : 60, ...(location ? { location } : {}) }];
+      return [{ kind, title, date, time, minutes: Number.isFinite(size) && size > 0 && size <= 24 * 60 ? Math.round(size) : 60, ...(location ? { location } : {}), ...(x.when ? { when: x.when } : {}) }];
     }
     if (kind === "query") {
       if (!["next", "due", "waiting", "plan"].includes(a.query)) return [];
       return [{ kind, query: a.query, ...(a.query === "due" ? { range: a.range === "week" ? "week" : "today" } : {}),
         ...(a.query === "plan" ? { part: ["morning", "afternoon", "evening"].includes(a.part) ? a.part : "day",
-          ...(isDay(a.planDate) ? { date: a.planDate } : {}) } : {}) }];
+          ...(isDay(a.planDate) ? { date: a.planDate } : {}), ...(x.when ? { when: x.when } : {}) } : {}) }];
     }
     if (kind === "moment") {
       if (["home", "out", "anywhere", "train", "bus", "car"].includes(a.place)) x.place = a.place;

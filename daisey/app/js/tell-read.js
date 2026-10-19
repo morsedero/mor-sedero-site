@@ -6,6 +6,7 @@ import { localDate, getDayKey } from "./model.js";
 import { withSpoken } from "./duration.js";
 import { toMin, usualHours, minText, LATE_END_MAX } from "./day.js";
 import { repeatFrom } from "./routine.js";
+import { dateFrom } from "./when.js";
 
 // now: the task id on the Now card. With recent (the 3 open tasks added or
 // edited last, newest first) it's what "done", "push it", "no, make it 30"
@@ -27,6 +28,47 @@ export function requestBody(text, tasks, { guest = false, now = null } = {}){
     tasks: open.map((t) => ({ id: t.id, title: t.title, project: t.project, due: t.due || undefined, status: t.status })),
     projects: [...new Set(open.map((t) => t.project))],
   };
+}
+
+// The helper's whole answer as the panel shows it: the days worked out from
+// the user's words (withDates), then understood() on the actions; a day
+// may turn one card into a question. And a guard: "I didn't do it" is never
+// a Done (phrase bank 2026-10-19: the helper marked the Now card done).
+export function readAnswer({ reply = "", actions = [], question, choices = [] }, text, settings = {}){
+  const said = /\b(didn'?t|did not|haven'?t|have not|not done|never did)\b|לא (עשיתי|סיימתי|הספקתי)/i.test(text);
+  // Days first: a repeat (withRepeats) turns a due date into its end.
+  const dated = withDates(actions.filter((a) => !(said && a.kind === "done")), text);
+  const list = understood(dated.actions, text, settings);
+  if (!dated.ask) return { reply, actions: list, ...(question ? { question, choices } : {}) };
+  return { reply: dated.ask.question, actions: list, question: dated.ask.question, choices: dated.ask.choices };
+}
+
+// The day each card means, from the user's words (when.js), not from the
+// helper's own sum: it copies the words into dateWords (here: when). A
+// card whose words fit two days ("tomorrow at 8" at 03:44) becomes a
+// question; the chip's answer comes back in the text ("(Which day? → Tue 20
+// Oct)") and settles it. Words it can't read leave the helper's date.
+const DATE_FIELDS = ["due", "notBefore", "date", "checkOn"];
+const he = (s) => /[֐-׿]/.test(s);
+const label = (ymd, text) => new Date(`${ymd}T12:00`).toLocaleDateString(he(text) ? "he" : "en", { weekday: "short", day: "numeric", month: "short" });
+function withDates(actions, text){
+  const picked = (String(text).match(/→ ([^)\n]+)\)\s*$/) || [])[1];
+  let ask = null;
+  const out = actions.flatMap((a) => {
+    if (!a.when) return [a];
+    const { when, ...b } = a;
+    const r = dateFrom(when, Date.now(), { timed: b.kind === "event" });
+    // words that aren't a day ("later"): an update left with nothing to change goes
+    if (!r) return b.kind === "update" && !["title", "project", "size", "due", "dateKind", "notBefore"].some((k) => b[k] != null) ? [] : [b];
+    let date = r.date;
+    if (r.ask) {
+      date = r.ask.find((d) => label(d, text) === picked);
+      if (!date) { ask = { question: he(text) ? "לאיזה יום?" : "Which day?", choices: r.ask.map((d) => label(d, text)) }; return []; }
+    }
+    const field = DATE_FIELDS.find((f) => b[f]) || (b.kind === "event" || b.kind === "query" ? "date" : b.kind === "waiting" ? "checkOn" : "due");
+    return [{ ...b, [field]: date }];
+  });
+  return { actions: out, ask };
 }
 
 // The helper's actions as the cards show them: a duration typed in the

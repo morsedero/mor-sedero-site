@@ -29,7 +29,7 @@ import { withTrips, asPassenger } from "./trips.js";
 import { eventFrom } from "./tell-event.js";
 import { repeatWords } from "./routine.js";
 import { syncSeries } from "./slots.js";
-import { requestBody, understood } from "./tell-read.js";
+import { requestBody, readAnswer } from "./tell-read.js";
 
 const URL_ = "/.netlify/functions/daisey-now-chat";
 const SAID = {
@@ -135,8 +135,8 @@ export function mountTell(form, input, mic, uid, { openAdd, openTask, nowCard = 
   }
 
   // The answer: one line, then a card per change, then Apply.
-  function proposal(text, { reply, actions = [], question, choices = [] }){
-    const list = understood(actions, text, settings); // tell-read.js
+  function proposal(text, answer){
+    const { reply, actions: list, question, choices = [] } = readAnswer(answer, text, settings); // tell-read.js
     const draw = () => {
       const queries = list.filter((a) => a.kind === "query");
       // Added from the full form (Edit): its card goes, the rest stay; the last one closes the panel.
