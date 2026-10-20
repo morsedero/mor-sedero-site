@@ -1334,7 +1334,8 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
   // (how much is left, then when), or Not yet (when). Answering clears the
   // "?" and the Needs you ask with it.
   // from: the schedule box whose "?" was tapped, so Done celebrates it.
-  function missedSheet(id, start, from){
+  // onNow: after Do it now (Needs you closes, so the card shows it).
+  function missedSheet(id, start, from, { onNow } = {}){
     const task = (tasks || []).find((t) => t.id === id), dlg = missDialog;
     if (!task || !dlg) return;
     const row = start ? planRowsNow().find((r) => r.taskId === id) : null;
@@ -1348,7 +1349,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     // how much is left: Some of it asked, Not yet means all of it.
     const paintWhen = () => dlg.replaceChildren(head("When next?"), name,
       h("div", { className: "miss-acts one" },
-        h("button", { className: "btn line", type: "button", onclick: act(() => switchTo(id)) }, icon("play"), h("span", { textContent: "Do it now" }))),
+        h("button", { className: "btn line", type: "button", onclick: act(() => { switchTo(id); onNow?.(); }) }, icon("play"), h("span", { textContent: "Do it now" }))),
       h("div", { className: "later-ask", role: "group", ariaLabel: "Or later" },
         ...[["today", "Later today"], ["tomorrow", "Tomorrow"], ["week", "This week"]].map(([w, text]) => chip(text, act(() => later(task, w, null, { ask: false })))),
         h("button", { className: "hold-opt", type: "button", ariaLabel: `Put ${task.title} on hold: no date, in the project's On hold list`, onclick: act(() => later(task, "someday", null, { ask: false })) },
@@ -1546,18 +1547,31 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     if (!b) return null;
     const key = `plan:${b.key}`, nl = settings.needsLater;
     if (nl?.date === logicalDate() && (nl.keys || []).includes(key)) return null;
+    // Each task that passed with no Done gets the schedule's "?" (Mor,
+    // 2026-10-20): Done, Some of it or Not yet, one at a time; Do it now
+    // goes home to it. An answer touches the task, and the plan then runs
+    // from that touch (planSince), so the rest stop counting as missed:
+    // the card keeps the ones it asked about, from when it asked, until
+    // each is answered. starts: their planned times, from then too.
+    const at = Date.now(), asked = new Set(b.missed.map((t) => t.id));
+    const starts = new Map(planRowsNow().map((r) => [r.taskId, r.start]));
     return { key, kind: "ext", ask: ({ next, close }) => {
       const c = behindNow();
-      if (!c || `plan:${c.key}` !== key) return null; // answered or changed since
-      const { missed } = c, gone = c.cut.map((id) => tasks.find((t) => t.id === id)).filter(Boolean);
+      for (const t of c?.missed || []) { asked.add(t.id); if (!starts.has(t.id)) starts.set(t.id, planRowsNow().find((r) => r.taskId === t.id)?.start ?? null); }
+      const missed = [...asked].map((id) => tasks.find((t) => t.id === id)).filter((t) => t && t.status === "ready" && !((t.touchedAt || 0) > at));
+      const gone = (c?.cut || []).map((id) => tasks.find((t) => t.id === id)).filter(Boolean);
+      if (!missed.length && !gone.length) return null; // all answered
+      const rows = missed.map((t) => ({ text: t.title, aria: `${t.title}: no Done yet. How did it go?`,
+        go: () => missedSheet(t.id, starts.get(t.id) ?? null, null, { onNow: () => close() }) }));
       const sub = missed.length && gone.length ? `${missed.length} passed with no Done, ${gone.length} won't fit.`
         : missed.length === 1 ? "Its time passed with no Done."
         : missed.length ? `${missed.length} planned tasks passed with no Done.`
         : `Running behind: ${gone.length} won't fit.`;
-      return { tone: "area-work", ico: "later", q: "Your plan slipped", sub,
-        item: (missed.length ? missed : gone).map((t) => t.title).join(", "),
+      return { tone: "area-work", ico: "later", q: "Your plan slipped", sub, laterKey: c ? `plan:${c.key}` : key,
+        rows, item: rows.length ? "" : gone.map((t) => t.title).join(", "),
         say: `Re-plan lays the rest of ${planWord()} from now${gone.length ? ", and what won't fit goes back in your list" : ""}.`,
-        yes: ["Re-plan from now", () => { replanFrom(c); next(); }],
+        // An answer here already laid the plan from now: nothing to re-plan.
+        yes: c ? ["Re-plan from now", () => { replanFrom(c); next(); }] : ["Keep the plan", () => next()],
         no: ["Edit the plan", () => close(() => { prop.replan = true; openProposal(); })] };
     } };
   }

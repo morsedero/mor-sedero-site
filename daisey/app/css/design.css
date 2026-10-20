@@ -75,6 +75,14 @@
 .dc-ico svg { inline-size: 16px; block-size: 16px; stroke-width: 2; }
 .dc-q { margin: 10px 0 0; font-size: 24px; font-weight: 600; line-height: 1.2; letter-spacing: -0.2px; overflow-wrap: anywhere; }
 .dc-item { unicode-bidi: plaintext; margin-block-start: 12px; padding: 12px 14px; border-radius: 14px; background: var(--card); border: 1px solid var(--aline, var(--line)); font-size: 15px; font-weight: 600; line-height: 1.3; overflow-wrap: anywhere; text-align: start; }
+/* The slipped plan's tasks, each its own "?" (the schedule's misstag look). */
+.dc-rows { display: flex; flex-direction: column; overflow: hidden; margin-block-start: 12px; border-radius: 14px; background: var(--card); border: 1px solid var(--aline, var(--line)); }
+.dc-row { display: flex; align-items: center; gap: 10px; min-block-size: 48px; padding: 8px 14px; border: 0; background: transparent; color: var(--ink); font: inherit; font-size: 15px; font-weight: 600; line-height: 1.3; text-align: start; cursor: pointer; }
+.dc-row + .dc-row { border-block-start: 1px solid var(--line); }
+.dc-row:hover { background: var(--chip); }
+.dc-row-t { flex: 1; min-inline-size: 0; unicode-bidi: plaintext; overflow-wrap: anywhere; }
+.dc-row-q { flex: none; display: grid; place-items: center; inline-size: 24px; block-size: 24px; border-radius: 50%; background: var(--chip); color: var(--ink-2); font-size: 13px; font-weight: 700; }
+.dc-row:hover .dc-row-q { background: var(--line); color: var(--ink); }
 .dc-why { margin: 8px 0 0; font-size: 14px; line-height: 1.4; color: var(--sub); }
 .dc-btns { display: grid; gap: 8px; margin-block-start: 16px; }
 .dc-btns .btn.primary.big { min-block-size: 58px; font-size: 18px; font-weight: 600; border-radius: var(--r-btn); box-shadow: 0 6px 14px rgb(245 179 1 / .3); }

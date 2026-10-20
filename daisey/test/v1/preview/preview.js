@@ -232,6 +232,11 @@ const SCENARIOS = {
   // "until" a time already gone (2026-10-10).
   get missedhead(){ const s = structuredClone(SCENARIOS.switchlate);
     s.dayplan.items = [{ taskId: "t3", minutes: 30 }, { taskId: "t1", minutes: 60 }, { taskId: "t2", minutes: 5 }]; return s; },
+  // Two planned tasks' time passed untouched (--cal none --at 12:00, --click "#needsChip"):
+  // Needs you's "Your plan slipped" lists each with its own "?" (2026-10-20).
+  get slipped(){ const s = structuredClone(SCENARIOS.switchplan), ago = new Date().setHours(10, 0, 0, 0);
+    for (const t of s.tasks) t.over = { touchedAt: ago, createdAt: ago }; s.dayplan.approvedAt = ago;
+    s.dayplan.items = [{ taskId: "t2", minutes: 5 }, { taskId: "t3", minutes: 30 }, { taskId: "t1", minutes: 60 }]; return s; },
   // Nothing active: only waiting and Someday (the calm empty state).
   rest: { tasks: [
     { title: "Waiting on Yuval", project: "Reprise", size: 30, over: { status: "waiting", waitingOn: "Yuval" } },
