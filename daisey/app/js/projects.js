@@ -183,7 +183,7 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
         h("span", { className: "pj-tick on", ariaHidden: "true" }, icon("check")),
         h("button", { type: "button", className: "pj-quiet", onclick: () => onOpen?.(t) }, bdi(t.title)))));
     const rows = routineRows(ts), colors = new Map(list().map((p) => [p.name, p.color || ""]));
-    box.replaceChildren(bloom, ...[doneCard, routinesSection(rows, ts, colors)].filter(Boolean));
+    box.replaceChildren(bloom, ...[doneCard, routinesSection(rows, ts, colors, onOpen)].filter(Boolean));
   }
 
   // ---------- the Projects page ----------

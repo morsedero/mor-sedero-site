@@ -2474,6 +2474,7 @@ body.fm-slide .deck > .now-card.main { animation: none !important; } /* main.js:
 .bl-routine + .bl-routine { border-block-start: 1px solid var(--line); }
 .bl-r-dot { inline-size: 8px; block-size: 8px; border-radius: 50%; background: var(--aink, var(--ink-2)); }
 .bl-r-title { font-size: 14px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+button.bl-r-title { padding: 0; border: 0; background: none; color: var(--ink); font-family: inherit; text-align: start; cursor: pointer; align-self: stretch; }
 .bl-routine.met .bl-r-title { color: var(--ink-2); }
 .bl-dots { color: var(--ink-2); display: inline-flex; align-items: center; gap: 8px; }
 .bl-r-n { font-size: 12px; font-variant-numeric: tabular-nums; min-inline-size: 2.2em; text-align: end; }

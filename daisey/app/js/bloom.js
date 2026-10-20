@@ -128,8 +128,9 @@ export function mountGrowth(uid, { onChange } = {}){
 
 // Routines, minimal (Mor, 2026-10-08): one quiet line each in one card —
 // the project's colour dot, the title, the week's dots, a bee once met.
-// colors: project name -> its colour ("" when none).
-export function routinesSection(rows, tasks, colors){
+// colors: project name -> its colour ("" when none). onOpen(task): a tapped
+// title opens the task, like Done this week's (Mor, 2026-10-20).
+export function routinesSection(rows, tasks, colors, onOpen){
   if (!rows.length) return null;
   return h("section", { className: "bl-card bl-routines", ariaLabel: "Routines" },
     // Dots alone didn't read when empty (Mor, 2026-10-08): "this week" on the
@@ -138,7 +139,8 @@ export function routinesSection(rows, tasks, colors){
     ...rows.map((r) => h("div", { className: "bl-routine" + (r.met ? " met" : "") + (colors.get(r.project) ? ` pc-${colors.get(r.project)}` : ""),
       title: `${r.project} · ${r.count} of ${r.per}${r.month ? " this month" : ""}${r.streak >= 2 ? ` · ${r.streak} ${r.month ? "months" : "weeks"} in a row` : ""}` },
       h("span", { className: "bl-r-dot", ariaHidden: "true" }),
-      h("span", { className: "bl-r-title" }, bdi(r.title)),
+      onOpen ? h("button", { type: "button", className: "bl-r-title", onclick: () => { const t = tasks.find((x) => x.id === r.id); if (t) onOpen(t); } }, bdi(r.title))
+        : h("span", { className: "bl-r-title" }, bdi(r.title)),
       h("span", { className: "bl-dots", ariaLabel: `${r.count} of ${r.per} this ${r.month ? "month" : "week"}` }, weekDots(tasks.find((t) => t.id === r.id)),
         h("span", { className: "bl-r-n", ariaHidden: "true", textContent: `${r.count}/${r.per}${r.month ? " mo" : ""}` })),
       h("span", { className: "bl-bee", ariaHidden: "true" }, r.met ? "🐝" : ""))));
