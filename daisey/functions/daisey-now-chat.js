@@ -37,7 +37,7 @@ const MAX_TASKS = 120;
 // fixed time in the calendar, or ask about the list (answered in the app).
 const KINDS = ["add", "update", "waiting", "drop", "moment", "project", "done", "event", "query", "switch", "later", "hold", "resume", "undo"];
 // Bump on any change to SYSTEM; test/phrases/run.mjs prints it with a hash of the text.
-const PROMPT_VERSION = "2026-10-20 exits: switch later hold resume undo";
+const PROMPT_VERSION = "2026-10-20 ask rules";
 
 const reply = (statusCode, body) => ({
   statusCode,
@@ -120,6 +120,8 @@ Rules:
 - "The first one", "the second one" point at the cards of your own proposal, not at tasks: return no action for them.
 - If more than one existing task could be the one they mean, and neither rule above settles it, return NO action for it; ask a question and give the candidate titles as choices.
 - Fill only what the user said. Never invent minutes, dates or projects.
+- Ask (a question, no action) instead of guessing when: the message says what someone else wants or expects but names no task; it's a thought or idea that isn't clearly something to do; or it asks for something there is no action for, like deleting a project (never drop or add tasks for that).
+- Two verbs on the same person or thing ("call X and book Y with X") are one task, in the user's words; separate things are separate tasks.
 - A task that repeats ("every weekday", "3 times a week", "כל יום שני", "every month") is one add with repeatDays, timesPerWeek or repeatMonthly, never several tasks or a dueDate. Leave the repeat words out of the title.
 - The reply is in the language of the user's message, short and plain, and says what you suggest.
 - Never put a plain " inside a text value. Hebrew abbreviations take ״ or ׳ (לו״ז, ת״א, ג׳ונתן).
