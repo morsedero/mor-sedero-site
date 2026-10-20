@@ -118,8 +118,8 @@ export function mountRibbon(el, { onPlan } = {}){
     const { done, left, events, planned } = data;
     const top = h("div", { className: "rb-top" },
       h("span", { className: "rb-counts" },
-        done.length > 0 && h("button", { type: "button", className: "rb-done" + (group(open) === "d" ? " on" : ""), ariaExpanded: String(group(open) === "d"), onclick: pick("all:d") }, icon("check"), `${done.length} done`),
-        planned && left.length > 0 && h("button", { type: "button", className: "rb-left" + (group(open) === "l" ? " on" : ""), ariaExpanded: String(group(open) === "l"), onclick: pick("all:l") }, ring(), `${left.length} left`)));
+        done.length > 0 && h("button", { type: "button", className: "rb-done" + (group(open) === "d" ? " on" : ""), ariaExpanded: String(group(open) === "d"), onclick: pick("all:d") }, icon("check"), h("b", { textContent: done.length }), " done"),
+        planned && left.length > 0 && h("button", { type: "button", className: "rb-left" + (group(open) === "l" ? " on" : ""), ariaExpanded: String(group(open) === "l"), onclick: pick("all:l") }, ring(), h("b", { textContent: left.length }), " left")));
     const line = h("div", { className: "rb-line" },
       h("span", { className: "rb-track", ariaHidden: "true" }),
       h("span", { className: "rb-past", ariaHidden: "true", style: `inline-size:${pct(data.now)}` }),

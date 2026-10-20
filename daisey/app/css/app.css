@@ -2716,13 +2716,23 @@ button.bl-r-title { padding: 0; border: 0; background: none; color: var(--ink); 
   .ribbon:not([hidden]) { display: block; margin: 2px 10px 6px; }
   body:is(.card-mini, .focus-mode) .ribbon, :root.night .ribbon { display: none; }
   .rb-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 11.5px; color: var(--ink-2); letter-spacing: .01em; }
-  .rb-counts { display: inline-flex; align-items: center; gap: 12px; min-block-size: 14px; }
-  .rb-done, .rb-left { display: inline-flex; align-items: center; gap: 4px; }
-  button.rb-done, button.rb-left { margin: 0; padding: 4px 6px; margin-inline: -6px; border: 0; border-radius: 8px; background: none; font: inherit; color: inherit; cursor: pointer; }
-  button.rb-done.on, button.rb-left.on { background: rgb(0 0 0 / .08); }
-@supports (color: color-mix(in srgb, red, blue)) { button.rb-done.on, button.rb-left.on { background: color-mix(in srgb, var(--ink-2) 10%, transparent); } }
-  .rb-done svg { inline-size: 13px; block-size: 13px; stroke: var(--a-home-ink); stroke-width: 3; }
-  .rb-ring { inline-size: 8px; block-size: 8px; box-sizing: border-box; border-radius: 50%; border: 1.5px solid var(--ink-2); }
+  .rb-counts { display: inline-flex; align-items: center; gap: 8px; min-block-size: 14px; }
+  /* Two pills that echo the line below (Mor, 2026-10-20): done a solid
+     green tint like the raised beads, left a hollow outline like the rings. */
+  .rb-done, .rb-left { display: inline-flex; align-items: center; gap: 5px; }
+  .rb-done b, .rb-left b { font-weight: 700; color: var(--ink); font-variant-numeric: tabular-nums; }
+  button.rb-done, button.rb-left { margin: 0; padding: 3px 10px 3px 8px; box-sizing: border-box; min-block-size: 24px; border: 1px solid transparent; border-radius: 999px; background: none; font: inherit; color: inherit; cursor: pointer; transition: background .15s ease, border-color .15s ease, transform .1s ease; }
+  button.rb-done:active, button.rb-left:active { transform: scale(.96); }
+  button.rb-done { background: rgb(46 125 50 / .10); }
+@supports (color: color-mix(in srgb, red, blue)) { button.rb-done { background: color-mix(in srgb, var(--a-home-ink) 11%, transparent); } }
+  button.rb-left { border: 1px solid var(--line); background: var(--bg); }
+@supports (color: color-mix(in srgb, red, blue)) { button.rb-left { border-color: color-mix(in srgb, var(--ink-2) 30%, var(--bg)); } }
+  button.rb-done.on { background: rgb(46 125 50 / .20); }
+@supports (color: color-mix(in srgb, red, blue)) { button.rb-done.on { background: color-mix(in srgb, var(--a-home-ink) 22%, transparent); } }
+  button.rb-left.on { background: rgb(0 0 0 / .06); border-color: var(--ink-2); }
+@supports (color: color-mix(in srgb, red, blue)) { button.rb-left.on { background: color-mix(in srgb, var(--ink-2) 9%, var(--bg)); border-color: color-mix(in srgb, var(--ink-2) 60%, var(--bg)); } }
+  .rb-done svg { inline-size: 12px; block-size: 12px; stroke: var(--a-home-ink); stroke-width: 3; }
+  .rb-ring { inline-size: 9px; block-size: 9px; box-sizing: border-box; border-radius: 50%; border: 1.5px solid var(--ink-2); }
 @supports (color: color-mix(in srgb, red, blue)) { .rb-ring { border: 1.5px solid color-mix(in srgb, var(--ink-2) 70%, var(--bg)); } }
   .rb-line { position: relative; block-size: 22px; margin-block-start: 8px; }
   .rb-track, .rb-past { position: absolute; inset-block-start: 10px; block-size: 3px; border-radius: 2px; }
