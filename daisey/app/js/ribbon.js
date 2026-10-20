@@ -1,7 +1,7 @@
 // The day ribbon (Mor, 2026-10-15, canvas "Daisey phone home polish"): a
 // thin line under the clock on the phone's home, from the day's start to its
 // end. What's done sits on it as small raised beads in their colour, what
-// the plan still holds as hollow rings, the calendar's events as small ticks under the line,
+// the plan still holds as hollow rings, the calendar's events as the line itself in their colour,
 // and now as a yellow dot. Above it "✓ 3 done · ○ 2 left" and "until 23:00";
 // with no plan, the plan's button sits under the line. A bead opens a small
 // pop-over with what it was. schedule.js works out the day (shape()), this
@@ -124,7 +124,8 @@ export function mountRibbon(el, { onPlan } = {}){
       h("span", { className: "rb-track", ariaHidden: "true" }),
       h("span", { className: "rb-past", ariaHidden: "true", style: `inline-size:${pct(data.now)}` }),
       // The calendar only while there's no plan; a plan already holds it.
-      ...(planned ? [] : events).map((e) => h("span", { className: "rb-ev", title: e.title, ariaHidden: "true", style: `inset-inline-start:${pct(e.start)}` })),
+      ...(planned ? [] : events).map((e) => h("span", { className: "rb-ev" + (e.end <= data.now ? " gone" : ""), title: e.title, ariaHidden: "true",
+        style: `inset-inline-start:${pct(e.start)};inline-size:calc(${pct(e.end)} - ${pct(e.start)})` + (e.color ? `;--ev:${e.color}` : "") })),
       ...done.map((d) => h("button", { type: "button", className: "rb-bead" + areaClass(d.task) + state(`d:${d.id}`), style: `inset-inline-start:min(${pct(d.at)}, calc(${pct(data.now)} - 15px))`,
         ariaLabel: `${d.task.title}, done ${hm(d.at)}`, ariaExpanded: String(open === `d:${d.id}`), onclick: pick(`d:${d.id}`) })),
       ...left.map((l) => h("button", { type: "button", className: "rb-hole" + areaClass(l.task) + state(`l:${l.id}`), style: `inset-inline-start:${pct(l.at)}`,

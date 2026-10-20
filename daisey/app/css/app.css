@@ -2725,8 +2725,11 @@ body.fm-slide .deck > .now-card.main { animation: none !important; } /* main.js:
 @supports (color: color-mix(in srgb, red, blue)) { .rb-track { background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--line) 85%, var(--ink-2)) 12% 88%, transparent); box-shadow: 0 1px 0 color-mix(in srgb, #fff 80%, transparent); } }
   .rb-past { inset-inline-start: 0; background: linear-gradient(90deg, transparent, var(--ink-2) 14%); opacity: .55; }
 @supports (color: color-mix(in srgb, red, blue)) { .rb-past { background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--accent) 22%, var(--ink-2)) 14%); } }
-  /* A calendar event is a small tick under the line at its start (Mor, 2026-10-20: the thick bars were ugly). */
-  .rb-ev { position: absolute; inset-block-start: 16px; inline-size: 2px; block-size: 5px; margin-inline-start: -1px; border-radius: 1px; background: var(--ink-2); opacity: .5; }
+  /* A calendar event is the line itself in the event's colour over its span,
+     set in by a rim of the page so back-to-back events part (Mor, 2026-10-20:
+     the thick bars were ugly). One that's over fades. */
+  .rb-ev { position: absolute; inset-block-start: 9.5px; block-size: 4px; min-inline-size: 6px; box-sizing: border-box; border-radius: 2px; background: var(--ev, var(--ink-2)); opacity: .75; box-shadow: 0 0 0 1.5px var(--bg); }
+  .rb-ev.gone { opacity: .35; }
   .rb-bead, .rb-hole { position: absolute; inset-block-start: 6px; inline-size: 10px; block-size: 10px; margin-inline-start: -5px; padding: 0; box-sizing: border-box; border-radius: 50%; cursor: pointer; transition: transform .15s ease, box-shadow .15s ease; }
   .rb-bead::after, .rb-hole::after { content: ""; position: absolute; inset: -12px -6px; } /* a finger's worth */
   .rb-bead { border: 1.5px solid var(--bg); background: var(--aink, var(--ink-2)); box-shadow: 0 0 0 1px rgb(0 0 0 / .20), 0 2px 4px -1px rgb(0 0 0 / .36); }

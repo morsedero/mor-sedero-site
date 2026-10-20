@@ -344,7 +344,7 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onMissed, onPro
     if (hrs.late || !tasks) return null;
     const today = dayStart(now), start = atMin(today, hrs.start), end = today.getTime() + hrs.end * 60000;
     const events = cal.status === "ok" ? (cal.events || []).filter((e) => !e.allDay && !e.taskId && Date.parse(e.end) > start && Date.parse(e.start) < end)
-      .map((e) => ({ start: Math.max(start, Date.parse(e.start)), end: Math.min(end, Date.parse(e.end)), title: e.title || "Busy" })) : [];
+      .map((e) => ({ start: Math.max(start, Date.parse(e.start)), end: Math.min(end, Date.parse(e.end)), title: e.title || "Busy", color: e.color })) : [];
     const day = planDate(now, hrs), planned = dayPlan?.status === "approved" && dayPlan.date === day;
     const done = tasks.filter((t) => t.status === "done" && t.doneAt && planDate(t.doneAt, hrs) === day).sort((a, b) => a.doneAt - b.doneAt)
       .map((t) => ({ id: t.id, at: t.doneAt, task: t }));
