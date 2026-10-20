@@ -353,8 +353,12 @@ export function timeline(items = [], ctx = {}){
   if (ctx.since == null || runState(ctx.run, ctx.tasks || [], now)) return lay(items, ctx);
   const from = Math.min(now, up5(ctx.since));
   const held = from < now ? lay(items, { ...ctx, now: from }) : null;
-  const head = held?.rows.filter((r) => !r.ride).sort((a, b) => a.i - b.i)[0];
-  if (!head || head.start >= now) return lay(items, ctx);
+  // The head is the first task whose time has come, not the plan's first
+  // item (Mor, 2026-10-20: times slid later with nothing touched). A first
+  // item laid after now (put off with Later, In 10 min, its open hours, too
+  // long for the gap) sent the whole plan back to "from now", every minute.
+  const head = held?.rows.filter((r) => !r.ride && r.start < now).sort((a, b) => a.i - b.i)[0];
+  if (!head) return lay(items, ctx);
   // Planned, its time over, never started (Mor, 2026-10-10: not "as if they
   // happened"): row.missed, and missed lists their ids in plan order.
   const missed = held.rows.filter((r) => !r.ride && r.end <= now).sort((a, b) => a.i - b.i);

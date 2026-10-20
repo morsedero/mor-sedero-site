@@ -97,3 +97,15 @@ test("(d) An edit doesn't move the plan; a switch or Done still does", () => {
   const switched = edited.map((x) => (x.id === "c" ? { ...x, touchedAt: now } : x));
   assert.equal(planActivity(switched, null, plan.approvedAt), now);
 });
+
+test("(z) first item put off till later: the rest holds its times, it doesn't slide with the clock", () => {
+  // Mor, 2026-10-20: nothing touched, the Today rows kept moving later.
+  const tasks = [t({ id: "a", size: 15 }), t({ id: "b", size: 60 }), t({ id: "c", size: 20 })];
+  const items = [{ taskId: "a", minutes: 15, hold: at(22) }, { taskId: "b", minutes: 60 }, { taskId: "c", minutes: 20 }];
+  const since = at(19, 30), hours = { start: 480, end: 1440, meals: [] };
+  const lay = (now) => timeline(items, { tasks, events: [], now, hours, since }).rows.map((r) => [r.taskId, r.start]);
+  const first = lay(at(19, 46));
+  assert.deepEqual(first, [["b", at(19, 30)], ["c", at(20, 30)], ["a", at(22)]]);
+  for (const now of [at(19, 51), at(20, 5), at(20, 40)]) assert.deepEqual(lay(now), first, `moved at ${new Date(now).toISOString()}`);
+  assert.equal(timeline(items, { tasks, events: [], now: at(20), hours, since }).late?.taskId, "b");
+});
