@@ -310,7 +310,7 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onMissed, onPro
       // Change plan once one is approved (Mor, 2026-10-12); before that the
       // Today key opens this page too, so it offers Plan my day, or Plan the
       // rest once something's done today (Mor, 2026-10-15).
-      mode === "home" && onPlan && h("button", { type: "button", className: "sc-weekbtn sc-planbtn", ariaLabel: planWord(now), onclick: () => onPlan() }, icon("calendar"), h("span", { textContent: planWord(now) })),
+      mode === "home" && onPlan && h("button", { type: "button", className: "sc-weekbtn sc-planbtn", ariaLabel: planWord(now), title: planWord(now), onclick: () => onPlan() }, icon("calendar"), h("span", { textContent: planWord(now) })),
       stepBtn(1, view === "week" ? "Next week" : "Next day"));
     const head = h("div", { className: "sc-head" + (view === "week" ? " wk" : "") }, bar);
 

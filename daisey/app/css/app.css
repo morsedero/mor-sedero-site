@@ -1577,8 +1577,9 @@ body.focus #side { display: none; }
   .now-card.main #focusChip .hchip-word { position: absolute; inline-size: 1px; block-size: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
   .now-card.main #focusChip svg { inline-size: 18px; block-size: 18px; }
   .now-card.main #focusChip[aria-pressed="true"] { background: var(--p-teal-ink); color: var(--card); }
-  body.day-open .sc-planbtn { display: inline-flex; inline-size: auto; padding-inline: 12px; border: 1px solid var(--a-admin-line); background: var(--a-admin-tint); color: var(--a-admin-ink); } /* the same light blue as the ribbon's (Mor, 2026-10-15) */
-  .sc-bar .sc-planbtn span { display: inline; }
+  /* Just its calendar icon at every width (Mor, 2026-10-20): the word covered the title on its left. */
+  body.day-open .sc-planbtn { display: inline-flex; inline-size: 32px; padding: 0; justify-content: center; border: 1px solid var(--a-admin-line); background: var(--a-admin-tint); color: var(--a-admin-ink); } /* the same light blue as the ribbon's (Mor, 2026-10-15) */
+  .sc-bar .sc-planbtn span { display: none; }
   #panel { margin-block-end: 0; }
 }
 /* While Switch, Pending or Later is open under the card, the side buttons
@@ -1843,14 +1844,11 @@ body.focus #side { display: none; }
 .sc-today { flex: none; margin-inline-start: auto; display: inline-flex; align-items: center; gap: 6px; padding: 2px 9px 2px 8px; border: 0; border-radius: 999px; background: var(--chip); font: inherit; font-size: 12px; font-weight: 600; color: var(--ink); cursor: pointer; }
 .sc-today.off { visibility: hidden; pointer-events: none; }
 /* On a phone the hidden Now still took its width, and the title ("Today") was cut to "To…"
-   (Mor, 2026-10-19): it gives the room back; the title never shrinks; Change plan is
-   just its calendar icon (Mor, 2026-10-19: the word crowded the bar). */
+   (Mor, 2026-10-19): it gives the room back; the title never shrinks. */
 @media (max-width: 479px) {
   .sc-today.off { display: none; }
   .sc-bar .sc-title { flex: none; }
   .sc-bar { gap: 6px; }
-  body .sc-bar .sc-planbtn { inline-size: 32px; padding: 0; justify-content: center; }
-  body .sc-bar .sc-planbtn span { display: none; }
 }
 /* Day arrows at both ends of the bar: the drag works too, these say so. */
 .sc-step { flex: none; display: inline-flex; align-items: center; justify-content: center; inline-size: 30px; block-size: 30px; padding: 0; border: 0; border-radius: 50%; background: var(--chip); color: var(--ink); cursor: pointer; }
