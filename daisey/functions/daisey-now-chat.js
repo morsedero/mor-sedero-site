@@ -37,7 +37,7 @@ const MAX_TASKS = 120;
 // fixed time in the calendar, or ask about the list (answered in the app).
 const KINDS = ["add", "update", "waiting", "drop", "moment", "project", "done", "event", "query"];
 // Bump on any change to SYSTEM; test/phrases/run.mjs prints it with a hash of the text.
-const PROMPT_VERSION = "2026-10-19 date words";
+const PROMPT_VERSION = "2026-10-20 corrections to last task";
 
 const reply = (statusCode, body) => ({
   statusCode,
@@ -106,7 +106,7 @@ Kinds:
 Rules:
 - Each value goes only in its own field. Dates go in dueDate or startDate as YYYY-MM-DD, never in waitingFor or title.
 - Work out dates from today's date given below, and copy the words you read them from into dateWords.
-- A message that is only a day or a time, with no task named, is about the Now card task: "by …" or an end ("end of …") sets its dueDate, any other day its startDate. "Next week" with no day means startDate = the coming Sunday.
+- A message that is only a day or a time, with no task named, and is not a correction (not "no", "not X, Y", "make it", "change that", "N more minutes"), is about the Now card task: "by …" or an end ("end of …") sets its dueDate, any other day its startDate. A correction always goes to the newest of the last tasks, never to the Now card. "Next week" with no day means startDate = the coming Sunday.
 - Only use an existing task when the message clearly refers to it. A new thing that only shares a word with an existing task is an add.
 - The Now card (given below, when there is one) is the task the user is on right now. With no task named, "it", "this" and a bare finished / cancel / move / pending message mean the Now card task. A person's name alone doesn't name a task.
 - A message that only corrects what was just added (a size, a date, a name, a person or a project, with no task named) changes the newest of the last tasks (given below, newest first); "both" means the two newest. A correction is an update of only that task (those two), never an add.
