@@ -12,6 +12,7 @@
 // { dates: [ymd…], needDate } every date said must be one of these (needDate:
 //   at least one), for a bare date phrase ("Thursday") whatever it lands on.
 // { extra: [kind…] } kinds tolerated beyond the matchers. { time } an event's.
+// { tasks } this row's task list instead of STATE.tasks.
 // { flag } a row whose CSV wording disagrees with the app: the app's logic wins (Mor, 2026-10-19).
 // Matcher { kind, …fields }: kind "change" = add or update; `task` tests the
 // title (an update's: the existing task's); `not` a title that must not match.
@@ -35,6 +36,8 @@ export const STATE = {
 };
 
 const none = { expect: [] };
+// The fixture plus one task just added (a preview Mor corrects), newest.
+const PREVIEWED = (t) => [...STATE.tasks, { status: "ready", createdAt: new Date(2026, 9, 18, 9, 45).getTime(), ...t }];
 const add = (o) => ({ kind: "add", ...o });
 const change = (task, o = {}) => ({ kind: "change", task, ...o });
 const upd = (taskId, o) => ({ kind: "update", taskId, ...o });
@@ -172,4 +175,28 @@ export const EXPECT = {
   120: one({ kind: "done", taskId: "t1" }),
   121: one({ kind: "waiting", taskId: "t2", waitingOn: /yoni/i }),
   122: none,
+  // Fresh rows H61-H80 (Mor, 2026-10-20): the clean holdout. Run once per round, reported alone, never tuned on.
+  // The week is Mon 10-19 … Sun 10-25: Tuesday is the 20th.
+  H61: one(add({ title: /stems/i, due: "2026-10-23", size: null })),
+  H62: { expect: [{ kind: "project", project: /game audio pass/i }, add({ title: /footsteps/i, project: /game audio pass/i })] },
+  H63: one({ kind: "event", title: /dentist/i, date: "2026-10-25", time: "09:30" }),
+  H64: one(add({ title: /chorus/i, size: 60 }), add({ title: /stems/i, size: 25 }), add({ title: /ido/i, size: null })),
+  H65: one(add({ title: /tax/i, size: 120 })),
+  H66: none,
+  H67: one(add({ title: /lesson prep/i, size: 45 })),
+  H68: one(add({ title: /demo/i, size: null, due: (d) => d == null || d === "2026-10-20" })),
+  H69: { ...one(add({ title: /label/i, due: "2026-10-21" })), flag: "Scored by app logic: at Wed 02:10 the day is still Tuesday, so tomorrow = Wednesday 10-21 (no time said, so no fork)." },
+  H70: one(add({ title: /invoice/i, due: "2026-10-31" })),
+  H71: one(add({ title: /studio/i, due: "2026-10-23" })),
+  H72: { ...one(upd("t8", { size: 30 })), tasks: PREVIEWED({ id: "t8", title: "Invoice", size: 20 }),
+    flag: "The previewed task is given as an existing newest task: the app doesn't send an unapplied preview to the helper." },
+  H73: { ...one(upd("t8", { due: "2026-10-23" })), tasks: PREVIEWED({ id: "t8", title: "Call Dana", due: "2026-10-22" }),
+    flag: "The previewed task is given as an existing newest task: the app doesn't send an unapplied preview to the helper." },
+  H74: one(add({ title: /לשלוח את החשבונית לדנה/, size: 15, due: "2026-10-21" })),
+  H75: one(add({ title: has(/call the bank/i), not: /תזכיר/, due: "2026-10-22" })),
+  H76: one(add({ title: /סוללות/, size: 10 }), add({ title: /חשמל/, size: 10 })),
+  H77: one(add({ title: /demo notes/i, not: /\b(um|uh|like)\b/i, size: null, due: "2026-10-20" })),
+  H78: none,
+  H79: one({ kind: "later", taskId: "t2", until: "today" }),
+  H80: one({ kind: "waiting", taskId: "t2", waitingOn: /yoni/i, checkOn: "2026-10-23" }),
 };

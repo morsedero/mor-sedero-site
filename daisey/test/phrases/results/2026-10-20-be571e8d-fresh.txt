@@ -1,0 +1,61 @@
+Phrase bank · fresh · 20 rows · 2026-10-20T12:36Z
+model gemini-3.5-flash-lite · prompt 2026-10-20 ask rules · sha be571e8d
+clock Asia/Jerusalem, default Mon 2026-10-19 10:00, day boundary 04:00 · Now card t2 · last task t6
+
+PASS  #H61 [Capture] @Tue 15:40 "need to send Noa the stems before the weekend"
+       → add "Send Noa the stems" due=2026-10-23
+PASS  #H62 [Capture] @Tue 15:41 "new project game audio pass, first task is footsteps"
+       → project project=Game audio pass; add "Footsteps" project=Game audio pass
+PASS  #H63 [Capture] @Tue 15:42 "dentist appointment Sunday 9:30"
+       → event "Dentist appointment" minutes=60 date=2026-10-25 time=09:30
+PASS  #H64 [Durations] @Tue 15:45 "mix the chorus an hour, bounce stems 25 min, email Ido"
+       → add "Mix the chorus" size=60; add "Bounce stems" size=25; add "Email Ido"
+PASS  #H65 [Durations] @Tue 15:46 "gotta do taxes, 2 hours, maybe a bit more"
+       → add "Taxes" size=120
+PASS  #H66 [Durations] @Tue 15:47 "reply to Dana and call the bank, 10 min together"
+       → ask "10 min each, or 10 split across both?" [10 min each | 10 min total]
+FAIL  #H67 [Durations] @Tue 15:48 "3/4 of an hour for the lesson prep"
+       → add "Lesson prep" size=60
+       ✗ missing add(title:lesson prep size:45) · changed what it shouldn't: add "Lesson prep" size=60
+PASS  #H68 [Dates and day words] @Wed 01:20 "finish the demo tonight"
+       → add "Finish the demo" due=2026-10-20
+PASS  #H69 [Dates and day words] @Wed 02:10 "tomorrow call the label"
+       → add "Call the label" due=2026-10-21
+       ⚑ Scored by app logic: at Wed 02:10 the day is still Tuesday, so tomorrow = Wednesday 10-21 (no time said, so no fork).
+PASS  #H70 [Dates and day words] @Tue 15:50 "end of the month send invoices"
+       → add "Send invoices" due=2026-10-31
+FAIL  #H71 [Dates and day words] @Tue 15:51 "in three days book the studio"
+       → update t7 notBefore=2026-10-23
+       ✗ missing add(title:studio due:"2026-10-23") · changed what it shouldn't: update t7 notBefore=2026-10-23
+FAIL  #H72 [Corrections] @Tue 15:55 "no make it 30"
+       → nothing ("Update the duration to 30 min?")
+       ✗ missing update(taskId:"t8" size:30)
+       ⚑ The previewed task is given as an existing newest task: the app doesn't send an unapplied preview to the helper.
+PASS  #H73 [Corrections] @Tue 15:56 "actually Friday"
+       → update t8 due=2026-10-23
+       ⚑ The previewed task is given as an existing newest task: the app doesn't send an unapplied preview to the helper.
+FAIL  #H74 [Hebrew / mixed] @Tue 16:00 "לשלוח את החשבונית לדנה מחר 15 דקות"
+       → update t1 size=15 due=2026-10-21
+       ✗ missing add(title:לשלוח את החשבונית לדנה size:15 due:"2026-10-21") · changed what it shouldn't: update t1 size=15 due=2026-10-21
+PASS  #H75 [Hebrew / mixed] @Tue 16:01 "תזכיר לי to call the bank ביום חמישי"
+       → add "Call the bank" due=2026-10-22
+PASS  #H76 [Hebrew / mixed] @Tue 16:02 "לקנות סוללות ולשלם חשבון חשמל, 10 דקות כל אחד"
+       → add "לקנות סוללות" size=10; add "לשלם חשבון חשמל" size=10
+PASS  #H77 [Voice and mumbling] @Tue 16:05 "um so uh I need to like finish the, the demo notes today I guess"
+       → add "Finish the demo notes" due=2026-10-20
+PASS  #H78 [Voice and mumbling] @Tue 16:06 "send the thing to the guy"
+       → nothing ("Which task do you mean?")
+PASS  #H79 [Exits] @Tue 16:10 "I'll do it later tonight"
+       → later t2
+PASS  #H80 [Exits] @Tue 16:11 "waiting on Yoni for the files, check Friday"
+       → waiting t2 waitingOn=Yoni checkOn=2026-10-23
+
+Category                       Pass     False mutations
+Capture                        3/3      0
+Durations                      3/4      1
+Dates and day words            3/4      1
+Corrections                    1/2      0
+Hebrew / mixed                 2/3      1
+Voice and mumbling             2/2      0
+Exits                          2/2      0
+TOTAL                          16/20    3 (in 3 rows)

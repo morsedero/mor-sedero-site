@@ -8,7 +8,7 @@
 //   node daisey/test/phrases/run.mjs --split=holdout  only at the end of a round
 //   node daisey/test/phrases/run.mjs --ids=27,28 --gap=4000 --dry
 //
-// --split dev | holdout | example | all. --gap ms between model calls (spread
+// --split dev | holdout | fresh | example | all. fresh = Mor's rows H61-H80 (2026-10-20): run once per round, reported alone, never tuned on. --gap ms between model calls (spread
 // out for the API's per-minute limit). --dry: no model, every answer empty;
 // checks the harness itself. The key: GEMINI_API_KEY, else test/.gemini-key
 // (gitignored). Writes the report to stdout and to results/.
@@ -28,7 +28,7 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 const chat = createRequire(import.meta.url)("../../functions/daisey-now-chat.js");
 const arg = (k, d) => (process.argv.find((a) => a.startsWith(`--${k}=`)) || "").split("=")[1] || d;
 const SPLIT = arg("split", "dev"), GAP = Number(arg("gap", 4000)), DRY = process.argv.includes("--dry");
-const IDS = arg("ids", "") ? arg("ids").split(",").map(Number) : null;
+const IDS = arg("ids", "") ? arg("ids").split(",") : null;
 
 // --- CSV ---
 function parseCsv(text){
@@ -69,8 +69,9 @@ const thaw = () => { globalThis.Date = RealDate; };
 // --- scoring ---
 const MUTATES = new Set(["add", "update", "waiting", "drop", "done", "project", "event", "moment", "switch", "later", "hold", "resume", "undo"]);
 const KNOWN = new Set([...MUTATES, "query"]);
+let TASKS = STATE.tasks; // this row's task list
 const titleOf = (a) => a.kind === "add" || a.kind === "event" ? a.title || ""
-  : `${STATE.tasks.find((t) => t.id === a.taskId)?.title || ""}${a.title ? ` → ${a.title}` : ""}`;
+  : `${TASKS.find((t) => t.id === a.taskId)?.title || ""}${a.title ? ` → ${a.title}` : ""}`;
 function fieldOk(want, got){
   if (want === undefined) return true;
   if (want === null) return got == null || got === "";
@@ -137,7 +138,7 @@ const key = DRY ? "" : (process.env.GEMINI_API_KEY || (() => {
 if (!DRY && !key) { console.error("No key: set GEMINI_API_KEY or put it in daisey/test/.gemini-key"); process.exit(2); }
 
 const rows = parseCsv(fs.readFileSync(path.join(HERE, "phrases.csv"), "utf8"))
-  .filter((r) => (IDS ? IDS.includes(Number(r.id)) : SPLIT === "all" || r.split === SPLIT));
+  .filter((r) => (IDS ? IDS.includes(r.id) : SPLIT === "all" || r.split === SPLIT));
 const sha = crypto.createHash("sha256").update(chat.SYSTEM + chat.understand.toString()).digest("hex").slice(0, 8); // the prompt text and how it is built
 const pause = (ms) => new Promise((ok) => setTimeout(ok, ms));
 const out = [], lines = [];
@@ -149,7 +150,8 @@ log(`clock Asia/Jerusalem, default Mon 2026-10-19 10:00, day boundary 04:00 · N
 log("");
 
 for (const row of rows) {
-  const id = Number(row.id), spec = EXPECT[id];
+  const id = /^\d+$/.test(row.id) ? Number(row.id) : row.id, spec = EXPECT[id];
+  TASKS = spec?.tasks || STATE.tasks;
   if (!spec) { log(`SKIP  #${id} no expectation`); continue; }
   const text = /^\[.*\]$/.test(row.phrase.trim()) ? "" : row.phrase.trim(); // "[silence/noise]": nothing heard
   const at = clockOf(row.clock_at_input);
@@ -158,7 +160,7 @@ for (const row of rows) {
     const WAITS = [30, 60, 120, 240]; // s: busy or rate-limited, back off (an outage once took 15 rows in a row)
     for (let attempt = 0; attempt <= WAITS.length; attempt++) {
       freeze(at);
-      const body = requestBody(text, STATE.tasks, { now: STATE.now });
+      const body = requestBody(text, TASKS, { now: STATE.now });
       thaw();
       const got = await chat.understand(body, key);
       if (got) { res = got; break; }

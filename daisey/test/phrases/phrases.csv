@@ -121,3 +121,23 @@ id,category,clock_at_input,phrase,daisey_should,review,split
 120,Exits,,the invoice is done,Done on task 'Invoice' (even if not the Now card). Match by name.,paraphrase of #78,holdout
 121,Exits,,stuck waiting on Yoni for this,"Pending/Waiting on: Yoni, Now card leaves. Ask check-in date only if none set.",paraphrase of #83,holdout
 122,"Ambiguity: ask, don't guess",,add 45 minutes,Ask: to what? No clear task.,paraphrase of #97,holdout
+H61,Capture,Tue 15:40,need to send Noa the stems before the weekend,"Task ""Send Noa the stems"", deadline Friday. No duration invented.","fresh, written 2026-10-20 (Mor)",fresh
+H62,Capture,Tue 15:41,"new project game audio pass, first task is footsteps","Project ""Game audio pass"" + task ""Footsteps"" under it, one preview.","fresh, written 2026-10-20 (Mor)",fresh
+H63,Capture,Tue 15:42,dentist appointment Sunday 9:30,"Calendar-like item, not a task. Ask once: make it a task too?","fresh, written 2026-10-20 (Mor)",fresh
+H64,Durations,Tue 15:45,"mix the chorus an hour, bounce stems 25 min, email Ido","3 tasks: 60, 25, and Email Ido with no duration. Each duration stays with its own task.","fresh, written 2026-10-20 (Mor)",fresh
+H65,Durations,Tue 15:46,"gotta do taxes, 2 hours, maybe a bit more","Taxes = 120 min, ""maybe more"" kept as a note, no added time.","fresh, written 2026-10-20 (Mor)",fresh
+H66,Durations,Tue 15:47,"reply to Dana and call the bank, 10 min together","Ask: 10 min each, or 10 split across both? Don't guess.","fresh, written 2026-10-20 (Mor)",fresh
+H67,Durations,Tue 15:48,3/4 of an hour for the lesson prep,Lesson prep = 45 min.,"fresh, written 2026-10-20 (Mor)",fresh
+H68,Dates and day words,Wed 01:20,finish the demo tonight,"""Tonight"" = the current day (it started Tue 04:00). No shift to a new day.","fresh, written 2026-10-20 (Mor)",fresh
+H69,Dates and day words,Wed 02:10,tomorrow call the label,"Under the 04:00 model, 02:10 Wed still belongs to Tuesday's day, so ""tomorrow"" = Wednesday. Preview shows the weekday so you can catch it.","fresh, written 2026-10-20 (Mor)",fresh
+H70,Dates and day words,Tue 15:50,end of the month send invoices,Deadline = Oct 31. Show the date in preview.,"fresh, written 2026-10-20 (Mor)",fresh
+H71,Dates and day words,Tue 15:51,in three days book the studio,Due Friday. Show the date.,"fresh, written 2026-10-20 (Mor)",fresh
+H72,Corrections,Tue 15:55,no make it 30,"After preview ""Invoice, 20 min"": update the same previewed task to 30 min. No new task.","fresh, written 2026-10-20 (Mor)",fresh
+H73,Corrections,Tue 15:56,actually Friday,"After preview ""Call Dana, Thursday"": move the same task to Friday. No duplicate.","fresh, written 2026-10-20 (Mor)",fresh
+H74,Hebrew / mixed,Tue 16:00,לשלוח את החשבונית לדנה מחר 15 דקות,"Task ""לשלוח את החשבונית לדנה"", 15 min, due tomorrow.","fresh, written 2026-10-20 (Mor)",fresh
+H75,Hebrew / mixed,Tue 16:01,תזכיר לי to call the bank ביום חמישי,"Task ""Call the bank"", due Thursday. Mixed text kept as typed.","fresh, written 2026-10-20 (Mor)",fresh
+H76,Hebrew / mixed,Tue 16:02,"לקנות סוללות ולשלם חשבון חשמל, 10 דקות כל אחד","2 tasks, 10 min each.","fresh, written 2026-10-20 (Mor)",fresh
+H77,Voice and mumbling,Tue 16:05,"um so uh I need to like finish the, the demo notes today I guess","Task ""Finish the demo notes"", due today. Fillers dropped, no duration invented.","fresh, written 2026-10-20 (Mor)",fresh
+H78,Voice and mumbling,Tue 16:06,send the thing to the guy,Too vague. Ask which thing and who. No change.,"fresh, written 2026-10-20 (Mor)",fresh
+H79,Exits,Tue 16:10,I'll do it later tonight,"A task is on the Now card. Later today. A pure move, no Done credit.","fresh, written 2026-10-20 (Mor)",fresh
+H80,Exits,Tue 16:11,"waiting on Yoni for the files, check Friday","Pending, ""Waiting on Yoni"", check-in Friday. Not Done.","fresh, written 2026-10-20 (Mor)",fresh
