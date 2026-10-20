@@ -2314,7 +2314,7 @@ dialog.tsheet[open] > .ts-laptop + .ts-repeat { margin-block-start: -12px; }
 @keyframes pf-sheen { 0%, 45% { background-position: 150% 0; } 100% { background-position: -50% 0; } }
 /* Background a little quieter (Mor, 2026-10-20). */
 .tier-background .pcard { filter: saturate(.5); border-color: transparent; }
-.tier-focus .pcard { filter: saturate(1.2); }
+.tier-focus .pcard { filter: saturate(1.45); }
 .tier-keep .pp-tier-name { color: #000; }
 :root[data-theme="dark"] .tier-keep .pp-tier-name, :root.night:not([data-theme="light"]) .tier-keep .pp-tier-name { color: var(--ink); }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .tier-keep .pp-tier-name { color: var(--ink); } }
