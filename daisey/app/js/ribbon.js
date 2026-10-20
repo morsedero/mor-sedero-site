@@ -123,8 +123,8 @@ export function mountRibbon(el, { onPlan } = {}){
     const line = h("div", { className: "rb-line" },
       h("span", { className: "rb-track", ariaHidden: "true" }),
       h("span", { className: "rb-past", ariaHidden: "true", style: `inline-size:${pct(data.now)}` }),
-      // The calendar only while there's no plan; a plan already holds it.
-      ...(planned ? [] : events).map((e) => h("span", { className: "rb-ev" + (e.end <= data.now ? " gone" : ""), title: e.title, ariaHidden: "true",
+      // The calendar, plan or not (Mor, 2026-10-20): an event is the line in its colour, under the dots.
+      ...events.map((e) => h("span", { className: "rb-ev" + (e.end <= data.now ? " gone" : ""), title: e.title, ariaHidden: "true",
         style: `inset-inline-start:${pct(e.start)};inline-size:calc(${pct(e.end)} - ${pct(e.start)})` + (e.color ? `;--ev:${e.color}` : "") })),
       ...done.map((d) => h("button", { type: "button", className: "rb-bead" + areaClass(d.task) + state(`d:${d.id}`), style: `inset-inline-start:min(${pct(d.at)}, calc(${pct(data.now)} - 15px))`,
         ariaLabel: `${d.task.title}, done ${hm(d.at)}`, ariaExpanded: String(open === `d:${d.id}`), onclick: pick(`d:${d.id}`) })),
