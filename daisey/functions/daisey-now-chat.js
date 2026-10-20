@@ -37,7 +37,7 @@ const MAX_TASKS = 120;
 // fixed time in the calendar, or ask about the list (answered in the app).
 const KINDS = ["add", "update", "waiting", "drop", "moment", "project", "done", "event", "query", "switch", "later", "hold", "resume", "undo"];
 // Bump on any change to SYSTEM; test/phrases/run.mjs prints it with a hash of the text.
-const PROMPT_VERSION = "2026-10-20 ask rules";
+const PROMPT_VERSION = "2026-10-20 preview corrections";
 
 const reply = (statusCode, body) => ({
   statusCode,
@@ -115,6 +115,7 @@ Rules:
 - A message that is only a day or a time, with no task named, and is not a correction (not "no", "not X, Y", "make it", "change that", "N more minutes"), is about the Now card task: "by …" or an end ("end of …") sets its dueDate, any other day its startDate. A correction always goes to the newest of the last tasks, never to the Now card. "Next week" with no day means startDate = the coming Sunday.
 - Only use an existing task when the message clearly refers to it. A new thing that only shares a word with an existing task is an add.
 - The Now card (given below, when there is one) is the task the user is on right now. With no task named, "it", "this" and a bare finished / cancel / move / pending message mean the Now card task. A person's name alone doesn't name a task.
+- A proposal on screen (given below, when there is one) is what the user is looking at and may still correct. A message that changes it (a size, a day, a name, a project, a person) returns the whole proposal again with that change made, as the same kinds of action, and nothing else: the app replaces what is on screen. A message about something else is handled as usual and does not repeat the proposal. A proposal on screen comes before the last tasks.
 - A message that only corrects what was just added (a size, a date, a name, a person or a project, with no task named) changes the newest of the last tasks (given below, newest first); "both" means the two newest. A correction is an update of only that task (those two), never an add.
 - Putting the Now card task off to tomorrow or this week is later with until. Any other task moved to a later day is an update that sets startDate (when it comes up again); its dueDate stays unless the user talks about the deadline.
 - "The first one", "the second one" point at the cards of your own proposal, not at tasks: return no action for them.
@@ -453,7 +454,28 @@ async function understand(body, key){
   const byId = new Map(tasks.map((t) => [t.id, t]));
   const card = byId.get(clean(body.now, 60));
   const recent = (Array.isArray(body.recent) ? body.recent : []).map((x) => clean(x, 60)).filter((x) => byId.has(x)).slice(0, 3);
-  const context = `${card ? `\nNow card: ${card.id} ${JSON.stringify(card.title)}` : ""}${recent.length ? `\nLast tasks added or edited, newest first: ${recent.map((id) => `${id} ${JSON.stringify(byId.get(id).title)}`).join(", ")}` : ""}`;
+  // The cards on screen, not applied yet (tell-read.js requestBody preview), in the schema's own field names.
+  const proposal = (Array.isArray(body.preview) ? body.preview : []).slice(0, 12).flatMap((a) => {
+    if (!KINDS.includes(a?.kind)) return [];
+    const o = { kind: a.kind };
+    if (byId.has(clean(a.taskId, 60))) o.taskId = clean(a.taskId, 60);
+    if (clean(a.title)) o.title = clean(a.title);
+    if (clean(a.project, 60)) o.project = clean(a.project, 60);
+    const mins = Number(a.size ?? a.minutes);
+    if (mins > 0 && mins <= 24 * 60) o.minutes = Math.round(mins);
+    if (isDay(a.due)) o.dueDate = a.due;
+    if (isDay(a.notBefore)) o.startDate = a.notBefore;
+    if (isDay(a.date)) o.eventDate = a.date;
+    if (/^([01]\d|2[0-3]):[0-5]\d$/.test(String(a.time || ""))) o.time = a.time;
+    if (clean(a.waitingOn, 80)) o.waitingFor = clean(a.waitingOn, 80);
+    if (isDay(a.checkOn)) o.checkOn = a.checkOn;
+    if (clean(a.location, 300)) o.location = clean(a.location, 300);
+    if (Array.isArray(a.routine?.days)) o.repeatDays = a.routine.days.filter((d) => Number.isInteger(d) && d >= 0 && d <= 6);
+    else if (a.routine?.every === "month") o.repeatMonthly = true;
+    else if (Number(a.routine?.per) >= 1 && Number(a.routine?.per) <= 7) o.timesPerWeek = Math.round(Number(a.routine.per));
+    return [o];
+  });
+  const context = `${proposal.length ? `\nProposal on screen, not applied yet: ${JSON.stringify(proposal)}` : ""}${card ?`\nNow card: ${card.id} ${JSON.stringify(card.title)}` : ""}${recent.length ? `\nLast tasks added or edited, newest first: ${recent.map((id) => `${id} ${JSON.stringify(byId.get(id).title)}`).join(", ")}` : ""}`;
   const prompt = `Today: ${clean(body.weekday, 12)} ${body.today}.${late}\nProjects: ${JSON.stringify(projects)}\nTasks: ${JSON.stringify(tasks)}${context}\n\nMessage: ${text}`;
 
   const out = (await ask(key, prompt)) || (await ask(key, prompt)); // one retry

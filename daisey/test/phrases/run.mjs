@@ -160,7 +160,7 @@ for (const row of rows) {
     const WAITS = [30, 60, 120, 240]; // s: busy or rate-limited, back off (an outage once took 15 rows in a row)
     for (let attempt = 0; attempt <= WAITS.length; attempt++) {
       freeze(at);
-      const body = requestBody(text, TASKS, { now: STATE.now });
+      const body = requestBody(text, TASKS, { now: STATE.now, preview: spec.preview });
       thaw();
       const got = await chat.understand(body, key);
       if (got) { res = got; break; }

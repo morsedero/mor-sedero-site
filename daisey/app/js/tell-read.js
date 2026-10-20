@@ -12,13 +12,19 @@ import { dateFrom } from "./when.js";
 // edited last, newest first) it's what "done", "push it", "no, make it 30"
 // point at when no task is named (phrase bank 2026-10-19: without them the
 // helper asked "which task?" or changed the wrong one).
-export function requestBody(text, tasks, { guest = false, now = null } = {}){
+// preview: the cards on screen, not applied yet. A correction ("no, make it
+// 30", "actually Friday") is about them, not about a task that exists yet
+// (phrase bank 2026-10-20: "no make it 30" after a preview changed nothing).
+const PREVIEW_KEYS = ["kind", "taskId", "title", "project", "size", "minutes", "due", "dateKind", "notBefore", "date", "time", "waitingOn", "checkOn", "location", "routine"];
+export function requestBody(text, tasks, { guest = false, now = null, preview = [] } = {}){
   const open = tasks.filter((t) => t.status !== "done" && t.status !== "dropped");
   const at = (t) => Math.max(Number(t.editedAt) || 0, Number(t.createdAt) || 0);
   const recent = open.filter(at).sort((a, b) => at(b) - at(a)).slice(0, 3).map((t) => t.id);
   return {
     ...(now && open.some((t) => t.id === now) ? { now } : {}),
     ...(recent.length ? { recent } : {}),
+    ...(preview.length ? { preview: preview.filter((a) => a.kind !== "query" && a.kind !== "moment").slice(0, 12)
+      .map((a) => Object.fromEntries(PREVIEW_KEYS.filter((k) => a[k] != null).map((k) => [k, a[k]]))) } : {}),
     // today: the day key (daybound.js), the cards' today. Still up past
     // midnight, before 04:00, that's yesterday's date, and the helper is told
     // (afterMidnight): "yesterday", "today" and "tomorrow" count from it.

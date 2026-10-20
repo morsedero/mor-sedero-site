@@ -78,6 +78,7 @@ export function mountTell(form, input, mic, uid, { openAdd, openTask, nowCard = 
   form.before(panel);
   const stop = watchTasks(uid, (ts) => { tasks = ts || []; }, (e) => console.error("[daisey] tell", e));
   let busy = false;
+  let onScreen = []; // the cards showing, not applied yet: what a correction is about
   let lastDone = null; // { id, before }: the last Done made from this bar, for "undo"
   let cal = { status: "loading", events: [] }, settings = {}, run = null; // for "plan my afternoon"
   const stops = [watchCalendar((c) => { cal = c; }), watchSettings(uid, (s) => { settings = s || {}; }, () => {}), watchRun(uid, (r) => { run = r; }, () => {})];
@@ -91,7 +92,7 @@ export function mountTell(form, input, mic, uid, { openAdd, openTask, nowCard = 
     turn++;
   }, HINT_MS);
 
-  const close = () => { panel.hidden = true; panel.replaceChildren(); };
+  const close = () => { panel.hidden = true; panel.replaceChildren(); onScreen = []; };
   const show = (...kids) => { panel.replaceChildren(...kids.filter(Boolean)); panel.hidden = false; };
   const byId = (id) => tasks.find((t) => t.id === id);
 
@@ -110,7 +111,7 @@ export function mountTell(form, input, mic, uid, { openAdd, openTask, nowCard = 
       res = await fetch(URL_, {
         method: "POST",
         headers,
-        body: JSON.stringify(requestBody(text, tasks, { guest, now: nowCard() })), // tell-read.js
+        body: JSON.stringify(requestBody(text, tasks, { guest, now: nowCard(), preview: onScreen })), // tell-read.js
       });
       body = await res.json().catch(() => ({}));
     } catch {
@@ -141,6 +142,7 @@ export function mountTell(form, input, mic, uid, { openAdd, openTask, nowCard = 
     const { reply, question, choices = [] } = read;
     // Nothing to take back (this tab's last Done is what Undo undoes).
     const list = read.actions.filter((a) => a.kind !== "undo" || lastDone);
+    onScreen = list; // the array itself: ✕ takes a card out of it
     const draw = () => {
       const queries = list.filter((a) => a.kind === "query");
       // Added from the full form (Edit): its card goes, the rest stay; the last one closes the panel.

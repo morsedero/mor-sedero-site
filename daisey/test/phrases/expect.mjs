@@ -12,7 +12,7 @@
 // { dates: [ymd…], needDate } every date said must be one of these (needDate:
 //   at least one), for a bare date phrase ("Thursday") whatever it lands on.
 // { extra: [kind…] } kinds tolerated beyond the matchers. { time } an event's.
-// { tasks } this row's task list instead of STATE.tasks.
+// { tasks } this row's task list instead of STATE.tasks. { preview } the cards on screen, not applied yet (a correction of them comes back as the corrected card).
 // { flag } a row whose CSV wording disagrees with the app: the app's logic wins (Mor, 2026-10-19).
 // Matcher { kind, …fields }: kind "change" = add or update; `task` tests the
 // title (an update's: the existing task's); `not` a title that must not match.
@@ -36,8 +36,6 @@ export const STATE = {
 };
 
 const none = { expect: [] };
-// The fixture plus one task just added (a preview Mor corrects), newest.
-const PREVIEWED = (t) => [...STATE.tasks, { status: "ready", createdAt: new Date(2026, 9, 18, 9, 45).getTime(), ...t }];
 const add = (o) => ({ kind: "add", ...o });
 const change = (task, o = {}) => ({ kind: "change", task, ...o });
 const upd = (taskId, o) => ({ kind: "update", taskId, ...o });
@@ -188,10 +186,10 @@ export const EXPECT = {
   H69: { ...one(add({ title: /label/i, due: "2026-10-21" })), flag: "Scored by app logic: at Wed 02:10 the day is still Tuesday, so tomorrow = Wednesday 10-21 (no time said, so no fork)." },
   H70: one(add({ title: /invoice/i, due: "2026-10-31" })),
   H71: one(add({ title: /studio/i, due: "2026-10-23" })),
-  H72: { ...one(upd("t8", { size: 30 })), tasks: PREVIEWED({ id: "t8", title: "Invoice", size: 20 }),
-    flag: "The previewed task is given as an existing newest task: the app doesn't send an unapplied preview to the helper." },
-  H73: { ...one(upd("t8", { due: "2026-10-23" })), tasks: PREVIEWED({ id: "t8", title: "Call Dana", due: "2026-10-22" }),
-    flag: "The previewed task is given as an existing newest task: the app doesn't send an unapplied preview to the helper." },
+  H72: { ...one(add({ title: /invoice/i, size: 30 })), preview: [{ kind: "add", title: "Invoice", size: 20 }],
+    flag: "A correction of the card on screen: the corrected card comes back, and replaces it." },
+  H73: { ...one(add({ title: /call dana/i, due: "2026-10-23" })), preview: [{ kind: "add", title: "Call Dana", due: "2026-10-22" }],
+    flag: "A correction of the card on screen: the corrected card comes back, and replaces it." },
   H74: one(add({ title: /לשלוח את החשבונית לדנה/, size: 15, due: "2026-10-21" })),
   H75: one(add({ title: has(/call the bank/i), not: /תזכיר/, due: "2026-10-22" })),
   H76: one(add({ title: /סוללות/, size: 10 }), add({ title: /חשמל/, size: 10 })),

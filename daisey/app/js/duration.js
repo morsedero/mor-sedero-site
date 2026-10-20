@@ -14,8 +14,22 @@ const NUM = "(\\d+(?:[.,]\\d+)?)";
 const L = "(?<![\\p{L}\\d])", R = "(?![\\p{L}\\d])";
 const num = (s) => parseFloat(String(s).replace(",", "."));
 
+// "3/4 of an hour", "three quarters of an hour", "two and a half hours" (phrase
+// bank 2026-10-20: "3/4 of an hour" came out as 60). They go first: once a
+// phrase is read it is cut out, so "3/4 hour" can't also read as "4 hour".
+const WORD = "one|two|three|four|five|six|seven|eight|nine|ten";
+const WORDS = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10 };
+const quarters = (s) => (/^\d+$/.test(s) ? Number(s) : WORDS[s.toLowerCase()]);
+
 // [regex, minutes from the match]
 const RULES = [
+  [new RegExp(`${L}${NUM}\\s*/\\s*${NUM}\\s*(?:of\\s+)?(?:an?\\s+)?(?:h|hr|hrs|hours?)${R}`, "iu"), (m) => (num(m[2]) > 0 ? (60 * num(m[1])) / num(m[2]) : NaN)],
+  [new RegExp(`${L}(\\d+|${WORD})[\\s-]+quarters?\\s+(?:of\\s+)?(?:an?\\s+)?(?:hour|hr)${R}`, "iu"), (m) => quarters(m[1]) * 15],
+  [new RegExp(`${L}(\\d+|${WORD})\\s+and\\s+a\\s+half\\s+(?:hours?|hrs?)${R}`, "iu"), (m) => quarters(m[1]) * 60 + 30],
+  [new RegExp(`${L}שעתיים\\s+וחצי${R}`, "u"), () => 150],
+  [new RegExp(`${L}שעה\\s+וחצי${R}`, "u"), () => 90],
+  [new RegExp(`${L}שלושת\\s+רבעי\\s+שעה${R}`, "u"), () => 45],
+  [new RegExp(`${L}רבע\\s+שעה${R}`, "u"), () => 15],
   [new RegExp(`${L}${NUM}\\s*(?:h|hr|hrs|hours?)\\s*(?:and\\s*)?${NUM}\\s*(?:m|mins?|minutes?)${R}`, "iu"), (m) => num(m[1]) * 60 + num(m[2])],
   [new RegExp(`${L}(?:an?\\s+)?hour\\s+and\\s+a\\s+half${R}`, "iu"), () => 90],
   [new RegExp(`${L}half\\s+(?:an?\\s+)?hour${R}`, "iu"), () => 30],

@@ -1,0 +1,148 @@
+Phrase bank · holdout · 60 rows · 2026-10-20T12:50Z
+model gemini-3.5-flash-lite · prompt 2026-10-20 preview corrections · sha d818a395
+clock Asia/Jerusalem, default Mon 2026-10-19 10:00, day boundary 04:00 · Now card t2 · last task t6
+
+PASS  #3 [Capture] "invoice for Dana, send report to Yoni, renew passport"
+       → add "Invoice for Dana"; add "Send report to Yoni"; add "Renew passport"
+PASS  #5 [Capture] "add to the album mixing project: master track 3"
+       → add "Master track 3" project=Album mixing
+PASS  #8 [Capture] "remind me to stretch"
+       → add "Stretch"
+PASS  #10 [Capture] "lesson 5 portuguese, 15 min"
+       → add "Lesson 5 Portuguese" size=15
+PASS  #13 [Durations] "20 min for the invoice"
+       → update t1 size=20
+PASS  #17 [Durations] "an hour and a half on the mix"
+       → add "Mix" size=90
+PASS  #19 [Durations] "quick call with Dana"
+       → add "Quick call with Dana"
+PASS  #22 [Durations] "1.5h for the deck"
+       → add "The deck" size=90
+FAIL  #25 [Durations] "5 min for the thing with Yoni"
+       → update t2 size=5
+       ✗ changed what it shouldn't: update t2 size=5
+PASS  #28 [Dates and day words] @Tue 01:30 (night) "send the invoice tomorrow"
+       → update t1 due=2026-10-20
+       ⚑ CSV says Wednesday; scored by app logic: at Tue 01:30 the day is still Monday, so tomorrow is Tuesday 10-20.
+PASS  #30 [Dates and day words] @Sat 01:51 "yesterday I forgot to pay rent"
+       → add "Pay rent" due=2026-10-22
+       ⚑ CSV says yesterday = Friday; scored by app logic: at Sat 01:51 today is Friday, so yesterday is Thursday 10-22.
+PASS  #33 [Dates and day words] @Sun 10:00 "next Sunday"
+       → update t2 notBefore=2026-10-25
+PASS  #35 [Dates and day words] "end of the week"
+       → update t2 due=2026-10-24
+       ⚑ Scored by app logic: the week ends Saturday (weights.js).
+FAIL  #37 [Dates and day words] @Oct 26 "on the 25th"
+       → update t2 due=2026-10-25
+       ✗ date 2026-10-25 (want 2026-11-25) · changed what it shouldn't: update t2 due=2026-10-25
+PASS  #39 [Dates and day words] @Tue 02:00 "this evening"
+       → query query=plan part=evening
+PASS  #41 [Dates and day words] @Mon 20:00 "tonight at 23:30"
+       → update t2 due=2026-10-19
+PASS  #44 [Corrections] "not Thursday, Friday"
+       → update t6 due=2026-10-23
+PASS  #46 [Corrections] "wait, that's for the album project"
+       → update t6 project=Album mixing
+PASS  #49 [Corrections] "make both of them 15"
+       → update t6 size=15; update t7 size=15
+FAIL  #52 [Corrections] "add 10 more minutes"
+       → update t6 size=10
+       ✗ missing update(taskId:"t6" size:30) · changed what it shouldn't: update t6 size=10
+PASS  #55 [Hebrew / mixed] "חשבונית ל-20 דקות"
+       → update t1 size=20
+PASS  #58 [Hebrew / mixed] "תוסיף לפרויקט האלבום: master"
+       → add "Master" project=Album mixing
+PASS  #60 [Hebrew / mixed] "מחרתיים"
+       → update t2 notBefore=2026-10-21
+PASS  #63 [Hebrew / mixed] "בסוף היום"
+       → update t2 due=2026-10-19
+PASS  #65 [Hebrew / mixed] "סיימתי"
+       → done t2
+FAIL  #69 [Voice and mumbling] "call... Dina? Dana. tomorrow"
+       → update t6 due=2026-10-20
+       ✗ missing add(title:dana not:dina due:"2026-10-20") · changed what it shouldn't: update t6 due=2026-10-20
+FAIL  #71 [Voice and mumbling] "invoice for twenty fifteen"
+       → update t1 size=1200
+       ✗ changed what it shouldn't: update t1 size=1200
+PASS  #74 [Voice and mumbling] "yeah add that"
+       → nothing ("Add that?")
+PASS  #76 [Voice and mumbling] "i dunno maybe later"
+       → later t2
+FAIL  #79 [Exits] "skip this"
+       → later t2
+       ✗ missing switch() · changed what it shouldn't: later t2
+PASS  #81 [Exits] "later today"
+       → later t2
+PASS  #83 [Exits] "pending, waiting on Yoni"
+       → waiting t2 waitingOn=Yoni
+PASS  #85 [Exits] "on hold"
+       → hold t2
+PASS  #87 [Exits] "undo"
+       → undo
+PASS  #89 [Exits] "Dana replied"
+       → resume t4
+PASS  #92 [Ambiguity: ask, don't guess] "meeting next Friday"
+       → nothing ("Add to the calendar next Friday 23:59?")
+PASS  #95 [Ambiguity: ask, don't guess] "push everything"
+       → nothing ("Push which tasks?")
+FAIL  #98 [Ambiguity: ask, don't guess] "mix song 3, master song 4, 2 hours"
+       → add "Mix song 3" size=120; add "Master song 4" size=120
+       ✗ changed what it shouldn't: add "Mix song 3" size=120; add "Master song 4" size=120
+PASS  #100 [Ambiguity: ask, don't guess] "at 7"
+       → nothing ("Set the time to 07:00?")
+PASS  #102 [Ambiguity: ask, don't guess] "I didn't do it"
+       → nothing ("Mark it done?")
+PASS  #103 [Capture] "grab some milk"
+       → add "Grab some milk"
+PASS  #104 [Capture] "three things: pay the electric bill, book flights, return the library books"
+       → add "Pay the electric bill"; add "Book flights"; add "Return the library books"
+PASS  #105 [Capture] "portuguese lesson six, quarter of an hour"
+       → add "Portuguese lesson six" size=15
+PASS  #106 [Durations] "draft the proposal 90 minutes and text Yoni 5 minutes"
+       → add "Draft the proposal" size=90; add "Text Yoni" size=5
+PASS  #107 [Durations] "water the plants and take out the trash, 10 min each"
+       → add "Water the plants" size=10; add "Take out the trash" size=10
+PASS  #108 [Durations] "groceries and laundry, an hour altogether"
+       → ask "1 hour each, or 1 hour split across both?" [1 hour each | 1 hour total]
+PASS  #109 [Durations] "two and a half hours on the mix"
+       → add "Mix" size=150
+PASS  #110 [Durations] "0.5h for the slides"
+       → add "Slides" size=30
+PASS  #111 [Dates and day words] @Tue 14:00 "email the invoice to Dana tomorrow"
+       → update t1 due=2026-10-21
+PASS  #112 [Dates and day words] @Wed 02:10 (night) "pay the gas bill tomorrow"
+       → add "Pay the gas bill" due=2026-10-21
+PASS  #113 [Dates and day words] "in four days"
+       → update t2 due=2026-10-23
+PASS  #114 [Dates and day words] "a week from today"
+       → update t2 notBefore=2026-10-26
+PASS  #115 [Corrections] "change that to 45 minutes"
+       → update t6 size=45
+PASS  #116 [Corrections] "not Dana, Yoni"
+       → update t6 "Email Yoni the quote"
+PASS  #117 [Hebrew / mixed] "לסדר את המחסן, שעה"
+       → add "לסדר את המחסן" size=60
+FAIL  #118 [Hebrew / mixed] "לשלוח לדנה את הקובץ מחר"
+       → update t2 due=2026-10-20
+       ✗ missing add(title:לדנה due:"2026-10-20") · changed what it shouldn't: update t2 due=2026-10-20
+PASS  #119 [Voice and mumbling] "call the bank and uh actually no, call the insurance"
+       → add "Call the insurance"
+ERROR #120 [Exits] "the invoice is done"
+       → nothing
+       ✗ model failed 5 times
+ERROR #121 [Exits] "stuck waiting on Yoni for this"
+       → nothing
+       ✗ model failed 5 times
+PASS  #122 [Ambiguity: ask, don't guess] "add 45 minutes"
+       → nothing ("Add 45 minutes to which task?")
+
+Category                       Pass     False mutations
+Capture                        7/7      0
+Durations                      9/10     1
+Dates and day words            10/11    1
+Corrections                    5/6      1
+Hebrew / mixed                 6/7      1
+Voice and mumbling             3/5      2
+Exits                          5/8      1
+Ambiguity: ask, don't guess    5/6      2
+TOTAL                          50/60    9 (in 8 rows) · 2 errors

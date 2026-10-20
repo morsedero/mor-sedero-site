@@ -45,6 +45,29 @@ test("1 the label follows the slots: now-slots at 01:30 are tonight's (today), m
 
 const mins = (s) => durationFrom(s)?.minutes ?? null;
 
+test("fractions of an hour, and N and a half hours", () => {
+  assert.equal(mins("3/4 of an hour for the lesson prep"), 45);
+  assert.equal(mins("1/2 hour on emails"), 30);
+  assert.equal(mins("1 / 4 hour"), 15);
+  assert.equal(mins("2/3 of an hour"), 40);
+  assert.equal(mins("three quarters of an hour"), 45);
+  assert.equal(mins("2 quarters of an hour"), 30);
+  assert.equal(mins("two and a half hours on the mix"), 150);
+  assert.equal(mins("1 and a half hours"), 90);
+  assert.equal(mins("שעה וחצי"), 90);
+  assert.equal(mins("שעתיים וחצי"), 150);
+  assert.equal(mins("רבע שעה"), 15);
+  assert.equal(mins("שלושת רבעי שעה"), 45);
+  assert.equal(durationFrom("3/4 of an hour for the lesson prep").rest, "for the lesson prep");
+  // not durations: a date, a ratio with no hour, zero
+  assert.equal(mins("on 3/4"), null);
+  assert.equal(mins("1/0 hour"), null);
+  // the old ones are untouched, and a phrase still counts once
+  assert.equal(mins("an hour and a half"), 90);
+  assert.equal(mins("1.5h for the deck"), 90);
+  assert.equal(mins("half an hour, 30 min"), 30);
+});
+
 test("3 '20 min' and '20 minutes' read as 20", () => {
   assert.equal(mins("20 min"), 20);
   assert.equal(mins("20 minutes"), 20);

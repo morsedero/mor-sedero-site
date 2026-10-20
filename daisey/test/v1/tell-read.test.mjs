@@ -80,3 +80,29 @@ test("later with no task named is the Now card's", () => {
   assert.deepEqual(r.actions[0], { kind: "later", until: "today", taskId: "a" });
   assert.equal(at(MON, () => readAnswer({ actions: [{ kind: "later" }] }, "later", {})).actions[0].taskId, undefined, "no card: stays open");
 });
+
+// A correction of the cards on screen: they go to the helper as "Proposal on screen".
+const { understand } = createRequire(import.meta.url)("../../functions/daisey-now-chat.js");
+
+test("requestBody sends the cards on screen, trimmed, and leaves queries and moments out", () => {
+  const b = requestBody("no make it 30", tasks, { preview: [
+    { kind: "add", title: "Invoice", size: 20, extra: "x" }, { kind: "query", query: "next" }, { kind: "moment", place: "out" },
+    { kind: "event", title: "Dentist", date: "2026-10-25", time: "09:30", minutes: 60 }] });
+  assert.deepEqual(b.preview, [{ kind: "add", title: "Invoice", size: 20 }, { kind: "event", title: "Dentist", date: "2026-10-25", time: "09:30", minutes: 60 }]);
+  assert.equal(requestBody("x", tasks).preview, undefined, "none on screen: none sent");
+});
+
+test("the helper's prompt carries the proposal on screen, in the schema's own names", async () => {
+  const RealFetch = globalThis.fetch;
+  let sent = null;
+  globalThis.fetch = async (url, init) => { sent = JSON.parse(init.body); return { ok: true, json: async () => ({ candidates: [{ content: { parts: [{ text: JSON.stringify({ reply: "ok", actions: [{ kind: "add", title: "Invoice", minutes: 30 }] }) }] } }] }) }; };
+  try {
+    const body = requestBody("no make it 30", [], { preview: [{ kind: "add", title: "Invoice", size: 20, due: "2026-10-23", notBefore: "bad", routine: { per: 2, days: [1, 4] } }] });
+    const out = await understand(body, "key");
+    const prompt = sent.contents[0].parts[0].text;
+    assert.match(prompt, /Proposal on screen, not applied yet: \[\{"kind":"add","title":"Invoice","minutes":20,"dueDate":"2026-10-23","repeatDays":\[1,4\]\}\]/);
+    assert.equal(out.actions[0].size, 30);
+    await understand(requestBody("x", []), "key");
+    assert.doesNotMatch(sent.contents[0].parts[0].text, /Proposal on screen/);
+  } finally { globalThis.fetch = RealFetch; }
+});
