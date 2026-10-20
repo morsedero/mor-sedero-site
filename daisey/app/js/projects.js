@@ -168,7 +168,7 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
     const ts = tasks || [], week = doneThisWeek(ts).sort((a, b) => a.doneAt - b.doneAt);
     const petals = week.filter((t) => !isRoutine(t)).length, leaves = routineLeaves(ts);
     // Stats (design round 4, 2026-10-18; Mor, 2026-10-19: this week's, not
-    // today's): the week's daisy, a petal for each thing done (a closed bud
+    // today's): the week's daisy, a petal for each task done (a closed bud
     // before the first, no guilt; a leaf off the stalk for each routine
     // session), then what got done by name, then the routines. No counts,
     // no times.
@@ -176,7 +176,7 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
       stalkDaisy(petals, leaves, { size: 112, cls: "daisy st-flower" + (petals ? "" : " bud") }),
       h("div", { className: "st-daisy-t" },
         h("h3", { className: "bl-h", textContent: "This week's Daisey" }),
-        h("p", { textContent: petals ? "A petal for each thing you finish, a leaf for each routine." : "Still a bud. It opens as you go." })));
+        h("p", { textContent: petals ? "A petal for each task you finish, a leaf for each routine." : "Still a bud. It opens as you go." })));
     const doneCard = week.length > 0 && h("section", { className: "bl-card st-done", ariaLabel: "Done this week" },
       h("h3", { className: "bl-h", textContent: "Done this week" }),
       ...week.map((t) => h("div", { className: "pj-drow" },
