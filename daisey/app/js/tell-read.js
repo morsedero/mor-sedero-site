@@ -34,10 +34,12 @@ export function requestBody(text, tasks, { guest = false, now = null } = {}){
 // the user's words (withDates), then understood() on the actions; a day
 // may turn one card into a question. And a guard: "I didn't do it" is never
 // a Done (phrase bank 2026-10-19: the helper marked the Now card done).
-export function readAnswer({ reply = "", actions = [], question, choices = [] }, text, settings = {}){
+export function readAnswer({ reply = "", actions = [], question, choices = [] }, text, settings = {}, { now = null } = {}){
   const said = /\b(didn'?t|did not|haven'?t|have not|not done|never did)\b|לא (עשיתי|סיימתי|הספקתי)/i.test(text);
   // Days first: a repeat (withRepeats) turns a due date into its end.
-  const dated = withDates(actions.filter((a) => !(said && a.kind === "done")), text);
+  // Later with no task named is the Now card's.
+  const named = actions.map((a) => (a.kind === "later" && !a.taskId && now ? { ...a, taskId: now } : a));
+  const dated = withDates(named.filter((a) => !(said && a.kind === "done")), text);
   const list = understood(dated.actions, text, settings);
   if (!dated.ask) return { reply, actions: list, ...(question ? { question, choices } : {}) };
   return { reply: dated.ask.question, actions: list, question: dated.ask.question, choices: dated.ask.choices };

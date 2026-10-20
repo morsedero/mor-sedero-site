@@ -2466,6 +2466,16 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     needsAsks: () => [planAsk(), tierAsk(), mealLateAsk()].filter(Boolean),
     // The schedule's "?" on a planned task that didn't happen.
     missed: (id, start, from) => missedSheet(id, start, from),
+    // Tell Daisey (tell.js): what the card's Later and Switch do, from words.
+    // Later with a time is the dropdown's choice (today, tomorrow, week,
+    // someday = On hold); without one it opens the dropdown, to pick.
+    later(id, when){
+      const task = (tasks || []).find((t) => t.id === id);
+      if (!task) return;
+      if (when) later(task, when);
+      else { state.more = state.pendAsk = state.showAlts = false; state.notNow = true; state.altX = 0; render(); }
+    },
+    openSwitch(){ state.more = state.notNow = state.pendAsk = false; state.showAlts = true; state.altX = 0; render(); },
     // Done from the task sheet: the card's Done, Undo in the toast.
     doneById(id){
       const task = (tasks || []).find((t) => t.id === id);

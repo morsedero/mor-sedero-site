@@ -62,3 +62,21 @@ test("\"I didn't do it\" is never a Done", () => {
   assert.equal(at(MON, () => readAnswer({ actions: [{ kind: "done", taskId: "a" }] }, "לא סיימתי")).actions.length, 0);
   assert.equal(at(MON, () => readAnswer({ actions: [{ kind: "done", taskId: "a" }] }, "finished it")).actions.length, 1);
 });
+
+// Exits from words: switch, later, hold, resume, undo (the card's own buttons, now.js).
+test("tidy keeps the exit kinds; hold and resume need a real task, later may lean on the Now card", () => {
+  const ids = new Set(["a"]);
+  const kinds = (actions) => tidy({ actions }, ids).actions.map((x) => x.kind);
+  assert.deepEqual(kinds([{ kind: "switch" }, { kind: "undo" }, { kind: "later" }]), ["switch", "undo", "later"]);
+  assert.deepEqual(kinds([{ kind: "hold" }, { kind: "resume", taskId: "zz" }, { kind: "hold", taskId: "a" }, { kind: "resume", taskId: "a" }]), ["hold", "resume"]);
+  const [l] = tidy({ actions: [{ kind: "later", taskId: "a", until: "tomorrow" }] }, ids).actions;
+  assert.deepEqual(l, { kind: "later", taskId: "a", until: "tomorrow" });
+  assert.equal(tidy({ actions: [{ kind: "later", until: "someday" }] }, ids).actions[0].until, undefined, "only today, tomorrow, week");
+  assert.equal(tidy({ actions: [{ kind: "later", dateWords: "tomorrow" }] }, ids).actions[0].when, undefined, "no date field on a later");
+});
+
+test("later with no task named is the Now card's", () => {
+  const r = at(MON, () => readAnswer({ actions: [{ kind: "later", until: "today" }] }, "later today", {}, { now: "a" }));
+  assert.deepEqual(r.actions[0], { kind: "later", until: "today", taskId: "a" });
+  assert.equal(at(MON, () => readAnswer({ actions: [{ kind: "later" }] }, "later", {})).actions[0].taskId, undefined, "no card: stays open");
+});

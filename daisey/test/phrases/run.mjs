@@ -67,7 +67,7 @@ function freeze(ms){
 const thaw = () => { globalThis.Date = RealDate; };
 
 // --- scoring ---
-const MUTATES = new Set(["add", "update", "waiting", "drop", "done", "project", "event", "moment"]);
+const MUTATES = new Set(["add", "update", "waiting", "drop", "done", "project", "event", "moment", "switch", "later", "hold", "resume", "undo"]);
 const KNOWN = new Set([...MUTATES, "query"]);
 const titleOf = (a) => a.kind === "add" || a.kind === "event" ? a.title || ""
   : `${STATE.tasks.find((t) => t.id === a.taskId)?.title || ""}${a.title ? ` → ${a.title}` : ""}`;
@@ -167,7 +167,7 @@ for (const row of rows) {
     }
   }
   freeze(at);
-  const r = readAnswer(res, text, {});
+  const r = readAnswer(res, text, {}, { now: STATE.now });
   thaw();
   const sc = error ? { pass: false, why: [error], falses: 0, error: true } : score(spec, r);
   const tag = error ? "ERROR" : sc.pass ? "PASS " : "FAIL ";

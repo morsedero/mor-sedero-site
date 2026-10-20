@@ -35,9 +35,9 @@ const MAX_TASKS = 120;
 // answers it by opening its first task, with the project already set.
 // done / event / query (2026-10-06): tick a task off, put something at a
 // fixed time in the calendar, or ask about the list (answered in the app).
-const KINDS = ["add", "update", "waiting", "drop", "moment", "project", "done", "event", "query"];
+const KINDS = ["add", "update", "waiting", "drop", "moment", "project", "done", "event", "query", "switch", "later", "hold", "resume", "undo"];
 // Bump on any change to SYSTEM; test/phrases/run.mjs prints it with a hash of the text.
-const PROMPT_VERSION = "2026-10-20 corrections to last task";
+const PROMPT_VERSION = "2026-10-20 exits: switch later hold resume undo";
 
 const reply = (statusCode, body) => ({
   statusCode,
@@ -51,7 +51,8 @@ const fail = (statusCode, code) => reply(statusCode, { error: code });
 const str = (description, extra = {}) => ({ type: "STRING", description, ...extra });
 const ACTION_FIELDS = {
   kind: str("What to do.", { enum: KINDS }),
-  taskId: str("update/waiting/drop/done only: the exact id of an existing task from the list."),
+  taskId: str("update/waiting/drop/done/later/hold/resume only: the exact id of an existing task from the list."),
+  until: str("later only: when it comes back, only if the user said. Empty when they didn't say when.", { enum: ["today", "tomorrow", "week"] }),
   title: str("add: the new task's title in the user's own words. update: only when renaming."),
   project: str("An existing project when one clearly fits, or a new project the user names. Otherwise leave empty."),
   minutes: { type: "INTEGER", description: "add/update/event: how long it takes, only if the user said (\"15 min\" → 15, \"2 hours\" → 120). moment: how many minutes the user has free right now." },
@@ -101,6 +102,11 @@ Kinds:
 - project: the user wants a new project (put its name in project). If they also name tasks for it, add those too, each with that project.
 - done: the user says they finished an existing task ("paid the arnona", "sent the stems").
 - event: something at a fixed time ("dentist Thursday at 15:00", "meeting with Dana tomorrow 10:30"): a calendar event, not a task. Title, eventDate, time; minutes only if said; location when a place is named ("dentist at Assuta Thursday 15:00" → title "Dentist", location "Assuta"), kept out of the title.
+- switch: the user doesn't want the task on the Now card right now and wants something else in its place. The task stays open; it is not dropped and not moved to another day.
+- later: set a task aside for now. With no task named it is the Now card task. until says when it comes back (today, tomorrow, week) only when the user said; otherwise leave until empty.
+- hold: park a task with no date, still open, out of the plan.
+- resume: a task that was pending (waiting on someone or something) is moving again because the person answered or the thing arrived. taskId is the pending task; if several are pending, ask which.
+- undo: take back the last task the user marked done.
 - query: a question about their tasks, changing nothing: "what's next?" → next; "what's due today/this week?" → due with range; "what am I waiting on?" → waiting; "plan my afternoon / my day", "what's my schedule tomorrow?" → plan with part (morning, afternoon, evening, or day) and planDate when it isn't today.
 
 Rules:
@@ -110,7 +116,7 @@ Rules:
 - Only use an existing task when the message clearly refers to it. A new thing that only shares a word with an existing task is an add.
 - The Now card (given below, when there is one) is the task the user is on right now. With no task named, "it", "this" and a bare finished / cancel / move / pending message mean the Now card task. A person's name alone doesn't name a task.
 - A message that only corrects what was just added (a size, a date, a name, a person or a project, with no task named) changes the newest of the last tasks (given below, newest first); "both" means the two newest. A correction is an update of only that task (those two), never an add.
-- Pushing or moving a task to a later day sets startDate (when it comes up again); its dueDate stays unless the user talks about the deadline.
+- Putting the Now card task off to tomorrow or this week is later with until. Any other task moved to a later day is an update that sets startDate (when it comes up again); its dueDate stays unless the user talks about the deadline.
 - "The first one", "the second one" point at the cards of your own proposal, not at tasks: return no action for them.
 - If more than one existing task could be the one they mean, and neither rule above settles it, return NO action for it; ask a question and give the candidate titles as choices.
 - Fill only what the user said. Never invent minutes, dates or projects.
@@ -235,11 +241,15 @@ function tidy(out, ids){
   const actions = (Array.isArray(out?.actions) ? out.actions : []).slice(0, 12).flatMap((a) => {
     const kind = a?.kind;
     if (!KINDS.includes(kind)) return [];
-    const onTask = kind === "update" || kind === "waiting" || kind === "drop" || kind === "done";
+    const onTask = ["update", "waiting", "drop", "done", "hold", "resume"].includes(kind);
     if (onTask && !ids.has(a.taskId)) return [];
     const x = { kind };
     const when = clean(a.dateWords, 60); // the user's words for the day: tell-read.js withDates works it out
-    if (when && !["drop", "done", "project", "moment"].includes(kind)) x.when = when;
+    if (when && !["drop", "done", "project", "moment", "switch", "later", "hold", "resume", "undo"].includes(kind)) x.when = when;
+    if (kind === "later") { // the Now card's task when none is named (tell-read.js readAnswer)
+      if (ids.has(a.taskId)) x.taskId = a.taskId;
+      if (["today", "tomorrow", "week"].includes(a.until)) x.until = a.until;
+    }
     if (onTask) x.taskId = a.taskId;
     if (kind === "add" || kind === "update") {
       if (clean(a.title)) x.title = clean(a.title);

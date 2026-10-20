@@ -1,0 +1,110 @@
+Phrase bank · dev · 42 rows · 2026-10-20T11:41Z
+model gemini-3.5-flash-lite · prompt 2026-10-20 exits: switch later hold resume undo · sha b4dfe250
+clock Asia/Jerusalem, default Mon 2026-10-19 10:00, day boundary 04:00 · Now card t2 · last task t6
+
+FAIL  #2 [Capture] "call the dentist and book a cleaning"
+       → add "Call the dentist"; add "Book a cleaning"
+       ✗ changed what it shouldn't: add "Book a cleaning"
+PASS  #4 [Capture] "new project: album mixing"
+       → project project=Album mixing
+PASS  #7 [Capture] "every weekday review the inbox"
+       → add "Review the inbox" routine={"per":5,"days":[0,1,2,3,4]}
+       ⚑ CSV says Mon-Fri; scored by app logic: weekday = Sun-Thu.
+PASS  #9 [Capture] "add to my quick list: batteries, stamps, charger"
+       → add "Batteries"; add "Stamps"; add "Charger"
+FAIL  #12 [Capture] "idea: daisy petals nav"
+       → add "Daisy petals nav"
+       ✗ changed what it shouldn't: add "Daisy petals nav"
+PASS  #14 [Durations] "write the report 2 hours and email Yoni 10 minutes"
+       → add "Write the report" size=120; add "Email Yoni" size=10
+PASS  #18 [Durations] "half an hour for emails"
+       → add "Emails" size=30
+PASS  #21 [Durations] "edit video, maybe 2 hours maybe 3"
+       → add "Edit video" size=120
+PASS  #24 [Durations] "it took me 40 minutes"
+       → update t2 size=40
+PASS  #26 [Durations] "two tasks: slides 1h, notes 20m"
+       → add "Slides" size=60; add "Notes" size=20
+PASS  #29 [Dates and day words] @Tue 01:30 "do it today"
+       → update t2 due=2026-10-19
+PASS  #32 [Dates and day words] @Tue 03:44 "call Dana tomorrow at 8"
+       → ask "Which day?" [Tue, Oct 20 | Wed, Oct 21]
+PASS  #34 [Dates and day words] @Mon 10:00 "Thursday"
+       → update t2 notBefore=2026-10-22
+PASS  #36 [Dates and day words] "in 3 days"
+       → update t2 due=2026-10-22
+PASS  #38 [Dates and day words] "by Friday 5pm"
+       → update t2 due=2026-10-23
+PASS  #40 [Dates and day words] "first thing tomorrow"
+       → update t2 notBefore=2026-10-20
+PASS  #42 [Dates and day words] "in two weeks"
+       → update t2 due=2026-11-02
+PASS  #43 [Corrections] "no, make it 30"
+       → update t6 size=30
+PASS  #45 [Corrections] "actually call it 'Send quote'"
+       → update t6 "Send quote"
+PASS  #47 [Corrections] "no, mom not Dana"
+       → update t6 "Email mom the quote"
+FAIL  #51 [Corrections] "remove the second one"
+       → drop t7
+       ✗ changed what it shouldn't: drop t7
+PASS  #54 [Hebrew / mixed] "להתקשר לדנה מחר ב-10"
+       → event "להתקשר לדנה" minutes=60 date=2026-10-20 time=10:00
+PASS  #56 [Hebrew / mixed] "שלח reminder ליוני tomorrow"
+       → add "Reminder ליוני" due=2026-10-20
+PASS  #59 [Hebrew / mixed] "לא, תעשה את זה 30"
+       → update t6 size=30
+FAIL  #62 [Hebrew / mixed] "אחרי חצות, בשתיים בלילה"
+       → moment dayEnd=02:00
+       ✗ changed what it shouldn't: moment dayEnd=02:00
+PASS  #64 [Hebrew / mixed] "call דנה about the quote 15 דקות"
+       → add "Call דנה about the quote" size=15
+PASS  #66 [Hebrew / mixed] "אחר כך"
+       → later t2
+PASS  #67 [Voice and mumbling] "um so like remind me to uh call Dana tomorrow I think"
+       → add "Call Dana" due=2026-10-20
+PASS  #70 [Voice and mumbling] "twenty minutes... no thirty for the report"
+       → update t2 size=30
+FAIL  #72 [Voice and mumbling] "call at ate"
+       → add "Call"
+       ✗ changed what it shouldn't: add "Call"
+PASS  #75 [Voice and mumbling] "[silence/noise]"
+       → nothing
+PASS  #77 [Exits] "done"
+       → done t2
+PASS  #80 [Exits] "not now"
+       → later t2
+PASS  #82 [Exits] "push it to tomorrow"
+       → update t2 notBefore=2026-10-20
+FAIL  #84 [Exits] "waiting on Dana until Thursday"
+       → ask "Which task for Dana?" [Send stems to Dana | Email Dana the quote]
+       ✗ missing waiting(taskId:"t2" waitingOn:dana checkOn:"2026-10-22")
+PASS  #86 [Exits] "cancel this task"
+       → drop t2
+FAIL  #88 [Exits] "I'm done for today"
+       → moment place=out
+       ✗ needs "endDay" (no such action yet) · changed what it shouldn't: moment place=out
+FAIL  #91 [Ambiguity: ask, don't guess] @Oct 19 "do it on the 3rd"
+       → update t2 due=2026-11-03
+       ✗ changed what it shouldn't: update t2 due=2026-11-03
+FAIL  #94 [Ambiguity: ask, don't guess] "Dana wants it by tomorrow"
+       → update t6 due=2026-10-20
+       ✗ changed what it shouldn't: update t6 due=2026-10-20
+FAIL  #96 [Ambiguity: ask, don't guess] "delete the project"
+       → drop t3
+       ✗ changed what it shouldn't: drop t3
+PASS  #99 [Ambiguity: ask, don't guess] "call Dan"
+       → add "Call Dan"
+PASS  #101 [Ambiguity: ask, don't guess] "make it urgent"
+       → nothing ("Mark it as urgent?")
+
+Category                       Pass     False mutations
+Capture                        3/5      2
+Durations                      5/5      0
+Dates and day words            7/7      0
+Corrections                    3/4      1
+Hebrew / mixed                 5/6      1
+Voice and mumbling             3/4      1
+Exits                          4/6      1
+Ambiguity: ask, don't guess    2/5      3
+TOTAL                          32/42    9 (in 9 rows)

@@ -13,8 +13,8 @@
 // The mic uses the browser's own speech-to-text, so a spoken message goes
 // down the same path as a typed one. Where there's none, it opens the keyboard.
 import { idToken } from "./firebase.js";
-import { watchTasks, addTask, updateTask, saveMoment, finishTask } from "./store.js";
-import { getDayKey, LABELS, dayAfter } from "./model.js";
+import { watchTasks, addTask, updateTask, saveMoment, finishTask, undoDone } from "./store.js";
+import { getDayKey, LABELS, dayAfter, doneSnapshot } from "./model.js";
 import { createEvent, watchCalendar } from "./calendar.js";
 import { planDay } from "./plan.js";
 import { planView } from "./plan-view.js";
@@ -72,12 +72,13 @@ const HINT_MS = 4500;
 
 // form/input/mic: the bar's own elements (index.html). openAdd(project, title):
 // the Add task form, prefilled.
-export function mountTell(form, input, mic, uid, { openAdd, openTask, nowCard = () => null, guest = false }){
+export function mountTell(form, input, mic, uid, { openAdd, openTask, nowCard = () => null, nowApi = () => null, guest = false }){
   let tasks = [];
   const panel = h("section", { className: "tell-panel", ariaLabel: "What Daisey understood", ariaLive: "polite", hidden: true });
   form.before(panel);
   const stop = watchTasks(uid, (ts) => { tasks = ts || []; }, (e) => console.error("[daisey] tell", e));
   let busy = false;
+  let lastDone = null; // { id, before }: the last Done made from this bar, for "undo"
   let cal = { status: "loading", events: [] }, settings = {}, run = null; // for "plan my afternoon"
   const stops = [watchCalendar((c) => { cal = c; }), watchSettings(uid, (s) => { settings = s || {}; }, () => {}), watchRun(uid, (r) => { run = r; }, () => {})];
   const plain = input.placeholder;
@@ -135,8 +136,11 @@ export function mountTell(form, input, mic, uid, { openAdd, openTask, nowCard = 
   }
 
   // The answer: one line, then a card per change, then Apply.
-  function proposal(text, answer){
-    const { reply, actions: list, question, choices = [] } = readAnswer(answer, text, settings); // tell-read.js
+  function proposal(text, said){
+    const read = readAnswer(said, text, settings, { now: nowCard() }); // tell-read.js
+    const { reply, question, choices = [] } = read;
+    // Nothing to take back (this tab's last Done is what Undo undoes).
+    const list = read.actions.filter((a) => a.kind !== "undo" || lastDone);
     const draw = () => {
       const queries = list.filter((a) => a.kind === "query");
       // Added from the full form (Edit): its card goes, the rest stay; the last one closes the panel.
@@ -221,8 +225,14 @@ export function mountTell(form, input, mic, uid, { openAdd, openTask, nowCard = 
       if (a.minutes) bits.push(`${dur(a.minutes)} free`);
       if (a.dayEnd) bits.push(a.latest ? `day runs to ${a.dayEnd}, the latest it can` : `day ends ${a.dayEnd} today`);
     }
-    const LABEL = { add: "New task", update: "Change", waiting: "Pending", drop: "Drop", moment: "Right now", project: "New project", done: "Done", event: "New event" };
-    const title = a.kind === "add" || a.kind === "event" ? a.title : a.kind === "project" ? a.project : a.kind === "moment" ? null : t?.title;
+    const LABEL = { add: "New task", update: "Change", waiting: "Pending", drop: "Drop", moment: "Right now", project: "New project", done: "Done", event: "New event",
+      switch: "Switch", later: "Later", hold: "On hold", resume: "Back on", undo: "Undo" };
+    const title = a.kind === "add" || a.kind === "event" ? a.title : a.kind === "project" ? a.project : a.kind === "moment" ? null
+      : a.kind === "undo" ? byId(lastDone?.id)?.title : a.kind === "switch" ? null : t?.title;
+    if (a.kind === "later") bits.push({ today: "later today", tomorrow: "tomorrow", week: "this week" }[a.until] || "you pick when");
+    if (a.kind === "switch") bits.push("pick something else for the card");
+    if (a.kind === "hold") bits.push("no date, still open");
+    if (a.kind === "resume") bits.push("waiting is over");
     // A project lives through its tasks, so it starts with the first one:
     // the task form, with the new project already chosen.
     if (a.kind === "project") bits.push("starts with its first task");
@@ -253,8 +263,17 @@ export function mountTell(form, input, mic, uid, { openAdd, openTask, nowCard = 
         return added;
       }
       if (a.kind === "event") return createEvent({ title: a.title, date: a.date, at: a.time, minutes: a.minutes, location: a.location });
-      if (!t && a.kind !== "moment") return null; // gone since
-      if (a.kind === "done") return finishTask(uid, t, { tasks });
+      if (!t && !["moment", "switch", "undo"].includes(a.kind)) return null; // gone since
+      if (a.kind === "done") { lastDone = { id: t.id, before: doneSnapshot(t) }; return finishTask(uid, t, { tasks }); }
+      // The card's own Later, Switch and Undo (now.js), so the plan, the toast's Undo and the lessons all follow.
+      if (a.kind === "switch") return Promise.resolve(nowApi()?.openSwitch());
+      if (a.kind === "later") return Promise.resolve(nowApi()?.later(a.taskId, a.until));
+      if (a.kind === "hold") return Promise.resolve(nowApi()?.later(a.taskId, "someday"));
+      if (a.kind === "resume") return updateTask(uid, t, { status: "ready", waitingOn: "" }, tasks);
+      if (a.kind === "undo") {
+        const d = lastDone; lastDone = null;
+        return d ? undoDone(uid, d.id, d.before).then(() => nowApi()?.put(d.id)) : null;
+      }
       if (a.kind === "update") return updateTask(uid, t, pick(["title", "project", "size", "due", "dateKind", "notBefore"]), tasks);
       if (a.kind === "waiting") return updateTask(uid, t, { status: "waiting", waitingOn: a.waitingOn || "", ...(a.checkOn ? { checkOn: a.checkOn } : {}) }, tasks);
       if (a.kind === "drop") return updateTask(uid, t, { status: "dropped" }, tasks);
@@ -275,7 +294,8 @@ export function mountTell(form, input, mic, uid, { openAdd, openTask, nowCard = 
     input.value = "";
     try {
       await Promise.all(jobs);
-      flash(jobs.length === 1 ? "Done." : `Done: ${jobs.length} changes.`, "");
+      // Later, Switch and hold say it themselves (the card's own toast and Undo).
+      if (!list.every((a) => ["switch", "later", "hold"].includes(a.kind))) flash(jobs.length === 1 ? "Done." : `Done: ${jobs.length} changes.`, "");
     } catch (e) {
       console.error("[daisey] tell apply", e);
       flash("Some of that didn't save.", "");

@@ -365,7 +365,7 @@ const FAKES = {
     : "Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Mobile Safari/537.36" } : {};
   const page = await browser.newPage({ ...mobile, viewport: wide ? { width: 1200, height: 900 } : { width: Number(widthFlag) || 390, height: Number(heightFlag) || 844 }, deviceScaleFactor: 2,
     colorScheme: args.includes("--dark") ? "dark" : "light", ...(args.includes("--still") ? { reducedMotion: "reduce" } : {}) }); // --still: no bobbing/animation, so two shots can be compared
-  page.on("pageerror", (e) => console.error("pageerror:", e.message));
+  page.on("pageerror", (e) => console.error("pageerror:", e.stack || e.message));
   page.on("console", (m) => { if (m.type() === "error") console.error("console:", m.text()); });
   // --at HH:MM: the page's clock, today at that time (Playwright's fake clock).
   const atFlag = flag("--at");
@@ -402,7 +402,11 @@ const FAKES = {
       if (chatFlag === "off") return route.fulfill({ status: 503, contentType: "application/json", body: '{"error":"not_configured"}' });
       const { text = "", tasks = [] } = JSON.parse(route.request().postData() || "{}");
       const wait = /waiting on (\S+)/i.exec(text);
-      const actions = /wreck|tired/i.test(text) ? [{ kind: "moment", place: "out" }]
+      // "skip" → Switch, "later today" / "on hold" → the card's Later (taskless, as the helper may answer).
+      const actions = /skip/i.test(text) ? [{ kind: "switch" }]
+        : /later today/i.test(text) ? [{ kind: "later", until: "today" }]
+        : /on hold/i.test(text) ? [{ kind: "hold", taskId: tasks[0]?.id }]
+        : /wreck|tired/i.test(text) ? [{ kind: "moment", place: "out" }]
         : wait && tasks[0] ? [{ kind: "waiting", taskId: tasks[0].id, waitingOn: wait[1] }]
         : text.split(",").map((s) => s.trim()).filter(Boolean).map((title) => ({ kind: "add", title, size: 30 }));
       return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ reply: "Got it.", actions }) });

@@ -15,8 +15,7 @@
 // { flag } a row whose CSV wording disagrees with the app: the app's logic wins (Mor, 2026-10-19).
 // Matcher { kind, …fields }: kind "change" = add or update; `task` tests the
 // title (an update's: the existing task's); `not` a title that must not match.
-// A kind the parser doesn't have (later, switch, hold, undo, endDay, resume)
-// can't match yet: the row fails as "no such action", which is the finding.
+// A kind the parser doesn't have (endDay) can't match: the row fails as "no such action", which is the finding.
 
 // Default clock: Monday 2026-10-19 10:00, Asia/Jerusalem. "Tue 14:00" etc.
 // are that week (Sun 10-18 … Sat 10-24); "Oct 26" is Monday 10-26 10:00.
@@ -138,8 +137,8 @@ export const EXPECT = {
   78: one({ kind: "done", taskId: "t1" }),
   79: one({ kind: "switch" }),
   80: either(one({ kind: "later", taskId: "t2" }), one({ kind: "switch" }), none),
-  81: one({ kind: "later", taskId: "t2" }),
-  82: either(one(upd("t2", { notBefore: "2026-10-20", due: null })), one({ kind: "later", taskId: "t2", date: "2026-10-20" })),
+  81: one({ kind: "later", taskId: "t2", until: "today" }),
+  82: either(one(upd("t2", { notBefore: "2026-10-20", due: null })), one({ kind: "later", taskId: "t2", until: "tomorrow" })),
   83: one({ kind: "waiting", taskId: "t2", waitingOn: /yoni/i }),
   84: one({ kind: "waiting", taskId: "t2", waitingOn: /dana/i, checkOn: "2026-10-22" }),
   85: one({ kind: "hold", taskId: "t2" }),

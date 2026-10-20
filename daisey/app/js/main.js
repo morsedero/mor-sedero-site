@@ -1100,6 +1100,7 @@ async function boot(){
           m.tell = mountTell($("#tell"), $("#tellInput"), $("#mic"), user.uid, {
             guest: isGuest,
             nowCard: () => m.card, // "done", "push it": the task on the Now card
+            nowApi: () => m.now, // Later, Switch: what the card's own buttons do
             openAdd: (project, title, pre, opts) => m.adder.open(project ?? tabProject(), title, pre, opts),
             openTask: (task) => m.adder.edit(task),
           });
