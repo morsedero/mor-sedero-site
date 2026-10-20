@@ -15,6 +15,12 @@ test("Pending: a waiting task isn't swept, only asked on its checkOn", () => {
   assert.deepEqual(ids([{ ...base, status: "waiting", checkOn: "2026-10-20", touchedAt: NOW }]), []);
   assert.deepEqual(ids([{ ...base, status: "waiting", checkOn: "2026-10-19", touchedAt: NOW - 864e5 }]), ["pending"]);
 });
+test("Pending with today's check date: later today, not straight away", () => {
+  const pend = (ago) => ids([{ ...base, status: "waiting", checkOn: "2026-10-19", touchedAt: NOW - ago }]);
+  assert.deepEqual(pend(0), []);
+  assert.deepEqual(pend(2 * 3600000), []);
+  assert.deepEqual(pend(3 * 3600000), ["pending"]);
+});
 test("On hold today: not asked to bring it back the same day", () => {
   assert.deepEqual(ids([{ ...base, status: "someday", touchedAt: NOW }]), []);
   assert.ok(ids([{ ...base, status: "someday", touchedAt: NOW - 2 * 864e5 }]).length > 0);

@@ -35,6 +35,9 @@ export const TASK_VERSION = 5; // tasks below this get migrateTask'd on load
 // Pending asks "still pending?" this many days after it was set (Mor,
 // 2026-10-05: 3 days, editable in the Pending ask).
 export const PENDING_CHECK_DAYS = 3;
+// A check date of today means later today, not now (Mor, 2026-10-20): Needs
+// you holds it back until this long after the task was last touched.
+export const PENDING_TODAY_WAIT = 3 * 3600000;
 
 export const AREAS = ["work", "job", "home", "admin", "social", "personal"];
 export const TYPES = ["deep", "admin", "call", "errand", "home", "social"];

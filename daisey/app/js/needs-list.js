@@ -4,7 +4,7 @@
 // unchanged, 2026-10-06.
 import { nextOffer } from "./caltask.js";
 import { sweepList, isOverdue, shouldOffer } from "./triage.js";
-import { localDate, logicalDate, notYet } from "./model.js";
+import { localDate, logicalDate, notYet, PENDING_TODAY_WAIT } from "./model.js";
 import { deadlineWithin } from "./engine.js";
 import { STALE_SKIPS, SOMEDAY_DEADLINE_DAYS, PUSHES_ASK } from "./weights.js";
 import { slotClashes } from "./clash.js";
@@ -78,7 +78,8 @@ export function collectNeeds({ tasks = [], events = [], calOk = false, settings 
   // slot isn't counted until the user says so.
   if (calOk) for (const t of tasks) slotsToAsk(t, events, now).forEach((e) => add({ key: `slot:${e.id}`, kind: "slot", id: t.id, slot: e }));
   const today = logicalDate(now);
-  tasks.filter((t) => t.status === "waiting" && t.checkOn && t.checkOn <= today)
+  tasks.filter((t) => t.status === "waiting" && t.checkOn && t.checkOn <= today
+      && !(t.checkOn === today && now - (t.touchedAt || 0) < PENDING_TODAY_WAIT))
     .sort((a, b) => a.checkOn.localeCompare(b.checkOn))
     .forEach((t) => add({ key: `pend:${t.id}`, kind: "pending", id: t.id }));
   tasks.filter((t) => t.status === "ready" && (t.skipsSinceStart || 0) >= STALE_SKIPS)
