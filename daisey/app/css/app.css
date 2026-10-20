@@ -2529,7 +2529,7 @@ button.bl-r-title { padding: 0; border: 0; background: none; color: var(--ink); 
    the title (it still opens the task) and Focus; everything else waits
    until Today shuts. */
 :root:not(.night) body.card-mini #nowcard .now-card.main { min-block-size: 56px; padding: 6px 6px 6px 16px; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; column-gap: 10px; border-radius: 18px; }
-:root:not(.night) body.card-mini #nowcard .now-card.main > :not(.hero-top, .now-title, .later-ask, .act-line), :root:not(.night) body.card-mini :is(#nowcard, .deck) > :not(.now-card.main, .deck, .later-drop), :root:not(.night) body.card-mini :is(.now-greet, .now-next-out) { display: none; }
+:root:not(.night) body.card-mini #nowcard .now-card.main > :not(.hero-top, .now-title, .later-ask, .act-line), :root:not(.night) body.card-mini :is(#nowcard, .deck) > :not(.now-card.main, .deck, .later-drop, .drop-anchor), :root:not(.night) body.card-mini :is(.now-greet, .now-next-out) { display: none; }
 :root:not(.night) body.card-mini #nowcard .now-card.main .hero-top { display: contents; }
 :root:not(.night) body.card-mini #nowcard .now-card.main .hero-top > :not(.hero-area), :root:not(.night) body.card-mini #nowcard .now-card.main .hero-where { display: none; }
 :root:not(.night) body.card-mini #nowcard .now-card.main .hero-area { grid-column: 1; grid-row: 1; }
