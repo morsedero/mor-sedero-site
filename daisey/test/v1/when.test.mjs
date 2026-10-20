@@ -60,6 +60,18 @@ test("days of the month: gone this month means next month", () => {
   assert.equal(day("25/12", MON), "2026-12-25");
 });
 
+test("counted: only the counted kinds, never a weekday or tomorrow", () => {
+  const c = (w, now = MON) => dateFrom(w, now, { counted: true })?.date ?? null;
+  assert.equal(c("in three days"), "2026-10-22");
+  assert.equal(c("end of the month"), "2026-10-31");
+  assert.equal(c("on the 25th", at(26, 10)), "2026-11-25");
+  assert.equal(c("tomorrow"), null);
+  assert.equal(c("by Friday"), null);
+  assert.equal(c("end of the day"), null);
+  assert.equal(c("on the 25th of October"), null);
+  assert.equal(c("25 December"), null);
+});
+
 test("not a day: null", () => {
   for (const w of ["", "soon", "at 7", "later", "אחרי חצות"]) assert.equal(dateFrom(w, MON), null, w);
 });

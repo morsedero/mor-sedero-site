@@ -46,6 +46,20 @@ test("the words set the day, over the helper's own sum", () => {
   assert.equal(s.actions[0].due, "2026-10-22", "no date from the helper: due");
 });
 
+test("a day with no words from the helper: the counted kinds are read from the message", () => {
+  const OCT26 = new Date(2026, 9, 26, 10).getTime();
+  const read = (now, actions, text) => at(now, () => readAnswer({ actions }, text)).actions;
+  assert.equal(read(OCT26, [{ kind: "update", taskId: "a", due: "2026-10-25" }], "on the 25th")[0].due, "2026-11-25");
+  assert.equal(read(MON, [{ kind: "add", title: "X", due: "2026-10-23" }], "X in three days")[0].due, "2026-10-22");
+  assert.equal(read(MON, [{ kind: "add", title: "X", due: "2026-10-30" }], "send invoices end of the month")[0].due, "2026-10-31");
+  assert.equal(read(MON, [{ kind: "waiting", taskId: "a", checkOn: "2026-10-24" }], "waiting on Dana until the 27th")[0].checkOn, "2026-10-27");
+  // not counted kinds, two dated cards, a month name, or the helper's own words: the helper's day stands
+  assert.equal(read(MON, [{ kind: "add", title: "X", due: "2026-10-22" }], "X by Thursday")[0].due, "2026-10-22");
+  assert.equal(read(MON, [{ kind: "add", title: "X", due: "2026-10-30" }, { kind: "add", title: "Y", due: "2026-10-23" }], "X on the 30th, Y in three days").map((a) => a.due).join(), "2026-10-30,2026-10-23");
+  assert.equal(read(MON, [{ kind: "add", title: "X", due: "2026-12-25" }], "X on the 25th of December")[0].due, "2026-12-25");
+  assert.equal(read(MON, [{ kind: "add", title: "X", when: "tomorrow", due: "2026-10-30" }], "X on the 30th")[0].due, "2026-10-20");
+});
+
 test("tomorrow at 8, said at 03:44: a question, then the chip's answer settles it", () => {
   const night = new Date(2026, 9, 20, 3, 44).getTime();
   const ev = { kind: "event", title: "Call Dana", date: "2026-10-20", time: "08:00", minutes: 60, when: "tomorrow" };

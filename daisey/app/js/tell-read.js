@@ -62,8 +62,18 @@ const label = (ymd, text) => new Date(`${ymd}T12:00`).toLocaleDateString(he(text
 function withDates(actions, text){
   const picked = (String(text).match(/→ ([^)\n]+)\)\s*$/) || [])[1];
   let ask = null;
+  // The helper gave a day but not the words it came from (phrase bank 2026-10-20:
+  // "on the 25th" said on Oct 26 came back as Oct 25, and nothing checked it).
+  // With one such card and no other word-based date, the counted kinds are read
+  // from the message itself: "in 3 days", "the 25th", "end of the month".
+  const bare = actions.filter((a) => !a.when && DATE_FIELDS.some((f) => a[f]));
+  const sentence = String(text).split("\n(")[0];
+  const counted = bare.length === 1 && !actions.some((a) => a.when) ? dateFrom(sentence, Date.now(), { counted: true }) : null;
   const out = actions.flatMap((a) => {
-    if (!a.when) return [a];
+    if (!a.when) {
+      if (counted?.date && a === bare[0]) { const f = DATE_FIELDS.find((k) => a[k]); return [{ ...a, [f]: counted.date }]; }
+      return [a];
+    }
     const { when, ...b } = a;
     const r = dateFrom(when, Date.now(), { timed: b.kind === "event" });
     // words that aren't a day ("later"): an update left with nothing to change goes

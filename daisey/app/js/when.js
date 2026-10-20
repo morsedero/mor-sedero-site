@@ -29,7 +29,9 @@ const pad = (n) => String(n).padStart(2, "0");
 const ymd = (y, m, d) => `${y}-${pad(m)}-${pad(d)}`;
 const daysIn = (y, m) => new Date(y, m, 0).getDate(); // m 1-12
 
-export function dateFrom(words, now = Date.now(), { timed = false } = {}){
+// counted: only the counted kinds ("in 3 days", "the 25th", "end of the month"),
+// for a whole sentence where "tomorrow" or a weekday may be about something else.
+export function dateFrom(words, now = Date.now(), { timed = false, counted = false } = {}){
   const s = ` ${String(words || "").toLowerCase().replace(/[,!?]/g, " ").replace(/\s+/g, " ").trim()} `;
   if (!s.trim()) return null;
   const key = getDayKey(now);
@@ -38,10 +40,12 @@ export function dateFrom(words, now = Date.now(), { timed = false } = {}){
   const on = (n) => ({ date: addDaysTo(key, n) });
   let m;
 
-  if ((m = s.match(/(\d{4})-(\d{2})-(\d{2})/))) return { date: m[0] };
-  if (W("day after tomorrow|מחרתיים").test(s)) return on(2);
-  if (W("tomorrow|tmrw|מחר").test(s)) return timed && lastNight(now) ? { ask: [addDaysTo(key, 1), addDaysTo(key, 2)] } : on(1);
-  if (W("yesterday|אתמול").test(s)) return on(-1);
+  if (!counted) {
+    if ((m = s.match(/(\d{4})-(\d{2})-(\d{2})/))) return { date: m[0] };
+    if (W("day after tomorrow|מחרתיים").test(s)) return on(2);
+    if (W("tomorrow|tmrw|מחר").test(s)) return timed && lastNight(now) ? { ask: [addDaysTo(key, 1), addDaysTo(key, 2)] } : on(1);
+    if (W("yesterday|אתמול").test(s)) return on(-1);
+  }
 
   // in N days / weeks, N weeks from today, a week from today; בעוד N ימים, יומיים, שבוע, שבועיים
   if ((m = s.match(new RegExp(` in ${NUM} (days?|weeks?) `)) || s.match(new RegExp(` ${NUM} (days?|weeks?) from (?:today|now) `)))) {
@@ -55,15 +59,15 @@ export function dateFrom(words, now = Date.now(), { timed = false } = {}){
   }
 
   // ends: the day, the week (Saturday, weights.js), the month
-  if (W("end of (?:the )?day|סוף היום|today|tonight|this evening|היום|הלילה|הערב").test(s)) return on(0);
+  if (!counted && W("end of (?:the )?day|סוף היום|today|tonight|this evening|היום|הלילה|הערב").test(s)) return on(0);
   if (W("end of (?:the |this )?week|סוף השבוע|סוף שבוע").test(s)) return on(6 - wd);
   if (W("end of (?:the |this )?month|סוף החודש").test(s)) return { date: ymd(Y, M, daysIn(Y, M)) };
   // next week, no day: the coming Sunday (the chat prompt's rule)
-  if (W("next week|(?:ה)?שבוע הבא").test(s)) return on((7 - wd) % 7 || 7);
+  if (!counted && W("next week|(?:ה)?שבוע הבא").test(s)) return on((7 - wd) % 7 || 7);
 
   // a weekday: this coming one (today counts); "next" asks, unless it's today's
-  const en = EN_DAYS.findIndex((d) => W(`${d}|${d.slice(0, 3)}`).test(s));
-  const heM = s.match(W(`(?:יום )(${HE_DAYS.join("|")})|(שבת)`));
+  const en = counted ? -1 : EN_DAYS.findIndex((d) => W(`${d}|${d.slice(0, 3)}`).test(s));
+  const heM = counted ? null : s.match(W(`(?:יום )(${HE_DAYS.join("|")})|(שבת)`));
   const want = en >= 0 ? en : heM ? HE_DAYS.indexOf(heM[1] || heM[2]) : -1;
   if (want >= 0) {
     const ahead = (want - wd + 7) % 7;
@@ -73,11 +77,12 @@ export function dateFrom(words, now = Date.now(), { timed = false } = {}){
 
   // a month and day: "Oct 25", "25 October", "25/10", "25.10" → this year, else next
   const mon = MONTHS.findIndex((x) => W(`${x}[a-z]*`).test(s));
+  if (counted && mon >= 0) return null; // "the 25th of October" is not a counted day
   if (mon >= 0 && (m = s.match(/(\d{1,2})(?:st|nd|rd|th)?/))) return nextOf(mon + 1, Number(m[1]), key);
-  if ((m = s.match(/(?<!\d)(\d{1,2})[/.](\d{1,2})(?![\d/.])/))) return nextOf(Number(m[2]), Number(m[1]), key);
+  if (!counted && (m = s.match(/(?<!\d)(\d{1,2})[/.](\d{1,2})(?![\d/.])/))) return nextOf(Number(m[2]), Number(m[1]), key);
 
   // a day of the month: "the 25th", "on the 3rd", "ב-25" → this month, or next if it's gone
-  if ((m = s.match(/(?:the |on |ב-?|^ )(\d{1,2})(?:st|nd|rd|th)?(?: (?:of the month|לחודש))?(?= )/)) && Number(m[1]) >= 1 && Number(m[1]) <= 31) {
+  if ((m = s.match(counted ? /(?:the |on |ב-?)(\d{1,2})(?:st|nd|rd|th)?(?: (?:of the month|לחודש))?(?= )/ : /(?:the |on |ב-?|^ )(\d{1,2})(?:st|nd|rd|th)?(?: (?:of the month|לחודש))?(?= )/)) && Number(m[1]) >= 1 && Number(m[1]) <= 31) {
     const d = Number(m[1]);
     if (d >= D && d <= daysIn(Y, M)) return { date: ymd(Y, M, d) };
     const [y2, m2] = M === 12 ? [Y + 1, 1] : [Y, M + 1];
