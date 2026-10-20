@@ -2,7 +2,8 @@
 // thin line under the clock on the phone's home, from the day's start to its
 // end. What's done sits on it as small raised beads in their colour, what
 // the plan still holds as hollow rings, the calendar's events as the line itself in their colour,
-// and now as a yellow dot. Above it "✓ 3 done · ○ 2 left" and "until 23:00";
+// and now as a yellow dot. Above it "✓ 3 done · ○ 2 left" (the "until 23:00"
+// day end went, Mor 2026-10-20: at a 00:00 end it said nothing);
 // with no plan, the plan's button sits under the line. A bead opens a small
 // pop-over with what it was. schedule.js works out the day (shape()), this
 // only draws it.
@@ -118,8 +119,7 @@ export function mountRibbon(el, { onPlan } = {}){
     const top = h("div", { className: "rb-top" },
       h("span", { className: "rb-counts" },
         done.length > 0 && h("button", { type: "button", className: "rb-done" + (group(open) === "d" ? " on" : ""), ariaExpanded: String(group(open) === "d"), onclick: pick("all:d") }, icon("check"), `${done.length} done`),
-        planned && left.length > 0 && h("button", { type: "button", className: "rb-left" + (group(open) === "l" ? " on" : ""), ariaExpanded: String(group(open) === "l"), onclick: pick("all:l") }, ring(), `${left.length} left`)),
-      h("span", { className: "rb-until", textContent: `until ${hm(data.end)}` }));
+        planned && left.length > 0 && h("button", { type: "button", className: "rb-left" + (group(open) === "l" ? " on" : ""), ariaExpanded: String(group(open) === "l"), onclick: pick("all:l") }, ring(), `${left.length} left`)));
     const line = h("div", { className: "rb-line" },
       h("span", { className: "rb-track", ariaHidden: "true" }),
       h("span", { className: "rb-past", ariaHidden: "true", style: `inline-size:${pct(data.now)}` }),
