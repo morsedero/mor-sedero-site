@@ -660,15 +660,9 @@ export const skipSnapshot = (task) => ({
   progress: task.progress ?? 0, size: task.size ?? null, // …and the toast's "Left ≈30 min" (leftPatch)
 });
 
-// Focus mode. Starting clears the stale-skip count: a task you actually
-// start isn't one you keep refusing. workedAt is real work only — not an
-// edit or a skip, which also move touchedAt — and is what momentum reads.
-export const startedTask = (task, { now = Date.now() } = {}) =>
-  ({ starts: (task.starts || 0) + 1, skipsSinceStart: 0, pushes: 0, touchedAt: now, workedAt: now });
-
 // Pushed on to a later day (Later → Tomorrow / This week, the wrap's "Move to
 // tomorrow", the sweep's "Move to …"): counted, so a task that keeps sliding
-// gets asked about (weights PUSHES_ASK). Starting it clears the count.
+// gets asked about (weights PUSHES_ASK).
 // A day moved drops its hour: "tomorrow" means any time tomorrow.
 export const pushedTo = (task, fields, { now = Date.now() } = {}) => ({
   ...("notBefore" in fields ? { startTime: null } : {}), ...("due" in fields ? { dueTime: null } : {}),
@@ -705,22 +699,6 @@ export function againInput(task, period, { now = Date.now() } = {}){
     links: task.links || null, notes: task.notes || null,
     due, dueTime: due ? task.dueTime || null : null, dateKind: due ? task.dateKind : null, notBefore, again: period,
   };
-}
-
-// Leaving focus mode: the real minutes always count, whether or not the
-// task is finished. `finished` completes it; otherwise it stays open and
-// the stop is recorded (two stops → Daisey offers to split it, session 10).
-// Cancel after real work: the minutes count, the stop doesn't — changing
-// your mind isn't a sign the task is too big.
-export const keptTime = (task, minutes, { now = Date.now() } = {}) =>
-  ({ spentMinutes: (task.spentMinutes || 0) + Math.max(0, Math.round(minutes)), touchedAt: now, workedAt: now });
-
-export function workedTask(task, minutes, { finished = false, now = Date.now() } = {}){
-  const spent = (task.spentMinutes || 0) + Math.max(0, Math.round(minutes));
-  if (finished && cleanRoutine(task.routine)) return { ...completeTask(task, { now, minutes: spent }), workedAt: now };
-  return finished
-    ? { ...completeTask(task, { now }), spentMinutes: spent, workedAt: now }
-    : { spentMinutes: spent, stopsUnfinished: (task.stopsUnfinished || 0) + 1, touchedAt: now, workedAt: now };
 }
 
 // What a task still needs: its size less the time already worked on it,

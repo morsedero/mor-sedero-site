@@ -77,8 +77,8 @@ const count = (n) => (n === 1 ? "1 task" : `${n} tasks`);
 
 // The plan in a sentence or two, or null when there's none to tell (dismissed
 // today, or nothing to propose). Clock times only when the calendar was read.
-function planLine({ tasks, events, now, tz, today, dayStart, dayEnd, dayplan, run }) {
-  const ctx = { tasks, events: events || [], now, hours: { start: dayStart, end: dayEnd }, run };
+function planLine({ tasks, events, now, tz, today, dayStart, dayEnd, dayplan }) {
+  const ctx = { tasks, events: events || [], now, hours: { start: dayStart, end: dayEnd } };
   const at = (ms) => (events ? ` at ${clock(ms, tz)}` : "");
   const saved = dayplan?.date === today ? dayplan : null;
   if (saved?.status === "dismissed") return null;
@@ -107,10 +107,10 @@ function planLine({ tasks, events, now, tz, today, dayStart, dayEnd, dayplan, ru
 // the calendar can't be read (then no free time is claimed). dayStart/dayEnd:
 // minutes after midnight. needs: how many Needs you questions are waiting.
 // dayplan: the saved plan (store.watchDayPlan's { date, status, items }) or
-// null. run: the running task (state/now) or null.
+// null.
 // Returns { title, body, today }.
 export function brief({ tasks = [], events = null, now = Date.now(), tz = Intl.DateTimeFormat().resolvedOptions().timeZone,
-  dayStart = 480, dayEnd = 1320, needs = 0, title = null, dayplan = null, run = null } = {}) {
+  dayStart = 480, dayEnd = 1320, needs = 0, title = null, dayplan = null } = {}) {
   const { date: today, minutes: nowMin } = localParts(now, tz);
   // "Send the brief now" can fire at any hour, so greet by the clock.
   title ??= nowMin < 720 ? "Good morning" : nowMin < 1080 ? "Good afternoon" : "Good evening";
@@ -124,7 +124,7 @@ export function brief({ tasks = [], events = null, now = Date.now(), tz = Intl.D
 
   const parts = [];
   if (free != null) parts.push(free > 0 ? `${durText(free)} free today.` : "No free time today.");
-  const plan = planLine({ tasks, events, now, tz, today, dayStart, dayEnd, dayplan, run });
+  const plan = planLine({ tasks, events, now, tz, today, dayStart, dayEnd, dayplan });
   if (!open.length) parts.push("Nothing due today.");
   else if (plan) parts.push(`${open.length} open today.`);
   else if (free != null) parts.push(`${open.length} open, about ${fit} fit.`);

@@ -3,7 +3,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 process.env.TZ = "Asia/Jerusalem";
 const R = await import("../../app/js/routine.js");
-const { createTask, completeTask, workedTask, editTask, doneSnapshot } = await import("../../app/js/model.js");
+const { createTask, completeTask, editTask, doneSnapshot } = await import("../../app/js/model.js");
 const { rank } = await import("../../app/js/engine.js");
 
 // Thursday 2026-10-08; its week runs Sunday 10-04 to Saturday 10-10.
@@ -39,12 +39,6 @@ test("the week met: off till Sunday; a missed week isn't carried", () => {
   const p = completeTask(t, { now: THU });
   assert.equal(p.notBefore, "2026-10-11");
   assert.equal(R.doneThisWeek({ ...t, ...p }, "2026-10-11"), 0);
-});
-
-test("timed session: minutes go in the log, spent time resets", () => {
-  const p = workedTask(gym({ spentMinutes: 10 }), 40, { finished: true, now: THU });
-  assert.equal(p.spentMinutes, 0);
-  assert.equal(p.routine.log[0].min, 50);
 });
 
 test("past until: finished for good", () => {

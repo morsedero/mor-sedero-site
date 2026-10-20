@@ -18,7 +18,7 @@
 //   meeting a calendar event starts in rec.meetingLead minutes (menu, default
 //           10; Mor, 2026-10-08: "didn't send a notification before a
 //           meeting"). Every timed busy event that isn't a task's own slot
-//           (booked covers those). Comes even while a task runs, and from
+//           (booked covers those). Comes from
 //           the lead before the day starts, so a meeting at 08:00 still gets
 //           its reminder.
 //   miss    a free slot passed with nothing started (app/js/miss.js): the
@@ -30,13 +30,9 @@
 //           suggestion, and not when the calendar can't be read (a meeting
 //           would look like idle time).
 //
-// Reality over plan (app/js/reality.js, 2026-10-06): the snapshot carries
-// the running task, and what you're actually doing beats the calendar.
-//   - While a task runs (or is paused, still your focus), nothing competes
-//     with it: no gap or booked-slot suggestion, the brief and the wrap
-//     wait for it to end, a people alert only comes in the last
-//     PEOPLE_FOCUS minutes before the meeting.
-//   - An event you worked through (a task started or finished during it)
+// Reality over plan (app/js/reality.js, 2026-10-06): what you're actually
+// doing beats the calendar.
+//   - An event you worked through (work logged during it)
 //     isn't busy: it doesn't hold back the brief and its end isn't a gap.
 //   - gap and booked name one task, so they carry its id: the notification
 //     gets a "Start task" button (sw.js). They expire quickly (ttl), so a
@@ -57,8 +53,8 @@ const { localDate, notYet, durText } = require("../../app/js/model.js");
 const { effectiveDue } = require("../../app/js/triage.js");
 const { waitingFor, personOf } = require("../../app/js/nudge.js");
 const { EVENT_BUFFER } = require("../../app/js/weights.js");
-const { runState, overruled, eventKey } = require("../../app/js/reality.js");
-const { missState, silenceText, lastActivity } = require("../../app/js/miss.js");
+const { overruled, eventKey } = require("../../app/js/reality.js");
+const { missState, silenceText, planActivity } = require("../../app/js/miss.js");
 const { nextPlanned } = require("../../app/js/proposal.js");
 const { MISS } = require("../../app/js/weights.js");
 const { timeline } = require("../../app/js/proposal.js");
@@ -70,7 +66,6 @@ const GAP_LOOKBACK = 10; // an event that ended this recently opens a gap
 const GAP_MIN = 30; // free minutes worth a nudge
 const BOOKED_EARLY = 3, BOOKED_LATE = 10; // minutes around a slot's start
 const PEOPLE_BEFORE = 45; // minutes before the meeting
-const PEOPLE_FOCUS = 15; // ...or this close, while a task is running
 const MEETING_LEAD = 10; // minutes before a meeting, unless the menu says otherwise
 const GAP_TTL = 30 * 60, BOOKED_TTL = 15 * 60; // seconds a suggestion stays worth delivering
 const MISS_TTL = 30 * 60, SILENCE_TTL = 60 * 60;
@@ -109,19 +104,18 @@ function decide(rec, events, now = Date.now()) {
   }
 
   if (minutes < start || minutes >= end) return { out, patch };
-  const focus = runState(rec.run, tasks, now); // "running" | "paused" | null
-  const over = overruled(evs, { tasks, run: rec.run, now });
+  const over = overruled(evs, { tasks, now });
   const busy = evs.filter((e) => isBusy(e) && !over.has(eventKey(e)));
   const current = busy.find((e) => Date.parse(e.start) <= now && now < Date.parse(e.end)) || null;
 
-  if (types.brief && rec.sentOn !== date && minutes < start + BRIEF_WINDOW && !current && !focus) {
+  if (types.brief && rec.sentOn !== date && minutes < start + BRIEF_WINDOW && !current) {
     const needs = collectNeeds({ tasks, events: evs, calOk: !!events, settings: rec.settings || {}, now }).length;
-    const b = brief({ tasks, events, now, tz, dayStart: start, dayEnd: end, needs, dayplan: rec.dayplan || null, run: rec.run || null });
+    const b = brief({ tasks, events, now, tz, dayStart: start, dayEnd: end, needs, dayplan: rec.dayplan || null });
     out.push({ type: "brief", title: b.title, body: b.body, tag: `brief-${date}`, url: "./" });
     patch.sentOn = date;
   }
 
-  if (types.wrap && rec.wrapOn !== date && minutes >= end - WRAP_BEFORE && !current && !focus) {
+  if (types.wrap && rec.wrapOn !== date && minutes >= end - WRAP_BEFORE && !current) {
     patch.wrapOn = date;
     const done = tasks.filter((t) => t.status === "done" && t.doneAt && dayParts(t.doneAt, tz, end).date === date).length;
     const open = tasks.filter((t) => t.status === "ready" && t.due && !notYet(t, now) && effectiveDue(t, now) <= date);
@@ -145,9 +139,7 @@ function decide(rec, events, now = Date.now()) {
       const until = Math.min(next ? Date.parse(next.start) : Infinity, zoned(date, end, tz));
       // Room before the next event, as the Now card leaves it (EVENT_BUFFER).
       const free = Math.floor((until - now) / MIN) - (next && Date.parse(next.start) <= until ? EVENT_BUFFER : 0);
-      // Already on something: the gap is spoken for. Still marked as
-      // handled above, so it doesn't arrive late once the task ends.
-      if (free >= GAP_MIN && !focus) {
+      if (free >= GAP_MIN) {
         const r = rank(tasks, {
           now, window: free, nextEvent: next && localDate(Date.parse(next.start)) === date ? next.title : null,
           ...workBase(tasks, now),
@@ -167,7 +159,6 @@ function decide(rec, events, now = Date.now()) {
       const k = `${id}|${b.start}`;
       if (sent.has(k) || b.start > now + BOOKED_EARLY * MIN || b.start <= now - BOOKED_LATE * MIN) continue;
       sent.add(k);
-      if (focus) continue; // you're on something else (or on this): the plan yields
       const t = tasks.find((x) => x.id === id);
       out.push({ type: "booked", title: "Starts now", body: `${t?.title || b.title}, booked ${clockIn(b.start, tz)}–${clockIn(b.end, tz)}.`, tag: `booked-${k}`, url: "./",
         ...(t && t.status === "ready" ? { taskId: id } : {}), ttl: BOOKED_TTL });
@@ -178,9 +169,9 @@ function decide(rec, events, now = Date.now()) {
   // The plan's next task, its time come and nothing started: ask now, not
   // once it counts as a miss. Not when Daisey is on screen (the card asks).
   const dp = rec.dayplan?.date === date && rec.dayplan.status === "approved" ? rec.dayplan : null;
-  if (types.booked && events && dp && !focus && !current && !out.some((m) => m.type === "gap" || m.type === "booked")) {
+  if (types.booked && events && dp && !current && !out.some((m) => m.type === "gap" || m.type === "booked")) {
     const planAt = rec.plan?.date === date ? rec.plan.at || 0 : 0;
-    const late = timeline(dp.items || [], { tasks, events: evs, now, hours: { start, end }, run: rec.run, since: lastActivity(tasks, rec.run, planAt) }).late;
+    const late = timeline(dp.items || [], { tasks, events: evs, now, hours: { start, end }, since: planActivity(tasks, planAt) }).late;
     const k = late && `plan|${late.taskId}|${late.start}`, sent = new Set(rec.planSent || []);
     if (late && now - late.start <= BOOKED_LATE * MIN && !sent.has(k)) {
       sent.add(k); patch.planSent = [...sent].slice(-20);
@@ -193,7 +184,7 @@ function decide(rec, events, now = Date.now()) {
 
   if (types.miss && events && !out.some((m) => m.type === "gap" || m.type === "booked")) {
     const planAt = rec.plan?.date === date ? rec.plan.at || 0 : 0;
-    const st = missState({ tasks, events: evs, run: rec.run, now, hours: { start, end }, planAt, silenceOn: rec.settings?.silenceOn || null });
+    const st = missState({ tasks, events: evs, now, hours: { start, end }, planAt, silenceOn: rec.settings?.silenceOn || null });
     const sent = new Set(rec.missSent || []);
     if (st && !sent.has(st.key)) {
       sent.add(st.key);
@@ -209,7 +200,7 @@ function decide(rec, events, now = Date.now()) {
     const sent = new Set(rec.peopleSent || []);
     for (const e of busy) {
       const s = Date.parse(e.start), k = evKey(e);
-      if (s <= now || s - now > (focus ? PEOPLE_FOCUS : PEOPLE_BEFORE) * MIN || sent.has(k)) continue;
+      if (s <= now || s - now > PEOPLE_BEFORE * MIN || sent.has(k)) continue;
       const hits = waitingFor(e.title, tasks);
       if (!hits.length) continue;
       sent.add(k);

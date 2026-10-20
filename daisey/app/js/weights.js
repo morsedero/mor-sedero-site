@@ -147,22 +147,6 @@ export const LIGHTER = { each: 30 };
 // "not now" means something, short enough that it comes back the same day.
 export const LATER_MINUTES = 120;
 
-// Cancel in focus mode: under this many minutes it was a mis-tap and nothing
-// is saved; from here on the minutes were real work and are kept (never
-// counted as a stop either way). Mor, 2026-10-05.
-export const CANCEL_KEEP_MINUTES = 2;
-
-// A forgotten timer (focus.js runCap): past FACTOR × the planned time, and at
-// least EXTRA minutes over it, focus mode asks "Still on it?", and Done or
-// Stop book no more than that cap unless the answer was yes. Without it, a
-// Start left running overnight booked 14 h to the task, the calendar log and
-// every later size guess for similar tasks.
-export const RUN_ASK = { factor: 2, extra: 30 };
-// A paused run still counts as your focus for this long (reality.js
-// runState): no competing suggestions while you stepped away. Past it, it's a
-// forgotten pause, not a signal.
-export const RUN_PAUSE_STALE = 180;
-
 // Something else
 export const ALTERNATIVES = 3;
 export const VARIETY_WITHIN = 15; // points; prefer another area if it scores this close

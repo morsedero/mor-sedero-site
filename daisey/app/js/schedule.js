@@ -20,7 +20,7 @@
 // One day at a time (Mor, 2026-10-06: the whole week stacked vertically was
 // crowded and confusing), or the week as a grid — see "Day or Week" below.
 import { watchCalendar, connectCalendar, fetchRange, landedAgo } from "./calendar.js";
-import { watchSettings, watchTasks, watchRun, watchDayPlan } from "./store.js";
+import { watchSettings, watchTasks, watchDayPlan } from "./store.js";
 import { timeline } from "./proposal.js";
 import { planActivity } from "./miss.js";
 import { areaClass, watchProjectColors } from "./look.js";
@@ -133,7 +133,7 @@ function lanes(items){
 export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onMissed, onProjects, onWeek, onDay, onNow, onPlan, onShape, mode = "home" } = {}){
   let cal = { status: "loading", events: [] };
   let settings = {};
-  let tasks = null, run = null; // for Plan my day
+  let tasks = null; // for Plan my day
   let dayPlan = null; // today's saved plan doc; approved, it sits in today's gaps
   const view = mode === "week" ? "week" : "day";
   const HOUR_PX = mode === "week" ? 60 : 44; // week grid: one hour's height
@@ -365,7 +365,7 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onMissed, onPro
     if (dayPlan?.status !== "approved" || dayPlan.date !== planDate(now, hrs) || !tasks) return [];
     // Held like the Now card's (proposal.timeline since): a task you haven't
     // started stays at its time, it doesn't slide with the clock.
-    const tl = timeline(dayPlan.items || [], { tasks, events, now, hours: hrs, run, since: planActivity(tasks, run, dayPlan.approvedAt || 0) });
+    const tl = timeline(dayPlan.items || [], { tasks, events, now, hours: hrs, since: planActivity(tasks, dayPlan.approvedAt || 0) });
     noRoom = tl.over.map((o) => ({ kind: "noroom", task: o.task, why: o.why }));
     return [...tl.rows.map((r) => ({ kind: "plan", start: r.start, end: r.end, task: r.task, missed: !!r.missed, of: r.of, minutes: r.minutes })),
       ...tl.breaks.map((b) => ({ kind: "break", start: b.start, end: b.end, type: b.type, name: b.name }))];
@@ -560,7 +560,6 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onMissed, onPro
     watchCalendar((c) => { cal = c; extra.dirty = true; render(); }),
     watchSettings(uid, (s) => { settings = s || {}; render(); }, fail),
     watchTasks(uid, (ts) => { tasks = ts; render(); }, fail),
-    watchRun(uid, (r) => { run = r; render(); }, fail),
     watchProjectColors(() => render()),
     watchDayPlan(uid, (d) => { dayPlan = d || null; render(); }, fail),
   ];

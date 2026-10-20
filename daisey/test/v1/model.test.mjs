@@ -193,22 +193,6 @@ test("skip lesson: Too big allows pieces, Not here hides it where you are; Undo 
   assert.equal({ ...t, ...big, ...before }.canSplit, false);
 });
 
-test("focus mode: starting counts a start and clears the stale-skip count", () => {
-  const t = { ...M.createTask({ title: "x" }, opts), starts: 1, skipsSinceStart: 3 };
-  assert.deepEqual(M.startedTask(t, opts), { starts: 2, skipsSinceStart: 0, pushes: 0, touchedAt: NOW, workedAt: NOW });
-});
-
-test("focus mode: real minutes always count; finishing completes, stopping is recorded", () => {
-  const t = { ...M.createTask({ title: "x" }, opts), spentMinutes: 10, stopsUnfinished: 1 };
-  const more = M.workedTask(t, 12.4, opts);
-  assert.deepEqual(more, { spentMinutes: 22, stopsUnfinished: 2, touchedAt: NOW, workedAt: NOW });
-  const done = M.workedTask(t, 12.6, { ...opts, finished: true });
-  assert.equal(done.spentMinutes, 23);
-  assert.equal(done.status, "done");
-  assert.equal(done.stopsUnfinished, undefined); // finishing isn't a stop
-  assert.equal(M.workedTask(t, -5, opts).spentMinutes, 10); // a clock skew never takes time away
-});
-
 test("edit: only changed fields, user values stop being guesses", () => {
   const t = { id: "a", ...M.createTask({ title: "thing" }, opts) };
   assert.deepEqual(M.editTask(t, { title: "thing" }, opts), {});
@@ -375,11 +359,6 @@ test("migrate: a size the user set survives (any but the old flat 30)", () => {
 });
 
 function pick(g){ return { type: g.type, where: g.where, openHours: g.openHours, size: g.size }; }
-
-test("cancel after real work: minutes kept, no stop counted", () => {
-  const t = { spentMinutes: 10, stopsUnfinished: 1 };
-  assert.deepEqual(M.keptTime(t, 7.4, { now: 5 }), { spentMinutes: 17, touchedAt: 5, workedAt: 5 });
-});
 
 // ---------- layout round 2 (2026-10-05): steps, links, Pending's check date ----------
 

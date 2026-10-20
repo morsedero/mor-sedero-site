@@ -9,12 +9,11 @@ const il = (h, m = 0) => new Date(at(h, m)).toISOString();
 const t = (o) => ({ id: o.id || String(Math.random()), title: "Task", status: "ready", type: "deep", due: "2026-10-07", dateKind: "target", size: 30, spentMinutes: 0, createdAt: at(0), ...o });
 const ev = (title, s, e) => ({ id: title, title, start: il(...s), end: il(...e), busy: true });
 
-test("proposes open tasks once each, never the running one, within the free time", () => {
+test("proposes open tasks once each, within the free time", () => {
   const tasks = [t({ id: "a", size: 60 }), t({ id: "b", size: 30 }), t({ id: "c", size: 45 }), t({ id: "w", status: "waiting" }), t({ id: "h", onHold: { who: "Yuval", since: 1 } })];
-  const run = { taskId: "c", startedAt: at(9) };
-  const items = proposeDay({ tasks, events: [], now: at(9), run });
+  const items = proposeDay({ tasks, events: [], now: at(9) });
   const ids = items.map((i) => i.taskId);
-  assert.deepEqual([...ids].sort(), ["a", "b"]);
+  assert.deepEqual([...ids].sort(), ["a", "b", "c"]);
   assert.equal(new Set(ids).size, ids.length);
 });
 
@@ -163,8 +162,6 @@ test("refit: when the day shrinks, what matters least goes, not what's last; the
   assert.equal(refit(items, roomy).items, items);
   // Put back with Undo: never cut again, even when it means something else goes.
   assert.deepEqual(refit(items, ctx, ["a"]).cut, ["b"]);
-  // The running task never goes.
-  assert.ok(!refit(items, { ...ctx, run: { taskId: "a", startedAt: at(9) } }).cut.includes("a"));
 });
 
 test("topUp: when the day opens up, fresh picks go on the end; what's there stays in order and in today", () => {
@@ -179,9 +176,9 @@ test("topUp: when the day opens up, fresh picks go on the end; what's there stay
   // A full day adds nothing and hands the same list back.
   const full = topUp(items, { tasks, events: [ev("Gig", [21], [22])], now: at(19, 30) });
   assert.deepEqual(full, { items, added: [] });
-  // skip (taken off with Undo) never comes back; the running task never goes in.
-  const r = topUp(items, { tasks, events: [], now: at(9), run: { taskId: "d", startedAt: at(9) } }, ["c"]);
-  assert.deepEqual(r.added, []);
+  // skip (taken off with Undo) never comes back.
+  const r = topUp(items, { tasks, events: [], now: at(9) }, ["c"]);
+  assert.ok(!r.added.includes("c"));
 });
 
 test("topUp after Later → Tomorrow (now.js fillFreed): the task's freed hour takes a fresh pick, the task itself never", () => {
@@ -222,9 +219,6 @@ test("held plan: the next task's start doesn't slide while you're idle", () => {
   assert.equal(timeline(items, { ...ctx, since: undefined, now: at(9, 17) }).rows[0].start, at(9, 20));
   // Something done since: from then again.
   assert.equal(timeline(items, { ...ctx, since: at(9, 16), now: at(9, 17) }).late, undefined);
-  // A task running: follows the clock.
-  const run = { taskId: "b", startedAt: at(9, 10) };
-  assert.equal(timeline(items, { ...ctx, run, now: at(9, 17) }).late, undefined);
   // In 10 min: not before its at, late again once that passes.
   const later = [{ ...items[0], at: at(9, 30) }, items[1]];
   assert.equal(timeline(later, { ...ctx, since: at(9, 20), now: at(9, 21) }).rows[0].start, at(9, 30));

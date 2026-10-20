@@ -9,8 +9,6 @@
 // morningBrief, on any device) the app sends it a snapshot of the open tasks
 // (and those done in the last two days) whenever they change: the fields the
 // engine scores on, and who a Pending task waits on — never notes, links or steps.
-// The running task (state/now) goes with it: the server holds back anything
-// that would compete with what you're actually doing (reality.js).
 import { idToken } from "./firebase.js";
 
 const URL_ = "/.netlify/functions/daisey-now-push";
@@ -74,9 +72,8 @@ const FIELDS = ["id", "title", "project", "area", "type", "where", "laptop", "op
   "notBefore", "startTime", "checkOn", "size", "spentMinutes", "starts", "skipsSinceStart", "skipCount", "pushes", "createdAt", "touchedAt", "workedAt",
   "doneAt", "canSplit", "notAt", "waitingOn", "again"];
 const RECENT = 2 * 864e5;
-const RUN_FIELDS = ["taskId", "startedAt", "pausedAt", "extra", "batch", "done"];
 // plan: today's approved plan (state/dayplan), or anything else for none.
-export function syncSnapshot(tasks, settings, hours, run = null, plan = null){
+export function syncSnapshot(tasks, settings, hours, plan = null){
   const now = Date.now();
   const list = (tasks || []).filter((t) => ["ready", "waiting", "someday"].includes(t.status) || (t.status === "done" && now - (t.doneAt || 0) < RECENT))
     .map((t) => Object.fromEntries(FIELDS.filter((k) => t[k] != null).map((k) => [k, t[k]])));
@@ -87,8 +84,7 @@ export function syncSnapshot(tasks, settings, hours, run = null, plan = null){
     plan: plan?.status === "approved" && plan.date ? { date: plan.date, at: plan.approvedAt || 0, ids: (plan.items || []).filter((it) => it.taskId).map((it) => it.taskId) } : null,
     // The whole saved plan, any status, for the brief (brief.js planLine).
     dayplan: plan?.date ? { date: plan.date, status: plan.status, items: (plan.items || []).map((it) => (it.brk ? { brk: it.brk, minutes: it.minutes, ...(it.name ? { name: it.name } : {}) } : { taskId: it.taskId, minutes: it.minutes, ...(it.at ? { at: it.at } : {}) })) } : null,
-    notify: s.notify || {}, meetingLead: s.meetingLead ?? null,
-    run: run ? Object.fromEntries(RUN_FIELDS.filter((k) => run[k] != null).map((k) => [k, run[k]])) : null };
+    notify: s.notify || {}, meetingLead: s.meetingLead ?? null };
   const mark = JSON.stringify(body);
   if (mark === lastSent) return;
   clearTimeout(timer);

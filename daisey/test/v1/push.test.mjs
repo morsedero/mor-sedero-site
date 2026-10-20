@@ -172,8 +172,8 @@ test("decide: meeting reminder at its lead, once, before the day too; never a ta
   assert.equal(N.decide(r, [{ ...ev, allDay: true }], at(13, 52)).out.length, 0);
   const slot = { id: "s1", title: "Mix review", start: il(14), end: il(15), busy: true };
   assert.equal(N.decide(rec({ sentOn: "2026-10-06", tasks: [t({ id: "mix", title: "Mix review" })] }), [slot], at(13, 52)).out.length, 0);
-  // While a task runs it still comes: a meeting is a commitment.
-  const run = rec({ sentOn: "2026-10-06", tasks: [t({ id: "w" })], run: { taskId: "w", startedAt: at(13) } });
+  // A meeting is a commitment: its reminder comes.
+  const run = rec({ sentOn: "2026-10-06", tasks: [t({ id: "w" })] });
   assert.ok(types(N.decide(run, [ev], at(13, 52)).out).includes("meeting"));
 });
 
@@ -212,6 +212,5 @@ test("decide: the approved plan's next task, its time come with nothing started,
   const m = d.out.find((x) => x.title === "Time for Write intro");
   assert.ok(m && m.taskId === "a" && /09:05/.test(m.body));
   assert.equal(N.decide(r({ planSent: d.patch.planSent }), [], at(9, 8)).out.filter((x) => x.taskId === "a").length, 0); // once
-  assert.equal(N.decide(r({ run: { taskId: "b", startedAt: at(9, 4) } }), [], at(9, 6)).out.filter((x) => x.taskId === "a").length, 0); // busy on b
   assert.equal(N.decide(r({ notify: { miss: false, booked: false } }), [], at(9, 6)).out.length, 0); // "Task starts" off
 });

@@ -14,7 +14,7 @@ const t = (o) => ({ title: "Task", status: "ready", type: "deep", area: "work", 
 const ev = (title, s, e) => ({ id: title, title, start: il(...s), end: il(...e), busy: true, updated: il(0) });
 // What now.js does on Approve: the items, when, and what had No room then.
 const approve = (items, ctx) => ({ date: "2026-10-12", status: "approved", items, approvedAt: ctx.now, unfit: timeline(items, ctx).over.map((o) => o.taskId) });
-const status = (plan, ctx) => planStatus(plan, ctx, lastActivity(ctx.tasks, null, plan.approvedAt));
+const status = (plan, ctx) => planStatus(plan, ctx, lastActivity(ctx.tasks, plan.approvedAt));
 
 test("(a) approved 3 min before the first slot: not late, not slipped, up to the slot and at it", () => {
   const tasks = [t({ id: "a" }), t({ id: "b" })];
@@ -48,7 +48,7 @@ test("(b) a plan with a No-room task: counted out, never a slip", () => {
   assert.deepEqual(planProgress(plan, tasks, st.unfit), { done: 0, total: 2 });
   // Five minutes in, a is under way: still nothing behind.
   const started = tasks.map((x) => (x.id === "a" ? { ...x, touchedAt: at(9, 1) } : x));
-  assert.equal(planStatus(plan, { ...ctx, tasks: started, now: at(9, 5), run: { taskId: "a", startedAt: at(9, 1) } }, at(9, 1)).behind, false);
+  assert.equal(planStatus(plan, { ...ctx, tasks: started, now: at(9, 5) }, at(9, 1)).behind, false);
   // A plan saved before unfit was kept: worked out from its approval time.
   const { unfit, ...old } = plan;
   assert.deepEqual(unfitOf(old, { ...ctx, now: at(9, 30) }), ["c"]);
@@ -66,7 +66,7 @@ test("(c) Done on the first task: the rest is laid again from now", () => {
   // a done early, at 09:12.
   const done = tasks.map((x) => (x.id === "a" ? { ...x, status: "done", doneAt: at(9, 12), touchedAt: at(9, 12) } : x));
   const ctx = { tasks: done, events: [], now: at(9, 12) };
-  const since = lastActivity(done, null, plan.approvedAt);
+  const since = lastActivity(done, plan.approvedAt);
   const after = timeline(items, { ...ctx, since }).rows.map((r) => [r.taskId, r.start]);
   assert.deepEqual(after, [["b", at(9, 15)], ["c", at(9, 45)]]);
   const st = planStatus(plan, ctx, since);
@@ -74,7 +74,7 @@ test("(c) Done on the first task: the rest is laid again from now", () => {
   assert.deepEqual(planProgress(plan, done, st.unfit), { done: 1, total: 3 });
   // a done late, at 09:40: b and c move later, from then, and nothing is "missed".
   const late = tasks.map((x) => (x.id === "a" ? { ...x, status: "done", doneAt: at(9, 40), touchedAt: at(9, 40) } : x));
-  const ctx2 = { tasks: late, events: [], now: at(9, 40) }, since2 = lastActivity(late, null, plan.approvedAt);
+  const ctx2 = { tasks: late, events: [], now: at(9, 40) }, since2 = lastActivity(late, plan.approvedAt);
   assert.deepEqual(timeline(items, { ...ctx2, since: since2 }).rows.map((r) => [r.taskId, r.start]), [["b", at(9, 40)], ["c", at(10, 10)]]);
   assert.equal(planStatus(plan, ctx2, since2).behind, false);
 });
@@ -88,14 +88,14 @@ test("(d) An edit doesn't move the plan; a switch or Done still does", () => {
   const plan = approve(items, { tasks, events: [], now: at(10, 50) });
   const now = at(13);
   const edited = tasks.map((x) => (x.id === "b" ? { ...x, ...editTask(x, { title: "Renamed" }, { now }) } : x));
-  const since = planActivity(edited, null, plan.approvedAt);
+  const since = planActivity(edited, plan.approvedAt);
   assert.equal(since, plan.approvedAt);
   const tl = timeline(items, { tasks: edited, events: [], now, since });
   assert.deepEqual(tl.missed, ["a", "b", "c"]);
-  assert.ok(lastActivity(edited, null, plan.approvedAt) === now); // the silence check still sees it
+  assert.ok(lastActivity(edited, plan.approvedAt) === now); // the silence check still sees it
   // A touch that isn't an edit (Switch, Later, skip) still counts.
   const switched = edited.map((x) => (x.id === "c" ? { ...x, touchedAt: now } : x));
-  assert.equal(planActivity(switched, null, plan.approvedAt), now);
+  assert.equal(planActivity(switched, plan.approvedAt), now);
 });
 
 test("(z) first item put off till later: the rest holds its times, it doesn't slide with the clock", () => {

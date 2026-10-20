@@ -23,11 +23,8 @@ test("a task is planned once, a window that's too short is dropped, the evening 
   assert.equal(new Set(ids).size, ids.length);
 });
 
-test("a running task is left out of the plan; a meeting you worked through isn't busy", () => {
-  const a = t({ id: "a", title: "A", size: 60 }), b = t({ id: "b", title: "B", size: 30 });
-  const run = { taskId: "a", startedAt: at(9, 30), extra: 0 };
-  const plan = planDay({ tasks: [a, b], events: [], now: at(10), run });
-  assert.equal(plan.flatMap((p) => p.picks).some((k) => k.task.id === "a"), false);
+test("a meeting you worked through isn't busy", () => {
+  const b = t({ id: "b", title: "B", size: 30 });
   const meet = ev("Meeting", [9], [11]);
   const worked = planDay({ tasks: [t({ id: "w", workedAt: at(9, 30) }), b], events: [meet], now: at(10) });
   assert.equal(worked[0].key, "morning"); // 10:00-12:00 is free again

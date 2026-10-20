@@ -19,7 +19,7 @@ import { createEvent, watchCalendar } from "./calendar.js";
 import { planDay } from "./plan.js";
 import { planView } from "./plan-view.js";
 import { dayHours, dayStartAt, usualHours, answerDate } from "./day.js";
-import { watchSettings, watchRun, saveSettings } from "./store.js";
+import { watchSettings, saveSettings } from "./store.js";
 import { rank } from "./engine.js";
 import { workBase } from "./context.js";
 import { effectiveDue } from "./triage.js";
@@ -80,8 +80,8 @@ export function mountTell(form, input, mic, uid, { openAdd, openTask, nowCard = 
   let busy = false;
   let onScreen = []; // the cards showing, not applied yet: what a correction is about
   let lastDone = null; // { id, before }: the last Done made from this bar, for "undo"
-  let cal = { status: "loading", events: [] }, settings = {}, run = null; // for "plan my afternoon"
-  const stops = [watchCalendar((c) => { cal = c; }), watchSettings(uid, (s) => { settings = s || {}; }, () => {}), watchRun(uid, (r) => { run = r; }, () => {})];
+  let cal = { status: "loading", events: [] }, settings = {}; // for "plan my afternoon"
+  const stops = [watchCalendar((c) => { cal = c; }), watchSettings(uid, (s) => { settings = s || {}; }, () => {})];
   const plain = input.placeholder;
   let turn = 0;
   const hinting = setInterval(() => {
@@ -177,7 +177,7 @@ export function mountTell(form, input, mic, uid, { openAdd, openTask, nowCard = 
       const later = q.date && q.date > getDayKey() && q.date <= dayAfter(7);
       const hours = later ? usualHours(settings) : dayHours(settings);
       const plan = planDay({ tasks, events: cal.status === "ok" ? cal.events : [], hours, settings,
-        ...(later ? { now: dayStartAt(new Date(`${q.date}T12:00`).getTime(), hours), run: null } : { run }) });
+        ...(later ? { now: dayStartAt(new Date(`${q.date}T12:00`).getTime(), hours) } : {}) });
       const v = planView(plan, { only: q.part === "day" ? null : q.part, title: later ? `Plan for ${day(q.date)}` : null,
         onOpen: (t) => { close(); openTask?.(t); } });
       return h("div", { className: "tell-answer" }, v || h("p", { className: "tell-reply", textContent: "No free time left there." }));

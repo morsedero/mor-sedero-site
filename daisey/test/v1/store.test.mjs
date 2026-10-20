@@ -104,21 +104,6 @@ for (const uid of [USER, GUEST]) {
     assert.deepEqual(left, [`${at - 999999}-t1`, `${at}-t2`].sort());
   });
 
-  test(`${who}: Pause / +15 don't bring back a run that was ended (#9)`, async () => {
-    reset();
-    const run = { taskId: "t1", startedAt: 1000, extra: 0, mode: "inline" };
-    await store.saveRun(uid, { ...run, pausedAt: 5000 });
-    await store.extendRun(uid, run, 15);
-    assert.equal(state(uid, "now"), null);
-    if (uid === GUEST) ls.set(KEY, JSON.stringify({ tasks: [], state: { now: { ...run, pausedAt: 5000 } } }));
-    else globalThis.__docs.set(`users/${uid}/state/now`, { ...run, pausedAt: 5000 });
-    await store.saveRun(uid, { ...run, startedAt: 3000 }); // Resume
-    assert.deepEqual(state(uid, "now"), { ...run, startedAt: 3000 });
-    await store.extendRun(uid, state(uid, "now"), 15);
-    assert.equal(state(uid, "now").extra, 15);
-    await store.saveRun(uid, { taskId: "t9", startedAt: 1 });  // another task's stale Pause
-    if (uid === GUEST) assert.equal(state(uid, "now").taskId, "t1");
-  });
   // Round 2 #1 (2026-10-11): Done credits no time. The gap between the card
   // showing and Done is waiting, interruptions and time away, not work.
   const seed = (t) => { if (uid === GUEST) ls.set(KEY, JSON.stringify({ tasks: [t], state: {} })); else globalThis.__docs.set(`users/${uid}/tasks/${t.id}`, t); };
@@ -174,14 +159,14 @@ for (const uid of [USER, GUEST]) {
 
 test("guest: another tab's write reaches this tab's listeners (#9)", () => {
   reset();
-  const seen = [], runs = [];
+  const seen = [], plans = [];
   const off1 = store.watchTasks(GUEST, (ts) => seen.push(ts.map((t) => t.title)));
-  const off2 = store.watchRun(GUEST, (r) => runs.push(r?.taskId ?? null));
-  ls.set(KEY, JSON.stringify({ tasks: [{ id: "a", title: "From tab B" }], state: { now: { taskId: "a" } } }));
+  const off2 = store.watchDayPlan(GUEST, (d) => plans.push(d?.date ?? null));
+  ls.set(KEY, JSON.stringify({ tasks: [{ id: "a", title: "From tab B" }], state: { dayplan: { date: "2026-10-20" } } }));
   bus.dispatchEvent(Object.assign(new Event("storage"), { key: "something.else" }));
   assert.equal(seen.length, 1);
   bus.dispatchEvent(Object.assign(new Event("storage"), { key: KEY }));
   assert.deepEqual(seen.at(-1), ["From tab B"]);
-  assert.equal(runs.at(-1), "a");
+  assert.equal(plans.at(-1), "2026-10-20");
   off1(); off2();
 });

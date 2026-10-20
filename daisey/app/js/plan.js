@@ -28,15 +28,14 @@ const atMin = (now, m) => { const d = new Date(now); d.setHours(0, m, 0, 0); ret
 const left = (t) => Math.max(5, (t.size || 0) - (t.spentMinutes || 0));
 
 // → [{ key, label, minutes, from, picks: [{ task, why, minutes }] }], only the
-// windows with time left, in order. run: the running task (state/now): the
-// plan leaves it out, it's already being done.
-export function planDay({ tasks = [], events = [], now = Date.now(), hours = W.DAY_HOURS, settings = {}, run = null } = {}){
-  const over = overruled(events, { tasks, run, now });
+// windows with time left, in order.
+export function planDay({ tasks = [], events = [], now = Date.now(), hours = W.DAY_HOURS, settings = {} } = {}){
+  const over = overruled(events, { tasks, now });
   const evs = events.filter((e) => !over.has(eventKey(e)));
   const gaps = gapsToday(evs, now, hours).filter((g) => g.minutes >= WORTH);
   const booked = Object.fromEntries([...bookings(tasks, evs, now)].map(([id, b]) => [id, b.start]));
   const routineCal = routineCalendar(tasks, evs, now); // routine sessions already on the calendar
-  const taken = new Set(run?.batch || (run?.taskId ? [run.taskId] : []));
+  const taken = new Set();
   const out = [];
   const base = workBase(tasks, now);
   for (const part of PARTS) {

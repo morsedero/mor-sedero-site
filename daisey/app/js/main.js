@@ -407,7 +407,7 @@ async function boot(){
     show("signedin"); // no element of its own: just clears loading/sign-in views
 
     Promise.all([import("./now.js"), import("./projects.js"), import("./addtask.js"), import("./needs.js"), import("./import-trello.js"), import("./addevent.js"), import("./store.js"), import("./deadlines.js"), import("./day.js"), import("./calendar.js"), import("./schedule.js"), import("./push.js"), import("./sample.js"), import("./ribbon.js")])
-      .then(([{ mountNow }, { mountProjects }, { mountAddTask }, { mountNeeds }, { mountImport, connectTrello, finishTrelloConnect, trelloConnected }, { mountAddEvent }, { migrateTasks, watchSettings, saveSettings, watchTasks, watchRun, watchDayPlan, resetAll, guestFresh, seedGuest, seedAccountOnce }, { mountDeadlines }, { dayHours, minText, mealPrefs, usualHours }, { watchCalendar, connectCalendar, setCalendarHint, listCalendars, saveCalendars }, { mountSchedule }, push, { sampleDay }, { mountRibbon }]) => {
+      .then(([{ mountNow }, { mountProjects }, { mountAddTask }, { mountNeeds }, { mountImport, connectTrello, finishTrelloConnect, trelloConnected }, { mountAddEvent }, { migrateTasks, watchSettings, saveSettings, watchTasks, watchDayPlan, resetAll, guestFresh, seedGuest, seedAccountOnce }, { mountDeadlines }, { dayHours, minText, mealPrefs, usualHours }, { watchCalendar, connectCalendar, setCalendarHint, listCalendars, saveCalendars }, { mountSchedule }, push, { sampleDay }, { mountRibbon }]) => {
         if ((!isGuest && fb.currentUid() !== user.uid) || mounted) return;
         const m = mounted = {};
         // A new guest opens to a sample day, not an empty card (sample.js).
@@ -485,10 +485,10 @@ async function boot(){
         // The morning brief (push.js): this device's switch, a test button,
         // and — while it's on anywhere — the task snapshot the server counts.
         const pushSwitch = $("#pushBrief"), pushNote = $("#pushNote"), pushTest = $("#pushTest"), pushKinds = $("#pushKinds");
-        let briefOn = false, briefTasks = null, hours = dayHours({}), lastSettings = {}, briefRun = null, briefPlan = null;
+        let briefOn = false, briefTasks = null, hours = dayHours({}), lastSettings = {}, briefPlan = null;
         // The running task goes too: what you're actually doing beats the plan (reality.js).
         // And today's approved plan: approving it counts as doing something (miss.js).
-        const snap = () => { if (briefOn && briefTasks) push.syncSnapshot(briefTasks, lastSettings, hours, briefRun, briefPlan); };
+        const snap = () => { if (briefOn && briefTasks) push.syncSnapshot(briefTasks, lastSettings, hours, briefPlan); };
         // On screen: the card's banner asks about a missed slot, so the server doesn't (notify.js "miss").
         const seen = () => { if (briefOn && !document.hidden) push.seen(); };
         const seenTick = setInterval(seen, 60000);
@@ -540,7 +540,6 @@ async function boot(){
           } catch (e) { flash("Couldn't send the brief."); }
         };
         const stopBriefTasks = watchTasks(user.uid, (ts) => { briefTasks = ts; snap(); }, fail);
-        const stopBriefRun = watchRun(user.uid, (r) => { briefRun = r || null; snap(); }, fail);
         const stopBriefPlan = watchDayPlan(user.uid, (d) => { briefPlan = d || null; snap(); }, fail);
         logSwitch.onchange = () => saveSettings(user.uid, { logDone: logSwitch.checked }).catch(fail);
         // Focus's size, back in Settings (Mor, 2026-10-11; projects.js shows it as dots).
@@ -722,7 +721,7 @@ async function boot(){
           connectBtn.textContent = c.status === "needs_reauth" ? "Reconnect" : "Connect";
           connNote(calNote, isGuest ? "Sign in first" : calOk ? "Connected" : c.status === "needs_reauth" ? "Expired" : "Not connected");
         });
-        m.menu = { unmount(){ stopSettings(); stopCal(); stopBriefTasks(); stopBriefRun(); stopBriefPlan(); clearInterval(seenTick); document.removeEventListener("visibilitychange", seen); settingsDlg.removeEventListener("click", foldMeal); settingsDlg.removeEventListener("close", shutMeal); start.onchange = end.onchange = logSwitch.onchange = pushSwitch.onchange = pushTest.onclick = null;
+        m.menu = { unmount(){ stopSettings(); stopCal(); stopBriefTasks(); stopBriefPlan(); clearInterval(seenTick); document.removeEventListener("visibilitychange", seen); settingsDlg.removeEventListener("click", foldMeal); settingsDlg.removeEventListener("close", shutMeal); start.onchange = end.onchange = logSwitch.onchange = pushSwitch.onchange = pushTest.onclick = null;
           kindBoxes.forEach((b) => { b.onchange = null; }); } };
 
         const closeScreens = () => { $("#weekPage").hidden = true; m.now?.closePlan(); m.projects?.closeProject(); m.needs?.close(); syncPanel(); };

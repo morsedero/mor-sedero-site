@@ -4,7 +4,7 @@
 // watchTasks, used as history for "similar past tasks" guesses.
 import * as fb from "./firebase.js";
 import { worthChecking, checkOnline } from "./research.js";
-import { createTask, editTask, completeTask, startedTask, workedTask, keptTime, skipTask, skipReason, migrateTask, toDate, INBOX, leftMinutes } from "./model.js";
+import { createTask, editTask, completeTask, skipTask, skipReason, migrateTask, toDate, INBOX, leftMinutes } from "./model.js";
 import { logDocKey } from "./bloom-data.js";
 
 const GUEST_UID = "guest-local";
@@ -103,16 +103,6 @@ function saveGuestState(uid, key, value, merge = false){
   try {
     const data = readGuestData();
     data.state[key] = merge ? { ...(data.state[key] || {}), ...value } : value;
-    writeGuestData(data);
-    return Promise.resolve();
-  }
-  catch(error){ return Promise.reject(error); }
-}
-function removeGuestState(uid, key){
-  if(!isGuest(uid)) return fb.deleteDoc(fb.doc(fb.db, "users", uid, "state", key));
-  try {
-    const data = readGuestData();
-    delete data.state[key];
     writeGuestData(data);
     return Promise.resolve();
   }
@@ -353,101 +343,6 @@ export function watchSkips(uid, cb, onError){
 
 export function saveSkips(uid, state){
   return saveGuestState(uid, "skips", state);
-}
-
-// The running task, users/{uid}/state/now: { taskId, startedAt, extra }.
-// One doc, so a reload — or the other device — finds the same timer running.
-// `extra` is minutes added by "+15 min" past the estimate.
-const runDoc = (uid) => fb.doc(fb.db, "users", uid, "state", "now");
-
-export function watchRun(uid, cb, onError){
-  const guestUnsub = watchGuestState(uid, "now", cb, onError);
-  if(guestUnsub) return guestUnsub;
-  return fb.onSnapshot(runDoc(uid), (snap) => cb(snap.exists() ? snap.data() : null), onError);
-}
-
-// mode: "inline" (the dashboard stays) or "focus" (Deep Focus, the whole screen).
-export function startRun(uid, task, mode = "inline"){
-  return Promise.all([
-    saveGuestState(uid, "now", { taskId: task.id, startedAt: Date.now(), extra: 0, mode }),
-    updateGuestTask(uid, task.id, startedTask(task)),
-  ]);
-}
-
-// A batch run (DAISEY_SPEC "Batches"): several calls / admin bits / errands
-// as one checklist. state/now gains batch (ids, in order), done (ids ticked)
-// and mark (when the last one was ticked): each tick books the minutes since
-// the mark to that task and finishes it.
-export function startBatch(uid, tasks){
-  const now = Date.now(), ids = tasks.map((t) => t.id);
-  return Promise.all([
-    saveGuestState(uid, "now", { taskId: ids[0], batch: ids, done: [], mark: now, startedAt: now, extra: 0 }),
-    ...tasks.map((t) => updateGuestTask(uid, t.id, startedTask(t))),
-  ]);
-}
-
-export function tickBatch(uid, run, task, minutes){
-  const now = Date.now();
-  logWork(uid, task, minutes, { at: now, done: true }).catch(logFail);
-  return Promise.all([
-    saveGuestState(uid, "now", { ...run, done: [...(run.done || []), task.id], mark: now }),
-    updateGuestTask(uid, task.id, workedTask(task, minutes, { finished: true })),
-  ]);
-}
-
-// Ends a batch. The minutes since the last tick are shared by the ones left
-// unticked; they stay open, and it isn't counted as a stop — a batch ending
-// early is the batch's doing, not a sign any one task is too big.
-export function endBatch(uid, left, minutes){
-  const each = left.length ? Math.round(minutes / left.length) : 0;
-  left.forEach((t) => logWork(uid, t, each).catch(logFail));
-  return Promise.all([
-    removeGuestState(uid, "now"),
-    ...left.map((t) => updateGuestTask(uid, t.id, { spentMinutes: (t.spentMinutes || 0) + each, touchedAt: Date.now(), workedAt: Date.now() })),
-  ]);
-}
-
-// Pause and Resume write the whole doc (focus.js paused/resumed). Cancel
-// drops it; `minutes` > 0 are kept on the task without counting a stop.
-// Only onto the run that's still going (BEHAVIOR_REVIEW #9): an offline
-// device's Pause / +15 on a run the other device ended must not bring it
-// back. Firestore: updateDoc, which fails on a deleted doc instead of making
-// it again (offline it queues, and is dropped on reconnect). Guests: same
-// task check by hand.
-export const saveRun = (uid, run) => updateRun(uid, run);
-function updateRun(uid, run){
-  if (isGuest(uid)) {
-    try {
-      const data = readGuestData(), cur = data.state.now;
-      if (!cur || cur.taskId !== run.taskId) return Promise.resolve();
-      data.state.now = run;
-      writeGuestData(data);
-      return Promise.resolve();
-    } catch (error) { return Promise.reject(error); }
-  }
-  // A whole-doc write: a field the run dropped (pausedAt on Resume) goes too.
-  const gone = { pausedAt: fb.deleteField() };
-  for (const k of Object.keys(run)) delete gone[k];
-  return fb.updateDoc(runDoc(uid), { ...run, ...gone })
-    .catch((e) => { if (e?.code !== "not-found") throw e; });
-}
-export const cancelRun = (uid, task = null, minutes = 0) => Promise.all([
-  task && minutes > 0 ? logWork(uid, task, minutes).catch(logFail) : null,
-  removeGuestState(uid, "now"),
-  task && minutes > 0 ? updateGuestTask(uid, task.id, keptTime(task, minutes)) : null,
-]);
-
-export function extendRun(uid, run, minutes){
-  return updateRun(uid, { ...run, extra: (run.extra || 0) + minutes });
-}
-
-// Ends the run and books the time against the task.
-export function endRun(uid, task, minutes, { finished = false } = {}){
-  if (task) logWork(uid, task, minutes, { done: finished }).catch(logFail);
-  return Promise.all([
-    removeGuestState(uid, "now"),
-    task ? updateGuestTask(uid, task.id, workedTask(task, minutes, { finished })) : null,
-  ]);
 }
 
 // The day's proposed schedule (proposal.js), users/{uid}/state/dayplan:

@@ -15,7 +15,7 @@ import { rank, fitsPlace, tierOf } from "./engine.js";
 import { phoneOkIds } from "./phone.js";
 import { routineCalendar } from "./routine.js";
 import { workBase } from "./context.js";
-import { overruled, eventKey, runState } from "./reality.js";
+import { overruled, eventKey } from "./reality.js";
 import { LABELS, INBOX, notYet, localDate, leftMinutes, durText } from "./model.js";
 import { officeDay } from "./holidays.js";
 import * as W from "./weights.js";
@@ -46,8 +46,8 @@ export const leftOf = (t) => leftMinutes(t);
 // The free time left today, as gaps, with what reality overruled taken out
 // (a meeting you worked through isn't busy). rides: the trips (trips.js) as
 // gaps too, each with the place it is — only a task that fits it goes there.
-function freeGaps({ tasks, events, now, hours, run, rides = true }){
-  const over = overruled(events, { tasks, run, now });
+function freeGaps({ tasks, events, now, hours, rides = true }){
+  const over = overruled(events, { tasks, now });
   const evs = events.filter((e) => !over.has(eventKey(e)));
   const gaps = gapsToday(evs, now, hours).filter((g) => g.minutes >= WORTH);
   return { evs, gaps: rides ? [...gaps, ...rideGaps(evs, now)].sort((a, b) => a.start - b.start) : gaps };
@@ -66,8 +66,8 @@ function rideGaps(evs, now){
 // ask: parseAsk's hints (or {}). exclude: ids the user deleted from the plan.
 // phoneOk: Computer tasks the phone can do (phone.js) — on a bus or in the
 // passenger seat they fit the ride.
-export function proposeDay({ tasks = [], events = [], now = Date.now(), hours = W.DAY_HOURS, settings = {}, run = null, ask = {}, exclude = [], phoneOk = phoneOkIds(tasks) } = {}){
-  const { evs, gaps: all } = freeGaps({ tasks, events, now, hours, run });
+export function proposeDay({ tasks = [], events = [], now = Date.now(), hours = W.DAY_HOURS, settings = {}, ask = {}, exclude = [], phoneOk = phoneOkIds(tasks) } = {}){
+  const { evs, gaps: all } = freeGaps({ tasks, events, now, hours });
   const until = Number.isFinite(ask.until) ? atMin(now, ask.until) : Infinity;
   const cut = (gs) => gs.map((g) => ({ ...g, end: Math.min(g.end, until) })).filter((g) => g.end - g.start >= WORTH * MIN);
   const usable = cut(all.filter((g) => !g.place)), rides = cut(all.filter((g) => g.place));
@@ -78,7 +78,7 @@ export function proposeDay({ tasks = [], events = [], now = Date.now(), hours = 
   // Fewer picks as usual, then keeps the FEWER most pressing (fewerFirst).
   const cap = ask.more ? MORE : MAX_ITEMS;
   const skipTypes = new Set(ask.skipTypes || []);
-  const out = new Set([...exclude, ...(ask.exclude || []), ...(run?.batch || (run?.taskId ? [run.taskId] : []))]);
+  const out = new Set([...exclude, ...(ask.exclude || [])]);
   // maxEach: only tasks this small (the lighter plan, miss.js) — a deadline due today still comes.
   const today = planDate(now, hours);
   const pool = tasks.filter((t) => !skipTypes.has(t.type)
@@ -157,7 +157,7 @@ export function proposeDay({ tasks = [], events = [], now = Date.now(), hours = 
   if (ask.fewer) fewerFirst(items, tasks, today, first);
   if (ask.quickFirst) items.sort((a, b) => a.minutes - b.minutes);
   inProjectOrder(items, tasks, first);
-  hoursFirst(items, { tasks, events, now, hours, run, rides: false });
+  hoursFirst(items, { tasks, events, now, hours, rides: false });
   // Nothing due today is dropped without a word (2026-10-11): what the picks
   // left out goes on the end, laid if it fits after all, else No room with
   // its reason (lay). Not when the ask narrowed the plan on purpose.
@@ -168,7 +168,7 @@ export function proposeDay({ tasks = [], events = [], now = Date.now(), hours = 
     items.push({ taskId: t.id, minutes: leftOf(t) }); out.add(t.id);
   }
   const plan = [...items.filter((it) => !later.has(it.taskId)), ...items.filter((it) => later.has(it.taskId))];
-  const ctx = { tasks, events, now, hours, run, phoneOk }, byId = new Map(tasks.map((t) => [t.id, t]));
+  const ctx = { tasks, events, now, hours, phoneOk }, byId = new Map(tasks.map((t) => [t.id, t]));
   // Desk time short for the plan's own work (not for Background: all of it
   // comes first, Mor 2026-10-19): the quick ones go on the ride (onRide, lay)
   // and the desk keeps the rest.
@@ -340,8 +340,7 @@ export function withBreaks(items = [], ctx = {}){
 // task's start has come with nothing started, it stays there, the whole plan
 // with it, and the result says late: { taskId, start, end } so the card can ask
 // (Start / In 10 min / Move); once a planned row's whole time has passed
-// it's missed. Any activity lays it from now again. While a
-// task runs the plan follows the clock as before. An item's at (ms): not
+// it's missed. Any activity lays it from now again. An item's at (ms): not
 // before then ("In 10 min").
 const up5 = (ms) => Math.ceil(ms / (5 * MIN)) * 5 * MIN;
 // How many tasks the plan on screen holds: the rows it shows with a time. Not
@@ -350,7 +349,7 @@ const up5 = (ms) => Math.ceil(ms / (5 * MIN)) * 5 * MIN;
 export const shownTaskCount = (items = [], ctx = {}) => timeline(items, ctx).rows.length;
 export function timeline(items = [], ctx = {}){
   const now = ctx.now ?? Date.now();
-  if (ctx.since == null || runState(ctx.run, ctx.tasks || [], now)) return lay(items, ctx);
+  if (ctx.since == null) return lay(items, ctx);
   const from = Math.min(now, up5(ctx.since));
   const held = from < now ? lay(items, { ...ctx, now: from }) : null;
   // The head is the first task whose time has come, not the plan's first
@@ -365,8 +364,8 @@ export function timeline(items = [], ctx = {}){
   for (const r of missed) r.missed = true;
   return { ...held, late: { taskId: head.taskId, start: head.start, end: head.end }, missed: missed.map((r) => r.taskId) };
 }
-function lay(items = [], { tasks = [], events = [], now = Date.now(), hours = W.DAY_HOURS, run = null, rides = true, phoneOk = phoneOkIds(tasks) } = {}){
-  const { evs, gaps } = freeGaps({ tasks, events, now, hours, run, rides });
+function lay(items = [], { tasks = [], events = [], now = Date.now(), hours = W.DAY_HOURS, rides = true, phoneOk = phoneOkIds(tasks) } = {}){
+  const { evs, gaps } = freeGaps({ tasks, events, now, hours, rides });
   const meals = hours.meals ?? mealsOf();
   const byId = new Map(tasks.map((t) => [t.id, t]));
   const rows = [], over = [], breaks = [];
@@ -546,7 +545,7 @@ function tidy(items){
 export function refit(items = [], ctx = {}, keep = []){
   const now = ctx.now ?? Date.now();
   const byId = new Map((ctx.tasks || []).map((t) => [t.id, t]));
-  const stays = new Set([...keep, ...(ctx.run?.batch || (ctx.run?.taskId ? [ctx.run.taskId] : []))]);
+  const stays = new Set(keep);
   const fits = (list) => !timeline(list, ctx).over.some((o) => !stays.has(o.taskId));
   if (fits(items)) return { items, cut: [] };
   const open = (it) => byId.get(it.taskId)?.status === "ready";

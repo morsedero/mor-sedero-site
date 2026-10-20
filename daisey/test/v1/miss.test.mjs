@@ -41,9 +41,8 @@ test("missState: second slot in a row → silence, once a day; answered → quie
   assert.equal(st({ tasks: after, now: at(12, 12), silenceOn: "2026-10-06" }), null);
 });
 
-test("missState: never while a task runs, in or just before a meeting, or at night", () => {
+test("missState: never in or just before a meeting, or at night", () => {
   const tasks = [t({ id: "a", size: 60, touchedAt: at(9) })];
-  assert.equal(st({ tasks, run: { taskId: "a", startedAt: at(9, 20), extra: 0 }, now: at(9, 30) }), null);
   const meet = { id: "m", title: "Meeting", start: il(9, 15), end: il(10), busy: true };
   assert.equal(st({ tasks, events: [meet], now: at(9, 12) }), null); // starts in 3 min
   assert.equal(st({ tasks, events: [meet], now: at(9, 30) }), null); // in it

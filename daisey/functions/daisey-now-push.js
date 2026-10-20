@@ -3,7 +3,7 @@
 // <Firebase ID token>" and { action, … }:
 //   subscribe    { subscription, tz, dayStart, dayEnd } — this device gets it
 //   unsubscribe  { endpoint } — this device stops
-//   snapshot     { tasks, settings, notify, run, plan, tz, dayStart, dayEnd } —
+//   snapshot     { tasks, settings, notify, plan, tz, dayStart, dayEnd } —
 //                what the notifications count, which kinds are on, the
 //                running task (app/js/reality.js: it beats the calendar) and
 //                today's approved plan ({ date, at, ids }: app/js/miss.js),
@@ -84,17 +84,8 @@ function cleanTrips(t){
   }
   return out;
 }
-// The running task (state/now), or null: ids and times only.
 const at = (v) => (Number.isFinite(v) && v > 0 ? v : null);
 const ids = (v) => (Array.isArray(v) ? v.slice(0, 20).map((x) => str(x, 40)).filter(Boolean) : null);
-const cleanRun = (r) => {
-  const taskId = str(r?.taskId, 40), startedAt = at(r?.startedAt);
-  if (!taskId || !startedAt) return null;
-  const o = { taskId, startedAt, extra: Number.isFinite(r.extra) ? Math.max(0, Math.min(r.extra, 1440)) : 0 };
-  if (at(r.pausedAt)) o.pausedAt = r.pausedAt;
-  if (ids(r.batch)) { o.batch = ids(r.batch); o.done = ids(r.done) || []; }
-  return o;
-};
 const KINDS = ["brief", "wrap", "gap", "booked", "people", "meeting", "miss"];
 // Today's approved plan: its day, when it was saved, its tasks in order.
 const cleanPlan = (p) => (day(p?.date) ? { date: p.date, at: at(p.at) || 0, ids: ids(p.ids) || [] } : null);
@@ -139,7 +130,7 @@ exports.handler = async (event) => {
     if (!Array.isArray(b.tasks)) return fail(400, "bad_input");
     const tasks = b.tasks.slice(0, MAX_TASKS).map(cleanTask);
     await update(uid, () => ({ sub, tasks, tasksAt: Date.now(), settings: cleanSettings(b.settings), notify: cleanNotify(b.notify),
-      meetingLead: cleanLead(b.meetingLead), run: cleanRun(b.run), plan: cleanPlan(b.plan), dayplan: cleanDayPlan(b.dayplan), ...where(b) }));
+      meetingLead: cleanLead(b.meetingLead), plan: cleanPlan(b.plan), dayplan: cleanDayPlan(b.dayplan), ...where(b) }));
     return reply(200, { ok: true });
   }
   if (b.action === "seen") {

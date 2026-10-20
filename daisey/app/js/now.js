@@ -9,12 +9,11 @@
 // through old Daisey's Google token). With no calendar the engine's default
 // 60 min only filters what fits and scores nothing.
 // Not now → next pick (hidden for this page load). Something else → 2–3
-// alternatives, tap one to make it the card. Start → focus mode (focus.js):
-// the run lives in Firestore, so this tab, a reload and the phone all show
-// the same timer.
+// alternatives, tap one to make it the card. No Start and no timer
+// (2026-10-10; the code went 2026-10-20).
 import { overruled, eventKey } from "./reality.js";
 import { sortable } from "./ppdrag.js";
-import { addTask, updateTask, watchTasks, watchRun, extendRun, watchSkips, saveSkips, endBatch, skipNow, blockTask, restoreTask, finishTask, undoDone, watchSettings, saveSettings, watchMoment, saveMoment, watchLearn, bumpLearn, cancelRun, watchDayPlan, saveDayPlan, logWork, watchProjectNames, removeTask } from "./store.js";
+import { addTask, updateTask, watchTasks, watchSkips, saveSkips, skipNow, blockTask, restoreTask, finishTask, undoDone, watchSettings, saveSettings, watchMoment, saveMoment, watchLearn, bumpLearn, watchDayPlan, saveDayPlan, watchProjectNames, removeTask } from "./store.js";
 import { proposeDay, timeline, shownTaskCount, addableCount, withBreaks, trimBreaks, isBreak, planProgress, planStatus, unfitOf, refit, topUp, daySig, relayMeals } from "./proposal.js";
 import { rethink } from "./rethink.js";
 import { breakText } from "./schedule.js";
@@ -22,9 +21,9 @@ import { placeNow, workBase, watchProjectTiers, currentTiers } from "./context.j
 import { watchWhere, setManual, setStill, saveSpot, whereAsk, homeAt } from "./where.js";
 import { withTrips, ridingAs, stillRiding, asPassenger, chainFrom, setTripDay, MODES, tripAsks, answer as tripAnswer, noTrip } from "./trips.js";
 import { pickWeekDay } from "./triage.js";
-import { sinceMark, runCap, bookedMinutes, celebrate, dropAway, PUSH_MS } from "./focus.js";
+import { celebrate, dropAway, PUSH_MS } from "./focus.js";
 import { watchCalendar } from "./calendar.js";
-import { LATER_MINUTES, DRAIN, CANCEL_KEEP_MINUTES, LIGHTER, TIERS } from "./weights.js";
+import { LATER_MINUTES, DRAIN, LIGHTER, TIERS } from "./weights.js";
 import { missState, silenceText, lastActivity, planActivity } from "./miss.js";
 import { takeQuiet } from "./push.js";
 import { findPhoneTasks, phoneOkIds, searching } from "./phone.js";
@@ -73,7 +72,6 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     cal = rawCal.status === "ok" ? { ...rawCal, events: ridingAs(stillRiding(withTrips(rawCal.events, settings.trips || {}, settings.tripDay || [], settings.laptop ?? null), located), located) } : rawCal;
   };
   let lastWindow;
-  let run = null; // the state/now doc while a task is running
   // The day's proposed schedule (proposal.js). dayPlan: today's saved doc
   // (state/dayplan). prop: the proposal on the card while it's open — items
   // in the user's order, the ids they deleted, the Rethink box.
@@ -494,10 +492,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
   }
 
   // No running card, no clock and no Deep Focus (Mor, 2026-10-10): a task is
-  // on the card until Done, Later, Pending or Switch moves it. A run left
-  // from before (state/now: a reload, the other device on an old copy) is
-  // ended on sight, its minutes kept, as Stop did. A batch keeps the ones
-  // already ticked.
+  // on the card until Done, Later, Pending or Switch moves it.
   // Focus mode: in settings, so it holds across a reload and the other device.
   const focusOn = () => settings.focusMode === true;
   const setFocus = (on) => { if (on) workingFrom = Date.now(); if (on === focusOn()) return; settings = { ...settings, focusMode: on }; render(); saveSettings(uid, { focusMode: on }).catch(fail); };
@@ -509,35 +504,6 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     const t = workingFrom && (tasks || []).find((x) => x.id === (state.chosen || (focusOn() ? shown : null)));
     return t ? Math.min(Date.now(), workingFrom + leftMinutes(t) * 60000) : 0;
   };
-  const endSession = ({ quiet = false } = {}) => {
-    const prev = run;
-    if (!prev) return;
-    run = null;
-    if (!quiet) render();
-    if (prev.batch) { // the minutes since the last tick go to the ones left, as a batch ending does
-      const left = (tasks || []).filter((t) => prev.batch.includes(t.id) && !(prev.done || []).includes(t.id));
-      const m = Math.min(sinceMark(prev), runCap(left.reduce((s, t) => s + (t.size || 0), 0)));
-      (m >= CANCEL_KEEP_MINUTES && left.length ? endBatch(uid, left, m) : cancelRun(uid)).catch(fail);
-      return;
-    }
-    const task = tasks?.find((t) => t.id === prev.taskId) || null;
-    const m = bookedMinutes(prev, task);
-    cancelRun(uid, task, m >= CANCEL_KEEP_MINUTES ? m : 0).catch(fail);
-  };
-
-  // The running task was deleted (the sheet, a project's Delete, the other
-  // device): end the run, or focus mode stays on a task that's gone. Only on a
-  // server snapshot (guests have no server), and not for a run just started,
-  // whose task can lag behind the run doc on another device. Its minutes
-  // still count for the project (the work log), from the last list it was in.
-  const dropGhostRun = (meta, was) => {
-    if (!run || !tasks || (meta?.fromCache && !guest) || Date.now() - run.startedAt < 120000) return;
-    if ((run.batch || [run.taskId]).some((id) => tasks.some((t) => t.id === id))) return;
-    const gone = !run.batch && (was || []).find((t) => t.id === run.taskId), m = gone ? bookedMinutes(run, gone) : 0;
-    if (gone && m >= CANCEL_KEEP_MINUTES) logWork(uid, gone, m).catch(fail);
-    run = null; cancelRun(uid).catch(fail);
-  };
-
   // Later and Pending both move the card on: it slides out, the next slides
   // in, and for 5 seconds a toast offers Undo. Nothing waits on the write.
   function stepAside(task, { label, write, lesson = false, ask = true, fill = false }){
@@ -720,7 +686,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     if (cal.status !== "ok") return null;
     const busy = cal.events.filter((e) => e.busy !== false && !e.allDay);
     const now = Date.now(), hrs = dayHours(settings);
-    const over = overruled(busy, { tasks: tasks || [], run, now });
+    const over = overruled(busy, { tasks: tasks || [], now });
     const events = busy.filter((e) => Date.parse(e.start) !== freeFrom && !over.has(eventKey(e)));
     const fw = freeWindow(events, now, isNight(now, hrs) ? null : dayEndAt(now, hrs));
     // The override only ever applies to the event that was running; once it
@@ -769,7 +735,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
   function logRoutineEvents(){
     if (cal.status !== "ok" || !tasks) return;
     for (const t of tasks) {
-      if (t.status !== "ready" || !isRoutine(t) || run?.taskId === t.id) continue;
+      if (t.status !== "ready" || !isRoutine(t)) continue;
       let cur = t;
       for (const ev of eventsToLog(t, cal.events)) {
         const patch = sessionPatch(cur, { ev });
@@ -1385,7 +1351,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
   // The day a plan on screen is laid against, taken when it's laid: taken
   // later, at the first render, a change made in between went unnoticed.
   const daySigNow = () => (cal.status === "ok" ? daySig(cal.events, dayHours(settings)) : null);
-  const planCtx = () => { phoneAhead(); return { tasks: tasks || [], events: cal.status === "ok" ? cal.events : [], now: Date.now(), hours: dayHours(settings), settings, run }; };
+  const planCtx = () => { phoneAhead(); return { tasks: tasks || [], events: cal.status === "ok" ? cal.events : [], now: Date.now(), hours: dayHours(settings), settings }; };
   // A bus or passenger ride still to come today: look for phone tasks now
   // (phone.js), so the plan can put them on it. A proposal nobody has
   // touched yet is laid again with the answer.
@@ -1831,14 +1797,13 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
   // planAsk): one voice, not two (Mor, 2026-10-10).
   function missNow(){
     if (!tasks || cal.status !== "ok" || prop.open || approvedPlan()) return null;
-    return missState({ tasks, events: cal.events, run, now: Date.now(), hours: dayHours(settings),
+    return missState({ tasks, events: cal.events, now: Date.now(), hours: dayHours(settings),
       planAt: Math.max(todaysPlan()?.approvedAt || 0, workingUntil()), silenceOn: settings.silenceOn || null });
   }
   const silenced = (date = localDate()) => { settings = { ...settings, silenceOn: date }; saveSettings(uid, { silenceOn: date }).catch(fail); };
   // A few small tasks for the rest of today, as a proposal to approve.
   function lighterPlan(){
     silenced();
-    if (run) { flash("Finish or stop the running task first."); return; }
     const items = proposeDay({ ...planCtx(), ask: { fewer: true, quickFirst: true, maxEach: LIGHTER.each } });
     if (!items.length) { flash("Nothing small left for today. Take the rest of the day."); render(); return; }
     prop.items = withBreaks(items, planCtx()); prop.exclude = [];
@@ -1855,7 +1820,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
   // the next task's start comes with nothing started, the card asks right
   // then (Mor: "more proactive"), before any miss would. → { taskId, start }
   // or null. In 10 min: that item's at, and a touch (an answer).
-  const planSince = () => planActivity(tasks || [], run, todaysPlan()?.approvedAt || 0);
+  const planSince = () => planActivity(tasks || [], todaysPlan()?.approvedAt || 0);
   function planDue(){
     const p = approvedPlan();
     if (!p || !tasks || cal.status !== "ok" || prop.open) return null;
@@ -1874,7 +1839,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     // card showed it "until" a time already gone while Now sat on the next
     // (2026-10-10). The missed note under the card asks about it instead.
     const rows = tl.rows.filter((x) => !off.has(x.taskId) && !x.task.onHold && !x.missed);
-    const brk = !run && tl.breaks.find((b) => b.start <= now && now < b.end);
+    const brk = tl.breaks.find((b) => b.start <= now && now < b.end);
     // The break's "Next" is the row the schedule tags Next: never a missed one
     // (Mor, 2026-10-18: "Next: Campaign Transition at 12:50" while that row
     // sat missed at 11:40 and the UI fix was the real 12:50). The missed note
@@ -1947,14 +1912,12 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
       it ? h("p", { className: "upnext-line" }, "Next at ", h("b", { className: "upnext-k", textContent: clock(it.at) }), " · ", bdi(it.title))
         : h("p", { className: "upnext-line" }, "Nothing planned after ", h("b", { className: "upnext-k", textContent: clock(row.end) })));
   }
-  // Stretch the slot (model.moreTimePatch). A running timer gets the minutes
-  // too, or it caps out.
+  // Stretch the slot (model.moreTimePatch).
   function moreTime(task, row, m){
-    const end = row.end + m * 60000, running = !!run && (run.batch || [run.taskId]).includes(task.id);
+    const end = row.end + m * 60000;
     const p = moreTimePatch(task, m);
     Object.assign(task, p);
     restoreTask(uid, task.id, p).catch(fail);
-    if (running) extendRun(uid, run, m).catch(fail);
     if (kept?.id === task.id) kept.until = end;
     moreFor = task.id; moreAt = Date.now(); state.moreTime = false;
     render();
@@ -2194,7 +2157,6 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
   }
   function renderCard(){
     if (ppDragging) { ppStale = true; return; } // a redraw mid-drag would drop the dragged row
-    if (run && tasks != null) endSession({ quiet: true }); // a run from before the clock went
     // Focus mode (Mor, 2026-10-10): the same card and actions, nothing
     // around it (CSS body.focus-mode). Done goes straight to the next card.
     const fm = focusOn();
@@ -2440,11 +2402,10 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
   // "Start task" on a notification (sw.js → ?start=<id>): that task on the
   // card. The suggestion was made minutes ago; what happened since wins
   // (reality.js): a task done, parked or set Pending since isn't put up. A
-  // cold start from the notification has neither the tasks nor the run yet,
-  // so it waits for both.
-  let noticeStart = null, runKnown = false, noticeLighter = false;
+  // cold start from the notification has no tasks yet, so it waits for them.
+  let noticeStart = null, noticeLighter = false;
   const tryNoticeStart = () => {
-    if (!noticeStart || tasks === null || !runKnown) return;
+    if (!noticeStart || tasks === null) return;
     const id = noticeStart;
     noticeStart = null;
     const task = tasks.find((t) => t.id === id);
@@ -2459,9 +2420,8 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     watchProjectTiers(() => render()),
     // Projects' own due dates: a project due Friday pulls its tasks up (engine.deadlineOf).
     watchProjectNames(uid, (_n, ranges) => { projectDue = Object.fromEntries(Object.entries(ranges || {}).filter(([, r]) => r?.due).map(([p, r]) => [p, r.due])); render(); }, fail),
-    watchTasks(uid, (ts, meta) => { const was = tasks; tasks = ts; dropGhostRun(meta, was); render(); tryNoticeStart(); logRoutineEvents(); }, fail),
+    watchTasks(uid, (ts) => { tasks = ts; render(); tryNoticeStart(); logRoutineEvents(); }, fail),
     watchCalendar((c) => { rawCal = c; applyTrips(); render(); logRoutineEvents(); }),
-    watchRun(uid, (r) => { run = r; runKnown = true; render(); tryNoticeStart(); }, fail),
     watchSkips(uid, (s) => { skipDoc = s; render(); }, fail),
     watchSettings(uid, (s) => { settings = s || {}; applyTrips(); render(); }, fail),
     watchMoment(uid, (d) => { momentDoc = d || {}; momentKnown = true; freeFrom = Number.isFinite(momentDoc.freeFrom) ? momentDoc.freeFrom : null; render(); }, fail),
@@ -2545,7 +2505,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     // Focus mode's slide rested the bob (main.js): it starts again from rest,
     // and rebuilds carry on from there.
     breatheFromRest(){ breathEpoch = Date.now(); root.querySelectorAll(".deck > .now-card.main").forEach((c) => { c.style.animationDelay = "0ms"; }); },
-    plan(){ if (prop.open) { closeProposal(); return; } if (run) { flash("Finish or stop the running task first."); return; } openProposal(); },
+    plan(){ if (prop.open) { closeProposal(); return; } openProposal(); },
     unmount(){ showing(null); clearTimeout(toastTimer); clearTimeout(upTimer); document.body.classList.remove("focus", "focus-mode"); document.documentElement.classList.remove("night"); unsubs.forEach((u) => u()); clearInterval(tick); document.removeEventListener("visibilitychange", onVisible); root.replaceChildren(); planRoot?.replaceChildren(); root.hidden = true; },
   };
 }

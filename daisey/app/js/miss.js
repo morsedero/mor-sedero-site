@@ -20,7 +20,7 @@
 // Shared by the Now card (a banner, app open) and notify.js (a notification,
 // app closed), so both name the same moment. PURE.
 import { MISS } from "./weights.js";
-import { runState, overruled, eventKey } from "./reality.js";
+import { overruled, eventKey } from "./reality.js";
 import { localDate, logicalDate, leftMinutes, notYet } from "./model.js";
 import { effectiveDue } from "./triage.js";
 import { dayStartAt, dayEndAt } from "./day.js";
@@ -29,8 +29,8 @@ const MIN = 60000;
 const ms = (v) => (typeof v === "number" ? v : Date.parse(v));
 
 // The last time the user did anything Daisey can see.
-export function lastActivity(tasks = [], run = null, planAt = 0){
-  let a = Math.max(0, planAt || 0, run?.startedAt || 0);
+export function lastActivity(tasks = [], planAt = 0){
+  let a = Math.max(0, planAt || 0);
   for (const t of tasks || []) a = Math.max(a, t.touchedAt || 0, t.workedAt || 0, t.doneAt || 0);
   return a;
 }
@@ -38,15 +38,15 @@ export function lastActivity(tasks = [], run = null, planAt = 0){
 // What the approved plan is laid from (proposal.timeline since): the same,
 // minus a touch that was only an edit (Mor, 2026-10-19: editing a missed task
 // moved the whole 11:00 plan to start now, no ask, no undo). An edit isn't
-// doing the plan; a start, Done, Switch, Later or skip is.
-export function planActivity(tasks = [], run = null, planAt = 0){
-  let a = Math.max(0, planAt || 0, run?.startedAt || 0);
+// doing the plan; a Done, Switch, Later or skip is.
+export function planActivity(tasks = [], planAt = 0){
+  let a = Math.max(0, planAt || 0);
   for (const t of tasks || []) a = Math.max(a, t.touchedAt && t.touchedAt !== t.editedAt ? t.touchedAt : 0, t.workedAt || 0, t.doneAt || 0);
   return a;
 }
 
-const busyOf = (events, { tasks, run, now }) => {
-  const over = overruled(events, { tasks, run, now });
+const busyOf = (events, { tasks, now }) => {
+  const over = overruled(events, { tasks, now });
   return (events || []).filter((e) => !e.allDay && e.busy !== false && e.start && e.end && !over.has(eventKey(e)))
     .map((e) => [ms(e.start), ms(e.end)]).sort((a, b) => a[0] - b[0]);
 };
@@ -74,8 +74,8 @@ export function silenceText(st, fmt){
 
 // The slots ignored since the last activity, oldest first: [{ start, at }],
 // at: when it counted as missed.
-export function missedSlots({ tasks = [], events = [], run = null, now = Date.now(), hours, planAt = 0 } = {}){
-  const from = Math.max(lastActivity(tasks, run, planAt), dayStartAt(now, hours));
+export function missedSlots({ tasks = [], events = [], now = Date.now(), hours, planAt = 0 } = {}){
+  const from = Math.max(lastActivity(tasks, planAt), dayStartAt(now, hours));
   const end = Math.min(now, dayEndAt(now, hours));
   const out = [];
   if (from >= end) return out;
@@ -85,7 +85,7 @@ export function missedSlots({ tasks = [], events = [], run = null, now = Date.no
     for (let x = s; x + MISS.after * MIN <= e && (!closed || e - x >= MISS.min * MIN); x += MISS.every * MIN) out.push({ start: x, at: x + MISS.after * MIN });
   };
   let cursor = from;
-  for (const [s, e] of busyOf(events, { tasks, run, now })) {
+  for (const [s, e] of busyOf(events, { tasks, now })) {
     if (e <= cursor) continue;
     if (s >= end) break;
     if (s > cursor) stretch(cursor, s, true);
@@ -99,15 +99,14 @@ export function missedSlots({ tasks = [], events = [], run = null, now = Date.no
 // or { kind: "silence", key, at, since, why } (since: the last activity, or
 // null when there was none today; why: "slots" | "time" | "overload"). silenceOn: the day the silence check was
 // answered (settings.silenceOn).
-export function missState({ tasks = [], events = [], run = null, now = Date.now(), hours, planAt = 0, silenceOn = null } = {}){
+export function missState({ tasks = [], events = [], now = Date.now(), hours, planAt = 0, silenceOn = null } = {}){
   if (now < dayStartAt(now, hours) || now >= dayEndAt(now, hours)) return null;
-  if (runState(run, tasks, now)) return null;
   // In a busy event, or one about to start: not the moment to ask.
-  const busy = busyOf(events, { tasks, run, now });
+  const busy = busyOf(events, { tasks, now });
   if (busy.some(([s, e]) => s < now + MISS.after * MIN && e > now)) return null;
-  const slots = missedSlots({ tasks, events, run, now, hours, planAt });
+  const slots = missedSlots({ tasks, events, now, hours, planAt });
   if (!slots.length) return null;
-  const today = hours?.late ? logicalDate(now) : localDate(now), act = lastActivity(tasks, run, planAt);
+  const today = hours?.late ? logicalDate(now) : localDate(now), act = lastActivity(tasks, planAt);
   const dayA = dayStartAt(now, hours), dayB = dayEndAt(now, hours), from = Math.max(act, dayA);
   const last = slots[slots.length - 1];
   const need = tasks.filter((t) => t.status === "ready" && !notYet(t, now) && t.due && effectiveDue(t, now) <= today)
