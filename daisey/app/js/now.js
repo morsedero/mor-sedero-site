@@ -1672,6 +1672,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     else savePlan("approved", p.items || [], { kept: p.kept || [], ...unseen(p, "cut"), ...unseen(p, "added"), offer: { ids: added, add: items.slice((p.items || []).length) } });
     if (redraw) render();
   }
+  let addedShown = { key: null, at: 0, timer: null };
   function addedView(){
     const p = approvedPlan(), o = p?.offer;
     const offered = (o?.add || []).filter((it) => (tasks || []).some((t) => t.id === it.taskId && t.status === "ready") && !(p.items || []).some((x) => x.taskId === it.taskId));
@@ -1700,18 +1701,34 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     const got = a.ids.filter((id) => inPlan.has(id)).map((id) => (tasks || []).find((t) => t.id === id)).filter(Boolean);
     if (!got.length) return null;
     const keep = { kept: p.kept || [], ...unseen(p, "cut") };
+    // A notice, not a question: it leaves by itself after UNDO_MS like the
+    // other Undo toasts (Mor, 2026-10-20: "never goes down"). A re-render
+    // rebuilds the node, so the fade resumes from the first showing (--age)
+    // instead of replaying the fade-in.
+    const nk = a.ids.join();
+    if (addedShown.key !== nk) {
+      clearTimeout(addedShown.timer);
+      addedShown = { key: nk, at: Date.now(), timer: setTimeout(() => {
+        const q = approvedPlan();
+        if (q?.added && !q.added.seen && q.added.ids.join() === nk) { savePlan("approved", q.items, { kept: q.kept || [], ...unseen(q, "cut"), added: { ...q.added, seen: true } }); render(); }
+      }, UNDO_MS) };
+    }
+    const age = Date.now() - addedShown.at;
+    if (age >= UNDO_MS) return null;
     const undo = () => {
       const ids = got.map((t) => t.id);
       savePlan("approved", trimBreaks((p.items || []).filter((it) => !ids.includes(it.taskId))), { ...keep, declined: [...(p.declined || []), ...ids] });
       render();
     };
-    return h("div", { className: "toast plan-cut", role: "status" },
+    const pop = h("div", { className: "toast timed plan-cut", role: "status" },
       h("div", { className: "toast-row" },
         h("span", { className: "toast-text" }, ...(got.length === 1 ? ["Time opened up: added ", bdi(got[0].title), " to the end of your plan."] : [`Added ${got.length} tasks to the end of your plan.`])),
         h("span", { className: "toast-acts" },
           h("button", { className: "toast-undo", type: "button", textContent: "Undo", ariaLabel: `Undo: take them off ${planWord()}'s plan`, onclick: undo }),
           h("button", { className: "toast-undo", type: "button", textContent: "OK", ariaLabel: "OK, got it",
             onclick: () => { savePlan("approved", p.items, { ...keep, added: { ...a, seen: true } }); render(); } }))));
+    pop.style.setProperty("--age", `${Math.min(age, UNDO_MS)}ms`);
+    return pop;
   }
   // The proposal on screen, not yet approved, follows the day too: when the
   // calendar or the hours change, a fresh take if the user hasn't touched
