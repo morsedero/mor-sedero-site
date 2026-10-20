@@ -108,7 +108,10 @@ html, body { overscroll-behavior-y: none; }
 .menu-theme { flex: none; }
 .menu-theme .theme-btn { display: grid; place-items: center; inline-size: 36px; min-block-size: 32px; padding: 0; }
 .menu-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-block-end: 10px; }
-.menu-top .menu-who { padding: 0; min-inline-size: 0; }
+.menu-top .menu-who { padding: 0; min-inline-size: 0; flex: 1 1 auto; }
+/* Refresh, icon only, at the end of the name row — same pill as the theme group. */
+.menu-refresh { flex: none; display: grid; place-items: center; inline-size: 38px; block-size: 38px; padding: 0; border-radius: 999px; background: var(--bg); border: 1px solid var(--line); color: var(--ink-2); cursor: pointer; }
+.menu-refresh:hover { color: var(--ink); }
 .theme-btn[aria-checked="true"] { background: var(--card); color: var(--ink); box-shadow: 0 1px 3px rgb(0 0 0 / .12); }
 
 .card {
