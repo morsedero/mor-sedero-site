@@ -1754,6 +1754,18 @@ body.focus #side { display: none; }
 .sc-meal { --k-bg: rgb(255 168 110 / .2); --k-ink: #8f4e20; }
 .sc-rest { --k-bg: rgb(96 168 236 / .18); --k-ink: #2a5f9e; }
 .sc-open { --k-bg: rgb(84 196 138 / .18); --k-ink: #28704e; }
+/* Dark: lighter text, same pastels (the light inks vanish on the dark card). Three blocks, like the tokens above. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .sc-meal { --k-bg: rgb(255 168 110 / .24); --k-ink: #f3b98f; }
+  :root:not([data-theme="light"]) .sc-rest { --k-bg: rgb(96 168 236 / .26); --k-ink: #9fc9f3; }
+  :root:not([data-theme="light"]) .sc-open { --k-bg: rgb(84 196 138 / .23); --k-ink: #92d8b0; }
+}
+:root[data-theme="dark"] .sc-meal { --k-bg: rgb(255 168 110 / .24); --k-ink: #f3b98f; }
+:root[data-theme="dark"] .sc-rest { --k-bg: rgb(96 168 236 / .26); --k-ink: #9fc9f3; }
+:root[data-theme="dark"] .sc-open { --k-bg: rgb(84 196 138 / .23); --k-ink: #92d8b0; }
+:root.night:not([data-theme="light"]) .sc-meal { --k-bg: rgb(255 168 110 / .24); --k-ink: #f3b98f; }
+:root.night:not([data-theme="light"]) .sc-rest { --k-bg: rgb(96 168 236 / .26); --k-ink: #9fc9f3; }
+:root.night:not([data-theme="light"]) .sc-open { --k-bg: rgb(84 196 138 / .23); --k-ink: #92d8b0; }
 .sc-free { flex: 1; min-inline-size: 0; display: flex; align-items: center; gap: 6px; block-size: 24px; padding-inline: 10px; box-sizing: border-box;
   border-radius: 8px; background: var(--k-bg, rgb(0 0 0 / .04));
   font-size: 12.5px; font-weight: 500; color: var(--k-ink, var(--ink-2)); }
