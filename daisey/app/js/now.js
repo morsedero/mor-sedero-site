@@ -1782,8 +1782,12 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     const items = trimBreaks(prop.items).map(({ taskId, brk, minutes, name, at, hold, of }) => (brk ? { brk, minutes, ...(name ? { name } : {}) } : { taskId, minutes, ...(at ? { at } : {}), ...(hold ? { hold } : {}), ...(of ? { of } : {}) }));
     const unfit = overIds(items);
     // The count the plan card shows: its rows, laid with the same context as proposalCard (proposal.js shownTaskCount).
-    const n = shownTaskCount(prop.items, { ...planCtx(), ...(approvedPlan() && !prop.touched && !prop.replan ? { since: planSince() } : {}) });
-    savePlan("approved", items, { approvedAt: Date.now(), mealsLaid: mealAnswers(), behindNo: null, offer: null, unfit, tiers: currentTiers(), tierNo: null });
+    // An edit of the approved plan keeps its anchor (Mor, 2026-10-21: moving
+    // lunch slid the 13:00 task in progress to 13:55, everything after with it):
+    // laid from planSince like the card, saved with that as approvedAt.
+    const held = approvedPlan() && !prop.replan, since = held ? planSince() : null;
+    const n = shownTaskCount(prop.items, { ...planCtx(), ...(held ? { since } : {}) });
+    savePlan("approved", items, { approvedAt: held && since ? since : Date.now(), mealsLaid: mealAnswers(), behindNo: null, offer: null, unfit, tiers: currentTiers(), tierNo: null });
     prop.open = false; prop.replan = false; prop.ask = false; prop.note = ""; reset();
     render();
     onPlanApproved?.();
@@ -2004,7 +2008,8 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
         ? await rethink(text, { ...ctx, current: prop.items, exclude: prop.exclude, freeMinutes: free, guest })
         : { items: proposeDay({ ...ctx, exclude: prop.exclude }), note: "" };
       const before = prop.items.filter((i) => i.taskId).map((i) => i.taskId);
-      prop.items = withBreaks(r.items, ctx); prop.touched = true;
+      // A rethink is a fresh take, laid from now (replan), not held at the old times.
+      prop.items = withBreaks(r.items, ctx); prop.touched = true; if (approvedPlan()) prop.replan = true;
       const after = r.items.filter((i) => i.taskId).map((i) => i.taskId);
       // Say what actually changed, so a near-identical plan doesn't read as a second copy of the first.
       const name = (id) => { const t = ctx.tasks.find((x) => x.id === id); return t ? `“${t.title}”` : ""; };
@@ -2057,7 +2062,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     } }); return ol; };
   function proposalCard(){
     const approved = !!approvedPlan();
-    const { rows, over, breaks, late } = timeline(prop.items, { ...planCtx(), ...(approved && !prop.touched && !prop.replan ? { since: planSince() } : {}) });
+    const { rows, over, breaks, late } = timeline(prop.items, { ...planCtx(), ...(approved && !prop.replan ? { since: planSince() } : {}) });
     const total = rows.reduce((t, r) => t + r.minutes, 0);
     const last = rows[rows.length - 1];
     // One word for the plan's day: label, notes, reasons and the x all say it (day.js planWords).
