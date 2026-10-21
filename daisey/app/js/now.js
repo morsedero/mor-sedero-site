@@ -1307,7 +1307,8 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
   // A planned task whose time passed with no Done (the schedule's "?", Mor
   // 2026-10-10). Daisey doesn't know what happened (Mor, 2026-10-14: you can
   // be doing it all and just not open the app), so it asks: Done, Some of it
-  // (how much is left, then when), or Not yet (when). Answering clears the
+  // (how much is left, then when), or Later (when; was "Not yet", Mor
+  // 2026-10-21: it was easy to miss). Answering clears the
   // "?" and the Needs you ask with it.
   // from: the schedule box whose "?" was tapped, so Done celebrates it.
   // onNow: after Do it now (Needs you closes, so the card shows it).
@@ -1322,7 +1323,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     const name = h("p", { className: "miss-task", dir: "auto", textContent: task.title });
     const when = start ? `Planned ${clock(start)}${row?.missed ? `–${clock(row.end)}` : ""}, no Done yet.` : "No Done yet.";
     // Its time already passed, so the toast after a move doesn't ask again
-    // how much is left: Some of it asked, Not yet means all of it.
+    // how much is left: Some of it asked, Later means all of it.
     const paintWhen = () => dlg.replaceChildren(head("When next?"), name,
       h("div", { className: "miss-acts one" },
         h("button", { className: "btn line", type: "button", onclick: act(() => { switchTo(id); onNow?.(); }) }, icon("play"), h("span", { textContent: "Do it now" }))),
@@ -1340,7 +1341,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
         // Yellow with a check is Done, as on the card (Mor, 2026-10-10).
         h("button", { className: "btn primary", type: "button", onclick: act(() => quickDoneNow(task, from)) }, icon("check"), h("span", { textContent: "Done" })),
         h("button", { className: "btn line", type: "button", onclick: paintLeft, textContent: "Some of it" }),
-        h("button", { className: "btn line", type: "button", onclick: paintWhen, textContent: "Not yet" })));
+        h("button", { className: "btn line", type: "button", onclick: paintWhen }, icon("later"), h("span", { textContent: "Later" }))));
     dlg.showModal();
   }
 
@@ -1524,7 +1525,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     const key = `plan:${b.key}`, nl = settings.needsLater;
     if (nl?.date === logicalDate() && (nl.keys || []).includes(key)) return null;
     // Each task that passed with no Done gets the schedule's "?" (Mor,
-    // 2026-10-20): Done, Some of it or Not yet, one at a time; Do it now
+    // 2026-10-20): Done, Some of it or Later, one at a time; Do it now
     // goes home to it. An answer touches the task, and the plan then runs
     // from that touch (planSince), so the rest stop counting as missed:
     // the card keeps the ones it asked about, from when it asked, until
