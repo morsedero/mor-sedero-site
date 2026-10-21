@@ -25,13 +25,14 @@ async function saveTrelloToken(userId, token) {
 
 // Returns a live Google access token, refreshing first if it's stale.
 // Refreshing updates the stored record so the next call doesn't repeat it.
+// force: refresh even if the stored expiry says it is still good (Google said 401).
 // Returns null if there's no Google connection at all for this user.
-async function getGoogleAccessToken(userId) {
+async function getGoogleAccessToken(userId, force = false) {
   const rec = await store().get(`user:${userId}:google`, { type: "json" });
   if (!rec) return null;
 
   // 60s margin so a token doesn't expire mid-flight between check and use.
-  if (rec.expiry && Date.now() < rec.expiry - 60000) return rec.access_token;
+  if (!force && rec.expiry && Date.now() < rec.expiry - 60000) return rec.access_token;
   if (!rec.refresh_token) return null;
 
   const res = await fetch("https://oauth2.googleapis.com/token", {

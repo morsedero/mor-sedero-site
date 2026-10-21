@@ -34,6 +34,7 @@ import { decisionCard } from "./decision.js";
 import { waitingFor, personOf } from "./nudge.js";
 import { UNDO_MS } from "./undo.js";
 import { proposedWhy } from "./reason.js";
+import { jobLinks } from "./jobs.js";
 import { dayHours, isNight, nextMorning, dayEndAt, bookings, sameTitle, minText, gapsToday, planDate, usualHours, dayWord, slotsWord, answerDate, nightRange, planLabelDay, planWords, nightLendOver } from "./day.js";
 import { wrapList } from "./needs.js";
 import { needsCount, nightLine } from "./needs-list.js";
@@ -216,9 +217,14 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
       weekDots(t),
       !main && t.nextStep && h("p", { className: "now-next" }, "Next: ", bdi(t.nextStep)),
       why && h("p", { className: "now-why" }, ...say(why)),
+      main && openRow(t),
       !main && progressBar(t),
       ...extra);
   }
+  // A Job Hunt task's documents, one tap each (jobs.js: review → CV and cover
+  // letter, ready → the job post). No Start on the card, so they sit on it.
+  const openRow = (t) => { const ls = jobLinks(t); return ls.length ? h("div", { className: "now-open" }, ...ls.map((l) =>
+    h("a", { className: "chip", href: l.url, target: "_blank", rel: "noopener noreferrer", textContent: l.label }))) : null; };
   const titleButton = (t) => h("button", { type: "button", className: "now-title", dir: "auto", textContent: t.title,
     ariaLabel: `Open ${t.title}`, onclick: () => onOpen(t) });
   // The main card's next step sits just under the card, not on it (Mor,
@@ -1966,9 +1972,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
   function breakCard(b, next, upcoming){
     const name = b.name || (b.type === "meal" ? "Meal" : "Breather"); // the Today list's words
     return plainCard(`empty quiet brk sc-${breakKind(b)}`, { meta: "Break", side: upcoming ? `${clock(b.start)}–${clock(b.end)}` : `until ${clock(b.end)}`, title: `${b.type === "meal" ? "🍽️" : "☕"} ${name}`,
-      extras: [next && h("p", { className: "now-why" }, "Next: ", bdi(next.task.title), ` at ${clock(Math.max(next.start, b.end))}.`)],
-      action: next && h("button", { className: "btn quiet", type: "button", textContent: "Start it now",
-        ariaLabel: `Skip the rest of the break: start ${next.task.title}`, onclick: () => switchTo(next.task.id) }) });
+      extras: [next && h("p", { className: "now-why" }, "Next: ", bdi(next.task.title), ` at ${clock(Math.max(next.start, b.end))}.`)] });
   }
   // The slot, start to end: how long you've got. Never "not started": Daisey
   // can't see you working, only taps (Mor, 2026-10-18: "I'm on it, and it's

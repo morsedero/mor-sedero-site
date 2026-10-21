@@ -409,8 +409,8 @@ async function boot(){
     } else initial();
     show("signedin"); // no element of its own: just clears loading/sign-in views
 
-    Promise.all([import("./now.js"), import("./projects.js"), import("./addtask.js"), import("./needs.js"), import("./import-trello.js"), import("./addevent.js"), import("./store.js"), import("./deadlines.js"), import("./day.js"), import("./calendar.js"), import("./schedule.js"), import("./push.js"), import("./sample.js"), import("./ribbon.js")])
-      .then(([{ mountNow }, { mountProjects }, { mountAddTask }, { mountNeeds }, { mountImport, connectTrello, finishTrelloConnect, trelloConnected }, { mountAddEvent }, { migrateTasks, watchSettings, saveSettings, watchTasks, watchDayPlan, resetAll, guestFresh, seedGuest, seedAccountOnce }, { mountDeadlines }, { dayHours, minText, mealPrefs, usualHours }, { watchCalendar, connectCalendar, setCalendarHint, listCalendars, saveCalendars }, { mountSchedule }, push, { sampleDay }, { mountRibbon }]) => {
+    Promise.all([import("./now.js"), import("./projects.js"), import("./addtask.js"), import("./needs.js"), import("./import-trello.js"), import("./addevent.js"), import("./store.js"), import("./deadlines.js"), import("./day.js"), import("./calendar.js"), import("./schedule.js"), import("./push.js"), import("./sample.js"), import("./ribbon.js"), import("./jobs-sync.js")])
+      .then(([{ mountNow }, { mountProjects }, { mountAddTask }, { mountNeeds }, { mountImport, connectTrello, finishTrelloConnect, trelloConnected }, { mountAddEvent }, { migrateTasks, watchSettings, saveSettings, watchTasks, watchDayPlan, resetAll, guestFresh, seedGuest, seedAccountOnce }, { mountDeadlines }, { dayHours, minText, mealPrefs, usualHours }, { watchCalendar, connectCalendar, setCalendarHint, listCalendars, saveCalendars }, { mountSchedule }, push, { sampleDay }, { mountRibbon }, { startJobs }]) => {
         if ((!isGuest && fb.currentUid() !== user.uid) || mounted) return;
         const m = mounted = {};
         // A new guest opens to a sample day, not an empty card (sample.js).
@@ -724,7 +724,18 @@ async function boot(){
           connectBtn.textContent = c.status === "needs_reauth" ? "Reconnect" : "Connect";
           connNote(calNote, isGuest ? "Sign in first" : calOk ? "Connected" : c.status === "needs_reauth" ? "Expired" : "Not connected");
         });
-        m.menu = { unmount(){ stopSettings(); stopCal(); stopBriefTasks(); stopBriefPlan(); clearInterval(seenTick); document.removeEventListener("visibilitychange", seen); settingsDlg.removeEventListener("click", foldMeal); settingsDlg.removeEventListener("close", shutMeal); start.onchange = end.onchange = logSwitch.onchange = pushSwitch.onchange = pushTest.onclick = null;
+        // Job Hunt (jobs-sync.js): Drive cards as tasks. The row only appears
+        // when something needs doing; the Now card never waits on it.
+        const jobsRow = $("#jobsRow"), jobsBtn = $("#connectJobs"), jobsNote = $("#jobsNote");
+        jobsBtn.onclick = connectCalendar; // one Google consent covers Calendar and Drive
+        const jobs = isGuest ? null : startJobs(user.uid, (st) => {
+          const reconnect = st === "needs_reauth" || st === "needs_drive";
+          jobsRow.hidden = !reconnect && st !== "ok";
+          jobsBtn.hidden = !reconnect;
+          connNote(jobsNote, reconnect ? "Expired" : "Connected");
+        });
+        $("#settingsBtn").addEventListener("click", () => jobs?.refresh());
+        m.menu = { unmount(){ jobs?.stop(); stopSettings(); stopCal(); stopBriefTasks(); stopBriefPlan(); clearInterval(seenTick); document.removeEventListener("visibilitychange", seen); settingsDlg.removeEventListener("click", foldMeal); settingsDlg.removeEventListener("close", shutMeal); start.onchange = end.onchange = logSwitch.onchange = pushSwitch.onchange = pushTest.onclick = null;
           kindBoxes.forEach((b) => { b.onchange = null; }); } };
 
         const closeScreens = () => { $("#weekPage").hidden = true; m.now?.closePlan(); m.projects?.closeProject(); m.needs?.close(); syncPanel(); };

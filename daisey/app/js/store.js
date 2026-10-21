@@ -175,6 +175,14 @@ export function addTask(uid, input, tasks = []){
   return added;
 }
 
+// Job Hunt (jobs-sync.js): a task at a fixed doc id, so two devices syncing at
+// once write one task. patchTask is a raw field patch — not a user edit, so
+// touchedAt/editedAt stay put. Signed-in only: Drive needs a Google account.
+export function addTaskAt(uid, id, input, tasks = []){
+  return fb.setDoc(taskDoc(uid, id), createTask(input, { history: tasks }));
+}
+export const patchTask = (uid, id, patch) => updateGuestTask(uid, id, patch);
+
 export function updateTask(uid, task, changes, tasks = []){
   const patch = editTask(task, changes, { history: tasks });
   return Object.keys(patch).length ? updateGuestTask(uid, task.id, patch) : Promise.resolve();

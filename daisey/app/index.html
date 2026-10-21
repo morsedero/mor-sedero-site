@@ -257,6 +257,9 @@
         </div>
         <p id="pickMsg" class="menu-note" role="status"></p>
       </div>
+      <!-- Job Hunt cards from Drive (jobs-sync.js): read only; Reconnect shows when the grant needs renewing. -->
+      <div id="jobsRow" class="menu-row" hidden><span class="menu-ico logo"><svg viewBox="0 0 24 24" width="28" height="28" aria-hidden="true"><path fill="#0066DA" d="M1.6 18.6l1.4 2.4c.3.5.7.9 1.2 1.2l4.6-8H0c0 .5.1 1.1.4 1.6z"/><path fill="#00AC47" d="M12 7.7L7.4 0c-.5.3-.9.7-1.2 1.2L.4 11.4c-.3.5-.4 1-.4 1.6h9.2z"/><path fill="#EA4335" d="M20 22.2c.5-.3.9-.7 1.2-1.2l.6-1 2.8-4.9c.3-.5.4-1.1.4-1.6h-9.2l2 3.9z"/><path fill="#00832D" d="M12 7.7L16.6 0c-.5-.3-1-.4-1.6-.4H9c-.6 0-1.1.2-1.6.4z"/><path fill="#2684FC" d="M14.9 13H9.2l-4.6 8c.5.3 1 .4 1.6.4h11.6c.6 0 1.1-.2 1.6-.4z"/><path fill="#FFBA00" d="M20 7.9l-2.9-5c-.3-.5-.7-.9-1.2-1.2L12 7.7 16.6 13H24c0-.5-.1-1.100-.4-1.600z"/></svg></span><span class="menu-label menu-stack">Job Hunt (Google Drive)</span>
+        <span class="menu-stat"><span id="jobsNote"></span><button id="connectJobs" class="menu-link" type="button" hidden>Reconnect Google Drive</button></span></div>
       <div class="menu-row"><span class="menu-ico logo"><svg viewBox="0 0 24 24" width="28" height="28" aria-hidden="true"><path fill="#0052CC" d="M21.147 0H2.853A2.86 2.86 0 000 2.853v18.294A2.86 2.86 0 002.853 24h18.294A2.86 2.86 0 0024 21.147V2.853A2.86 2.86 0 0021.147 0zM10.34 17.287a.953.953 0 01-.953.953h-4a.954.954 0 01-.954-.953V5.38a.953.953 0 01.954-.953h4a.954.954 0 01.953.953zm9.233-5.467a.944.944 0 01-.953.947h-4a.947.947 0 01-.953-.947V5.38a.953.953 0 01.953-.953h4a.954.954 0 01.953.953z"/></svg></span><span class="menu-label menu-stack">Trello<button id="importTrello" class="menu-link menu-sub" type="button" hidden>Import cards…</button></span>
         <span class="menu-stat"><span id="trelloNote"></span><button id="connectTrello" class="menu-link" type="button">Connect</button></span></div>
     </div>

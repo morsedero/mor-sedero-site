@@ -79,6 +79,10 @@ export const TARGET = { today: 8, within3: 4 }; // today or past · ≤3 days; n
 // the days already gone fell short of an even pace (engine routine). due:
 // still on pace, but this is one of them (a reason, just over WHY_MIN_POINTS).
 // why: its rank among the reasons (not points) — the week's count leads.
+// A Job Hunt card's fit (jobs.js), 1-10: 2 points a step above 5, so a 10 is
+// worth 10 — under a deadline today (35), over a window fit (12). Its why
+// line leads every job task's reason ("Fit 8/10 · <why>"), hence 40.
+export const FIT = { per: 2, why: 40 };
 export const ROUTINE = { last: 25, behind: 14, due: 6, why: 30 };
 export const STAKES = { penalty: 15, money: 12, someone: 10, low: 0 };
 // The project's tier on the Projects page (Mor, 2026-10-08). Focus is under

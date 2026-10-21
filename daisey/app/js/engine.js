@@ -15,7 +15,7 @@ import { cleanRoutine, weekState } from "./routine.js";
 const MIN = 60000;
 const DAY = 86400000;
 // Every scoring factor, in why-line tie order (earlier wins a tie).
-const FACTORS = ["deadline", "routine", "stakes", "office", "progress", "flow", "batch", "spot", "priority", "area", "target", "window", "momentum", "neglect", "learned"];
+const FACTORS = ["deadline", "routine", "fit", "stakes", "office", "progress", "flow", "batch", "spot", "priority", "area", "target", "window", "momentum", "neglect", "learned"];
 const DAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
@@ -260,6 +260,13 @@ function routine(task, m){
   return { points: s.need >= s.daysLeft ? R.last : behind ? R.behind : R.due, why: R.why, detail: s };
 }
 
+// A Job Hunt task (jobs.js): the card's fit leans on the pick, and says so first.
+function fit(task){
+  const n = task.source?.app === "jobhunt" ? Number(task.source.fit) : 0;
+  if (!(n >= 1 && n <= 10)) return { points: 0, detail: null };
+  return { points: Math.max(0, n - 5) * W.FIT.per, why: W.FIT.why, detail: { fit: n, why: String(task.source.why || "").trim() } };
+}
+
 function stakes(task){
   return { points: W.STAKES[task.stakes] || 0, detail: { kind: task.stakes } };
 }
@@ -393,7 +400,7 @@ function progress(task){
 // depends on the other tasks (batches, areas in play).
 export function scoreTask(task, m, ctx = { batches: new Map(), areas: [] }){
   const f = {
-    deadline: deadline(task, m, ctx), routine: routine(task, m), target: target(task, m), stakes: stakes(task), priority: priority(task, m), area: areaBalance(task, m, ctx.areas), neglect: neglect(task, m),
+    deadline: deadline(task, m, ctx), routine: routine(task, m), fit: fit(task), target: target(task, m), stakes: stakes(task), priority: priority(task, m), area: areaBalance(task, m, ctx.areas), neglect: neglect(task, m),
     window: windowFit(task, m), flow: flow(task, m), momentum: momentum(task, m), batch: batch(task, ctx.batches), learned: learned(task, m),
     office: office(task, m), spot: spot(task, m), progress: progress(task),
   };
@@ -442,6 +449,7 @@ const PHRASES = {
   // The card's dots (ui.weekDots) already show the count, so the words say
   // what the dots can't: "2 more this week, 2 days left" once every day counts.
   // A dated month says its day: "every month on the 12th".
+  fit: (s, d) => [`Fit ${d.fit}/10${d.why ? ` · ${d.why}` : ""}`],
   routine: (s, d) => d.on ? [`every month on the ${((n) => n + (n > 10 && n < 14 ? "th" : ["th", "st", "nd", "rd"][n % 10] || "th"))(Number(d.on.slice(8)))}`]
     : d.need >= d.daysLeft && d.daysLeft <= 3
     ? [d.daysLeft === 1 ? `last day to make ${d.per} this ${d.word}` : `${d.need} more this ${d.word}, ${d.daysLeft} days left`]

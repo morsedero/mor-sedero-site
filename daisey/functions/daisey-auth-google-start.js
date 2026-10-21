@@ -34,7 +34,11 @@ exports.handler = async (event = {}) => {
     // calendar for the app itself; openid+email for the userinfo call the
     // callback makes to mint a stable userId — without these it can read
     // calendars but can't identify WHO logged in.
-    scope: "https://www.googleapis.com/auth/calendar openid email",
+    // drive.readonly (2026-10-21): Daisey reads the Job Hunt jobs.json
+    // (daisey-now-jobs). include_granted_scopes keeps what an earlier grant
+    // had, so adding a scope never takes one away.
+    scope: "https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/drive.readonly openid email",
+    include_granted_scopes: "true",
     access_type: "offline",
     prompt: "consent",
     ...(hint ? { login_hint: hint } : {}),

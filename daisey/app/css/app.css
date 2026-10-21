@@ -2924,3 +2924,5 @@ button.bl-r-title { padding: 0; border: 0; background: none; color: var(--ink); 
   .sc-row.sc-on:not(.sc-gap) .sc-ev:is([class*="pc-"], [class*="area-"]) { --deep: var(--aline); --edge: var(--aline); }
 }
 @media (prefers-color-scheme: dark) { @supports not (color: color-mix(in srgb, red, blue)) { :root:not([data-theme="light"]) .now-card.main:is(.deck > *, .going) { --glint: var(--aline); } } }
+.now-open { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 0; }
+.now-open .chip { text-decoration: none; }
