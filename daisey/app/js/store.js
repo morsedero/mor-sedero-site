@@ -400,10 +400,10 @@ const projectsDoc = (uid) => fb.doc(fb.db, "users", uid, "state", "projects");
 
 export function watchProjectNames(uid, cb, onError){
   if(isGuest(uid)){
-    try { return watchGuestState(uid, "projects", (value) => cb(value?.names || [], value?.ranges || {}, value?.order || [], value?.tiers || {}), onError); }
+    try { return watchGuestState(uid, "projects", (value) => cb(value?.names || [], value?.ranges || {}, value?.order || [], value?.tiers || {}, value?.caps || {}), onError); }
     catch(error){ onError?.(error); return () => {}; }
   }
-  return fb.onSnapshot(projectsDoc(uid), (snap) => cb((snap.exists() && snap.data().names) || [], (snap.exists() && snap.data().ranges) || {}, (snap.exists() && snap.data().order) || [], (snap.exists() && snap.data().tiers) || {}), onError);
+  return fb.onSnapshot(projectsDoc(uid), (snap) => cb((snap.exists() && snap.data().names) || [], (snap.exists() && snap.data().ranges) || {}, (snap.exists() && snap.data().order) || [], (snap.exists() && snap.data().tiers) || {}, (snap.exists() && snap.data().caps) || {}), onError);
 }
 
 // Merged, so saving names never wipes the ranges (and the reverse).
@@ -418,6 +418,11 @@ export function saveProjectOrder(uid, order){
 // "background" }. A project with none is "keep".
 export function saveProjectTiers(uid, tiers){
   return saveGuestState(uid, "projects", { tiers }, true);
+}
+// Each project's daily cap (Mor, 2026-10-21): { name: max tasks a day }. A
+// project with none has no cap.
+export function saveProjectCaps(uid, caps){
+  return saveGuestState(uid, "projects", { caps }, true);
 }
 export function saveProjectRanges(uid, ranges){
   return saveGuestState(uid, "projects", { ranges }, true);

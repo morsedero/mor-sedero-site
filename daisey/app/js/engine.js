@@ -89,6 +89,8 @@ export function matchProject(title, projects){
 //   flowProject     project just stopped or finished (W.FLOW.gapMinutes), or
 //                   the plan's previous pick: stay in it if it fits
 //   projectTiers    { project name: "focus" | "keep" | "background" }
+//   projectCaps     { project name: max tasks a day }
+//   projectDone     { project name: tasks done today (the plan adds its picks) }
 //   areaDone        { area: tasks worked this week } — area balance
 //   sessionSkips    ids hidden by Not now this session
 //   skipsToday      { id: count } — the skip penalty
@@ -117,6 +119,8 @@ export function readMoment(input = {}){
     recentProjects: (input.recentProjects || []).map(key),
     flowProject: input.flowProject && key(input.flowProject) !== key(INBOX) ? key(input.flowProject) : null,
     projectTiers: Object.fromEntries(Object.entries(input.projectTiers || {}).map(([p, t]) => [key(p), t])),
+    projectCaps: Object.fromEntries(Object.entries(input.projectCaps || {}).filter(([, n]) => Number.isInteger(n) && n > 0).map(([p, n]) => [key(p), n])),
+    projectDone: Object.fromEntries(Object.entries(input.projectDone || {}).map(([p, n]) => [key(p), n])),
     projectDue: Object.fromEntries(Object.entries(input.projectDue || {}).filter(([, d]) => /^\d{4}-\d{2}-\d{2}$/.test(d || "")).map(([p, d]) => [key(p), d])),
     areaDone: input.areaDone || {},
     sessionSkips: new Set(input.sessionSkips || []),
@@ -167,6 +171,12 @@ export function filterOut(task, m){
     if (m.routineCal[task.id]?.today || !weekState(task, m.today, m.routineCal[task.id]).need) return "routine";
   } else if (m.booked[task.id] > m.now) return "booked";
   if (m.sessionSkips.has(task.id)) return "skipped";
+  // A project's daily cap (Mor, 2026-10-21): once that many of its tasks are
+  // done today (in the plan: picked), the rest wait for tomorrow. A deadline
+  // today still comes; a routine keeps its own weekly count.
+  const p = key(task.project) || "inbox";
+  const cap = m.projectCaps?.[p];
+  if (!task.routine && cap && (m.projectDone?.[p] || 0) >= cap && !deadlineWithin(task, m.now, 0)) return "cap";
   if (m.blockProject && key(task.project) !== m.blockProject) return "block";
   if (!fitsPlace(task, m.place, m.phoneOk)) return "place";
   if (task.openHours === "office" && !m.officeOpen) return "office";
@@ -329,6 +339,19 @@ function flowOn(task, m){
 }
 function flow(task, m){
   return flowOn(task, m) ? { points: W.FLOW.points, detail: { project: task.project } } : { points: 0, detail: null };
+}
+
+// Flow keeps you in a project, never ahead of a higher tier (Mor, 2026-10-21:
+// one Job Hunt pick and its flow ran Job Hunt to the end of the plan, past a
+// Focus task that outscored each of them alone). A task flow would lift over
+// a higher-tier one loses the flow points.
+function flowUnderTier(scored, m){
+  const rankOf = (s) => W.TIERS.indexOf(tierOf(s.task, m));
+  for (const s of scored) {
+    if (!s.parts.flow) continue;
+    const best = Math.max(-Infinity, ...scored.filter((o) => rankOf(o) < rankOf(s)).map((o) => o.score - o.parts.flow));
+    if (s.score - s.parts.flow < best) { s.score -= s.parts.flow; s.parts.flow = 0; s.details.flow = null; s.whyPoints.flow = 0; }
+  }
 }
 
 // Flow already says it, stronger: momentum stays quiet then.
@@ -596,7 +619,9 @@ export function rank(tasks, input = {}){
   // Background waits (Mor, 2026-10-08): behind every other offerable task,
   // unless a deadline or target date gives it points.
   const waits = (s) => tierOf(s.task, m) === "background" && !s.parts.deadline && !s.parts.target;
-  const ranked = offer.map((t) => scoreTask(t, m, ctx)).sort((a, b) => waits(a) - waits(b) || compare(a, b));
+  const scored = offer.map((t) => scoreTask(t, m, ctx));
+  flowUnderTier(scored, m);
+  const ranked = scored.sort((a, b) => waits(a) - waits(b) || compare(a, b));
   const pick = ranked[0] || null;
   const alternatives = somethingElse(ranked);
   assignWhys([...(pick ? [pick] : []), ...alternatives]);

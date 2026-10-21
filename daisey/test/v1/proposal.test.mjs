@@ -410,3 +410,40 @@ test("two breaks with no task between them lay as one, the longer", () => {
   const { breaks } = timeline(items, { tasks, events: [], now: at(9), hours: { start: 480, end: 1320, meals: [{ name: "Lunch", from: 780, to: 840, minutes: 45 }] } });
   assert.deepEqual(breaks.map((b) => b.type), ["long", "meal"]);
 });
+
+test("flow never lifts a task over a higher tier (Mor, 2026-10-21: Job Hunt's run filled the plan past Focus)", async () => {
+  const C = await import("../../app/js/context.js");
+  C.setProjectTiers({ F: "focus", K: "keep" });
+  try {
+    const none = { due: null, dateKind: null, openHours: "anytime" };
+    const tasks = [
+      t({ id: "k1", project: "K", dateKind: "deadline", due: "2026-10-07", createdAt: at(0, 1) }),
+      t({ id: "k2", project: "K", createdAt: at(0, 2), ...none }), t({ id: "f", project: "F", createdAt: at(0, 3), ...none }),
+    ];
+    assert.deepEqual(proposeDay({ tasks, events: [], now: at(9) }).map((i) => i.taskId), ["k1", "f", "k2"]);
+  } finally { C.setProjectTiers({}); }
+});
+
+test("a project's daily cap: past it, the plan leaves the rest for tomorrow; a deadline today still comes (Mor, 2026-10-21)", async () => {
+  const C = await import("../../app/js/context.js");
+  C.setProjectCaps({ J: 2 });
+  try {
+    const none = { due: null, dateKind: null, openHours: "anytime" };
+    const tasks = [
+      ...[1, 2, 3, 4].map((n) => t({ id: `j${n}`, project: "J", size: 15, createdAt: at(0, n), ...none })),
+      t({ id: "o", project: "O", size: 15, ...none }),
+    ];
+    const ids = proposeDay({ tasks, events: [], now: at(9) }).map((i) => i.taskId);
+    assert.equal(ids.filter((id) => id.startsWith("j")).length, 2);
+    assert.ok(ids.includes("o"));
+    // One already done today counts too.
+    const doneToday = [...tasks, t({ id: "jd", project: "J", status: "done", doneAt: at(8), ...none })];
+    assert.equal(proposeDay({ tasks: doneToday, events: [], now: at(9) }).filter((i) => i.taskId.startsWith("j")).length, 1);
+    // A deadline today isn't held back by the cap.
+    const due = [...tasks, t({ id: "jdl", project: "J", size: 15, dateKind: "deadline", due: "2026-10-07" })];
+    assert.ok(proposeDay({ tasks: due, events: [], now: at(9) }).some((i) => i.taskId === "jdl"));
+    // Top up counts what the plan already holds.
+    const { added } = topUp([{ taskId: "j1", minutes: 15 }, { taskId: "j2", minutes: 15 }], { tasks, events: [], now: at(9) });
+    assert.ok(!added.some((id) => id.startsWith("j")), `added ${added}`);
+  } finally { C.setProjectCaps({}); }
+});

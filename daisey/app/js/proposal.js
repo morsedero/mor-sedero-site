@@ -66,7 +66,9 @@ function rideGaps(evs, now){
 // ask: parseAsk's hints (or {}). exclude: ids the user deleted from the plan.
 // phoneOk: Computer tasks the phone can do (phone.js) — on a bus or in the
 // passenger seat they fit the ride.
-export function proposeDay({ tasks = [], events = [], now = Date.now(), hours = W.DAY_HOURS, settings = {}, ask = {}, exclude = [], phoneOk = phoneOkIds(tasks) } = {}){
+// planned: ids already in the plan (topUp, More), counted toward each
+// project's daily cap like the picks made here.
+export function proposeDay({ tasks = [], events = [], now = Date.now(), hours = W.DAY_HOURS, settings = {}, ask = {}, exclude = [], planned = [], phoneOk = phoneOkIds(tasks) } = {}){
   const { evs, gaps: all } = freeGaps({ tasks, events, now, hours });
   const until = Number.isFinite(ask.until) ? atMin(now, ask.until) : Infinity;
   const cut = (gs) => gs.map((g) => ({ ...g, end: Math.min(g.end, until) })).filter((g) => g.end - g.start >= WORTH * MIN);
@@ -117,6 +119,19 @@ export function proposeDay({ tasks = [], events = [], now = Date.now(), hours = 
   // task of it fits, so the plan runs a project's tasks back to back instead
   // of mixing; the first carries what was just worked on, if the plan starts now.
   const base = workBase(tasks, now);
+  // A project's daily cap (engine filterOut) counts what's done today plus
+  // what the plan already holds of it.
+  const byTask = new Map(tasks.map((t) => [t.id, t]));
+  const projectDone = () => {
+    const n = { ...base.projectDone };
+    for (const id of new Set([...planned, ...taken])) {
+      const t = byTask.get(id);
+      if (t && !t.routine && t.status === "ready") n[t.project || INBOX] = (n[t.project || INBOX] || 0) + 1;
+    }
+    return n;
+  };
+  const atCap = (t) => { const name = t.project || INBOX, cap = base.projectCaps?.[name];
+    return !t.routine && cap > 0 && (projectDone()[name] || 0) >= cap; };
   const warm = (at) => (at - now <= W.FLOW.gapMinutes * MIN ? base.flowProject : null);
   const projectOf = (t) => (t.routine ? null : t.project || null);
   const onRide = [];
@@ -124,7 +139,7 @@ export function proposeDay({ tasks = [], events = [], now = Date.now(), hours = 
     let room = Math.floor((g.end - g.start) / MIN), flowProject = warm(g.start);
     while (items.length + onRide.length < cap && room >= WORTH) {
       const r = rank(pool, { now: g.start, window: room, place: g.place, nextEvent: null, ...base, flowProject,
-        sessionSkips: [...out, ...waiting()], booked, routineCal, phoneOk: [...phoneOk] });
+        sessionSkips: [...out, ...waiting()], booked, routineCal, phoneOk: [...phoneOk], projectDone: projectDone() });
       if (!r.pick) break;
       flowProject = projectOf(r.pick.task);
       const m = Math.min(leftOf(r.pick.task), room);
@@ -140,7 +155,7 @@ export function proposeDay({ tasks = [], events = [], now = Date.now(), hours = 
   while (usable.length && items.length + onRide.length < cap && budget >= 5) {
     const r = rank(pool, {
       now: usable[0].start, window: Math.min(biggest, budget), nextEvent: null, ...base, flowProject,
-      sessionSkips: [...out, ...waiting()], booked, routineCal,
+      sessionSkips: [...out, ...waiting()], booked, routineCal, projectDone: projectDone(),
     });
     if (!r.pick) break;
     take(r.pick.task);
@@ -165,6 +180,7 @@ export function proposeDay({ tasks = [], events = [], now = Date.now(), hours = 
   if (!narrowed) for (const t of tasks) {
     if (out.has(t.id) || t.status !== "ready" || t.onHold || t.routine || notYet(t, now) || !t.due || t.due > today || booked[t.id] > now
       || waitsOnSiblings(t, tasks, taken, today)) continue; // a last step still waits for its project's other work
+    if (t.dateKind !== "deadline" && atCap(t)) continue; // a target date waits out the project's cap, a deadline doesn't
     items.push({ taskId: t.id, minutes: leftOf(t) }); out.add(t.id);
   }
   const plan = [...items.filter((it) => !later.has(it.taskId)), ...items.filter((it) => later.has(it.taskId))];
@@ -591,7 +607,8 @@ export function topUp(items = [], ctx = {}, skip = []){
   const room = MAX_ITEMS - open;
   if (room <= 0) return { items, added: [] };
   const overBefore = timeline(items, ctx).over.length;
-  const picks = proposeDay({ ...ctx, exclude: [...items.filter((it) => it.taskId).map((it) => it.taskId), ...skip] });
+  const have = items.filter((it) => it.taskId).map((it) => it.taskId);
+  const picks = proposeDay({ ...ctx, exclude: [...have, ...skip], planned: have });
   let out = items;
   const added = [];
   for (const p of picks) {
@@ -641,7 +658,7 @@ export function fewerOf(items = [], ctx = {}){
 }
 export function moreOf(items = [], ctx = {}){
   const plan = items.filter((it) => !isBreak(it));
-  const picks = proposeDay({ ...ctx, exclude: [...(ctx.exclude || []), ...plan.map((it) => it.taskId)] });
+  const picks = proposeDay({ ...ctx, exclude: [...(ctx.exclude || []), ...plan.map((it) => it.taskId)], planned: plan.map((it) => it.taskId) });
   let out = plan, added = 0, mins = 0;
   const overBefore = timeline(out, ctx).over.length;
   for (const p of picks) {
