@@ -908,7 +908,7 @@ async function boot(){
           } });
         // The day ribbon under the clock (phone home; app.css shows it): the
         // schedule works out today's shape and hands it over.
-        m.ribbon = mountRibbon($("#ribbon"), { onPlan: () => morph(() => m.now?.plan()) });
+        m.ribbon = mountRibbon($("#ribbon"));
         m.schedule = mountSchedule($("#schedPage"), user.uid, { onEvent: (ev) => m.event.view(ev), onNew: (date, at) => m.event.open(date, at), onOpen: (task) => m.adder.edit(task), onMissed: (id, start, from) => m.now?.missed(id, start, from), onNow: flashNow, onPlan: () => m.now?.plan(), onShape: (d) => m.ribbon.set(d) });
         m.projects = mountProjects({ grid: $("#projPage"), page: $("#projPage"), glance: $("#glance"), view: $("#projectview"), dialog: $("#projdlg") }, user.uid, {
           onOpen: (task) => m.adder.edit(task),

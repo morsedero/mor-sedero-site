@@ -4,7 +4,7 @@
 // the plan still holds as hollow rings, the calendar's events as the line itself in their colour,
 // and now as a yellow dot. Above it "✓ 3 done · ○ 2 left" (the "until 23:00"
 // day end went, Mor 2026-10-20: at a 00:00 end it said nothing);
-// with no plan, the plan's button sits under the line. A bead opens a small
+// (the plan's button moved to the day bar, Mor 2026-10-21). A bead opens a small
 // pop-over with what it was. schedule.js works out the day (shape()), this
 // only draws it.
 import { h, bdi, icon } from "./ui.js";
@@ -13,7 +13,7 @@ import { areaClass, projectShown } from "./look.js";
 const hm = (ms) => new Date(ms).toTimeString().slice(0, 5);
 const ring = () => h("span", { className: "rb-ring", ariaHidden: "true" });
 
-export function mountRibbon(el, { onPlan } = {}){
+export function mountRibbon(el){
   let data = null, open = null, cardId = null; // open: the bead whose pop-over shows ("d:<id>" / "l:<id>")
   let fresh = null; // the dot just tapped: it pops once (.pick), not on every repaint after
 
@@ -135,7 +135,6 @@ export function mountRibbon(el, { onPlan } = {}){
     if (open) { const p = pop(line); if (p) line.append(p); }
     el.replaceChildren(top, line);
     fresh = null; drawn = group(open);
-    if (!planned) el.append(h("div", { className: "rb-act" }, h("button", { type: "button", className: "rb-plan", onclick: () => onPlan?.() }, icon("calendar"), h("span", { textContent: data.word }))));
   }
 
   // A tap anywhere else shuts the pop-over.

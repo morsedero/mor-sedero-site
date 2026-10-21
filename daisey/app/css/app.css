@@ -1589,6 +1589,9 @@ body.focus #side { display: none; }
   /* On today the hidden Now is display:none, which took the auto margin with it: Change plan and
      the right arrow sat against the title. They go to the bar's end like the other days (Mor, 2026-10-21). */
   .sc-bar:not(.away) .sc-planbtn { margin-inline-start: auto; }
+  /* On today only it says what it does: Plan my day / Plan the rest / Change plan (Mor, 2026-10-21). */
+  body.day-open .sc-bar:not(.away) .sc-planbtn { inline-size: auto; padding: 0 12px; }
+  body.day-open .sc-bar:not(.away) .sc-planbtn span { display: inline; }
   #panel { margin-block-end: 0; }
 }
 /* While Switch, Pending or Later is open under the card, the side buttons
@@ -2862,9 +2865,6 @@ button.bl-r-title { padding: 0; border: 0; background: none; color: var(--ink); 
   .rb-title { margin-block-start: 3px !important; font-size: 15px; font-weight: 700; color: var(--ink); overflow-wrap: anywhere; }
   .rb-when { margin-block-start: 3px !important; display: flex; align-items: center; gap: 5px; font-size: 12.5px; color: var(--ink-2); }
   .rb-when svg { inline-size: 12px; block-size: 12px; stroke: var(--a-home-ink); stroke-width: 3; }
-  .rb-act { display: flex; justify-content: flex-end; margin-block-start: 4px; }
-  .rb-plan { display: inline-flex; align-items: center; gap: 5px; block-size: 32px; padding: 0 12px; margin-inline-end: -6px; border: 1px solid var(--a-admin-line); border-radius: 18px; background: var(--a-admin-tint); color: var(--a-admin-ink); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
-  .rb-plan svg { inline-size: 14px; block-size: 14px; }
   @media (prefers-reduced-motion: no-preference) { .rb-pop:not(.still) { animation: ready-in .18s ease-out; } }
 }
 
