@@ -199,7 +199,8 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
   // tags went with round 2).
   function taskCard(s, main, ...extra){
     // The slot sits in the top row's far side, so the reason's own "now · a–b" goes.
-    const parts = main && s.slot ? (s.whyParts || []).map((p) => (typeof p === "string" ? p.replace(/now · \d\d:\d\d–\d\d:\d\d(, )?/, "") : p)).filter((p) => p !== "") : s.whyParts;
+    // The plan's own "until 12:40" / "planned 11:40–12:40" goes too.
+    const parts = main && s.slot ? (s.whyParts || []).map((p) => (typeof p === "string" ? p.replace(/now · \d\d:\d\d–\d\d:\d\d(, )?/, "").replace(/^(next in your plan, |planned( for)? |until )\d\d:\d\d(–\d\d:\d\d)?$/, "") : p)).filter((p) => p !== "") : s.whyParts;
     const why = sentence(parts);
     const t = s.task;
     // The why line fits the time LEFT (engine leftMinutes), so the chip says it
@@ -2295,9 +2296,11 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     card = keptCard(card, { r, fw, asCard, picked, planRow });
     showing(card?.task.id ?? null);
     if (card && card === r.pick) noteSeen(card.task);
-    // No plan row for it: it still says when it started and when it ends.
-    if (card && !planRowsNow().some((x) => x.taskId === card.task.id && !x.missed)) {
-      const slot = autoSlot(card.task, fw);
+    // Its slot, for the top row: the plan row's times, or with no plan row
+    // when it started and when it ends (autoSlot).
+    if (card) {
+      const row = planRowsNow().find((x) => x.taskId === card.task.id && !x.missed);
+      const slot = row ? { start: row.start, end: row.end, text: `${clock(row.start)}–${clock(row.end)}` } : autoSlot(card.task, fw);
       if (slot) card = { ...card, slot };
     }
     // One ask under the card at a time, the most asked-for first.
