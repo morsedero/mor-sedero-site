@@ -1860,6 +1860,11 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     // sat missed at 11:40 and the UI fix was the real 12:50). The missed note
     // asks about the missed row.
     if (brk && (!rows[0] || rows[0].start >= brk.end - 60000)) return { brk, next: rows[0] || null };
+    // A break coming up with no task before it is the card too, saying when it
+    // starts (Mor, 2026-10-21: at 14:12 the card showed the 15:15 task while
+    // lunch began 14:15).
+    const soon = tl.breaks.filter((b) => b.start > now && (!rows[0] || rows[0].start >= b.end - 60000)).sort((a, b) => a.start - b.start)[0];
+    if (soon) return { brk: soon, next: rows[0] || null, upcoming: true };
     if (rows[0]) return { row: rows[0] };
     return null;
   }
@@ -1958,9 +1963,9 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
   // lay), so a running or just-stretched task read "next in your plan, 10:25"
   // at 10:22 (2026-10-18).
   const planWhy = (row) => [row.start > Date.now() + 5 * 60000 ? `next in your plan, ${clock(row.start)}–${clock(row.end)}` : `until ${clock(row.end)}`];
-  function breakCard(b, next){
+  function breakCard(b, next, upcoming){
     const name = b.name || (b.type === "meal" ? "Meal" : "Breather"); // the Today list's words
-    return quietCard({ meta: "Break", side: `until ${clock(b.end)}`, title: name,
+    return quietCard({ meta: "Break", side: upcoming ? `${clock(b.start)}–${clock(b.end)}` : `until ${clock(b.end)}`, title: name,
       extras: [next && h("p", { className: "now-why" }, "Next: ", bdi(next.task.title), ` at ${clock(Math.max(next.start, b.end))}.`)],
       action: next && h("button", { className: "btn quiet", type: "button", textContent: "Start it now",
         ariaLabel: `Skip the rest of the break: start ${next.task.title}`, onclick: () => switchTo(next.task.id) }) });
@@ -2315,7 +2320,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     // The plan slipping asks in Needs you now (planAsk), not here.
     behind = behindNow();
     const tip = (toast && toastView()) || cutView() || addedView() || (sd.open && somedayAsk()) || routineNag(card, r, picked);
-    if (!card && pn?.brk && !fw?.current) { day(...head, breakCard(pn.brk, pn.next), tip); return; }
+    if (!card && pn?.brk && !fw?.current) { day(...head, breakCard(pn.brk, pn.next, pn.upcoming), tip); return; }
     // In a meeting, the meeting IS what's happening now, so the card says
     // which one and how much of it is left (Mor, 2026-10-04) instead of
     // "nothing to pick until it ends", which named nothing and read as if
