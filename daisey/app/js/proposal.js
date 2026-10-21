@@ -393,9 +393,24 @@ function lay(items = [], { tasks = [], events = [], now = Date.now(), hours = W.
     return !!w && at >= new Date(now).setHours(0, w.to + W.BREAKS.mealSlack, 0, 0);
   };
   const lo = items.findIndex((it) => !isBreak(it)), hi = items.findLastIndex((it) => !isBreak(it));
+  // Two breaks with no task left between them (it was removed, dropped, put
+  // off) lay as one: the longer stays, a meal over a plain break (Mor,
+  // 2026-10-21: "Take five" twice in a row after a plan change).
+  const twin = new Set();
+  let prevBrk = -1;
+  const worth = (it) => (isMeal(it) ? 1000 : 0) + (it.minutes || 10);
+  items.forEach((it, i) => {
+    if (isBreak(it)) {
+      if (prevBrk >= 0) twin.add(worth(it) > worth(items[prevBrk]) ? prevBrk : i);
+      if (!twin.has(i)) prevBrk = i;
+      return;
+    }
+    const t = byId.get(it.taskId);
+    if (t && (t.status === "done" || (t.status === "ready" && !notYet(t, now)))) prevBrk = -1;
+  });
   for (const [i, it] of items.entries()) {
     if (isBreak(it)) {
-      if (i < lo || i > hi) continue; // never first or last
+      if (i < lo || i > hi || twin.has(i)) continue; // never first or last
       if (isMeal(it) && !meals.length) continue; // meals switched off in Settings
       const len = Math.max(5, it.minutes || 10) * MIN;
       // A break right after finished work, with nothing laid since, runs from

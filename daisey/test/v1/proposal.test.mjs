@@ -386,3 +386,11 @@ test("Background waits in the plan: after the rest, never hoisted to the front f
     assert.notEqual(rows[0].taskId, "c");
   } finally { C.setProjectTiers({}); }
 });
+
+test("two breaks with no task between them lay as one, the longer", () => {
+  const tasks = [t({ id: "a", size: 60 }), t({ id: "gone", status: "dropped" }), t({ id: "b", size: 60 }), t({ id: "c", size: 60 })];
+  const items = [{ taskId: "a", minutes: 60 }, { brk: "short", minutes: 10 }, { taskId: "gone", minutes: 30 }, { brk: "long", minutes: 30 }, { taskId: "b", minutes: 60 },
+    { brk: "meal", minutes: 45, name: "Lunch" }, { brk: "short", minutes: 10 }, { taskId: "c", minutes: 60 }];
+  const { breaks } = timeline(items, { tasks, events: [], now: at(9), hours: { start: 480, end: 1320, meals: [{ name: "Lunch", from: 780, to: 840, minutes: 45 }] } });
+  assert.deepEqual(breaks.map((b) => b.type), ["long", "meal"]);
+});

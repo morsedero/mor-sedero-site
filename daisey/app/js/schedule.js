@@ -50,12 +50,15 @@ export function untilText(ms){
   return hr >= 3 || rest < 5 ? `${hr}h` : `${hr}h ${rest}m`;
 }
 const hm = (ms) => clock(ms);
-// A break says what it's for, in friendly words: "Lunch time · 45 min", "Take five · 15 min".
+// A break says what it's for, in friendly words: "Lunch time · 45 min", "Take five · 10 min".
 // Free time reads the same way, "Open space · 2 h". No icons (Mor, 2026-10-21: emoji were
 // distracting; outline + italics were too much, the colour per kind stays): app.css gives each a pastel fill.
+// "Take five" only for a short one; a long break or a stretched one is just "Break" (Mor,
+// 2026-10-21: "take five for 30 min is not 5").
 export const breakKind = (b) => (b.type === "meal" ? "meal" : "rest");
 export const breakText = (b, len) => (b.type === "meal"
-  ? `${b.name || "Meal"} time · ${len}` : `Take five · ${len}`);
+  ? `${b.name || "Meal"} time · ${len}`
+  : `${(b.end - b.start) / 60000 <= 15 ? "Take five" : "Break"} · ${len}`);
 
 // One day's rows: events (busy or not) in order, and Free boxes for the gaps
 // between busy ones inside the day hours. from: nothing before this counts
