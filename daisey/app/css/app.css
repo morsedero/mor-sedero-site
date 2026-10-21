@@ -700,6 +700,7 @@ dialog.now:focus { outline: none; }
 .hero-side { font-weight: 500; color: var(--sub); white-space: nowrap; }
 .now-proj { color: inherit; font-weight: inherit; text-decoration: none; min-block-size: 32px; }
 .now-proj:hover { text-decoration: underline; text-underline-offset: 3px; }
+.hero-where .now-proj { max-inline-size: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } /* a long project name ends in … beside the slot, not cut mid-letter */
 .now-card.main .now-title { margin-block-start: 10px; font-size: 24px; font-weight: 600; line-height: 1.2; letter-spacing: -0.2px; overflow-wrap: anywhere; }
 .now-card.main .now-next { margin-block-start: 6px; font-size: 14px; color: var(--sub); }
 .now-card.main .now-why { margin: 6px 0 0; font-size: 14px; line-height: 1.4; color: var(--sub); }
