@@ -1747,10 +1747,15 @@ body.focus #side { display: none; }
 .sc-gap .sc-add { order: 2; font-size: 14px; }
 /* Free time and breaks read warm and a size up (Mor, 2026-10-10: "more fun, bigger"). */
 /* Condensed under the hero card (2026-10-11): a quiet line, not a row. */
-/* No icons (Mor, 2026-10-21): plain muted italic words in a dashed, faintly tinted box. */
+/* No icons (Mor, 2026-10-21): each kind is its own pastel in a dashed box, italic words. Lunch
+   peach, a breather sky, open time mint. Plain rgb, no color-mix (the phone lacks it). The kind
+   class sits on the Schedule's .sc-free and on the plan preview's .pp-break alike. */
+.sc-meal { --k-bg: rgb(255 168 110 / .16); --k-line: rgb(226 128 64 / .5); --k-ink: #9a5424; }
+.sc-rest { --k-bg: rgb(96 168 236 / .15); --k-line: rgb(60 132 212 / .5); --k-ink: #2c64a4; }
+.sc-open { --k-bg: rgb(84 196 138 / .15); --k-line: rgb(48 160 100 / .5); --k-ink: #2b7752; }
 .sc-free { flex: 1; min-inline-size: 0; display: flex; align-items: center; gap: 6px; block-size: 24px; padding-inline: 10px; box-sizing: border-box;
-  border: 1px dashed rgb(0 0 0 / .2); border-radius: 8px; background: rgb(0 0 0 / .03);
-  font-size: 12.5px; font-weight: 400; font-style: italic; color: var(--ink-2); }
+  border: 1px dashed var(--k-line, rgb(0 0 0 / .2)); border-radius: 8px; background: var(--k-bg, rgb(0 0 0 / .03));
+  font-size: 12.5px; font-weight: 500; font-style: italic; color: var(--k-ink, var(--ink-2)); }
 .sc-break.sc-past .sc-free { opacity: .55; }
 .sc-gap .sc-add { margin-inline-start: auto; }
 .sc-ev {
@@ -2110,8 +2115,8 @@ body.focus .shell { block-size: auto; min-block-size: 100dvh; overflow: visible;
 .pp-break .pp-time small { display: none; }
 .pp-break .pp-time { font-weight: 500; }
 .pp-break .pp-task { display: flex; align-items: center; gap: 6px; padding: 3px 10px; cursor: default;
-  border: 1px dashed rgb(0 0 0 / .2); border-radius: 8px; background: rgb(0 0 0 / .03); }
-.pp-break .pp-title, .pp-break .pp-meta { flex: none; font-size: 14.5px; font-weight: 400; font-style: italic; color: var(--ink-2); }
+  border: 1px dashed var(--k-line, rgb(0 0 0 / .2)); border-radius: 8px; background: var(--k-bg, rgb(0 0 0 / .03)); }
+.pp-break .pp-title, .pp-break .pp-meta { flex: none; font-size: 14.5px; font-weight: 500; font-style: italic; color: var(--k-ink, var(--ink-2)); }
 .pp-break .pp-ctl { block-size: 28px; font-size: 13px; }
 .pp-row.over > :not(.pp-ctls) { opacity: .65; }
 .pp-time { display: grid; font-size: 12px; font-weight: 600; line-height: 1.3; color: var(--ink-2); font-variant-numeric: tabular-nums; }
