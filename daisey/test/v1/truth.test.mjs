@@ -165,6 +165,12 @@ test("5 0% and nothing started → state 'not started'", () => {
   assert.equal(projectProgress(proj([rt()])), 0);
 });
 
+test("5 an ended routine counts its sessions (1 of 3 = 33%), not 100%", () => {
+  const routine = { per: 3, until: "2026-10-21", log: [{ day: "2026-10-21" }] };
+  assert.equal(Math.round(projectProgress(proj([rt({ routine, status: "done", progress: 100 })])) * 100), 33);
+  assert.equal(projectProgress(proj([rt({ routine, status: "ready" })])), 0);
+});
+
 test("5 any started task makes it 'in progress'; all done → 'done'; no tasks → 'empty'", () => {
   assert.equal(projectState(proj([rt({ progress: 40 })])), "in progress");
   assert.equal(projectState(proj([rt({ starts: 1 })])), "in progress");

@@ -3,7 +3,7 @@
 // PURE: no DOM, no Firebase. Works on projectsOf()'s shape
 // ({ name, all, open, next, pending, someday, done }).
 import { progressOf, notYet, getDayKey } from "./model.js";
-import { isRoutine } from "./routine.js";
+import { isRoutine, cleanRoutine, doneThisWeek } from "./routine.js";
 
 // A task counts as started once anything real happened to it: it's done, has
 // a %, was started, or has time logged on it (old tasks).
@@ -17,9 +17,16 @@ export const asksLeft = (t) => !!t && t.status !== "done" && !isRoutine(t) && is
 
 // Mean of the tasks' own % (done = 100), 0..1, so half-finished work counts.
 // Routines have no %: they recur, so they'd hold the project at 0 forever.
+// One that has ended (status done, past its `until`) counts what it did in its
+// last period, "1 of 3" = 33, not 100 (Mor, 2026-10-21).
+const taskPct = (t) => {
+  if (!isRoutine(t) || t.status !== "done") return progressOf(t);
+  const r = cleanRoutine(t.routine), last = r.log[r.log.length - 1]?.day;
+  return last ? Math.min(100, (100 * doneThisWeek(t, last)) / r.per) : 0;
+};
 export function projectProgress(p){
   const ts = p.all.filter((t) => !isRoutine(t) || t.status === "done");
-  return ts.length ? ts.reduce((n, t) => n + progressOf(t), 0) / (100 * ts.length) : 0;
+  return ts.length ? ts.reduce((n, t) => n + taskPct(t), 0) / (100 * ts.length) : 0;
 }
 
 // The task a project offers next: the first ready one that can start now, in
