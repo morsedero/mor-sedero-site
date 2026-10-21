@@ -1965,7 +1965,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
   const planWhy = (row) => [row.start > Date.now() + 5 * 60000 ? `next in your plan, ${clock(row.start)}–${clock(row.end)}` : `until ${clock(row.end)}`];
   function breakCard(b, next, upcoming){
     const name = b.name || (b.type === "meal" ? "Meal" : "Breather"); // the Today list's words
-    return quietCard({ meta: "Break", side: upcoming ? `${clock(b.start)}–${clock(b.end)}` : `until ${clock(b.end)}`, title: name,
+    return plainCard(`empty quiet brk sc-${breakKind(b)}`, { meta: "Break", side: upcoming ? `${clock(b.start)}–${clock(b.end)}` : `until ${clock(b.end)}`, title: name,
       extras: [next && h("p", { className: "now-why" }, "Next: ", bdi(next.task.title), ` at ${clock(Math.max(next.start, b.end))}.`)],
       action: next && h("button", { className: "btn quiet", type: "button", textContent: "Start it now",
         ariaLabel: `Skip the rest of the break: start ${next.task.title}`, onclick: () => switchTo(next.task.id) }) });

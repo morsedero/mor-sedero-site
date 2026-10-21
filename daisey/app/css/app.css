@@ -730,6 +730,10 @@ dialog.now:focus { outline: none; }
 @supports (color: color-mix(in srgb, red, blue)) { .trio .iconbtn:hover:not(:disabled), .trio .iconbtn[aria-expanded="true"] { background: color-mix(in srgb, var(--aink) 9%, transparent); } }
 .now-card.main .later-ask, .now-card.main .pend-ask { margin-block-start: 8px; }
 .now-card.main .btn.quiet { color: var(--sub); }
+/* The break card wears its Schedule row's colour: lunch peach, a breather sky (Mor, 2026-10-21). */
+.now-card.main.brk { background: linear-gradient(var(--k-bg), var(--k-bg)), var(--tint); }
+.now-card.main.brk .hero-where, .now-card.main.brk .hero-side, .now-card.main.brk .now-title, .now-card.main.brk .now-why { color: var(--k-ink); }
+.now-card.main.brk .dot { background: var(--k-ink); }
 .now-card.main.meeting .btn, .now-card.main.empty .btn.quiet { justify-self: start; margin-block-start: 10px; }
 .now-card.main.empty { box-shadow: none; }
 .now-card.main.empty .now-empty { margin: 0; font-size: 17px; }
