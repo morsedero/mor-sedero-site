@@ -52,8 +52,7 @@ export function untilText(ms){
 const hm = (ms) => clock(ms);
 // A break says what it's for, in friendly words: "Lunch time · 45 min", "Take five · 15 min".
 // Free time reads the same way, "Open space · 2 h". No icons (Mor, 2026-10-21: emoji were
-// distracting, plain gray was dull): app.css gives each kind its own pastel dashed box.
-export const breakKind = (b) => (b.type === "meal" ? "meal" : "rest");
+// distracting; then outline + italics + a colour per kind was too much): app.css sets one soft fill.
 export const breakText = (b, len) => (b.type === "meal"
   ? `${b.name || "Meal"} time · ${len}` : `Take five · ${len}`);
 
@@ -517,12 +516,12 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onMissed, onPro
     // Tapping it adds an event there.
     if (x.kind === "free") return h("button", { type: "button", className: "sc-row sc-gap", ariaLabel: `Free ${time} — add an event`,
       onclick: () => onNew?.(localDate(x.start), hm(quarterUp(x.start))) },
-      h("span", { className: "sc-free sc-open" }, `Open space · ${durText((x.end - x.start) / 60000)}`, h("span", { className: "sc-add", ariaHidden: "true", textContent: "+" })));
+      h("span", { className: "sc-free" }, `Open space · ${durText((x.end - x.start) / 60000)}`, h("span", { className: "sc-add", ariaHidden: "true", textContent: "+" })));
     const on = !x.allDay && x.start <= now && now < x.end;
     const past = !x.allDay && x.end <= now;
     // No clock times: the break pill starts where the event boxes do.
     if (x.kind === "break") return h("div", { className: "sc-row sc-gap sc-break" + (on ? " sc-on" : past ? " sc-past" : ""), ariaLabel: `${time} break` },
-      h("span", { className: `sc-free sc-${breakKind(x)}` }, breakText(x, durText((x.end - x.start) / 60000))));
+      h("span", { className: "sc-free" }, breakText(x, durText((x.end - x.start) / 60000))));
     // The row on right now wears its colour edge to edge (Mor, 2026-10-08).
     // Its orbiting light is phased off the wall clock, so a re-render picks it
     // up where it was instead of jumping back to the start (ORBIT_MS = app.css sc-orbit).

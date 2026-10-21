@@ -16,7 +16,7 @@ import { sortable } from "./ppdrag.js";
 import { addTask, updateTask, watchTasks, watchSkips, saveSkips, skipNow, blockTask, restoreTask, finishTask, undoDone, watchSettings, saveSettings, watchMoment, saveMoment, watchLearn, bumpLearn, watchDayPlan, saveDayPlan, watchProjectNames, removeTask } from "./store.js";
 import { proposeDay, timeline, shownTaskCount, addableCount, withBreaks, trimBreaks, isBreak, planProgress, planStatus, unfitOf, refit, topUp, daySig, relayMeals } from "./proposal.js";
 import { rethink } from "./rethink.js";
-import { breakText, breakKind } from "./schedule.js";
+import { breakText } from "./schedule.js";
 import { placeNow, workBase, watchProjectTiers, currentTiers } from "./context.js";
 import { watchWhere, setManual, setStill, saveSpot, whereAsk, homeAt } from "./where.js";
 import { withTrips, ridingAs, stillRiding, asPassenger, chainFrom, setTripDay, MODES, tripAsks, answer as tripAnswer, noTrip } from "./trips.js";
@@ -2080,7 +2080,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     // A break is the plan's own item: it drags and comes off like a task.
     const breakRow = (b) => {
       const name = b.type === "meal" ? b.name || "Meal" : "Break", own = b.i != null;
-      return h("li", { className: `pp-row pp-break sc-${breakKind(b)}` + (own ? " pp-drag" : ""), _i: b.i },
+      return h("li", { className: "pp-row pp-break" + (own ? " pp-drag" : ""), _i: b.i },
         h("span", { className: "pp-time", ariaLabel: `${clock(b.start)} to ${clock(b.end)}` }, clock(b.start), h("small", { textContent: clock(b.end) })),
         h("span", { className: "pp-task" }, h("span", { className: "pp-title", textContent: breakText(b, dur(Math.round((b.end - b.start) / 60000))) })),
         own && h("span", { className: "pp-ctls" },
