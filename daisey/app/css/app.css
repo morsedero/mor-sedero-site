@@ -1586,6 +1586,9 @@ body.focus #side { display: none; }
   /* Just its calendar icon at every width (Mor, 2026-10-20): the word covered the title on its left. */
   body.day-open .sc-planbtn { display: inline-flex; inline-size: 32px; padding: 0; justify-content: center; border: 1px solid var(--a-admin-line); background: var(--a-admin-tint); color: var(--a-admin-ink); } /* the same light blue as the ribbon's (Mor, 2026-10-15) */
   .sc-bar .sc-planbtn span { display: none; }
+  /* On today the hidden Now is display:none, which took the auto margin with it: Change plan and
+     the right arrow sat against the title. They go to the bar's end like the other days (Mor, 2026-10-21). */
+  .sc-bar:not(.away) .sc-planbtn { margin-inline-start: auto; }
   #panel { margin-block-end: 0; }
 }
 /* While Switch, Pending or Later is open under the card, the side buttons
