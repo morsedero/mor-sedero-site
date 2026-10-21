@@ -1966,9 +1966,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
   function breakCard(b, next, upcoming){
     const name = b.name || (b.type === "meal" ? "Meal" : "Breather"); // the Today list's words
     return plainCard(`empty quiet brk sc-${breakKind(b)}`, { meta: "Break", side: upcoming ? `${clock(b.start)}–${clock(b.end)}` : `until ${clock(b.end)}`, title: `${b.type === "meal" ? "🍽️" : "☕"} ${name}`,
-      extras: [next && h("p", { className: "now-why" }, "Next: ", bdi(next.task.title), ` at ${clock(Math.max(next.start, b.end))}.`)],
-      action: next && h("button", { className: "btn quiet", type: "button", textContent: "Start it now",
-        ariaLabel: `Skip the rest of the break: start ${next.task.title}`, onclick: () => switchTo(next.task.id) }) });
+      extras: [next && h("p", { className: "now-why" }, "Next: ", bdi(next.task.title), ` at ${clock(Math.max(next.start, b.end))}.`)] });
   }
   // The slot, start to end: how long you've got. Never "not started": Daisey
   // can't see you working, only taps (Mor, 2026-10-18: "I'm on it, and it's
