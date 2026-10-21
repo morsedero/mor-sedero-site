@@ -1574,16 +1574,18 @@ body.focus #side { display: none; }
   .home-hint { display: block; order: 8; align-self: center; margin-block: 6px 0; padding: 6px 12px; border: 0; border-radius: 999px; background: var(--chip); color: var(--ink-2); font: inherit; font-size: 12.5px; cursor: pointer; }
   .home-hint[hidden], body.focus-mode .home-hint { display: none; }
   @media (prefers-reduced-motion: no-preference) { .home-hint:not([hidden]) { animation: ready-in .35s ease-out; } }
-  /* Focus, on the card: the top row's end, white; on, filled teal. */
-  #focusChip { --on: var(--p-teal-ink); }
-  .now-card.main #focusChip:not([hidden]) { flex: none; inline-size: 34px; block-size: 34px; margin-block: -6px; margin-inline-start: auto; padding: 0; justify-content: center; border-radius: 50%; border: 0; background: var(--surface); color: var(--p-teal-ink); box-shadow: 0 2px 8px rgb(0 0 0 / .08); }
-  .now-card.main .hero-side + #focusChip { margin-inline-start: 8px; }
-  .now-card.main .hero-top.h-focuskid > .hero-side { margin-inline-start: auto; }
-  .now-card.main #focusChip.fc-float { position: absolute; inset-block-start: 10px; inset-inline-end: 10px; margin: 0; }
-  .now-card.main #focusChip::after { inset: -5px; }
-  .now-card.main #focusChip .hchip-word { position: absolute; inline-size: 1px; block-size: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
-  .now-card.main #focusChip svg { inline-size: 18px; block-size: 18px; }
-  .now-card.main #focusChip[aria-pressed="true"] { background: var(--p-teal-ink); color: var(--card); }
+}
+/* Focus, on the card at every width (Mor, 2026-10-21: PC too): the top row's end, white; on, filled teal. */
+#focusChip { --on: var(--p-teal-ink); }
+.now-card.main #focusChip:not([hidden]) { flex: none; inline-size: 34px; block-size: 34px; margin-block: -6px; margin-inline-start: auto; padding: 0; justify-content: center; border-radius: 50%; border: 0; background: var(--surface); color: var(--p-teal-ink); box-shadow: 0 2px 8px rgb(0 0 0 / .08); }
+.now-card.main .hero-side + #focusChip { margin-inline-start: 8px; }
+.now-card.main .hero-top.h-focuskid > .hero-side { margin-inline-start: auto; }
+.now-card.main #focusChip.fc-float { position: absolute; inset-block-start: 10px; inset-inline-end: 10px; margin: 0; }
+.now-card.main #focusChip::after { inset: -5px; }
+.now-card.main #focusChip .hchip-word { position: absolute; inline-size: 1px; block-size: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.now-card.main #focusChip svg { inline-size: 18px; block-size: 18px; }
+.now-card.main #focusChip[aria-pressed="true"] { background: var(--p-teal-ink); color: var(--card); }
+@media (max-width: 1023px) { /* PHONE LAYOUT again */
   /* Just its calendar icon at every width (Mor, 2026-10-20): the word covered the title on its left. */
   body.day-open .sc-planbtn { display: inline-flex; inline-size: 32px; padding: 0; justify-content: center; border: 1px solid var(--a-admin-line); background: var(--a-admin-tint); color: var(--a-admin-ink); } /* the same light blue as the ribbon's (Mor, 2026-10-15) */
   .sc-bar .sc-planbtn span { display: none; }
@@ -2680,17 +2682,24 @@ button.bl-r-title { padding: 0; border: 0; background: none; color: var(--ink); 
   .hdr-end .focus-chip:not([aria-pressed="true"]) { border-color: transparent; background: transparent; color: var(--ink); }
 @supports (color: color-mix(in srgb, red, blue)) { .hdr-end .focus-chip:not([aria-pressed="true"]) { color: color-mix(in srgb, var(--ink) 80%, var(--ink-2)); } }
   .hdr-end .focus-chip { font-size: 15px; font-weight: 500; }
-  .hdr-end .acct { align-self: stretch; gap: 10px; padding-inline-start: 4px; }
-  .acct-name:not(:empty) { display: block; min-inline-size: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 15px; font-weight: 500; cursor: pointer; }
+  /* The avatar sits top right like the phone's (Mor, 2026-10-21); the name beside it is gone. */
+  .hdr-end .acct { position: fixed; inset-block-start: 14px; inset-inline-end: 20px; z-index: 25; margin: 0; padding: 0; }
   .hdr-end .avatar { inline-size: 36px; block-size: 36px; }
-  .acct-menu { inset-block-start: auto; inset-block-end: calc(100% + 8px); inset-inline-end: auto; inset-inline-start: 0; }
+  /* Plan lives in the Schedule's bar like the phone's (Mor, 2026-10-21), not in the rail. */
+  #side #planChip { display: none; }
+  .sc-bar .sc-planbtn { display: inline-flex; inline-size: 32px; padding: 0; justify-content: center; border: 1px solid var(--a-admin-line); background: var(--a-admin-tint); color: var(--a-admin-ink); }
+  .sc-bar .sc-planbtn span { display: none; }
+  .sc-bar:not(.away) .sc-planbtn { margin-inline-start: auto; inline-size: auto; padding: 0 12px; }
+  .sc-bar:not(.away) .sc-planbtn span { display: inline; }
+  .sc-bar:not(.away) .sc-date { display: none; } /* the words need the room, as on the phone */
+  body.card-mini .nowrow { padding-inline-end: 56px; } /* clear of the avatar over the spanning bar */
   /* The middle: the card, Week's glance under it, Tell Daisey at the foot. */
   .nowrow { grid-area: now; display: flex; flex-direction: column; min-block-size: 0; padding-block-start: 22px; }
   .nowrow #nowcard { flex: 0 1 auto; padding-inline-end: 16px; }
   #glance { grid-area: glance; margin-block: 4px 0; }
   #dock { grid-area: dock; padding-block: 12px max(28px, env(safe-area-inset-bottom)); }
   /* The right: the panel, its own column, full height. */
-  #panel { grid-area: panel; min-block-size: 0; margin-block: 24px 28px; padding: 14px 18px 0; border-radius: 24px; }
+  #panel { grid-area: panel; min-block-size: 0; margin-block: 64px 28px; padding: 14px 18px 0; border-radius: 24px; }
   #panel .ppage { margin-inline: -18px; padding-inline: 18px; }
   /* Projects (all, or one) or Week open: the page takes the middle and the
      right, the card a bar over it with Done at its end (body.card-mini,

@@ -309,16 +309,19 @@ async function boot(){
     placeFocus();
     paintChip();
   };
-  // Phone: Focus sits at the end of the card's top row (or its corner, on a
+  // Focus sits at the end of the card's top row, PC too (Mor, 2026-10-21) (or its corner, on a
   // card with no top row). now.js redraws the card often, so this runs on
-  // every redraw; the move itself is a no-op once it's there. Wider, it
-  // goes back to the header.
+  // every redraw; the move itself is a no-op once it's there. With no card
+  // it waits in the header (PC) or the side column (phone).
   const placeFocus = () => {
     const b = focusBtn;
-    if (!phone.matches) { if (b.parentElement !== $(".hdr-end")) $(".hdr-end").prepend(b); return; }
     const card = document.querySelector("#nowcard .deck > .now-card.main:not(.proposal)");
     const spot = card && (card.querySelector(":scope > .hero-top") || card);
-    if (!spot) { if (b.parentElement !== $("#side")) $("#side").append(b); return; }
+    if (!spot) {
+      if (phone.matches) { if (b.parentElement !== $("#side")) $("#side").append(b); }
+      else if (b.parentElement !== $(".hdr-end")) $(".hdr-end").prepend(b);
+      return;
+    }
     if (b.parentElement !== spot) spot.append(b);
     b.classList.toggle("fc-float", spot === card);
   };
@@ -909,7 +912,7 @@ async function boot(){
         // The day ribbon under the clock (phone home; app.css shows it): the
         // schedule works out today's shape and hands it over.
         m.ribbon = mountRibbon($("#ribbon"));
-        m.schedule = mountSchedule($("#schedPage"), user.uid, { onEvent: (ev) => m.event.view(ev), onNew: (date, at) => m.event.open(date, at), onOpen: (task) => m.adder.edit(task), onMissed: (id, start, from) => m.now?.missed(id, start, from), onNow: flashNow, onPlan: () => m.now?.plan(), onShape: (d) => m.ribbon.set(d) });
+        m.schedule = mountSchedule($("#schedPage"), user.uid, { onEvent: (ev) => m.event.view(ev), onNew: (date, at) => m.event.open(date, at), onOpen: (task) => m.adder.edit(task), onMissed: (id, start, from) => m.now?.missed(id, start, from), onNow: flashNow, onPlan: () => morph(() => m.now?.plan()), onShape: (d) => m.ribbon.set(d) });
         m.projects = mountProjects({ grid: $("#projPage"), page: $("#projPage"), glance: $("#glance"), view: $("#projectview"), dialog: $("#projdlg") }, user.uid, {
           onOpen: (task) => m.adder.edit(task),
           onAdd: (project) => m.adder.open(project),
