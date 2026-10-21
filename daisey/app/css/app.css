@@ -1331,6 +1331,8 @@ dialog.tsheet .now-head { margin-block-end: -4px; }
 .ts-link-x { inline-size: 28px; block-size: 28px; display: grid; place-items: center; border: 0; background: none; color: var(--ink-2); cursor: pointer; }
 .ts-link-x svg { inline-size: 12px; block-size: 12px; }
 .ts-links { padding-block: 6px; }
+.ts-apply-note { margin: 0 0 6px; font-size: 13px; color: var(--ink-2); overflow-wrap: anywhere; }
+.ts-apply-note[hidden] { display: none; }
 .ts-link-new { block-size: 32px; padding: 0; border: 0; background: none; color: var(--aink); font: inherit; font-size: 14px; font-weight: 500; cursor: pointer; }
 .ts-link-adds { display: flex; gap: 18px; }
 .ts-link-add { display: flex; gap: 6px; inline-size: 100%; }

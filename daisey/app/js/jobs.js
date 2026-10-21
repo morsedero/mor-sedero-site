@@ -41,11 +41,13 @@ function titleOf(c, status){
   return `Apply to ${both(co, ti) || "this job"}`;
 }
 
-// What Start opens, in the order it is worth opening them.
-function linksOf(c, status){
-  const pick = { review: [["cv", "CV"], ["cover_letter", "Cover letter"], ["kit_folder", "Kit folder"]],
-    ready: [["link", "Job post"], ["kit_folder", "Kit folder"]], new: [["link", "Job post"]] }[status] || [];
-  return toLinks(pick.map(([k, label]) => ({ url: web(c[k]), label })).filter((l) => l.url));
+// The card's "Links & notes" chips, whatever the step (Mor, 2026-10-21): the
+// post, where to apply (an email too; not shown twice when it is the post), the
+// CV and the cover letter. kit_folder is no longer shown, even on old cards.
+function linksOf(c){
+  const link = web(c.link), apply = reach(c.apply_link);
+  return toLinks([["Job post", link], ["Apply", apply === link ? "" : apply], ["CV", web(c.cv)], ["Cover letter", web(c.cover_letter)]]
+    .map(([label, url]) => ({ url, label })).filter((l) => l.url));
 }
 
 // What Start opens (Mor, 2026-10-21): review → the Doc with the CV changes and
@@ -85,9 +87,9 @@ function fromCard(c){
   const status = str(c.status).toLowerCase();
   const due = toDate(str(c.deadline).slice(0, 10));
   return {
-    status, due, links: linksOf(c, status),
+    status, due, links: linksOf(c),
     source: { app: JOB_APP, cardId: str(c.id), status, fit: fitOf(c), why: str(c.why), deadline: due, stale: false,
-      ...startOf(c, status), cv: cvId(c.cv), unsynced: !!c.unsynced },
+      ...startOf(c, status), cv: cvId(c.cv), applyNote: str(c.apply_note), unsynced: !!c.unsynced },
   };
 }
 

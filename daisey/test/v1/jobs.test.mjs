@@ -26,9 +26,9 @@ test("status picks the task, its size and its links", () => {
   assert.equal(r.title, "Review Co2 CV + cover letter"); assert.equal(r.size, 20);
   assert.equal(y.title, "Apply to Co3, Mixer"); assert.equal(y.size, 30);
   assert.equal(n.project, JOB_PROJECT);
-  assert.deepEqual(n.links.map((l) => l.label), ["Job post"]);
-  assert.deepEqual(r.links.map((l) => l.label), ["CV", "Cover letter", "Kit folder"]);
-  assert.deepEqual(y.links.map((l) => l.label), ["Job post", "Kit folder"]);
+  assert.deepEqual(n.links.map((l) => l.label), ["Job post", "CV", "Cover letter"]); // same chips at every step
+  assert.deepEqual(r.links.map((l) => l.label), ["Job post", "CV", "Cover letter"]);
+  assert.deepEqual(y.links.map((l) => l.label), ["Job post", "CV", "Cover letter"]);
   assert.equal(jobInput(card(4, "applied")), null);
   assert.equal(jobInput(card(5, "passed")), null);
   assert.equal(jobInput(card(6, "ready", { effort_min: 45 })).size, 45);
@@ -37,7 +37,7 @@ test("status picks the task, its size and its links", () => {
 test("empty fields are fine; non-web links are dropped", () => {
   const i = jobInput(card(7, "review", { company: "", cv: "javascript:alert(1)", cover_letter: "", kit_folder: "" }));
   assert.equal(i.title, "Review CV + cover letter");
-  assert.equal(i.links, null);
+  assert.deepEqual(i.links.map((l) => l.label), ["Job post"]);
   assert.equal(jobInput(card(8, "new", { fit: "", deadline: "soon" })).due, "");
 });
 
@@ -201,7 +201,20 @@ test("View CV: only review/ready, only a Drive file URL; the CV and Start links 
   assert.equal(jobActions(taskOf(card(3, "new", { cv: DRIVE }))).cv, "");
   assert.equal(jobActions(taskOf(card(4, "review", { cv: "https://docs.example/cv4" }))).cv, "");
   const a = jobActions(taskOf(card(5, "review", { cv: DRIVE, cover_letter: "https://docs.google.com/document/d/R/edit" })));
-  assert.deepEqual(a.links.map((l) => l.label), ["Kit folder"]);
+  assert.deepEqual(a.links.map((l) => l.label), ["Job post"]);
+});
+
+test("Links & notes: post, apply, CV, cover letter, in that order; no kit folder; apply_note kept", () => {
+  const full = jobInput(card(1, "ready", { apply_link: "mailto:jobs@co.example?subject=Hi", apply_note: "Mention Sam" }));
+  assert.deepEqual(full.links.map((l) => [l.label, l.url]), [["Job post", "https://jobs.example/1"],
+    ["Apply", "mailto:jobs@co.example?subject=Hi"], ["CV", "https://docs.example/cv1"], ["Cover letter", "https://docs.example/cl1"]]);
+  assert.equal(full.source.applyNote, "Mention Sam");
+  assert.ok(!full.links.some((l) => /kit/i.test(l.label + l.url)));
+  // Empty cv / cover letter: just the chips that have something; apply equal to the post is not doubled.
+  const thin = jobInput(card(2, "review", { cv: "", cover_letter: "", apply_link: "https://jobs.example/2" }));
+  assert.deepEqual(thin.links.map((l) => l.label), ["Job post"]);
+  assert.equal(thin.source.applyNote, "");
+  assert.equal(jobInput(card(3, "new", { link: "", cv: "", cover_letter: "", kit_folder: "https://drive.example/kit" })).links, null);
 });
 
 test("a synced task picks the new fields up, and a second sync changes nothing", () => {

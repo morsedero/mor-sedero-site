@@ -307,6 +307,7 @@ export function mountAddTask(dialog, uid, { onStart, onDone } = {}){
   const researchLine = h("p", { className: "ts-state ts-research", dir: "auto" });
 
   const linkRow = h("div", { className: "ts-links" });
+  const applyNote = h("p", { className: "ts-apply-note", dir: "auto", hidden: true }); // a job lead's apply_note (jobs.js)
   const notes = h("textarea", { className: "ts-notes", dir: "auto", rows: 2, placeholder: "Notes…", ariaLabel: "Notes" });
   const worked = h("p", { className: "ts-worked" });
   const startBtn = h("button", { type: "button", className: "btn primary ts-start" });
@@ -326,7 +327,7 @@ export function mountAddTask(dialog, uid, { onStart, onDone } = {}){
     h("div", { className: "ts-dates" }, start.box, due.box, until.box, kindRow),
     oftenRow, weekNow, // repeats by the dates it changes (Mor, 2026-10-12)
     field("How long?", chipRow), guessBox, laptopRow, pctBox, pendBox, holdBox, researchLine, stateLine,
-    section("Links & notes", h("div", { className: "ts-group" }, linkRow, notes)),
+    section("Links & notes", h("div", { className: "ts-group" }, linkRow, applyNote, notes)),
     worked, actRow, msg);
 
   // ---------- saving ----------
@@ -510,13 +511,15 @@ export function mountAddTask(dialog, uid, { onStart, onDone } = {}){
     const chip = (l, k) => {
       const name = l.label || l.url || "File";
       const a = l.file ? h("a", { href: "#", onclick: (e) => { if (a.getAttribute("href") === "#") { e.preventDefault(); flash("That file is on the phone it was added from."); } } })
-        : h("a", { href: /^[a-z][a-z0-9+.-]*:/i.test(l.url) ? l.url : `https://${l.url}`, target: "_blank", rel: "noopener" });
+        : h("a", { href: /^[a-z][a-z0-9+.-]*:/i.test(l.url) ? l.url : `https://${l.url}`, ...(/^mailto:/i.test(l.url) ? {} : { target: "_blank" }), rel: "noopener" }); // an email opens the mail app, not a blank tab
       a.append(icon(l.file ? "file" : "link"), bdi(name));
       if (l.file) fileUrl(l.file).then((f) => { if (f) { a.href = f.url; if (f.view) a.target = "_blank"; else a.download = f.name; } });
       return h("span", { className: "ts-link" }, a,
         h("button", { type: "button", className: "ts-link-x", ariaLabel: `Remove ${name}`,
           onclick: () => { links.splice(k, 1); if (l.file) dropFile(l.file); if (editing) save({ links }); paintLinks(); } }, icon("close")));
     };
+    const note = editing?.source?.app === "jobhunt" ? editing.source.applyNote || "" : "";
+    applyNote.textContent = note; applyNote.hidden = !note;
     linkRow.replaceChildren(
       ...links.map(chip),
       adding ? h("span", { className: "ts-link-add" }, url, h("button", { type: "button", className: "btn small", textContent: "Add", onclick: addIt }))
