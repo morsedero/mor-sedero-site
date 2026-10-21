@@ -35,9 +35,11 @@ exports.handler = async (event = {}) => {
     // callback makes to mint a stable userId — without these it can read
     // calendars but can't identify WHO logged in.
     // drive.readonly (2026-10-21): Daisey reads the Job Hunt jobs.json
-    // (daisey-now-jobs). include_granted_scopes keeps what an earlier grant
-    // had, so adding a scope never takes one away.
-    scope: "https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/drive.readonly openid email",
+    // (daisey-now-jobs). drive.file (2026-10-21): Daisey writes its own
+    // daisey-status.json there — only files it created, never jobs.json.
+    // include_granted_scopes keeps what an earlier grant had, so adding a
+    // scope never takes one away.
+    scope: "https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/drive.readonly https://www.googleapis.com/auth/drive.file openid email",
     include_granted_scopes: "true",
     access_type: "offline",
     prompt: "consent",

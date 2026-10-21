@@ -58,7 +58,7 @@ const clock = (ms) => new Date(ms).toLocaleTimeString([], { hour: "2-digit", min
 // how many tasks are done today, for the header's chip. onNeedsCount(n):
 // how many decisions Needs you holds, for the amber chip.
 // onWrap(): the evening wrap (Needs you: each task still open for today).
-export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap, name = "", onDone, onNeedsCount, onPlanProgress, onPlanNext, onPlanReady, onPlanApproved, planRoot, onPlanScreen, onReady, onFocusMode, missDialog = null, guest = false } = {}){
+export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap, name = "", onDone, onNeedsCount, onPlanProgress, onPlanNext, onPlanReady, onPlanApproved, planRoot, onPlanScreen, onReady, onFocusMode, onJob, missDialog = null, guest = false } = {}){
   let tasks = null; // null until the first snapshot
   let settings = {}; // state/settings: when the sweep was last offered
   let momentDoc = {}, momentKnown = false; // state/moment: place corrections, cardSeen
@@ -226,10 +226,13 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
   // page (review → the Doc with the CV changes and cover letter; new/ready → the
   // apply link or email, else the job post, with the card's apply note under
   // it), View CV, and the other documents, one tap each. The rest of the card
-  // has no Start, so these sit on it.
+  // has no Start, so these sit on it. After them, Mor's decision for the step
+  // (Approve / Pass, Applied / Pass): one tap writes it to Drive (jobs-sync
+  // decide) and the task changes at once. A dot says the write hasn't landed.
   const openRow = (t) => {
     const a = jobActions(t);
-    if (!a || !(a.start || a.cv || a.links.length || a.note)) return null;
+    const choices = onJob ? a?.choices || [] : [];
+    if (!a || !(a.start || a.cv || a.links.length || a.note || choices.length || a.unsynced)) return null;
     const mail = a.start.startsWith("mailto:");
     return h("div", { className: "now-open" },
       a.start && h("a", { className: "chip go", href: a.start, ...(mail ? {} : { target: "_blank", rel: "noopener noreferrer" }), textContent: "Start" }),
@@ -238,6 +241,11 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
         viewCv(a.cv).then((r) => { b.disabled = false; if (r !== true) flash(r); });
       } }),
       ...a.links.map((l) => h("a", { className: "chip", href: l.url, target: "_blank", rel: "noopener noreferrer", textContent: l.label })),
+      ...choices.map((c) => h("button", { type: "button", className: "chip", textContent: c.label, onclick: (e) => {
+        e.currentTarget.disabled = true; // one tap, one write
+        onJob(t, c.status);
+      } })),
+      a.unsynced && h("span", { className: "job-unsynced", role: "img", title: "Not synced to Drive yet", ariaLabel: "Not synced to Drive yet" }),
       a.note && h("p", { className: "now-apply-note", dir: "auto", textContent: a.note }));
   };
   const titleButton = (t) => h("button", { type: "button", className: "now-title", dir: "auto", textContent: t.title,

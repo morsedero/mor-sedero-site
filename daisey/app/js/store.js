@@ -183,6 +183,19 @@ export function addTaskAt(uid, id, input, tasks = []){
 }
 export const patchTask = (uid, id, patch) => updateGuestTask(uid, id, patch);
 
+// Job Hunt write-back (jobs-sync.js), users/{uid}/state/jobstatus:
+// { fileId, queue: { cardId: { status, at, note? } } }. fileId is Drive's id of
+// daisey-status.json; queue is what Mor tapped that Drive hasn't confirmed yet,
+// so a tap survives a failed write, a reload, an offline phone. Saved merged,
+// each field whole.
+export function watchJobStatus(uid, cb, onError){
+  return fb.onSnapshot(fb.doc(fb.db, "users", uid, "state", "jobstatus"), (snap) => {
+    const d = snap.exists() ? snap.data() : {};
+    cb({ fileId: d.fileId || "", queue: d.queue && typeof d.queue === "object" ? d.queue : {} });
+  }, onError);
+}
+export const saveJobStatus = (uid, fields) => saveGuestState(uid, "jobstatus", fields, true);
+
 export function updateTask(uid, task, changes, tasks = []){
   const patch = editTask(task, changes, { history: tasks });
   return Object.keys(patch).length ? updateGuestTask(uid, task.id, patch) : Promise.resolve();
@@ -371,7 +384,7 @@ export const releaseTask = (uid, task) => updateGuestTask(uid, task.id, { onHold
 // user, so everything is read and learned from scratch. Guests: the device's
 // local copy. Calendar and Trello themselves are never touched; their stored
 // connections are dropped separately (reset.js → daisey-now-disconnect).
-const STATE_DOCS = ["now", "skips", "settings", "moment", "learn", "projects", "dayplan"];
+const STATE_DOCS = ["now", "skips", "settings", "moment", "learn", "projects", "dayplan", "jobstatus"];
 // The work log's month docs (log-YYYY-MM) go too.
 export async function resetAll(uid){
   if(isGuest(uid)){

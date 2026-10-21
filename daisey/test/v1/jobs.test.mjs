@@ -249,3 +249,134 @@ test("viewCv: window opens first, CV lands as a blob page, blob revoked when the
     assert.match(await viewCv("F", { token: async () => "t", open: () => null, fetchFn: async () => assert.fail("no fetch") }), /blocked/);
   } finally { URL.createObjectURL = oc; URL.revokeObjectURL = orv; }
 });
+
+// ---------- write-back: daisey-status.json (2026-10-21) ----------
+import { withStatus } from "../../app/js/jobs.js";
+const { readStatus, writeStatus } = createRequire(import.meta.url)("../../functions/_daisey-lib/jobs-drive.js");
+const T0 = "2026-10-20T09:00:00.000Z", T1 = "2026-10-21T10:00:00.000Z", T2 = "2026-10-21T11:00:00.000Z";
+
+test("withStatus: a newer decision beats the card; an older one, or none, doesn't", () => {
+  const cards = [card(1, "review", { status_at: T1 }), card(2, "review"), card(3, "review", { status_at: T2 })];
+  const out = withStatus(cards, { 1: { status: "ready", at: T2 }, 2: { status: "passed", at: T0 }, 3: { status: "ready", at: T1 } });
+  assert.deepEqual(out.map((c) => c.status), ["ready", "passed", "review"]);
+  assert.equal(out[0].status_at, T2);
+  assert.equal(out[2], cards[2]);
+  assert.equal(withStatus(cards, {}, {})[1], cards[1]);
+});
+
+test("withStatus: a queued tap beats the file's entry if newer, and marks the card unsynced", () => {
+  const cards = [card(1, "review")];
+  const both = withStatus(cards, { 1: { status: "passed", at: T1 } }, { 1: { status: "ready", at: T2 } });
+  assert.equal(both[0].status, "ready"); assert.equal(both[0].unsynced, true);
+  const older = withStatus(cards, { 1: { status: "passed", at: T2 } }, { 1: { status: "ready", at: T1 } });
+  assert.equal(older[0].status, "passed");
+  assert.equal(withStatus(cards, {}, {})[0].unsynced, undefined);
+});
+
+test("approve → the review task becomes Apply to…; Pass / Applied archive it; Claude's newer status takes over", () => {
+  const cards = [card(1, "review"), card(2, "ready"), card(3, "new"), card(4, "new")];
+  let tasks = apply([], planSync(cards, []));
+  const decided = { 1: { status: "ready", at: T1 }, 2: { status: "applied", at: T1 }, 3: { status: "passed", at: T1 } };
+  const seen = withStatus(cards, decided, {});
+  tasks = apply(tasks, planSync(seen, tasks));
+  const by = (n) => tasks.find((t) => t.source.cardId === String(n));
+  assert.equal(by(1).title, "Apply to Co1, Mixer"); assert.equal(by(1).status, "ready");
+  assert.equal(by(2).status, "dropped"); assert.equal(by(3).status, "dropped");
+  assert.equal(by(4).status, "ready"); // new, no decision: kept
+  assert.deepEqual(planSync(seen, tasks), { add: [], update: [] });
+  // Claude's Sunday run syncs it: same status, newer status_at → nothing flips.
+  const synced = [card(1, "ready", { status_at: "2026-10-26T00:00:00Z" })];
+  assert.deepEqual(planSync(withStatus(synced, decided, {}), [by(1)]), { add: [], update: [] });
+  // …and if Claude moves it on later, Claude wins over Daisey's older entry.
+  assert.equal(withStatus([card(1, "review", { status_at: "2026-10-28T00:00:00Z" })], decided, {})[0].status, "review");
+});
+
+test("a queued tap shows the not-synced dot, and clears when it lands", () => {
+  const cards = [card(1, "review")];
+  let tasks = apply([], planSync(cards, []));
+  const q = { 1: { status: "ready", at: T1 } };
+  tasks = apply(tasks, planSync(withStatus(cards, {}, q), tasks));
+  assert.equal(jobActions(tasks[0]).unsynced, true);
+  assert.deepEqual(jobActions(tasks[0]).choices.map((c) => c.label), ["Applied", "Pass"]);
+  tasks = apply(tasks, planSync(withStatus(cards, q, {}), tasks));
+  assert.equal(jobActions(tasks[0]).unsynced, false);
+});
+
+test("jobActions.choices: review Approve/Pass · ready Applied/Pass · new Pass", () => {
+  const c = (s) => jobActions(taskOf(card(1, s))).choices.map((x) => `${x.label}>${x.status}`);
+  assert.deepEqual(c("review"), ["Approve>ready", "Pass>passed"]);
+  assert.deepEqual(c("ready"), ["Applied>applied", "Pass>passed"]);
+  assert.deepEqual(c("new"), ["Pass>passed"]);
+});
+
+// A fake Drive: files by id, list by name, multipart create, media PATCH.
+function drive(files = {}){
+  const calls = [];
+  let n = 0;
+  const fetchFn = async (url, init = {}) => {
+    const u = new URL(url), id = decodeURIComponent(u.pathname.split("/").pop());
+    const kind = u.searchParams.get("uploadType") || (u.searchParams.get("alt") ? "media" : "");
+    calls.push(`${init.method || "GET"} ${u.pathname}${kind ? "?" + kind : ""}`);
+    assert.equal(init.headers.Authorization, "Bearer tok");
+    if (u.pathname === "/drive/v3/files") {
+      assert.match(u.searchParams.get("q"), /name='daisey-status\.json' and '1_sAGh_9VYSD2YEDxzQqnLzvII3Q4JgiE' in parents/);
+      return res(200, { files: Object.keys(files).map((k) => ({ id: k })) });
+    }
+    if (init.method === "PATCH") { if (!(id in files)) return res(404, {}); files[id] = init.body; return res(200, { id }); }
+    if (init.method === "POST") {
+      assert.equal(kind, "multipart");
+      assert.match(init.headers["Content-Type"], /^multipart\/related; boundary=/);
+      const parts = init.body.split("\r\n");
+      assert.deepEqual(JSON.parse(parts[3]), { name: "daisey-status.json", parents: ["1_sAGh_9VYSD2YEDxzQqnLzvII3Q4JgiE"], mimeType: "application/json" });
+      const nid = "NEWFILE" + ++n; files[nid] = parts[7]; return res(200, { id: nid });
+    }
+    return id in files ? res(200, null, files[id]) : res(404, {});
+  };
+  return { files, calls, fetchFn };
+}
+const at = () => new Date("2026-10-21T12:00:00Z");
+
+test("writeStatus: first write creates the file in the folder (multipart) and returns its id", async () => {
+  const d = drive();
+  const out = await writeStatus("tok", "", { j1: { status: "ready", at: T1 } }, d.fetchFn, at);
+  assert.equal(out.fileId, "NEWFILE1");
+  assert.deepEqual(out.jobs, { j1: { status: "ready", at: T1 } });
+  assert.deepEqual(JSON.parse(d.files.NEWFILE1), { updated: "2026-10-21T12:00:00.000Z", jobs: out.jobs });
+  assert.deepEqual(d.calls, ["GET /drive/v3/files", "POST /upload/drive/v3/files?multipart"]);
+});
+
+test("writeStatus: later writes PATCH the stored id and keep the other jobs; an older tap loses", async () => {
+  const d = drive({ FILE12345678: JSON.stringify({ updated: T0, jobs: { a: { status: "passed", at: T2 }, b: { status: "ready", at: T1 } } }) });
+  const out = await writeStatus("tok", "FILE12345678", { b: { status: "applied", at: T2, note: " sent " }, a: { status: "ready", at: T1 }, bad: { status: "weird", at: T1 } }, d.fetchFn, at);
+  assert.deepEqual(out.jobs, { a: { status: "passed", at: T2 }, b: { status: "applied", at: T2, note: "sent" } });
+  assert.deepEqual(JSON.parse(d.files.FILE12345678).jobs, out.jobs);
+  assert.deepEqual(d.calls, ["GET /drive/v3/files/FILE12345678?media", "PATCH /upload/drive/v3/files/FILE12345678?media"]);
+});
+
+test("writeStatus: a stored id that is gone is searched by name; recreated only if not found", async () => {
+  const found = drive({ OTHERFILE123: JSON.stringify({ jobs: { a: { status: "ready", at: T1 } } }) });
+  const o1 = await writeStatus("tok", "GONEGONE1234", { b: { status: "passed", at: T2 } }, found.fetchFn, at);
+  assert.equal(o1.fileId, "OTHERFILE123"); assert.deepEqual(Object.keys(o1.jobs), ["a", "b"]);
+  const none = drive();
+  const o2 = await writeStatus("tok", "GONEGONE1234", { b: { status: "passed", at: T2 } }, none.fetchFn, at);
+  assert.equal(o2.fileId, "NEWFILE1");
+  assert.deepEqual(none.calls, ["GET /drive/v3/files/GONEGONE1234?media", "GET /drive/v3/files", "POST /upload/drive/v3/files?multipart"]);
+});
+
+test("writeStatus: nothing valid → bad; no drive.file scope → scope; 401 → reauth; a damaged file is rewritten", async () => {
+  await assert.rejects(writeStatus("tok", "", { j: { status: "new", at: T1 } }, drive().fetchFn), { bad: true });
+  await assert.rejects(writeStatus("tok", "", null, drive().fetchFn), { bad: true });
+  const scope = res(403, { error: { message: "Insufficient Permission", errors: [{ reason: "insufficientPermissions" }] } });
+  await assert.rejects(writeStatus("tok", "", { j: { status: "ready", at: T1 } }, async (u, i) => (i?.method === "POST" ? scope : res(200, { files: [] }))), { scope: true });
+  await assert.rejects(writeStatus("tok", "", { j: { status: "ready", at: T1 } }, async () => res(401, {})), { reauth: true });
+  const damaged = drive({ DAMAGED12345: "{oops" });
+  const out = await writeStatus("tok", "DAMAGED12345", { j: { status: "ready", at: T1 } }, damaged.fetchFn, at);
+  assert.deepEqual(Object.keys(out.jobs), ["j"]);
+});
+
+test("readStatus: by id, else by name; no file → no jobs and no id", async () => {
+  const d = drive({ FILE12345678: JSON.stringify({ jobs: { a: { status: "ready", at: T1 }, junk: 5 } }) });
+  assert.deepEqual(await readStatus("tok", "FILE12345678", d.fetchFn), { fileId: "FILE12345678", jobs: { a: { status: "ready", at: T1 } } });
+  assert.equal((await readStatus("tok", "", d.fetchFn)).fileId, "FILE12345678");
+  assert.deepEqual(await readStatus("tok", "", drive().fetchFn), { fileId: null, jobs: {} });
+});

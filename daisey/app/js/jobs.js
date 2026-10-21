@@ -3,13 +3,17 @@
 // jobs-sync.js fetches the cards and writes what planSync decides.
 //
 // Mor, 2026-10-21: Daisey reads the cards and shows each as one task under the
-// "Job Hunt" project; it never writes back to Drive. The card's status picks
-// the task, and the task is found again by card id (source.cardId), so a
-// refresh never makes a second one.
+// "Job Hunt" project. It never edits jobs.json (Claude owns it); what Mor
+// decides goes to Daisey's own daisey-status.json, and withStatus lays it over
+// the cards so a decision shows at once. The card's status picks the task, and
+// the task is found again by card id (source.cardId), so a refresh never makes
+// a second one.
 //   new     Decide: <company>, <title> worth a kit?   5 min
 //   review  Review <company> CV + cover letter       20 min
 //   ready   Apply to <company>, <title>              30 min
 //   applied, passed: no active task — an existing one is archived (dropped).
+// Mor's taps (jobActions.choices): review → Approve (ready) / Pass; ready →
+// Applied / Pass; new → Pass. Done on a new task, without Pass, keeps the card.
 // A card that leaves the file keeps its task, marked source.stale.
 import { toDate, toMinutes, toLinks } from "./model.js";
 
@@ -54,6 +58,26 @@ function startOf(c, status){
   return { start: apply || web(c.link), note: apply ? "" : str(c.apply_note) };
 }
 
+// What Mor can decide on a task, by the step it is on: [label, status written].
+const CHOICES = { review: [["Approve", "ready"], ["Pass", "passed"]], ready: [["Applied", "applied"], ["Pass", "passed"]], new: [["Pass", "passed"]] };
+const WRITABLE = new Set(["ready", "applied", "passed"]);
+
+// Mor's decisions laid over the cards: { cardId: { status, at, note? } } from
+// daisey-status.json (`decided`) and from taps not yet written there
+// (`queued`). The newer of the two beats the card's own status when it is
+// newer than the card's status_at (or the card has none), so an approved job
+// is "Apply to …" before Claude's next run syncs it. `unsynced` marks a card
+// whose tap is still queued.
+export function withStatus(cards, decided, queued){
+  const ms = (v) => { const n = Date.parse(v); return Number.isNaN(n) ? -Infinity : n; };
+  return cards.map((c) => {
+    const id = str(c.id), q = queued?.[id], d = decided?.[id];
+    const e = q && !(d && ms(d.at) > ms(q.at)) ? q : d;
+    const mine = e && WRITABLE.has(e.status) && ms(e.at) > ms(c.status_at);
+    return mine || q ? { ...c, ...(mine ? { status: e.status, status_at: e.at } : {}), ...(q ? { unsynced: true } : {}) } : c;
+  });
+}
+
 const fitOf = (c) =>{ const n = Number(c.fit); return n >= 1 && n <= 10 ? Math.round(n) : null; };
 
 // The fields the file owns on the task.
@@ -63,7 +87,7 @@ function fromCard(c){
   return {
     status, due, links: linksOf(c, status),
     source: { app: JOB_APP, cardId: str(c.id), status, fit: fitOf(c), why: str(c.why), deadline: due, stale: false,
-      ...startOf(c, status), cv: cvId(c.cv) },
+      ...startOf(c, status), cv: cvId(c.cv), unsynced: !!c.unsynced },
   };
 }
 
@@ -142,9 +166,12 @@ export const jobLinks = (t) => (isJobTask(t) ? (t.links || []).filter((l) => /^h
 
 // What the Now card shows for a job task: Start, the apply note, View CV (a
 // review or ready task with a Drive CV) and the other links, minus the ones
-// Start and View CV already cover. null for any other task.
+// Start and View CV already cover, and the decisions Mor can tap (choices:
+// [{ label, status }]) with whether the last one is still unsynced. null for
+// any other task.
 export function jobActions(t){
   if (!isJobTask(t)) return null;
   const s = t.source, start = reach(s.start), cv = /^[\w-]+$/.test(s.cv || "") && (s.status === "review" || s.status === "ready") ? s.cv : "";
-  return { start, note: str(s.note), cv, links: jobLinks(t).filter((l) => l.url !== start && !(cv && cvId(l.url) === cv)) };
+  const choices = (CHOICES[s.status] || []).map(([label, status]) => ({ label, status }));
+  return { start, note: str(s.note), cv, choices, unsynced: !!s.unsynced, links: jobLinks(t).filter((l) => l.url !== start && !(cv && cvId(l.url) === cv)) };
 }

@@ -2927,4 +2927,5 @@ button.bl-r-title { padding: 0; border: 0; background: none; color: var(--ink); 
 .now-open { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 0; }
 .now-open .chip { text-decoration: none; }
 .now-open .chip.go { background: var(--accent); border-color: var(--accent); color: var(--on-accent); font-weight: 700; }
+.job-unsynced { width: 8px; height: 8px; margin: auto 2px; border-radius: 50%; background: var(--ink-2); flex: none; }
 .now-apply-note { flex: 1 1 100%; margin: 2px 0 0; font-size: 14px; color: var(--ink-2); overflow-wrap: anywhere; }

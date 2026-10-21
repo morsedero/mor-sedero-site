@@ -936,7 +936,7 @@ async function boot(){
         $("#planChip").onclick = () => { seenHint(); if (phone.matches && (planNow || !planReady || document.body.classList.contains("day-open"))) window.__toggleDay(); else morph(() => m.now?.plan()); };
         m.now = mountNow($("#nowcard"), user.uid, {
           name: isGuest ? "" : (user.displayName || "").trim().split(/\s+/)[0], onDone: paintDone, onNeedsCount: paintNeeds, onPlanProgress: paintPlan,
-          onPlanReady: paintReady, onPlanApproved: cheerPlan,
+          onPlanReady: paintReady, onPlanApproved: cheerPlan, onJob: jobs ? (t, status) => jobs.decide(t.source.cardId, status) : null,
           onFocusMode: (on) => {
             const b = focusBtn, was = b.getAttribute("aria-pressed") === "true";
             b.setAttribute("aria-pressed", String(on)); b.ariaLabel = on ? "Focus mode on: tap to show everything" : "Focus mode: only the Now card";
