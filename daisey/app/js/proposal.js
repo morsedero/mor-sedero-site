@@ -357,7 +357,10 @@ export function timeline(items = [], ctx = {}){
   // item laid after now (put off with Later, In 10 min, its open hours, too
   // long for the gap) sent the whole plan back to "from now", every minute.
   const head = held?.rows.filter((r) => !r.ride && r.start < now).sort((a, b) => a.i - b.i)[0];
-  if (!head) return lay(items, ctx);
+  // A break whose time has come holds the plan too (Mor, 2026-10-21: lunch
+  // laid 16:05, at 16:05 it was 16:10, every five minutes, never started).
+  // No task is late then; the break is the card, the tasks follow it.
+  if (!head) return held?.breaks.some((b) => b.start < now) ? held : lay(items, ctx);
   // Planned, its time over, never started (Mor, 2026-10-10: not "as if they
   // happened"): row.missed, and missed lists their ids in plan order.
   const missed = held.rows.filter((r) => !r.ride && r.end <= now).sort((a, b) => a.i - b.i);

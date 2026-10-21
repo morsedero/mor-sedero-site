@@ -225,6 +225,22 @@ test("held plan: the next task's start doesn't slide while you're idle", () => {
   assert.equal(timeline(later, { ...ctx, since: at(9, 20), now: at(9, 31) }).late.start, at(9, 30));
 });
 
+// Mor, 2026-10-21: lunch laid 16:05 was 16:10 once 16:05 came, and so on.
+test("held plan: a break whose time has come starts, it doesn't slide", () => {
+  const at = (h, m, sec) => Date.UTC(2026, 9, 7, h - 3, m, sec);
+  const tasks = [t({ id: "a", size: 30 }), t({ id: "b", size: 30 })];
+  const lunch = { brk: "meal", minutes: 30, name: "Lunch" };
+  const items = [{ taskId: "a", minutes: 30, hold: at(17, 30, 0) }, lunch, { taskId: "b", minutes: 30 }];
+  const ctx = { tasks, events: [], hours: { start: 480, end: 1320, meals: [{ name: "Lunch", from: 720, to: 1020, minutes: 30 }] }, since: at(16, 0, 30) };
+  assert.equal(timeline(items, { ...ctx, now: at(16, 4, 50) }).breaks[0].start, at(16, 5, 0));
+  for (const now of [at(16, 5, 30), at(16, 10, 30), at(16, 34, 0)]) {
+    const tl = timeline(items, { ...ctx, now });
+    assert.equal(tl.breaks[0].start, at(16, 5, 0));
+    assert.equal(tl.rows.find((r) => r.taskId === "b").start, at(16, 35, 0));
+    assert.equal(tl.late, undefined);
+  }
+});
+
 test("held plan: a planned task whose whole time passed unstarted is missed, not over", () => {
   const tasks = [t({ id: "a", size: 30 }), t({ id: "b", size: 30 }), t({ id: "c", size: 30 })];
   const items = tasks.map((x) => ({ taskId: x.id, minutes: 30 }));
