@@ -2683,7 +2683,7 @@ button.bl-r-title { padding: 0; border: 0; background: none; color: var(--ink); 
 @supports (color: color-mix(in srgb, red, blue)) { .hdr-end .focus-chip:not([aria-pressed="true"]) { color: color-mix(in srgb, var(--ink) 80%, var(--ink-2)); } }
   .hdr-end .focus-chip { font-size: 15px; font-weight: 500; }
   /* The avatar sits top right like the phone's (Mor, 2026-10-21); the name beside it is gone. */
-  .hdr-end .acct { position: fixed; inset-block-start: 14px; inset-inline-end: 20px; z-index: 25; margin: 0; padding: 0; }
+  .hdr-end .acct { position: fixed; inset-block-start: 14px; inset-inline-end: 32px; z-index: 25; margin: 0; padding: 0; }
   .hdr-end .avatar { inline-size: 36px; block-size: 36px; }
   /* Plan lives in the Schedule's bar like the phone's (Mor, 2026-10-21), not in the rail. */
   #side #planChip { display: none; }
