@@ -1,0 +1,62 @@
+Phrase bank · fresh · 20 rows · 2026-10-21T07:09Z
+model gemini-3.5-flash-lite · prompt 2026-10-21 preview corrections 2 · sha 56382542
+clock Asia/Jerusalem, default Mon 2026-10-19 10:00, day boundary 04:00 · Now card t2 · last task t6
+
+PASS  #H61 [Capture] @Tue 15:40 "need to send Noa the stems before the weekend"
+       → add "Send Noa the stems" due=2026-10-23
+PASS  #H62 [Capture] @Tue 15:41 "new project game audio pass, first task is footsteps"
+       → project project=game audio pass; add "Footsteps" project=game audio pass
+PASS  #H63 [Capture] @Tue 15:42 "dentist appointment Sunday 9:30"
+       → event "Dentist appointment" minutes=60 date=2026-10-25 time=09:30
+PASS  #H64 [Durations] @Tue 15:45 "mix the chorus an hour, bounce stems 25 min, email Ido"
+       → add "Mix the chorus" size=60; add "Bounce stems" size=25; add "Email Ido"
+PASS  #H65 [Durations] @Tue 15:46 "gotta do taxes, 2 hours, maybe a bit more"
+       → add "Gotta do taxes" size=120
+FAIL  #H66 [Durations] @Tue 15:47 "reply to Dana and call the bank, 10 min together"
+       → add "Reply to Dana" size=10; add "Call the bank" size=10
+       ✗ changed what it shouldn't: add "Reply to Dana" size=10; add "Call the bank" size=10
+PASS  #H67 [Durations] @Tue 15:48 "3/4 of an hour for the lesson prep"
+       → add "Lesson prep" size=45
+PASS  #H68 [Dates and day words] @Wed 01:20 "finish the demo tonight"
+       → add "Finish the demo" due=2026-10-20
+PASS  #H69 [Dates and day words] @Wed 02:10 "tomorrow call the label"
+       → add "Call the label" due=2026-10-21
+       ⚑ Scored by app logic: at Wed 02:10 the day is still Tuesday, so tomorrow = Wednesday 10-21 (no time said, so no fork).
+PASS  #H70 [Dates and day words] @Tue 15:50 "end of the month send invoices"
+       → add "Send invoices" due=2026-10-31
+FAIL  #H71 [Dates and day words] @Tue 15:51 "in three days book the studio"
+       → update t7 due=2026-10-23
+       ✗ missing add(title:studio due:"2026-10-23") · changed what it shouldn't: update t7 due=2026-10-23
+PASS  #H72 [Corrections] @Tue 15:55 "no make it 30"
+       → add "Invoice" size=30
+       ⚑ A correction of the card on screen: the corrected card comes back, and replaces it.
+FAIL  #H73 [Corrections] @Tue 15:56 "actually Friday"
+       → update t6 due=2026-10-23
+       ✗ missing add(title:call dana due:"2026-10-23") · changed what it shouldn't: update t6 due=2026-10-23
+       ⚑ A correction of the card on screen: the corrected card comes back, and replaces it.
+FAIL  #H74 [Hebrew / mixed] @Tue 16:00 "לשלוח את החשבונית לדנה מחר 15 דקות"
+       → update t1 "לשלוח את החשבונית לדנה" due=2026-10-21
+       ✗ missing add(title:לשלוח את החשבונית לדנה size:15 due:"2026-10-21") · changed what it shouldn't: update t1 "לשלוח את החשבונית לדנה" due=2026-10-21
+PASS  #H75 [Hebrew / mixed] @Tue 16:01 "תזכיר לי to call the bank ביום חמישי"
+       → add "Call the bank" due=2026-10-22
+PASS  #H76 [Hebrew / mixed] @Tue 16:02 "לקנות סוללות ולשלם חשבון חשמל, 10 דקות כל אחד"
+       → add "לקנות סוללות" size=10; add "לשלם חשבון חשמל" size=10
+PASS  #H77 [Voice and mumbling] @Tue 16:05 "um so uh I need to like finish the, the demo notes today I guess"
+       → add "Finish the demo notes" due=2026-10-20
+PASS  #H78 [Voice and mumbling] @Tue 16:06 "send the thing to the guy"
+       → ask "Which task and person do you mean?" [Report for Yoni | Send stems to Dana | Email Dana the quote]
+FAIL  #H79 [Exits] @Tue 16:10 "I'll do it later tonight"
+       → update t2 due=2026-10-20
+       ✗ missing later(taskId:"t2" until:"today") · changed what it shouldn't: update t2 due=2026-10-20
+PASS  #H80 [Exits] @Tue 16:11 "waiting on Yoni for the files, check Friday"
+       → waiting t2 waitingOn=Yoni checkOn=2026-10-23
+
+Category                       Pass     False mutations
+Capture                        3/3      0
+Durations                      3/4      2
+Dates and day words            3/4      1
+Corrections                    1/2      1
+Hebrew / mixed                 2/3      1
+Voice and mumbling             2/2      0
+Exits                          1/2      1
+TOTAL                          15/20    6 (in 5 rows)

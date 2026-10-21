@@ -142,6 +142,7 @@ const rows = parseCsv(fs.readFileSync(path.join(HERE, "phrases.csv"), "utf8"))
 const sha = crypto.createHash("sha256").update(chat.SYSTEM + chat.understand.toString()).digest("hex").slice(0, 8); // the prompt text and how it is built
 const pause = (ms) => new Promise((ok) => setTimeout(ok, ms));
 const out = [], lines = [];
+let failing = 0; // rows in a row the model failed on
 const log = (s = "") => { lines.push(s); console.log(s); };
 
 log(`Phrase bank · ${IDS ? `ids ${IDS.join(",")}` : SPLIT} · ${rows.length} rows · ${new RealDate().toISOString().slice(0, 16)}Z`);
@@ -171,6 +172,10 @@ for (const row of rows) {
   freeze(at);
   const r = readAnswer(res, text, {}, { now: STATE.now });
   thaw();
+  // The free tier allows 500 requests a day per model: when the API keeps failing, stop
+  // (and save nothing) instead of burning the rest of the day on retries.
+  failing = error ? failing + 1 : 0;
+  if (failing >= 3) { console.error("\nStopped at #" + id + ": the model failed 3 rows in a row (daily quota? curl the API to see). No result saved."); process.exit(3); }
   const sc = error ? { pass: false, why: [error], falses: 0, error: true } : score(spec, r);
   const tag = error ? "ERROR" : sc.pass ? "PASS " : "FAIL ";
   out.push({ id, category: row.category, split: row.split, pass: sc.pass, error: !!error, falses: sc.falses, asked: asked(r) });
