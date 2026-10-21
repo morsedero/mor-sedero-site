@@ -47,6 +47,15 @@ export function setProjectTiers(map){
 export function watchProjectTiers(cb){ tierSubs.add(cb); return () => tierSubs.delete(cb); }
 export const currentTiers = () => tiers;
 
+// Each project's daily cap, { name: max tasks a day } (projects.js publishes
+// it beside the tiers). workBase counts what each project finished today.
+let caps = {};
+export function setProjectCaps(map){
+  if (JSON.stringify(map) === JSON.stringify(caps)) return;
+  caps = map;
+  tierSubs.forEach((cb) => cb());
+}
+
 // What the engine needs from the task history, shared by the Now card and
 // night mode so the two can't disagree: momentum (the project last worked
 // on today, those worked on in the last 2 days) and the area balance (tasks
@@ -61,6 +70,9 @@ export function workBase(tasks = [], now = Date.now()){
   const week = new Date(now); week.setHours(0, 0, 0, 0); week.setDate(week.getDate() - week.getDay());
   const areaDone = {};
   for (const t of tasks) if (t.status === "done" && t.doneAt >= week.getTime() && t.area) areaDone[t.area] = (areaDone[t.area] || 0) + 1;
+  // Toward each project's daily cap: its tasks finished today (routines keep their own count).
+  const projectDone = {};
+  for (const t of tasks) if (t.status === "done" && !t.routine && t.doneAt && logicalDate(t.doneAt) === today) projectDone[t.project || INBOX] = (projectDone[t.project || INBOX] || 0) + 1;
   // Flow: the project just stopped or finished, while it's still warm.
   const last = worked[0];
   const warm = last && last.project && last.project !== INBOX && !last.routine && now - when(last) <= W.FLOW.gapMinutes * MIN;
@@ -70,5 +82,7 @@ export function workBase(tasks = [], now = Date.now()){
     recentProjects: worked.filter((t) => now - when(t) < W.MOMENTUM.recentDays * 864e5).map((t) => t.project),
     areaDone,
     projectTiers: tiers,
+    projectCaps: caps,
+    projectDone,
   };
 }

@@ -20,7 +20,7 @@
 // area when no other project has that one yet, else the next free colour in
 // PALETTE. Names are taken in order, so a colour doesn't move around as
 // counts change. Inbox has none.
-import { watchTasks, watchSettings, finishTask, undoDone, unlogReopened, restoreTask, removeTask, watchProjectNames, saveProjectNames, saveProjectRanges, saveProjectOrder, saveProjectTiers, renameInLog } from "./store.js";
+import { watchTasks, watchSettings, finishTask, undoDone, unlogReopened, restoreTask, removeTask, watchProjectNames, saveProjectNames, saveProjectRanges, saveProjectOrder, saveProjectTiers, saveProjectCaps, renameInLog } from "./store.js";
 import { INBOX, progressOf, progressPatch, leftMinutes, pushedTo, notYet, durText, localDate, logicalDate, dayAfter, bringBack, cleanRange, outsideRange, doneSnapshot } from "./model.js";
 import { isRoutine } from "./routine.js";
 import { dropSeries } from "./slots.js";
@@ -28,7 +28,7 @@ import { isOverdue } from "./triage.js";
 import { projectProgress, nextTaskOf, projectSummary } from "./project-state.js";
 import { h, bdi, flash, icon, askProgress, closeOrAsk, askOnEsc, sizeChip, progressBar, weekDots, dragScroll } from "./ui.js";
 import { setProjectColors, doneThisWeek, stalkDaisy, routineLeaves } from "./look.js";
-import { setProjectTiers } from "./context.js";
+import { setProjectTiers, setProjectCaps } from "./context.js";
 import { dateBox } from "./datebox.js";
 import { TIERS, FOCUS_MAX } from "./weights.js";
 // How many projects Focus holds: Settings, 1–5 (Mor, 2026-10-10); FOCUS_MAX (3) until set.
@@ -152,6 +152,7 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
   let tasks = null, onCard = null, made = [], order = [], tiers = {};
   let dragging = false, stale = false; // a drag is live: hold the redraws (ppdrag.js)
   let ranges = {}; // name -> { start, due }: the dates a project runs between
+  let caps = {}; // name -> max tasks a day (Mor, 2026-10-21); none: no cap
   let shown = null; // the project on the project screen
   let drawer = null; // the open drawer in the project card: "done", "someday" or null
   const fail = (e) => console.error("[daisey] projects", e);
@@ -256,6 +257,7 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
     const ps = all;
     const tierMap = Object.fromEntries(ps.map((p) => [p.name, tierOf(p.name)]));
     setProjectTiers(tierMap);
+    setProjectCaps(caps);
     const g = growth.read(tasks || [], ps.map((p) => p.name), tierMap);
     // Sway phase from the clock (Mor, 2026-10-08): a redraw (Week/Month,
     // a save) rebuilds the flowers mid-sway; they pick up where they were.
@@ -359,6 +361,11 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
   // carrying the old one, the saved name and the dates.
   function askRename(old){
     const d = els.dialog, f = dateFields(ranges[old]);
+    // Max tasks a day (Mor, 2026-10-21): past it, the plan and the card leave
+    // the project for tomorrow; a deadline today still comes.
+    const cap = h("select", { className: "menu-select", ariaLabel: "Max tasks a day" },
+      ...["", 1, 2, 3, 4, 5, 6, 8].map((n) => h("option", { value: String(n), textContent: n ? String(n) : "No limit", selected: (caps[old] || "") === n })));
+    const capRow = h("div", { className: "np-dates" }, h("label", { className: "np-date" }, h("span", { textContent: "Max tasks a day" }), cap));
     const name = h("input", { className: "ts-input", dir: "auto", autocomplete: "off", enterKeyHint: "done",
       placeholder: "Project name", ariaLabel: "Project name", required: true, value: old });
     const msg = h("p", { className: "msg", role: "alert" });
@@ -377,6 +384,7 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
         // tiers and ranges are saved whole, so the old name's keys go on the
         // server too; a new project by the old name starts clean (#2).
         if (tiers[old]) { const { [old]: t, ...others } = tiers; tiers = { ...others, [v]: t }; saveProjectTiers(uid, tiers).catch(fail); }
+        if (caps[old]) { const { [old]: _c, ...others } = caps; caps = others; }
         // Same place in the dragged order, not dropped to the end (#6).
         if (order.includes(old)) { order = order.filter((n) => n !== v).map((n) => (n === old ? v : n)); saveProjectOrder(uid, order).catch(fail); }
         // Its past work too, so stats don't split it in two (#6).
@@ -385,7 +393,9 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
         onScreen?.(v);
       }
       setRange(v, r);
-      const out = (tasks || []).filter((t) => isOpen(t) && (t.project || INBOX) === old && (outsideRange(r, t.due) || outsideRange(r, t.notBefore))).length;
+      const n = Number(cap.value), { [v]: _was, ...rest } = caps, next = n ? { ...rest, [v]: n } : rest;
+      if (JSON.stringify(next) !== JSON.stringify(caps) || v !== old) { caps = next; saveProjectCaps(uid, caps).catch(fail); }
+      const out =(tasks || []).filter((t) => isOpen(t) && (t.project || INBOX) === old && (outsideRange(r, t.due) || outsideRange(r, t.notBefore))).length;
       render();
       d.close();
       if (out) flash(`${plural(out, "task")} outside these dates: `, v);
@@ -404,7 +414,7 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
     d.replaceChildren(
       h("div", { className: "now-head" }, h("h2", { id: "npTitle", textContent: "Edit project" }),
         h("button", { className: "now-x", type: "button", ariaLabel: "Close", textContent: "✕", onclick: () => d.close() })),
-      h("form", { className: "np-form", onsubmit: save }, name, msg, f.box, f.msg,
+      h("form", { className: "np-form", onsubmit: save }, name, msg, f.box, f.msg, capRow,
         h("div", { className: "sheet-actions" },
           h("button", { className: "btn primary", type: "submit", textContent: "Save" }),
           h("button", { className: "btn quiet", type: "button", textContent: "Cancel", onclick: () => d.close() }),
@@ -422,6 +432,7 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
     made = made.filter((n) => n !== name);
     saveProjectNames(uid, made).catch(fail);
     const { [name]: _gone, ...rest } = ranges; ranges = rest;
+    if (caps[name]) { const { [name]: _c, ...others } = caps; caps = others; saveProjectCaps(uid, caps).catch(fail); }
     onScreen?.(null);
     render();
     flash("Deleted: ", name);
@@ -708,7 +719,7 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
   const unsubs = [
     watchTasks(uid, (ts) => { tasks = ts; keepNames(); render(); }, fail),
     watchSettings(uid, (st) => { const n = focusCap(st); if (n !== focusMax) { focusMax = n; render(); } }, fail),
-    watchProjectNames(uid, (ns, rs, od, tr) => { made = ns; ranges = rs || {}; order = od || []; tiers = tr || {}; namesIn = true; keepNames(); render(); }, fail),
+    watchProjectNames(uid, (ns, rs, od, tr, cp) => { made = ns; ranges = rs || {}; order = od || []; tiers = tr || {}; caps = cp || {}; namesIn = true; keepNames(); render(); }, fail),
   ];
   render();
 
