@@ -1747,9 +1747,12 @@ body.focus #side { display: none; }
 .sc-gap .sc-add { order: 2; font-size: 14px; }
 /* Free time and breaks read warm and a size up (Mor, 2026-10-10: "more fun, bigger"). */
 /* Condensed under the hero card (2026-10-11): a quiet line, not a row. */
-.sc-free { flex: 1; min-inline-size: 0; display: flex; align-items: center; gap: 6px; block-size: 22px; font-size: 12.5px; font-weight: 400; color: var(--ink-2); }
+/* No icons (Mor, 2026-10-21): plain muted italic words in a dashed, faintly tinted box. */
+.sc-free { flex: 1; min-inline-size: 0; display: flex; align-items: center; gap: 6px; block-size: 24px; padding-inline: 10px; box-sizing: border-box;
+  border: 1px dashed rgb(0 0 0 / .2); border-radius: 8px; background: rgb(0 0 0 / .03);
+  font-size: 12.5px; font-weight: 400; font-style: italic; color: var(--ink-2); }
 .sc-break.sc-past .sc-free { opacity: .55; }
-.sc-gap .sc-free::after { content: ""; flex: 1; border-block-start: 1.5px dotted currentColor; opacity: .35; }
+.sc-gap .sc-add { margin-inline-start: auto; }
 .sc-ev {
   flex: 1; min-inline-size: 0; display: flex; align-items: center; min-block-size: 30px; padding: 4px 10px; border: 0; border-radius: 8px;
   background: var(--card); color: var(--ev, var(--ink-2));
@@ -2106,9 +2109,9 @@ body.focus .shell { block-size: auto; min-block-size: 100dvh; overflow: visible;
 .pp-row.pp-break { padding-block: 0; background: transparent; border-color: transparent; color: var(--ink-2); }
 .pp-break .pp-time small { display: none; }
 .pp-break .pp-time { font-weight: 500; }
-.pp-break .pp-task { display: flex; align-items: center; gap: 6px; padding: 0; cursor: default; }
-.pp-break .pp-title, .pp-break .pp-meta { flex: none; font-size: 14.5px; font-weight: 400; color: var(--ink-2); }
-.pp-break .pp-task::after { content: ""; flex: 1; border-block-start: 1.5px dotted currentColor; opacity: .35; }
+.pp-break .pp-task { display: flex; align-items: center; gap: 6px; padding: 3px 10px; cursor: default;
+  border: 1px dashed rgb(0 0 0 / .2); border-radius: 8px; background: rgb(0 0 0 / .03); }
+.pp-break .pp-title, .pp-break .pp-meta { flex: none; font-size: 14.5px; font-weight: 400; font-style: italic; color: var(--ink-2); }
 .pp-break .pp-ctl { block-size: 28px; font-size: 13px; }
 .pp-row.over > :not(.pp-ctls) { opacity: .65; }
 .pp-time { display: grid; font-size: 12px; font-weight: 600; line-height: 1.3; color: var(--ink-2); font-variant-numeric: tabular-nums; }

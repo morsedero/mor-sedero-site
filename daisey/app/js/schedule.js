@@ -50,11 +50,11 @@ export function untilText(ms){
   return hr >= 3 || rest < 5 ? `${hr}h` : `${hr}h ${rest}m`;
 }
 const hm = (ms) => clock(ms);
-// A break says what it's for, warmly (Mor, 2026-10-10: "more fun"): "☕ Breather · 15 min", "🥗 Lunch · 45 min".
-// Free time reads the same way, "🌿 Free · 2 h", and all three sit light (Mor, 2026-10-11).
-const MEAL_ICON = { breakfast: "🥐", lunch: "🥗", dinner: "🍝" };
+// A break says what it's for: "Breather · 15 min", "Lunch · 45 min". Free time reads the
+// same way, "Free · 2 h". Plain words, no icons (Mor, 2026-10-21: emoji were distracting);
+// app.css sets all three in a muted italic inside a dashed box.
 export const breakText = (b, len) => (b.type === "meal"
-  ? `${MEAL_ICON[(b.name || "").toLowerCase()] || "🍽️"} ${b.name || "Meal"} · ${len}` : `☕ Breather · ${len}`);
+  ? `${b.name || "Meal"} · ${len}` : `Breather · ${len}`);
 
 // One day's rows: events (busy or not) in order, and Free boxes for the gaps
 // between busy ones inside the day hours. from: nothing before this counts
@@ -516,7 +516,7 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onMissed, onPro
     // Tapping it adds an event there.
     if (x.kind === "free") return h("button", { type: "button", className: "sc-row sc-gap", ariaLabel: `Free ${time} — add an event`,
       onclick: () => onNew?.(localDate(x.start), hm(quarterUp(x.start))) },
-      h("span", { className: "sc-free" }, `🌿 Free · ${durText((x.end - x.start) / 60000)}`, h("span", { className: "sc-add", ariaHidden: "true", textContent: "+" })));
+      h("span", { className: "sc-free" }, `Free · ${durText((x.end - x.start) / 60000)}`, h("span", { className: "sc-add", ariaHidden: "true", textContent: "+" })));
     const on = !x.allDay && x.start <= now && now < x.end;
     const past = !x.allDay && x.end <= now;
     // No clock times: the break pill starts where the event boxes do.
