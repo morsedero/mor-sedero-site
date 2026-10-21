@@ -21,6 +21,9 @@ const OPEN = new Set(["ready", "waiting", "someday"]); // a task the user has no
 const str = (v) => (typeof v === "string" ? v.trim() : typeof v === "number" ? String(v) : "");
 const both = (...xs) => xs.map(str).filter(Boolean).join(", ");
 const web = (v) => (/^https?:\/\/\S+$/i.test(str(v)) ? str(v) : "");
+const reach = (v) => (/^(https?:\/\/|mailto:)\S+$/i.test(str(v)) ? str(v) : ""); // a web page or an email to send
+// The Drive id of a CV file (".../file/d/<id>/view"); "" for anything else.
+export const cvId = (v) => /^https:\/\/drive\.google\.com\/file\/d\/([\w-]+)/.exec(str(v))?.[1] || "";
 
 export const isJobTask = (t) => t?.source?.app === JOB_APP;
 // Doc ids can't hold "/"; the same card always lands on the same doc, so two
@@ -41,7 +44,17 @@ function linksOf(c, status){
   return toLinks(pick.map(([k, label]) => ({ url: web(c[k]), label })).filter((l) => l.url));
 }
 
-const fitOf = (c) => { const n = Number(c.fit); return n >= 1 && n <= 10 ? Math.round(n) : null; };
+// What Start opens (Mor, 2026-10-21): review → the Doc with the CV changes and
+// the cover letter; new and ready → the apply link (an email too), else the
+// job post, and then the card's apply_note says how to apply. Old cards have
+// none of these fields: they fall back to the job post.
+function startOf(c, status){
+  if (status === "review") return { start: web(c.cover_letter), note: "" };
+  const apply = reach(c.apply_link);
+  return { start: apply || web(c.link), note: apply ? "" : str(c.apply_note) };
+}
+
+const fitOf = (c) =>{ const n = Number(c.fit); return n >= 1 && n <= 10 ? Math.round(n) : null; };
 
 // The fields the file owns on the task.
 function fromCard(c){
@@ -49,7 +62,8 @@ function fromCard(c){
   const due = toDate(str(c.deadline).slice(0, 10));
   return {
     status, due, links: linksOf(c, status),
-    source: { app: JOB_APP, cardId: str(c.id), status, fit: fitOf(c), why: str(c.why), deadline: due, stale: false },
+    source: { app: JOB_APP, cardId: str(c.id), status, fit: fitOf(c), why: str(c.why), deadline: due, stale: false,
+      ...startOf(c, status), cv: cvId(c.cv) },
   };
 }
 
@@ -125,3 +139,12 @@ export function planSync(cards, tasks, { complete = true } = {}){
 // The links the Now card offers for a job task (web only: a stored URL is
 // never trusted to be safe to open just because it came from a file).
 export const jobLinks = (t) => (isJobTask(t) ? (t.links || []).filter((l) => /^https?:\/\//i.test(l.url || "")) : []);
+
+// What the Now card shows for a job task: Start, the apply note, View CV (a
+// review or ready task with a Drive CV) and the other links, minus the ones
+// Start and View CV already cover. null for any other task.
+export function jobActions(t){
+  if (!isJobTask(t)) return null;
+  const s = t.source, start = reach(s.start), cv = /^[\w-]+$/.test(s.cv || "") && (s.status === "review" || s.status === "ready") ? s.cv : "";
+  return { start, note: str(s.note), cv, links: jobLinks(t).filter((l) => l.url !== start && !(cv && cvId(l.url) === cv)) };
+}

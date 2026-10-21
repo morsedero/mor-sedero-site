@@ -165,3 +165,87 @@ test("readJobs: no file → no cards; 401 → reauth; 403 scope → scope; bad J
   const bad = async (u) => (String(u).includes("alt=media") ? res(200, null, "{oops") : res(200, { files: [{ id: "F" }] }));
   await assert.rejects(readJobs("t", bad), /not JSON/);
 });
+
+// ---------- Apply / Review / View CV (2026-10-21) ----------
+import { jobActions, cvId } from "../../app/js/jobs.js";
+import { viewCv, withPrintButton } from "../../app/js/cv.js";
+import { readCv } from "../../functions/_daisey-lib/jobs-drive.js";
+const taskOf = (c) => createTask(jobInput(c), { now: NOW });
+const DRIVE = "https://drive.google.com/file/d/1AbC-dEf_9/view";
+
+test("Start: review → the cover-letter Doc; new/ready → apply_link, else the job post + apply_note", () => {
+  const doc = "https://docs.google.com/document/d/REV/edit";
+  assert.equal(jobActions(taskOf(card(1, "review", { cover_letter: doc }))).start, doc);
+  const withApply = card(2, "ready", { apply_link: "https://co.example/apply", apply_note: "ignored" });
+  assert.deepEqual([jobActions(taskOf(withApply)).start, jobActions(taskOf(withApply)).note], ["https://co.example/apply", ""]);
+  assert.equal(jobActions(taskOf(card(3, "new", { apply_link: "https://co.example/apply" }))).start, "https://co.example/apply");
+  assert.equal(jobActions(taskOf(card(4, "ready", { apply_link: "mailto:jobs@co.example?subject=Hi" }))).start, "mailto:jobs@co.example?subject=Hi");
+  const none = jobActions(taskOf(card(5, "ready", { apply_link: "", apply_note: "Apply on the careers page" })));
+  assert.deepEqual([none.start, none.note], ["https://jobs.example/5", "Apply on the careers page"]);
+  assert.equal(jobActions(taskOf(card(6, "new", { apply_link: "javascript:alert(1)" }))).start, "https://jobs.example/6");
+});
+
+test("old cards without the new fields still work", () => {
+  const old = card(7, "ready"); // no apply_link / apply_note
+  const a = jobActions(taskOf(old));
+  assert.deepEqual([a.start, a.note, a.cv], ["https://jobs.example/7", "", ""]);
+  assert.equal(jobActions(createTask({ title: "x", source: { app: "jobhunt", cardId: "9", status: "ready" } }, { now: NOW })).start, "");
+  assert.equal(jobActions(createTask({ title: "Call the bank" }, { now: NOW })), null);
+});
+
+test("View CV: only review/ready, only a Drive file URL; the CV and Start links are not doubled as chips", () => {
+  assert.equal(cvId(DRIVE), "1AbC-dEf_9");
+  assert.equal(cvId("https://docs.example/cv1"), "");
+  assert.equal(jobActions(taskOf(card(1, "review", { cv: DRIVE }))).cv, "1AbC-dEf_9");
+  assert.equal(jobActions(taskOf(card(2, "ready", { cv: DRIVE }))).cv, "1AbC-dEf_9");
+  assert.equal(jobActions(taskOf(card(3, "new", { cv: DRIVE }))).cv, "");
+  assert.equal(jobActions(taskOf(card(4, "review", { cv: "https://docs.example/cv4" }))).cv, "");
+  const a = jobActions(taskOf(card(5, "review", { cv: DRIVE, cover_letter: "https://docs.google.com/document/d/R/edit" })));
+  assert.deepEqual(a.links.map((l) => l.label), ["Kit folder"]);
+});
+
+test("a synced task picks the new fields up, and a second sync changes nothing", () => {
+  const before = createTask({ ...jobInput(card(1, "ready")), source: { app: "jobhunt", cardId: "1", status: "ready", fit: 8, why: "great match", deadline: null, stale: false } }, { now: NOW });
+  const tasks = [{ id: "t", ...before }];
+  const cards = [card(1, "ready", { apply_link: "https://co.example/apply", cv: DRIVE })];
+  const p = planSync(cards, tasks);
+  assert.equal(p.update.length, 1);
+  assert.equal(p.update[0].patch.source.start, "https://co.example/apply");
+  assert.equal(p.update[0].patch.source.cv, "1AbC-dEf_9");
+  assert.equal(planSync(cards, apply(tasks, p)).update.length, 0);
+});
+
+test("readCv reads the file by id; 404 → notFound", async () => {
+  const seen = [];
+  assert.equal(await readCv("tok", "F/1", async (u, init) => { seen.push(String(u)); assert.equal(init.headers.Authorization, "Bearer tok"); return res(200, null, "<html>hi</html>"); }), "<html>hi</html>");
+  assert.match(seen[0], /files\/F%2F1\?alt=media/);
+  await assert.rejects(readCv("t", "F", async () => res(404, {})), { notFound: true });
+});
+
+test("the print button goes before </body>, or on the end", () => {
+  assert.match(withPrintButton("<html><body>x</body></html>"), /x<style>[\s\S]*Print to PDF<\/button><\/body><\/html>$/);
+  assert.match(withPrintButton("<p>no body tag</p>"), /^<p>no body tag<\/p><style>/);
+  assert.match(withPrintButton("<body></body>"), /Background graphics/);
+});
+
+test("viewCv: window opens first, CV lands as a blob page, blob revoked when the window closes", async () => {
+  const w = { closed: false, document: { body: {} }, location: {}, closes: 0, close(){ this.closes++; } };
+  const made = [], revoked = [];
+  const oc = URL.createObjectURL, orv = URL.revokeObjectURL;
+  URL.createObjectURL = (b) => { made.push(b); return "blob:cv1"; }; URL.revokeObjectURL = (u) => revoked.push(u);
+  try {
+    const order = [];
+    const r = await viewCv("FILE1", { every: 5, token: async () => "tok", open: () => { order.push("open"); return w; },
+      fetchFn: async (u, init) => { order.push("fetch"); assert.match(u, /daisey-now-cv\?id=FILE1$/); assert.equal(init.headers.Authorization, "Bearer tok"); return res(200, { html: "<body>cv</body>" }); } });
+    assert.equal(r, true); assert.deepEqual(order, ["open", "fetch"]);
+    assert.equal(made[0].type, "text/html;charset=utf-8"); assert.match(await made[0].text(), /cv<style>/);
+    assert.equal(w.location.href, "blob:cv1");
+    await new Promise((s) => setTimeout(s, 20)); assert.deepEqual(revoked, []); // still open
+    w.closed = true; await new Promise((s) => setTimeout(s, 20)); assert.deepEqual(revoked, ["blob:cv1"]);
+
+    const w2 = { closed: false, document: { body: {} }, location: {}, closes: 0, close(){ this.closes++; } };
+    const bad = await viewCv("F", { token: async () => "t", open: () => w2, fetchFn: async () => res(409, { error: "needs_reauth" }) });
+    assert.match(bad, /reconnect/); assert.equal(w2.closes, 1);
+    assert.match(await viewCv("F", { token: async () => "t", open: () => null, fetchFn: async () => assert.fail("no fetch") }), /blocked/);
+  } finally { URL.createObjectURL = oc; URL.revokeObjectURL = orv; }
+});

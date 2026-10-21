@@ -13,6 +13,7 @@ async function driveGet(url, accessToken, fetchFn) {
   const res = await fetchFn(url, { headers: { Authorization: `Bearer ${accessToken}` } });
   if (res.ok) return res;
   if (res.status === 401) throw Object.assign(new Error("drive 401"), { reauth: true });
+  if (res.status === 404) throw Object.assign(new Error("drive 404"), { notFound: true });
   const body = await res.json().catch(() => ({}));
   const reasons = (body.error?.errors || []).map((e) => e.reason);
   const noScope = reasons.some((r) => r === "insufficientPermissions" || r === "ACCESS_TOKEN_SCOPE_INSUFFICIENT") || /insufficient/i.test(body.error?.message || "");
@@ -43,4 +44,13 @@ async function readJobs(accessToken, fetchFn = fetch) {
   return { cards: cards.filter((c) => c && typeof c === "object" && c.id).slice(0, MAX_CARDS), modified: found[0].modifiedTime || null };
 }
 
-module.exports = { readJobs, FOLDER_ID, FILE_NAME };
+// A CV file's HTML text. Drive also says 404 for a file it won't show this account.
+async function readCv(accessToken, fileId, fetchFn = fetch) {
+  const media = new URL(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}`);
+  media.searchParams.set("alt", "media");
+  const text = await (await driveGet(media, accessToken, fetchFn)).text();
+  if (text.length > MAX_BYTES) throw new Error("cv too large");
+  return text;
+}
+
+module.exports = { readJobs, readCv, FOLDER_ID, FILE_NAME };

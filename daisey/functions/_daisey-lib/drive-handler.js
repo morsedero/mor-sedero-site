@@ -1,0 +1,54 @@
+// The shared shell of Daisey's Drive reads (daisey-now-jobs, daisey-now-cv):
+// GET with "Authorization: Bearer <Firebase ID token>", the Google grant found
+// by the Google `sub` and refreshed here, so the browser never holds a Drive
+// token. run(accessToken) does the Drive call; one refresh on a 401.
+//
+// Errors: 401 no_session · 404 not_connected · 409 needs_reauth (grant gone
+// or expired — Reconnect) · 409 needs_drive (grant predates the Drive scope —
+// Reconnect) · 502 google (Drive failed, e.g. the Drive API isn't enabled).
+const { verifyIdToken } = require("./firebase-auth");
+const { accessForSub } = require("./now-calendar");
+const { getGoogleAccessToken } = require("./tokens");
+
+const reply = (statusCode, body) => ({
+  statusCode,
+  headers: { "Content-Type": "application/json", "Cache-Control": "no-store" },
+  body: JSON.stringify(body),
+});
+const fail = (statusCode, code) => reply(statusCode, { error: code });
+
+async function driveHandler(event, run, name){
+  if (event.httpMethod !== "GET") return fail(405, "get");
+
+  let claims;
+  try {
+    const token = (event.headers.authorization || event.headers.Authorization || "").replace(/^Bearer\s+/i, "");
+    claims = await verifyIdToken(token);
+  } catch (e) {
+    return fail(401, "no_session");
+  }
+  const sub = claims.firebase?.identities?.["google.com"]?.[0];
+  if (!sub) return fail(404, "not_connected");
+
+  const { accessToken, userId, error } = await accessForSub(sub);
+  if (error) return error === "needs_reauth" ? fail(409, error) : fail(404, error);
+
+  try {
+    try {
+      return reply(200, await run(accessToken));
+    } catch (e) {
+      if (!e.reauth) throw e;
+      const fresh = await getGoogleAccessToken(userId, true);
+      if (!fresh) return fail(409, "needs_reauth");
+      return reply(200, await run(fresh));
+    }
+  } catch (e) {
+    if (e.reauth) return fail(409, "needs_reauth");
+    if (e.scope) return fail(409, "needs_drive");
+    if (e.notFound) return fail(404, "no_file");
+    console.error(name, e.message);
+    return fail(502, "google");
+  }
+}
+
+module.exports = { driveHandler, fail };

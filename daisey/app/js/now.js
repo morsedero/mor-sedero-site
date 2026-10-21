@@ -34,7 +34,8 @@ import { decisionCard } from "./decision.js";
 import { waitingFor, personOf } from "./nudge.js";
 import { UNDO_MS } from "./undo.js";
 import { proposedWhy } from "./reason.js";
-import { jobLinks } from "./jobs.js";
+import { jobActions } from "./jobs.js";
+import { viewCv } from "./cv.js";
 import { dayHours, isNight, nextMorning, dayEndAt, bookings, sameTitle, minText, gapsToday, planDate, usualHours, dayWord, slotsWord, answerDate, nightRange, planLabelDay, planWords, nightLendOver } from "./day.js";
 import { wrapList } from "./needs.js";
 import { needsCount, nightLine } from "./needs-list.js";
@@ -221,10 +222,24 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
       !main && progressBar(t),
       ...extra);
   }
-  // A Job Hunt task's documents, one tap each (jobs.js: review → CV and cover
-  // letter, ready → the job post). No Start on the card, so they sit on it.
-  const openRow = (t) => { const ls = jobLinks(t); return ls.length ? h("div", { className: "now-open" }, ...ls.map((l) =>
-    h("a", { className: "chip", href: l.url, target: "_blank", rel: "noopener noreferrer", textContent: l.label }))) : null; };
+  // A Job Hunt task's actions (jobs.js jobActions): Start opens the step's
+  // page (review → the Doc with the CV changes and cover letter; new/ready → the
+  // apply link or email, else the job post, with the card's apply note under
+  // it), View CV, and the other documents, one tap each. The rest of the card
+  // has no Start, so these sit on it.
+  const openRow = (t) => {
+    const a = jobActions(t);
+    if (!a || !(a.start || a.cv || a.links.length || a.note)) return null;
+    const mail = a.start.startsWith("mailto:");
+    return h("div", { className: "now-open" },
+      a.start && h("a", { className: "chip go", href: a.start, ...(mail ? {} : { target: "_blank", rel: "noopener noreferrer" }), textContent: "Start" }),
+      a.cv && h("button", { type: "button", className: "chip", textContent: "View CV", onclick: (e) => {
+        const b = e.currentTarget; b.disabled = true;
+        viewCv(a.cv).then((r) => { b.disabled = false; if (r !== true) flash(r); });
+      } }),
+      ...a.links.map((l) => h("a", { className: "chip", href: l.url, target: "_blank", rel: "noopener noreferrer", textContent: l.label })),
+      a.note && h("p", { className: "now-apply-note", dir: "auto", textContent: a.note }));
+  };
   const titleButton = (t) => h("button", { type: "button", className: "now-title", dir: "auto", textContent: t.title,
     ariaLabel: `Open ${t.title}`, onclick: () => onOpen(t) });
   // The main card's next step sits just under the card, not on it (Mor,
