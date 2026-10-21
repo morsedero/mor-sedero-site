@@ -53,6 +53,15 @@ test("8 cards → 8 tasks, and a second sync adds nothing", () => {
   assert.deepEqual(again, { add: [], update: [] });
 });
 
+// Firestore returns maps with sorted keys ({label,url}); a key-order-sensitive
+// compare patched links on every snapshot, re-rendering Now forever (2026-10-21).
+test("a second sync adds nothing when the store hands maps back key-sorted", () => {
+  const sorted = (v) => (Array.isArray(v) ? v.map(sorted) : v && typeof v === "object" ? Object.fromEntries(Object.keys(v).sort().map((k) => [k, sorted(v[k])])) : v);
+  const cards = [1, 2].map((i) => card(i, "review")).concat([3].map((i) => card(i, "ready")));
+  const tasks = apply([], planSync(cards, [])).map(sorted);
+  assert.deepEqual(planSync(cards, tasks), { add: [], update: [] });
+});
+
 test("a status change updates the task; applied and passed archive it", () => {
   let tasks = apply([], planSync([card(1, "new"), card(2, "ready"), card(3, "new")], []));
   tasks = apply(tasks, planSync([card(1, "review"), card(2, "applied"), card(3, "passed")], tasks));

@@ -20,6 +20,7 @@ export const undoDone = (uid, id, before) => patchTask(uid, id, before);
 export const watchSkips = watch("skips");
 export const saveSkips = (uid, state) => { docs.skips = state; return ok("skips"); };
 export const addTask = (uid, input) => { tasks.push({ id: "t" + ++n, ...createTask(input, { history: tasks }) }); return ok("tasks"); };
+export const addTaskAt = (uid, id, input) => { tasks.push({ id, ...createTask(input, { history: tasks }) }); return ok("tasks"); };
 export const updateTask = (uid, task, changes) => {
   const i = tasks.findIndex((t) => t.id === task.id);
   tasks[i] = { ...tasks[i], ...editTask(tasks[i], changes, { history: tasks }) };

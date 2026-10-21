@@ -65,7 +65,11 @@ export function jobInput(c){
   };
 }
 
-const same = (a, b) => JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
+// Key order must not matter: Firestore hands maps back with sorted keys, and a
+// compare that saw {label,url} != {url,label} patched forever (each snapshot
+// re-rendered Now, so nothing on it could be clicked, 2026-10-21).
+const canon = (v) => (Array.isArray(v) ? v.map(canon) : v && typeof v === "object" ? Object.fromEntries(Object.keys(v).sort().map((k) => [k, canon(v[k])])) : v ?? null);
+const same = (a, b) => JSON.stringify(canon(a)) === JSON.stringify(canon(b));
 
 // Cards + the user's tasks → what to write:
 //   add:    [{ id, input }]   cards with no task yet (id = the doc id to use)
