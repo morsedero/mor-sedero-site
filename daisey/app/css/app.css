@@ -1747,11 +1747,16 @@ body.focus #side { display: none; }
 .sc-gap .sc-add { order: 2; font-size: 14px; }
 /* Free time and breaks read warm and a size up (Mor, 2026-10-10: "more fun, bigger"). */
 /* Condensed under the hero card (2026-10-11): a quiet line, not a row. */
-/* Breaks and open time (Mor, 2026-10-21): plain words on one soft neutral fill. No icons,
-   no outline, no italics, no per-kind colours: it was too many signals for a quiet line. */
+/* Breaks and open time (Mor, 2026-10-21): plain upright words on a pastel fill, one per kind:
+   lunch peach, a breather sky, open time mint. No icons, outline or italics (too many signals);
+   the colour is what keeps it from going flat. Plain rgb, no color-mix (the phone lacks it).
+   The kind class sits on the Schedule's .sc-free and on the plan preview's .pp-break alike. */
+.sc-meal { --k-bg: rgb(255 168 110 / .2); --k-ink: #8f4e20; }
+.sc-rest { --k-bg: rgb(96 168 236 / .18); --k-ink: #2a5f9e; }
+.sc-open { --k-bg: rgb(84 196 138 / .18); --k-ink: #28704e; }
 .sc-free { flex: 1; min-inline-size: 0; display: flex; align-items: center; gap: 6px; block-size: 24px; padding-inline: 10px; box-sizing: border-box;
-  border-radius: 8px; background: rgb(0 0 0 / .04);
-  font-size: 12.5px; font-weight: 400; color: var(--ink-2); }
+  border-radius: 8px; background: var(--k-bg, rgb(0 0 0 / .04));
+  font-size: 12.5px; font-weight: 500; color: var(--k-ink, var(--ink-2)); }
 .sc-break.sc-past .sc-free { opacity: .55; }
 .sc-gap .sc-add { margin-inline-start: auto; }
 .sc-ev {
@@ -2111,8 +2116,8 @@ body.focus .shell { block-size: auto; min-block-size: 100dvh; overflow: visible;
 .pp-break .pp-time small { display: none; }
 .pp-break .pp-time { font-weight: 500; }
 .pp-break .pp-task { display: flex; align-items: center; gap: 6px; padding: 3px 10px; cursor: default;
-  border-radius: 8px; background: rgb(0 0 0 / .04); }
-.pp-break .pp-title, .pp-break .pp-meta { flex: none; font-size: 14.5px; font-weight: 400; color: var(--ink-2); }
+  border-radius: 8px; background: var(--k-bg, rgb(0 0 0 / .04)); }
+.pp-break .pp-title, .pp-break .pp-meta { flex: none; font-size: 14.5px; font-weight: 500; color: var(--k-ink, var(--ink-2)); }
 .pp-break .pp-ctl { block-size: 28px; font-size: 13px; }
 .pp-row.over > :not(.pp-ctls) { opacity: .65; }
 .pp-time { display: grid; font-size: 12px; font-weight: 600; line-height: 1.3; color: var(--ink-2); font-variant-numeric: tabular-nums; }
