@@ -198,7 +198,9 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
   // 2026-10-05: no pencil). The why line is one plain sentence (the reason
   // tags went with round 2).
   function taskCard(s, main, ...extra){
-    const why = sentence(s.whyParts);
+    // The slot sits in the top row's far side, so the reason's own "now · a–b" goes.
+    const parts = main && s.slot ? (s.whyParts || []).map((p) => (typeof p === "string" ? p.replace(/now · \d\d:\d\d–\d\d:\d\d(, )?/, "") : p)).filter((p) => p !== "") : s.whyParts;
+    const why = sentence(parts);
     const t = s.task;
     // The why line fits the time LEFT (engine leftMinutes), so the chip says it
     // too once some is done/spent: "30 min" beside "fills your free 23 min"
@@ -207,11 +209,10 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     const sizeLbl = sizeChip(t);
     return h("div", { className: "now-card" + (main ? " main hero" : "") + areaClass(t) },
       main && dueTag(t),
-      main ? heroTop(t, heroChip(t))
+      main ? heroTop(t, s.slot ? `${s.slot.text} · ${heroChip(t)}` : heroChip(t))
         : h("div", { className: "now-meta" }, ...pieces(t.project, sizeLbl)),
       main && onOpen ? titleButton(t) : h("div", { className: "now-title", dir: "auto", textContent: t.title }),
       weekDots(t),
-      main && s.slot && !(s.whyParts || []).some((p) => typeof p === "string" && p.startsWith("now · ")) && h("p", { className: "now-why now-slot", textContent: s.slot.text }),
       !main && t.nextStep && h("p", { className: "now-next" }, "Next: ", bdi(t.nextStep)),
       why && h("p", { className: "now-why" }, ...say(why)),
       !main && progressBar(t),
