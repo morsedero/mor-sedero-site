@@ -172,8 +172,14 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     get size(){ return hidden().length; },
   };
   let seenAt = new Map(); // task id → when it came up (heldAnchors, below)
-  const reset = () => { state.chosen = null; state.showAlts = false; state.laterAsk = false; state.pendAsk = false; state.notNow = false; state.more = false; state.pendText = ""; state.pendCheck = ""; state.single = false; kept = null; seenAt = new Map(); };
+  const reset = () => { state.chosen = null; state.showAlts = false; state.laterAsk = false; state.pendAsk = false; state.notNow = false; state.more = false; state.pendText = ""; state.pendCheck = ""; state.single = false; kept = null; seenAt = new Map(); dropSlot(); };
   let shown, kept = null; // kept: keptCard
+  // Acting on the card (Done, Later, Pending, Switch) ends its unplanned slot (autoSlot).
+  function dropSlot(){
+    if (!momentDoc.slot) return;
+    momentDoc = { ...momentDoc, slot: null };
+    saveMoment(uid, { slot: null }).catch(fail);
+  }
   let moreFor = null, moreAt = 0; // the task "More time?" last stretched, and when (upNextLine)
   let chosenOut = null; // { id, why }: why state.chosen was out when picked (renderCard)
   let projectDue = {}; // { project: "YYYY-MM-DD" }, from Projects' dates
@@ -205,6 +211,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
         : h("div", { className: "now-meta" }, ...pieces(t.project, sizeLbl)),
       main && onOpen ? titleButton(t) : h("div", { className: "now-title", dir: "auto", textContent: t.title }),
       weekDots(t),
+      main && s.slot && !(s.whyParts || []).some((p) => typeof p === "string" && p.startsWith("now · ")) && h("p", { className: "now-why now-slot", textContent: s.slot.text }),
       !main && t.nextStep && h("p", { className: "now-next" }, "Next: ", bdi(t.nextStep)),
       why && h("p", { className: "now-why" }, ...say(why)),
       !main && progressBar(t),
@@ -761,7 +768,8 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
   const WHY_HOLD = 15 * 60000;
   function heldAnchors(now = Date.now()){
     for (const [id, at] of seenAt) if (now - at >= WHY_HOLD) seenAt.set(id, now);
-    return Object.fromEntries(seenAt);
+    const sl = momentDoc.slot;
+    return { ...Object.fromEntries(seenAt), ...(sl?.day === dayKey() ? { [sl.id]: sl.at } : {}) }; // the slot's start holds past the 15 min and a reload
   }
   function seenOnScreen(ids){
     const now = Date.now();
@@ -1870,6 +1878,23 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
   // The engine's own pick, left on the card: when it came on (moment doc
   // cardSeen, so a reload doesn't restart the clock), and after 2 h with
   // nothing done to it, passed over for today (engine.passedOver).
+  // The slot of a card nothing planned (Mor, 2026-10-21: with no plan there
+  // was no way to see when the main card started or should end): from when
+  // it came on (moment doc slot, so a reload keeps it) for the time it has
+  // left, cut at the next event. Acting on the card drops it (dropSlot).
+  function autoSlot(task, fw){
+    if (!momentKnown) return null;
+    const now = Date.now(), day = dayKey();
+    let s = momentDoc.slot;
+    if (s?.id !== task.id || s.day !== day) {
+      s = { id: task.id, at: now, day };
+      momentDoc = { ...momentDoc, slot: s };
+      saveMoment(uid, { slot: s }).catch(fail);
+    }
+    const cap = fw?.next && fw.next.start > s.at ? fw.next.start : Infinity;
+    const end = Math.min(s.at + leftMinutes(task) * 60000, cap);
+    return { start: s.at, end, text: end > now ? `${clock(s.at)}–${clock(end)}` : `Since ${clock(s.at)}` };
+  }
   function noteSeen(task){
     if (!momentKnown) return;
     const s = momentDoc.cardSeen, now = Date.now(), day = dayKey();
@@ -1889,7 +1914,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
   // after it moves. Once stretched, the line stays for that task, so what was
   // tapped doesn't vanish when its end leaves the 10 min.
   function upNextLine(card, fw){
-    const now = Date.now(), rows = planRowsNow(), row = rows.find((x) => x.taskId === card.task.id && !x.missed);
+    const now = Date.now(), rows = planRowsNow(), row = rows.find((x) => x.taskId === card.task.id && !x.missed) || card.slot;
     if (!row?.end || row.start > now + 5 * 60000 || row.end <= now || (row.end - now > 10 * 60000 && moreFor !== card.task.id)) return null;
     const off = new Set(hidden(now));
     const nx = rows.filter((x) => x !== row && !x.missed && !x.task.onHold && !off.has(x.taskId) && x.start >= row.end - 60000)
@@ -2269,6 +2294,11 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     card = keptCard(card, { r, fw, asCard, picked, planRow });
     showing(card?.task.id ?? null);
     if (card && card === r.pick) noteSeen(card.task);
+    // No plan row for it: it still says when it started and when it ends.
+    if (card && !planRowsNow().some((x) => x.taskId === card.task.id && !x.missed)) {
+      const slot = autoSlot(card.task, fw);
+      if (slot) card = { ...card, slot };
+    }
     // One ask under the card at a time, the most asked-for first.
     // (The calendar offer and the weekly Someday pick moved to Needs you.)
     let behind = null;
