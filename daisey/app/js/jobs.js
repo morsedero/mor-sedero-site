@@ -116,7 +116,9 @@ const same = (a, b) => JSON.stringify(canon(a)) === JSON.stringify(canon(b));
 //   update: [{ task, patch }] raw field patches (these are not user edits)
 // Idempotent: planning again after the writes land gives nothing.
 // `complete` false (no trustworthy file) never marks anything stale.
-export function planSync(cards, tasks, { complete = true } = {}){
+// moveFailed: cardIds whose CV move Drive hasn't confirmed. Their task stays
+// open (with the retry chip) rather than being archived as applied.
+export function planSync(cards, tasks, { complete = true, moveFailed = new Set() } = {}){
   const mine = new Map();
   for (const t of tasks) if (isJobTask(t) && t.source.cardId) mine.set(t.source.cardId, t);
   const add = [], update = [], seen = new Set();
@@ -138,7 +140,7 @@ export function planSync(cards, tasks, { complete = true } = {}){
 
     if (!(f.status in EFFORT)) {
       // applied / passed: nothing to do any more. Archive it, unless it is already finished or let go.
-      if (OPEN.has(t.status)) Object.assign(patch, { status: "dropped", waitingOn: null, checkOn: null, onHold: null });
+      if (OPEN.has(t.status) && !moveFailed.has(f.source.cardId)) Object.assign(patch, { status: "dropped", waitingOn: null, checkOn: null, onHold: null });
     } else if (t.source.status !== f.status) {
       // The card moved on: the task becomes the new step, reopened if it had been finished.
       const input = jobInput(c);
@@ -175,5 +177,5 @@ export function jobActions(t){
   if (!isJobTask(t)) return null;
   const s = t.source, start = reach(s.start), cv = /^[\w-]+$/.test(s.cv || "") && (s.status === "review" || s.status === "ready") ? s.cv : "";
   const choices = (CHOICES[s.status] || []).map(([label, status]) => ({ label, status }));
-  return { start, note: str(s.note), cv, choices, unsynced: !!s.unsynced, links: jobLinks(t).filter((l) => l.url !== start && !(cv && cvId(l.url) === cv)) };
+  return { start, note: str(s.note), cv, choices, unsynced: !!s.unsynced, retry: !!s.moveFailed, links: jobLinks(t).filter((l) => l.url !== start && !(cv && cvId(l.url) === cv)) };
 }

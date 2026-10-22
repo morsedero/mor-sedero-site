@@ -393,3 +393,31 @@ test("readStatus: by id, else by name; no file → no jobs and no id", async () 
   assert.equal((await readStatus("tok", "", d.fetchFn)).fileId, "FILE12345678");
   assert.deepEqual(await readStatus("tok", "", drive().fetchFn), { fileId: null, jobs: {} });
 });
+
+test("a job whose CV move failed stays open on Now, with no archive", () => {
+  const tasks = apply([], planSync([card(1, "ready")], []));
+  const applied = [card(1, "applied")];
+  assert.ok(planSync(applied, tasks).update.some((u) => u.patch.status === "dropped"));
+  const held = planSync(applied, tasks, { moveFailed: new Set(["1"]) });
+  assert.ok(!held.update.some((u) => u.patch.status === "dropped"));
+});
+
+test("a CV move: parents swap for the destination, and an already-moved file is left alone", async () => {
+  const { moveFile, MOVES } = createRequire(import.meta.url)("../../functions/_daisey-lib/drive-move.js");
+  const calls = [];
+  const fake = async (url, init = {}) => {
+    calls.push({ url: String(url), method: init.method || "GET" });
+    const body = (b) => ({ ok: true, status: 200, json: async () => b });
+    return init.method === "PATCH" ? body({ id: "FILE1234567" }) : body({ id: "FILE1234567", parents: ["oldfolder"] });
+  };
+  const out = await moveFile("tok", "FILE1234567", "done", fake);
+  assert.deepEqual(out.parents, [MOVES.done.to]);
+  const patch = new URL(calls[1].url);
+  assert.equal(patch.searchParams.get("addParents"), MOVES.done.to);
+  assert.equal(patch.searchParams.get("removeParents"), "oldfolder");
+
+  const seen = [];
+  const already = async (url, init = {}) => { seen.push(init.method || "GET"); return { ok: true, status: 200, json: async () => ({ id: "FILE1234567", parents: [MOVES.done.to] }) }; };
+  await moveFile("tok", "FILE1234567", "done", already);
+  assert.deepEqual(seen, ["GET"], "no PATCH when the file is already in place");
+});

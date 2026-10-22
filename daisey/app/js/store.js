@@ -184,14 +184,15 @@ export function addTaskAt(uid, id, input, tasks = []){
 export const patchTask = (uid, id, patch) => updateGuestTask(uid, id, patch);
 
 // Job Hunt write-back (jobs-sync.js), users/{uid}/state/jobstatus:
-// { fileId, queue: { cardId: { status, at, note? } } }. fileId is Drive's id of
-// daisey-status.json; queue is what Mor tapped that Drive hasn't confirmed yet,
-// so a tap survives a failed write, a reload, an offline phone. Saved merged,
-// each field whole.
+// { fileId, queue: { cardId: { status, at, note? } }, moves: { cardId: { fileId, event } } }.
+// fileId is Drive's id of daisey-status.json; queue is what Mor tapped that Drive
+// hasn't confirmed yet, so a tap survives a failed write, a reload, an offline
+// phone; moves is a job's CV move that Drive hasn't confirmed (jobs-sync.js).
+// Saved merged, each field whole.
 export function watchJobStatus(uid, cb, onError){
   return fb.onSnapshot(fb.doc(fb.db, "users", uid, "state", "jobstatus"), (snap) => {
     const d = snap.exists() ? snap.data() : {};
-    cb({ fileId: d.fileId || "", queue: d.queue && typeof d.queue === "object" ? d.queue : {} });
+    cb({ fileId: d.fileId || "", queue: d.queue && typeof d.queue === "object" ? d.queue : {}, moves: d.moves && typeof d.moves === "object" ? d.moves : {} });
   }, onError);
 }
 export const saveJobStatus = (uid, fields) => saveGuestState(uid, "jobstatus", fields, true);

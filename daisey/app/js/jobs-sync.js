@@ -13,9 +13,10 @@
 // and the Now card never waits on Drive.
 import { idToken } from "./firebase.js";
 import { watchTasks, addTaskAt, patchTask, watchProjectNames, saveProjectNames, watchJobStatus, saveJobStatus } from "./store.js";
-import { planSync, withStatus, JOB_PROJECT } from "./jobs.js";
+import { planSync, withStatus, JOB_PROJECT, cvId } from "./jobs.js";
 
 const URL_ = "/.netlify/functions/daisey-now-jobs";
+const MOVE_URL = "/.netlify/functions/daisey-now-drive-move";
 const CACHE_KEY = "daisey.jobs.v1";
 const EVERY = 30 * 60000;
 
@@ -26,6 +27,7 @@ export function startJobs(uid, onStatus = () => {}, { now = () => new Date() } =
   let tasks = null, fromCache = true, cards = null, complete = false;
   let decided = null; // daisey-status.json's jobs, as Drive last said
   let queue = null, fileId = ""; // users/{uid}/state/jobstatus; queue is null until its first snapshot
+  let moves = {}; // cardId → { fileId, event }: a job's CV move Drive hasn't confirmed (jobstatus.moves)
   let stopped = false, loading = null, flushing = null, projectChecked = false;
 
   try {
@@ -49,7 +51,7 @@ export function startJobs(uid, onStatus = () => {}, { now = () => new Date() } =
     // Not before the queue is known: without Mor's pending taps a card would
     // read as it did before them, and its task would flip back.
     if (stopped || !tasks || !cards || !queue) return;
-    const plan = planSync(withStatus(cards, decided, queue), tasks, { complete });
+    const plan = planSync(withStatus(cards, decided, queue), tasks, { complete, moveFailed: new Set(Object.keys(moves)) });
     // A snapshot from the offline cache may not know a task the server has:
     // creating from it could write one over the user's edits. Updates are safe.
     if (!fromCache) for (const { id, input } of plan.add) addTaskAt(uid, id, input, tasks).catch(fail);
@@ -68,6 +70,29 @@ export function startJobs(uid, onStatus = () => {}, { now = () => new Date() } =
     return { status: REASONS.includes(body.error) ? body.error : "error" };
   }
 
+  // A job's CV copy goes to the folder its fate picks (daisey-now-drive-move;
+  // folders in _daisey-lib/drive-move.js). A move that doesn't land is kept in
+  // `moves` (saved, so it survives a reload) and the task shows a retry chip;
+  // that chip re-taps Applied, which re-runs this. Nothing else retries it.
+  async function sendMove(cardId, event){
+    const fileId = cvId(cards?.find((c) => c.id === cardId)?.cv);
+    if (!fileId) return; // no CV file: nothing to move
+    let ok = true;
+    try {
+      const res = await fetch(MOVE_URL, { method: "POST", headers: { ...(await auth()), "Content-Type": "application/json" }, body: JSON.stringify({ fileId, event }) });
+      if (!res.ok) throw new Error(`move ${res.status}`);
+    } catch (e) { ok = false; console.error("[daisey] jobs move", e); }
+    const t = tasks?.find((x) => x.source?.cardId === cardId);
+    if (ok) {
+      if (moves[cardId]) { moves = Object.fromEntries(Object.entries(moves).filter(([id]) => id !== cardId)); saveJobStatus(uid, { moves }).catch(fail); }
+      if (t?.source?.moveFailed) patchTask(uid, t.id, { source: { ...t.source, moveFailed: false } }).catch(fail);
+    } else {
+      moves = { ...moves, [cardId]: { fileId, event } };
+      saveJobStatus(uid, { moves }).catch(fail);
+      if (t && !t.source.moveFailed) patchTask(uid, t.id, { source: { ...t.source, moveFailed: true } }).catch(fail);
+    }
+  }
+
   // Sends every queued tap; the ones Drive confirms leave the queue. A tap made
   // while this runs stays queued for the next round.
   function flush(){
@@ -83,6 +108,8 @@ export function startJobs(uid, onStatus = () => {}, { now = () => new Date() } =
       fileId = body.fileId || fileId;
       queue = Object.fromEntries(Object.entries(queue).filter(([id, e]) => sent[id]?.at !== e.at)); // by value: a snapshot hands back new objects
       saveJobStatus(uid, { fileId, queue }).catch(fail);
+      // Before reconcile: a move that fails must already be known, or the task drops out of Now.
+      await Promise.all(Object.entries(sent).filter(([, e]) => e.status === "applied").map(([id]) => sendMove(id, "done")));
       reconcile();
     })().catch((e) => console.error("[daisey] jobs", e)).finally(() => { flushing = null; });
     return flushing;
@@ -117,7 +144,7 @@ export function startJobs(uid, onStatus = () => {}, { now = () => new Date() } =
 
   const fail = (e) => console.error("[daisey] jobs", e);
   const unwatch = watchTasks(uid, (ts, meta) => { tasks = ts; fromCache = !!meta?.fromCache; reconcile(); }, fail);
-  const unwatchStatus = watchJobStatus(uid, (s) => { fileId = s.fileId || fileId; queue = s.queue; reconcile(); }, fail);
+  const unwatchStatus = watchJobStatus(uid, (s) => { fileId = s.fileId || fileId; queue = s.queue; moves = s.moves; reconcile(); }, fail);
   const timer = setInterval(load, EVERY);
   onStatus("loading");
   load();

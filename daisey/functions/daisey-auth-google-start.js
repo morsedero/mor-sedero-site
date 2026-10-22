@@ -37,9 +37,12 @@ exports.handler = async (event = {}) => {
     // drive.readonly (2026-10-21): Daisey reads the Job Hunt jobs.json
     // (daisey-now-jobs). drive.file (2026-10-21): Daisey writes its own
     // daisey-status.json there — only files it created, never jobs.json.
+    // drive (2026-10-22, Mor approved): moves a job's CV copy between the
+    // Job Hunt status folders when a job is marked applied. drive.file can't
+    // move files Daisey didn't create.
     // include_granted_scopes keeps what an earlier grant had, so adding a
     // scope never takes one away.
-    scope: "https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/drive.readonly https://www.googleapis.com/auth/drive.file openid email",
+    scope: "https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/drive.file openid email",
     include_granted_scopes: "true",
     access_type: "offline",
     prompt: "consent",
