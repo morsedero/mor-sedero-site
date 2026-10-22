@@ -410,14 +410,15 @@ test("a CV move: parents swap for the destination, and an already-moved file is 
     const body = (b) => ({ ok: true, status: 200, json: async () => b });
     return init.method === "PATCH" ? body({ id: "FILE1234567" }) : body({ id: "FILE1234567", parents: ["oldfolder"] });
   };
-  const out = await moveFile("tok", "FILE1234567", "done", fake);
-  assert.deepEqual(out.parents, [MOVES.done.to]);
+  assert.ok(MOVES.ready.to !== MOVES.applied.to, "review done and ready done go to different folders");
+  const out = await moveFile("tok", "FILE1234567", "applied", fake);
+  assert.deepEqual(out.parents, [MOVES.applied.to]);
   const patch = new URL(calls[1].url);
-  assert.equal(patch.searchParams.get("addParents"), MOVES.done.to);
+  assert.equal(patch.searchParams.get("addParents"), MOVES.applied.to);
   assert.equal(patch.searchParams.get("removeParents"), "oldfolder");
 
   const seen = [];
-  const already = async (url, init = {}) => { seen.push(init.method || "GET"); return { ok: true, status: 200, json: async () => ({ id: "FILE1234567", parents: [MOVES.done.to] }) }; };
-  await moveFile("tok", "FILE1234567", "done", already);
+  const already = async (url, init = {}) => { seen.push(init.method || "GET"); return { ok: true, status: 200, json: async () => ({ id: "FILE1234567", parents: [MOVES.applied.to] }) }; };
+  await moveFile("tok", "FILE1234567", "applied", already);
   assert.deepEqual(seen, ["GET"], "no PATCH when the file is already in place");
 });

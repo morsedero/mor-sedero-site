@@ -2,11 +2,13 @@
 // folders. The destinations are a connection config, not core logic: the
 // core knows only "an event, a file id, a folder to put it in". A user who
 // plugs in their own folders changes MOVES, nothing else.
-//   done    → the job was applied to (task marked done)  → "3 applied"
-//   deleted → the job's task was deleted                  → "1 to review"
+//   ready   → review done (Approve)        → "2 ready to apply"
+//   applied → ready done (Applied)         → "3 applied"
+//   deleted → the job's task was deleted   → "1 to review"
 // Nothing is ever deleted from Drive: a move only changes the parent.
 const MOVES = {
-  done: { to: "1nbP94U4nSWFVW2yXrXsPA0Jlcj4KL3Of" }, // 3 applied
+  ready: { to: "10JBoTbxmSykvjVtbCxS5qGaXKa9voiDb" }, // 2 ready to apply
+  applied: { to: "1nbP94U4nSWFVW2yXrXsPA0Jlcj4KL3Of" }, // 3 applied
   deleted: { to: "1RZplmNbCyxeLTArQ10bl1zhse0teajNh" }, // 1 to review
 };
 

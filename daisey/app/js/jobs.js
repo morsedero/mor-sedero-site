@@ -177,5 +177,5 @@ export function jobActions(t){
   if (!isJobTask(t)) return null;
   const s = t.source, start = reach(s.start), cv = /^[\w-]+$/.test(s.cv || "") && (s.status === "review" || s.status === "ready") ? s.cv : "";
   const choices = (CHOICES[s.status] || []).map(([label, status]) => ({ label, status }));
-  return { start, note: str(s.note), cv, choices, unsynced: !!s.unsynced, retry: !!s.moveFailed, links: jobLinks(t).filter((l) => l.url !== start && !(cv && cvId(l.url) === cv)) };
+  return { start, note: str(s.note), cv, choices, unsynced: !!s.unsynced, retry: s.moveFailed || "", links: jobLinks(t).filter((l) => l.url !== start && !(cv && cvId(l.url) === cv)) };
 }

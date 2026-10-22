@@ -17,6 +17,7 @@ import { planSync, withStatus, JOB_PROJECT, cvId } from "./jobs.js";
 
 const URL_ = "/.netlify/functions/daisey-now-jobs";
 const MOVE_URL = "/.netlify/functions/daisey-now-drive-move";
+const MOVE_STAGES = new Set(["ready", "applied"]); // the taps that move a CV (drive-move.js MOVES)
 const CACHE_KEY = "daisey.jobs.v1";
 const EVERY = 30 * 60000;
 
@@ -70,10 +71,11 @@ export function startJobs(uid, onStatus = () => {}, { now = () => new Date() } =
     return { status: REASONS.includes(body.error) ? body.error : "error" };
   }
 
-  // A job's CV copy goes to the folder its fate picks (daisey-now-drive-move;
-  // folders in _daisey-lib/drive-move.js). A move that doesn't land is kept in
-  // `moves` (saved, so it survives a reload) and the task shows a retry chip;
-  // that chip re-taps Applied, which re-runs this. Nothing else retries it.
+  // A job's CV copy goes to the folder for its stage (daisey-now-drive-move;
+  // folders in _daisey-lib/drive-move.js): ready = review done, applied = ready
+  // done. A move that doesn't land is kept in `moves` (saved, so it survives a
+  // reload) and the task shows a retry chip; that chip re-taps the same stage,
+  // which re-runs this. Nothing else retries it.
   async function sendMove(cardId, event){
     const fileId = cvId(cards?.find((c) => c.id === cardId)?.cv);
     if (!fileId) return; // no CV file: nothing to move
@@ -85,11 +87,11 @@ export function startJobs(uid, onStatus = () => {}, { now = () => new Date() } =
     const t = tasks?.find((x) => x.source?.cardId === cardId);
     if (ok) {
       if (moves[cardId]) { moves = Object.fromEntries(Object.entries(moves).filter(([id]) => id !== cardId)); saveJobStatus(uid, { moves }).catch(fail); }
-      if (t?.source?.moveFailed) patchTask(uid, t.id, { source: { ...t.source, moveFailed: false } }).catch(fail);
+      if (t?.source?.moveFailed) patchTask(uid, t.id, { source: { ...t.source, moveFailed: "" } }).catch(fail);
     } else {
       moves = { ...moves, [cardId]: { fileId, event } };
       saveJobStatus(uid, { moves }).catch(fail);
-      if (t && !t.source.moveFailed) patchTask(uid, t.id, { source: { ...t.source, moveFailed: true } }).catch(fail);
+      if (t && t.source.moveFailed !== event) patchTask(uid, t.id, { source: { ...t.source, moveFailed: event } }).catch(fail);
     }
   }
 
@@ -109,7 +111,7 @@ export function startJobs(uid, onStatus = () => {}, { now = () => new Date() } =
       queue = Object.fromEntries(Object.entries(queue).filter(([id, e]) => sent[id]?.at !== e.at)); // by value: a snapshot hands back new objects
       saveJobStatus(uid, { fileId, queue }).catch(fail);
       // Before reconcile: a move that fails must already be known, or the task drops out of Now.
-      await Promise.all(Object.entries(sent).filter(([, e]) => e.status === "applied").map(([id]) => sendMove(id, "done")));
+      await Promise.all(Object.entries(sent).filter(([, e]) => MOVE_STAGES.has(e.status)).map(([id, e]) => sendMove(id, e.status)));
       reconcile();
     })().catch((e) => console.error("[daisey] jobs", e)).finally(() => { flushing = null; });
     return flushing;

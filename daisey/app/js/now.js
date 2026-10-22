@@ -236,10 +236,10 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     const mail = a.start.startsWith("mailto:");
     return h("div", { className: "now-open" },
       a.start && h("a", { className: "chip go", href: a.start, ...(mail ? {} : { target: "_blank", rel: "noopener noreferrer" }), textContent: "Start" }),
-      // The CV's move to Applied didn't land. Tapping Applied again re-runs the move (jobs-sync.js sendMove).
-      a.retry && onJob && h("button", { type: "button", className: "chip job-retry", textContent: "Retry move", title: "The CV didn't move to Applied in Drive. Tap to try again.", onclick: (e) => {
+      // A CV move for this stage didn't land. Re-tapping the same stage re-runs it (jobs-sync.js sendMove).
+      a.retry && onJob && h("button", { type: "button", className: "chip job-retry", textContent: "Retry move", title: "The CV didn't move in Drive. Tap to try again.", onclick: (e) => {
         e.currentTarget.disabled = true;
-        onJob(t, "applied");
+        onJob(t, a.retry);
       } }),
       a.cv && h("button", { type: "button", className: "chip", textContent: "View CV", onclick: (e) => {
         const b = e.currentTarget; b.disabled = true;
