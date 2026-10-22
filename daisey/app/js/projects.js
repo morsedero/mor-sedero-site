@@ -320,10 +320,22 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
     ranges = { ...ranges, [name]: range };
     saveProjectRanges(uid, ranges).catch(fail);
   }
+  // Max tasks a day (Mor, 2026-10-21), in New and Edit project: past it, the
+  // plan and the card leave the project for tomorrow; a deadline today still comes.
+  function capField(current){
+    const sel = h("select", { className: "menu-select", ariaLabel: "Max tasks a day" },
+      ...["", 1, 2, 3, 4, 5, 6, 8].map((n) => h("option", { value: String(n), textContent: n ? String(n) : "No limit", selected: (current || "") === n })));
+    return { box: h("div", { className: "np-dates" }, h("label", { className: "np-date" }, h("span", { textContent: "Max tasks a day" }), sel)), read: () => Number(sel.value) || 0 };
+  }
+  // name's cap (0: none), saved only when it changed (or the name did: from).
+  function setCap(name, n, from = name){
+    const { [name]: _was, [from]: _old, ...rest } = caps, next = n ? { ...rest, [name]: n } : rest;
+    if (JSON.stringify(next) !== JSON.stringify(caps)) { caps = next; saveProjectCaps(uid, caps).catch(fail); }
+  }
 
   function askName(){
     const d = els.dialog;
-    const dates = dateFields(null);
+    const dates = dateFields(null), cap = capField(null);
     const name = h("input", { className: "ts-input", dir: "auto", autocomplete: "off", enterKeyHint: "done",
       placeholder: "Project name", ariaLabel: "Project name", required: true });
     const msg = h("p", { className: "msg", role: "alert" });
@@ -337,6 +349,7 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
       made = [...made, v];
       saveProjectNames(uid, made).catch(fail);
       if (r) setRange(v, r);
+      setCap(v, cap.read());
       paintGrid();
       d.close();
     };
@@ -347,7 +360,7 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
     d.replaceChildren(
       h("div", { className: "now-head" }, h("h2", { id: "npTitle", textContent: "New project" }),
         h("button", { className: "now-x", type: "button", ariaLabel: "Close", textContent: "✕", onclick: closeSheet })),
-      h("form", { className: "np-form", onsubmit: create }, name, msg, dates.box, dates.msg,
+      h("form", { className: "np-form", onsubmit: create }, name, msg, dates.box, dates.msg, cap.box,
         h("div", { className: "sheet-actions" },
           h("button", { className: "btn primary", type: "submit", textContent: "Add project" }),
           h("button", { className: "btn quiet", type: "button", textContent: "Cancel", onclick: () => d.close() }))));
@@ -360,12 +373,7 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
   // name and the start/due dates in one dialog. A new name moves every task
   // carrying the old one, the saved name and the dates.
   function askRename(old){
-    const d = els.dialog, f = dateFields(ranges[old]);
-    // Max tasks a day (Mor, 2026-10-21): past it, the plan and the card leave
-    // the project for tomorrow; a deadline today still comes.
-    const cap = h("select", { className: "menu-select", ariaLabel: "Max tasks a day" },
-      ...["", 1, 2, 3, 4, 5, 6, 8].map((n) => h("option", { value: String(n), textContent: n ? String(n) : "No limit", selected: (caps[old] || "") === n })));
-    const capRow = h("div", { className: "np-dates" }, h("label", { className: "np-date" }, h("span", { textContent: "Max tasks a day" }), cap));
+    const d = els.dialog, f = dateFields(ranges[old]), cap = capField(caps[old]);
     const name = h("input", { className: "ts-input", dir: "auto", autocomplete: "off", enterKeyHint: "done",
       placeholder: "Project name", ariaLabel: "Project name", required: true, value: old });
     const msg = h("p", { className: "msg", role: "alert" });
@@ -384,7 +392,6 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
         // tiers and ranges are saved whole, so the old name's keys go on the
         // server too; a new project by the old name starts clean (#2).
         if (tiers[old]) { const { [old]: t, ...others } = tiers; tiers = { ...others, [v]: t }; saveProjectTiers(uid, tiers).catch(fail); }
-        if (caps[old]) { const { [old]: _c, ...others } = caps; caps = others; }
         // Same place in the dragged order, not dropped to the end (#6).
         if (order.includes(old)) { order = order.filter((n) => n !== v).map((n) => (n === old ? v : n)); saveProjectOrder(uid, order).catch(fail); }
         // Its past work too, so stats don't split it in two (#6).
@@ -393,8 +400,7 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
         onScreen?.(v);
       }
       setRange(v, r);
-      const n = Number(cap.value), { [v]: _was, ...rest } = caps, next = n ? { ...rest, [v]: n } : rest;
-      if (JSON.stringify(next) !== JSON.stringify(caps) || v !== old) { caps = next; saveProjectCaps(uid, caps).catch(fail); }
+      setCap(v, cap.read(), old);
       const out =(tasks || []).filter((t) => isOpen(t) && (t.project || INBOX) === old && (outsideRange(r, t.due) || outsideRange(r, t.notBefore))).length;
       render();
       d.close();
@@ -414,7 +420,7 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
     d.replaceChildren(
       h("div", { className: "now-head" }, h("h2", { id: "npTitle", textContent: "Edit project" }),
         h("button", { className: "now-x", type: "button", ariaLabel: "Close", textContent: "✕", onclick: () => d.close() })),
-      h("form", { className: "np-form", onsubmit: save }, name, msg, f.box, f.msg, capRow,
+      h("form", { className: "np-form", onsubmit: save }, name, msg, f.box, f.msg, cap.box,
         h("div", { className: "sheet-actions" },
           h("button", { className: "btn primary", type: "submit", textContent: "Save" }),
           h("button", { className: "btn quiet", type: "button", textContent: "Cancel", onclick: () => d.close() }),
