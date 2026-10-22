@@ -402,23 +402,86 @@ test("a job whose CV move failed stays open on Now, with no archive", () => {
   assert.ok(!held.update.some((u) => u.patch.status === "dropped"));
 });
 
-test("a CV move: parents swap for the destination, and an already-moved file is left alone", async () => {
-  const { moveFile, MOVES } = createRequire(import.meta.url)("../../functions/_daisey-lib/drive-move.js");
-  const calls = [];
-  const fake = async (url, init = {}) => {
-    calls.push({ url: String(url), method: init.method || "GET" });
-    const body = (b) => ({ ok: true, status: 200, json: async () => b });
-    return init.method === "PATCH" ? body({ id: "FILE1234567" }) : body({ id: "FILE1234567", parents: ["oldfolder"] });
-  };
-  assert.ok(MOVES.ready.to !== MOVES.applied.to, "review done and ready done go to different folders");
-  const out = await moveFile("tok", "FILE1234567", "applied", fake);
-  assert.deepEqual(out.parents, [MOVES.applied.to]);
-  const patch = new URL(calls[1].url);
-  assert.equal(patch.searchParams.get("addParents"), MOVES.applied.to);
-  assert.equal(patch.searchParams.get("removeParents"), "oldfolder");
+const driveMove = createRequire(import.meta.url)("../../functions/_daisey-lib/drive-move.js");
+const { FOLDERS: F } = driveMove;
 
-  const seen = [];
-  const already = async (url, init = {}) => { seen.push(init.method || "GET"); return { ok: true, status: 200, json: async () => ({ id: "FILE1234567", parents: [MOVES.applied.to] }) }; };
-  await moveFile("tok", "FILE1234567", "applied", already);
-  assert.deepEqual(seen, ["GET"], "no PATCH when the file is already in place");
+// A fake Drive: folders by id → parents; records PATCHes.
+const fakeDrive = (parents) => {
+  const calls = [];
+  const fetchFn = async (url, init = {}) => {
+    const u = new URL(url), id = decodeURIComponent(u.pathname.split("/").pop());
+    calls.push({ method: init.method || "GET", id, add: u.searchParams.get("addParents"), remove: u.searchParams.get("removeParents") });
+    const body = (b) => ({ ok: true, status: 200, json: async () => b });
+    if (init.method === "PATCH") { parents[id] = [u.searchParams.get("addParents")]; return body({ id }); }
+    return parents[id] ? body({ id, parents: parents[id] }) : { ok: false, status: 404, json: async () => ({}) };
+  };
+  return { calls, fetchFn };
+};
+
+test("a job folder moves to the stage its done/delete leads to, by id", async () => {
+  const cases = [["to_review", "done", F.pending], ["ready_to_apply", "done", F.pending], ["pending", "done", F.in_process],
+    ["to_review", "deleted", F.passed], ["ready_to_apply", "deleted", F.passed], ["pending", "deleted", F.passed], ["in_process", "deleted", F.passed]];
+  for (const [from, event, to] of cases) {
+    const d = fakeDrive({ JOBFOLDER123: [F[from]] });
+    const out = await driveMove.moveJobFolder("tok", { folderId: "JOBFOLDER123", event, from }, d.fetchFn);
+    assert.deepEqual(out.parents, [to], `${from} ${event}`);
+    const patch = d.calls.find((c) => c.method === "PATCH");
+    assert.equal(patch.id, "JOBFOLDER123", "the job folder itself moves");
+    assert.equal(patch.add, to); assert.equal(patch.remove, F[from]);
+  }
+});
+
+test("done on an in-process job moves nothing (the task closes, the folder stays)", async () => {
+  const d = fakeDrive({ JOBFOLDER123: [F.in_process] });
+  const out = await driveMove.moveJobFolder("tok", { folderId: "JOBFOLDER123", event: "done", from: "in_process" }, d.fetchFn);
+  assert.equal(out.moved, false);
+  assert.ok(d.calls.every((c) => c.method === "GET"));
+});
+
+test("a folder already at the destination is left alone; one elsewhere is a conflict", async () => {
+  const done = fakeDrive({ JOBFOLDER123: [F.pending] });
+  assert.equal((await driveMove.moveJobFolder("tok", { folderId: "JOBFOLDER123", event: "done", from: "to_review" }, done.fetchFn)).moved, false);
+  assert.ok(done.calls.every((c) => c.method === "GET"), "no PATCH on a retry");
+  const off = fakeDrive({ JOBFOLDER123: [F.passed] });
+  await assert.rejects(driveMove.moveJobFolder("tok", { folderId: "JOBFOLDER123", event: "done", from: "to_review" }, off.fetchFn), { conflict: true });
+  assert.ok(off.calls.every((c) => c.method === "GET"));
+});
+
+test("with only a file (the CV) the move finds its folder; a stage folder is never moved", async () => {
+  const d = fakeDrive({ CVFILE12345: ["JOBFOLDER123"], JOBFOLDER123: [F.ready_to_apply] });
+  const out = await driveMove.moveJobFolder("tok", { fileId: "CVFILE12345", event: "done", from: "ready_to_apply" }, d.fetchFn);
+  assert.deepEqual(out.parents, [F.pending]);
+  assert.equal(d.calls.find((c) => c.method === "PATCH").id, "JOBFOLDER123", "the folder moves, not the CV");
+  // An old-layout CV sits directly in a stage folder: moving "its folder" would move the stage.
+  const old = fakeDrive({ CVFILE12345: [F.to_review] });
+  await assert.rejects(driveMove.moveJobFolder("tok", { fileId: "CVFILE12345", event: "done", from: "to_review" }, old.fetchFn), { bad: true });
+  assert.ok(old.calls.every((c) => c.method === "GET"));
+});
+
+test("a bad event or stage is rejected before Drive is touched", async () => {
+  const d = fakeDrive({ JOBFOLDER123: [F.to_review] });
+  for (const job of [{ event: "archive", from: "to_review" }, { event: "done", from: "nowhere" }, { event: "done", from: "passed" }]) {
+    await assert.rejects(driveMove.moveJobFolder("tok", { folderId: "JOBFOLDER123", ...job }, d.fetchFn), { bad: true });
+  }
+  assert.equal(d.calls.length, 0);
+});
+
+test("a job card's folder id comes from its kit_folder; core's events carry it", async () => {
+  const { folderIdOf, STAGE_OF, DONE_MEANS } = await import("../../app/js/jobs.js");
+  assert.equal(folderIdOf("https://drive.google.com/drive/folders/AbC-123_x?usp=sharing"), "AbC-123_x");
+  assert.equal(folderIdOf("https://drive.google.com/drive/u/1/folders/AbC-123_x"), "AbC-123_x");
+  assert.equal(folderIdOf("https://drive.example/kit1"), "");
+  assert.equal(folderIdOf("javascript:alert(1)"), "");
+  const planned = planSync([card(1, "review", { kit_folder: "https://drive.google.com/drive/folders/KIT123456789" })], []);
+  assert.equal(planned.add.length, 1);
+  assert.equal(planned.add[0].input.source.folderId, "KIT123456789");
+  assert.deepEqual([STAGE_OF.review, STAGE_OF.ready, DONE_MEANS.review, DONE_MEANS.ready], ["to_review", "ready_to_apply", "ready", "applied"]);
+
+  const { onTaskEvent, emitTask } = await import("../../app/js/task-events.js");
+  const heard = [];
+  const off = onTaskEvent((e) => heard.push(e));
+  const task = { id: "t1", source: { app: "jobhunt", folderId: "KIT123456789" } };
+  emitTask("task.done", task); emitTask("task.deleted", { id: "t2" });
+  off(); emitTask("task.done", task);
+  assert.deepEqual(heard.map((e) => [e.type, e.folderId]), [["task.done", "KIT123456789"], ["task.deleted", ""]]);
 });

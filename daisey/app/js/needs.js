@@ -33,8 +33,6 @@ import { sessionPatch, skipSlotPatch, weekState } from "./routine.js";
 import { dayHours, minText, usualHours, answerDate, planDate, dayWord } from "./day.js";
 import { nudgeText, waLink } from "./nudge.js";
 import { daysUntil } from "./engine.js";
-import { isJobTask } from "./jobs.js";
-import { moveCvFile } from "./job-move.js";
 import { collectNeeds, somedayDue, awayDays, AWAY_DAYS } from "./needs-list.js";
 export { collectNeeds, somedayDue }; // now.js counts them for the header chip
 import { h, icon, dur, flash } from "./ui.js";
@@ -99,7 +97,7 @@ export function mountNeeds(root, uid, { onClose, onStart, extra, onAway } = {}){
   // weekly event in the Daisey calendar with it.
   // Asks twice (Mor, 2026-10-10), as the sheet does: the third entry is
   // what the button says once armed (answer() below).
-  const del = (t) => ["Delete task", () => { dropSeries(t); if (isJobTask(t) && t.source.cv) moveCvFile(t.source.cv, "deleted"); removeTask(uid, t.id).catch(fail); flash("Deleted ", t.title); next(); }, "Really delete?"];
+  const del = (t) => ["Delete task", () => { dropSeries(t); removeTask(uid, t.id, t).catch(fail); flash("Deleted ", t.title); next(); }, "Really delete?"];
   // Waiting on a reply (Mor, 2026-10-18): the answer for a task that is stuck
   // on someone else. Pending, asked again later like any other pending task.
   const pend = (t) => ["Pending, waiting on a reply", () => { restoreTask(uid, t.id, { status: "waiting", notBefore: null, checkOn: pendingCheck(t), touchedAt: Date.now() }).catch(fail); next(); }];

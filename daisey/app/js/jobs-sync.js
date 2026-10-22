@@ -13,11 +13,12 @@
 // and the Now card never waits on Drive.
 import { idToken } from "./firebase.js";
 import { watchTasks, addTaskAt, patchTask, watchProjectNames, saveProjectNames, watchJobStatus, saveJobStatus } from "./store.js";
-import { planSync, withStatus, JOB_PROJECT, cvId } from "./jobs.js";
+import { planSync, withStatus, JOB_PROJECT, cvId, folderIdOf, isJobTask, STAGE_OF, DONE_MEANS } from "./jobs.js";
+import { onTaskEvent } from "./task-events.js";
+import { moveJobFolder } from "./job-move.js";
 
 const URL_ = "/.netlify/functions/daisey-now-jobs";
-const MOVE_URL = "/.netlify/functions/daisey-now-drive-move";
-const MOVE_STAGES = new Set(["ready", "applied"]); // the taps that move a CV (drive-move.js MOVES)
+const MOVE_STAGES = new Set(["ready", "applied"]); // the taps that are a step's Done (jobs.js DONE_MEANS): the job's folder moves
 const CACHE_KEY = "daisey.jobs.v1";
 const EVERY = 30 * 60000;
 
@@ -28,7 +29,7 @@ export function startJobs(uid, onStatus = () => {}, { now = () => new Date() } =
   let tasks = null, fromCache = true, cards = null, complete = false;
   let decided = null; // daisey-status.json's jobs, as Drive last said
   let queue = null, fileId = ""; // users/{uid}/state/jobstatus; queue is null until its first snapshot
-  let moves = {}; // cardId → { fileId, event }: a job's CV move Drive hasn't confirmed (jobstatus.moves)
+  let moves = {}; // cardId → { folderId, fileId, from }: a job's folder move Drive hasn't confirmed (jobstatus.moves)
   let stopped = false, loading = null, flushing = null, projectChecked = false;
 
   try {
@@ -71,27 +72,27 @@ export function startJobs(uid, onStatus = () => {}, { now = () => new Date() } =
     return { status: REASONS.includes(body.error) ? body.error : "error" };
   }
 
-  // A job's CV copy goes to the folder for its stage (daisey-now-drive-move;
-  // folders in _daisey-lib/drive-move.js): ready = review done, applied = ready
-  // done. A move that doesn't land is kept in `moves` (saved, so it survives a
-  // reload) and the task shows a retry chip; that chip re-taps the same stage,
-  // which re-runs this. Nothing else retries it.
-  async function sendMove(cardId, event){
-    const fileId = cvId(cards?.find((c) => c.id === cardId)?.cv);
-    if (!fileId) return; // no CV file: nothing to move
-    let ok = true;
-    try {
-      const res = await fetch(MOVE_URL, { method: "POST", headers: { ...(await auth()), "Content-Type": "application/json" }, body: JSON.stringify({ fileId, event }) });
-      if (!res.ok) throw new Error(`move ${res.status}`);
-    } catch (e) { ok = false; console.error("[daisey] jobs move", e); }
+  // The job's folder goes to the next stage folder (job-move.js; the stage →
+  // folder config is in _daisey-lib/drive-move.js). Done on a step is its
+  // decision (jobs.js DONE_MEANS), and that decision's flush calls this with
+  // "done". A move that doesn't land is kept in `moves` (saved, so it survives
+  // a reload) and the task shows a retry chip; that chip re-taps the same
+  // decision, which re-runs this from the stage the job was acted on from.
+  // Nothing else retries it.
+  async function sendMove(cardId, status){
+    const card = cards?.find((c) => c.id === cardId);
     const t = tasks?.find((x) => x.source?.cardId === cardId);
+    const prior = moves[cardId];
+    const job = prior || { folderId: folderIdOf(card?.kit_folder), fileId: cvId(card?.cv), from: STAGE_OF[t?.source?.status] };
+    if (!job.from || !(job.folderId || job.fileId)) return; // no folder to move
+    const ok = await moveJobFolder(job, "done", job.from);
     if (ok) {
       if (moves[cardId]) { moves = Object.fromEntries(Object.entries(moves).filter(([id]) => id !== cardId)); saveJobStatus(uid, { moves }).catch(fail); }
       if (t?.source?.moveFailed) patchTask(uid, t.id, { source: { ...t.source, moveFailed: "" } }).catch(fail);
     } else {
-      moves = { ...moves, [cardId]: { fileId, event } };
+      moves = { ...moves, [cardId]: job };
       saveJobStatus(uid, { moves }).catch(fail);
-      if (t && t.source.moveFailed !== event) patchTask(uid, t.id, { source: { ...t.source, moveFailed: event } }).catch(fail);
+      if (t && t.source.moveFailed !== status) patchTask(uid, t.id, { source: { ...t.source, moveFailed: status } }).catch(fail);
     }
   }
 
@@ -121,7 +122,15 @@ export function startJobs(uid, onStatus = () => {}, { now = () => new Date() } =
   function decide(cardId, status, note = ""){
     if (stopped || !queue || !cardId) return Promise.resolve();
     queue = { ...queue, [cardId]: { status, at: now().toISOString(), ...(note ? { note } : {}) } };
-    saveJobStatus(uid, { queue }).catch(fail);
+    // The stage the job is acted on from, noted now: by the time the move is
+    // sent, reconcile has already made the task its next step.
+    let planned = {};
+    if (MOVE_STAGES.has(status) && !moves[cardId]) {
+      const card = cards?.find((c) => c.id === cardId), t = tasks?.find((x) => x.source?.cardId === cardId);
+      const job = { folderId: folderIdOf(card?.kit_folder), fileId: cvId(card?.cv), from: STAGE_OF[t?.source?.status] };
+      if (job.from && (job.folderId || job.fileId)) { moves = { ...moves, [cardId]: job }; planned = { moves }; }
+    }
+    saveJobStatus(uid, { queue, ...planned }).catch(fail);
     reconcile();
     return flushing ? flushing.then(flush) : flush(); // a write in flight didn't carry this one
   }
@@ -147,9 +156,20 @@ export function startJobs(uid, onStatus = () => {}, { now = () => new Date() } =
   const fail = (e) => console.error("[daisey] jobs", e);
   const unwatch = watchTasks(uid, (ts, meta) => { tasks = ts; fromCache = !!meta?.fromCache; reconcile(); }, fail);
   const unwatchStatus = watchJobStatus(uid, (s) => { fileId = s.fileId || fileId; queue = s.queue; moves = s.moves; reconcile(); }, fail);
+  // Core's events (task-events.js), read here. Done on a job step is its decision
+  // (review done = Approve, ready done = Applied); a deleted job task sends its
+  // folder to passed. The task is gone by then, so a failed delete-move is
+  // logged, not badged.
+  const unlistenTasks = onTaskEvent(({ type, task, folderId }) => {
+    if (stopped || !isJobTask(task)) return;
+    if (type === "task.done") { const step = DONE_MEANS[task.source.status]; if (step) decide(task.source.cardId, step); return; }
+    if (type === "task.deleted" && STAGE_OF[task.source.status] && (folderId || task.source.cv)) {
+      moveJobFolder({ folderId, fileId: task.source.cv }, "deleted", STAGE_OF[task.source.status]);
+    }
+  });
   const timer = setInterval(load, EVERY);
   onStatus("loading");
   load();
 
-  return { refresh: load, decide, stop(){ stopped = true; clearInterval(timer); unwatch?.(); unwatchStatus?.(); } };
+  return { refresh: load, decide, stop(){ stopped = true; clearInterval(timer); unlistenTasks(); unwatch?.(); unwatchStatus?.(); } };
 }
