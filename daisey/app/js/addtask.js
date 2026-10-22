@@ -29,6 +29,8 @@ import { h, flash, icon, bdi, closeOrAsk, askOnEsc } from "./ui.js";
 import { projectsOf } from "./projects.js";
 import { durationFrom } from "./duration.js";
 import { doneDayLabel } from "./day.js";
+import { isJobTask } from "./jobs.js";
+import { moveCvFile } from "./job-move.js";
 import { isRoutine, weekLine, PER_MAX, DEFAULT_AT, cleanRoutine, seriesSig, monthly, repeatFrom } from "./routine.js";
 import { syncSeries, dropSeries } from "./slots.js";
 
@@ -587,6 +589,7 @@ export function mountAddTask(dialog, uid, { onStart, onDone } = {}){
     editing = null;
     dialog.close();
     dropSeries(gone); // its weekly event in the Daisey calendar goes too
+    if (isJobTask(gone) && gone.source.cv) moveCvFile(gone.source.cv, "deleted"); // its CV goes to 4 passed
     removeTask(uid, gone.id).catch((e) => { fail(e); flash("Couldn't delete ", gone.title); });
     flash("Deleted ", gone.title);
   };

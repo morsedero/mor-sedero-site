@@ -4,12 +4,12 @@
 // plugs in their own folders changes MOVES, nothing else.
 //   ready   → review done (Approve)        → "2 ready to apply"
 //   applied → ready done (Applied)         → "3 applied"
-//   deleted → the job's task was deleted   → "1 to review"
+//   deleted → the job's task was deleted (from review or ready) → "4 passed"
 // Nothing is ever deleted from Drive: a move only changes the parent.
 const MOVES = {
   ready: { to: "10JBoTbxmSykvjVtbCxS5qGaXKa9voiDb" }, // 2 ready to apply
   applied: { to: "1nbP94U4nSWFVW2yXrXsPA0Jlcj4KL3Of" }, // 3 applied
-  deleted: { to: "1RZplmNbCyxeLTArQ10bl1zhse0teajNh" }, // 1 to review
+  deleted: { to: "1uD-CheX4UIR8jb5XLcj5Q9ZXd0olliEg" }, // 4 passed
 };
 
 // Same error shape as jobs-drive.js's driveGet: { reauth } · { scope } · { notFound } · other Errors.
