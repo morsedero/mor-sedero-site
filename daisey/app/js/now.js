@@ -34,7 +34,7 @@ import { decisionCard } from "./decision.js";
 import { waitingFor, personOf } from "./nudge.js";
 import { UNDO_MS } from "./undo.js";
 import { proposedWhy } from "./reason.js";
-import { jobActions, isJobTask } from "./jobs.js";
+import { jobActions } from "./jobs.js";
 import { viewCv } from "./cv.js";
 import { dayHours, isNight, nextMorning, dayEndAt, bookings, sameTitle, minText, gapsToday, planDate, usualHours, dayWord, slotsWord, answerDate, nightRange, planLabelDay, planWords, nightLendOver } from "./day.js";
 import { wrapList } from "./needs.js";
@@ -1235,10 +1235,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     const go = () => {
       const before = doneSnapshot(task);
       finishTask(uid, task).catch(fail);
-      // A job step done is the decision for it: review done = Approve (CV to 2 ready to apply),
-      // ready done = Applied (CV to 3 applied). Same write as the chips (jobs-sync decide).
-      const step = isJobTask(task) && onJob ? { review: "ready", ready: "applied" }[task.source.status] : null;
-      if (step) onJob(task, step);
+      // (A job step done is its decision and moves its Drive folder: the Job Hunt connection hears task.done, jobs-sync.js.)
       // No Done screen (Mor, 2026-10-11: "confusing, not doing anything good"):
       // the card moves straight on to the next task, and the toast holds Undo.
       reset(); slideIn = el ? "push" : false; render();

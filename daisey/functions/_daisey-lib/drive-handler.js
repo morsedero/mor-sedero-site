@@ -55,6 +55,7 @@ async function driveHandler(event, run, name, methods = ["GET"]){
     if (e.scope) return fail(409, "needs_drive");
     if (e.notFound) return fail(404, "no_file");
     if (e.bad) return fail(400, "bad_updates");
+    if (e.conflict) return fail(409, "wrong_stage");
     console.error(name, e.message);
     return fail(502, "google");
   }

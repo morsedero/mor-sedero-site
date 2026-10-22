@@ -12,6 +12,10 @@
 //   review  Review <company> CV + cover letter       20 min
 //   ready   Apply to <company>, <title>              30 min
 //   applied, passed: no active task — an existing one is archived (dropped).
+//   pending, in process (the Drive stages after applying): no task either.
+//   TODO (stubbed, Mor 2026-10-22): a follow-up nudge 7 days after a job
+//   enters Pending, and a card on an interview date in In process. Both need
+//   fields jobs.json doesn't carry yet (when it entered Pending; the date).
 // Mor's taps (jobActions.choices): review → Approve (ready) / Pass; ready →
 // Applied / Pass; new → Pass. Done on a new task, without Pass, keeps the card.
 // A card that leaves the file keeps its task, marked source.stale.
@@ -28,6 +32,14 @@ const web = (v) => (/^https?:\/\/\S+$/i.test(str(v)) ? str(v) : "");
 const reach = (v) => (/^(https?:\/\/|mailto:)\S+$/i.test(str(v)) ? str(v) : ""); // a web page or an email to send
 // The Drive id of a CV file (".../file/d/<id>/view"); "" for anything else.
 export const cvId = (v) => /^https:\/\/drive\.google\.com\/file\/d\/([\w-]+)/.exec(str(v))?.[1] || "";
+// The Drive id of a job's folder (".../drive/folders/<id>", the card's kit_folder); "" for anything else.
+export const folderIdOf = (v) => /^https:\/\/drive\.google\.com\/drive\/(?:u\/\d+\/)?folders\/([\w-]+)/.exec(str(v))?.[1] || "";
+
+// The Job Hunt connection's side of the Drive moves (the folders and where each
+// stage leads are in functions/_daisey-lib/drive-move.js): the stage a task's
+// step means the job's folder is in, and the decision Done on that step is.
+export const STAGE_OF = { review: "to_review", ready: "ready_to_apply" };
+export const DONE_MEANS = { review: "ready", ready: "applied" }; // review done = Approve, ready done = Applied
 
 export const isJobTask = (t) => t?.source?.app === JOB_APP;
 // Doc ids can't hold "/"; the same card always lands on the same doc, so two
@@ -89,7 +101,7 @@ function fromCard(c){
   return {
     status, due, links: linksOf(c),
     source: { app: JOB_APP, cardId: str(c.id), status, fit: fitOf(c), why: str(c.why), deadline: due, stale: false,
-      ...startOf(c, status), cv: cvId(c.cv), applyNote: str(c.apply_note), unsynced: !!c.unsynced },
+      ...startOf(c, status), cv: cvId(c.cv), folderId: folderIdOf(c.kit_folder), applyNote: str(c.apply_note), unsynced: !!c.unsynced },
   };
 }
 

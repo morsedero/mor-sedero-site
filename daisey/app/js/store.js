@@ -6,6 +6,7 @@ import * as fb from "./firebase.js";
 import { worthChecking, checkOnline } from "./research.js";
 import { createTask, editTask, completeTask, skipTask, skipReason, migrateTask, toDate, INBOX, leftMinutes } from "./model.js";
 import { logDocKey } from "./bloom-data.js";
+import { emitTask } from "./task-events.js";
 
 const GUEST_UID = "guest-local";
 const GUEST_KEY = "daisey.guest.data.v1";
@@ -232,10 +233,13 @@ export function migrateTasks(uid){
 export function finishTask(uid, task){
   const p = updateGuestTask(uid, task.id, completeTask(task));
   logWork(uid, task, 0, { done: true, size: leftMinutes(task) }).catch(logFail);
+  emitTask("task.done", task);
   return p;
 }
 
-export function removeTask(uid, id){
+// `task` (the one being removed) is optional: pass it and connections hear task.deleted.
+export function removeTask(uid, id, task){
+  if (task) emitTask("task.deleted", task);
   return removeGuestTask(uid, id);
 }
 
