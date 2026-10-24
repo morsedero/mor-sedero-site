@@ -144,6 +144,19 @@ test("chips: CV, Cover letter, Job post, Apply (mailto too); empty ones hidden; 
   assert.equal(jobActions({ title: "not a job" }), null);
 });
 
+test("chips per step: a Build task gets the post only, no note, and names the company in the top row", () => {
+  const tasks = sync([card(18, "review", { gaps: ["Trailer mix"], apply_link: "mailto:jobs@x.example", apply_note: "Email CV" })]);
+  const b = jobActions(byTitle(tasks, /^Build/)[0]);
+  assert.deepEqual(b.links.map((l) => l.label), ["Job post"]);
+  assert.equal(b.note, "");
+  assert.equal(b.title, "Build: Trailer mix");
+  assert.equal(b.where, tasks[0].title.replace("Review & apply: ", ""));
+  const r = jobActions(tasks.find((t) => t.id === jobDocId(18)));
+  assert.deepEqual(r.links.map((l) => l.label), ["CV", "Cover letter", "Job post", "Apply"]);
+  assert.equal(r.note, "Email CV");
+  assert.equal(r.title, undefined);
+});
+
 test("Hebrew company, gap and note come through whole; two Hebrew gaps get two tasks", () => {
   const tasks = sync([card(17, "review", { company: "סאונד בע״מ", gaps: ["מיקס", "מאסטרינג"], apply_note: "לשלוח קו״ח במייל" })]);
   assert.equal(tasks.find((t) => t.id === jobDocId(17)).title, "Review & apply: סאונד בע״מ");

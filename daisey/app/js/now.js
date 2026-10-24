@@ -209,12 +209,12 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     // read as a contradiction (Mor, 2026-10-07). The bar runs along the
     // card's bottom, the main card's too (Mor, 2026-10-12).
     const sizeLbl = sizeChip(t);
-    const open = main && openRow(t);
+    const job = jobActions(t), open = main && job && openRow(job);
     return h("div", { className: "now-card" + (main ? " main hero" : "") + (open ? " has-open" : "") + areaClass(t) },
       main && dueTag(t),
-      main ? heroTop(t, s.slot ? `${s.slot.text} · ${heroChip(t)}` : heroChip(t))
-        : h("div", { className: "now-meta" }, ...pieces(t.project, sizeLbl)),
-      main && onOpen ? titleButton(t) : h("div", { className: "now-title", dir: "auto", textContent: t.title }),
+      main ? heroTop(t, s.slot ? `${s.slot.text} · ${heroChip(t)}` : heroChip(t), job?.where)
+        : h("div", { className: "now-meta" }, ...pieces(job?.where || t.project, sizeLbl)),
+      main && onOpen ? titleButton(t, job?.title) : h("div", { className: "now-title", dir: "auto", textContent: job?.title || t.title }),
       weekDots(t),
       !main && t.nextStep && h("p", { className: "now-next" }, "Next: ", bdi(t.nextStep)),
       why && h("p", { className: "now-why" }, ...say(why)),
@@ -222,14 +222,13 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
       !main && progressBar(t),
       ...extra);
   }
-  // A Job Hunt task's chips (jobs.js jobActions): CV, Cover letter, Job post,
-  // Apply (an email opens the mail app), one tap each, and the card's apply
-  // note under them. Done / Delete are the card's own buttons; what they mean
-  // for the job is the Job Hunt connection's (jobs-sync.js). A dot says a stage
-  // change hasn't reached Drive yet.
-  const openRow = (t) => {
-    const a = jobActions(t);
-    if (!a || !(a.links.length || a.note || a.unsynced)) return null;
+  // A Job Hunt task's chips (jobs.js jobActions: the ones its step needs, of
+  // CV, Cover letter, Job post, Apply; an email opens the mail app), one tap
+  // each, and on Review / Apply the apply note under them. Done / Delete are
+  // the card's own buttons; what they mean for the job is the Job Hunt
+  // connection's (jobs-sync.js). A dot says a stage change hasn't reached Drive yet.
+  const openRow = (a) => {
+    if (!(a.links.length || a.note || a.unsynced)) return null;
     return h("div", { className: "now-open" },
       h("div", { className: "now-open-links" },
         ...a.links.map((l) => h("a", { className: "chip", href: l.url, ...(l.url.startsWith("mailto:") ? {} : { target: "_blank", rel: "noopener noreferrer" }), textContent: l.label })),
@@ -237,7 +236,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
       a.note && h("p", { className: "now-apply-note", dir: "auto", textContent: a.note, title: a.note,
         onclick: (e) => e.currentTarget.classList.toggle("open") }));
   };
-  const titleButton = (t) => h("button", { type: "button", className: "now-title", dir: "auto", textContent: t.title,
+  const titleButton = (t, text = t.title) => h("button", { type: "button", className: "now-title", dir: "auto", textContent: text,
     ariaLabel: `Open ${t.title}`, onclick: () => onOpen(t) });
   // The main card's next step sits just under the card, not on it (Mor,
   // 2026-10-08: less on the card).
@@ -250,10 +249,11 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
   // A guessed area isn't named (user test #8: an Inbox task said "Work"):
   // only one the user set, else the project, else Inbox.
   const ownArea = (t) => ((t.guessed || []).includes("area") ? "" : areaName(t));
-  function heroTop(t, side){
+  // where: a name to show instead of the project's (a Build card's company), still opening the project.
+  function heroTop(t, side, where){
     const area = ownArea(t);
     const proj = projectShown(t) && h("button", { type: "button", className: "now-proj",
-      title: `Open ${t.project}`, onclick: () => onProject?.(t.project) }, bdi(t.project));
+      title: `Open ${t.project}`, onclick: () => onProject?.(t.project) }, bdi(where || t.project));
     return h("div", { className: "hero-top" },
       h("span", { className: "hero-area" }, h("span", { className: "dot", ariaHidden: "true" }),
         h("span", { className: "hero-where" }, proj || area || "Inbox")),
@@ -1291,8 +1291,8 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
         h("span", { className: "hero-area" },
           // How long first, so a long project name is what gets cut short.
           h("span", { className: "alt-at", textContent: howLong(t) }),
-          h("span", { className: "hero-where" }, projectShown(t) ? bdi(t.project) : ownArea(t) || "Inbox"))),
-      h("span", { className: "alt-t", dir: "auto", textContent: t.title }),
+          h("span", { className: "hero-where" }, projectShown(t) ? bdi(jobActions(t)?.where || t.project) : ownArea(t) || "Inbox"))),
+      h("span", { className: "alt-t", dir: "auto", textContent: jobActions(t)?.title || t.title }),
       why && h("span", { className: "alt-why" }, ...say(sentence(why)))))));
     row.addEventListener("scroll", () => { state.altX = row.scrollLeft; }, { passive: true });
     if (state.altX) requestAnimationFrame(() => { row.scrollLeft = state.altX; });

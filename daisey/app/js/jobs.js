@@ -248,8 +248,18 @@ export function planSync(cards, tasks, { complete = true, dismissed = new Set(),
 // trusted to be safe to open just because it came from a file), the apply
 // note, and whether a stage change is still on its way to Drive. null for
 // any other task.
+// Only what the step needs (Mor 2026-10-25: the card was all text): a Build
+// task the post, a nudge the post and the email, an interview the post and
+// the CV; Review / Apply all of them, and only they the apply note. The task
+// sheet still has every link and the note. A Build card names the company in
+// its top row (where), so its title is just "Build: <gap>".
+const STEP_LINKS = { build: ["Job post"], nudge: ["Job post", "Apply"], interview: ["Job post", "CV"] };
 export function jobActions(t){
   if (!isJobTask(t)) return null;
-  const links = (t.links || []).filter((l) => /^(https?:\/\/|mailto:)/i.test(l.url || ""));
-  return { links, note: str(t.source.applyNote), unsynced: !!t.source.unsynced };
+  const { role, stage } = t.source, applying = role === "stage" && (stage === "review" || stage === "ready");
+  const want = STEP_LINKS[role] || (applying || !role ? null : ["Job post"]);
+  const links = (t.links || []).filter((l) => /^(https?:\/\/|mailto:)/i.test(l.url || "") && (!want || want.includes(l.label)));
+  const cut = role === "build" ? str(t.title).lastIndexOf(" for ") : -1;
+  return { links, note: applying || !role ? str(t.source.applyNote) : "", unsynced: !!t.source.unsynced,
+    ...(cut > 0 ? { title: t.title.slice(0, cut), where: t.title.slice(cut + 5) } : {}) };
 }
