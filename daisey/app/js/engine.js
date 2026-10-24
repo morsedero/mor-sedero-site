@@ -472,7 +472,7 @@ const PHRASES = {
   // The card's dots (ui.weekDots) already show the count, so the words say
   // what the dots can't: "2 more this week, 2 days left" once every day counts.
   // A dated month says its day: "every month on the 12th".
-  fit: (s, d) => [`Fit ${d.fit}/10${d.why ? ` · ${d.why}` : ""}`],
+  fit: (s, d) => [`Fit ${d.fit}/10${d.why ? ` · ${d.why.replace(/[\s.]+$/, "")}` : ""}`], // the sentence adds its own full stop
   routine: (s, d) => d.on ? [`every month on the ${((n) => n + (n > 10 && n < 14 ? "th" : ["th", "st", "nd", "rd"][n % 10] || "th"))(Number(d.on.slice(8)))}`]
     : d.need >= d.daysLeft && d.daysLeft <= 3
     ? [d.daysLeft === 1 ? `last day to make ${d.per} this ${d.word}` : `${d.need} more this ${d.word}, ${d.daysLeft} days left`]

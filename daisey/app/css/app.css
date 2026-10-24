@@ -2929,8 +2929,16 @@ button.bl-r-title { padding: 0; border: 0; background: none; color: var(--ink); 
   .sc-row.sc-on:not(.sc-gap) .sc-ev:is([class*="pc-"], [class*="area-"]) { --deep: var(--aline); --edge: var(--aline); }
 }
 @media (prefers-color-scheme: dark) { @supports not (color: color-mix(in srgb, red, blue)) { :root:not([data-theme="light"]) .now-card.main:is(.deck > *, .going) { --glint: var(--aline); } } }
-.now-open { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 0; }
-.now-open .chip { text-decoration: none; display: inline-flex; align-items: center; } /* links, not buttons: center like one */
+/* The job chips are one quiet row, never two (Mor 2026-10-24: crowded on the
+   phone, Apply wrapped alone): small pills, and past the card's width the row
+   scrolls rather than wraps. The apply note is one line; a tap shows all of it. */
+.now-open { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 10px 0 0; }
+.now-open-links { display: flex; gap: 6px; flex: 1 1 100%; min-inline-size: 0; overflow-x: auto; scrollbar-width: none; }
+.now-open-links::-webkit-scrollbar { display: none; }
+.now-open .chip { text-decoration: none; display: inline-flex; align-items: center; justify-content: center; flex: none; min-block-size: 34px; padding-inline: 11px; font-size: 13px; white-space: nowrap; } /* links, not buttons: center like one */
+@media (max-width: 520px) { .now-open .chip { flex: 1 0 auto; padding-inline: 8px; } } /* the phone's row fills the card, evenly */
 .now-open .chip.go { background: var(--accent); border-color: var(--accent); color: var(--on-accent); font-weight: 700; }
 .job-unsynced { width: 8px; height: 8px; margin: auto 2px; border-radius: 50%; background: var(--ink-2); flex: none; }
-.now-apply-note { flex: 1 1 100%; margin: 2px 0 0; font-size: 14px; color: var(--ink-2); overflow-wrap: anywhere; }
+.now-apply-note { flex: 1 1 100%; min-inline-size: 0; margin: 0; font-size: 13px; line-height: 1.4; color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; }
+.now-apply-note.open { white-space: normal; overflow-wrap: anywhere; }
+.now-card.main.has-open .now-why { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }

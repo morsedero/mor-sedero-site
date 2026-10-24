@@ -209,7 +209,8 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     // read as a contradiction (Mor, 2026-10-07). The bar runs along the
     // card's bottom, the main card's too (Mor, 2026-10-12).
     const sizeLbl = sizeChip(t);
-    return h("div", { className: "now-card" + (main ? " main hero" : "") + areaClass(t) },
+    const open = main && openRow(t);
+    return h("div", { className: "now-card" + (main ? " main hero" : "") + (open ? " has-open" : "") + areaClass(t) },
       main && dueTag(t),
       main ? heroTop(t, s.slot ? `${s.slot.text} · ${heroChip(t)}` : heroChip(t))
         : h("div", { className: "now-meta" }, ...pieces(t.project, sizeLbl)),
@@ -217,7 +218,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
       weekDots(t),
       !main && t.nextStep && h("p", { className: "now-next" }, "Next: ", bdi(t.nextStep)),
       why && h("p", { className: "now-why" }, ...say(why)),
-      main && openRow(t),
+      open,
       !main && progressBar(t),
       ...extra);
   }
@@ -230,9 +231,11 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     const a = jobActions(t);
     if (!a || !(a.links.length || a.note || a.unsynced)) return null;
     return h("div", { className: "now-open" },
-      ...a.links.map((l) => h("a", { className: "chip", href: l.url, ...(l.url.startsWith("mailto:") ? {} : { target: "_blank", rel: "noopener noreferrer" }), textContent: l.label })),
-      a.unsynced && h("span", { className: "job-unsynced", role: "img", title: "Not synced to Drive yet", ariaLabel: "Not synced to Drive yet" }),
-      a.note && h("p", { className: "now-apply-note", dir: "auto", textContent: a.note }));
+      h("div", { className: "now-open-links" },
+        ...a.links.map((l) => h("a", { className: "chip", href: l.url, ...(l.url.startsWith("mailto:") ? {} : { target: "_blank", rel: "noopener noreferrer" }), textContent: l.label })),
+        a.unsynced && h("span", { className: "job-unsynced", role: "img", title: "Not synced to Drive yet", ariaLabel: "Not synced to Drive yet" })),
+      a.note && h("p", { className: "now-apply-note", dir: "auto", textContent: a.note, title: a.note,
+        onclick: (e) => e.currentTarget.classList.toggle("open") }));
   };
   const titleButton = (t) => h("button", { type: "button", className: "now-title", dir: "auto", textContent: t.title,
     ariaLabel: `Open ${t.title}`, onclick: () => onOpen(t) });
