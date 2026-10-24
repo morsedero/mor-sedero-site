@@ -3,7 +3,7 @@
 // its folder). With "Authorization: Bearer <Firebase ID token>".
 //   GET  → { cards, modified: ISO | null, fileId }
 //   POST { updates: { <job id>: { event: "done" | "deleted", from: <stage>, at: ISO } } }
-//     → { results: { <job id>: "ok" | "failed" | "conflict" | "gone" | "bad" }, cards, modified, fileId }
+//     → { results: { <job id>: "ok" | "failed" | "conflict" | "stale" | "gone" | "bad" }, cards, modified, fileId }
 //     (jobs-drive.js writeStages); 400 bad_updates on none.
 // The auth and the error codes are drive-handler.js's.
 const { driveHandler } = require("./_daisey-lib/drive-handler");

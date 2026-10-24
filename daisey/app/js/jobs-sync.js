@@ -11,7 +11,11 @@
 // stays done whatever Drive says; a change Drive hasn't taken stays queued,
 // shows the retry badge (onRetry), and is sent again on a tap of the badge,
 // when Daisey opens, and every 30 minutes. Nothing is ever sent twice to a
-// folder: the server checks the folder's parent before moving it.
+// folder: the server checks the folder's parent before moving it. A change
+// whose job has a stage_at as new as it (changed since) comes back "stale" and
+// is dropped; the cards in that same reply are the refresh.
+// Reads: on open, every 30 minutes while in view (the timer stops while
+// hidden), and on coming back into view at most once a minute.
 //
 // The last good copy of the cards is kept in localStorage, so a failed fetch
 // (offline, expired grant) still syncs from it and the Now card never waits on Drive.
@@ -24,7 +28,8 @@ import { logicalDate } from "./model.js";
 const URL_ = "/.netlify/functions/daisey-now-jobs";
 const CACHE_KEY = "daisey.jobs.v2";
 const EVERY = 30 * 60000;
-const DONE_WITH = new Set(["ok", "conflict", "gone", "bad"]); // a reply that ends a queued change (the rest: send again)
+const SOON = 60000; // back in view: read again, at most this often
+const DONE_WITH = new Set(["ok", "conflict", "stale", "gone", "bad"]); // a reply that ends a queued change (the rest: send again)
 const MAX_DISMISSED = 500;
 
 // status: "loading" · "ok" · "needs_reauth" · "needs_drive" (both: Reconnect)
@@ -131,8 +136,10 @@ export function startJobs(uid, onStatus = () => {}, { now = () => new Date(), on
     reconcile();
   }
 
+  let lastLoad = 0;
   function load(){
     if (loading) return loading;
+    lastLoad = Date.now();
     loading = flush().then(fetchCards).catch((e) => { console.error("[daisey] jobs", e); return { status: "error" }; })
       .then((r) => {
         if (stopped) return;
@@ -162,9 +169,16 @@ export function startJobs(uid, onStatus = () => {}, { now = () => new Date(), on
     if (roleOf(task) === "stage") queueStage(task.source.cardId, event, task.source.stage || stageOf({ status: task.source.status }));
     else if (task.source.key) dismiss(task.source.key);
   });
-  const timer = setInterval(load, EVERY);
+  let timer = null;
+  const tick = (on) => { clearInterval(timer); timer = on ? setInterval(load, EVERY) : null; };
+  const onVisible = () => {
+    tick(!document.hidden);
+    if (!document.hidden && Date.now() - lastLoad >= SOON) load();
+  };
+  document.addEventListener("visibilitychange", onVisible);
+  tick(!document.hidden);
   onStatus("loading");
   load();
 
-  return { refresh: load, retry: () => flush().then(load), stop(){ stopped = true; clearInterval(timer); unlistenTasks(); unwatch?.(); unwatchStatus?.(); } };
+  return { refresh: load, retry: () => flush().then(load), stop(){ stopped = true; tick(false); document.removeEventListener("visibilitychange", onVisible); unlistenTasks(); unwatch?.(); unwatchStatus?.(); } };
 }

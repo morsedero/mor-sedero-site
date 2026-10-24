@@ -371,6 +371,30 @@ test("the print button goes before </body>, or on the end", () => {
   assert.match(withPrintButton("<p>no body tag</p>"), /^<p>no body tag<\/p><style>/);
   assert.match(withPrintButton("<body></body>"), /Background graphics/);
 });
+test("a queued change applies only over an older stage_at; same or newer → stale, nothing moved or saved", async () => {
+  const job = (o) => JSON.stringify([{ id: "j1", stage: "review", folder_id: "JOBFOLDER123", ...o }]);
+  const ask = { j1: { event: "done", from: "review", at: AT } };
+  const older = fakeDrive({ reads: [job({ stage_at: "2026-10-24T09:00:00Z" })], parents: { JOBFOLDER123: [F.review] } });
+  assert.deepEqual((await writeStages("tok", ask, older.fetchFn)).results, { j1: "ok" });
+  assert.deepEqual(older.moves, [["JOBFOLDER123", F.pending]]);
+  assert.equal(JSON.parse(older.saved[0])[0].stage_at, AT);
+  for (const t of [AT, "2026-10-24T11:00:00Z"]) {
+    const d = fakeDrive({ reads: [job({ stage_at: t })], parents: { JOBFOLDER123: [F.review] } });
+    const out = await writeStages("tok", ask, d.fetchFn);
+    assert.deepEqual(out.results, { j1: "stale" }, t);
+    assert.deepEqual([d.moves, d.saved], [[], []]);
+    assert.equal(out.cards[0].stage_at, t); // the reply's cards are the refresh
+  }
+  // Its own earlier save (already pending at AT): ok, nothing again.
+  const mine = fakeDrive({ reads: [job({ stage: "pending", stage_at: AT })], parents: { JOBFOLDER123: [F.pending] } });
+  assert.deepEqual((await writeStages("tok", ask, mine.fetchFn)).results, { j1: "ok" });
+  assert.deepEqual([mine.moves, mine.saved], [[], []]);
+  // Claude sets a newer stage_at between Daisey's two reads: not saved over.
+  const race = fakeDrive({ reads: [job({}), job({ stage_at: "2026-10-24T11:00:00Z" })], parents: { JOBFOLDER123: [F.review] } });
+  assert.deepEqual((await writeStages("tok", ask, race.fetchFn)).results, { j1: "stale" });
+  assert.deepEqual(race.saved, []);
+});
+
 
 test("viewCv: window opens first, CV lands as a blob page, blob revoked when the window closes", async () => {
   const w = { closed: false, document: { body: {} }, location: {}, closes: 0, close(){ this.closes++; } };

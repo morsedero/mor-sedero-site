@@ -78,6 +78,11 @@ const time = (v) => (typeof v === "string" ? Date.parse(v) : NaN);
 const idOk = (v) => typeof v === "string" && /^[\w-]{10,}$/.test(v);
 // The job's own Drive folder: folder_id, else a folder URL in kit_folder (old cards).
 const folderOf = (c) => (idOk(c.folder_id) ? c.folder_id : /\/folders\/([\w-]{10,})/.exec(String(c.kit_folder || ""))?.[1] || "");
+// The update is only applied over a stage_at older than it (none counts as
+// older). Not older: "ok" if the job is already where it goes (this update's
+// own earlier save), else "stale".
+const notOlder = (card, at) => time(card.stage_at) >= time(at);
+const settledAs = (card, to) => (stageOf(card) === to ? "ok" : "stale");
 
 // updates: { <job id>: { event: "done" | "deleted", from: <stage>, at: ISO } }
 // Each one: the job's folder moves to the stage the event leads to, then the
@@ -86,6 +91,8 @@ const folderOf = (c) => (idOk(c.folder_id) ? c.folder_id : /\/folders\/([\w-]{10
 //   failed    the move failed; nothing saved for it, send it again
 //   conflict  the job isn't in `from` any more (Claude moved it): left
 //             alone, don't send it again
+//   stale     the job's stage_at is not older than the update's `at`
+//             (changed since it was queued): left alone, don't send it again
 //   gone      no such job in the file
 //   bad       not a valid update
 // → { results, cards, modified, fileId }. A failed SAVE throws (every job
@@ -103,6 +110,7 @@ async function writeStages(accessToken, updates, fetchFn = fetch) {
     if (!to || !(time(u.at) > 0)) { results[id] = "bad"; continue; }
     const card = before.find((c) => String(c.id) === id);
     if (!card) { results[id] = "gone"; continue; }
+    if (notOlder(card, u.at)) { results[id] = settledAs(card, to); continue; }
     const now = stageOf(card);
     if (now !== u.from && now !== to) { results[id] = "conflict"; continue; }
     const folderId = folderOf(card);
@@ -129,6 +137,7 @@ async function writeStages(accessToken, updates, fetchFn = fetch) {
       const card = list.find((c) => c && typeof c === "object" && String(c.id) === id);
       const now = card ? stageOf(card) : "";
       if (!card) { results[id] = "gone"; continue; }
+      if (notOlder(card, s.at)) { results[id] = settledAs(card, s.to); continue; }
       if (now !== s.from && now !== s.to) { results[id] = "conflict"; continue; }
       results[id] = "ok";
       if (card.stage === s.to) continue;
