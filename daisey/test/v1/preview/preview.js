@@ -22,6 +22,17 @@ const missTasks = (ago) => [
   { title: "Send invoice to Uri", project: "Admin", size: 15, due: day(0), over: { touchedAt: Date.now() - ago * 60000 } },
 ];
 const SCENARIOS = {
+  // Job Hunt (jobs-sync.js, spec "Daisey — Now Engine Spec v1"): a review job
+  // with a Hebrew company and gaps (Build first), a ready one with an email
+  // apply link and a Hebrew note, a pending one; a stage change Drive missed
+  // (the retry badge). post: "fail" keeps it missed.
+  jobs: { tasks: [], projects: ["Job Hunt"], dayplan: { date: day(0), status: "dismissed", items: [] }, jobs: { post: "fail", cards: [
+    { id: "j1", stage: "ready", company: "Red Thread Games", title: "Technical Sound Designer", fit: 9, why: "UE5 MetaSounds + composing",
+      cv: "https://docs.google.com/document/d/cv1/edit", cover_letter: "https://docs.google.com/document/d/cl1/edit", link: "https://redthread.example/sd",
+      apply_link: "mailto:jobs@redthread.example", apply_note: "לשלוח קו״ח ותיק עבודות במייל, עד 10MB", effort_min: 30 },
+    { id: "j2", stage: "review", company: "סאונד בע״מ", title: "מעצב סאונד", fit: 7, gaps: ["Wwise", "מיקס לטריילר"], cv: "https://docs.google.com/document/d/cv2/edit", effort_min: 20 },
+    { id: "j3", stage: "pending", company: "Softgames", stage_at: "2026-10-10T09:00:00Z" },
+  ], status: { queue: { j9: [{ event: "done", from: "review", at: "2026-10-24T08:00:00Z", failed: true }] }, dismissed: [] } } },
   // A missed slot (--cal none): nothing done for 25 minutes.
   miss: { tasks: missTasks(25), dayplan: { date: day(0), status: "dismissed", items: [] } },
   // Two slots ignored (--cal none): nothing done for 75 minutes.

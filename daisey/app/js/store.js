@@ -179,21 +179,27 @@ export function addTask(uid, input, tasks = []){
 // Job Hunt (jobs-sync.js): a task at a fixed doc id, so two devices syncing at
 // once write one task. patchTask is a raw field patch — not a user edit, so
 // touchedAt/editedAt stay put. Signed-in only: Drive needs a Google account.
-export function addTaskAt(uid, id, input, tasks = []){
-  return fb.setDoc(taskDoc(uid, id), createTask(input, { history: tasks }));
+// `extra`: fields createTask doesn't take from input (a job's stage task made waiting).
+export function addTaskAt(uid, id, input, tasks = [], extra = {}){
+  return fb.setDoc(taskDoc(uid, id), { ...createTask(input, { history: tasks }), ...extra });
 }
 export const patchTask = (uid, id, patch) => updateGuestTask(uid, id, patch);
 
 // Job Hunt write-back (jobs-sync.js), users/{uid}/state/jobstatus:
-// { fileId, queue: { cardId: { status, at, note? } }, moves: { cardId: { fileId, event } } }.
-// fileId is Drive's id of daisey-status.json; queue is what Mor tapped that Drive
-// hasn't confirmed yet, so a tap survives a failed write, a reload, an offline
-// phone; moves is a job's CV move that Drive hasn't confirmed (jobs-sync.js).
+// { queue: { cardId: [{ event, from, at, failed? }] }, dismissed: [key] }.
+// queue is the stage changes Drive hasn't confirmed yet (in order, per job),
+// so a tap survives a failed write, a reload, an offline phone; failed marks
+// one a write has already missed (the retry badge). dismissed: the Build /
+// nudge / interview tasks done or deleted (jobs.js keys). Anything else in
+// the doc (the retired daisey-status fileId/moves) is ignored.
 // Saved merged, each field whole.
+const queueOf = (q) => Object.fromEntries(Object.entries(q && typeof q === "object" ? q : {})
+  .map(([id, list]) => [id, Array.isArray(list) ? list.filter((e) => e && typeof e.from === "string" && typeof e.event === "string" && typeof e.at === "string") : []])
+  .filter(([, list]) => list.length));
 export function watchJobStatus(uid, cb, onError){
   return fb.onSnapshot(fb.doc(fb.db, "users", uid, "state", "jobstatus"), (snap) => {
     const d = snap.exists() ? snap.data() : {};
-    cb({ fileId: d.fileId || "", queue: d.queue && typeof d.queue === "object" ? d.queue : {}, moves: d.moves && typeof d.moves === "object" ? d.moves : {} });
+    cb({ queue: queueOf(d.queue), dismissed: Array.isArray(d.dismissed) ? d.dismissed.filter((k) => typeof k === "string") : [] });
   }, onError);
 }
 export const saveJobStatus = (uid, fields) => saveGuestState(uid, "jobstatus", fields, true);

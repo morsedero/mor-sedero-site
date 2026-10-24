@@ -1,12 +1,13 @@
 // Stand-in for app/js/store.js in the preview: same exports, tasks held in
 // memory instead of Firestore. Seeded from window.__FAKE (set by preview.js).
 import { createTask, editTask, completeTask, skipTask, skipReason, leftMinutes } from "./model.js";
+import { emitTask } from "./task-events.js";
 
 const seed = window.__FAKE || {};
 let n = 0;
 let tasks = (seed.tasks || []).map((t) => ({ id: "t" + ++n, ...createTask(t), ...(t.over || {}) }));
-const docs = { skips: seed.skips ?? null, settings: seed.settings ?? { deadlinesAsked: true }, moment: seed.moment ?? {}, learn: seed.learn ?? {}, projects: seed.projects ?? [], dayplan: seed.dayplan ?? null };
-const subs = { tasks: new Set(), now: new Set(), skips: new Set(), settings: new Set(), moment: new Set(), learn: new Set(), projects: new Set(), dayplan: new Set() };
+const docs = { skips: seed.skips ?? null, settings: seed.settings ?? { deadlinesAsked: true }, moment: seed.moment ?? {}, learn: seed.learn ?? {}, projects: seed.projects ?? [], dayplan: seed.dayplan ?? null, jobstatus: seed.jobs?.status ?? { queue: {}, dismissed: [] } };
+const subs = { tasks: new Set(), now: new Set(), skips: new Set(), settings: new Set(), moment: new Set(), learn: new Set(), projects: new Set(), dayplan: new Set(), jobstatus: new Set() };
 
 const emit = (k) => setTimeout(() => { for (const cb of subs[k]) cb(k === "tasks" ? tasks.map((t) => ({ ...t })) : docs[k], {}); });
 const watch = (k) => (uid, cb) => { subs[k].add(cb); setTimeout(() => cb(k === "tasks" ? tasks.map((t) => ({ ...t })) : docs[k], {})); return () => subs[k].delete(cb); };
@@ -20,7 +21,7 @@ export const undoDone = (uid, id, before) => patchTask(uid, id, before);
 export const watchSkips = watch("skips");
 export const saveSkips = (uid, state) => { docs.skips = state; return ok("skips"); };
 export const addTask = (uid, input) => { tasks.push({ id: "t" + ++n, ...createTask(input, { history: tasks }) }); return ok("tasks"); };
-export const addTaskAt = (uid, id, input) => { tasks.push({ id, ...createTask(input, { history: tasks }) }); return ok("tasks"); };
+export const addTaskAt = (uid, id, input, history, extra = {}) => { tasks = [...tasks.filter((t) => t.id !== id), { id, ...createTask(input, { history: tasks }), ...extra }]; return ok("tasks"); }; // setDoc: one doc per id
 export const updateTask = (uid, task, changes) => {
   const i = tasks.findIndex((t) => t.id === task.id);
   tasks[i] = { ...tasks[i], ...editTask(tasks[i], changes, { history: tasks }) };
@@ -28,7 +29,7 @@ export const updateTask = (uid, task, changes) => {
 };
 export const patchTask = (uid, id, patch) => { const i = tasks.findIndex((t) => t.id === id); tasks[i] = { ...tasks[i], ...patch }; return ok("tasks"); };
 // As store.js: the finish in the log, 0 min worked, the task's length beside it.
-export const finishTask = (uid, task) => { const p = patchTask(uid, task.id, completeTask(task)); logWork(uid, task, 0, { done: true, size: leftMinutes(task) }); return p; };
+export const finishTask = (uid, task) => { const p = patchTask(uid, task.id, completeTask(task)); logWork(uid, task, 0, { done: true, size: leftMinutes(task) }); emitTask("task.done", task); return p; };
 export const logWork = (uid, task, minutes) => { (window.__logged ||= []).push({ t: task.id, p: task.project, m: Math.round(minutes) }); return Promise.resolve(null); };
 export const unlogReopened = () => Promise.resolve();
 export const renameInLog = () => Promise.resolve();
@@ -41,7 +42,22 @@ export const watchLog = (uid, keys, cb) => {
   setTimeout(() => cb((seed.bloomLog ? rich : few).map(([p, m, ago, done, g], i) => ({ id: "e" + i, t: "x" + i, p, m, at: t - ago * d - 3600000, ...(done ? { d: 1 } : {}), ...(g ? { g: 1 } : {}) }))));
   return () => {};
 };
-export const removeTask = (uid, id) => { tasks = tasks.filter((t) => t.id !== id); return ok("tasks"); };
+export const removeTask = (uid, id, task) => { if (task) emitTask("task.deleted", task); tasks = tasks.filter((t) => t.id !== id); return ok("tasks"); };
+// Job Hunt (jobs-sync.js): the jobstatus doc in memory, and daisey-now-jobs
+// answered from the scenario's jobs: { cards, status, post: "fail" | "ok" }.
+export const watchJobStatus = watch("jobstatus");
+export const saveJobStatus = (uid, fields) => { docs.jobstatus = { ...docs.jobstatus, ...fields }; return ok("jobstatus"); };
+if (seed.jobs) {
+  const real = window.fetch.bind(window);
+  window.fetch = async (url, init = {}) => {
+    if (!String(url).includes("daisey-now-jobs")) return real(url, init);
+    const reply = (status, body) => new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
+    if (init.method !== "POST") return reply(200, { cards: seed.jobs.cards || [], modified: "2026-10-24T00:00:00Z", fileId: "F" });
+    if (seed.jobs.post === "fail") return reply(502, { error: "google" });
+    const { updates = {} } = JSON.parse(init.body || "{}");
+    return reply(200, { results: Object.fromEntries(Object.keys(updates).map((id) => [id, "ok"])), cards: seed.jobs.cards || [], modified: "m", fileId: "F" });
+  };
+}
 
 export const migrateTasks = () => () => {};
 export const watchSettings = watch("settings");
@@ -63,3 +79,8 @@ export const bumpLearn = (uid, type, part, field) => { const k = `${type}|${part
 export const saveSettings = (uid, fields) => { docs.settings = { ...docs.settings, ...fields }; return ok("settings"); };
 
 window.__store = { get tasks(){ return tasks; }, docs };
+// Exports the app gained after this fake was written: no-ops here.
+export const saveProjectCaps = () => Promise.resolve();
+export const unlogDone = () => Promise.resolve();
+export const guestFresh = () => false;
+export const seedGuest = async () => {};

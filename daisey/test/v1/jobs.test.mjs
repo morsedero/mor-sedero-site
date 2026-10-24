@@ -1,233 +1,364 @@
-// Job Hunt: Drive cards → tasks (app/js/jobs.js), the fit factor on the Now
-// card's why line (engine.js), and the Drive read (functions/_daisey-lib/
-// jobs-drive.js). Run: node --test "daisey/test/v1/*.test.mjs"
+// Job Hunt: Drive cards → tasks by stage (app/js/jobs.js), the fit factor on
+// the Now card's why line (engine.js), the Drive read and the stage write-back
+// (functions/_daisey-lib/jobs-drive.js, drive-move.js). Spec: "Daisey — Now
+// Engine Spec v1". Run: node --test "daisey/test/v1/*.test.mjs"
 import test from "node:test";
 import assert from "node:assert/strict";
 import { createRequire } from "node:module";
-import { planSync, jobInput, jobLinks, jobDocId, JOB_PROJECT } from "../../app/js/jobs.js";
+import { planSync, jobTasks, withStages, jobActions, jobDocId, stageOf, gapKey, TRANSITIONS, STAGES, JOB_PROJECT } from "../../app/js/jobs.js";
 import { createTask } from "../../app/js/model.js";
 import * as E from "../../app/js/engine.js";
-const { readJobs } = createRequire(import.meta.url)("../../functions/_daisey-lib/jobs-drive.js");
+import { viewCv, withPrintButton } from "../../app/js/cv.js";
+const require = createRequire(import.meta.url);
+const { readJobs, readCv, writeStages } = require("../../functions/_daisey-lib/jobs-drive.js");
+const driveMove = require("../../functions/_daisey-lib/drive-move.js");
+const { FOLDERS: F } = driveMove;
 
-const card = (id, status, extra = {}) => ({ id, type: "job_lead", status, title: "Mixer", company: `Co${id}`, location: "", arrangement: "",
-  link: "https://jobs.example/" + id, deadline: "", fit: 8, why: "great match", next_step: "", cover_letter: "https://docs.example/cl" + id,
-  cv: "https://docs.example/cv" + id, kit_folder: "https://drive.example/kit" + id, found: "", effort_min: "", project: "Job Hunt", ...extra });
+const TODAY = "2026-10-24";
+const card = (id, stage, extra = {}) => ({ id, stage, title: "Mixer", company: `Co${id}`, link: "https://jobs.example/" + id, deadline: "",
+  fit: 8, why: "great match", cover_letter: "https://docs.example/cl" + id, cv: "https://docs.example/cv" + id, effort_min: 20, ...extra });
+const plan = (cards, tasks = [], o = {}) => planSync(cards, tasks, { today: TODAY, ...o });
 
 // What the sync writes, applied to an in-memory task list.
-function apply(tasks, plan){
-  const out = tasks.map((t) => { const u = plan.update.find((x) => x.task.id === t.id); return u ? { ...t, ...u.patch } : t; });
-  for (const { id, input } of plan.add) out.push({ id, ...createTask(input) });
+function apply(tasks, p){
+  const out = tasks.map((t) => { const u = p.update.find((x) => x.task.id === t.id); return u ? { ...t, ...u.patch } : t; });
+  for (const { id, input, patch } of p.add) out.push({ id, ...createTask(input), ...patch });
   return out;
 }
+const sync = (cards, tasks = [], o = {}) => apply(tasks, plan(cards, tasks, o));
+const byTitle = (tasks, re) => tasks.filter((t) => re.test(t.title));
 
-test("status picks the task, its size and its links", () => {
-  const n = jobInput(card(1, "new")), r = jobInput(card(2, "review")), y = jobInput(card(3, "ready"));
-  assert.equal(n.title, "Decide: Co1, Mixer worth a kit?"); assert.equal(n.size, 5);
-  assert.equal(r.title, "Review Co2 CV + cover letter"); assert.equal(r.size, 20);
-  assert.equal(y.title, "Apply to Co3, Mixer"); assert.equal(y.size, 30);
-  assert.equal(n.project, JOB_PROJECT);
-  assert.deepEqual(n.links.map((l) => l.label), ["Job post", "CV", "Cover letter"]); // same chips at every step
-  assert.deepEqual(r.links.map((l) => l.label), ["Job post", "CV", "Cover letter"]);
-  assert.deepEqual(y.links.map((l) => l.label), ["Job post", "CV", "Cover letter"]);
-  assert.equal(jobInput(card(4, "applied")), null);
-  assert.equal(jobInput(card(5, "passed")), null);
-  assert.equal(jobInput(card(6, "ready", { effort_min: 45 })).size, 45);
+// ---------- stages ----------
+test("stage wins; the legacy status is the fallback (new/review → review, passed → passed)", () => {
+  assert.equal(stageOf({ stage: "in_process", status: "review" }), "in_process");
+  assert.equal(stageOf({ status: "new" }), "review");
+  assert.equal(stageOf({ status: "review" }), "review");
+  assert.equal(stageOf({ status: "passed" }), "passed");
+  assert.equal(stageOf({ stage: "In process" }), "in_process");
+  assert.equal(stageOf({}), "");
 });
 
-test("empty fields are fine; non-web links are dropped", () => {
-  const i = jobInput(card(7, "review", { company: "", cv: "javascript:alert(1)", cover_letter: "", kit_folder: "" }));
-  assert.equal(i.title, "Review CV + cover letter");
-  assert.deepEqual(i.links.map((l) => l.label), ["Job post"]);
-  assert.equal(jobInput(card(8, "new", { fit: "", deadline: "soon" })).due, "");
+test("the app's pipeline and stage reading are the connection config's (drive-move.js)", () => {
+  assert.deepEqual(TRANSITIONS, driveMove.TRANSITIONS);
+  assert.deepEqual(STAGES, driveMove.STAGES);
+  for (const c of [{ stage: "ready" }, { status: "new" }, { status: "applied" }, { status: "in process" }, { stage: "bogus", status: "passed" }, {}]) {
+    assert.equal(stageOf(c), driveMove.stageOf(c), JSON.stringify(c));
+  }
+  assert.deepEqual(Object.keys(F).sort(), ["in_process", "passed", "pending", "ready", "review"]);
+  assert.equal(F.review, "1RZplmNbCyxeLTArQ10bl1zhse0teajNh");
+  assert.equal(F.in_process, "1-vbR7puV7TgFgtlhT7RvtIKe6hLPEDh6");
 });
 
-test("8 cards → 8 tasks, and a second sync adds nothing", () => {
-  const cards = [1, 2, 3].map((i) => card(i, "review")).concat([4, 5, 6, 7, 8].map((i) => card(i, "new")));
-  const first = planSync(cards, []);
-  assert.equal(first.add.length, 8);
-  assert.equal(new Set(first.add.map((a) => a.id)).size, 8);
-  const tasks = apply([], first);
-  assert.equal(tasks.filter((t) => t.title.startsWith("Review")).length, 3);
-  assert.equal(tasks.filter((t) => t.title.startsWith("Decide")).length, 5);
-  const again = planSync(cards, tasks);
-  assert.deepEqual(again, { add: [], update: [] });
+// ---------- what shows ----------
+test("review, no gaps → Review & apply, effort_min long, ready", () => {
+  const [t] = sync([card(1, "review", { effort_min: 25 })]);
+  assert.equal(t.title, "Review & apply: Co1"); assert.equal(t.size, 25); assert.equal(t.status, "ready");
+  assert.equal(t.project, JOB_PROJECT); assert.equal(t.id, jobDocId(1));
 });
 
-// Firestore returns maps with sorted keys ({label,url}); a key-order-sensitive
-// compare patched links on every snapshot, re-rendering Now forever (2026-10-21).
-test("a second sync adds nothing when the store hands maps back key-sorted", () => {
+test("review with gaps → Build tasks first; Done on each clears its gap; none left → Review & apply", () => {
+  const c = card(2, "review", { gaps: ["Wwise", "FMOD"] });
+  let tasks = sync([c]);
+  const stage = tasks.find((t) => t.id === jobDocId(2));
+  assert.equal(stage.status, "waiting");
+  assert.deepEqual(byTitle(tasks, /^Build/).map((t) => t.title), ["Build: Wwise for Co2", "Build: FMOD for Co2"]);
+  assert.ok(byTitle(tasks, /^Build/).every((t) => t.status === "ready"));
+  // Done on the first Build task: the gap is cleared, the review still waits on the other.
+  tasks = tasks.map((t) => (t.title === "Build: Wwise for Co2" ? { ...t, status: "done" } : t));
+  tasks = sync([c], tasks);
+  assert.equal(tasks.find((t) => t.id === jobDocId(2)).status, "waiting");
+  // The second one is dismissed (deleted), so none remain.
+  const key = byTitle(tasks, /FMOD/)[0].source.key;
+  tasks = sync([c], tasks.filter((t) => !/FMOD/.test(t.title)), { dismissed: new Set([key]) });
+  assert.equal(tasks.find((t) => t.id === jobDocId(2)).status, "ready");
+  assert.equal(byTitle(tasks, /FMOD/).length, 0); // not made again
+  assert.deepEqual(plan([c], tasks, { dismissed: new Set([key]) }), { add: [], update: [] });
+});
+
+test("a deadline within 7 days: Review & apply anyway, the Build tasks after it", () => {
+  const tasks = sync([card(3, "review", { gaps: ["Wwise"], deadline: "2026-10-29" })]);
+  const stage = tasks.find((t) => t.id === jobDocId(3)), build = byTitle(tasks, /^Build/)[0];
+  assert.equal(stage.status, "ready"); assert.equal(stage.due, "2026-10-29"); assert.equal(stage.dateKind, "deadline");
+  assert.equal(build.status, "ready");
+  // Ranked: the review first, its Build task right behind.
+  const m = E.readMoment({ now: new Date(2026, 9, 24, 10).getTime() });
+  assert.ok(E.scoreTask(stage, m).score >= E.scoreTask(build, m).score);
+  // 9 days away: back to Build first.
+  assert.equal(sync([card(3, "review", { gaps: ["Wwise"], deadline: "2026-11-02" })]).find((t) => t.id === jobDocId(3)).status, "waiting");
+});
+
+test("ready → Apply; pending and in_process are off Now; passed and closed show nothing", () => {
+  assert.equal(sync([card(4, "ready")])[0].title, "Apply: Co4");
+  const pend = sync([card(5, "pending", { stage_at: "2026-10-20T09:00:00Z" })]);
+  assert.equal(pend.find((t) => t.id === jobDocId(5)).status, "waiting");
+  assert.equal(sync([card(6, "in_process")]).find((t) => t.id === jobDocId(6)).status, "waiting");
+  assert.deepEqual(sync([card(7, "passed"), card(8, "closed"), card(9, "review", { stage: "", status: "passed" })]), []);
+});
+
+test("pending: one nudge on follow_up_after, else 7 days after stage_at; Done only dismisses it", () => {
+  const c = card(10, "pending", { stage_at: "2026-10-20T09:00:00" });
+  let tasks = sync([c]);
+  const nudge = byTitle(tasks, /^Follow up/)[0];
+  assert.equal(nudge.title, "Follow up: Co10"); assert.equal(nudge.notBefore, "2026-10-27"); assert.equal(nudge.id, jobDocId(10, "nudge"));
+  assert.equal(byTitle(sync([{ ...c, follow_up_after: "2026-11-03" }]), /^Follow up/)[0].notBefore, "2026-11-03");
+  // Done on the nudge: it stays done, the job stays pending, no second nudge.
+  tasks = tasks.map((t) => (t.id === nudge.id ? { ...t, status: "done" } : t));
+  const after = sync([c], tasks, { dismissed: new Set([nudge.source.key]) });
+  assert.equal(after.find((t) => t.id === nudge.id).status, "done");
+  assert.equal(after.find((t) => t.id === jobDocId(10)).status, "waiting");
+  // A new follow-up date from Claude: a new nudge on the same doc.
+  const again = sync([{ ...c, follow_up_after: "2026-11-05" }], after, { dismissed: new Set([nudge.source.key]) });
+  assert.equal(again.find((t) => t.id === nudge.id).status, "ready");
+  assert.equal(again.find((t) => t.id === nudge.id).notBefore, "2026-11-05");
+});
+
+test("in_process: a card on interview_at, nothing else; the nudge goes when it leaves pending", () => {
+  const c = card(11, "pending", { stage_at: "2026-10-20" });
+  let tasks = sync([c]);
+  tasks = sync([{ ...c, stage: "in_process", interview_at: "2026-10-30T14:30" }], tasks);
+  assert.equal(byTitle(tasks, /^Follow up/)[0].status, "dropped");
+  const iv = byTitle(tasks, /^Interview/)[0];
+  assert.equal(iv.title, "Interview: Co11"); assert.equal(iv.notBefore, "2026-10-30");
+  assert.equal(iv.due, "2026-10-30"); assert.equal(iv.dueTime, "14:30");
+  assert.equal(byTitle(sync([card(12, "in_process")]), /^Interview/).length, 0);
+});
+
+test("a job that is passed or closed archives every open task it had", () => {
+  let tasks = sync([card(13, "review", { gaps: ["Wwise"] })]);
+  tasks = sync([card(13, "passed", { gaps: ["Wwise"] })], tasks);
+  assert.ok(tasks.every((t) => t.status === "dropped"));
+});
+
+// ---------- the card ----------
+test("chips: CV, Cover letter, Job post, Apply (mailto too); empty ones hidden; the note shows", () => {
+  const [t] = sync([card(14, "ready", { apply_link: "mailto:jobs@x.example", apply_note: "Email CV + portfolio" })]);
+  const a = jobActions(t);
+  assert.deepEqual(a.links.map((l) => l.label), ["CV", "Cover letter", "Job post", "Apply"]);
+  assert.equal(a.links[3].url, "mailto:jobs@x.example");
+  assert.equal(a.note, "Email CV + portfolio");
+  const [bare] = sync([card(15, "ready", { cv: "", cover_letter: "javascript:alert(1)", kit_folder: "https://drive.google.com/drive/folders/abcdefghijk" })]);
+  assert.deepEqual(jobActions(bare).links.map((l) => l.label), ["Job post"]);
+  // The post is not shown twice when it is the apply link.
+  const [same] = sync([card(16, "ready", { apply_link: "https://jobs.example/16" })]);
+  assert.deepEqual(jobActions(same).links.map((l) => l.label), ["CV", "Cover letter", "Apply"]);
+  assert.equal(jobActions({ title: "not a job" }), null);
+});
+
+test("Hebrew company, gap and note come through whole; two Hebrew gaps get two tasks", () => {
+  const tasks = sync([card(17, "review", { company: "סאונד בע״מ", gaps: ["מיקס", "מאסטרינג"], apply_note: "לשלוח קו״ח במייל" })]);
+  assert.equal(tasks.find((t) => t.id === jobDocId(17)).title, "Review & apply: סאונד בע״מ");
+  assert.deepEqual(byTitle(tasks, /^Build/).map((t) => t.title), ["Build: מיקס for סאונד בע״מ", "Build: מאסטרינג for סאונד בע״מ"]);
+  assert.notEqual(gapKey("מיקס"), gapKey("מאסטרינג"));
+  assert.equal(jobActions(tasks[0]).note, "לשלוח קו״ח במייל");
+});
+
+// ---------- sync ----------
+test("a second sync changes nothing, also with key-sorted maps back from the store", () => {
   const sorted = (v) => (Array.isArray(v) ? v.map(sorted) : v && typeof v === "object" ? Object.fromEntries(Object.keys(v).sort().map((k) => [k, sorted(v[k])])) : v);
-  const cards = [1, 2].map((i) => card(i, "review")).concat([3].map((i) => card(i, "ready")));
-  const tasks = apply([], planSync(cards, [])).map(sorted);
-  assert.deepEqual(planSync(cards, tasks), { add: [], update: [] });
+  const cards = [card(1, "review", { gaps: ["Wwise"] }), card(2, "ready", { deadline: "2026-11-20" }), card(3, "pending", { stage_at: "2026-10-01" }),
+    card(4, "in_process", { interview_at: "2026-10-30T10:00:00Z" })];
+  const tasks = sync(cards);
+  assert.equal(tasks.length, 7); // review + its Build, ready, pending + its nudge, in_process + its interview
+  assert.deepEqual(plan(cards, tasks), { add: [], update: [] });
+  assert.deepEqual(plan(cards, sorted(tasks)), { add: [], update: [] });
 });
 
-test("a status change updates the task; applied and passed archive it", () => {
-  let tasks = apply([], planSync([card(1, "new"), card(2, "ready"), card(3, "new")], []));
-  tasks = apply(tasks, planSync([card(1, "review"), card(2, "applied"), card(3, "passed")], tasks));
-  const byId = (i) => tasks.find((t) => t.source.cardId === String(i));
-  assert.equal(byId(1).title, "Review Co1 CV + cover letter"); assert.equal(byId(1).size, 20); assert.equal(byId(1).status, "ready");
-  assert.equal(byId(2).status, "dropped"); assert.equal(byId(3).status, "dropped");
-  assert.equal(tasks.length, 3);
-  // …and nothing more on the next pass
-  assert.deepEqual(planSync([card(1, "review"), card(2, "applied"), card(3, "passed")], tasks), { add: [], update: [] });
+test("a task from before stages (old status, no role) takes its step once", () => {
+  const old = { id: jobDocId(1), ...createTask({ title: "Decide: Co1, Mixer worth a kit?", project: JOB_PROJECT, source: { app: "jobhunt", cardId: "1", status: "new" } }) };
+  const tasks = sync([card(1, "review", { stage: undefined, status: "new" })], [old]);
+  assert.equal(tasks[0].title, "Review & apply: Co1");
+  assert.deepEqual(plan([card(1, "review", { stage: undefined, status: "new" })], tasks), { add: [], update: [] });
 });
 
-test("a card with no active status makes no task; a finished task is reopened by a new step", () => {
-  assert.deepEqual(planSync([card(1, "applied")], []).add, []);
-  let tasks = apply([], planSync([card(2, "new")], []));
-  tasks[0] = { ...tasks[0], status: "done" };
-  assert.deepEqual(planSync([card(2, "new")], tasks), { add: [], update: [] }); // done stays done
-  tasks = apply(tasks, planSync([card(2, "review")], tasks));
-  assert.equal(tasks[0].status, "ready");
+test("the user's edits stand on the same step; a new deadline in the file follows", () => {
+  let tasks = sync([card(1, "review", { deadline: "2026-11-20" })]);
+  tasks = tasks.map((t) => ({ ...t, title: "my own title", size: 90, due: "2026-11-15" }));
+  assert.deepEqual(plan([card(1, "review", { deadline: "2026-11-20" })], tasks), { add: [], update: [] });
+  tasks = sync([card(1, "review", { deadline: "2026-11-25" })], tasks);
+  assert.equal(tasks[0].due, "2026-11-25"); assert.equal(tasks[0].title, "my own title");
 });
 
-test("a card that leaves the file keeps its task, marked stale — unless the file is unknown", () => {
-  const tasks = apply([], planSync([card(1, "new"), card(2, "new")], []));
-  const gone = planSync([card(1, "new")], tasks);
-  assert.equal(gone.add.length, 0);
-  assert.equal(gone.update.length, 1);
-  assert.equal(gone.update[0].patch.source.stale, true);
-  assert.deepEqual(planSync([], tasks, { complete: false }), { add: [], update: [] });
-  // back in the file → no longer stale
-  const back = apply(apply(tasks, gone), planSync([card(1, "new"), card(2, "new")], apply(tasks, gone)));
-  assert.equal(back.find((t) => t.source.cardId === "2").source.stale, false);
+test("a card that leaves the file marks its tasks stale — unless the file couldn't be read", () => {
+  const tasks = sync([card(1, "review", { gaps: ["x"] })]);
+  assert.ok(apply(tasks, plan([], tasks)).every((t) => t.source.stale));
+  assert.deepEqual(plan([], tasks, { complete: false }), { add: [], update: [] });
 });
 
-test("the user's edits to a task stand while the step is the same", () => {
-  const tasks = apply([], planSync([card(1, "new")], []));
-  tasks[0] = { ...tasks[0], title: "My own words", size: 15 };
-  assert.deepEqual(planSync([card(1, "new")], tasks), { add: [], update: [] });
-});
-
-test("a deadline in the file becomes a real deadline", () => {
-  const tasks = apply([], planSync([card(1, "ready", { deadline: "2026-10-24" })], []));
-  assert.equal(tasks[0].due, "2026-10-24"); assert.equal(tasks[0].dateKind, "deadline");
-  const moved = planSync([card(1, "ready", { deadline: "2026-10-30" })], tasks);
-  assert.equal(moved.update[0].patch.due, "2026-10-30");
-});
-
-test("doc ids are stable and safe", () => {
-  assert.equal(jobDocId("a/b c"), "job-a_b_c");
-  assert.equal(jobDocId("x"), jobDocId("x"));
-});
-
-test("jobLinks: web links of a job task only", () => {
-  const t = { source: { app: "jobhunt" }, links: [{ url: "https://a.b/c", label: "A" }, { url: "mailto:x@y.z", label: "M" }] };
-  assert.deepEqual(jobLinks(t).map((l) => l.label), ["A"]);
-  assert.deepEqual(jobLinks({ links: t.links }), []);
+test("withStages: a queued Done shows the next stage at once, chained; a job Claude moved stays as the file says", () => {
+  const c = card(1, "review");
+  const q = { 1: [{ event: "done", from: "review", at: "2026-10-24T10:00:00Z" }] };
+  assert.deepEqual([withStages([c], q)[0].stage, withStages([c], q)[0].unsynced], ["pending", true]);
+  const two = { 1: [...q[1], { event: "deleted", from: "pending", at: "2026-10-24T10:05:00Z" }] };
+  assert.equal(withStages([c], two)[0].stage, "passed");
+  assert.equal(withStages([{ ...c, stage: "pending" }], q)[0].stage, "pending"); // already in Drive
+  assert.equal(withStages([{ ...c, stage: "in_process" }], q)[0].stage, "in_process"); // Claude moved it on
+  assert.equal(withStages([c], {})[0], c);
+  assert.equal(withStages([c], { 1: [] })[0], c);
+  // On screen: the review task becomes the waiting pending task.
+  const tasks = sync(withStages([c], q), sync([c]));
+  assert.equal(tasks[0].title, "Applied: Co1"); assert.equal(tasks[0].status, "waiting"); assert.equal(tasks[0].source.unsynced, true);
 });
 
 // ---------- ranking and the why line ----------
 const NOW = new Date(2026, 9, 21, 10).getTime();
 const moment = (o = {}) => E.readMoment({ now: NOW, ...o });
-const jobTask = (c) => ({ id: c.id, ...createTask(jobInput(c), { now: NOW }), status: "ready" });
+const jobTask = (c) => ({ id: c.id, ...createTask(jobTasks(c, { today: "2026-10-21" })[0].input, { now: NOW }), status: "ready" });
 
 test("higher fit ranks higher; a deadline in 3 days beats fit", () => {
-  const hi = jobTask(card(1, "new", { fit: 9 })), lo = jobTask(card(2, "new", { fit: 5 }));
+  const hi = jobTask(card(1, "review", { fit: 9 })), lo = jobTask(card(2, "review", { fit: 5 }));
   const a = E.scoreTask(hi, moment()), b = E.scoreTask(lo, moment());
   assert.ok(a.score > b.score);
-  const soon = jobTask(card(3, "new", { fit: 5, deadline: "2026-10-23" }));
+  const soon = jobTask(card(3, "review", { fit: 5, deadline: "2026-10-23" }));
   assert.ok(E.scoreTask(soon, moment()).score > a.score);
 });
 
 test("the why line leads with Fit and the card's why", () => {
-  const s = E.scoreTask(jobTask(card(1, "new", { fit: 8, why: "Same stack" })), moment());
+  const s = E.scoreTask(jobTask(card(1, "review", { fit: 8, why: "Same stack" })), moment());
   assert.match(E.whyLine(s), /^Fit 8\/10 · Same stack/);
-  const bare = E.scoreTask(jobTask(card(2, "new", { fit: 4, why: "" })), moment());
-  assert.ok(!/^Fit/.test(E.whyLine(bare)) || E.whyLine(bare).startsWith("Fit 4/10"));
   assert.doesNotMatch(E.whyLine(E.scoreTask(createTask({ title: "Call the bank" }, { now: NOW }), moment())), /Fit/);
 });
 
 // ---------- the Drive read ----------
 const res = (status, body, text) => ({ ok: status < 300, status, json: async () => body, text: async () => text ?? JSON.stringify(body) });
 
-test("readJobs looks the file up by name, newest first, then reads it", async () => {
+test("readJobs finds jobs.json by name in the Job Hunt folder, newest first, on every read", async () => {
   const calls = [];
   const fetchFn = async (url, init) => {
     calls.push(String(url)); assert.equal(init.headers.Authorization, "Bearer tok");
     return String(url).includes("alt=media") ? res(200, null, JSON.stringify([{ id: "a" }, { nope: 1 }, null]))
       : res(200, { files: [{ id: "F1", modifiedTime: "2026-10-20T00:00:00Z" }] });
   };
-  const out = await readJobs("tok", fetchFn);
-  assert.deepEqual(out.cards, [{ id: "a" }]);
+  assert.deepEqual(await readJobs("tok", fetchFn), { cards: [{ id: "a" }], modified: "2026-10-20T00:00:00Z", fileId: "F1" });
   const q = new URL(calls[0]).searchParams;
   assert.match(q.get("q"), /name='jobs\.json' and '1_sAGh_9VYSD2YEDxzQqnLzvII3Q4JgiE' in parents and trashed=false/);
   assert.equal(q.get("orderBy"), "modifiedTime desc");
   assert.match(calls[1], /files\/F1\?alt=media/);
+  await readJobs("tok", fetchFn);
+  assert.equal(calls.filter((c) => new URL(c).searchParams.has("q")).length, 2); // looked up again, not remembered
 });
 
 test("readJobs: no file → no cards; 401 → reauth; 403 scope → scope; bad JSON → error", async () => {
-  assert.deepEqual(await readJobs("t", async () => res(200, { files: [] })), { cards: [], modified: null });
+  assert.deepEqual(await readJobs("t", async () => res(200, { files: [] })), { cards: [], modified: null, fileId: null });
   await assert.rejects(readJobs("t", async () => res(401, {})), { reauth: true });
   await assert.rejects(readJobs("t", async () => res(403, { error: { message: "Request had insufficient authentication scopes.", errors: [{ reason: "insufficientPermissions" }] } })), { scope: true });
-  await assert.rejects(readJobs("t", async () => res(403, { error: { message: "Drive API has not been used", errors: [{ reason: "accessNotConfigured" }] } })), (e) => !e.scope && !e.reauth);
-  const bad = async (u) => (String(u).includes("alt=media") ? res(200, null, "{oops") : res(200, { files: [{ id: "F" }] }));
-  await assert.rejects(readJobs("t", bad), /not JSON/);
+  await assert.rejects(readJobs("t", async (u) => (String(u).includes("alt=media") ? res(200, null, "{oops") : res(200, { files: [{ id: "F" }] }))), /not JSON/);
 });
 
-// ---------- Apply / Review / View CV (2026-10-21) ----------
-import { jobActions, cvId } from "../../app/js/jobs.js";
-import { viewCv, withPrintButton } from "../../app/js/cv.js";
-import { readCv } from "../../functions/_daisey-lib/jobs-drive.js";
-const taskOf = (c) => createTask(jobInput(c), { now: NOW });
-const DRIVE = "https://drive.google.com/file/d/1AbC-dEf_9/view";
+// ---------- the folder move ----------
+// A fake Drive: folders by id → parents; records PATCHes.
+const fakeFolders = (parents, { failMove = false } = {}) => {
+  const calls = [];
+  const fetchFn = async (url, init = {}) => {
+    const u = new URL(url), id = decodeURIComponent(u.pathname.split("/").pop());
+    calls.push({ method: init.method || "GET", id, add: u.searchParams.get("addParents"), remove: u.searchParams.get("removeParents") });
+    if (init.method === "PATCH") { if (failMove) return res(500, { error: { message: "boom" } }); parents[id] = [u.searchParams.get("addParents")]; return res(200, { id }); }
+    return parents[id] ? res(200, { id, parents: parents[id] }) : res(404, {});
+  };
+  return { calls, fetchFn };
+};
 
-test("Start: review → the cover-letter Doc; new/ready → apply_link, else the job post + apply_note", () => {
-  const doc = "https://docs.google.com/document/d/REV/edit";
-  assert.equal(jobActions(taskOf(card(1, "review", { cover_letter: doc }))).start, doc);
-  const withApply = card(2, "ready", { apply_link: "https://co.example/apply", apply_note: "ignored" });
-  assert.deepEqual([jobActions(taskOf(withApply)).start, jobActions(taskOf(withApply)).note], ["https://co.example/apply", ""]);
-  assert.equal(jobActions(taskOf(card(3, "new", { apply_link: "https://co.example/apply" }))).start, "https://co.example/apply");
-  assert.equal(jobActions(taskOf(card(4, "ready", { apply_link: "mailto:jobs@co.example?subject=Hi" }))).start, "mailto:jobs@co.example?subject=Hi");
-  const none = jobActions(taskOf(card(5, "ready", { apply_link: "", apply_note: "Apply on the careers page" })));
-  assert.deepEqual([none.start, none.note], ["https://jobs.example/5", "Apply on the careers page"]);
-  assert.equal(jobActions(taskOf(card(6, "new", { apply_link: "javascript:alert(1)" }))).start, "https://jobs.example/6");
+test("a job's folder moves by id to the stage its done/delete leads to", async () => {
+  for (const [from, event] of [["review", "done"], ["ready", "done"], ["pending", "done"], ["review", "deleted"], ["ready", "deleted"], ["pending", "deleted"], ["in_process", "deleted"]]) {
+    const to = TRANSITIONS[from][event];
+    const d = fakeFolders({ JOBFOLDER123: [F[from]] });
+    const out = await driveMove.moveJobFolder("tok", { folderId: "JOBFOLDER123", from, to }, d.fetchFn);
+    assert.equal(out.moved, true, `${from} ${event}`);
+    assert.deepEqual(d.calls.at(-1), { method: "PATCH", id: "JOBFOLDER123", add: F[to], remove: F[from] });
+  }
 });
 
-test("old cards without the new fields still work", () => {
-  const old = card(7, "ready"); // no apply_link / apply_note
-  const a = jobActions(taskOf(old));
-  assert.deepEqual([a.start, a.note, a.cv], ["https://jobs.example/7", "", ""]);
-  assert.equal(jobActions(createTask({ title: "x", source: { app: "jobhunt", cardId: "9", status: "ready" } }, { now: NOW })).start, "");
-  assert.equal(jobActions(createTask({ title: "Call the bank" }, { now: NOW })), null);
+test("never a double move: checked first; already there → no PATCH; elsewhere → conflict; closed stays put", async () => {
+  const there = fakeFolders({ JOBFOLDER123: [F.pending] });
+  assert.equal((await driveMove.moveJobFolder("tok", { folderId: "JOBFOLDER123", from: "review", to: "pending" }, there.fetchFn)).moved, false);
+  assert.ok(!there.calls.some((c) => c.method === "PATCH"));
+  const off = fakeFolders({ JOBFOLDER123: ["SOMEWHEREELSE"] });
+  await assert.rejects(driveMove.moveJobFolder("tok", { folderId: "JOBFOLDER123", from: "review", to: "pending" }, off.fetchFn), { conflict: true });
+  const closed = fakeFolders({ JOBFOLDER123: [F.in_process] });
+  assert.equal((await driveMove.moveJobFolder("tok", { folderId: "JOBFOLDER123", from: "in_process", to: "closed" }, closed.fetchFn)).moved, false);
+  assert.equal(closed.calls.length, 0);
+  await assert.rejects(driveMove.moveJobFolder("tok", { folderId: F.pending, from: "review", to: "pending" }, closed.fetchFn), { bad: true });
 });
 
-test("View CV: only review/ready, only a Drive file URL; the CV and Start links are not doubled as chips", () => {
-  assert.equal(cvId(DRIVE), "1AbC-dEf_9");
-  assert.equal(cvId("https://docs.example/cv1"), "");
-  assert.equal(jobActions(taskOf(card(1, "review", { cv: DRIVE }))).cv, "1AbC-dEf_9");
-  assert.equal(jobActions(taskOf(card(2, "ready", { cv: DRIVE }))).cv, "1AbC-dEf_9");
-  assert.equal(jobActions(taskOf(card(3, "new", { cv: DRIVE }))).cv, "");
-  assert.equal(jobActions(taskOf(card(4, "review", { cv: "https://docs.example/cv4" }))).cv, "");
-  const a = jobActions(taskOf(card(5, "review", { cv: DRIVE, cover_letter: "https://docs.google.com/document/d/R/edit" })));
-  assert.deepEqual(a.links.map((l) => l.label), ["Job post"]);
+// ---------- the stage write-back ----------
+// A fake Drive with jobs.json (reads: the texts the file has on each read, so
+// Claude can save between Daisey's two reads) and job folders.
+// ids: the file's id on each lookup (Claude's rewrite makes a new one).
+function fakeDrive({ reads, ids = ["JOBS1"], parents = {}, failMove = false, failSave = false }){
+  const saved = [], moves = [], savedTo = [];
+  let n = 0, l = 0;
+  const fetchFn = async (url, init = {}) => {
+    const u = new URL(url), id = decodeURIComponent(u.pathname.split("/").pop());
+    if (u.pathname.startsWith("/upload/")) { if (failSave) return res(500, {}); saved.push(init.body); savedTo.push(id); return res(200, { id, modifiedTime: "2026-10-24T12:00:00Z" }); }
+    if (u.searchParams.get("q")) return res(200, { files: [{ id: ids[Math.min(l++, ids.length - 1)], modifiedTime: "m0" }] });
+    if (u.searchParams.get("alt") === "media") return res(200, null, reads[Math.min(n++, reads.length - 1)]);
+    if (init.method === "PATCH") { if (failMove) return res(500, {}); moves.push([id, u.searchParams.get("addParents")]); parents[id] = [u.searchParams.get("addParents")]; return res(200, { id }); }
+    return parents[id] ? res(200, { id, parents: parents[id] }) : res(404, {});
+  };
+  return { fetchFn, saved, moves, savedTo };
+}
+const AT = "2026-10-24T10:00:00.000Z";
+
+test("Done on review: folder to pending, then only stage / stage_at written, merged into a fresh read", async () => {
+  const mine = [{ id: "j1", company: "Co", status: "review", folder_id: "JOBFOLDER123", why: "x" }, { id: "j2", company: "Other", stage: "review" }];
+  // Between Daisey's two reads Claude rewrites the file (a new id), editing j1's why and adding a job.
+  const claude = [{ ...mine[0], why: "edited by Claude" }, mine[1], { id: "j3", company: "New", stage: "review" }];
+  const d = fakeDrive({ reads: [JSON.stringify(mine, null, 2), JSON.stringify(claude, null, 2) + "\n"], ids: ["JOBS1", "JOBS2"], parents: { JOBFOLDER123: [F.review] } });
+  const out = await writeStages("tok", { j1: { event: "done", from: "review", at: AT } }, d.fetchFn);
+  assert.deepEqual(out.results, { j1: "ok" });
+  assert.deepEqual(d.moves, [["JOBFOLDER123", F.pending]]);
+  assert.equal(d.saved.length, 1); assert.deepEqual(d.savedTo, ["JOBS2"]); // into Claude's new file
+  const file = JSON.parse(d.saved[0]);
+  assert.deepEqual(file, [{ ...claude[0], stage: "pending", stage_at: AT }, claude[1], claude[2]]);
+  assert.match(d.saved[0], /^\[\n  \{\n    "id": "j1"/); // Claude's indent kept
+  assert.ok(d.saved[0].endsWith("}\n]\n"));
+  assert.equal(out.cards.length, 3);
 });
 
-test("Links & notes: post, apply, CV, cover letter, in that order; no kit folder; apply_note kept", () => {
-  const full = jobInput(card(1, "ready", { apply_link: "mailto:jobs@co.example?subject=Hi", apply_note: "Mention Sam" }));
-  assert.deepEqual(full.links.map((l) => [l.label, l.url]), [["Job post", "https://jobs.example/1"],
-    ["Apply", "mailto:jobs@co.example?subject=Hi"], ["CV", "https://docs.example/cv1"], ["Cover letter", "https://docs.example/cl1"]]);
-  assert.equal(full.source.applyNote, "Mention Sam");
-  assert.ok(!full.links.some((l) => /kit/i.test(l.label + l.url)));
-  // Empty cv / cover letter: just the chips that have something; apply equal to the post is not doubled.
-  const thin = jobInput(card(2, "review", { cv: "", cover_letter: "", apply_link: "https://jobs.example/2" }));
-  assert.deepEqual(thin.links.map((l) => l.label), ["Job post"]);
-  assert.equal(thin.source.applyNote, "");
-  assert.equal(jobInput(card(3, "new", { link: "", cv: "", cover_letter: "", kit_folder: "https://drive.example/kit" })).links, null);
+test("delete → passed; in_process done → closed with no move; Hebrew survives the write", async () => {
+  const jobs = [{ id: "j1", company: "סאונד", stage: "ready", folder_id: "JOBFOLDER123", apply_note: "לשלוח במייל" }, { id: "j2", stage: "in_process", folder_id: "JOBFOLDER456" }];
+  const d = fakeDrive({ reads: [JSON.stringify(jobs)], parents: { JOBFOLDER123: [F.ready], JOBFOLDER456: [F.in_process] } });
+  const out = await writeStages("tok", { j1: { event: "deleted", from: "ready", at: AT }, j2: { event: "done", from: "in_process", at: AT } }, d.fetchFn);
+  assert.deepEqual(out.results, { j1: "ok", j2: "ok" });
+  assert.deepEqual(d.moves, [["JOBFOLDER123", F.passed]]);
+  const file = JSON.parse(d.saved[0]);
+  assert.deepEqual(file.map((j) => j.stage), ["passed", "closed"]);
+  assert.equal(file[0].company, "סאונד"); assert.equal(file[0].apply_note, "לשלוח במייל");
 });
 
-test("a synced task picks the new fields up, and a second sync changes nothing", () => {
-  const before = createTask({ ...jobInput(card(1, "ready")), source: { app: "jobhunt", cardId: "1", status: "ready", fit: 8, why: "great match", deadline: null, stale: false } }, { now: NOW });
-  const tasks = [{ id: "t", ...before }];
-  const cards = [card(1, "ready", { apply_link: "https://co.example/apply", cv: DRIVE })];
-  const p = planSync(cards, tasks);
-  assert.equal(p.update.length, 1);
-  assert.equal(p.update[0].patch.source.start, "https://co.example/apply");
-  assert.equal(p.update[0].patch.source.cv, "1AbC-dEf_9");
-  assert.equal(planSync(cards, apply(tasks, p)).update.length, 0);
+test("a failed move saves nothing for that job (send it again); a retry after a half-done move doesn't move twice", async () => {
+  const jobs = [{ id: "j1", stage: "review", folder_id: "JOBFOLDER123" }];
+  const bad = fakeDrive({ reads: [JSON.stringify(jobs)], parents: { JOBFOLDER123: [F.review] }, failMove: true });
+  assert.deepEqual((await writeStages("tok", { j1: { event: "done", from: "review", at: AT } }, bad.fetchFn)).results, { j1: "failed" });
+  assert.equal(bad.saved.length, 0);
+  // The folder did move but the save didn't land: the retry sees it there and only saves.
+  const half = fakeDrive({ reads: [JSON.stringify(jobs)], parents: { JOBFOLDER123: [F.pending] } });
+  assert.deepEqual((await writeStages("tok", { j1: { event: "done", from: "review", at: AT } }, half.fetchFn)).results, { j1: "ok" });
+  assert.deepEqual(half.moves, []); assert.equal(half.saved.length, 1);
+  // Both landed already: nothing moved, nothing written.
+  const done = fakeDrive({ reads: [JSON.stringify([{ ...jobs[0], stage: "pending" }])], parents: { JOBFOLDER123: [F.pending] } });
+  assert.deepEqual((await writeStages("tok", { j1: { event: "done", from: "review", at: AT } }, done.fetchFn)).results, { j1: "ok" });
+  assert.deepEqual([done.moves, done.saved], [[], []]);
+  // A save that fails throws: the app keeps the change queued.
+  const noSave = fakeDrive({ reads: [JSON.stringify(jobs)], parents: { JOBFOLDER123: [F.review] }, failSave: true });
+  await assert.rejects(writeStages("tok", { j1: { event: "done", from: "review", at: AT } }, noSave.fetchFn));
 });
 
+test("a job Claude moved on, a job not in the file, a bad update: left alone", async () => {
+  const d = fakeDrive({ reads: [JSON.stringify([{ id: "j1", stage: "in_process", folder_id: "JOBFOLDER123" }])], parents: { JOBFOLDER123: [F.in_process] } });
+  const out = await writeStages("tok", { j1: { event: "done", from: "review", at: AT }, j9: { event: "done", from: "review", at: AT }, j2: { event: "nope", from: "review", at: AT } }, d.fetchFn);
+  assert.deepEqual(out.results, { j1: "conflict", j9: "gone", j2: "bad" });
+  assert.deepEqual([d.moves, d.saved], [[], []]);
+  await assert.rejects(writeStages("tok", {}, d.fetchFn), { bad: true });
+});
+
+test("a folder moved by hand is not moved again, and the stage is still saved", async () => {
+  const d = fakeDrive({ reads: [JSON.stringify([{ id: "j1", stage: "review", folder_id: "JOBFOLDER123" }])], parents: { JOBFOLDER123: ["ELSEWHERE"] } });
+  assert.deepEqual((await writeStages("tok", { j1: { event: "done", from: "review", at: AT } }, d.fetchFn)).results, { j1: "ok" });
+  assert.deepEqual(d.moves, []);
+  assert.equal(JSON.parse(d.saved[0])[0].stage, "pending");
+});
+
+// ---------- View CV (cv.js, kept; not on the job card any more) ----------
 test("readCv reads the file by id; 404 → notFound", async () => {
   const seen = [];
   assert.equal(await readCv("tok", "F/1", async (u, init) => { seen.push(String(u)); assert.equal(init.headers.Authorization, "Bearer tok"); return res(200, null, "<html>hi</html>"); }), "<html>hi</html>");
@@ -263,225 +394,3 @@ test("viewCv: window opens first, CV lands as a blob page, blob revoked when the
   } finally { URL.createObjectURL = oc; URL.revokeObjectURL = orv; }
 });
 
-// ---------- write-back: daisey-status.json (2026-10-21) ----------
-import { withStatus } from "../../app/js/jobs.js";
-const { readStatus, writeStatus } = createRequire(import.meta.url)("../../functions/_daisey-lib/jobs-drive.js");
-const T0 = "2026-10-20T09:00:00.000Z", T1 = "2026-10-21T10:00:00.000Z", T2 = "2026-10-21T11:00:00.000Z";
-
-test("withStatus: a newer decision beats the card; an older one, or none, doesn't", () => {
-  const cards = [card(1, "review", { status_at: T1 }), card(2, "review"), card(3, "review", { status_at: T2 })];
-  const out = withStatus(cards, { 1: { status: "ready", at: T2 }, 2: { status: "passed", at: T0 }, 3: { status: "ready", at: T1 } });
-  assert.deepEqual(out.map((c) => c.status), ["ready", "passed", "review"]);
-  assert.equal(out[0].status_at, T2);
-  assert.equal(out[2], cards[2]);
-  assert.equal(withStatus(cards, {}, {})[1], cards[1]);
-});
-
-test("withStatus: a queued tap beats the file's entry if newer, and marks the card unsynced", () => {
-  const cards = [card(1, "review")];
-  const both = withStatus(cards, { 1: { status: "passed", at: T1 } }, { 1: { status: "ready", at: T2 } });
-  assert.equal(both[0].status, "ready"); assert.equal(both[0].unsynced, true);
-  const older = withStatus(cards, { 1: { status: "passed", at: T2 } }, { 1: { status: "ready", at: T1 } });
-  assert.equal(older[0].status, "passed");
-  assert.equal(withStatus(cards, {}, {})[0].unsynced, undefined);
-});
-
-test("approve → the review task becomes Apply to…; Pass / Applied archive it; Claude's newer status takes over", () => {
-  const cards = [card(1, "review"), card(2, "ready"), card(3, "new"), card(4, "new")];
-  let tasks = apply([], planSync(cards, []));
-  const decided = { 1: { status: "ready", at: T1 }, 2: { status: "applied", at: T1 }, 3: { status: "passed", at: T1 } };
-  const seen = withStatus(cards, decided, {});
-  tasks = apply(tasks, planSync(seen, tasks));
-  const by = (n) => tasks.find((t) => t.source.cardId === String(n));
-  assert.equal(by(1).title, "Apply to Co1, Mixer"); assert.equal(by(1).status, "ready");
-  assert.equal(by(2).status, "dropped"); assert.equal(by(3).status, "dropped");
-  assert.equal(by(4).status, "ready"); // new, no decision: kept
-  assert.deepEqual(planSync(seen, tasks), { add: [], update: [] });
-  // Claude's Sunday run syncs it: same status, newer status_at → nothing flips.
-  const synced = [card(1, "ready", { status_at: "2026-10-26T00:00:00Z" })];
-  assert.deepEqual(planSync(withStatus(synced, decided, {}), [by(1)]), { add: [], update: [] });
-  // …and if Claude moves it on later, Claude wins over Daisey's older entry.
-  assert.equal(withStatus([card(1, "review", { status_at: "2026-10-28T00:00:00Z" })], decided, {})[0].status, "review");
-});
-
-test("a queued tap shows the not-synced dot, and clears when it lands", () => {
-  const cards = [card(1, "review")];
-  let tasks = apply([], planSync(cards, []));
-  const q = { 1: { status: "ready", at: T1 } };
-  tasks = apply(tasks, planSync(withStatus(cards, {}, q), tasks));
-  assert.equal(jobActions(tasks[0]).unsynced, true);
-  assert.deepEqual(jobActions(tasks[0]).choices.map((c) => c.label), ["Applied", "Pass"]);
-  tasks = apply(tasks, planSync(withStatus(cards, q, {}), tasks));
-  assert.equal(jobActions(tasks[0]).unsynced, false);
-});
-
-test("jobActions.choices: review Approve/Pass · ready Applied/Pass · new Pass", () => {
-  const c = (s) => jobActions(taskOf(card(1, s))).choices.map((x) => `${x.label}>${x.status}`);
-  assert.deepEqual(c("review"), ["Approve>ready", "Pass>passed"]);
-  assert.deepEqual(c("ready"), ["Applied>applied", "Pass>passed"]);
-  assert.deepEqual(c("new"), ["Pass>passed"]);
-});
-
-// A fake Drive: files by id, list by name, multipart create, media PATCH.
-function drive(files = {}){
-  const calls = [];
-  let n = 0;
-  const fetchFn = async (url, init = {}) => {
-    const u = new URL(url), id = decodeURIComponent(u.pathname.split("/").pop());
-    const kind = u.searchParams.get("uploadType") || (u.searchParams.get("alt") ? "media" : "");
-    calls.push(`${init.method || "GET"} ${u.pathname}${kind ? "?" + kind : ""}`);
-    assert.equal(init.headers.Authorization, "Bearer tok");
-    if (u.pathname === "/drive/v3/files") {
-      assert.match(u.searchParams.get("q"), /name='daisey-status\.json' and '1_sAGh_9VYSD2YEDxzQqnLzvII3Q4JgiE' in parents/);
-      return res(200, { files: Object.keys(files).map((k) => ({ id: k })) });
-    }
-    if (init.method === "PATCH") { if (!(id in files)) return res(404, {}); files[id] = init.body; return res(200, { id }); }
-    if (init.method === "POST") {
-      assert.equal(kind, "multipart");
-      assert.match(init.headers["Content-Type"], /^multipart\/related; boundary=/);
-      const parts = init.body.split("\r\n");
-      assert.deepEqual(JSON.parse(parts[3]), { name: "daisey-status.json", parents: ["1_sAGh_9VYSD2YEDxzQqnLzvII3Q4JgiE"], mimeType: "application/json" });
-      const nid = "NEWFILE" + ++n; files[nid] = parts[7]; return res(200, { id: nid });
-    }
-    return id in files ? res(200, null, files[id]) : res(404, {});
-  };
-  return { files, calls, fetchFn };
-}
-const at = () => new Date("2026-10-21T12:00:00Z");
-
-test("writeStatus: first write creates the file in the folder (multipart) and returns its id", async () => {
-  const d = drive();
-  const out = await writeStatus("tok", "", { j1: { status: "ready", at: T1 } }, d.fetchFn, at);
-  assert.equal(out.fileId, "NEWFILE1");
-  assert.deepEqual(out.jobs, { j1: { status: "ready", at: T1 } });
-  assert.deepEqual(JSON.parse(d.files.NEWFILE1), { updated: "2026-10-21T12:00:00.000Z", jobs: out.jobs });
-  assert.deepEqual(d.calls, ["GET /drive/v3/files", "POST /upload/drive/v3/files?multipart"]);
-});
-
-test("writeStatus: later writes PATCH the stored id and keep the other jobs; an older tap loses", async () => {
-  const d = drive({ FILE12345678: JSON.stringify({ updated: T0, jobs: { a: { status: "passed", at: T2 }, b: { status: "ready", at: T1 } } }) });
-  const out = await writeStatus("tok", "FILE12345678", { b: { status: "applied", at: T2, note: " sent " }, a: { status: "ready", at: T1 }, bad: { status: "weird", at: T1 } }, d.fetchFn, at);
-  assert.deepEqual(out.jobs, { a: { status: "passed", at: T2 }, b: { status: "applied", at: T2, note: "sent" } });
-  assert.deepEqual(JSON.parse(d.files.FILE12345678).jobs, out.jobs);
-  assert.deepEqual(d.calls, ["GET /drive/v3/files/FILE12345678?media", "PATCH /upload/drive/v3/files/FILE12345678?media"]);
-});
-
-test("writeStatus: a stored id that is gone is searched by name; recreated only if not found", async () => {
-  const found = drive({ OTHERFILE123: JSON.stringify({ jobs: { a: { status: "ready", at: T1 } } }) });
-  const o1 = await writeStatus("tok", "GONEGONE1234", { b: { status: "passed", at: T2 } }, found.fetchFn, at);
-  assert.equal(o1.fileId, "OTHERFILE123"); assert.deepEqual(Object.keys(o1.jobs), ["a", "b"]);
-  const none = drive();
-  const o2 = await writeStatus("tok", "GONEGONE1234", { b: { status: "passed", at: T2 } }, none.fetchFn, at);
-  assert.equal(o2.fileId, "NEWFILE1");
-  assert.deepEqual(none.calls, ["GET /drive/v3/files/GONEGONE1234?media", "GET /drive/v3/files", "POST /upload/drive/v3/files?multipart"]);
-});
-
-test("writeStatus: nothing valid → bad; no drive.file scope → scope; 401 → reauth; a damaged file is rewritten", async () => {
-  await assert.rejects(writeStatus("tok", "", { j: { status: "new", at: T1 } }, drive().fetchFn), { bad: true });
-  await assert.rejects(writeStatus("tok", "", null, drive().fetchFn), { bad: true });
-  const scope = res(403, { error: { message: "Insufficient Permission", errors: [{ reason: "insufficientPermissions" }] } });
-  await assert.rejects(writeStatus("tok", "", { j: { status: "ready", at: T1 } }, async (u, i) => (i?.method === "POST" ? scope : res(200, { files: [] }))), { scope: true });
-  await assert.rejects(writeStatus("tok", "", { j: { status: "ready", at: T1 } }, async () => res(401, {})), { reauth: true });
-  const damaged = drive({ DAMAGED12345: "{oops" });
-  const out = await writeStatus("tok", "DAMAGED12345", { j: { status: "ready", at: T1 } }, damaged.fetchFn, at);
-  assert.deepEqual(Object.keys(out.jobs), ["j"]);
-});
-
-test("readStatus: by id, else by name; no file → no jobs and no id", async () => {
-  const d = drive({ FILE12345678: JSON.stringify({ jobs: { a: { status: "ready", at: T1 }, junk: 5 } }) });
-  assert.deepEqual(await readStatus("tok", "FILE12345678", d.fetchFn), { fileId: "FILE12345678", jobs: { a: { status: "ready", at: T1 } } });
-  assert.equal((await readStatus("tok", "", d.fetchFn)).fileId, "FILE12345678");
-  assert.deepEqual(await readStatus("tok", "", drive().fetchFn), { fileId: null, jobs: {} });
-});
-
-test("a job whose CV move failed stays open on Now, with no archive", () => {
-  const tasks = apply([], planSync([card(1, "ready")], []));
-  const applied = [card(1, "applied")];
-  assert.ok(planSync(applied, tasks).update.some((u) => u.patch.status === "dropped"));
-  const held = planSync(applied, tasks, { moveFailed: new Set(["1"]) });
-  assert.ok(!held.update.some((u) => u.patch.status === "dropped"));
-});
-
-const driveMove = createRequire(import.meta.url)("../../functions/_daisey-lib/drive-move.js");
-const { FOLDERS: F } = driveMove;
-
-// A fake Drive: folders by id → parents; records PATCHes.
-const fakeDrive = (parents) => {
-  const calls = [];
-  const fetchFn = async (url, init = {}) => {
-    const u = new URL(url), id = decodeURIComponent(u.pathname.split("/").pop());
-    calls.push({ method: init.method || "GET", id, add: u.searchParams.get("addParents"), remove: u.searchParams.get("removeParents") });
-    const body = (b) => ({ ok: true, status: 200, json: async () => b });
-    if (init.method === "PATCH") { parents[id] = [u.searchParams.get("addParents")]; return body({ id }); }
-    return parents[id] ? body({ id, parents: parents[id] }) : { ok: false, status: 404, json: async () => ({}) };
-  };
-  return { calls, fetchFn };
-};
-
-test("a job folder moves to the stage its done/delete leads to, by id", async () => {
-  const cases = [["to_review", "done", F.pending], ["ready_to_apply", "done", F.pending], ["pending", "done", F.in_process],
-    ["to_review", "deleted", F.passed], ["ready_to_apply", "deleted", F.passed], ["pending", "deleted", F.passed], ["in_process", "deleted", F.passed]];
-  for (const [from, event, to] of cases) {
-    const d = fakeDrive({ JOBFOLDER123: [F[from]] });
-    const out = await driveMove.moveJobFolder("tok", { folderId: "JOBFOLDER123", event, from }, d.fetchFn);
-    assert.deepEqual(out.parents, [to], `${from} ${event}`);
-    const patch = d.calls.find((c) => c.method === "PATCH");
-    assert.equal(patch.id, "JOBFOLDER123", "the job folder itself moves");
-    assert.equal(patch.add, to); assert.equal(patch.remove, F[from]);
-  }
-});
-
-test("done on an in-process job moves nothing (the task closes, the folder stays)", async () => {
-  const d = fakeDrive({ JOBFOLDER123: [F.in_process] });
-  const out = await driveMove.moveJobFolder("tok", { folderId: "JOBFOLDER123", event: "done", from: "in_process" }, d.fetchFn);
-  assert.equal(out.moved, false);
-  assert.ok(d.calls.every((c) => c.method === "GET"));
-});
-
-test("a folder already at the destination is left alone; one elsewhere is a conflict", async () => {
-  const done = fakeDrive({ JOBFOLDER123: [F.pending] });
-  assert.equal((await driveMove.moveJobFolder("tok", { folderId: "JOBFOLDER123", event: "done", from: "to_review" }, done.fetchFn)).moved, false);
-  assert.ok(done.calls.every((c) => c.method === "GET"), "no PATCH on a retry");
-  const off = fakeDrive({ JOBFOLDER123: [F.passed] });
-  await assert.rejects(driveMove.moveJobFolder("tok", { folderId: "JOBFOLDER123", event: "done", from: "to_review" }, off.fetchFn), { conflict: true });
-  assert.ok(off.calls.every((c) => c.method === "GET"));
-});
-
-test("with only a file (the CV) the move finds its folder; a stage folder is never moved", async () => {
-  const d = fakeDrive({ CVFILE12345: ["JOBFOLDER123"], JOBFOLDER123: [F.ready_to_apply] });
-  const out = await driveMove.moveJobFolder("tok", { fileId: "CVFILE12345", event: "done", from: "ready_to_apply" }, d.fetchFn);
-  assert.deepEqual(out.parents, [F.pending]);
-  assert.equal(d.calls.find((c) => c.method === "PATCH").id, "JOBFOLDER123", "the folder moves, not the CV");
-  // An old-layout CV sits directly in a stage folder: moving "its folder" would move the stage.
-  const old = fakeDrive({ CVFILE12345: [F.to_review] });
-  await assert.rejects(driveMove.moveJobFolder("tok", { fileId: "CVFILE12345", event: "done", from: "to_review" }, old.fetchFn), { bad: true });
-  assert.ok(old.calls.every((c) => c.method === "GET"));
-});
-
-test("a bad event or stage is rejected before Drive is touched", async () => {
-  const d = fakeDrive({ JOBFOLDER123: [F.to_review] });
-  for (const job of [{ event: "archive", from: "to_review" }, { event: "done", from: "nowhere" }, { event: "done", from: "passed" }]) {
-    await assert.rejects(driveMove.moveJobFolder("tok", { folderId: "JOBFOLDER123", ...job }, d.fetchFn), { bad: true });
-  }
-  assert.equal(d.calls.length, 0);
-});
-
-test("a job card's folder id comes from its kit_folder; core's events carry it", async () => {
-  const { folderIdOf, STAGE_OF, DONE_MEANS } = await import("../../app/js/jobs.js");
-  assert.equal(folderIdOf("https://drive.google.com/drive/folders/AbC-123_x?usp=sharing"), "AbC-123_x");
-  assert.equal(folderIdOf("https://drive.google.com/drive/u/1/folders/AbC-123_x"), "AbC-123_x");
-  assert.equal(folderIdOf("https://drive.example/kit1"), "");
-  assert.equal(folderIdOf("javascript:alert(1)"), "");
-  const planned = planSync([card(1, "review", { kit_folder: "https://drive.google.com/drive/folders/KIT123456789" })], []);
-  assert.equal(planned.add.length, 1);
-  assert.equal(planned.add[0].input.source.folderId, "KIT123456789");
-  assert.deepEqual([STAGE_OF.review, STAGE_OF.ready, DONE_MEANS.review, DONE_MEANS.ready], ["to_review", "ready_to_apply", "ready", "applied"]);
-
-  const { onTaskEvent, emitTask } = await import("../../app/js/task-events.js");
-  const heard = [];
-  const off = onTaskEvent((e) => heard.push(e));
-  const task = { id: "t1", source: { app: "jobhunt", folderId: "KIT123456789" } };
-  emitTask("task.done", task); emitTask("task.deleted", { id: "t2" });
-  off(); emitTask("task.done", task);
-  assert.deepEqual(heard.map((e) => [e.type, e.folderId]), [["task.done", "KIT123456789"], ["task.deleted", ""]]);
-});

@@ -35,7 +35,6 @@ import { waitingFor, personOf } from "./nudge.js";
 import { UNDO_MS } from "./undo.js";
 import { proposedWhy } from "./reason.js";
 import { jobActions } from "./jobs.js";
-import { viewCv } from "./cv.js";
 import { dayHours, isNight, nextMorning, dayEndAt, bookings, sameTitle, minText, gapsToday, planDate, usualHours, dayWord, slotsWord, answerDate, nightRange, planLabelDay, planWords, nightLendOver } from "./day.js";
 import { wrapList } from "./needs.js";
 import { needsCount, nightLine } from "./needs-list.js";
@@ -58,7 +57,7 @@ const clock = (ms) => new Date(ms).toLocaleTimeString([], { hour: "2-digit", min
 // how many tasks are done today, for the header's chip. onNeedsCount(n):
 // how many decisions Needs you holds, for the amber chip.
 // onWrap(): the evening wrap (Needs you: each task still open for today).
-export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap, name = "", onDone, onNeedsCount, onPlanProgress, onPlanNext, onPlanReady, onPlanApproved, planRoot, onPlanScreen, onReady, onFocusMode, onJob, missDialog = null, guest = false } = {}){
+export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap, name = "", onDone, onNeedsCount, onPlanProgress, onPlanNext, onPlanReady, onPlanApproved, planRoot, onPlanScreen, onReady, onFocusMode, missDialog = null, guest = false } = {}){
   let tasks = null; // null until the first snapshot
   let settings = {}; // state/settings: when the sweep was last offered
   let momentDoc = {}, momentKnown = false; // state/moment: place corrections, cardSeen
@@ -222,34 +221,16 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
       !main && progressBar(t),
       ...extra);
   }
-  // A Job Hunt task's actions (jobs.js jobActions): Start opens the step's
-  // page (review → the Doc with the CV changes and cover letter; new/ready → the
-  // apply link or email, else the job post, with the card's apply note under
-  // it), View CV, and the other documents, one tap each. The rest of the card
-  // has no Start, so these sit on it. After them, Mor's decision for the step
-  // (Approve / Pass, Applied / Pass): one tap writes it to Drive (jobs-sync
-  // decide) and the task changes at once. A dot says the write hasn't landed.
+  // A Job Hunt task's chips (jobs.js jobActions): CV, Cover letter, Job post,
+  // Apply (an email opens the mail app), one tap each, and the card's apply
+  // note under them. Done / Delete are the card's own buttons; what they mean
+  // for the job is the Job Hunt connection's (jobs-sync.js). A dot says a stage
+  // change hasn't reached Drive yet.
   const openRow = (t) => {
     const a = jobActions(t);
-    const choices = onJob ? a?.choices || [] : [];
-    if (!a || !(a.start || a.cv || a.links.length || a.note || choices.length || a.unsynced || a.retry)) return null;
-    const mail = a.start.startsWith("mailto:");
+    if (!a || !(a.links.length || a.note || a.unsynced)) return null;
     return h("div", { className: "now-open" },
-      a.start && h("a", { className: "chip go", href: a.start, ...(mail ? {} : { target: "_blank", rel: "noopener noreferrer" }), textContent: "Start" }),
-      // A CV move for this stage didn't land. Re-tapping the same stage re-runs it (jobs-sync.js sendMove).
-      a.retry && onJob && h("button", { type: "button", className: "chip job-retry", textContent: "Retry move", title: "The CV didn't move in Drive. Tap to try again.", onclick: (e) => {
-        e.currentTarget.disabled = true;
-        onJob(t, a.retry);
-      } }),
-      a.cv && h("button", { type: "button", className: "chip", textContent: "View CV", onclick: (e) => {
-        const b = e.currentTarget; b.disabled = true;
-        viewCv(a.cv).then((r) => { b.disabled = false; if (r !== true) flash(r); });
-      } }),
-      ...a.links.map((l) => h("a", { className: "chip", href: l.url, target: "_blank", rel: "noopener noreferrer", textContent: l.label })),
-      ...choices.map((c) => h("button", { type: "button", className: "chip", textContent: c.label, onclick: (e) => {
-        e.currentTarget.disabled = true; // one tap, one write
-        onJob(t, c.status);
-      } })),
+      ...a.links.map((l) => h("a", { className: "chip", href: l.url, ...(l.url.startsWith("mailto:") ? {} : { target: "_blank", rel: "noopener noreferrer" }), textContent: l.label })),
       a.unsynced && h("span", { className: "job-unsynced", role: "img", title: "Not synced to Drive yet", ariaLabel: "Not synced to Drive yet" }),
       a.note && h("p", { className: "now-apply-note", dir: "auto", textContent: a.note }));
   };

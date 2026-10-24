@@ -733,7 +733,12 @@ async function boot(){
           jobsRow.hidden = !reconnect && st !== "ok";
           jobsBtn.hidden = !reconnect;
           connNote(jobsNote, reconnect ? "Expired" : "Connected");
-        });
+        }, { onRetry: (n) => {
+          const b = $("#jobsRetry");
+          b.hidden = !n; b.disabled = false;
+          b.ariaLabel = `Job Hunt: ${n} stage change${n === 1 ? "" : "s"} not saved to Drive. Tap to retry.`;
+        } });
+        $("#jobsRetry").onclick = () => { const b = $("#jobsRetry"); b.disabled = true; jobs?.retry().finally(() => { b.disabled = false; }); };
         $("#settingsBtn").addEventListener("click", () => jobs?.refresh());
         m.menu = { unmount(){ jobs?.stop(); stopSettings(); stopCal(); stopBriefTasks(); stopBriefPlan(); clearInterval(seenTick); document.removeEventListener("visibilitychange", seen); settingsDlg.removeEventListener("click", foldMeal); settingsDlg.removeEventListener("close", shutMeal); start.onchange = end.onchange = logSwitch.onchange = pushSwitch.onchange = pushTest.onclick = null;
           kindBoxes.forEach((b) => { b.onchange = null; }); } };
@@ -936,7 +941,7 @@ async function boot(){
         $("#planChip").onclick = () => { seenHint(); if (phone.matches && (planNow || !planReady || document.body.classList.contains("day-open"))) window.__toggleDay(); else morph(() => m.now?.plan()); };
         m.now = mountNow($("#nowcard"), user.uid, {
           name: isGuest ? "" : (user.displayName || "").trim().split(/\s+/)[0], onDone: paintDone, onNeedsCount: paintNeeds, onPlanProgress: paintPlan,
-          onPlanReady: paintReady, onPlanApproved: cheerPlan, onJob: jobs ? (t, status) => jobs.decide(t.source.cardId, status) : null,
+          onPlanReady: paintReady, onPlanApproved: cheerPlan,
           onFocusMode: (on) => {
             const b = focusBtn, was = b.getAttribute("aria-pressed") === "true";
             b.setAttribute("aria-pressed", String(on)); b.ariaLabel = on ? "Focus mode on: tap to show everything" : "Focus mode: only the Now card";

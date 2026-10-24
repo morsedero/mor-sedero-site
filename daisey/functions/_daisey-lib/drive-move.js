@@ -1,26 +1,41 @@
-// Moving a job's own Drive FOLDER between the Job Hunt stage folders. This file
-// is the Job Hunt connection's config: core knows only "an event and a folder
-// id"; which stage a done/delete leads to lives in TRANSITIONS below. A user
-// with their own pipeline changes FOLDERS and TRANSITIONS, nothing else.
+// The Job Hunt connection's config, and the folder move it drives. Core knows
+// only "a task was done / deleted"; what that means for a job lives here: the
+// stage it goes to (TRANSITIONS) and the Drive folder each stage is (FOLDERS).
+// A user with their own pipeline changes these two tables, nothing else.
+// app/js/jobs.js holds a copy of TRANSITIONS for the instant on-screen change;
+// jobs.test.mjs fails if the two drift.
 //   Job Hunt/jobs/ holds one folder per stage; each job is a subfolder of one.
 // Folders are matched by ID, never by name (a stage was renamed once already).
 // A move only changes the job folder's parent. Nothing is ever deleted in Drive.
 const ROOT = "15ARYM4_zMdpNK7At_L6tBSxe8Q_ut3JO"; // "jobs"
 const FOLDERS = {
-  to_review: "1RZplmNbCyxeLTArQ10bl1zhse0teajNh", // 1 to review
-  ready_to_apply: "10JBoTbxmSykvjVtbCxS5qGaXKa9voiDb", // 2 ready to apply
+  review: "1RZplmNbCyxeLTArQ10bl1zhse0teajNh", // 1 to review
+  ready: "10JBoTbxmSykvjVtbCxS5qGaXKa9voiDb", // 2 ready to apply
   pending: "1nbP94U4nSWFVW2yXrXsPA0Jlcj4KL3Of", // 3 pending
   in_process: "1-vbR7puV7TgFgtlhT7RvtIKe6hLPEDh6", // 4 in process
   passed: "1uD-CheX4UIR8jb5XLcj5Q9ZXd0olliEg", // 5 passed
 };
-// stage → { done, deleted } = the stage the folder goes to. null = no move
-// (done on an in-process job closes the task only; the folder stays).
+// stage → { done, deleted } = the stage the job goes to. "closed" has no
+// folder: a closed job's folder stays where it is.
 const TRANSITIONS = {
-  to_review: { done: "pending", deleted: "passed" },
-  ready_to_apply: { done: "pending", deleted: "passed" },
+  review: { done: "pending", deleted: "passed" },
+  ready: { done: "pending", deleted: "passed" },
   pending: { done: "in_process", deleted: "passed" },
-  in_process: { done: null, deleted: "passed" },
+  in_process: { done: "closed", deleted: "passed" },
 };
+const STAGES = ["review", "ready", "pending", "in_process", "passed", "closed"];
+
+// The stage a card is in: `stage`, else the legacy `status` (new and review →
+// review, applied → pending, "in process" → in_process). "" when neither says.
+function stageOf(card) {
+  const s = String(card?.stage || "").trim().toLowerCase().replace(/[\s-]+/g, "_");
+  if (STAGES.includes(s)) return s;
+  const old = String(card?.status || "").trim().toLowerCase().replace(/[\s-]+/g, "_");
+  return { new: "review", review: "review", ready: "ready", applied: "pending", pending: "pending", in_process: "in_process", passed: "passed", closed: "closed" }[old] || "";
+}
+
+// The stage an event on a job in `from` leads to; "" for none.
+const nextStage = (from, event) => (Object.hasOwn(TRANSITIONS, from) && Object.hasOwn(TRANSITIONS[from], event) ? TRANSITIONS[from][event] : "");
 
 // Same error shape as jobs-drive.js's driveGet: { reauth } · { scope } · { notFound } · other Errors.
 async function driveCall(url, accessToken, fetchFn, init = {}) {
@@ -41,41 +56,26 @@ const fileUrl = (id) => {
   return u;
 };
 
-// The job's folder id: the one given, else the folder holding a file of the
-// job (its CV). Never a stage folder or the jobs folder itself.
-async function jobFolderId(accessToken, { folderId, fileId }, fetchFn) {
-  let id = folderId;
-  if (!id) {
-    const { parents = [] } = await driveCall(fileUrl(fileId), accessToken, fetchFn);
-    if (parents.length !== 1) throw Object.assign(new Error("file has no single folder"), { bad: true });
-    id = parents[0];
-  }
-  if (id === ROOT || Object.values(FOLDERS).includes(id)) throw Object.assign(new Error("not a job folder"), { bad: true });
-  return id;
-}
-
 // → { folderId, parents, moved } as Drive now has it.
-//   from: the stage the job was in when Mor acted. A folder already in the
-//   destination is left alone (a retry after a half-finished move is safe);
-//   one that is somewhere else is a conflict, not moved.
-async function moveJobFolder(accessToken, job, fetchFn = fetch) {
-  const { event, from } = job;
-  const step = TRANSITIONS[from];
-  if (!step || !Object.hasOwn(step, event)) throw Object.assign(new Error("no move for event"), { bad: true });
-  const id = await jobFolderId(accessToken, job, fetchFn);
-  const { parents = [] } = await driveCall(fileUrl(id), accessToken, fetchFn);
-
-  const dest = step[event];
-  if (dest === null) return { folderId: id, parents, moved: false }; // closed: the folder stays
-  const to = FOLDERS[dest];
-  if (parents.length === 1 && parents[0] === to) return { folderId: id, parents, moved: false };
+//   job: { folderId, from, to }: the job's folder, the stage it was acted on
+//   from and the stage it goes to. Its parent is read first, so a move is
+//   never made twice: a folder already in `to` is left alone (a retry after a
+//   half-finished move is safe), and one that is in neither stage folder (moved
+//   by hand) is a conflict, not moved. A stage with no folder (closed) moves nothing.
+async function moveJobFolder(accessToken, { folderId, from, to }, fetchFn = fetch) {
+  if (!FOLDERS[from] && FOLDERS[to]) throw Object.assign(new Error("no stage to move from"), { bad: true });
+  if (!folderId || folderId === ROOT || Object.values(FOLDERS).includes(folderId)) throw Object.assign(new Error("not a job folder"), { bad: true });
+  if (!FOLDERS[to]) return { folderId, parents: null, moved: false };
+  const { parents = [] } = await driveCall(fileUrl(folderId), accessToken, fetchFn);
+  const dest = FOLDERS[to];
+  if (parents.includes(dest)) return { folderId, parents, moved: false };
   if (!parents.includes(FOLDERS[from])) throw Object.assign(new Error("job is not in the stage it was acted on from"), { conflict: true });
 
-  const patch = fileUrl(id);
-  patch.searchParams.set("addParents", to);
+  const patch = fileUrl(folderId);
+  patch.searchParams.set("addParents", dest);
   patch.searchParams.set("removeParents", FOLDERS[from]);
   await driveCall(patch, accessToken, fetchFn, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: "{}" });
-  return { folderId: id, parents: [to, ...parents.filter((p) => p !== FOLDERS[from])], moved: true };
+  return { folderId, parents: [dest, ...parents.filter((p) => p !== FOLDERS[from])], moved: true };
 }
 
-module.exports = { moveJobFolder, FOLDERS, TRANSITIONS, ROOT };
+module.exports = { moveJobFolder, stageOf, nextStage, FOLDERS, TRANSITIONS, STAGES, ROOT };
