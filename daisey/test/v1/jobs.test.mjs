@@ -358,19 +358,6 @@ test("a folder moved by hand is not moved again, and the stage is still saved", 
   assert.equal(JSON.parse(d.saved[0])[0].stage, "pending");
 });
 
-// ---------- View CV (cv.js, kept; not on the job card any more) ----------
-test("readCv reads the file by id; 404 → notFound", async () => {
-  const seen = [];
-  assert.equal(await readCv("tok", "F/1", async (u, init) => { seen.push(String(u)); assert.equal(init.headers.Authorization, "Bearer tok"); return res(200, null, "<html>hi</html>"); }), "<html>hi</html>");
-  assert.match(seen[0], /files\/F%2F1\?alt=media/);
-  await assert.rejects(readCv("t", "F", async () => res(404, {})), { notFound: true });
-});
-
-test("the print button goes before </body>, or on the end", () => {
-  assert.match(withPrintButton("<html><body>x</body></html>"), /x<style>[\s\S]*Print to PDF<\/button><\/body><\/html>$/);
-  assert.match(withPrintButton("<p>no body tag</p>"), /^<p>no body tag<\/p><style>/);
-  assert.match(withPrintButton("<body></body>"), /Background graphics/);
-});
 test("a queued change applies only over an older stage_at; same or newer → stale, nothing moved or saved", async () => {
   const job = (o) => JSON.stringify([{ id: "j1", stage: "review", folder_id: "JOBFOLDER123", ...o }]);
   const ask = { j1: { event: "done", from: "review", at: AT } };
@@ -395,6 +382,20 @@ test("a queued change applies only over an older stage_at; same or newer → sta
   assert.deepEqual(race.saved, []);
 });
 
+// ---------- View CV (cv.js, kept; not on the job card any more) ----------
+test("readCv reads the file by id; 404 → notFound", async () => {
+  const seen = [];
+  assert.equal(await readCv("tok", "F/1", async (u, init) => { seen.push(String(u)); assert.equal(init.headers.Authorization, "Bearer tok"); return res(200, null, "<html>hi</html>"); }), "<html>hi</html>");
+  assert.match(seen[0], /files\/F%2F1\?alt=media/);
+  await assert.rejects(readCv("t", "F", async () => res(404, {})), { notFound: true });
+});
+
+test("the print button goes before </body>, or on the end", () => {
+  assert.match(withPrintButton("<html><body>x</body></html>"), /x<style>[\s\S]*Print to PDF<\/button><\/body><\/html>$/);
+  assert.match(withPrintButton("<p>no body tag</p>"), /^<p>no body tag<\/p><style>/);
+  assert.match(withPrintButton("<body></body>"), /Background graphics/);
+});
+
 
 test("viewCv: window opens first, CV lands as a blob page, blob revoked when the window closes", async () => {
   const w = { closed: false, document: { body: {} }, location: {}, closes: 0, close(){ this.closes++; } };
@@ -417,4 +418,3 @@ test("viewCv: window opens first, CV lands as a blob page, blob revoked when the
     assert.match(await viewCv("F", { token: async () => "t", open: () => null, fetchFn: async () => assert.fail("no fetch") }), /blocked/);
   } finally { URL.createObjectURL = oc; URL.revokeObjectURL = orv; }
 });
-
