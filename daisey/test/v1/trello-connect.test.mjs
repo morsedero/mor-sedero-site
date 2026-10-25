@@ -68,3 +68,27 @@ test("save: Trello rejecting the token stores nothing", async () => {
   assert.equal(res.statusCode, 400);
   assert.equal([...kv.keys()].some((k) => k.endsWith(":trello")), false);
 });
+
+test("cards: each card's checklists come back as steps, in order, ticks kept (2026-10-25)", async () => {
+  const cards = require("../../functions/daisey-now-trello.js");
+  let asked;
+  globalThis.fetch = async (url) => {
+    const u = new URL(url);
+    const json = u.pathname.endsWith("/lists") ? [{ id: "L1", name: "Home" }]
+      : u.pathname.endsWith("/cards") ? (asked = u.searchParams.get("checklists"), [
+        { id: "c1", name: "Paint", idList: "L1", due: null, checklists: [
+          { pos: 2, checkItems: [{ name: "Second list", state: "incomplete", pos: 1 }] },
+          { pos: 1, checkItems: [{ name: "Tape", state: "complete", pos: 2 }, { name: "Buy paint", state: "incomplete", pos: 1 }, { name: "  ", pos: 3 }] },
+        ] },
+        { id: "c2", name: "Call", idList: "L1", due: null },
+      ]) : { id: "B1", name: "Board" };
+    return { ok: true, json: async () => json, text: async () => "" };
+  };
+  await post({ authorization: "Bearer good:g-777" });
+  const res = await cards.handler({ httpMethod: "GET", headers: { authorization: "Bearer good:g-777" }, queryStringParameters: { cards: "B1" } });
+  assert.equal(res.statusCode, 200);
+  assert.equal(asked, "all");
+  const [paint, call] = JSON.parse(res.body).cards;
+  assert.deepEqual(paint.steps, [{ text: "Buy paint", done: false }, { text: "Tape", done: true }, { text: "Second list", done: false }]);
+  assert.deepEqual(call.steps, []);
+});

@@ -5,7 +5,9 @@
 //
 // GET ?boards            → { boards: [{ id, name }] }
 // GET ?cards=<boardId>   → { board, lists: [{ id, name }],
-//                            cards: [{ id, name, listId, listName, due, url }] }
+//                            cards: [{ id, name, listId, listName, due, url, steps }] }
+// steps: the card's checklist items, every checklist in order, as Daisey
+// steps [{ text, done }]; [] when it has none.
 // with "Authorization: Bearer <Firebase ID token>".
 //
 // Auth matches the calendar endpoints: the Firebase sign-in's Google `sub`
@@ -36,6 +38,12 @@ async function trello(path, token, params = {}) {
   if (!res.ok) throw Object.assign(new Error(`trello ${res.status}`), { status: res.status });
   return res.json();
 }
+
+const byPos = (a, b) => (a.pos || 0) - (b.pos || 0);
+const checkItems = (lists) => [...(lists || [])].sort(byPos)
+  .flatMap((cl) => [...(cl.checkItems || [])].sort(byPos))
+  .map((it) => ({ text: String(it.name || "").trim(), done: it.state === "complete" }))
+  .filter((s) => s.text);
 
 exports.handler = async (event) => {
   if (event.httpMethod !== "GET") return fail(405, "get_only");
@@ -73,7 +81,7 @@ exports.handler = async (event) => {
       const [board, lists, cards] = await Promise.all([
         trello(`/boards/${q.cards}`, token, { fields: "id,name" }),
         trello(`/boards/${q.cards}/lists`, token, { fields: "id,name" }),
-        trello(`/boards/${q.cards}/cards`, token, { filter: "open", fields: "id,name,due,dueComplete,idList,url" }),
+        trello(`/boards/${q.cards}/cards`, token, { filter: "open", fields: "id,name,due,dueComplete,idList,url", checklists: "all" }),
       ]);
       const listName = new Map(lists.map((l) => [l.id, l.name]));
       return reply(200, {
@@ -82,6 +90,7 @@ exports.handler = async (event) => {
         // Cards already ticked off in Trello aren't work anyone still has to do.
         cards: cards.filter((c) => !c.dueComplete).slice(0, MAX_CARDS).map((c) => ({
           id: c.id, name: c.name, listId: c.idList, listName: listName.get(c.idList) || "", due: c.due || null, url: c.url,
+          steps: checkItems(c.checklists),
         })),
       });
     }

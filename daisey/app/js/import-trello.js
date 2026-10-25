@@ -5,6 +5,11 @@
 // Run it again whenever: every imported task remembers its card id, so the
 // cards already here are listed as "already in Daisey" and only the new ones
 // come over. Nothing is written until the button is pressed.
+//
+// A card's checklist items come over as the task's steps, ticks and all
+// (Mor, 2026-10-25). A task imported before that, still with no steps of its
+// own, gets its card's checklist on the next press; steps it already has are
+// never touched.
 import { idToken } from "./firebase.js";
 import { watchTasks, addTask, updateTask } from "./store.js";
 import { h, bdi } from "./ui.js";
@@ -117,6 +122,16 @@ export function mountImport(dialog, uid){
     const have = imported();
     return state.cards.filter((c) => state.chosen.has(c.listId) && !have.has(c.id));
   }
+  // Tasks already here from this board that have no steps, but whose card
+  // has a checklist now: [task, steps].
+  function fills(){
+    const card = new Map(state.cards.map((c) => [c.id, c]));
+    return tasks.flatMap((t) => {
+      const c = t.source?.app === "trello" && !t.steps?.length && card.get(t.source.cardId);
+      return c?.steps?.length ? [[t, c.steps]] : [];
+    });
+  }
+  const label = (n, m) => n ? `Bring in ${n}${m ? `, add steps to ${m}` : ""}` : m ? `Add steps to ${m}` : "Bring in 0";
 
   const doImport = () => run(async () => {
     const cards = pick();
@@ -130,16 +145,22 @@ export function mountImport(dialog, uid){
         title: c.name,
         project: c.listName || state.board.name,
         due: c.due ? c.due.slice(0, 10) : "",
+        steps: c.steps,
         source: { app: "trello", cardId: c.id, boardId: state.board.id },
       }, tasks).catch((e) => { throw e; });
     }
+    const filled = fills();
+    for (const [t, steps] of filled) await updateTask(uid, t, { steps }, tasks);
     state.done = cards.length;
+    state.filled = filled.length;
     state.step = "done";
   });
 
   function body(){
     if (state.step === "done") {
-      return [h("p", { textContent: state.done ? `Brought in ${state.done} card${state.done === 1 ? "" : "s"}. Daisey owns them now — Trello won't hear about changes.` : "Nothing new to bring in." }),
+      const n = state.done, m = state.filled;
+      const said = [n && `Brought in ${n} card${n === 1 ? "" : "s"}.`, m && `Added steps to ${m} task${m === 1 ? "" : "s"} already here.`].filter(Boolean);
+      return [h("p", { textContent: said.length ? `${said.join(" ")} Daisey owns them now — Trello won't hear about changes.` : "Nothing new to bring in." }),
         h("button", { className: "btn primary", type: "button", textContent: "Done", onclick: close })];
     }
     if (state.step === "lists") {
@@ -157,8 +178,8 @@ export function mountImport(dialog, uid){
         })),
         h("div", { className: "imp-actions" },
           h("button", { className: "btn", type: "button", textContent: "Back", disabled: state.busy, onclick: () => { state.step = "boards"; render(); } }),
-          h("button", { className: "btn primary", type: "button", disabled: state.busy || !pick().length,
-            textContent: state.busy ? "Bringing them in…" : `Bring in ${pick().length}`, onclick: doImport })),
+          h("button", { className: "btn primary", type: "button", disabled: state.busy || !(pick().length || fills().length),
+            textContent: state.busy ? "Bringing them in…" : label(pick().length, fills().length), onclick: doImport })),
       ];
     }
     if (state.notConnected) return [h("p", { className: "muted", textContent: "Connect Trello once, then pick the boards to bring in." }),
