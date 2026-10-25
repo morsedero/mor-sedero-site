@@ -83,7 +83,8 @@ export function startJobs(uid, onStatus = () => {}, { now = () => new Date(), on
   async function fetchCards(){
     const res = await fetch(URL_, { headers: await auth() });
     const body = await res.json().catch(() => ({}));
-    if (res.ok) return { status: "ok", cards: Array.isArray(body.cards) ? body.cards : [], modified: body.modified || null };
+    // canWrite false: the cards read, but a stage move would fail — Reconnect.
+    if (res.ok) return { status: body.canWrite === false ? "needs_drive" : "ok", cards: Array.isArray(body.cards) ? body.cards : [], modified: body.modified || null };
     return { status: REASONS.includes(body.error) ? body.error : "error" };
   }
 
@@ -146,7 +147,7 @@ export function startJobs(uid, onStatus = () => {}, { now = () => new Date(), on
     loading = flush().then(fetchCards).catch((e) => { console.error("[daisey] jobs", e); return { status: "error" }; })
       .then((r) => {
         if (stopped) return;
-        if (r.status === "ok") {
+        if (r.cards) {
           cards = r.cards; complete = !!r.modified; // no file found: nothing is marked stale
           keep(r.modified);
           reconcile();

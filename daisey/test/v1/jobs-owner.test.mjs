@@ -51,3 +51,23 @@ test("isJobsOwner: a verified address only", () => {
   assert.equal(isJobsOwner(who("morsedero@gmail.com", false)), false);
   assert.equal(isJobsOwner(null), false);
 });
+
+// A grant from before the full drive scope reads fine but can't move a folder:
+// the read says so (canWrite false) so the app offers Reconnect up front.
+stub("../../functions/_daisey-lib/jobs-drive.js", { readJobs: async () => ({ cards: [{ id: "j1" }], modified: null, fileId: "f" }), writeStages: async () => ({}) });
+const jobs = require("../../functions/daisey-now-jobs.js");
+
+test("daisey-now-jobs GET: canWrite follows the grant's scope", async () => {
+  claims = who("morsedero@gmail.com");
+  const real = globalThis.fetch;
+  try {
+    for (const [scope, want] of [["https://www.googleapis.com/auth/drive.readonly openid", false], ["https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/calendar", true]]) {
+      globalThis.fetch = async (u) => { assert.match(u, /tokeninfo\?access_token=at$/); return { ok: true, json: async () => ({ scope }) }; };
+      const body = JSON.parse((await jobs.handler({ httpMethod: "GET", headers: { authorization: "Bearer t" } })).body);
+      assert.equal(body.canWrite, want, scope);
+      assert.equal(body.cards.length, 1);
+    }
+    globalThis.fetch = async () => ({ ok: false }); // tokeninfo down: no nag
+    assert.equal(JSON.parse((await jobs.handler({ httpMethod: "GET", headers: { authorization: "Bearer t" } })).body).canWrite, true);
+  } finally { globalThis.fetch = real; }
+});
