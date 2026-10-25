@@ -41,7 +41,9 @@ export function sortable(list, { onMove, busy, grid = false }){
     raf = requestAnimationFrame(tick);
   };
   const arm = () => {
-    clearTimeout(hold); armed = dragged = true; busy(true);
+    clearTimeout(hold);
+    if (!list.isConnected) return disarm(); // redrawn under a finger mid-hold: no drag, no held redraws
+    armed = dragged = true; busy(true);
     try { row.setPointerCapture(pid); } catch {}
     sc = scroller(); s0 = sc.scrollTop;
     const all = rows();
@@ -56,12 +58,17 @@ export function sortable(list, { onMove, busy, grid = false }){
     raf = requestAnimationFrame(tick);
     show();
   };
-  const disarm = () => { clearTimeout(hold); pid = null; };
+  const disarm = () => { clearTimeout(hold); pid = null; removeEventListener("pointerup", end); removeEventListener("pointercancel", end); };
   list.addEventListener("pointerdown", (e) => {
     if (e.button || pid != null) return;
     const r = e.target.closest(".pp-drag");
     if (!r || !list.contains(r) || e.target.closest(".pp-ctls, .pj-tick")) return; // the buttons stay buttons
     row = r; pid = e.pointerId; x0 = lastX = e.clientX; y0 = lastY = e.clientY; dragged = false;
+    // The window hears the lift too: a redraw mid-press takes the list out
+    // of the page, so its own pointerup never comes and the hold would arm
+    // a drag that never ends, holding every redraw after it (Mor, 2026-10-25:
+    // a renamed project showed only after leaving the page and coming back).
+    addEventListener("pointerup", end); addEventListener("pointercancel", end);
     if (e.pointerType !== "mouse") hold = setTimeout(arm, 350);
   });
   list.addEventListener("pointermove", (e) => {
@@ -189,7 +196,9 @@ export function zoneSortable(root, { onMove, busy, onZone }){
     raf = requestAnimationFrame(tick);
   };
   const arm = () => {
-    clearTimeout(hold); armed = dragged = true; busy(true);
+    clearTimeout(hold);
+    if (!root.isConnected) return disarm(); // as sortable's
+    armed = dragged = true; busy(true);
     try { root.setPointerCapture(pid); } catch {} // the root: the card moves in the DOM, which would drop a capture on it
     sc = scroller();
     ({ top: start, left: startX } = card.getBoundingClientRect());
@@ -200,12 +209,13 @@ export function zoneSortable(root, { onMove, busy, onZone }){
     raf = requestAnimationFrame(tick);
     show();
   };
-  const disarm = () => { clearTimeout(hold); pid = null; };
+  const disarm = () => { clearTimeout(hold); pid = null; removeEventListener("pointerup", end); removeEventListener("pointercancel", end); };
   root.addEventListener("pointerdown", (e) => {
     if (e.button || pid != null || settling) return;
     const c = e.target.closest(".pp-drag");
     if (!c || !root.contains(c)) return;
     card = c; pid = e.pointerId; x0 = lastX = e.clientX; y0 = lastY = e.clientY; dragged = false;
+    addEventListener("pointerup", end); addEventListener("pointercancel", end); // as sortable's
     if (e.pointerType !== "mouse") hold = setTimeout(arm, 350);
   });
   root.addEventListener("pointermove", (e) => {
