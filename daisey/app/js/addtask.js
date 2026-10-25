@@ -23,7 +23,7 @@
 // While typing a new task's title they catch up only once typing stops.
 import { nudgeText, waLink } from "./nudge.js";
 import { watchTasks, addTask, updateTask, removeTask, restoreTask, watchProjectNames, unlogReopened } from "./store.js";
-import { durText, guessFields, validField, CHOICES, LABELS, INBOX, localDate, logicalDate, clampDate, outsideRange, progressOf, isLink } from "./model.js";
+import { durText, guessFields, validField, CHOICES, LABELS, INBOX, localDate, logicalDate, clampDate, outsideRange, progressOf, isLink, bringBack } from "./model.js";
 import { keepFile, dropFile, fileUrl } from "./files.js";
 import { h, flash, icon, bdi, closeOrAsk, askOnEsc } from "./ui.js";
 import { projectsOf } from "./projects.js";
@@ -560,7 +560,8 @@ export function mountAddTask(dialog, uid, { onStart, onDone } = {}){
     stateLine.replaceChildren(...(done
       ? [`Done ${doneDayLabel(t.doneAt)}. `,
         h("button", { type: "button", className: "linkish", textContent: "Reopen", onclick: () => { unlogReopened(uid, t); save({ status: "ready" }); } })]
-      : ["On hold. Focus brings it back."]));
+      // Bring back: the same way out as the project's On hold list (Mor, 2026-10-25).
+      : ["On hold. ", h("button", { type: "button", className: "linkish", textContent: "Bring back", onclick: () => save(bringBack(t)) })]));
     const r = t?.research;
     researchLine.hidden = !r || r.online === "unsure" || !r.why;
     researchLine.textContent = r ? `${r.online === "yes" ? "Daisey checked: can be done online" : "Daisey checked: needs a call or a visit"}${r.why ? ` — ${r.why}` : ""}` : "";
