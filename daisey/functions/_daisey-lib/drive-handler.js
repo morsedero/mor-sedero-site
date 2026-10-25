@@ -6,10 +6,11 @@
 // object, else 400 bad_body); one refresh on a 401. A run that throws {bad}
 // is a 400 bad_updates.
 //
-// Errors: 401 no_session · 404 not_connected · 409 needs_reauth (grant gone
+// Errors: 401 no_session · 403 not_owner (Job Hunt is Mor's alone, owner.js) · 404 not_connected · 409 needs_reauth (grant gone
 // or expired — Reconnect) · 409 needs_drive (grant predates the Drive scope —
 // Reconnect) · 502 google (Drive failed, e.g. the Drive API isn't enabled).
 const { verifyIdToken } = require("./firebase-auth");
+const { isJobsOwner } = require("./owner");
 const { accessForSub } = require("./now-calendar");
 const { getGoogleAccessToken } = require("./tokens");
 
@@ -35,6 +36,7 @@ async function driveHandler(event, run, name, methods = ["GET"]){
   } catch (e) {
     return fail(401, "no_session");
   }
+  if (!isJobsOwner(claims)) return fail(403, "not_owner");
   const sub = claims.firebase?.identities?.["google.com"]?.[0];
   if (!sub) return fail(404, "not_connected");
 

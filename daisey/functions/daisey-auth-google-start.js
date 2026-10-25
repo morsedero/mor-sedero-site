@@ -1,6 +1,7 @@
 // Starts the Google OAuth flow. Redirects to Google's consent screen.
 // Sets a signed `state` cookie first, checked by the callback for CSRF.
 const crypto = require("crypto");
+const { isJobsOwnerEmail } = require("./_daisey-lib/owner");
 
 const CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 const SESSION_SECRET = process.env.SESSION_SECRET;
@@ -43,7 +44,9 @@ exports.handler = async (event = {}) => {
     // files Daisey didn't create.
     // include_granted_scopes keeps what an earlier grant had, so adding a
     // scope never takes one away.
-    scope: "https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/drive.file openid email",
+    // Drive only for Mor (2026-10-25, owner.js): Job Hunt is hers alone, so
+    // nobody else is asked for their Drive. drive-handler is the real gate.
+    scope: `https://www.googleapis.com/auth/calendar${isJobsOwnerEmail(hint) ? " https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/drive.file" : ""} openid email`,
     include_granted_scopes: "true",
     access_type: "offline",
     prompt: "consent",

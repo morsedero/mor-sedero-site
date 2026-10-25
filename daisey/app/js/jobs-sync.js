@@ -26,6 +26,9 @@ import { onTaskEvent } from "./task-events.js";
 import { logicalDate } from "./model.js";
 
 const URL_ = "/.netlify/functions/daisey-now-jobs";
+// Job Hunt is Mor's alone (2026-10-25): main.js starts it only for this
+// account. The server's own gate is functions/_daisey-lib/owner.js.
+export const JOBS_OWNER = "morsedero@gmail.com";
 const CACHE_KEY = "daisey.jobs.v2";
 const EVERY = 30 * 60000;
 const SOON = 60000; // back in view: read again, at most this often
