@@ -17,7 +17,12 @@
 //     ready    "Apply: <company>"
 //     pending, in_process: waiting (off Now; in the Job Hunt project)
 //     passed, closed: none (an open one is archived)
-//   job-<id>-b-<gap>     "Build: <gap> for <company>", one per gap
+//   job-gap-<gap>[-n]    "Build: <gap> (n/N) for <company>, …", one per gap
+//                        session, SHARED by every job listing that gap (any
+//                        case); source.cardId "gap", source.cardIds the jobs.
+//                        A gap is "text" (30 min, 1 session) or
+//                        { name, effort_min, sessions }. The old per job
+//                        job-<id>-b-<gap> is archived; one done stays cleared.
 //   job-<id>-nudge       pending: "Follow up: <company>" from follow_up_after,
 //                        else 7 days after stage_at
 //   job-<id>-interview   in_process with interview_at: a card on that day
@@ -43,7 +48,9 @@ export const STAGES = ["review", "ready", "pending", "in_process", "passed", "cl
 export const nextStage = (from, event) => (Object.hasOwn(TRANSITIONS, from) && Object.hasOwn(TRANSITIONS[from], event) ? TRANSITIONS[from][event] : "");
 
 const EFFORT = { review: 20, ready: 30, pending: 5, in_process: 5 };
-const BUILD_MIN = 30, NUDGE_MIN = 5, INTERVIEW_MIN = 60;
+const BUILD_MIN = 30, BUILD_MAX_SESSIONS = 8, NUDGE_MIN = 5, INTERVIEW_MIN = 60;
+const GAP_CARD = "gap"; // source.cardId of a shared Build task: no single card owns it
+const GAP_STAGES = new Set(["review", "ready", "pending", "in_process"]);
 const SOON_DAYS = 7; // a deadline this close: Review & apply first, gaps or not
 const NUDGE_DAYS = 7;
 const OPEN = new Set(["ready", "waiting", "someday"]); // a task the user has not finished or let go
@@ -74,7 +81,49 @@ export function gapKey(gap){
   for (const ch of str(gap).toLowerCase()) h = ((h * 33) ^ ch.codePointAt(0)) >>> 0;
   return h.toString(36);
 }
-const gapsOf = (c) => (Array.isArray(c.gaps) ? [...new Set(c.gaps.map(str).filter(Boolean))].slice(0, 20) : []);
+// A gap: "text" (BUILD_MIN, one session) or { name, effort_min, sessions }.
+export function gapOf(g){
+  if (typeof g === "string" || typeof g === "number") { const name = str(g); return name ? { name, min: BUILD_MIN, sessions: 1 } : null; }
+  if (!g || typeof g !== "object") return null;
+  const name = str(g.name);
+  if (!name) return null;
+  const n = Math.round(Number(g.sessions));
+  return { name, min: toMinutes(g.effort_min) || BUILD_MIN, sessions: n >= 1 ? Math.min(n, BUILD_MAX_SESSIONS) : 1 };
+}
+const gapsOf = (c) => {
+  const out = [], keys = new Set();
+  for (const g of Array.isArray(c.gaps) ? c.gaps : []) {
+    const x = gapOf(g);
+    if (!x || keys.has(gapKey(x.name))) continue;
+    keys.add(gapKey(x.name));
+    out.push(x);
+    if (out.length >= 20) break;
+  }
+  return out;
+};
+// Session ids of a gap: "<key>" for one session, "<key>-1" … "<key>-n" for more.
+const gapSessions = (g) => Array.from({ length: g.sessions }, (_, i) => (g.sessions > 1 ? `${gapKey(g.name)}-${i + 1}` : gapKey(g.name)));
+const sessionKey = (s) => `${GAP_CARD}:b-${s}`; // the dismissed key of one session
+// A job's gap is cleared when every session is done or deleted, or (from
+// before shared gaps) that job's own old Build task was.
+const gapCleared = (cardId, g, gone) => gone.has(`${cardId}:b-${gapKey(g.name)}`) || gapSessions(g).every((s) => gone.has(sessionKey(s)));
+// One shape per shared gap, so every job waits on the same sessions: two jobs
+// listing it as "Reel" and { name: "Reel", sessions: 2 } both get 2. The
+// first object wins, else the first string (card order).
+export function gapShapes(cards){
+  const out = new Map(), fromObject = new Set();
+  for (const c of cards) {
+    if (!GAP_STAGES.has(stageOf(c))) continue;
+    for (const raw of Array.isArray(c.gaps) ? c.gaps : []) {
+      const g = gapOf(raw), k = g && gapKey(g.name), obj = !!raw && typeof raw === "object";
+      if (!g || (out.has(k) && (fromObject.has(k) || !obj))) continue;
+      out.set(k, g);
+      if (obj) fromObject.add(k);
+    }
+  }
+  return out;
+}
+const shaped = (c, shapes) => gapsOf(c).map((g) => shapes?.get(gapKey(g.name)) || g);
 
 const addDays = (day, n) => { const d = new Date(`${day}T12:00`); d.setDate(d.getDate() + n); return localDate(d.getTime()); };
 // A date and an optional HH:MM from an ISO date or datetime. One with a zone
@@ -122,7 +171,7 @@ export function withStages(cards, queue){
 // What a card asks for: [{ id, role, key, input }] (input: addTask input).
 // dismissed: keys of side tasks done or deleted ("<cardId>:<role>:<what>").
 // today: the logical date, for "deadline within 7 days".
-export function jobTasks(c, { dismissed = new Set(), today = localDate() } = {}){
+export function jobTasks(c, { dismissed = new Set(), today = localDate(), shapes = null } = {}){
   const cardId = str(c.id), stage = stageOf(c);
   if (!cardId || !(stage in EFFORT)) return [];
   const co = str(c.company) || str(c.title) || "this job";
@@ -134,8 +183,8 @@ export function jobTasks(c, { dismissed = new Set(), today = localDate() } = {})
     input: { title, project: JOB_PROJECT, area: "job", size, links, nextStep: "", ...extra,
       source: { ...base, role, key: `${cardId}:${key}`, deadline: extra.due || null } } });
 
-  const gaps = stage === "review" || stage === "ready" || stage === "pending" || stage === "in_process"
-    ? gapsOf(c).filter((g) => !dismissed.has(`${cardId}:b-${gapKey(g)}`)) : [];
+  // Gaps only hold Review & apply back here; their Build tasks are buildTasks'.
+  const gaps = GAP_STAGES.has(stage) ? shaped(c, shapes).filter((g) => !gapCleared(cardId, g, dismissed)) : [];
   const soon = !!due && due <= addDays(today, SOON_DAYS);
   const out = [];
 
@@ -149,7 +198,6 @@ export function jobTasks(c, { dismissed = new Set(), today = localDate() } = {})
   } else {
     out.push(task("stage", "stage", `${stage === "pending" ? "Applied" : "In process"}: ${co}`, size, { status: "waiting", waitingOn: co }));
   }
-  for (const g of gaps) out.push(task("build", `b-${gapKey(g)}`, `Build: ${g} for ${co}`, BUILD_MIN, { ...(soon && stage === "review" ? dated : {}), status: "ready" }));
 
   if (stage === "pending") {
     const at = whenOf(c.stage_at);
@@ -162,6 +210,44 @@ export function jobTasks(c, { dismissed = new Set(), today = localDate() } = {})
       out.push(task("interview", `interview-${w.day}${w.time ? "T" + w.time : ""}`, `Interview: ${co}`, INTERVIEW_MIN,
         { notBefore: w.day, due: w.day, dueTime: w.time, dateKind: "deadline", status: "ready" }));
     }
+  }
+  return out;
+}
+
+// Build tasks across all cards: one per gap session, shared by every job that
+// lists the same gap. Size = the gap's effort_min. "for" names every job still
+// waiting on it; the due date is the nearest review deadline within SOON_DAYS.
+export function buildTasks(cards, { dismissed = new Set(), today = localDate(), shapes = gapShapes(cards) } = {}){
+  const byGap = new Map(), seen = new Set();
+  for (const c of cards) {
+    const cardId = str(c.id), stage = stageOf(c);
+    if (!cardId || cardId === GAP_CARD || seen.has(cardId) || !GAP_STAGES.has(stage)) continue;
+    seen.add(cardId);
+    const due = toDate(str(c.deadline).slice(0, 10));
+    const soon = stage === "review" && !!due && due <= addDays(today, SOON_DAYS);
+    for (const g of shaped(c, shapes)) {
+      if (gapCleared(cardId, g, dismissed)) continue;
+      const k = gapKey(g.name), e = byGap.get(k) || { g, cards: [], due: "" };
+      e.cards.push(c);
+      if (soon && (!e.due || due < e.due)) e.due = due;
+      byGap.set(k, e);
+    }
+  }
+  const out = [];
+  for (const { g, cards: cs, due } of byGap.values()) {
+    const where = cs.map((c) => str(c.company) || str(c.title) || "this job").join(", ");
+    const cardIds = cs.map((c) => str(c.id));
+    const dated = due ? { due, dateKind: "deadline" } : {};
+    gapSessions(g).forEach((s, i) => {
+      const key = sessionKey(s);
+      if (dismissed.has(key)) return;
+      const part = g.sessions > 1 ? ` (${i + 1}/${g.sessions})` : "";
+      out.push({ id: jobDocId(GAP_CARD, s), role: "build", key, input: {
+        title: `Build: ${g.name}${part} for ${where}`, project: JOB_PROJECT, area: "job", size: g.min,
+        links: toLinks(linksOf(cs[0])), nextStep: "", ...dated, status: "ready",
+        source: { app: JOB_APP, cardId: GAP_CARD, cardIds, stage: "build", fit: null, why: "", stale: false,
+          applyNote: "", unsynced: false, role: "build", key, deadline: dated.due || null } } });
+    });
   }
   return out;
 }
@@ -180,6 +266,33 @@ const stepFields = (i) => ({
   status: i.status, waitingOn: i.waitingOn || null, doneAt: null, checkOn: null, onHold: null, progress: 0,
 });
 
+// One wanted task against the task it lands on (if any): add it, or patch what the file owns.
+function planOne(d, t, add, update){
+  if (!t) { add.push({ id: d.id, input: d.input, patch: d.input.status === "ready" ? {} : { status: d.input.status, waitingOn: d.input.waitingOn } }); return; }
+  const i = d.input, patch = {};
+  const src = { ...t.source, ...i.source };
+  if (!same(src, t.source)) patch.source = src;
+  // A task from before roles (no source.role) takes its step once.
+  const step = !t.source.role || (d.role === "stage" ? t.source.stage !== i.source.stage : t.source.key !== d.key);
+  if (step) {
+    // A new step (the stage moved on, a new nudge or interview date): the task becomes it, reopened.
+    Object.assign(patch, stepFields(i));
+  } else {
+    if (d.role === "stage" && OPEN.has(t.status) && t.status !== "someday" && t.status !== i.status) {
+      // Gaps cleared (or the deadline came close): the review task comes off waiting, or goes back on.
+      Object.assign(patch, { status: i.status, waitingOn: i.waitingOn || null, checkOn: null });
+    }
+    // Same step: the user's edits stand. Only what the file owns follows it.
+    if (i.source.deadline !== (t.source.deadline ?? null)) Object.assign(patch, { due: i.due || null, dateKind: i.due ? i.dateKind : null });
+    if (!same(i.links, t.links)) patch.links = i.links;
+    // A shared Build task: the jobs waiting on it changed, so its "for …" does too.
+    if (d.role === "build" && !same(i.source.cardIds ?? null, t.source.cardIds ?? null)) patch.title = i.title;
+  }
+  if (Object.keys(patch).length) update.push({ task: t, patch });
+}
+
+const DROP = { status: "dropped", waitingOn: null, checkOn: null, onHold: null };
+
 // Cards + the user's tasks → what to write:
 //   add:    [{ id, input, patch }] tasks to make (id = the doc id to use;
 //           patch: what createTask can't set, a task made waiting)
@@ -194,50 +307,35 @@ export function planSync(cards, tasks, { complete = true, dismissed = new Set(),
     if (!byCard.has(t.source.cardId)) byCard.set(t.source.cardId, []);
     byCard.get(t.source.cardId).push(t);
   }
-  // A Build task finished here clears its gap even before jobs-sync has noted it.
+  // A Build task finished here clears its gap (session) even before jobs-sync has noted it.
   const gone = new Set(dismissed);
   for (const t of byId.values()) if (roleOf(t) === "build" && t.status === "done" && t.source.key) gone.add(t.source.key);
-  const add = [], update = [], seen = new Set();
+  const add = [], update = [], seen = new Set(), shapes = gapShapes(cards);
 
   for (const c of cards) {
     const cardId = str(c.id);
-    if (!cardId || seen.has(cardId)) continue;
+    if (!cardId || cardId === GAP_CARD || seen.has(cardId)) continue;
     seen.add(cardId);
-    const want = jobTasks(c, { dismissed: gone, today }), wanted = new Set();
-
-    for (const d of want) {
-      wanted.add(d.id);
-      const t = byId.get(d.id);
-      if (!t) { add.push({ id: d.id, input: d.input, patch: d.input.status === "ready" ? {} : { status: d.input.status, waitingOn: d.input.waitingOn } }); continue; }
-      const i = d.input, patch = {};
-      const src = { ...t.source, ...i.source };
-      if (!same(src, t.source)) patch.source = src;
-      // A task from before roles (no source.role) takes its step once.
-      const step = !t.source.role || (d.role === "stage" ? t.source.stage !== i.source.stage : t.source.key !== d.key);
-      if (step) {
-        // A new step (the stage moved on, a new nudge or interview date): the task becomes it, reopened.
-        Object.assign(patch, stepFields(i));
-      } else {
-        if (d.role === "stage" && OPEN.has(t.status) && t.status !== "someday" && t.status !== i.status) {
-          // Gaps cleared (or the deadline came close): the review task comes off waiting, or goes back on.
-          Object.assign(patch, { status: i.status, waitingOn: i.waitingOn || null, checkOn: null });
-        }
-        // Same step: the user's edits stand. Only what the file owns follows it.
-        if (i.source.deadline !== (t.source.deadline ?? null)) Object.assign(patch, { due: i.due || null, dateKind: i.due ? i.dateKind : null });
-        if (!same(i.links, t.links)) patch.links = i.links;
-      }
-      if (Object.keys(patch).length) update.push({ task: t, patch });
-    }
-    // Asked for no more (stage passed or closed, a gap Claude removed, the
-    // nudge after it left pending): archived, unless already finished or let go.
+    const wanted = new Set();
+    for (const d of jobTasks(c, { dismissed: gone, today, shapes })) { wanted.add(d.id); planOne(d, byId.get(d.id), add, update); }
+    // Asked for no more (stage passed or closed, an old per job Build task,
+    // the nudge after it left pending): archived, unless already finished or let go.
     for (const t of byCard.get(cardId) || []) {
       if (wanted.has(t.id) || !OPEN.has(t.status)) continue;
-      update.push({ task: t, patch: { status: "dropped", waitingOn: null, checkOn: null, onHold: null } });
+      update.push({ task: t, patch: { ...DROP } });
     }
   }
 
+  // Shared Build tasks: planned across all cards, owned by none.
+  const wantedBuild = new Set();
+  for (const d of buildTasks(cards, { dismissed: gone, today, shapes })) { wantedBuild.add(d.id); planOne(d, byId.get(d.id), add, update); }
+  // Only from a trustworthy file: a gap no job lists any more (or every job left) is archived.
+  if (complete) for (const t of byCard.get(GAP_CARD) || []) {
+    if (!wantedBuild.has(t.id) && OPEN.has(t.status)) update.push({ task: t, patch: { ...DROP } });
+  }
+
   if (complete) for (const [cardId, ts] of byCard) {
-    if (seen.has(cardId)) continue;
+    if (seen.has(cardId) || cardId === GAP_CARD) continue;
     for (const t of ts) if (!t.source.stale) update.push({ task: t, patch: { source: { ...t.source, stale: true } } });
   }
   return { add, update };

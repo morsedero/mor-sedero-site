@@ -5,7 +5,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { createRequire } from "node:module";
-import { planSync, jobTasks, withStages, jobActions, jobDocId, stageOf, gapKey, TRANSITIONS, STAGES, JOB_PROJECT } from "../../app/js/jobs.js";
+import { planSync, jobTasks, buildTasks, gapOf, withStages, jobActions, jobDocId, stageOf, gapKey, TRANSITIONS, STAGES, JOB_PROJECT } from "../../app/js/jobs.js";
 import { createTask } from "../../app/js/model.js";
 import * as E from "../../app/js/engine.js";
 import { viewCv, withPrintButton } from "../../app/js/cv.js";
@@ -193,8 +193,81 @@ test("the user's edits stand on the same step; a new deadline in the file follow
 
 test("a card that leaves the file marks its tasks stale — unless the file couldn't be read", () => {
   const tasks = sync([card(1, "review", { gaps: ["x"] })]);
-  assert.ok(apply(tasks, plan([], tasks)).every((t) => t.source.stale));
+  const after = apply(tasks, plan([], tasks));
+  assert.ok(after.filter((t) => t.source.cardId === "1").every((t) => t.source.stale));
+  // Its shared Build task has no job left waiting on it: archived, not stale.
+  assert.equal(byTitle(after, /^Build/)[0].status, "dropped");
   assert.deepEqual(plan([], tasks, { complete: false }), { add: [], update: [] });
+});
+
+// ---------- shared gaps ----------
+const gap = (name, effort_min, sessions) => ({ name, effort_min, sessions });
+
+test("a string gap is one 30 min Build task; jobTasks itself makes none", () => {
+  const c = card(1, "review", { gaps: ["Wwise"] });
+  assert.equal(jobTasks(c, { today: TODAY }).filter((d) => d.role === "build").length, 0);
+  const [b] = buildTasks([c], { today: TODAY });
+  assert.equal(b.input.size, 30); assert.equal(b.input.title, "Build: Wwise for Co1"); assert.equal(b.id, "job-gap-" + gapKey("Wwise"));
+});
+
+test("{ effort_min, sessions } gives one task per session, each effort_min long, (n/N)", () => {
+  const tasks = byTitle(sync([card(1, "review", { gaps: [gap("Wwise demo", 180, 3)] })]), /^Build/);
+  assert.deepEqual(tasks.map((t) => t.title), ["Build: Wwise demo (1/3) for Co1", "Build: Wwise demo (2/3) for Co1", "Build: Wwise demo (3/3) for Co1"]);
+  assert.ok(tasks.every((t) => t.size === 180));
+  assert.deepEqual(gapOf(gap("x", 0, 99)), { name: "x", min: 30, sessions: 8 });
+  assert.equal(gapOf({ effort_min: 60 }), null);
+});
+
+test("the same gap on two jobs (any case) is ONE set of tasks, for both", () => {
+  const cards = [card(1, "review", { gaps: [gap("Wwise demo", 180, 2)] }), card(2, "ready", { gaps: ["wwise DEMO"] })];
+  const builds = byTitle(sync(cards), /^Build/);
+  assert.deepEqual(builds.map((t) => t.title), ["Build: Wwise demo (1/2) for Co1, Co2", "Build: Wwise demo (2/2) for Co1, Co2"]);
+  assert.deepEqual(builds[0].source.cardIds, ["1", "2"]);
+  assert.equal(jobActions(builds[0]).where, "Co1, Co2");
+});
+
+test("Review & apply waits until every session is done; the last one frees it, for every job", () => {
+  // Card 2 lists it as a plain string: it still waits on the same two sessions.
+  const cards = [card(2, "review", { gaps: ["Reel"] }), card(1, "review", { gaps: [gap("Reel", 60, 2)] })];
+  let tasks = sync(cards);
+  assert.deepEqual(byTitle(tasks, /^Build/).map((t) => t.title), ["Build: Reel (1/2) for Co2, Co1", "Build: Reel (2/2) for Co2, Co1"]);
+  const stageOf1 = (ts, id) => ts.find((t) => t.id === jobDocId(id)).status;
+  tasks = sync(cards, tasks.map((t) => (/\(1\/2\)/.test(t.title) ? { ...t, status: "done" } : t)));
+  assert.equal(stageOf1(tasks, 1), "waiting"); assert.equal(stageOf1(tasks, 2), "waiting");
+  tasks = sync(cards, tasks.map((t) => (/\(2\/2\)/.test(t.title) ? { ...t, status: "done" } : t)));
+  assert.equal(stageOf1(tasks, 1), "ready"); assert.equal(stageOf1(tasks, 2), "ready");
+  assert.deepEqual(plan(cards, tasks), { add: [], update: [] });
+});
+
+test("an old per job Build task: archived; one already done keeps that job's gap cleared", () => {
+  const old = (cardId, status) => ({ id: jobDocId(cardId, "b-" + gapKey("Wwise")), ...createTask({ title: `Build: Wwise for Co${cardId}`, project: JOB_PROJECT,
+    source: { app: "jobhunt", cardId: String(cardId), stage: "review", role: "build", key: `${cardId}:b-${gapKey("Wwise")}` } }), status });
+  const cards = [card(1, "review", { gaps: ["Wwise"] }), card(2, "review", { gaps: ["Wwise"] })];
+  const tasks = sync(cards, [old(1, "done"), old(2, "ready")]);
+  assert.equal(tasks.find((t) => t.id === jobDocId(2, "b-" + gapKey("Wwise"))).status, "dropped");
+  assert.equal(tasks.find((t) => t.id === jobDocId(1)).status, "ready");
+  assert.equal(tasks.find((t) => t.id === jobDocId(2)).status, "waiting");
+  assert.equal(tasks.find((t) => t.id === "job-gap-" + gapKey("Wwise")).title, "Build: Wwise for Co2");
+  assert.deepEqual(plan(cards, tasks), { add: [], update: [] });
+});
+
+test("a job passes: the shared title drops it; the last one passes: the task is archived", () => {
+  const cards = [card(1, "review", { gaps: ["Wwise"] }), card(2, "review", { gaps: ["Wwise"] })];
+  let tasks = sync(cards);
+  tasks = sync([card(1, "passed", { gaps: ["Wwise"] }), cards[1]], tasks);
+  const b = () => byTitle(tasks, /^Build/)[0];
+  assert.equal(b().title, "Build: Wwise for Co2"); assert.equal(b().status, "ready");
+  tasks = sync([card(1, "passed"), card(2, "passed")], tasks);
+  assert.equal(b().status, "dropped");
+});
+
+test("complete: false never drops or stales a shared Build task; planning twice writes nothing", () => {
+  const cards = [card(1, "review", { gaps: [gap("Reel", 90, 2)], deadline: "2026-10-28" }), card(2, "pending", { gaps: ["Reel"], stage_at: "2026-10-20" })];
+  const tasks = sync(cards);
+  assert.deepEqual(plan(cards, tasks), { add: [], update: [] });
+  assert.deepEqual(plan([], tasks, { complete: false }), { add: [], update: [] });
+  const builds = byTitle(tasks, /^Build: Reel \(/);
+  assert.ok(builds.every((t) => t.due === "2026-10-28")); // the nearest review deadline, within 7 days
 });
 
 test("withStages: a queued Done shows the next stage at once, chained; a job Claude moved stays as the file says", () => {
@@ -409,7 +482,6 @@ test("the print button goes before </body>, or on the end", () => {
   assert.match(withPrintButton("<body></body>"), /Background graphics/);
 });
 
-
 test("viewCv: window opens first, CV lands as a blob page, blob revoked when the window closes", async () => {
   const w = { closed: false, document: { body: {} }, location: {}, closes: 0, close(){ this.closes++; } };
   const made = [], revoked = [];
@@ -431,3 +503,4 @@ test("viewCv: window opens first, CV lands as a blob page, blob revoked when the
     assert.match(await viewCv("F", { token: async () => "t", open: () => null, fetchFn: async () => assert.fail("no fetch") }), /blocked/);
   } finally { URL.createObjectURL = oc; URL.revokeObjectURL = orv; }
 });
+
