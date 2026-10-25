@@ -11,7 +11,8 @@
 // An open task saves as you go: every change is written when it's made (a
 // typed field when you leave it, or when the sheet closes). There is no Save
 // button and no status switcher (Mor: "No status switcher inside the task") —
-// Later / Switch / Pending live on the Now card. Start brings a parked or
+// Later / Switch / Pending live on the Now card, bar one pair (Mor,
+// 2026-10-25): Put on hold here, and Bring back on an On hold task. Start brings a parked or
 // pending task back into play (now.js start). Delete is the quiet line under
 // Start, two presses.
 //
@@ -288,7 +289,9 @@ export function mountAddTask(dialog, uid, { onStart, onDone } = {}){
   const holdWho = h("input", { className: "ts-input", dir: "auto", autocomplete: "off", id: "tsHoldWho" });
   const holdBox = h("div", { className: "ts-hold" },
     h("label", { className: "ts-hold-sw", htmlFor: "tsHold" }, holdSwitch, h("span", { textContent: "Waiting for a reply" })),
-    h("label", { className: "ts-hold-who", htmlFor: "tsHoldWho" }, h("span", { textContent: "From who (optional)" }), holdWho));
+    h("label", { className: "ts-hold-who", htmlFor: "tsHoldWho" }, h("span", { textContent: "From who (optional)" }), holdWho),
+    // Into the project's On hold list, as the Now card's Put on hold.
+    h("button", { className: "linkish ts-park", type: "button", textContent: "Put on hold", onclick: () => save({ status: "someday" }) }));
   holdSwitch.addEventListener("change", () => {
     if (!editing) return;
     save({ onHold: holdSwitch.checked ? { who: holdWho.value, since: editing.onHold?.since } : null });

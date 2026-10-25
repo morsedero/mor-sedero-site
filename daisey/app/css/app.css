@@ -818,7 +818,7 @@ dialog.now:focus { outline: none; }
 .menu-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .menu-label { font-size: 14px; white-space: nowrap; }
 .now-wait { margin: 6px 0 0; font-size: 14px; color: var(--ink-2); }
-.ts-nudge { justify-self: start; font-size: 14px; }
+.ts-nudge, .ts-park { justify-self: start; font-size: 14px; }
 /* Kinds sit in their own card, one per row with hairlines, so the five options don't crowd the master switch. */
 /* What to send: folded in a drop list under the switch, two columns when open (2026-10-12). */
 .menu-push { display: grid; gap: 8px; padding-inline-start: 26px; }
