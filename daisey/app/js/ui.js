@@ -245,37 +245,6 @@ export function nightDivider(from, to){
     h("span", { className: "night-pill" }, bud, h("span", { textContent: `Night · ${from} – ${to}` })));
 }
 
-// Done pressed (Mor, 2026-10-07): "how much did you finish?". 100 → onFull().
-// Less → "when do you want to come back to it?" → onPartial(pct, when), where
-// when is today | tomorrow | week | someday. Closing the sheet does nothing.
-export function askProgress(task, { onFull, onPartial, onCancel, start = 50 }){
-  const d = h("dialog", { className: "now", ariaLabel: "How much is done?" });
-  // onCancel: closed with nothing chosen (✕, the backdrop, Esc).
-  let chose = false;
-  const close = () => { d.close(); d.remove(); };
-  d.addEventListener("close", () => { if (!chose) onCancel?.(); });
-  const head = (t) => h("div", { className: "now-head" }, h("h2", { textContent: t }),
-    h("button", { className: "now-x", type: "button", ariaLabel: "Close", textContent: "✕", onclick: close }));
-  const range = h("input", { type: "range", min: "5", max: "95", step: "5", value: String(start), ariaLabel: "Percent finished",
-    oninput: () => { part.textContent = `Done ${range.value}%`; } });
-  // Beside the slider, naming the amount it saves as the slider moves; the
-  // button is the readout, so no separate % (Mor, 2026-10-11).
-  const part = h("button", { className: "btn", type: "button", textContent: `Done ${start}%`, onclick: () => when(Number(range.value)) });
-  const when = (pct) => {
-    d.replaceChildren(head("Back to it when?"),
-      h("div", { className: "now-chips" }, ...[["today", "Later today"], ["tomorrow", "Tomorrow"], ["week", "This week"], ["someday", "On hold"]].map(([w, text]) =>
-        h("button", { className: "chip", type: "button", textContent: text, onclick: () => { chose = true; close(); onPartial(pct, w); } }))));
-  };
-  d.replaceChildren(head("How much is done?"),
-    h("p", { className: "muted", dir: "auto", textContent: task.title }),
-    h("div", { className: "sheet-stack" }, h("div", { className: "pg-row" }, range, part),
-      h("div", { className: "sheet-actions" },
-        h("button", { className: "btn primary wide", type: "button", textContent: "All done · 100%", onclick: () => { chose = true; close(); onFull(); } }))));
-  d.onclick = (e) => { if (e.target === d) close(); };
-  document.body.append(d);
-  d.showModal();
-}
-
 // The chip row drags sideways with a mouse too and flicks on when let go
 // (Mor, 2026-10-10: "sliding and draggable like the tab itself"); a finger
 // already scrolls it natively. It has weight (Mor, same day: "heavier,

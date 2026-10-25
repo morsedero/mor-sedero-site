@@ -21,12 +21,12 @@
 // PALETTE. Names are taken in order, so a colour doesn't move around as
 // counts change. Inbox has none.
 import { watchTasks, watchSettings, finishTask, undoDone, unlogReopened, restoreTask, removeTask, watchProjectNames, saveProjectNames, saveProjectRanges, saveProjectOrder, saveProjectTiers, saveProjectCaps, renameInLog } from "./store.js";
-import { INBOX, progressOf, progressPatch, leftMinutes, pushedTo, notYet, durText, localDate, logicalDate, dayAfter, bringBack, cleanRange, outsideRange, doneSnapshot } from "./model.js";
+import { INBOX, leftMinutes, notYet, durText, localDate, logicalDate, bringBack, cleanRange, outsideRange, doneSnapshot } from "./model.js";
 import { isRoutine } from "./routine.js";
 import { dropSeries } from "./slots.js";
 import { isOverdue } from "./triage.js";
 import { projectProgress, nextTaskOf, projectSummary } from "./project-state.js";
-import { h, bdi, flash, icon, askProgress, closeOrAsk, askOnEsc, sizeChip, progressBar, weekDots, dragScroll } from "./ui.js";
+import { h, bdi, flash, icon, closeOrAsk, askOnEsc, sizeChip, progressBar, weekDots, dragScroll } from "./ui.js";
 import { setProjectColors, doneThisWeek, stalkDaisy, routineLeaves } from "./look.js";
 import { setProjectTiers, setProjectCaps } from "./context.js";
 import { dateBox } from "./datebox.js";
@@ -445,32 +445,13 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
   }
 
   // ---------- the project screen ----------
-  // onCancel: the progress sheet closed with nothing chosen. The card a
-  // swipe slid off (or the tick that went green) comes back (Mor,
-  // 2026-10-11: ✕ left an empty row with only the tick in it).
-  function complete(t, onCancel){
+  // Done is done: no "how much is done?" sheet (Mor, 2026-10-25). A
+  // routine's tick is one session done ("Did it"), even when it was done
+  // away from Daisey.
+  function complete(t){
     const before = doneSnapshot(t);
-    // A routine has no "how much": the tick is one session done ("Did it"),
-    // even when it was done away from Daisey.
-    if (isRoutine(t)) {
-      finishTask(uid, t).catch(fail);
-      flash("Did it: ", t.title, { undo: () => undoDone(uid, t.id, before).catch(fail) });
-      return;
-    }
-    askProgress(t, {
-      start: progressOf(t) || 50,
-      onCancel,
-      onFull: () => {
-        finishTask(uid, t).catch(fail);
-        flash("Done: ", t.title, { undo: () => undoDone(uid, t.id, before).catch(fail) });
-      },
-      onPartial: (pct, when) => {
-        const day = (n) => { let x = dayAfter(n); if (t.dateKind === "deadline" && t.due && t.due < x) x = t.due; return x; };
-        const patch = when === "someday" ? { status: "someday" } : when === "tomorrow" ? { notBefore: day(1) } : when === "week" ? { notBefore: day(3) } : {};
-        restoreTask(uid, t.id, { ...progressPatch(pct), ...(when === "today" ? {} : pushedTo(t, patch)) }).catch(fail);
-        flash(`${pct}% done: `, t.title, { undo: () => restoreTask(uid, t.id, { ...before, notBefore: t.notBefore ?? null, pushes: t.pushes ?? 0 }).catch(fail) });
-      },
-    });
+    finishTask(uid, t).catch(fail);
+    flash(isRoutine(t) ? "Did it: " : "Done: ", t.title, { undo: () => undoDone(uid, t.id, before).catch(fail) });
   }
 
   // A task card that swipes right to finish.
