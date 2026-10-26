@@ -2705,9 +2705,9 @@ button.bl-r-title { padding: 0; border: 0; background: none; color: var(--ink); 
   /* The middle: the card, Week's glance under it, Tell Daisey at the foot. */
   .nowrow { grid-area: now; display: flex; flex-direction: column; min-block-size: 0; padding-block-start: 22px; }
   .nowrow #nowcard { flex: 0 1 auto; padding-inline-end: 16px; }
-  /* The deck (560px max) sat at the column's left edge; it anchors in the middle (Mor, 2026-10-26). The Projects/Week bar keeps its width. */
+  /* The deck (design.css caps it) sat at the column's left edge; it anchors in the middle (Mor, 2026-10-26). The Projects/Week bar keeps its width. */
   body:not(.card-mini) .nowrow #nowcard { margin-inline-end: -16px; } /* even padding box, so the middle is the column's middle */
-  body:not(.card-mini) .nowrow #nowcard > .deck { inline-size: 100%; margin-inline: auto; } /* full 560px, as before; auto margins alone shrink it to its content */
+  body:not(.card-mini) .nowrow #nowcard > .deck { inline-size: 100%; margin-inline: auto; } /* its full capped width; auto margins alone shrink it to its content */
   #glance { grid-area: glance; margin-block: 4px 0; }
   #dock { grid-area: dock; padding-block: 12px max(28px, env(safe-area-inset-bottom)); }
   /* The right: the panel, its own column, full height. */

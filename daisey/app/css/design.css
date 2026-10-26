@@ -296,10 +296,10 @@
 .now-card .act-line > .done-col.solo { flex: 0 1 200px; margin-inline-start: 0; }
 
 /* PC: the card stops at a hand's width instead of stretching across the
-   column (Mor, 2026-10-18); Later's list under it matches. Focus keeps its
-   own 720px box. */
+   column (Mor, 2026-10-18; 560px, then 640px a touch wider, 2026-10-26);
+   Later's list under it matches. Focus keeps its own 720px box. */
 @media (min-width: 1024px) {
-  :root:not(.night) body:not(.focus-mode):not(.card-mini) #nowcard > :is(.deck, .later-drop, .drop-anchor) { max-inline-size: 560px; }
+  :root:not(.night) body:not(.focus-mode):not(.card-mini) #nowcard > :is(.deck, .later-drop, .drop-anchor) { max-inline-size: 640px; }
 }
 
 /* No color-mix() (Mor's phone): plain --sub where design.css set one with it; see the block at the end of app.css. */
