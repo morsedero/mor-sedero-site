@@ -2705,6 +2705,8 @@ button.bl-r-title { padding: 0; border: 0; background: none; color: var(--ink); 
   /* The middle: the card, Week's glance under it, Tell Daisey at the foot. */
   .nowrow { grid-area: now; display: flex; flex-direction: column; min-block-size: 0; padding-block-start: 22px; }
   .nowrow #nowcard { flex: 0 1 auto; padding-inline-end: 16px; }
+  /* The card anchors in the middle of its column, not at the left edge (Mor, 2026-10-26); the Projects/Week bar keeps the full width. */
+  body:not(.card-mini) .nowrow #nowcard { inline-size: 100%; max-inline-size: 752px; margin-inline: auto; padding-inline-start: 16px; box-sizing: border-box; }
   #glance { grid-area: glance; margin-block: 4px 0; }
   #dock { grid-area: dock; padding-block: 12px max(28px, env(safe-area-inset-bottom)); }
   /* The right: the panel, its own column, full height. */
