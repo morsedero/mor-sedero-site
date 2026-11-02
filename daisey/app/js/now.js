@@ -13,6 +13,7 @@
 // (2026-10-10; the code went 2026-10-20).
 import { overruled, eventKey } from "./reality.js";
 import { sortable } from "./ppdrag.js";
+import { DIR } from "./i18n.js";
 import { addTask, updateTask, watchTasks, watchSkips, saveSkips, skipNow, blockTask, restoreTask, finishTask, undoDone, watchSettings, saveSettings, watchMoment, saveMoment, watchLearn, bumpLearn, watchDayPlan, saveDayPlan, watchProjectNames, removeTask } from "./store.js";
 import { proposeDay, timeline, shownTaskCount, addableCount, withBreaks, trimBreaks, isBreak, planProgress, planStatus, unfitOf, refit, topUp, daySig, relayMeals } from "./proposal.js";
 import { rethink } from "./rethink.js";
@@ -1081,7 +1082,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
           onclick: () => { sd.sel = on ? sd.sel.filter((id) => id !== t.id) : [...sd.sel, t.id]; render(); } },
         h("span", { className: "sd-text" },
           h("span", { className: "sd-title", dir: "auto", textContent: t.title }),
-          h("span", { className: "sd-meta", dir: "ltr" }, mark(t) && h("span", { className: "tag", textContent: mark(t) }),
+          h("span", { className: "sd-meta", dir: DIR }, mark(t) && h("span", { className: "tag", textContent: mark(t) }),
             h("span", { textContent: meta }))),
         h("span", { className: "sd-tick", ariaHidden: "true" }, icon(on ? "check" : "plus"))));
       })),

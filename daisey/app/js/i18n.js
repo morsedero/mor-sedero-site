@@ -19,6 +19,9 @@
 const KEY = "daisey.lang";
 export const LANG = (() => { try { return localStorage.getItem(KEY) === "he" ? "he" : "en"; } catch { return "en"; } })();
 export const HE = LANG === "he";
+// The app's own direction, for a line of Daisey's words that must not take a
+// Hebrew title's direction (a task's meta line): ltr in English, rtl in Hebrew.
+export const DIR = HE ? "rtl" : "ltr";
 export function setLang(l){
   try { l === "he" ? localStorage.setItem(KEY, "he") : localStorage.removeItem(KEY); } catch { /* private window */ }
 }
@@ -87,7 +90,7 @@ const HE_TEXT = {
   "Low stakes": "לא דחוף", "Costs money": "עולה כסף", "Affects someone": "משפיע על מישהו", "Deadline penalty": "קנס על איחור",
   "Deadline": "דדליין", "Target": "יעד", "Inbox": "דואר נכנס", "Job search": "חיפוש עבודה", "Job Hunt": "חיפוש עבודה",
   "Blocked": "תקוע", "Again?": "שוב?", "More time?": "עוד זמן?", "A task needs a title.": "למשימה צריך שם.",
-  "File": "קובץ", "Waiting on": "מחכה ל", "Back to active": "חזרה לפעיל", "Planned": "מתוכנן", "Routine": "שגרה", "Routines": "שגרות",
+  "File": "קובץ", "Waiting on": "מחכה ל:", "check now": "לבדוק עכשיו", "this week": "השבוע", "this month": "החודש", "left": "נשארו", "done": "בוצעו", "Back to active": "חזרה לפעיל", "Planned": "מתוכנן", "Routine": "שגרה", "Routines": "שגרות",
 
   // Task sheet (addtask.js)
   "Area": "תחום", "Type": "סוג", "Where": "איפה", "Open hours": "שעות פתיחה", "Size": "גודל", "Stakes": "חשיבות",
@@ -342,7 +345,7 @@ const PATTERNS = [
   P("^Starts {D}$", "מתחיל $1"), P("^(Was due|By|was due|due|by) {D}$", (m) => `${/was/i.test(m[1]) ? "היה עד" : "עד"} ${bit(m[2])}`),
   P("^The deadline (was|is) {D}\\.$", (m) => `הדדליין ${m[1] === "was" ? "היה" : "הוא"} ${bit(m[2])}.`),
   P("^It's on hold\\. The deadline (was|is) {D}\\.$", (m) => `זה מושהה. הדדליין ${m[1] === "was" ? "היה" : "הוא"} ${bit(m[2])}.`),
-  P("^Move to {D}$", "להעביר ל$1"),
+  P("^Move to {D}$", "להעביר ל$1"), P("^I'll ask you {D}$", "אשאל שוב ב$1"),
   P(/^deadline passed (.+)$/, "הדדליין עבר $1"), P(/^deadline (.+?), (.+) still to do$/, "דדליין $1, עוד $2"),
   P(/^untouched for (\d+) days$/, "לא נגעו בזה $1 ימים"), P(/^(\d+)% done, finish it$/, "$1% בוצע, לסיים"), P(/^(.+), quick win$/, "$1, ניצחון מהיר"),
   P(/^(.+), a piece of it$/, "$1, חלק מזה"), P(/^Fit (\d+)\/10(.*)$/, "התאמה $1/10$2"),
@@ -379,7 +382,9 @@ function translate(core){
     const m = core.match(re);
     if (m) { const r = out(m); return r == null ? null : r; }
   }
-  // A line of parts ("20% · 24 min left · due Fri"): each part on its own.
+  // A line of parts ("20% · 24 min left · due Fri"): each part on its own;
+  // a tail piece arrives as its own node, starting "· ".
+  if (core.startsWith("· ")) { const rest = translate(core.slice(2)); return rest == null ? null : `· ${rest}`; }
   if (core.includes(" · ")) {
     const parts = core.split(" · "), out = parts.map((p) => translate(p) ?? units(p));
     if (out.some((p, i) => p !== parts[i])) return out.join(" · ");

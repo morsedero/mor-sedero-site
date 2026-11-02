@@ -23,6 +23,7 @@
 import { watchTasks, watchSettings, finishTask, undoDone, unlogReopened, restoreTask, removeTask, watchProjectNames, saveProjectNames, saveProjectRanges, saveProjectOrder, saveProjectTiers, saveProjectCaps, renameInLog } from "./store.js";
 import { INBOX, leftMinutes, notYet, durText, localDate, logicalDate, bringBack, cleanRange, outsideRange, doneSnapshot } from "./model.js";
 import { isRoutine } from "./routine.js";
+import { DIR } from "./i18n.js";
 import { dropSeries } from "./slots.js";
 import { isOverdue } from "./triage.js";
 import { projectProgress, nextTaskOf, projectSummary } from "./project-state.js";
@@ -565,11 +566,11 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
     const next = p.next.map((t) => swipeCard(t, taskBtn(t, [
       h("span", { className: "pj-row" }, h("span", { className: "pj-title", dir: "auto", textContent: t.title }),
         t.id === onCard && h("span", { className: "pj-now", textContent: "NOW" })),
-      h("span", { className: "pj-meta", dir: "ltr" }, ...nextMeta(t)), progressBar(t)])));
+      h("span", { className: "pj-meta", dir: DIR }, ...nextMeta(t)), progressBar(t)])));
     const pending = p.pending.map((t) => swipeCard(t, taskBtn(t, [
       h("span", { className: "pj-row" },
         h("span", { className: "pj-col" }, h("span", { className: "pj-title", dir: "auto", textContent: t.title }),
-          h("span", { className: "pj-meta", dir: "ltr" }, ...(t.waitingOn ? ["Waiting on ", bdi(t.waitingOn)] : ["Pending"]),
+          h("span", { className: "pj-meta", dir: DIR }, ...(t.waitingOn ? ["Waiting on ", bdi(t.waitingOn)] : ["Pending"]),
             t.checkOn ? (t.checkOn <= logicalDate() ? " · check now" : ` · I'll ask you ${shortDay(t.checkOn)}`) : "")),
         t.waitingOn && h("span", { className: "pj-who", ariaHidden: "true", textContent: [...t.waitingOn.trim()][0]?.toUpperCase() || "" }))])));
     if (drawer === "someday" && !p.someday.length) drawer = null;

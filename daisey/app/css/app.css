@@ -1248,6 +1248,8 @@ body.h-screen { overflow: hidden; }
 .pj-swipe.peek .pj-reveal { visibility: visible; opacity: 1; }
 .pj-swipe.peek .pj-task { animation: pj-peek 1.5s ease-in-out .4s both; }
 @keyframes pj-peek { 0%, 100% { translate: 0; } 35%, 60% { translate: 72px; } }
+:root[dir="rtl"] .pj-swipe.peek .pj-task { animation-name: pj-peek-rtl; } /* Hebrew: the swipe goes left */
+@keyframes pj-peek-rtl { 0%, 100% { translate: 0; } 35%, 60% { translate: -72px; } }
 .pj-reveal svg { inline-size: 16px; block-size: 16px; stroke-width: 2.5; }
 .pj-task { position: relative; display: grid; gap: 2px; inline-size: 100%; padding-block: 8px; padding-inline: 42px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); color: var(--ink); font: inherit; text-align: start; cursor: pointer; touch-action: pan-y; user-select: none; }
 .pj-swipe:not(.swiping) .pj-task { transition: transform .18s ease; }
