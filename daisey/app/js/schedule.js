@@ -140,7 +140,8 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onMissed, onPro
   let tasks = null; // for Plan my day
   let dayPlan = null; // today's saved plan doc; approved, it sits in today's gaps
   const view = mode === "week" ? "week" : "day";
-  const HOUR_PX = mode === "week" ? 60 : 44; // week grid: one hour's height
+  // week grid: one hour's height; tighter on PC (1024px+) where width is plentiful
+  const HOUR_PX = mode === "week" ? (matchMedia("(min-width: 1024px)").matches ? 38 : 60) : 44;
   const ORBIT_MS = 9000; // one lap of the now row's light (app.css sc-orbit)
   let focus = null; // "YYYY-MM-DD" stepped to; null = today
   // Days outside the week calendar.js fetches (today + 7) come from
