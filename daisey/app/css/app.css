@@ -1268,12 +1268,12 @@ body.h-screen { overflow: hidden; }
 .pj-del { display: block; margin: 20px auto 0; min-block-size: 36px; padding-inline: 14px; border: 0; border-radius: 10px; background: none; color: var(--danger); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
 .pj-add { inline-size: 100%; min-block-size: 36px; margin-block-start: 6px; padding-inline: 12px; border: 1px solid var(--aline); border-radius: 12px; background: var(--tint); color: var(--aink); font: inherit; font-size: 13px; font-weight: 600; text-align: start; cursor: pointer; }
 @supports (color: color-mix(in srgb, red, blue)) { .pj-add { background: color-mix(in srgb, var(--tint) 60%, var(--surface)); } }
-.pj-tick { position: absolute; z-index: 1; inset-block-start: 50%; inset-inline-start: 10px; translate: 0 -50%; display: grid; place-items: center; inline-size: 22px; block-size: 22px; padding: 0; border: 2px solid var(--aline); border-radius: 50%; background: var(--surface); color: transparent; cursor: pointer; transition: background .15s, color .15s, border-color .15s; }
+.pj-tick { position: absolute; z-index: 1; inset-block-start: 50%; inset-inline-start: 10px; transform: translateY(-50%); display: grid; place-items: center; inline-size: 22px; block-size: 22px; padding: 0; border: 2px solid var(--aline); border-radius: 50%; background: var(--surface); color: transparent; cursor: pointer; transition: background .15s, color .15s, border-color .15s; }
 .pj-tick::after { content: ""; position: absolute; inset: -9px; }
 .pj-tick svg { inline-size: 12px; block-size: 12px; stroke-width: 3; }
 .pj-tick:hover { border-color: var(--aink); color: var(--aink); }
 .pj-tick.on { border-color: var(--green); background: var(--green); color: #fff; }
-.pj-drow .pj-tick { position: relative; inset: auto; translate: none; flex: none; }
+.pj-drow .pj-tick { position: relative; inset: auto; transform: none; flex: none; }
 .pj-drow .pj-tick.on:hover { background: var(--surface); color: var(--green); }
 .pj-swipe.swiping .pj-tick { opacity: 0; }
 
