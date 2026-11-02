@@ -234,7 +234,7 @@ export function mountAddTask(dialog, uid, { onStart, onDone } = {}){
     everyRow.hidden = !per;
     for (const b of everyRow.children) b.ariaPressed = String(b.value === every);
     modeRow.hidden = !per || every === "month";
-    for (const b of modeRow.children) b.ariaPressed = String((b.textContent === "Set days") === (mode === "set"));
+    for (const b of modeRow.children) b.ariaPressed = String((b === modeRow.lastElementChild) === (mode === "set")); // "Any days", "Set days"; by place, the text may be Hebrew
     perStep.hidden = !per || mode === "set" || every === "month";
     setBox.hidden = !per || mode !== "set" || every === "month";
     monthBox.hidden = !per || every !== "month";

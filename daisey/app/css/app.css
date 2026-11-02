@@ -75,6 +75,10 @@ html, body { overscroll-behavior-y: none; }
    keeps its own direction (dir="auto") but starts at the left edge like the
    rest of the app. Fields keep their natural side while typing. */
 [dir="auto"]:not(input):not(textarea) { text-align: left; }
+/* Hebrew mode (i18n.js): the same one anchor, on the right. */
+:root[dir="rtl"] [dir="auto"]:not(input):not(textarea) { text-align: right; }
+/* An empty dir="auto" box would lay its Hebrew placeholder out left to right. */
+:root[dir="rtl"] :is(input, textarea)[dir="auto"]:placeholder-shown { direction: rtl; }
 
 .shell {
   max-inline-size: 520px;
@@ -874,6 +878,7 @@ select.ts-project, select.menu-select, .meal-when select.menu-select {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%236b665d' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
   background-repeat: no-repeat; background-position: right 9px center; background-size: 10px 6px;
 }
+:root[dir="rtl"] :is(select.ts-project, select.menu-select) { background-position: left 9px center; }
 select.ts-project { padding-block: 8px; padding-inline-start: 10px; padding-inline-end: 30px; line-height: 1.25; }
 .meal-stepper { display: inline-flex; align-items: center; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
 .meal-step { inline-size: 28px; block-size: 32px; padding: 0; border: 0; background: none; color: var(--ink-2); font: inherit; font-size: 18px; line-height: 1; cursor: pointer; touch-action: manipulation; user-select: none; -webkit-user-select: none; }
@@ -1196,7 +1201,7 @@ body.h-screen { overflow: hidden; }
 .pj-chip[aria-selected="true"] { background: var(--aink); color: var(--card); font-weight: 600; }
 /* Children of .screen keep its centring (margin-inline: auto): the 20px
    gutter is a narrower width, not a side margin, or wide screens pin them left. */
-.pj-card { margin: 8px max(20px, (100% - 520px) / 2) 0 max(20px, (100% - 520px) / 2); margin-right: auto; inline-size: 67%; max-inline-size: 373px; padding: 11px 14px 10px; border-radius: 16px; background: var(--surface); border: 1px solid var(--aline); box-shadow: 0 6px 20px rgb(0 0 0 / .10); }
+.pj-card { margin: 8px max(20px, (100% - 520px) / 2) 0 max(20px, (100% - 520px) / 2); margin-inline-end: auto; inline-size: 67%; max-inline-size: 373px; padding: 11px 14px 10px; border-radius: 16px; background: var(--surface); border: 1px solid var(--aline); box-shadow: 0 6px 20px rgb(0 0 0 / .10); }
 @supports (color: color-mix(in srgb, red, blue)) { .pj-card { box-shadow: 0 6px 20px color-mix(in srgb, var(--aink) 12%, transparent); } }
 .pj-card-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .pj-name { margin: 0; min-inline-size: 0; font-size: 18px; font-weight: 700; letter-spacing: -0.3px; line-height: 1.15; overflow-wrap: anywhere; }
@@ -2271,6 +2276,8 @@ dialog.tsheet[open] > .ts-laptop + .ts-repeat { margin-block-start: -12px; }
 
 /* My day: one 24h bar, two handles (main.js paintDay). */
 .daybar { padding: 2px 11px 20px; }
+/* The day bar is a clock axis placed by left offsets (main.js): it reads left to right in Hebrew too. */
+.daybar { direction: ltr; }
 .db-track { position: relative; height: 28px; touch-action: none; cursor: pointer; }
 .db-track::before { content: ""; position: absolute; inset: 11px 0; border-radius: 3px; background: var(--line); }
 .db-fill { position: absolute; top: 11px; height: 6px; border-radius: 3px; background: var(--accent); }

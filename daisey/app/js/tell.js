@@ -13,6 +13,7 @@
 // The mic uses the browser's own speech-to-text, so a spoken message goes
 // down the same path as a typed one. Where there's none, it opens the keyboard.
 import { idToken } from "./firebase.js";
+import { HE } from "./i18n.js";
 import { watchTasks, addTask, updateTask, saveMoment, finishTask, undoDone } from "./store.js";
 import { getDayKey, LABELS, dayAfter, doneSnapshot } from "./model.js";
 import { createEvent, watchCalendar } from "./calendar.js";
@@ -326,7 +327,7 @@ export function mountTell(form, input, mic, uid, { openAdd, openTask, nowCard = 
     if (!Speech) { input.focus(); return; }
     rec = new Speech();
     const langs = navigator.languages || [navigator.language];
-    rec.lang = langs.some((l) => /^he|^iw/.test(l)) ? "he-IL" : navigator.language || "en-US";
+    rec.lang = HE || langs.some((l) => /^he|^iw/.test(l)) ? "he-IL" : navigator.language || "en-US";
     rec.interimResults = true;
     rec.onresult = (e) => {
       input.value = [...e.results].map((r) => r[0].transcript).join("");

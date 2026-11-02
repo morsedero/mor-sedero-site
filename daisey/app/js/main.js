@@ -1,4 +1,5 @@
 // Boot: sign-in → load data → show card.
+import { LANG, setLang } from "./i18n.js"; // first: Hebrew mode patches dates and watches the page before anything renders
 import { configured } from "./config.js";
 import { hasShim } from "./has-shim.js";
 hasShim(); // app.css reads .h-* classes in place of :has(); see has-shim.js
@@ -213,6 +214,15 @@ function show(view, text = ""){
 
   for (const b of document.querySelectorAll("[data-set-theme]")) b.onclick = () => apply(b.dataset.setTheme);
   apply(saved());
+}
+
+// Language (Mor, 2026-11-02): English or Hebrew, this device only. Every
+// string is translated as it reaches the page (i18n.js), so a switch reloads
+// rather than repainting a hundred views.
+{
+  const pick = $("#langPick");
+  pick.value = LANG;
+  pick.onchange = () => { setLang(pick.value); location.reload(); };
 }
 
 if (!configured) {
