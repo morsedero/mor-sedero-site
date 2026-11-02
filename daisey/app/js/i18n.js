@@ -245,7 +245,7 @@ const HE_TEXT = {
   "New project": "פרויקט חדש", "Add project": "הוספת פרויקט", "Delete project": "מחיקת פרויקט", "Edit project": "עריכת פרויקט", "Did it:": "בוצע:",
   "Starts": "מתחיל", "waiting for a reply": "מחכה לתשובה", "Reopened:": "נפתח מחדש:", "Back on the list:": "חזרה לרשימה:", "Waiting on:": "מחכה ל:",
   "Nothing done yet.": "עוד לא בוצע כלום.", "Off your plate. Daisey offers one back on Sunday.": "ירד מהצלחת. Daisey תציע אחת בחזרה ביום ראשון.",
-  "Done with one? Swipe it right →, or tap its ✓.": "סיימתם אחת? החליקו אותה ימינה →, או הקישו על ה-✓.", "+ Add a task": "+ הוספת משימה", "+ Task": "+ משימה",
+  "Done with one? Swipe it right →, or tap its ✓.": "סיימתם אחת? החליקו אותה שמאלה ←, או הקישו על ה-✓.", "+ Add a task": "+ הוספת משימה", "+ Task": "+ משימה",
 
   // Import from Trello, jobs, CV
   "Trello isn't connected yet.": "Trello עוד לא מחובר.", "Trello didn't answer.": "Trello לא ענה.", "Couldn't reach Trello.": "לא הצלחנו להגיע ל-Trello.",
@@ -308,7 +308,7 @@ const PATTERNS = [
   P(/^(\d+) min$/, "$1 דק׳"), P(/^\+(\d+) min$/, "+$1 דק׳"), P(/^(\d+) h$/, "$1 ש׳"), P(/^(\d+) h (\d+) min$/, "$1 ש׳ $2 דק׳"),
   P(/^(\d+)h$/, "$1ש׳"), P(/^(\d+)h (\d+)m$/, "$1ש׳ $2ד׳"), P(/^([\d.]+) h$/, "$1 ש׳"),
   P("^{T} left$", "נשארו $1"), P("^{T} free$", "$1 פנוי"), P("^{T} free today\\.$", "$1 פנוי היום."),
-  P(/^(\d+)% done$/, "$1% בוצע"), P(/^of (\d+)$/, "מתוך $1"), P(/^(\d+) of (\d+) done$/, "$1 מתוך $2 בוצעו"), P(/^(\d+) of (\d+) in Focus$/, "$1 מתוך $2 בפוקוס"),
+  P(/^(\d+)% done$/, "$1% בוצע"), P(/^(\d+)%$/, "$1%"), P(/^of (\d+)$/, "מתוך $1"), P(/^(\d+) of (\d+) done$/, "$1 מתוך $2 בוצעו"), P(/^(\d+) of (\d+) in Focus$/, "$1 מתוך $2 בפוקוס"),
   P(/^Room for (\d+) more · drag a project here$/, "מקום לעוד $1 · גררו לכאן פרויקט"),
   P(/^(\d+) of (\d+) this (week|month)$/, (m) => `${m[1]} מתוך ${m[2]} ${m[3] === "week" ? "השבוע" : "החודש"}`),
   P(/^(\d+) of (\d+) this (week|month) so far\.$/, (m) => `${m[1]} מתוך ${m[2]} ${m[3] === "week" ? "השבוע" : "החודש"} עד עכשיו.`),
@@ -379,8 +379,11 @@ function translate(core){
     const m = core.match(re);
     if (m) { const r = out(m); return r == null ? null : r; }
   }
-  // "Removed " + title and friends arrive as their own text node, trailing
-  // space and all; the trim already found those. A colon-ended label too.
+  // A line of parts ("20% · 24 min left · due Fri"): each part on its own.
+  if (core.includes(" · ")) {
+    const parts = core.split(" · "), out = parts.map((p) => translate(p) ?? units(p));
+    if (out.some((p, i) => p !== parts[i])) return out.join(" · ");
+  }
   return null;
 }
 

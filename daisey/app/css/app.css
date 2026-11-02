@@ -406,7 +406,7 @@ input:is([type="checkbox"], [type="radio"]):disabled { opacity: .45; cursor: def
 .toast {
   position: fixed; z-index: 7; inset-block-end: max(20px, env(safe-area-inset-bottom));
   inset-inline: 16px; margin-inline: auto; inline-size: fit-content; max-inline-size: 360px;
-  padding: 6px 8px 6px 14px; border-radius: 12px;
+  padding-block: 6px; padding-inline: 14px 8px; border-radius: 12px;
   background: var(--ink); color: var(--card);
   backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); box-shadow: 0 4px 14px rgb(0 0 0 / .18);
 }
@@ -618,9 +618,10 @@ dialog.now:focus { outline: none; }
    daisy swaying at its start (Mor, 2026-10-15: "really small but really
    cute"). Late in the week its edge turns yellow: what's left barely fits.
    Plain tokens, no color-mix() or :has(): Mor's phone browser lacks both. */
-.routine-nag { display: flex; align-items: center; gap: 8px; min-block-size: 48px; box-sizing: border-box; margin-block-start: 8px; padding: 4px 4px 4px 8px;
+.routine-nag { display: flex; align-items: center; gap: 8px; min-block-size: 48px; box-sizing: border-box; margin-block-start: 8px; padding-block: 4px; padding-inline: 8px 4px;
   border-radius: 999px; border: 1.5px solid var(--a-job-line); background: var(--a-job-tint); }
 .routine-nag.late { border-color: var(--accent); }
+.routine-nag > svg:dir(rtl) { transform: scaleX(-1); } /* the chevron points onward: left in Hebrew */
 .nag-daisy { flex: none; inline-size: 26px; block-size: 26px; display: block; animation: nag-sway 6s ease-in-out infinite; }
 .nag-daisy svg { display: block; inline-size: 26px; block-size: 26px; fill: #fff; stroke: var(--a-job-line); stroke-width: 1.5; }
 .nag-daisy .c { fill: var(--accent); stroke: var(--accent-deep); }
@@ -978,7 +979,7 @@ select.ts-project { padding-block: 8px; padding-inline-start: 10px; padding-inli
 .trip-chip[aria-expanded="true"] .trip-caret { transform: rotate(180deg); }
 .trip-menu { position: fixed; z-index: 70; visibility: hidden; min-inline-size: 180px; padding: 6px; display: grid; gap: 2px;
   background: var(--surface); color: var(--ink); border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow); }
-.trip-menu .trip-opt { inline-size: 100%; justify-content: flex-start; min-block-size: 40px; padding: 0 12px 0 8px; font-size: 14px;
+.trip-menu .trip-opt { inline-size: 100%; justify-content: flex-start; min-block-size: 40px; padding-block: 0; padding-inline: 8px 12px; font-size: 14px;
   border: 0; border-radius: 10px; background: none; text-align: start; }
 .trip-menu .trip-opt:hover { background: var(--chip); }
 .trip-tick { inline-size: 16px; text-align: center; font-weight: 800; color: var(--accent-deep); }
@@ -1016,7 +1017,7 @@ body.focus .tell-panel { display: none; }
 .tell-x { flex: none; inline-size: 36px; block-size: 36px; border: none; border-radius: 50%; background: transparent; color: var(--ink-2); font: inherit; font-size: 15px; cursor: pointer; }
 .tell-x:hover { background: var(--chip); }
 .tell-cards { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
-.tell-card { display: flex; align-items: center; gap: 6px; padding: 10px 6px 10px 12px; border-radius: 14px; background: var(--chip); }
+.tell-card { display: flex; align-items: center; gap: 6px; padding-block: 10px; padding-inline: 12px 6px; border-radius: 14px; background: var(--chip); }
 .tell-card-main { flex: 1; min-inline-size: 0; display: grid; gap: 2px; }
 .tell-kind { font-size: 11px; font-weight: 600; letter-spacing: .5px; text-transform: uppercase; color: var(--ink-2); }
 .tell-title { font-size: 15px; font-weight: 600; overflow-wrap: anywhere; }
@@ -1188,7 +1189,7 @@ body.h-screen { overflow: hidden; }
 /* The project screen wears its colour: a wash down from the top, a white
    card on it with the numbers, white task rows (restyled 2026-10-06). */
 #projectview { margin-block-start: -10px; padding: 0 0 32px; background: linear-gradient(180deg, var(--tint) 0, var(--tint) 120px, var(--bg) 360px) no-repeat, var(--bg); }
-.pj-top { display: flex; align-items: center; gap: 4px; padding: 4px 0 0 12px; }
+.pj-top { display: flex; align-items: center; gap: 4px; padding-block: 4px 0; padding-inline: 12px 0; }
 .pj-back { flex: none; inline-size: 40px; block-size: 40px; display: grid; place-items: center; border: 0; border-radius: 12px; background: none; color: var(--ink); cursor: pointer; }
 .pj-back svg { inline-size: 20px; block-size: 20px; stroke-width: 2; }
 :dir(rtl) .pj-back svg { transform: scaleX(-1); }
@@ -1248,7 +1249,7 @@ body.h-screen { overflow: hidden; }
 .pj-swipe.peek .pj-task { animation: pj-peek 1.5s ease-in-out .4s both; }
 @keyframes pj-peek { 0%, 100% { translate: 0; } 35%, 60% { translate: 72px; } }
 .pj-reveal svg { inline-size: 16px; block-size: 16px; stroke-width: 2.5; }
-.pj-task { position: relative; display: grid; gap: 2px; inline-size: 100%; padding: 8px 12px 8px 42px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); color: var(--ink); font: inherit; text-align: start; cursor: pointer; touch-action: pan-y; user-select: none; }
+.pj-task { position: relative; display: grid; gap: 2px; inline-size: 100%; padding-block: 8px; padding-inline: 42px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); color: var(--ink); font: inherit; text-align: start; cursor: pointer; touch-action: pan-y; user-select: none; }
 .pj-swipe:not(.swiping) .pj-task { transition: transform .18s ease; }
 @media (prefers-reduced-motion: reduce) { .pj-swipe:not(.swiping) .pj-task { transition: none; } }
 .pj-task.later { color: var(--ink-2); }
@@ -1892,7 +1893,7 @@ body.focus #side { display: none; }
 .sc-title .sc-name { overflow: hidden; text-overflow: ellipsis; font-size: 15px; }
 @media (max-width: 420px) { .sc-title .sc-name { font-size: 14px; } }
 .sc-title .sc-date { overflow: hidden; text-overflow: ellipsis; }
-.sc-today { flex: none; margin-inline-start: auto; display: inline-flex; align-items: center; gap: 6px; padding: 2px 9px 2px 8px; border: 0; border-radius: 999px; background: var(--chip); font: inherit; font-size: 12px; font-weight: 600; color: var(--ink); cursor: pointer; }
+.sc-today { flex: none; margin-inline-start: auto; display: inline-flex; align-items: center; gap: 6px; padding-block: 2px; padding-inline: 8px 9px; border: 0; border-radius: 999px; background: var(--chip); font: inherit; font-size: 12px; font-weight: 600; color: var(--ink); cursor: pointer; }
 .sc-today.off { visibility: hidden; pointer-events: none; }
 /* On a phone the hidden Now still took its width, and the title ("Today") was cut to "To…"
    (Mor, 2026-10-19): it gives the room back; the title never shrinks. */
@@ -1927,6 +1928,12 @@ body.focus #side { display: none; }
   0% { max-block-size: 90px; }
   45% { opacity: 0; transform: translateX(24px) scale(.94); max-block-size: 90px; }
   100% { opacity: 0; transform: translateX(24px) scale(.94); max-block-size: 0; margin-block-start: 0; }
+}
+:root[dir="rtl"] .sc-row.sc-leave { animation-name: sc-leave-rtl; } /* slides off toward its own end */
+@keyframes sc-leave-rtl {
+  0% { max-block-size: 90px; }
+  45% { opacity: 0; transform: translateX(-24px) scale(.94); max-block-size: 90px; }
+  100% { opacity: 0; transform: translateX(-24px) scale(.94); max-block-size: 0; margin-block-start: 0; }
 }
 @media (prefers-reduced-motion: reduce) { .sc-row.sc-land .sc-ev, .sc-row.sc-leave { animation: none; } }
 .sc-proj { flex: none; display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-inline-size: 26px; block-size: 24px; padding-inline: 8px; border: 0; border-radius: 999px; background: #5b67ff; color: #fff; font: inherit; font-size: 13px; font-weight: 700; white-space: nowrap; cursor: pointer; }
@@ -1999,7 +2006,7 @@ body.focus #side { display: none; }
 .ppage .night-div { margin-block: 12px; }
 
 /* The Projects page (its own screen since 2026-10-07). */
-.pp-top { display: flex; align-items: center; gap: 4px; padding: 4px 16px 0 12px; }
+.pp-top { display: flex; align-items: center; gap: 4px; padding-block: 4px 0; padding-inline: 12px 16px; }
 .pp-title { margin: 0; font-size: 22px; font-weight: 600; }
 .pp-page { padding: 12px 20px 32px; }
 
@@ -2141,7 +2148,7 @@ body.focus .shell { block-size: auto; min-block-size: 100dvh; overflow: visible;
    each row time | task | ↑ ↓ ✕, then Approve / Rethink / Not today. */
 .now-card.main.proposal { min-block-size: 0; }
 .pp-list { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 6px; }
-.pp-row { display: grid; grid-template-columns: 44px minmax(0, 1fr) auto; align-items: center; gap: 8px; padding: 6px 6px 6px 10px; border-radius: 12px; background: var(--card); border: 1px solid var(--aline); }
+.pp-row { display: grid; grid-template-columns: 44px minmax(0, 1fr) auto; align-items: center; gap: 8px; padding-block: 6px; padding-inline: 10px 6px; border-radius: 12px; background: var(--card); border: 1px solid var(--aline); }
 @supports (color: color-mix(in srgb, red, blue)) { .pp-row { background: color-mix(in srgb, var(--card) 70%, var(--tint)); } }
 .pp-row.over { border-style: dashed; }
 /* A calendar event in the plan (2026-10-10): the Schedule's own block, no row box; taps open it, never drags. */
@@ -2554,7 +2561,7 @@ body.fm-slide .deck > .now-card.main { animation: none !important; } /* main.js:
 .bl-h-sub { font-weight: 400; color: var(--ink-2); }
 .bl-card { padding: 12px 12px 10px; border-radius: 18px; background: var(--card); border: 1px solid var(--line); }
 .bl-done { display: grid; justify-items: start; gap: 6px; }
-.hg-dpill { display: inline-flex; align-items: center; gap: 6px; min-block-size: 30px; padding: 0 10px 0 8px; border-radius: 999px; border: 1px solid var(--line); background: var(--card); font: inherit; font-size: 12px; font-weight: 600; color: var(--ink-2); cursor: pointer; }
+.hg-dpill { display: inline-flex; align-items: center; gap: 6px; min-block-size: 30px; padding-block: 0; padding-inline: 8px 10px; border-radius: 999px; border: 1px solid var(--line); background: var(--card); font: inherit; font-size: 12px; font-weight: 600; color: var(--ink-2); cursor: pointer; }
 .hg-dpill:disabled { cursor: default; opacity: .7; }
 .hg-dtick { display: grid; place-items: center; inline-size: 16px; block-size: 16px; border-radius: 50%; background: var(--green); color: #fff; }
 .hg-dtick svg { inline-size: 10px; block-size: 10px; }
@@ -2630,7 +2637,7 @@ button.bl-r-title { padding: 0; border: 0; background: none; color: var(--ink); 
 /* One row (Mor, 2026-10-12, canvas "Daisey Bottom Fixes"): the area dot,
    the title (it still opens the task) and Focus; everything else waits
    until Today shuts. */
-:root:not(.night) body.card-mini #nowcard .now-card.main { min-block-size: 56px; padding: 6px 6px 6px 16px; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; column-gap: 10px; border-radius: 18px; }
+:root:not(.night) body.card-mini #nowcard .now-card.main { min-block-size: 56px; padding-block: 6px; padding-inline: 16px 6px; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; column-gap: 10px; border-radius: 18px; }
 :root:not(.night) body.card-mini #nowcard .now-card.main > :not(.hero-top, .now-title, .later-ask, .act-line), :root:not(.night) body.card-mini :is(#nowcard, .deck) > :not(.now-card.main, .deck, .later-drop, .drop-anchor), :root:not(.night) body.card-mini :is(.now-greet, .now-next-out) { display: none; }
 :root:not(.night) body.card-mini #nowcard .now-card.main .hero-top { display: contents; }
 :root:not(.night) body.card-mini #nowcard .now-card.main .hero-top > :not(.hero-area), :root:not(.night) body.card-mini #nowcard .now-card.main .hero-where { display: none; }
@@ -2674,7 +2681,7 @@ button.bl-r-title { padding: 0; border: 0; background: none; color: var(--ink); 
    in the shell's grid. Below 1024px the PHONE LAYOUT blocks above hold. */
 @media (min-width: 1024px) {
   .shell {
-    --rail: 240px; max-inline-size: none; margin: 0; padding: 0 32px 0 0;
+    --rail: 240px; max-inline-size: none; margin: 0; padding-block: 0; padding-inline: 0 32px;
     display: grid; column-gap: 28px;
     grid-template-columns: var(--rail) minmax(0, 1fr) minmax(320px, 400px);
     grid-template-rows: minmax(0, auto) auto minmax(0, 1fr) auto;
@@ -2793,10 +2800,11 @@ button.bl-r-title { padding: 0; border: 0; background: none; color: var(--ink); 
   #needsview { z-index: 30; inset: 50% auto auto 50%; translate: -50% -50%; inline-size: min(640px, calc(100vw - 64px)); max-block-size: min(760px, calc(100dvh - 64px)); box-sizing: border-box; padding: 26px 30px; border-radius: 28px; background: var(--card); box-shadow: 0 24px 60px rgb(0 0 0 / .25), 0 0 0 100vmax rgb(31 29 26 / .38); }
   #needsview > * { max-inline-size: none; }
   /* The task sheet: a drawer down the right side, the day still in view. */
-  dialog.tsheet { margin: 16px 16px 16px auto; inline-size: min(540px, calc(100vw - 32px)); block-size: calc(100dvh - 32px); max-block-size: none; padding: 24px; box-sizing: border-box; border-radius: 24px; }
+  dialog.tsheet { margin-block: 16px; margin-inline: auto 16px; inline-size: min(540px, calc(100vw - 32px)); block-size: calc(100dvh - 32px); max-block-size: none; padding: 24px; box-sizing: border-box; border-radius: 24px; }
   @media (prefers-reduced-motion: no-preference) { dialog.tsheet[open] { animation: ts-drawer .24s cubic-bezier(.2, .8, .2, 1); } }
+  @media (prefers-reduced-motion: no-preference) { :root[dir="rtl"] dialog.tsheet[open] { animation-name: ts-drawer-rtl; } }
   /* Settings: two columns, the sections listed on the left (main.js setNav). */
-  dialog.settings { inline-size: min(900px, calc(100vw - 64px)); block-size: min(680px, calc(100dvh - 64px)); padding: 0 28px 24px 0; box-sizing: border-box; }
+  dialog.settings { inline-size: min(900px, calc(100vw - 64px)); block-size: min(680px, calc(100dvh - 64px)); padding-block: 0 24px; padding-inline: 0 28px; box-sizing: border-box; }
   dialog.settings[open] { display: grid; grid-template-columns: 220px minmax(0, 1fr); column-gap: 28px; align-content: start; }
   dialog.settings > :not(.set-nav) { grid-column: 2; }
   dialog.settings > .now-head { position: sticky; inset-block-start: 0; z-index: 1; margin: 0; padding-block: 22px 8px; background: var(--card); }
@@ -2811,6 +2819,7 @@ button.bl-r-title { padding: 0; border: 0; background: none; color: var(--ink); 
 }
 :where(.pc-greet, .set-nav, .acct-name) { display: none; } /* PC only: no weight, so the block above wins from 1024px */
 @keyframes ts-drawer { from { opacity: 0; transform: translateX(32px); } }
+@keyframes ts-drawer-rtl { from { opacity: 0; transform: translateX(-32px); } } /* Hebrew: the drawer is on the left */
 
 /* ===== The day ribbon (ribbon.js; Mor, 2026-10-15, canvas "Daisey phone
    home polish"): phone home only, under the clock. A hairline that fades at
@@ -2827,7 +2836,7 @@ button.bl-r-title { padding: 0; border: 0; background: none; color: var(--ink); 
      green tint like the raised beads, left a hollow outline like the rings. */
   .rb-done, .rb-left { display: inline-flex; align-items: center; gap: 5px; }
   .rb-done b, .rb-left b { font-weight: 700; color: var(--ink); font-variant-numeric: tabular-nums; }
-  button.rb-done, button.rb-left { margin: 0; padding: 3px 10px 3px 8px; box-sizing: border-box; min-block-size: 24px; border: 1px solid transparent; border-radius: 999px; background: none; font: inherit; color: inherit; cursor: pointer; transition: background .15s ease, border-color .15s ease, transform .1s ease; }
+  button.rb-done, button.rb-left { margin: 0; padding-block: 3px; padding-inline: 8px 10px; box-sizing: border-box; min-block-size: 24px; border: 1px solid transparent; border-radius: 999px; background: none; font: inherit; color: inherit; cursor: pointer; transition: background .15s ease, border-color .15s ease, transform .1s ease; }
   button.rb-done:active, button.rb-left:active { transform: scale(.96); }
   button.rb-done { background: rgb(46 125 50 / .10); }
 @supports (color: color-mix(in srgb, red, blue)) { button.rb-done { background: color-mix(in srgb, var(--a-home-ink) 11%, transparent); } }
@@ -2846,6 +2855,9 @@ button.bl-r-title { padding: 0; border: 0; background: none; color: var(--ink); 
 @supports (color: color-mix(in srgb, red, blue)) { .rb-track { background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--line) 85%, var(--ink-2)) 12% 88%, transparent); box-shadow: 0 1px 0 color-mix(in srgb, #fff 80%, transparent); } }
   .rb-past { inset-inline-start: 0; background: linear-gradient(90deg, transparent, var(--ink-2) 14%); opacity: .55; }
 @supports (color: color-mix(in srgb, red, blue)) { .rb-past { background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--accent) 22%, var(--ink-2)) 14%); } }
+  /* Hebrew: the day starts on the right, so the fade does too. */
+  :root[dir="rtl"] .rb-past { background: linear-gradient(270deg, transparent, var(--ink-2) 14%); }
+@supports (color: color-mix(in srgb, red, blue)) { :root[dir="rtl"] .rb-past { background: linear-gradient(270deg, transparent, color-mix(in srgb, var(--accent) 22%, var(--ink-2)) 14%); } }
   /* A calendar event is the line itself in the event's colour over its span,
      set in by a rim of the page so back-to-back events part (Mor, 2026-10-20:
      the thick bars were ugly). One that's over fades. */

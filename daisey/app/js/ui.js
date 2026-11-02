@@ -258,12 +258,15 @@ export function dragScroll(row){
   const FOLLOW = 0.3, FRICTION = 0.955, THROW = 1.6, STRETCH = 0.35;
   let d = null, raf = 0, pos = 0, vel = 0, over = 0;
   const max = () => Math.max(0, row.scrollWidth - row.clientWidth);
+  // Positions are logical (0 at the row's start). In Hebrew the start is the
+  // right edge and scrollLeft runs 0 to -max, so it and the screen flip.
+  const dir = document.documentElement.dir === "rtl" ? -1 : 1;
   const stop = () => { cancelAnimationFrame(raf); raf = 0; };
   // Past an end, the overflow shows as a stretch (transform), not scroll.
   const put = (x) => {
     const m = max(), clamped = Math.min(m, Math.max(0, x));
-    row.scrollLeft = clamped; over = clamped - x;
-    row.style.transform = over ? `translateX(${over * STRETCH}px)` : "";
+    row.scrollLeft = clamped * dir; over = clamped - x;
+    row.style.transform = over ? `translateX(${over * STRETCH * dir}px)` : "";
   };
   const tick = () => {
     if (!row.isConnected) return stop();
@@ -276,7 +279,7 @@ export function dragScroll(row){
   const run = () => { if (!raf) raf = requestAnimationFrame(tick); };
   row.addEventListener("pointerdown", (e) => {
     if (e.pointerType === "touch" || e.button !== 0) return;
-    stop(); pos = row.scrollLeft - over; vel = 0;
+    stop(); pos = row.scrollLeft * dir - over; vel = 0;
     d = { x: e.clientX, start: pos, target: pos, on: false, v: 0, lx: e.clientX, t: e.timeStamp };
   });
   row.addEventListener("pointermove", (e) => {
@@ -284,9 +287,9 @@ export function dragScroll(row){
     const dx = e.clientX - d.x;
     if (!d.on && Math.abs(dx) > 5) { d.on = true; try { row.setPointerCapture(e.pointerId); } catch { /* gone */ } row.classList.add("dragging"); }
     if (!d.on) return;
-    const dt = Math.max(1, e.timeStamp - d.t), v = -(e.clientX - d.lx) / dt; // px/ms, in scroll terms
+    const dt = Math.max(1, e.timeStamp - d.t), v = -(e.clientX - d.lx) * dir / dt; // px/ms, in scroll terms
     d.v = d.v * 0.6 + v * 0.4; d.lx = e.clientX; d.t = e.timeStamp;
-    d.target = d.start - dx;
+    d.target = d.start - dx * dir;
     if (!motionOK()) { pos = d.target; put(pos); } else run();
   });
   const end = (e) => {

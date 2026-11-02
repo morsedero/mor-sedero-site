@@ -102,7 +102,7 @@
    a tap opens the decision card in its place (now.js routineNag). */
 .routine-nag.line {
   --sub: color-mix(in srgb, var(--aink, var(--ink-2)) 40%, var(--ink));
-  display: flex; align-items: center; gap: 10px; inline-size: 100%; min-block-size: 44px; margin-block-start: 8px; padding: 0 12px 0 14px;
+  display: flex; align-items: center; gap: 10px; inline-size: 100%; min-block-size: 44px; margin-block-start: 8px; padding-block: 0; padding-inline: 14px 12px;
   border: 1px solid var(--aline, var(--line)); border-radius: 16px; background: var(--tint, var(--card)); box-shadow: none;
   color: var(--ink); font: inherit; font-size: 14px; font-weight: 500; text-align: start; cursor: pointer;
 }

@@ -486,7 +486,9 @@ export function mountAddTask(dialog, uid, { onStart, onDone } = {}){
     guessSum.textContent = `Daisey thinks: ${more.filter((k) => k === "openHours" || k === "where").map((k) => shortText(k, vals[k])).join(" · ")}`;
     guessRow.replaceChildren(...more.map((k) => chipOf(k, true)));
     const menu = openChip && dialog.querySelector(".ts-chips .gmenu");
-    if (menu && menu.getBoundingClientRect().right > dialog.getBoundingClientRect().right - 8) menu.classList.add("end");
+    // Running off the dialog's far side: open toward the other way (in Hebrew the far side is the left).
+    const mr = menu?.getBoundingClientRect(), dr = dialog.getBoundingClientRect();
+    if (mr && (document.documentElement.dir === "rtl" ? mr.left < dr.left + 8 : mr.right > dr.right - 8)) menu.classList.add("end");
   }
 
   // ---------- links ----------
