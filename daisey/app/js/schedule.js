@@ -140,8 +140,9 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onMissed, onPro
   let tasks = null; // for Plan my day
   let dayPlan = null; // today's saved plan doc; approved, it sits in today's gaps
   const view = mode === "week" ? "week" : "day";
-  // week grid: one hour's height; tighter on PC (1024px+) where width is plentiful
-  const HOUR_PX = mode === "week" ? (matchMedia("(min-width: 1024px)").matches ? 38 : 60) : 44;
+  const PC = matchMedia("(min-width: 1024px)").matches;
+  // week grid: one hour's height; tighter on PC where width is plentiful
+  const HOUR_PX = mode === "week" ? (PC ? 38 : 60) : 44;
   const ORBIT_MS = 9000; // one lap of the now row's light (app.css sc-orbit)
   let focus = null; // "YYYY-MM-DD" stepped to; null = today
   // Days outside the week calendar.js fetches (today + 7) come from
@@ -451,8 +452,20 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onMissed, onPro
       return { d, ymd, allDay, timed: lanes(timed) };
     });
     // The grid spans the day hours, stretched to fit anything outside them.
-    const { h0, h1 } = gridSpan(hrs, cols.flatMap((c) => c.timed));
+    const all = cols.flatMap((c) => c.timed);
+    let { h0, h1 } = gridSpan(hrs, all);
+    // PC: trim the empty hours before the week's first event and after its
+    // last, keeping the hour now sits in when today is in view.
+    if (PC && all.length) {
+      const nowCol = cols.findIndex((c) => c.d.getTime() === t0), m = (now - t0) / 60000;
+      let lo = Math.min(...all.map((x) => x.s)), hi = Math.max(...all.map((x) => x.e));
+      if (nowCol >= 0) { lo = Math.min(lo, m); hi = Math.max(hi, m); }
+      h0 = Math.max(h0, Math.floor(lo / 60)); h1 = Math.min(h1, Math.max(h0 + 1, Math.ceil(hi / 60)));
+    }
     const px = (min) => ((min - h0 * 60) / 60) * HOUR_PX;
+    // PC shows a time from 30 min (phone 45); under an hour it rides the title's line.
+    const showTime = (x) => x.e - x.s >= (PC ? 30 : 45);
+    const oneLine = (x) => PC && x.e - x.s < 60 ? " wk-short" : "";
 
     // Weekday headings ride in the sticky header, under the bar.
     head.append(h("div", { className: "wk-heads" }, h("span"), ...cols.map((c) => {
@@ -467,7 +480,7 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onMissed, onPro
         ariaLabel: `${e.title}, all day`, onclick: () => onEvent?.(e) }, bdi(e.title)))))));
 
     const hours = h("div", { className: "wk-hours", ariaHidden: "true" },
-      ...Array.from({ length: h1 - h0 }, (_, i) => h("span", { style: `top:${i * HOUR_PX}px` + (i ? "" : ";transform:none"), textContent: pad(h0 + i) })));
+      ...Array.from({ length: h1 - h0 }, (_, i) => h("span", { style: `top:${i * HOUR_PX}px` + (i ? "" : ";transform:none"), textContent: pad(h0 + i) + (PC ? ":00" : "") })));
     const grid = h("div", { className: "wk-grid", style: `--hour:${HOUR_PX}px;block-size:${(h1 - h0) * HOUR_PX}px` }, hours, ...cols.map((c) => {
       const t = c.d.getTime();
       const col = h("div", { className: "wk-col" + (t === t0 ? " today" : "") + (t < t0 ? " past" : ""),
@@ -478,27 +491,28 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onMissed, onPro
           onNew?.(c.ymd, `${pad(Math.floor(min / 60))}:${pad(min % 60)}`);
         } });
       // Hour lines are real 1px borders, not a gradient: a gradient's 1px strokes land on fractional device pixels at 125%/150% zoom and come out uneven.
-      for (let i = 0; i < h1 - h0; i++) col.append(h("div", { className: "wk-line", style: `top:${i * HOUR_PX}px` }));
+      for (let i = 0; i < h1 - h0; i++) col.append(h("div", { className: "wk-line", style: `top:${i * HOUR_PX}px` }),
+        h("div", { className: "wk-line half", style: `top:${i * HOUR_PX + HOUR_PX / 2}px` }));
       for (const x of c.timed) {
         if (x.plan) {
           const w = 100 / x.lanes, time = `${clock(x.start)}–${clock(x.end)}`;
-          col.append(h("button", { type: "button", className: "wk-ev wk-plan" + areaClass(x.plan.task) + (x.plan.missed ? " missed" : x.end <= now ? " past" : x.start <= now ? " on" : ""),
+          col.append(h("button", { type: "button", className: "wk-ev wk-plan" + oneLine(x) + areaClass(x.plan.task) + (x.plan.missed ? " missed" : x.end <= now ? " past" : x.start <= now ? " on" : ""),
             style: `top:${px(x.s)}px;block-size:${Math.max(18, px(x.e) - px(x.s) - 2)}px;inset-inline-start:${x.lane * w}%;inline-size:calc(${w}% - 2px)`,
             ariaLabel: `Planned: ${x.plan.task.title}, ${short(c.d)} ${time}`, onclick: () => onOpen?.(x.plan.task) },
-            h("span", { className: "wk-evt" }, bdi(x.plan.task.title)), x.e - x.s >= 45 && h("span", { className: "wk-evtime", textContent: clock(x.start) })));
+            h("span", { className: "wk-evt" }, bdi(x.plan.task.title)), showTime(x) && h("span", { className: "wk-evtime", textContent: clock(x.start) })));
           continue;
         }
         const done = /^✓\s*/u.test(x.ev.title), title = done ? x.ev.title.replace(/^✓\s*/u, "") : x.ev.title;
-        const tall = x.e - x.s >= 45, time = `${clock(x.start)}–${clock(x.end)}`;
+        const tall = showTime(x), time = `${clock(x.start)}–${clock(x.end)}`;
         const w = 100 / x.lanes;
         if (x.ev.trip) { // the way there or back: Daisey's, not the calendar's, so nothing to open
-          col.append(h("div", { className: "wk-ev wk-trip" + (x.end <= now ? " past" : x.start <= now ? " on" : ""), role: "img",
+          col.append(h("div", { className: "wk-ev wk-trip" + oneLine(x) + (x.end <= now ? " past" : x.start <= now ? " on" : ""), role: "img",
             style: `top:${px(x.s)}px;block-size:${Math.max(18, px(x.e) - px(x.s) - 2)}px;inset-inline-start:${x.lane * w}%;inline-size:calc(${w}% - 2px)`,
             ariaLabel: `${title}, ${short(c.d)} ${time}` },
             h("span", { className: "wk-evt", dir: "auto", textContent: title }), tall && h("span", { className: "wk-evtime", textContent: clock(x.start) })));
           continue;
         }
-        col.append(h("button", { type: "button", className: "wk-ev" + (done ? " done" : "") + tone(x.ev) + (x.end <= now ? " past" : x.start <= now ? " on" : ""),
+        col.append(h("button", { type: "button", className: "wk-ev" + oneLine(x) + (done ? " done" : "") + tone(x.ev) + (x.end <= now ? " past" : x.start <= now ? " on" : ""),
           style: `top:${px(x.s)}px;block-size:${Math.max(18, px(x.e) - px(x.s) - 2)}px;inset-inline-start:${x.lane * w}%;inline-size:calc(${w}% - 2px);${x.ev.color ? `--ev:${x.ev.color}` : ""}`,
           ariaLabel: `${done ? "Finished task: " : ""}${title}, ${short(c.d)} ${time}`, onclick: () => onEvent?.(x.ev) },
           h("span", { className: "wk-evt" }, bdi(title)), tall && h("span", { className: "wk-evtime", textContent: clock(x.start) })));

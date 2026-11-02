@@ -1955,6 +1955,7 @@ body.focus #side { display: none; }
 .wk-hours span { position: absolute; inset-inline-end: 4px; transform: translateY(-50%); font-size: 10px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
 .wk-col { position: relative; min-inline-size: 0; border-inline-start: 1px solid var(--line); cursor: pointer; }
 .wk-line { position: absolute; inset-inline: 0; block-size: 0; border-top: 1px solid var(--line); pointer-events: none; }
+.wk-line.half { border-top-style: dashed; opacity: .5; }
 .wk-col.past { background-color: transparent; }
 @supports (color: color-mix(in srgb, red, blue)) { .wk-col.past { background-color: color-mix(in srgb, var(--chip) 45%, transparent); } }
 .wk-col.today { background-color: rgb(245 179 1 / .07); }
@@ -1970,6 +1971,23 @@ body.focus #side { display: none; }
 @supports (color: color-mix(in srgb, red, blue)) { .wk-ev.on { box-shadow: 0 0 0 1.5px color-mix(in srgb, var(--ev, var(--ink-2)) 70%, var(--card)); } }
 .wk-ev.done { background: none; border: 1px solid var(--line); color: var(--ink-2); text-decoration: line-through; }
 .wk-now { position: absolute; inset-inline: -1px 0; z-index: 1; block-size: 2px; background: var(--nowline); pointer-events: none; }
+/* PC week (schedule.js PC): wider hour column with "09:00", bigger type, an
+   event under an hour on one line (title · time), rounder cards that lift on
+   hover, a stronger today tint. */
+@media (min-width: 1024px) {
+  .wk-heads, .wk-allday, .wk-grid { grid-template-columns: 44px repeat(7, minmax(0, 1fr)); }
+  .wk-hours span { inset-inline-end: 6px; font-size: 11px; }
+  .wk-evt { font-size: 12px; }
+  .wk-evtime { font-size: 11px; }
+  .wk-ev { padding: 3px 5px; border-radius: 7px; transition: box-shadow .15s, transform .15s; }
+  .wk-ev.wk-short { flex-direction: row; align-items: baseline; gap: 5px; }
+  .wk-ev.wk-short .wk-evt { flex: 0 1 auto; min-inline-size: 0; white-space: nowrap; text-overflow: ellipsis; }
+  .wk-ev.wk-short .wk-evtime { flex: none; }
+  .wk-ev:not(.on):hover { box-shadow: 0 2px 8px rgb(0 0 0 / .14); transform: translateY(-1px); z-index: 2; }
+  .wk-col.today { background-color: rgb(245 179 1 / .12); }
+  @supports (color: color-mix(in srgb, red, blue)) { .wk-col.today { background-color: color-mix(in srgb, var(--accent) 12%, transparent); } }
+}
+@media (min-width: 1024px) and (prefers-reduced-motion: reduce) { .wk-ev { transition: none; } .wk-ev:not(.on):hover { transform: none; } }
 .wk-now::before { content: ""; position: absolute; inset-inline-start: -4px; inset-block-start: -3px; inline-size: 8px; block-size: 8px; border-radius: 50%; background: var(--nowline); }
 .sc-note { margin: 4px 0 0; font-size: 14px; color: var(--ink-2); }
 .sc-note a { color: inherit; }
