@@ -1953,8 +1953,8 @@ body.focus #side { display: none; }
 .wk-grid { position: relative; }
 .wk-hours { position: relative; }
 .wk-hours span { position: absolute; inset-inline-end: 4px; transform: translateY(-50%); font-size: 10px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
-.wk-col { position: relative; min-inline-size: 0; border-inline-start: 1px solid var(--line); cursor: pointer;
-  background: repeating-linear-gradient(to bottom, var(--line) 0 1px, transparent 1px var(--hour)); }
+.wk-col { position: relative; min-inline-size: 0; border-inline-start: 1px solid var(--line); cursor: pointer; }
+.wk-line { position: absolute; inset-inline: 0; block-size: 0; border-top: 1px solid var(--line); pointer-events: none; }
 .wk-col.past { background-color: transparent; }
 @supports (color: color-mix(in srgb, red, blue)) { .wk-col.past { background-color: color-mix(in srgb, var(--chip) 45%, transparent); } }
 .wk-col.today { background-color: rgb(245 179 1 / .07); }

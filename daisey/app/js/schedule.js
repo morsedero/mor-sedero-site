@@ -477,6 +477,8 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onMissed, onPro
           const min = Math.max(0, Math.min(1410, h0 * 60 + Math.floor((e.offsetY / HOUR_PX) * 2) * 30));
           onNew?.(c.ymd, `${pad(Math.floor(min / 60))}:${pad(min % 60)}`);
         } });
+      // Hour lines are real 1px borders, not a gradient: a gradient's 1px strokes land on fractional device pixels at 125%/150% zoom and come out uneven.
+      for (let i = 0; i < h1 - h0; i++) col.append(h("div", { className: "wk-line", style: `top:${i * HOUR_PX}px` }));
       for (const x of c.timed) {
         if (x.plan) {
           const w = 100 / x.lanes, time = `${clock(x.start)}–${clock(x.end)}`;
