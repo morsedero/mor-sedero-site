@@ -84,9 +84,15 @@ test("a piece sized to a stretch shrinks by the break it opens with, and No room
   ];
   const ctx = { tasks, events: [ev("Bobba", [9, 30], [13]), ev("Bells", [16], [19])], now: at(13, 48), hours };
   const items = withBreaks(proposeDay(ctx), ctx);
-  const { rows, over } = timeline(items, ctx);
+  const { rows, over, breaks } = timeline(items, ctx);
   const start = Object.fromEntries(rows.map((r) => [r.taskId, r.start]));
   assert.deepEqual(over.map((o) => o.taskId), [], `laid ${rows.map((r) => r.taskId)}`);
   assert.ok(start.mp1 < at(16) && start.q < at(16));
-  assert.equal(rows.find((r) => r.taskId === "big").minutes, 150); // 19:30–22:00, of 3 h
+  // The breaks land where the plan laid them: lunch opens it, and dinner
+  // comes after the meeting, before a block that would run through it.
+  assert.deepEqual(breaks.map((b) => [b.name, b.start]), [["Lunch", at(13, 50)], ["Dinner", at(19)]]);
+  const big = rows.find((r) => r.taskId === "big");
+  assert.deepEqual([big.start, big.minutes], [at(19, 45), 130]); // of 3 h, to 21:55
+  // Fixed as plan items, they lay the same.
+  assert.deepEqual(timeline(proposeDay(ctx), ctx).breaks.map((b) => b.start), breaks.map((b) => b.start));
 });

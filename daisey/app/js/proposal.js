@@ -186,7 +186,8 @@ export function proposeDay({ tasks = [], events = [], now = Date.now(), hours = 
   // A piece sized to the longest free stretch can still miss it by the break
   // the stretch opens with (Mor, 2026-11-03: 3 h of Monster Punk for
   // 19:00–22:00, after a 3 h meeting; its 30 min break left 2 h 30). It
-  // shrinks until it fits, ten minutes at a time, then the holes fill.
+  // shrinks until it fits, ten minutes at a time, once the holes are filled
+  // (before, it cut tasks a hole would have taken whole).
   // Again once the holes are filled: what's left at the end of the day is a
   // piece for the split task still out.
   const fit = { tasks, events, now, hours, phoneOk };
@@ -198,7 +199,7 @@ export function proposeDay({ tasks = [], events = [], now = Date.now(), hours = 
       if (m < WORTH) cant.add(o.taskId);
       else items[i] = { ...items[i], minutes: m, of: leftOf(o.task) };
     } };
-  shrink(); fillHoles(items, fit, later); shrink();
+  fillHoles(items, fit, later); shrink(); fillHoles(items, fit, later); shrink();
   const plan = [...items.filter((it) => !later.has(it.taskId)), ...items.filter((it) => later.has(it.taskId))];
   const ctx = { tasks, events, now, hours, phoneOk }, byId = new Map(tasks.map((t) => [t.id, t]));
   // Desk time short for the plan's own work (not for Background: all of it
@@ -348,7 +349,10 @@ export function breakDue({ worked, sinceLong, at, mealsDone = new Set(), meals =
   // stretch already past after well over it (no 4 h blocks on one short break).
   if (sinceLong >= B.longEvery || (sinceLong >= B.after && sinceLong + need > B.longEvery + B.long)) {
     // A long break due just before a meal is the meal, not one then the other.
-    const soon = meals.find((meal) => !mealsDone.has(meal.name) && m < meal.from && meal.from - m <= B.long);
+    // So is one before an item that would run across a meal's whole window
+    // (Mor, 2026-11-03: dinner 20:15, a 19:30–22:00 block went without it).
+    const soon = meals.find((meal) => !mealsDone.has(meal.name) && m < meal.from
+      && (meal.from - m <= B.long || (m + B.long + need >= meal.to && meal.from - m <= B.mealSlack + B.long)));
     return soon ? { type: "meal", name: soon.name, minutes: soon.minutes } : { type: "long", minutes: B.long };
   }
   if (worked >= B.after) return { type: "short", minutes: B.short };
@@ -370,10 +374,12 @@ function mealName(it, meals, at){
   const m = clockMin(at);
   return meals.find((x) => m >= x.from && m < x.to)?.name || "Lunch";
 }
-// A plan never starts or ends on a break: those go (Mor, 2026-10-08).
+// A plan never starts or ends on a break: those go (Mor, 2026-10-08). A meal
+// can start it: the plan opens at lunchtime (Mor, 2026-11-03: lunch at 13:55
+// went, and the afternoon ran without one).
 export function trimBreaks(items = []){
   let a = 0, z = items.length;
-  while (a < z && isBreak(items[a])) a++;
+  while (a < z && isBreak(items[a]) && !isMeal(items[a])) a++;
   while (z > a && isBreak(items[z - 1])) z--;
   return a === 0 && z === items.length ? items : items.slice(a, z);
 }
@@ -460,6 +466,7 @@ function lay(items = [], { tasks = [], events = [], now = Date.now(), hours = W.
     return !!w && at >= new Date(now).setHours(0, w.to + W.BREAKS.mealSlack, 0, 0);
   };
   const lo = items.findIndex((it) => !isBreak(it)), hi = items.findLastIndex((it) => !isBreak(it));
+  let pend = null; // the break item waiting for its task
   // Two breaks with no task left between them (it was removed, dropped, put
   // off) lay as one: the longer stays, a meal over a plain break (Mor,
   // 2026-10-21: "Take five" twice in a row after a plan change).
@@ -477,7 +484,7 @@ function lay(items = [], { tasks = [], events = [], now = Date.now(), hours = W.
   });
   for (const [i, it] of items.entries()) {
     if (isBreak(it)) {
-      if (i < lo || i > hi || twin.has(i)) continue; // never first or last
+      if ((i < lo && !isMeal(it)) || i > hi || twin.has(i)) continue; // never first (but a meal) or last
       if (isMeal(it) && !meals.length) continue; // meals switched off in Settings
       const len = Math.max(5, it.minutes || 10) * MIN;
       // A break right after finished work, with nothing laid since, runs from
@@ -496,19 +503,12 @@ function lay(items = [], { tasks = [], events = [], now = Date.now(), hours = W.
         lastEnd = doneAt + len; gi = g; cursor = Math.max(cursor, Math.ceil((doneAt + len) / (5 * MIN)) * 5 * MIN);
         continue;
       }
-      for (let k = gi; k < gaps.length; k++) {
-        if (gaps[k].place) continue; // no break on the train: the ride is one
-        const from = Math.max(cursor, gaps[k].start);
-        if (gaps[k].end - from < len) continue;
-        const meal = isMeal(it) ? mealName(it, meals, from) : null;
-        if (isLate(meal, from)) { lateMeals.push(meal); break; }
-        breaks.push({ kind: "break", type: meal ? "meal" : it.brk, minutes: len / MIN, start: from, end: from + len, i, ...(meal ? { name: meal } : {}) });
-        gapEnd.set(breaks[breaks.length - 1], gaps[k].end);
-        worked = 0; if (it.brk !== "short") sinceLong = 0;
-        if (meal) mealsDone.add(meal);
-        lastEnd = from + len; gi = k; cursor = from + len;
-        break;
-      }
+      // Otherwise it waits for the next task (place): right after the work
+      // before it, running on to a meeting (Mor, 2026-10-10) — unless that
+      // task comes after a long run of meetings: then right before it (Mor,
+      // 2026-11-03: the break after a 3 h meeting went in at 15:00 and the
+      // evening task started at 19:00 without it).
+      pend = { it, i };
       continue;
     }
     const task = byId.get(it.taskId);
@@ -521,6 +521,14 @@ function lay(items = [], { tasks = [], events = [], now = Date.now(), hours = W.
     place(it, i, task);
   }
   for (const d of later) place(d.it, d.i, byId.get(d.it.taskId));
+  // The pending break item as laid at `from`, or null (none, or a meal
+  // carried past its time: Needs you asks instead).
+  function pendBreak(from){
+    if (!pend) return null;
+    const meal = isMeal(pend.it) ? mealName(pend.it, meals, from) : null;
+    if (isLate(meal, from)) return null;
+    return { type: meal ? "meal" : pend.it.brk, minutes: Math.max(5, pend.it.minutes || 10), i: pend.i, ...(meal ? { name: meal } : {}) };
+  }
   function place(it, i, task){
     // What is left of the task. A piece (it.of) keeps its saved length, never
     // more than is left: progress made since the plan was saved shrinks it.
@@ -528,6 +536,20 @@ function lay(items = [], { tasks = [], events = [], now = Date.now(), hours = W.
     // made 4 h in the sheet kept its 30-min slot).
     const need = Math.max(5, it.of ? Math.min(it.minutes || Infinity, leftOf(task)) : leftOf(task)) * MIN;
     let placed = false;
+    // Where the waiting break item fits right after the work before it.
+    const len = pend ? Math.max(5, pend.it.minutes || 10) * MIN : 0;
+    const early = !pend ? -1 : gaps.findIndex((g, k) => k >= gi && !g.place && g.end - Math.max(cursor, g.start) >= len);
+    const layEarly = () => {
+      const from = Math.max(cursor, gaps[early].start), b = pendBreak(from);
+      if (b) {
+        breaks.push({ kind: "break", type: b.type, minutes: b.minutes, start: from, end: from + len, i: b.i, ...(b.name ? { name: b.name } : {}) });
+        gapEnd.set(breaks[breaks.length - 1], gaps[early].end);
+        worked = 0; if (b.type !== "short") sinceLong = 0;
+        if (b.name) mealsDone.add(b.name);
+        lastEnd = from + len; cursor = from + len;
+      } else if (isMeal(pend.it)) lateMeals.push(mealName(pend.it, meals, from));
+      pend = null;
+    };
     // The soonest ride that fits it (engine.fitsPlace) and still has room.
     const ride = gaps.map((g, k) => ({ g, k, from: rideAt[k] ?? Math.ceil(g.start / (5 * MIN)) * 5 * MIN }))
       .find(({ g, from }) => g.place && fitsPlace(task, g.place, phoneOk) && g.end - from >= need && openStart(task, from, need) === from);
@@ -541,11 +563,16 @@ function lay(items = [], { tasks = [], events = [], now = Date.now(), hours = W.
       // meetings just before it.
       const cont = lastEnd != null && from - lastEnd < W.BREAKS.reset * MIN;
       const w = cont ? worked : runBefore(evs, from), sl = cont ? sinceLong : w;
-      const brk = !fixed && !gaps[k].place && breakDue({ worked: w, sinceLong: sl, at: from, mealsDone, meals, need: need / MIN, prevStart: cont ? lastStart : null });
+      // The waiting break item goes with the task when they share a stretch
+      // or the task follows a long run of meetings; else it's laid early.
+      const withTask = pend && (k === early || (!cont && w >= W.BREAKS.after));
+      const brk = gaps[k].place ? null : fixed ? (withTask ? pendBreak(from) : null)
+        : breakDue({ worked: w, sinceLong: sl, at: from, mealsDone, meals, need: need / MIN, prevStart: cont ? lastStart : null });
       const gap = (brk ? brk.minutes * MIN : 0) + need;
       if (gaps[k].end - from >= gap && (!brk || openStart(task, from + brk.minutes * MIN, need) != null)) {
+        if (pend && !withTask && early >= 0) layEarly();
         if (brk) {
-          breaks.push({ kind: "break", type: brk.type, minutes: brk.minutes, start: from, end: from + brk.minutes * MIN, i: null, ...(brk.name ? { name: brk.name } : {}) });
+          breaks.push({ kind: "break", type: brk.type, minutes: brk.minutes, start: from, end: from + brk.minutes * MIN, i: brk.i ?? null, ...(brk.name ? { name: brk.name } : {}) });
           gapEnd.set(breaks[breaks.length - 1], gaps[k].end);
           if (brk.name) mealsDone.add(brk.name);
         }
@@ -555,6 +582,8 @@ function lay(items = [], { tasks = [], events = [], now = Date.now(), hours = W.
         sinceLong = (brk && brk.type !== "short" ? 0 : sl) + need / MIN;
         lastEnd = s + need; lastStart = s;
         gi = k; cursor = s + need; placed = true;
+        if (pend && !brk && isMeal(pend.it)) lateMeals.push(mealName(pend.it, meals, from));
+        pend = null;
         break;
       }
     }
