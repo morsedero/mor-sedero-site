@@ -619,9 +619,15 @@ export function rank(tasks, input = {}){
   // Background waits (Mor, 2026-10-08): behind every other offerable task,
   // unless a deadline or target date gives it points.
   const waits = (s) => tierOf(s.task, m) === "background" && !s.parts.deadline && !s.parts.target;
+  // Focus before everything else, whatever the points (Mor, 2026-11-03: a
+  // Job Hunt Videos and a BOBBA pick, both Keep going, filled the plan and
+  // Monster Punk and Reprise, in Focus, got nothing). Only a real deadline
+  // today or passed joins Focus up front; there the points decide.
+  const behind = (s) => { const dl = deadlineOf(s.task, m);
+    return tierOf(s.task, m) !== "focus" && !(dl && daysUntil(dl.due, m.now) <= 0); };
   const scored = offer.map((t) => scoreTask(t, m, ctx));
   flowUnderTier(scored, m);
-  const ranked = scored.sort((a, b) => waits(a) - waits(b) || compare(a, b));
+  const ranked = scored.sort((a, b) => waits(a) - waits(b) || behind(a) - behind(b) || compare(a, b));
   const pick = ranked[0] || null;
   const alternatives = somethingElse(ranked);
   assignWhys([...(pick ? [pick] : []), ...alternatives]);

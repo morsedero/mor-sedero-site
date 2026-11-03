@@ -539,3 +539,15 @@ test("a target date says target, never planned", () => {
     assert.doesNotMatch(s, /planned/i);
   }
 });
+
+test("Focus comes before Keep going whatever the points; only a deadline today or passed joins it", () => {
+  // Mor, 2026-11-03: Keep going picks filled the plan, Focus got nothing.
+  const tiers = { MP: "focus", Jobs: "keep" };
+  const mp = task({ project: "MP" });
+  const soon = dl("2026-10-06", { project: "Jobs", stakes: "high" }); // tomorrow: outscores, still waits
+  assert.equal(pick([soon, mp], { projectTiers: tiers }).task.id, mp.id);
+  const today = dl("2026-10-05", { project: "Jobs" });
+  assert.equal(pick([mp, today], { projectTiers: tiers }).task.id, today.id);
+  const late = dl("2026-10-02", { project: "Jobs" });
+  assert.equal(pick([mp, late], { projectTiers: tiers }).task.id, late.id);
+});

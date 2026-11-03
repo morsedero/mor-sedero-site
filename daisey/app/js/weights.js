@@ -87,7 +87,9 @@ export const ROUTINE = { last: 25, behind: 14, due: 6, why: 30 };
 export const STAKES = { penalty: 15, money: 12, someone: 10, low: 0 };
 // The project's tier on the Projects page (Mor, 2026-10-08). Focus is under
 // a deadline today (35) and over a window fit (12), so the tiers really
-// steer the card. Background scores nothing, and more: it waits behind every
+// steer the card. Since 2026-11-03 Focus is also a band of its own: every
+// Focus task ranks before every other one but a deadline today or passed
+// (engine rank). Background scores nothing, and more: it waits behind every
 // other offerable task unless a deadline or target date pulls it up (engine
 // rank). The Inbox isn't a tier anyone drags; its tasks score as "keep".
 export const TIER = { focus: 15, keep: 6, background: 0 };
