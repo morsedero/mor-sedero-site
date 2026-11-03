@@ -447,3 +447,12 @@ test("a project's daily cap: past it, the plan leaves the rest for tomorrow; a d
     assert.ok(!added.some((id) => id.startsWith("j")), `added ${added}`);
   } finally { C.setProjectCaps({}); }
 });
+
+test("dinner: a block across the whole meal window gets it, even right after a short task", () => {
+  // Mor, 2026-11-03: 15 min at 19:30, then 19:45–21:55 straight through dinner.
+  const hours = { start: 9 * 60, end: 23 * 60, meals: [{ name: "Dinner", from: 1215, to: 1275, minutes: 45 }] };
+  const tasks = [t({ id: "a", size: 15 }), t({ id: "b", size: 120 })];
+  const { breaks, rows } = timeline([{ taskId: "a", minutes: 15 }, { taskId: "b", minutes: 120 }], { tasks, events: [], now: at(19, 30), hours });
+  assert.deepEqual(breaks.map((b) => [b.name, b.start]), [["Dinner", at(19, 45)]]);
+  assert.equal(rows[1].start, at(20, 30));
+});

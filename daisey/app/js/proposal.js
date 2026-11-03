@@ -342,7 +342,10 @@ export function breakDue({ worked, sinceLong, at, mealsDone = new Set(), meals =
     const meal_ = { type: "meal", name: meal.name, minutes: meal.minutes };
     if (m >= meal.from && m < meal.to) {
       if (worked >= B.lunchAfter || m + need >= meal.to) return meal_;
-    } else if (m < meal.from && m >= meal.from - B.mealSlack && m + need > meal.to && worked >= B.lunchAfter) return meal_;
+    // "Once something has been done" is also a task running straight into
+    // this one (Mor, 2026-11-03: 15 min at 19:30, then a block through all
+    // of dinner, and no dinner).
+    } else if (m < meal.from && m >= meal.from - B.mealSlack && m + need > meal.to && (worked >= B.lunchAfter || prevStart != null)) return meal_;
     else if (m >= meal.to && m < meal.to + B.mealSlack && prevStart != null && clockMin(prevStart) < meal.to) return meal_;
   }
   // A long break is due after longEvery, or before an item that would take a
