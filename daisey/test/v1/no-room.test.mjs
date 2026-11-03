@@ -55,3 +55,19 @@ test("a narrowed ask (fewer, lighter) doesn't pull the rest back in", () => {
   const items = proposeDay({ tasks, events: [], now: at(9), ask: { fewer: true } });
   assert.ok(items.length < 6);
 });
+
+test("a long task that skips a free stretch leaves it to the tasks after it, not to No room", () => {
+  // Mor, 2026-11-03: 13:45–16:00 free, a 3 h task went to 19:00 and every
+  // Monster Punk pick after it read "no free time left today" with 2 h 15 empty.
+  const tasks = [
+    t({ id: "video", size: 150, dateKind: "deadline", stakes: "high", project: "Job Hunt Videos" }), // 19:30–22:00, after the break the event earns
+    t({ id: "mp1", size: 60, due: "2026-10-20", project: "Monster Punk" }),
+    t({ id: "mp2", size: 60, due: "2026-10-20", project: "Monster Punk" }),
+  ];
+  const ctx = { tasks, events: [ev("Rehearsal", [16], [19])], now: at(13, 40), hours: { start: 8 * 60, end: 22 * 60, meals: [] } };
+  const { rows, over } = timeline(withBreaks(proposeDay(ctx), ctx), ctx);
+  const start = Object.fromEntries(rows.map((r) => [r.taskId, r.start]));
+  assert.equal(start.video, at(19, 30), "video keeps its evening slot");
+  assert.ok(start.mp1 < at(16) && start.mp2 < at(16), `laid ${rows.map((r) => r.taskId)}, over ${over.map((o) => o.taskId)}`);
+  assert.equal(over.length, 0);
+});

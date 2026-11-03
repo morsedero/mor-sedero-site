@@ -183,6 +183,7 @@ export function proposeDay({ tasks = [], events = [], now = Date.now(), hours = 
     if (t.dateKind !== "deadline" && atCap(t)) continue; // a target date waits out the project's cap, a deadline doesn't
     items.push({ taskId: t.id, minutes: leftOf(t) }); out.add(t.id);
   }
+  fillHoles(items, { tasks, events, now, hours, phoneOk }, later);
   const plan = [...items.filter((it) => !later.has(it.taskId)), ...items.filter((it) => later.has(it.taskId))];
   const ctx = { tasks, events, now, hours, phoneOk }, byId = new Map(tasks.map((t) => [t.id, t]));
   // Desk time short for the plan's own work (not for Background: all of it
@@ -246,6 +247,33 @@ function hoursFirst(items, ctx){
       const next = [...rest.slice(0, k), items[from], ...rest.slice(k)];
       if (!timeline(next, ctx).over.some((x) => x.taskId === o.taskId)) { items.splice(0, items.length, ...next); break; }
     }
+  }
+  return items;
+}
+// The timeline lays in order and never goes back, so a task too long for a
+// free stretch jumps to a later one and leaves the stretch empty for every
+// task after it (Mor, 2026-11-03: 13:45–16:00 free, a 3 h task went to
+// 19:00, both Monster Punk picks read "no free time left today"). A No room
+// item moves up into such a hole, only where every laid task keeps its time.
+// skip: ids never moved (Background waits for the rest). Sorts items in place.
+export function fillHoles(items, ctx, skip = new Set()){
+  for (let n = 0; n < items.length; n++) {
+    const { rows, over } = timeline(items, ctx);
+    const was = new Map(rows.map((r) => [r.taskId, r.start]));
+    const keeps = ({ rows: now }) => { const at = new Map(now.map((r) => [r.taskId, r.start]));
+      return [...was].every(([id, s]) => at.get(id) === s); };
+    let moved = false;
+    for (const o of over) {
+      if (skip.has(o.taskId)) continue;
+      const from = items.findIndex((it) => it.taskId === o.taskId);
+      const rest = items.filter((_, i) => i !== from);
+      for (let k = 0; k < from && !moved; k++) {
+        const next = [...rest.slice(0, k), items[from], ...rest.slice(k)], tl = timeline(next, ctx);
+        if (!tl.over.some((x) => x.taskId === o.taskId) && keeps(tl)) { items.splice(0, items.length, ...next); moved = true; }
+      }
+      if (moved) break;
+    }
+    if (!moved) break;
   }
   return items;
 }
@@ -599,7 +627,8 @@ export function refit(items = [], ctx = {}, keep = []){
 // never before or between what's there, so nothing already in it moves
 // later, and nothing in it is pushed out of today. The timeline lays the
 // plan from now, so freed time earlier in the day is already used by the
-// items after it and what's left is at the end. skip: ids never to add (the
+// items after it and what's left is at the end — or in a hole a long task
+// jumped (fillHoles), where it moves nothing either. skip: ids never to add (the
 // user took them off with Undo). → { items, added: [taskId] }.
 export function topUp(items = [], ctx = {}, skip = []){
   const byId = new Map((ctx.tasks || []).map((t) => [t.id, t]));
@@ -613,7 +642,7 @@ export function topUp(items = [], ctx = {}, skip = []){
   const added = [];
   for (const p of picks) {
     if (added.length >= room) break;
-    const next = [...out, p];
+    const next = fillHoles([...out, p], ctx); // into a hole the plan left, else on the end
     if (timeline(next, ctx).over.length > overBefore) continue; // doesn't fit, or pushes one out
     out = next; added.push(p.taskId);
   }
@@ -664,7 +693,7 @@ export function moreOf(items = [], ctx = {}){
   for (const p of picks) {
     if (added >= MORE_ADD || mins >= MORE_MIN) break;
     if (mins + p.minutes > MORE_MIN && (added || p.minutes > MORE_MIN * 1.5)) continue;
-    const next = [...out, p];
+    const next = fillHoles([...out, p], ctx);
     if (timeline(next, ctx).over.length > overBefore) continue;
     out = next; added++; mins += p.minutes;
   }
