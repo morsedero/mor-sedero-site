@@ -187,15 +187,18 @@ export function proposeDay({ tasks = [], events = [], now = Date.now(), hours = 
   // the stretch opens with (Mor, 2026-11-03: 3 h of Monster Punk for
   // 19:00–22:00, after a 3 h meeting; its 30 min break left 2 h 30). It
   // shrinks until it fits, ten minutes at a time, then the holes fill.
-  const fit = { tasks, events, now, hours, phoneOk }, cant = new Set();
-  for (let n = 0; n < 20 * items.length; n++) {
-    const o = timeline(items, fit).over.find((x) => !later.has(x.taskId) && !cant.has(x.taskId) && x.task.canSplit);
-    if (!o) break;
-    const i = items.findIndex((it) => it.taskId === o.taskId), m = items[i].of ? items[i].minutes - 10 : o.room;
-    if (m < WORTH) cant.add(o.taskId);
-    else items[i] = { ...items[i], minutes: m, of: leftOf(o.task) };
-  }
-  fillHoles(items, fit, later);
+  // Again once the holes are filled: what's left at the end of the day is a
+  // piece for the split task still out.
+  const fit = { tasks, events, now, hours, phoneOk };
+  const shrink = () => { const cant = new Set();
+    for (let n = 0; n < 20 * items.length; n++) {
+      const o = timeline(items, fit).over.find((x) => !later.has(x.taskId) && !cant.has(x.taskId) && x.task.canSplit);
+      if (!o) break;
+      const i = items.findIndex((it) => it.taskId === o.taskId), m = items[i].of ? items[i].minutes - 10 : o.room;
+      if (m < WORTH) cant.add(o.taskId);
+      else items[i] = { ...items[i], minutes: m, of: leftOf(o.task) };
+    } };
+  shrink(); fillHoles(items, fit, later); shrink();
   const plan = [...items.filter((it) => !later.has(it.taskId)), ...items.filter((it) => later.has(it.taskId))];
   const ctx = { tasks, events, now, hours, phoneOk }, byId = new Map(tasks.map((t) => [t.id, t]));
   // Desk time short for the plan's own work (not for Background: all of it
