@@ -183,7 +183,19 @@ export function proposeDay({ tasks = [], events = [], now = Date.now(), hours = 
     if (t.dateKind !== "deadline" && atCap(t)) continue; // a target date waits out the project's cap, a deadline doesn't
     items.push({ taskId: t.id, minutes: leftOf(t) }); out.add(t.id);
   }
-  fillHoles(items, { tasks, events, now, hours, phoneOk }, later);
+  // A piece sized to the longest free stretch can still miss it by the break
+  // the stretch opens with (Mor, 2026-11-03: 3 h of Monster Punk for
+  // 19:00–22:00, after a 3 h meeting; its 30 min break left 2 h 30). It
+  // shrinks until it fits, ten minutes at a time, then the holes fill.
+  const fit = { tasks, events, now, hours, phoneOk }, cant = new Set();
+  for (let n = 0; n < 20 * items.length; n++) {
+    const o = timeline(items, fit).over.find((x) => !later.has(x.taskId) && !cant.has(x.taskId) && x.task.canSplit);
+    if (!o) break;
+    const i = items.findIndex((it) => it.taskId === o.taskId), m = items[i].of ? items[i].minutes - 10 : o.room;
+    if (m < WORTH) cant.add(o.taskId);
+    else items[i] = { ...items[i], minutes: m, of: leftOf(o.task) };
+  }
+  fillHoles(items, fit, later);
   const plan = [...items.filter((it) => !later.has(it.taskId)), ...items.filter((it) => later.has(it.taskId))];
   const ctx = { tasks, events, now, hours, phoneOk }, byId = new Map(tasks.map((t) => [t.id, t]));
   // Desk time short for the plan's own work (not for Background: all of it
@@ -365,14 +377,19 @@ export function trimBreaks(items = []){
 export function withBreaks(items = [], ctx = {}){
   items = trimBreaks(items);
   if (items.some(isBreak)) return items;
-  const { rows, breaks } = timeline(items, ctx);
+  const { rows, breaks, over } = timeline(items, ctx);
+  // No room goes last: laid again with the breaks fixed, one up front took a
+  // stretch without the break it had needed and pushed every task after it
+  // out (Mor, 2026-11-03: 3 h at 19:00, the rest "no free time left today").
+  const none = new Set(over.map((o) => o.i));
   const out = [];
   items.forEach((it, i) => {
+    if (none.has(i)) return;
     const r = rows.find((q) => q.i === i), b = r && breaks.find((q) => q.end === r.start);
     if (b) out.push({ brk: b.type, minutes: b.minutes, ...(b.name ? { name: b.name } : {}) });
     out.push(it);
   });
-  return out;
+  return [...out, ...items.filter((_, i) => none.has(i))];
 }
 
 // Each row and break carries i, its index in items.

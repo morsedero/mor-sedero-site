@@ -71,3 +71,22 @@ test("a long task that skips a free stretch leaves it to the tasks after it, not
   assert.ok(start.mp1 < at(16) && start.mp2 < at(16), `laid ${rows.map((r) => r.taskId)}, over ${over.map((o) => o.taskId)}`);
   assert.equal(over.length, 0);
 });
+
+test("a piece sized to a stretch shrinks by the break it opens with, and No room never blocks the tasks after it", () => {
+  // Mor, 2026-11-03, 13:48: 3 h of Monster Punk sized to 19:00–22:00 missed
+  // it by the break after a 3 h meeting, then was laid at 19:00 without it
+  // once the breaks were fixed, and every task after it read No room.
+  const hours = { start: 9 * 60, end: 22 * 60, meals: [{ name: "Lunch", from: 780, to: 840, minutes: 60 }, { name: "Dinner", from: 1215, to: 1275, minutes: 45 }] };
+  const tasks = [
+    t({ id: "big", size: 180, canSplit: true, dateKind: "deadline", stakes: "high", project: "MP" }),
+    t({ id: "mp1", size: 60, canSplit: true, due: "2026-10-20", project: "MP" }),
+    t({ id: "q", size: 5, due: "2026-10-20", project: "Jobs" }),
+  ];
+  const ctx = { tasks, events: [ev("Bobba", [9, 30], [13]), ev("Bells", [16], [19])], now: at(13, 48), hours };
+  const items = withBreaks(proposeDay(ctx), ctx);
+  const { rows, over } = timeline(items, ctx);
+  const start = Object.fromEntries(rows.map((r) => [r.taskId, r.start]));
+  assert.deepEqual(over.map((o) => o.taskId), [], `laid ${rows.map((r) => r.taskId)}`);
+  assert.ok(start.mp1 < at(16) && start.q < at(16));
+  assert.equal(rows.find((r) => r.taskId === "big").minutes, 150); // 19:30–22:00, of 3 h
+});
