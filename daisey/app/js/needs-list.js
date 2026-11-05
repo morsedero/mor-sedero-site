@@ -11,6 +11,7 @@ import { slotClashes } from "./clash.js";
 import { slotsToAsk } from "./routine.js";
 import { tripAsks, withTrips } from "./trips.js";
 import { mealAsks } from "./meals.js";
+import { allDayAsks } from "./allday.js";
 
 const STAKES_FIRST = { penalty: 0, money: 1, someone: 2, low: 3 };
 const DAY = 86400000;
@@ -63,6 +64,8 @@ export function collectNeeds({ tasks = [], events = [], calOk = false, settings 
     const evs = events.some((e) => e.trip) ? events : withTrips(events, settings.trips || {}, settings.tripDay || [], settings.laptop ?? null);
     mealAsks(evs, settings, now).forEach((a) => add({ key: a.key, kind: "meal", meal: a }));
   }
+  // An all-day event today (allday.js): free, or busy all day?
+  if (calOk) allDayAsks(events, settings, now).forEach((a) => add({ key: a.key, kind: "allday", ev: a.ev }));
   if (calOk) {
     const offered = [...(settings.calOffered || [])];
     for (let i = 0; i < 5; i++) {

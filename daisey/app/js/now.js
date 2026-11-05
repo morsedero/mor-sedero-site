@@ -21,6 +21,7 @@ import { breakText, breakKind } from "./schedule.js";
 import { placeNow, workBase, watchProjectTiers, currentTiers } from "./context.js";
 import { watchWhere, setManual, setStill, saveSpot, whereAsk, homeAt } from "./where.js";
 import { withTrips, ridingAs, stillRiding, asPassenger, chainFrom, setTripDay, MODES, tripAsks, answer as tripAnswer, noTrip } from "./trips.js";
+import { withAllDay } from "./allday.js";
 import { pickWeekDay } from "./triage.js";
 import { celebrate, dropAway, PUSH_MS } from "./focus.js";
 import { watchCalendar } from "./calendar.js";
@@ -71,7 +72,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
   // runs on while you're still moving (stillRiding).
   let rawCal = cal;
   const applyTrips = () => {
-    cal = rawCal.status === "ok" ? { ...rawCal, events: ridingAs(stillRiding(withTrips(rawCal.events, settings.trips || {}, settings.tripDay || [], settings.laptop ?? null), located), located) } : rawCal;
+    cal = rawCal.status === "ok" ? { ...rawCal, events: ridingAs(stillRiding(withTrips(withAllDay(rawCal.events, settings), settings.trips || {}, settings.tripDay || [], settings.laptop ?? null), located), located) } : rawCal;
   };
   let lastWindow;
   // The day's proposed schedule (proposal.js). dayPlan: today's saved doc

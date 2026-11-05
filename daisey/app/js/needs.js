@@ -205,6 +205,20 @@ export function mountNeeds(root, uid, { onClose, onStart, extra, onAway } = {}){
         ...(m.move != null ? { yes: [`Move ${low} to ${minText(m.move)}`, () => setMeal(minText(m.move))], no: there }
           : { yes: there, no: [`Skip ${low} today`, () => setMeal("there")] }) };
     }
+    // An all-day event today (allday.js): free, or busy all day?
+    if (item.kind === "allday") {
+      const setDay = (v) => {
+        const today = answerDate(settings);
+        const allDayToday = { ...(settings.allDayToday?.date === today ? settings.allDayToday : {}), date: today, [item.ev.id]: v };
+        settings = { ...settings, allDayToday };
+        saveSettings(uid, { allDayToday }).catch(fail);
+        next();
+      };
+      return { tone: "area-home", ico: "calendar", q: `Are you free during ${item.ev.title}?`,
+        sub: "All day today.", item: "",
+        say: "Free: I plan the day as usual. Busy: I plan nothing.",
+        yes: ["I'm free", () => setDay("free")], no: ["I'm busy all day", () => setDay("busy")] };
+    }
     const t = find(item.id);
     if (!t) return null; // deleted since: skip it
     if (item.kind === "clash") {
