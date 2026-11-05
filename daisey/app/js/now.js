@@ -21,7 +21,7 @@ import { breakText, breakKind } from "./schedule.js";
 import { placeNow, workBase, watchProjectTiers, currentTiers } from "./context.js";
 import { watchWhere, setManual, setStill, saveSpot, whereAsk, homeAt } from "./where.js";
 import { withTrips, ridingAs, stillRiding, asPassenger, chainFrom, setTripDay, MODES, tripAsks, answer as tripAnswer, noTrip } from "./trips.js";
-import { withAllDay } from "./allday.js";
+import { withAllDay, allDayAsks } from "./allday.js";
 import { pickWeekDay } from "./triage.js";
 import { celebrate, dropAway, PUSH_MS } from "./focus.js";
 import { watchCalendar } from "./calendar.js";
@@ -2267,6 +2267,24 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     if (tasks == null) { fill(...head, h("p", { className: "muted", textContent: "Loading tasks…" })); return; }
 
     if (night) { fill(...head, ...nightView(hrs), toast && toastView()); return; }
+
+    // An all-day event today nobody answered for (allday.js): the question IS
+    // the card, until answered. Then the card goes back to tasks, or nothing.
+    const dayAsk = cal.status === "ok" ? allDayAsks(rawCal.events, settings)[0] : null;
+    if (dayAsk) {
+      const setDay = (v) => {
+        const today = answerDate(settings);
+        const allDayToday = { ...(settings.allDayToday?.date === today ? settings.allDayToday : {}), date: today, [dayAsk.id]: v };
+        settings = { ...settings, allDayToday };
+        applyTrips(); render();
+        saveSettings(uid, { allDayToday }).catch(fail);
+      };
+      fill(...head, decisionCard({ tone: "area-home", ico: "calendar", kicker: "All day today", q: `Are you free during ${dayAsk.ev.title}?`,
+        why: "Free: I plan the day as usual. Busy: I plan nothing.",
+        yes: h("button", { className: "btn primary big", type: "button", textContent: "I'm free", onclick: () => setDay("free") }),
+        no: h("button", { className: "btn line big", type: "button", textContent: "I'm busy all day", onclick: () => setDay("busy") }) }));
+      return;
+    }
 
     // The start of the day: once per day, when there's something to plan, a
     // "Plan ready" chip lights in the header like a notification (Mor,
