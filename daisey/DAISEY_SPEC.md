@@ -329,6 +329,8 @@ Daisey only plans inside your waking day, never pushes a task that already has a
 
 **Nothing fits the ride (Mor, 2026-11-06).** "Any of these doable on the phone?" → "None of these" (or nothing to ask about) → "Something to plan or arrange from here?": up to 3 new small tasks, one per task shut out by the ride, soonest due first. Each is a phone-sized piece of that task (plan it, schedule it, arrange what it needs), from the server's Gemini (`daisey-now-chat` mode "steps", remembered on the device); with no answer, a plain "Plan: …" stands in. A tap adds it to the same project and puts it on the card. A task gets one step, ever (`source: { app: "daisey-step", cardId }`). "Just rest" is still the way out. (`phone.js`, `now.js` rideCard.)
 
+**Open on a computer (Mor, 2026-11-06).** A wide screen with a real pointer means the laptop is here, so location never shuts out Computer tasks there (`phone.js` onComputer, `now.js` phoneNow). The exception is a running train leg answered "Phone only". The Now card only; the day plan still goes by the rides on the calendar.
+
 ## v1 scope
 
 v1 is done when the Now card picks a task you actually start, most days, for one full week, with no other planning tool open.

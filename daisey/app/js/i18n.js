@@ -309,6 +309,9 @@ const DATE = String.raw`((?:today|tonight|tomorrow|yesterday|יום [א-ו]׳|ש
 const DUR = String.raw`(\d+ (?:h|min)(?: \d+ min)?)`;
 const P = (re, out) => [typeof re === "string" ? new RegExp(re.replace(/\{D\}/g, DATE).replace(/\{T\}/g, DUR)) : re, typeof out === "function" ? out : (m) => out.replace(/\$(\d)/g, (_, i) => bit(m[i] ?? ""))];
 const PATTERNS = [
+  // now.js outLine: the fragment's own Hebrew, after the count.
+  P(/^(\d+) tasks? (put off today|needs? offices open|can't be done where you are|too long for the time you have|(?:is|are) for the evening|belongs? to another project)\.?$/,
+    (m) => `${m[1]} ${m[1] === "1" ? "משימה" : "משימות"}: ${DICT.get(m[2])}`),
   P(/^(\d+) min$/, "$1 דק׳"), P(/^\+(\d+) min$/, "+$1 דק׳"), P(/^(\d+) h$/, "$1 ש׳"), P(/^(\d+) h (\d+) min$/, "$1 ש׳ $2 דק׳"),
   P(/^(\d+)h$/, "$1ש׳"), P(/^(\d+)h (\d+)m$/, "$1ש׳ $2ד׳"), P(/^([\d.]+) h$/, "$1 ש׳"),
   P("^{T} left$", "נשארו $1"), P("^{T} free$", "$1 פנוי"), P("^{T} free today\\.$", "$1 פנוי היום."),

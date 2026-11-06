@@ -25,6 +25,12 @@ let busy = false, failedAt = 0;
 
 export const searching = () => busy;
 
+// Daisey open on a computer: the laptop is right here, whatever the location
+// says (Mor, 2026-11-06: on the train with it, a noisy fix read "out" or
+// "walk" and shut out all 45 Computer tasks). Wide and with a real mouse or
+// trackpad, so a phone or a tablet isn't one.
+export const onComputer = () => !!globalThis.matchMedia?.("(min-width: 1024px) and (hover: hover) and (pointer: fine)").matches;
+
 // The ids of Computer tasks the phone can do: the server's answer where it
 // gave one, else the word list.
 export function phoneOkIds(tasks = []){

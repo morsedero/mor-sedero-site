@@ -1,9 +1,18 @@
 // "None of these" on a ride: what can be planned or arranged from the phone.
 import test from "node:test";
 import assert from "node:assert/strict";
-import { findPhoneSteps, phoneSteps, STEP_APP } from "../../app/js/phone.js";
+import { findPhoneSteps, onComputer, phoneSteps, STEP_APP } from "../../app/js/phone.js";
 
 const t = (id, title, extra = {}) => ({ id, title, project: "P", type: "deep", status: "ready", ...extra });
+
+test("a computer is a wide screen with a real pointer; no screen at all (the server) isn't", () => {
+  assert.equal(onComputer(), false);
+  globalThis.matchMedia = (q) => ({ matches: /min-width: 1024px/.test(q) && /pointer: fine/.test(q) });
+  assert.equal(onComputer(), true);
+  globalThis.matchMedia = () => ({ matches: false });
+  assert.equal(onComputer(), false);
+  delete globalThis.matchMedia;
+});
 
 test("with no answer yet, a plain Plan stands in, in the title's language", () => {
   assert.deepEqual(phoneSteps([t("a", "BOBBA coding"), t("b", "קידוד BOBBA")]).map((s) => s.title),

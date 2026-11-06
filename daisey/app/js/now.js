@@ -28,7 +28,7 @@ import { watchCalendar } from "./calendar.js";
 import { LATER_MINUTES, DRAIN, LIGHTER, TIERS } from "./weights.js";
 import { missState, silenceText, lastActivity, planActivity } from "./miss.js";
 import { takeQuiet } from "./push.js";
-import { findPhoneTasks, phoneOkIds, searching, findPhoneSteps, phoneSteps, searchingSteps, STEP_APP } from "./phone.js";
+import { onComputer, findPhoneTasks, phoneOkIds, searching, findPhoneSteps, phoneSteps, searchingSteps, STEP_APP } from "./phone.js";
 import { rank, freeWindow, timeBucket, matchProject, dueAt, keepsCard, passedOver, fitsPlace } from "./engine.js";
 import { leftMinutes, toMinutes, progressOf, leftPatch, moreTimePatch, localDate, logicalDate, skipSnapshot, skipLesson, pendingCheck, notYet, pushedTo, bringBack, dayAfter, doneSnapshot, isGuess, estText, needsLaptop } from "./model.js";
 import { isRoutine, routineCalendar, eventsToLog, sessionPatch, nagFor, nagText, nagParts } from "./routine.js";
@@ -853,8 +853,14 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
   }
   // On a bus or in the passenger seat, the Computer tasks a phone can do
   // count too (phone.js): asked about once, then read from memory.
+  // On a computer they all count: it's here (phone.js onComputer), unless this
+  // train was answered "Phone only".
   function phoneNow(place){
-    if (!["bus", "ride"].includes(place) || !tasks) return [];
+    if (!tasks) return [];
+    const now = Date.now();
+    const saidPhone = settings.laptop === false && (cal.events || []).some((e) => e.trip?.mode === "train" && Date.parse(e.start) <= now && now < Date.parse(e.end));
+    if (onComputer() && !saidPhone) return tasks.filter(needsLaptop).map((t) => t.id);
+    if (!["bus", "ride"].includes(place)) return [];
     findPhoneTasks(tasks, { guest }).then((changed) => changed && render()).catch(fail);
     return [...phoneOkIds(tasks)];
   }
@@ -996,8 +1002,9 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
       why: mins ? `In ${dur(mins)}. Nothing else fits before it.` : "Starting now.",
       extras: [outLine(r), putOffButton(r)] });
   }
-  // Why the open tasks can't come up now, counted: "Out right now: 3 put
-  // off today · 2 need offices open." Parked, waiting and future-dated tasks
+  // Why the open tasks can't come up now, counted: "3 tasks put off today ·
+  // 2 tasks need offices open." (Mor, 2026-11-06: "Out right now: 45 can't be
+  // done…" didn't say 45 of what.) Parked, waiting and future-dated tasks
   // aren't news, so they aren't counted.
   // [one, more]: "1 needs offices open", "2 need offices open".
   const OUT_SAID = {
@@ -1010,9 +1017,9 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     const n = {};
     for (const o of r.out) if (OUT_SAID[o.reason]) n[o.reason] = (n[o.reason] || 0) + 1;
     delete n.booked; // the card itself is the booked one
-    const parts = Object.entries(n).map(([k, c]) => `${c} ${outSaid(k, c)}`);
+    const parts = Object.entries(n).map(([k, c]) => `${c} ${c === 1 ? "task" : "tasks"} ${outSaid(k, c)}`);
     if (!parts.length) return null;
-    const line = h("p", { className: "muted now-out", textContent: `Out right now: ${parts.join(" · ")}.` });
+    const line = h("p", { className: "muted now-out", textContent: `${parts.join(" · ")}.` });
     return n.place ? h("div", {}, line, placeFix(r.moment)) : line;
   }
   // The place guess was invisible, so a wrong one just read as "nothing
