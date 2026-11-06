@@ -327,6 +327,8 @@ Daisey only plans inside your waking day, never pushes a task that already has a
 
 **On the ride (2026-10-08, second pass).** On a train, the laptop decides what fits: "Laptop with you? Yes · No" on the ride line and the night card, asked once. After that the last answer holds (`settings.laptop`), with one tap to change. Until it's answered, a train counts as a bus (phone and anything-goes tasks only), so nothing that needs a laptop gets planned on a guess. The day plan treats each ride as a gap of its own with that place (`proposal.js` rideGaps). It fills the ride first with what fits it (engine `fitsPlace`, the same rule as the card) and lays everything else in the free time as before. Plan rows on a ride say "on the train". No break gets planned on a ride. The Schedule panel shows the legs as hatched blocks that don't open, drag or delete. "Not going" has Undo.
 
+**Nothing fits the ride (Mor, 2026-11-06).** "Any of these doable on the phone?" → "None of these" (or nothing to ask about) → "Something to plan or arrange from here?": up to 3 new small tasks, one per task shut out by the ride, soonest due first. Each is a phone-sized piece of that task (plan it, schedule it, arrange what it needs), from the server's Gemini (`daisey-now-chat` mode "steps", remembered on the device); with no answer, a plain "Plan: …" stands in. A tap adds it to the same project and puts it on the card. A task gets one step, ever (`source: { app: "daisey-step", cardId }`). "Just rest" is still the way out. (`phone.js`, `now.js` rideCard.)
+
 ## v1 scope
 
 v1 is done when the Now card picks a task you actually start, most days, for one full week, with no other planning tool open.

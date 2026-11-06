@@ -164,6 +164,7 @@ const HE_TEXT = {
   "Rest. Daisey picks again when you arrive.": "מנוחה. Daisey תבחר שוב כשתגיעו.", "Show tasks again": "להציג משימות שוב",
   "Still on the way. The plan waits until you're there.": "עדיין בדרך. התוכנית מחכה עד שתגיעו.", "Looking for phone tasks…": "מחפשת משימות לטלפון…",
   "Any of these doable on the phone?": "משהו מאלה אפשר לעשות בטלפון?", "Nothing fits the rest of the ride.": "שום דבר לא מתאים לשארית הנסיעה.",
+  "Something to plan or arrange from here?": "משהו לתכנן או לסדר מכאן?", "Looking for things to arrange…": "מחפשת דברים לסדר…",
   "None of these": "אף אחת מאלה", "Just rest": "רק לנוח", "Eyes on the road": "עיניים על הכביש", "I'll have something ready when you stop.": "יהיה משהו מוכן כשתעצרו.",
   "I'm a passenger": "אני נוסע/ת", "Just about done.": "כמעט סיימת.", "Tomorrow:": "מחר:", "On hold:": "מושהה:", "Pending:": "ממתין:",
   "Waiting on what? (optional)": "מחכה למה? (לא חובה)", "Set pending": "לסמן כממתין", "Undo": "ביטול", "How much is left?": "כמה נשאר?",

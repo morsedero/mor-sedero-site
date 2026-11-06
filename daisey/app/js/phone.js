@@ -62,3 +62,58 @@ export async function findPhoneTasks(tasks = [], { guest = false } = {}){
   }
   return true;
 }
+
+// None of them works on the phone, but planning them does (Mor, 2026-11-06:
+// "None of these" should offer what does fit: planning, scheduling, arranging).
+// One step per task title, from the server's Gemini (mode "steps"), remembered
+// on this device; null when it said there's no honest one. With no answer, a
+// plain "Plan: …" stands in and the server is tried again later. A step taken
+// is a task of its own with source { app: STEP_APP, cardId: the task }, and a
+// task gets one: done or dropped, it isn't offered again.
+export const STEP_APP = "daisey-step";
+const STEP_KEY = "daisey.phoneSteps.v1";
+let stepMemo = (() => { try { return JSON.parse(localStorage.getItem(STEP_KEY) || "{}") || {}; } catch { return {}; } })();
+const keepSteps = () => { try { localStorage.setItem(STEP_KEY, JSON.stringify(stepMemo)); } catch { /* storage blocked: this tab only */ } };
+let stepsBusy = false, stepsFailedAt = 0;
+
+export const searchingSteps = () => stepsBusy;
+const planWord = (title) => (/[֐-׿]/.test(title) ? "לתכנן" : "Plan");
+
+// Of `tasks`, the ones with a step on offer: [{ task, title }], in their order.
+// all: every task, to see which already have a step.
+export function phoneSteps(tasks = [], all = tasks){
+  const taken = new Set(all.filter((t) => t.source?.app === STEP_APP).map((t) => t.source.cardId));
+  return tasks.flatMap((task) => {
+    if (taken.has(task.id) || task.routine || task.source?.app === STEP_APP) return [];
+    const title = sig(task) in stepMemo ? stepMemo[sig(task)] : `${planWord(task.title)}: ${task.title}`;
+    return title ? [{ task, title }] : [];
+  });
+}
+
+// Ask about the tasks with no answer yet. → true when it asked (render again).
+export async function findPhoneSteps(tasks = [], { guest = false } = {}){
+  const todo = tasks.filter((t) => !(sig(t) in stepMemo)).slice(0, 12);
+  if (!todo.length || stepsBusy || Date.now() - stepsFailedAt < RETRY_MS) return false;
+  stepsBusy = true;
+  try {
+    const headers = { "Content-Type": "application/json" };
+    if (guest) headers["X-Daisey-Guest"] = "1";
+    else headers.Authorization = `Bearer ${await (await import(FIREBASE)).idToken()}`;
+    const res = await fetch(URL_, {
+      method: "POST", headers,
+      body: JSON.stringify({ mode: "steps", today: localDate(),
+        ...(guest ? { guest: true } : {}), tasks: todo.map((t) => ({ id: t.id, title: t.title, project: t.project, type: t.type })) }),
+    });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok || !Array.isArray(body.steps)) throw new Error(body.error || `steps ${res.status}`);
+    const said = new Map(body.steps.map((s) => [s.id, s.title]));
+    for (const t of todo) stepMemo[sig(t)] = said.get(t.id) || null;
+    keepSteps();
+  } catch (e) {
+    stepsFailedAt = Date.now();
+    console.warn("[daisey] phone steps", e?.message || e);
+  } finally {
+    stepsBusy = false;
+  }
+  return true;
+}

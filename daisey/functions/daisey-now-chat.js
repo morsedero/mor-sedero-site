@@ -232,8 +232,32 @@ const PHONE_SYSTEM = `You sort tasks for the user of Daisey, a day-planning app.
 You get tasks (id, title, project, type). Return the ids of the ones a phone alone can do start to finish: messages, emails, calls, short replies, booking, ordering, paying, renewing, signing up, reading, listening, quick lookups, simple forms.
 Leave out anything that needs a computer (coding, audio or video editing, design, long writing, spreadsheets, building or testing software), a particular place, or being there in person. When unsure, leave it out. Never invent ids.`;
 
+// mode "steps" (Mor, 2026-11-06): none of the tasks can be done from the ride,
+// but planning, scheduling or arranging them can. Each answer is a new, small
+// phone task the app offers; a tap adds it.
+const STEPS_SCHEMA = {
+  type: "OBJECT",
+  properties: { steps: { type: "ARRAY", items: { type: "OBJECT",
+    properties: { id: { type: "STRING", description: "The id of the task this step is for. Only ids from the list." }, title: { type: "STRING", description: "The step, as a short task title." } },
+    required: ["id", "title"] } } },
+  required: ["steps"],
+};
+const STEPS_SYSTEM = `You help the user of Daisey, a day-planning app. They are on a bus or a train with only their smartphone, and they can't do these tasks from there.
+You get tasks (id, title, project, type). For each, write the one small piece of it a phone CAN do in about 10 minutes: planning it, scheduling a time for it, arranging or booking what it needs, asking someone for what's missing, or listing its steps.
+Each title is a short imperative, in the language of the task's title, and names the task so it makes sense alone ("Plan the BOBBA coding session", "לקבוע זמן לשיחה עם המאמן"). Be concrete to the task. Skip a task when no honest phone step exists. Never invent ids.`;
+
 const clean = (s, n = 200) => String(s ?? "").replace(/\s+/g, " ").trim().slice(0, n);
-const isDay = (s) => /^\d{4}-\d{2}-\d{2}$/.test(String(s || ""));
+// Only known tasks, one step each, each with a title.
+const tidySteps = (out, ids) => {
+  const seen = new Set();
+  return (Array.isArray(out?.steps) ? out.steps : []).flatMap((s) => {
+    const id = clean(s?.id, 60), title = clean(s?.title, 120);
+    if (!ids.has(id) || !title || seen.has(id)) return [];
+    seen.add(id);
+    return [{ id, title }];
+  });
+};
+const isDay =(s) => /^\d{4}-\d{2}-\d{2}$/.test(String(s || ""));
 // Something that reads as a date, not a person ("Thursday", "2026-10-08", "יום רביעי").
 const looksLikeDate = (s) => /^\d{4}-\d{2}-\d{2}$|\b(mon|tue|wed|thu|fri|sat|sun)[a-z]*\b|tomorrow|today|next week|יום|מחר|שבוע/i.test(String(s || ""));
 
@@ -399,7 +423,7 @@ exports.handler = async (event) => {
   if (!key) return fail(503, "not_configured");
 
   const text = clean(body.text, MAX_TEXT);
-  if ((!text && body.mode !== "phone") || !isDay(body.today)) return fail(400, "bad_input");
+  if ((!text && body.mode !== "phone" && body.mode !== "steps") || !isDay(body.today)) return fail(400, "bad_input");
   const rateDay = guest ? new Date().toISOString().slice(0, 10) : body.today;
   const allowed = await bump(rateId, rateDay, guest);
   if (allowed === null) return fail(503, "guest_limit_unavailable");
@@ -416,8 +440,18 @@ exports.handler = async (event) => {
     return reply(200, { ids: [...new Set((Array.isArray(out.ids) ? out.ids : []).map((x) => clean(x, 60)).filter((x) => ids.has(x)))] });
   }
 
+  if (body.mode === "steps") {
+    const list = (Array.isArray(body.tasks) ? body.tasks : []).slice(0, 12)
+      .map((t) => ({ id: clean(t.id, 60), title: clean(t.title, 120), project: clean(t.project, 60), type: clean(t.type, 12) }))
+      .filter((t) => t.id && t.title);
+    const prompt = `Tasks: ${JSON.stringify(list)}`;
+    const out = (await ask(key, prompt, STEPS_SYSTEM, STEPS_SCHEMA)) || (await ask(key, prompt, STEPS_SYSTEM, STEPS_SCHEMA));
+    if (!out) return fail(502, "model");
+    return reply(200, { steps: tidySteps(out, new Set(list.map((t) => t.id))) });
+  }
+
   if (body.mode === "plan") {
-    const open = (Array.isArray(body.tasks) ? body.tasks : []).slice(0, MAX_TASKS)
+    const open =(Array.isArray(body.tasks) ? body.tasks : []).slice(0, MAX_TASKS)
       .map((t) => ({ id: clean(t.id, 60), title: clean(t.title, 120), project: clean(t.project, 60), minutes: Math.max(5, Math.min(600, Number(t.minutes) || 30)),
         type: clean(t.type, 12), due: isDay(t.due) ? t.due : undefined, dateKind: clean(t.dateKind, 10) || undefined }))
       .filter((t) => t.id && t.title);
@@ -483,6 +517,7 @@ async function understand(body, key){
 }
 
 exports.tidy = tidy; // for the tests
+exports.tidySteps = tidySteps;
 exports.upLateLine = upLateLine;
 exports.understand = understand; // for test/phrases/run.mjs
 exports.MODEL = MODEL;

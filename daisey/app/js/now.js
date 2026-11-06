@@ -28,7 +28,7 @@ import { watchCalendar } from "./calendar.js";
 import { LATER_MINUTES, DRAIN, LIGHTER, TIERS } from "./weights.js";
 import { missState, silenceText, lastActivity, planActivity } from "./miss.js";
 import { takeQuiet } from "./push.js";
-import { findPhoneTasks, phoneOkIds, searching } from "./phone.js";
+import { findPhoneTasks, phoneOkIds, searching, findPhoneSteps, phoneSteps, searchingSteps, STEP_APP } from "./phone.js";
 import { rank, freeWindow, timeBucket, matchProject, dueAt, keepsCard, passedOver, fitsPlace } from "./engine.js";
 import { leftMinutes, toMinutes, progressOf, leftPatch, moreTimePatch, localDate, logicalDate, skipSnapshot, skipLesson, pendingCheck, notYet, pushedTo, bringBack, dayAfter, doneSnapshot, isGuess, estText, needsLaptop } from "./model.js";
 import { isRoutine, routineCalendar, eventsToLog, sessionPatch, nagFor, nagText, nagParts } from "./routine.js";
@@ -474,28 +474,54 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
   // (momentInput), so no "I'm free now": that only ignored the ride and asked
   // again (Mor, 2026-10-09: passenger → free now → "Ignoring Drive back…").
   const riderOf = (leg) => leg.trip.mode === "car" && leg.trip.place !== "car" ? "passenger" : howOf(leg.trip);
-  // "None of these": the ride is a rest, and the card stops asking (this
-  // ride only; Mor, 2026-10-09: there was no answer for "nothing").
+  // "Just rest": the ride is a rest, and the card stops asking (this ride
+  // only; Mor, 2026-10-09: there was no answer for "nothing").
   let restRide = null;
+  // "None of these" (Mor, 2026-11-06): they don't work on the phone, so the
+  // card offers what does: planning, scheduling or arranging them (phone.js).
+  let stepsRide = null;
+  // The task a step was just taken for: goes on the card once it arrives.
+  let stepWant = null;
+  function takeStep(leg, { id, title }){
+    const task = (tasks || []).find((t) => t.id === id);
+    if (!task) return;
+    stepWant = id;
+    addTask(uid, { title, project: task.project, area: task.area, type: "admin", where: "anywhere", laptop: false, openHours: "anytime", canSplit: false,
+      // Even on a ride too short for it, it's yours to start: a picked one stays on the card.
+      size: leg.end - Date.now() < 15 * 60000 ? 5 : 15, source: { app: STEP_APP, cardId: id } }, tasks || []).catch(fail);
+  }
   function rideCard(leg, r){
     const meta = TRIP_ON[riderOf(leg)], side = leg.trip.late ? `past ${clock(leg.trip.late)}` : `until ${clock(leg.end)}`;
     if (restRide === leg.id) return eventCard({ meta, side, title: leg.title, span: leg, why: "Rest. Daisey picks again when you arrive.",
-      action: h("button", { className: "btn quiet", type: "button", textContent: "Show tasks again", onclick: () => { restRide = null; render(); } }) });
+      action: h("button", { className: "btn quiet", type: "button", textContent: "Show tasks again", onclick: () => { restRide = stepsRide = null; render(); } }) });
+    const rest = (text) => h("button", { type: "button", className: "btn quiet", textContent: text, onclick: () => { restRide = leg.id; render(); } });
     // What's left after the phone search (phoneNow) found nothing that fits:
     // one tap says this one works on the phone, and it's offered. Minimal
     // (Mor, 2026-10-12): the question is the card's one sentence, the tasks
     // are title-only small cards, resting is the one quiet button.
     const looking = searching();
-    const can = looking ? [] : r.out.filter((o) => o.reason === "place" && needsLaptop(o.task)).slice(0, 3);
-    const why = leg.trip.late ? "Still on the way. The plan waits until you're there."
-      : looking ? "Looking for phone tasks…" : can.length ? "Any of these doable on the phone?" : "Nothing fits the rest of the ride.";
-    return eventCard({ meta, side, title: leg.title, span: leg, why,
+    const can = looking || stepsRide === leg.id ? [] : r.out.filter((o) => o.reason === "place" && needsLaptop(o.task)).slice(0, 3);
+    const late = leg.trip.late && "Still on the way. The plan waits until you're there.";
+    if (looking || can.length) return eventCard({ meta, side, title: leg.title, span: leg,
+      why: late || (looking ? "Looking for phone tasks…" : "Any of these doable on the phone?"),
       // No "Out right now" / "You seem to be…" here: the ride already says
       // where you are and why nothing fits (Mor, 2026-10-11: five stacked asks).
       extras: [can.length ? switchRow(can.map((o) => ({ task: o.task })), (t) => updateTask(uid, t, { laptop: false }, tasks || []).catch(fail),
         (t) => `${t.title} works on the phone`, true) : null, putOffButton(r)],
-      action: looking ? null : h("button", { type: "button", className: "btn quiet", textContent: can.length ? "None of these" : "Just rest",
-        onclick: () => { restRide = leg.id; render(); } }) });
+      action: looking ? null : h("button", { type: "button", className: "btn quiet", textContent: "None of these", onclick: () => { stepsRide = leg.id; render(); } }) });
+    // Nothing to ask about, or "None of these": what can be planned from here.
+    // Soonest due first, what's too long for the ride counted too.
+    const out = r.out.filter((o) => o.reason === "place" || o.reason === "size").map((o) => o.task)
+      .sort((a, b) => String(a.due || "~").localeCompare(String(b.due || "~")));
+    const open = phoneSteps(out, tasks || []).slice(0, 12).map((s) => s.task);
+    findPhoneSteps(open, { guest }).then((asked) => asked && render()).catch(fail);
+    const finding = searchingSteps();
+    const steps = finding ? [] : phoneSteps(open, tasks || []).slice(0, 3);
+    return eventCard({ meta, side, title: leg.title, span: leg,
+      why: late || (finding ? "Looking for things to arrange…" : steps.length ? "Something to plan or arrange from here?" : "Nothing fits the rest of the ride."),
+      // The task's look with the step's title. No source: a job task would show its own title.
+      extras: [steps.length ? switchRow(steps.map((s) => ({ task: { ...s.task, title: s.title, source: null } })), (t) => takeStep(leg, t), (t) => `Add ${t.title}`, true) : null, putOffButton(r)],
+      action: finding ? null : rest("Just rest") });
   }
   // Wears its schedule row's look (Mor, 2026-10-11): the trip colour and the
   // light round its edge, and on a running trip leg the time gone filling in.
@@ -2325,6 +2351,9 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     // for the gap, office hours, another place, its own slot later) is still
     // yours to pick. Put off today (skipped) and the quiet ones stay out.
     const picked = (id) => r.out.find((o) => o.task.id === id && SWITCH_TOO.has(o.reason));
+    // A step just taken on the ride goes straight on the card (rideCard).
+    const step = stepWant && (tasks || []).find((t) => t.source?.app === STEP_APP && t.source.cardId === stepWant);
+    if (step) { stepWant = null; switchTo(step.id); return; }
     // A pick holds until acted on, but not once it can't be done after it
     // was picked (moved, or set to another place: Mor, 2026-10-12). One
     // picked knowingly from another place stays.

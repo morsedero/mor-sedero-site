@@ -4,7 +4,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { createRequire } from "node:module";
 
-const { tidy, handler, upLateLine } = createRequire(import.meta.url)("../../functions/daisey-now-chat.js");
+const { tidy, tidySteps, handler, upLateLine } = createRequire(import.meta.url)("../../functions/daisey-now-chat.js");
 const ids = new Set(["t1", "t2"]);
 
 test("keeps adds, and changes only to tasks that exist", () => {
@@ -18,6 +18,14 @@ test("keeps adds, and changes only to tasks that exist", () => {
     { kind: "add", title: "Call Uri", size: 15, due: "2026-10-08", dateKind: "deadline" },
     { kind: "update", taskId: "t1", notBefore: "2026-10-11" },
   ]);
+});
+
+test("a ride's phone steps: known tasks only, one each, each with a title", () => {
+  assert.deepEqual(tidySteps({ steps: [
+    { id: "t1", title: "  Plan   the session " }, { id: "t1", title: "A second one" }, // one each
+    { id: "nope", title: "Made up" }, { id: "t2", title: " " }, null,
+  ] }, ids), [{ id: "t1", title: "Plan the session" }]);
+  assert.deepEqual(tidySteps({}, ids), []);
 });
 
 test("drops nonsense values rather than the whole action", () => {
