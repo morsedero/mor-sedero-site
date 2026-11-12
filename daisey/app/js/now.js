@@ -130,7 +130,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
   let toastTimer = null;
   // laterAsk: Later was tapped and the card is asking "when?"
   // pendAsk: Pending was tapped and the card asks what it's waiting on.
-  const state = { chosen: null, showAlts: false, asking: false, laterAsk: false, pendAsk: false, notNow: false };
+  const state = { chosen: null, still: false, showAlts: false, asking: false, laterAsk: false, pendAsk: false, notNow: false };
   // { date, items: { id: { count, until } } } — today's Laters, from Firestore.
   let skipDoc = null;
   // The day the plan and today's Laters belong to: yesterday's, after midnight
@@ -175,8 +175,25 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     get size(){ return hidden().length; },
   };
   let seenAt = new Map(); // task id → when it came up (heldAnchors, below)
-  const reset = () => { state.chosen = null; state.showAlts = false; state.laterAsk = false; state.pendAsk = false; state.notNow = false; state.more = false; state.pendText = ""; state.pendCheck = ""; state.single = false; kept = null; seenAt = new Map(); dropSlot(); };
+  const reset = () => { dropHeld(); state.still = false; state.chosen = null; state.showAlts = false; state.laterAsk = false; state.pendAsk = false; state.notNow = false; state.more = false; state.pendText = ""; state.pendCheck = ""; state.single = false; kept = null; seenAt = new Map(); dropSlot(); };
   let shown, kept = null; // kept: keptCard
+  // The card you left is the card you come back to (Mor, 2026-11-12): kept is
+  // also saved in the moment doc (held), so a reload holds it too.
+  function dropHeld(){
+    if (!momentDoc.held) return;
+    momentDoc = { ...momentDoc, held: null };
+    saveMoment(uid, { held: null }).catch(fail);
+  }
+  function syncHeld(){
+    if (!momentKnown || !planKnown || cal.status === "loading") return;
+    const o = momentDoc.held;
+    if (kept ? o?.id === kept.id && o.until === kept.until && o.day === kept.day : !o) return;
+    const held = kept ? { id: kept.id, day: kept.day, until: kept.until } : null;
+    momentDoc = { ...momentDoc, held };
+    saveMoment(uid, { held }).catch(fail);
+  }
+  // Its slot ended and nothing answered it: the card asks (cardActions).
+  const heldLate = (task) => !!kept && kept.id === task.id && !!kept.until && Date.now() > kept.until;
   // Acting on the card (Done, Later, Pending, Switch) ends its unplanned slot (autoSlot).
   function dropSlot(){
     if (!momentDoc.slot) return;
@@ -1193,7 +1210,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
   // sheet). Each opens its own row under the card; a second tap shuts it.
   function cardActions(task, alts){
     const someN = somedayTasks().length;
-    const toggle = (key) => () => { const was = state[key]; state.more = state.notNow = state.pendAsk = state.showAlts = false; state[key] = !was; state.altX = 0; render(); };
+    const toggle = (key) => () => { const was = state[key]; state.more = state.notNow = state.pendAsk = state.showAlts = state.still = false; state[key] = !was; state.altX = 0; render(); };
     const chip = (text, onclick) => h("button", { className: "chip", type: "button", textContent: text, onclick });
     const done = h("button", { className: "btn primary start", type: "button", ariaLabel: `Done: ${task.title}`,
       onclick: () => quickDoneNow(task) }, icon("check"), h("span", { textContent: "Done" }));
@@ -1214,7 +1231,32 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
             onclick: () => { if (state.pendAsk) { state.pendAsk = false; render(); } else toggle("notNow")(); } })),
         h("div", { className: "done-col solo" }, done, progressBar(task), progressPct(task))),
       state.showAlts && switchRow(alts),
+      heldLate(task) && stillAsk(task),
     ];
+  }
+  // Its slot ended with no answer (Mor, 2026-11-12: finished it, came back
+  // after the time, the card had moved on): the card stays and asks. Done and
+  // Later are its own keys; this is the third answer, "still on it", which
+  // asks how much is left and lays the slot from now.
+  function stillAsk(task){
+    const chip = (text, onclick, cls = "chip") => h("button", { className: cls, type: "button", textContent: text, onclick });
+    if (!state.still) return h("div", { className: "later-ask held-ask", role: "group", ariaLabel: "Its time passed" },
+      chip("Still on it", () => { state.still = true; state.notNow = state.pendAsk = state.showAlts = false; render(); }));
+    return h("div", { className: "later-ask held-ask", role: "group", ariaLabel: "How much is left?" },
+      h("span", { className: "muted", textContent: "How much is left?" }),
+      ...LEFT_OPTIONS.map(([m, text]) => chip(text, () => stillOn(task, m))),
+      chip("Not sure", () => stillOn(task, null), "chip quiet"));
+  }
+  function stillOn(task, m){
+    const now = Date.now(), patch = { ...(m ? leftPatch(task, m) : {}), touchedAt: now };
+    restoreTask(uid, task.id, patch).catch(fail);
+    task.touchedAt = now;
+    const left = m || leftMinutes(task);
+    // The plan lays itself from this touch; an unplanned pick's slot starts again.
+    if (kept?.id === task.id) kept = { ...kept, until: now + left * 60000 };
+    if (momentDoc.slot?.id === task.id) { momentDoc = { ...momentDoc, slot: { id: task.id, at: now, day: dayKey() } }; saveMoment(uid, { slot: momentDoc.slot }).catch(fail); }
+    state.still = false; workingFrom = now;
+    render();
   }
 
   // Later's dropdown (Mor, 2026-10-18: a drop-down under the card, where
@@ -1552,7 +1594,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     const st = planStatus(p, planCtx(), planSince());
     if (st.late && !st.missed.length) return null; // the card is asking about the next task
     const { items, cut } = st;
-    const missed = st.missed.map((id) => tasks.find((t) => t.id === id)).filter(Boolean);
+    const missed = st.missed.map((id) => tasks.find((t) => t.id === id)).filter((t) => t && !heldLate(t)); // the card asks about its own
     if (!missed.length && !cut.length) return null;
     const key = [...missed.map((t) => t.id), "|", ...cut].join(",");
     if (p.behindNo === key) return null;
@@ -1926,19 +1968,33 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
   // test #6). Done, Later, Pending, Switch, and a plan approved, dropped or
   // made lighter all let go (reset). kept: { id, why, until, day }.
   function keptCard(card, { r, fw, asCard, picked, planRow }){
-    const k = kept, t = k && (tasks || []).find((x) => x.id === k.id);
+    // Held across a reload: the moment doc's held, or an unplanned pick whose
+    // slot (autoSlot) ran out.
+    const held = () => {
+      if (!momentKnown) return null;
+      const o = momentDoc.held, s = momentDoc.slot, day = dayKey();
+      if (o?.day === day) return { ...o, why: [] };
+      const st = s?.day === day && (tasks || []).find((x) => x.id === s.id);
+      if (!st) return null;
+      const until = Math.min(s.at + leftMinutes(st) * 60000, fw?.next && fw.next.start > s.at ? fw.next.start : Infinity);
+      return until < Date.now() ? { id: s.id, day, until, why: [] } : null;
+    };
+    const k = kept || held(), t = k && (tasks || []).find((x) => x.id === k.id);
     if (keepsCard(k, t, { nextId: card?.task.id, today: dayKey(), chosen: state.chosen, proposing: prop.open,
       meeting: !!fw?.current && !fw.current.trip && blockOf(fw)?.taskId !== k?.id, skipped: !!k && hidden().includes(k.id),
       ranked: !!k && r.ranked.some((s) => s.task.id === k.id), switchable: !!k && !!picked(k.id),
-      cantNow: !!k && CANT_NOW.has(picked(k.id)?.reason),
-      turn: !!planRow && planRow.taskId !== k?.id && planRow.start <= Date.now() }))
+      cantNow: !!k && CANT_NOW.has(picked(k.id)?.reason) }))
+    {
+      kept = k; syncHeld();
       // Its slot as the plan lays it now, not the words saved when it came
       // up: an Undo or a re-lay moves the times (2026-10-15).
       return asCard(t.id, t, k.until && Date.now() > k.until ? [`still on it? Planned until ${clock(k.until)}`] : planRow?.taskId === t.id ? planWhy(planRow) : k.why);
+    }
     // Only a plan row, once everything has loaded (a first pick made before
     // the plan arrived isn't one): the card and the Today list agree otherwise.
     const until = card && (card.task.id === planRow?.taskId ? planRow.end : k?.id === card.task.id ? k.until : null);
-    kept = until && planKnown && cal.status !== "loading" ? { id: card.task.id, why: card.whyParts, day: dayKey(), until } : null;
+    if (planKnown && cal.status !== "loading") kept = until ? { id: card.task.id, why: card.whyParts, day: dayKey(), until } : null;
+    syncHeld();
     return card;
   }
   // The engine's own pick, left on the card: when it came on (moment doc
@@ -2449,8 +2505,8 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     // brings it back (Mor, 2026-10-12); "No plan" there is an answer.
     if (ms?.kind === "silence" && !(ms.since == null && todaysPlan()?.status === "dismissed")) { day(...head, roughCard(ms), tip); return; }
     // Needs you is already asking about the slipped plan: the card doesn't too.
-    const due = !behind && planDue(), dueNow = due?.taskId === card.task.id ? due : null;
-    const missed = !dueNow && ms?.kind === "miss" ? ms : null;
+    const due = !behind && !heldLate(card.task) && planDue(), dueNow = due?.taskId === card.task.id ? due : null;
+    const missed = !dueNow && !heldLate(card.task) && ms?.kind === "miss" ? ms : null;
     const planRows = planRowsNow();
     const alts = [...new Map([r.pick, ...r.alternatives, ...r.ranked, ...r.out.filter((o) => SWITCH_TOO.has(o.reason))]
       .filter((s) => s && s.task.id !== card.task.id).map((s) => [s.task.id, { task: s.task, why: altWhy(s, r, fw, planRows) }])).values()].slice(0, 5);

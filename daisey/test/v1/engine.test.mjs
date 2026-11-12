@@ -433,8 +433,8 @@ test("keepsCard: the task on the card stays until acted on (user test #6)", () =
   // A meeting, the proposal open, a new day: the card speaks for them.
   assert.equal(E.keepsCard(kept, a, { ...o, meeting: true }), false);
   assert.equal(E.keepsCard(kept, a, { ...o, proposing: true }), false);
-  // The plan's next task starting lets go (Mor, 2026-10-12).
-  assert.equal(E.keepsCard(kept, a, { ...o, turn: true }), false);
+  // The plan's next task starting does not (Mor, 2026-11-12): the card asks.
+  assert.equal(E.keepsCard(kept, a, { ...o, turn: true }), true);
   assert.equal(E.keepsCard(kept, a, { ...o, today: "2026-10-06" }), false);
   // Changed to a place you aren't at (Mor, 2026-10-12: Home, on the train).
   assert.equal(E.keepsCard(kept, a, { ...o, cantNow: true }), false);
