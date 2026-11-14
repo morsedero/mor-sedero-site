@@ -4,5 +4,17 @@
       "Bash(netlify status *)",
       "PowerShell(netlify status 2>&1)"
     ]
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/project.sh"
+          }
+        ]
+      }
+    ]
   }
 }
