@@ -1,7 +1,7 @@
 #!/bin/bash
 # SessionStart: tells Claude which of the repo's two projects this session is.
-# Set by the cloud environment: CLAUDE_PROJECT=daisey ("Daisey" env) or unset (site).
-if [ "$CLAUDE_PROJECT" = "daisey" ]; then
+# Set by the cloud environment: DAISEY_SESSION=1 ("Daisey" env) or unset (site).
+if [ "$DAISEY_SESSION" = "1" ]; then
   cat <<'MSG'
 THIS SESSION IS THE DAISEY PROJECT (cloud environment "Daisey").
 - Work only in daisey/ (source, tests, functions). Never touch site/ (the portfolio); site/daisey/ is generated, never hand-edit.
