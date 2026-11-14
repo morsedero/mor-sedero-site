@@ -2974,3 +2974,17 @@ button.bl-r-title { padding: 0; border: 0; background: none; color: var(--ink); 
 .now-apply-note { flex: 1 1 100%; min-inline-size: 0; margin: 0; font-size: 13px; line-height: 1.4; color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; }
 .now-apply-note.open { white-space: normal; overflow-wrap: anywhere; }
 .now-card.main.has-open .now-why { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+
+/* All projects (Mor, 2026-11-14): the card over the tiers, and its list
+   sorted by due date / importance / project (projects.js paintAllView). */
+#projPage > .pcard.pall { inline-size: 100%; margin-block: 0 22px; background: var(--ink); color: var(--card); border-color: transparent; }
+#projPage > .pcard.pall .pcard-status { color: inherit; opacity: .78; }
+.pall-sort .pj-tg.on { background: var(--ink); color: var(--card); border-color: var(--ink); font-weight: 600; }
+.pj-chip.pj-proj { display: inline-flex; block-size: 20px; padding-inline: 7px; font-size: 11px; vertical-align: middle; cursor: pointer; }
+.pall-head { display: flex; align-items: center; gap: 7px; inline-size: 100%; margin-block: 14px 4px; padding: 0 2px; border: 0; background: none; color: var(--aink, var(--ink-2)); font: inherit; font-size: 13px; font-weight: 700; text-align: start; cursor: pointer; }
+.pall-head:first-child { margin-block-start: 0; }
+.pall-head .dot { inline-size: 8px; block-size: 8px; border-radius: 50%; background: currentColor; }
+.pall-head .pall-n { margin-inline-start: auto; font-weight: 500; color: var(--ink-2); }
+.pall-page .pj-card { inline-size: auto; max-inline-size: none; margin-inline-end: max(20px, (100% - 520px) / 2); }
+.pall-sort { flex-wrap: wrap; }
+.pall-stake { font-weight: 600; color: var(--ink); }

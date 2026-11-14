@@ -21,7 +21,7 @@
 // PALETTE. Names are taken in order, so a colour doesn't move around as
 // counts change. Inbox has none.
 import { watchTasks, watchSettings, finishTask, undoDone, unlogReopened, restoreTask, removeTask, watchProjectNames, saveProjectNames, saveProjectRanges, saveProjectOrder, saveProjectTiers, saveProjectCaps, renameInLog } from "./store.js";
-import { INBOX, leftMinutes, notYet, durText, localDate, logicalDate, bringBack, cleanRange, outsideRange, doneSnapshot } from "./model.js";
+import { INBOX, LABELS, leftMinutes, notYet, durText, localDate, logicalDate, bringBack, cleanRange, outsideRange, doneSnapshot } from "./model.js";
 import { isRoutine } from "./routine.js";
 import { DIR } from "./i18n.js";
 import { dropSeries } from "./slots.js";
@@ -145,6 +145,25 @@ function dueTone(t){
   if (t.dateKind !== "deadline" || !t.due) return "";
   const d = daysTo(t.due);
   return d <= 2 ? "soon" : d <= 7 ? "near" : "";
+}
+
+// All projects (Mor, 2026-11-14): one list of every open task, sorted by
+// due date, importance (stakes, then due) or project. Shown on the project
+// screen under a sentinel name no real project can have.
+export const ALL = "\u0000all";
+const STAKE_RANK = { penalty: 3, money: 2, someone: 1, low: 0 };
+const ALL_SORTS = [["due", "Due date"], ["importance", "Importance"], ["project", "Project"]];
+const SORT_KEY = "daisey.allSort";
+// Plain string order, not localeCompare: a locale sorts "~" (no date) before digits.
+const asc = (x, y) => (x < y ? -1 : x > y ? 1 : 0);
+const byDue = (a, b) => (isOverdue(b) - isOverdue(a)) || asc(a.due || "~", b.due || "~") || asc(a.dueTime || "~", b.dueTime || "~");
+const byStakes = (a, b) => (STAKE_RANK[b.stakes] ?? 0) - (STAKE_RANK[a.stakes] ?? 0);
+export function sortAll(ts, by, projectOrder = []){
+  const rank = (n) => { const i = projectOrder.indexOf(n); return i < 0 ? projectOrder.length : i; };
+  const cmp = by === "importance" ? (a, b) => byStakes(a, b) || byDue(a, b)
+    : by === "project" ? (a, b) => rank(a.project || INBOX) - rank(b.project || INBOX) || String(a.project || INBOX).localeCompare(String(b.project || INBOX)) || byDue(a, b) || byStakes(a, b)
+    : (a, b) => byDue(a, b) || byStakes(a, b);
+  return [...ts].sort((a, b) => cmp(a, b) || String(a.title).localeCompare(String(b.title)));
 }
 
 // els: { grid, view, dialog }. onOpen(task): the task sheet. onAdd(project):
@@ -297,7 +316,14 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
       return z; };
     const y = els.grid.scrollTop;
     // No week daisies; routines live in the avatar menu (Mor, 2026-10-10).
-    els.grid.replaceChildren(dragProjects(h("div", { className: "pgrid tiers" }, ...TIERS.map(tier))));
+    const open = (tasks || []).filter((t) => t.status === "ready" || t.status === "waiting");
+    const late = open.filter((t) => isOverdue(t)).length, week = open.filter((t) => t.due && !isOverdue(t) && daysTo(t.due) <= 7).length;
+    const allCard = h("button", { type: "button", className: "pcard pall", onclick: () => openProject(ALL) },
+      h("span", { className: "pcard-body" },
+        h("span", { className: "pcard-top" }, h("span", { className: "pcard-name", textContent: "All projects" })),
+        h("span", { className: "pcard-row" }, h("span", { className: "pcard-status", textContent:
+          [plural(open.length, "open task"), late ? `${late} overdue` : null, week ? `${week} due this week` : null].filter(Boolean).join(" · ") }))));
+    els.grid.replaceChildren(allCard, dragProjects(h("div", { className: "pgrid tiers" }, ...TIERS.map(tier))));
     els.grid.scrollTop = y;
   }
 
@@ -551,6 +577,7 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
 
   function paintView(){
     if (shown == null) return;
+    if (shown === ALL) { paintAllView(); return; }
     const ps = list();
     let p = ps.find((x) => x.name === shown);
     if (!p) { // emptied out: keep showing it as done, from all tasks
@@ -559,7 +586,7 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
       p = { name: shown, area: null, open: [], all, next: [], pending: [], someday: [], done: all.filter((t) => t.status === "done") };
     }
     const y = els.view.scrollTop, x = els.view.querySelector(".pj-chips")?.scrollLeft;
-    const chips = dragScroll(h("div", { className: "pj-chips", role: "tablist", ariaLabel: "Projects" },
+    const chips = dragScroll(h("div", { className: "pj-chips", role: "tablist", ariaLabel: "Projects" }, allChip(false),
       ...ps.map((q) => h("button", { type: "button", role: "tab", ariaSelected: String(q.name === p.name),
         className: "pj-chip" + colorClass(q), onclick: () => go(q.name) },
       h("span", { className: "dot", ariaHidden: "true" }), bdi(q.name)))));
@@ -612,6 +639,61 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
       const r = cur.getBoundingClientRect(), b = row.getBoundingClientRect();
       if (r.left < b.left || r.right > b.right) cur.scrollIntoView({ block: "nearest", inline: "center", behavior: x == null || !motionOK() ? "auto" : "smooth" });
     }
+  }
+  const allChip = (on) => h("button", { type: "button", role: "tab", ariaSelected: String(on), className: "pj-chip pj-chip-all", onclick: () => go(ALL), textContent: "All" });
+  let allSort = (() => { try { const v = localStorage.getItem(SORT_KEY); return ALL_SORTS.some(([k]) => k === v) ? v : "due"; } catch { return "due"; } })();
+  function setSort(k){ allSort = k; try { localStorage.setItem(SORT_KEY, k); } catch { /* per-tab only */ } els.view.scrollTop = 0; paintView(); }
+  // A task row in All: its project as a coloured chip, then the usual meta;
+  // a due date further than two weeks shows here too (it's the sort key).
+  function allRow(t, byName, showProject){
+    const meta = nextMeta(t);
+    if (t.due && !isOverdue(t) && daysTo(t.due) > 14) meta.push(" · ", `due ${shortDay(t.due)}`);
+    if (t.status === "waiting") meta.push(" · ", t.waitingOn ? `waiting on ${t.waitingOn}` : "pending");
+    if (allSort === "importance" && t.stakes && t.stakes !== "low") meta.push(" · ", h("span", { className: "pall-stake", textContent: LABELS.stakes[t.stakes] || t.stakes }));
+    const p = byName.get(t.project || INBOX);
+    return swipeCard(t, taskBtn(t, [
+      h("span", { className: "pj-row" }, h("span", { className: "pj-title", dir: "auto", textContent: t.title }),
+        t.id === onCard && h("span", { className: "pj-now", textContent: "NOW" })),
+      h("span", { className: "pj-meta", dir: DIR },
+        showProject && h("span", { className: "pj-chip pj-proj" + (p ? colorClass(p) : ""), onclick: (e) => { e.stopPropagation(); go(t.project || INBOX); } },
+          h("span", { className: "dot", ariaHidden: "true" }), bdi(t.project || INBOX)), showProject && " ", ...meta),
+      progressBar(t)]));
+  }
+  function paintAllView(){
+    const ps = list(), byName = new Map(ps.map((p) => [p.name, p]));
+    const open = (tasks || []).filter((t) => t.status === "ready" || t.status === "waiting");
+    const sorted = sortAll(open, allSort, ps.map((p) => p.name));
+    const y = els.view.scrollTop, x = els.view.querySelector(".pj-chips")?.scrollLeft;
+    const chips = dragScroll(h("div", { className: "pj-chips", role: "tablist", ariaLabel: "Projects" }, allChip(true),
+      ...ps.map((q) => h("button", { type: "button", role: "tab", ariaSelected: "false", className: "pj-chip" + colorClass(q), onclick: () => go(q.name) },
+        h("span", { className: "dot", ariaHidden: "true" }), bdi(q.name)))));
+    let rows;
+    if (allSort === "project") {
+      rows = [];
+      let cur;
+      for (const t of sorted) {
+        const n = t.project || INBOX;
+        if (n !== cur) { cur = n; const p = byName.get(n);
+          rows.push(h("button", { type: "button", className: "pall-head" + (p ? colorClass(p) : ""), onclick: () => go(n) },
+            h("span", { className: "dot", ariaHidden: "true" }), bdi(n), h("span", { className: "pall-n", textContent: String(sorted.filter((u) => (u.project || INBOX) === n).length) }))); }
+        rows.push(allRow(t, byName, false));
+      }
+    } else rows = sorted.map((t) => allRow(t, byName, true));
+    els.view.replaceChildren(
+      h("div", { className: "pj-top" },
+        h("button", { type: "button", className: "pj-back", ariaLabel: "Back", onclick: () => { closeProject(); onScreen?.(null); } }, icon("back")), chips),
+      h("div", { className: "pj-card" },
+        h("div", { className: "pj-card-top" }, h("h2", { className: "pj-name", textContent: "All projects" }),
+          h("span", { className: "pj-pct", textContent: plural(open.length, "task") })),
+        h("div", { className: "pj-tgs pall-sort", role: "radiogroup", ariaLabel: "Sort by" },
+          ...ALL_SORTS.map(([k, label]) => h("button", { type: "button", role: "radio", className: "pj-tg" + (allSort === k ? " on" : ""), ariaChecked: String(allSort === k), textContent: label, onclick: () => setSort(k) })))),
+      h("section", { className: "pj-sec pj-one", ariaLabel: "Tasks" },
+        rows.length ? h("div", { className: "pj-grp" }, ...rows) : h("p", { className: "pj-hint", textContent: "Nothing open. Enjoy it." }),
+        h("button", { type: "button", className: "pj-add", textContent: "+ Add a task", onclick: () => onAdd?.("") })));
+    els.view.className = "ppage pall-page";
+    els.view.scrollTop = y;
+    const row = els.view.querySelector(".pj-chips");
+    if (x != null) row.scrollLeft = x;
   }
   function go(name){
     if (name === shown) return;
@@ -718,7 +800,7 @@ export function mountProjects(els, uid, { onOpen, onAdd, onStart, onScreen } = {
     openAll,
     closeAll,
     // The project on screen, for "+ Task": the open project, else none.
-    shownProject: () => shown,
+    shownProject: () => (shown === ALL ? null : shown),
     newProject: () => askName(),
     unmount(){ unsubs.forEach((u) => u()); growth.unmount(); closeProject(); els.grid.replaceChildren(); els.glance?.replaceChildren(); if (els.dialog.open) els.dialog.close(); },
   };

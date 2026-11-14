@@ -139,6 +139,18 @@ const SCENARIOS = {
     { title: "Fix boost-bus leak", project: "Monster Punk", size: 30, area: "work", over: { status: "done", doneAt: Date.now() - 2 * 864e5 } },
     { title: "Alt menu music", project: "Monster Punk", size: 90, area: "work", over: { status: "someday" } },
   ], settings: { deadlinesAsked: true, somedayAsked: new Date().toLocaleDateString("en-CA") } },
+  // All projects (projects.js paintAllView; --click "#projectsChip" ".pcard.pall"):
+  // three projects, mixed due dates and stakes.
+  allprojects: { tasks: [
+    { title: "Boss smashes", project: "Monster Punk", size: 90, area: "work", due: day(3), stakes: "someone" },
+    { title: "Send stems to QA", project: "Monster Punk", size: 15, area: "work", due: day(-1), stakes: "penalty" },
+    { title: "Credits list", project: "Monster Punk", size: 15, area: "work", due: day(20), stakes: "low" },
+    { title: "Pay arnona", project: "Admin", size: 15, area: "admin", due: day(1), stakes: "money" },
+    { title: "Renew passport", project: "Admin", size: 30, area: "admin", stakes: "penalty" },
+    { title: "Mix review", project: "Reprise", size: 60, area: "work", due: day(6), stakes: "someone" },
+    { title: "Write liner notes", project: "Reprise", size: 45, area: "work", stakes: "low" },
+    { title: "Pre-attack cue notes", project: "Monster Punk", size: 15, area: "work", over: { status: "waiting", waitingOn: "Yuval", checkOn: day(2) } },
+  ], settings: { deadlinesAsked: true, somedayAsked: new Date().toLocaleDateString("en-CA") } },
   // Two active, three parked: the Someday pick shows under the card.
   someday: { tasks: [
     { title: "Send invoice to Uri", project: "Admin", size: 15 },
