@@ -1,6 +1,6 @@
 // The Now engine, in three gates (DAISEY_SPEC "Now engine logic"):
 //   Gate 1 — can it be done now?        filterOut
-//   Gate 2 — what does leaving it cost? deadline, target, stakes, priority, area, neglect
+//   Gate 2 — what does leaving it cost? deadline, stakes, priority, area, neglect
 //   Gate 3 — does it fit this gap?      window, momentum, batch, learned, skips
 // then a why line from the factors that gave the most.
 // PURE: no Firebase, no DOM. The clock is only read as a default, and all
@@ -8,14 +8,13 @@
 // fixed moments. Every number lives in weights.js.
 import * as W from "./weights.js";
 import { localDate, logicalDate, durText, notYet, leftMinutes, progressOf, LABELS, isGuess, estText, INBOX, placeOf, needsLaptop } from "./model.js";
-import { effectiveDue } from "./triage.js";
 import { officeOpen, officeMinutesLeft } from "./holidays.js";
 import { cleanRoutine, weekState } from "./routine.js";
 
 const MIN = 60000;
 const DAY = 86400000;
 // Every scoring factor, in why-line tie order (earlier wins a tie).
-const FACTORS = ["deadline", "routine", "fit", "stakes", "office", "progress", "flow", "batch", "spot", "priority", "area", "target", "window", "momentum", "neglect", "learned"];
+const FACTORS = ["deadline", "routine", "fit", "stakes", "office", "progress", "flow", "batch", "spot", "priority", "area", "window", "momentum", "neglect", "learned"];
 const DAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
@@ -247,13 +246,6 @@ function dueWorkOf(tasks, m){
   };
 }
 
-// A target (wish date): today or past 8, within 3 days 4. A passed target
-// counts as today's (triage.effectiveDue) and never grows past that.
-function target(task, m){
-  if (!task.due || task.dateKind === "deadline") return { points: 0, detail: null };
-  const days = daysUntil(effectiveDue(task, m.now), m.now);
-  return { points: days <= 0 ? W.TARGET.today : days <= 3 ? W.TARGET.within3 : 0, detail: { days } };
-}
 
 // A routine: how far behind its week is (W.ROUTINE).
 function routine(task, m){
@@ -423,7 +415,7 @@ function progress(task){
 // depends on the other tasks (batches, areas in play).
 export function scoreTask(task, m, ctx = { batches: new Map(), areas: [] }){
   const f = {
-    deadline: deadline(task, m, ctx), routine: routine(task, m), fit: fit(task), target: target(task, m), stakes: stakes(task), priority: priority(task, m), area: areaBalance(task, m, ctx.areas), neglect: neglect(task, m),
+    deadline: deadline(task, m, ctx), routine: routine(task, m), fit: fit(task), stakes: stakes(task), priority: priority(task, m), area: areaBalance(task, m, ctx.areas), neglect: neglect(task, m),
     window: windowFit(task, m), flow: flow(task, m), momentum: momentum(task, m), batch: batch(task, ctx.batches), learned: learned(task, m),
     office: office(task, m), spot: spot(task, m), progress: progress(task),
   };
@@ -477,10 +469,6 @@ const PHRASES = {
     : d.need >= d.daysLeft && d.daysLeft <= 3
     ? [d.daysLeft === 1 ? `last day to make ${d.per} this ${d.word}` : `${d.need} more this ${d.word}, ${d.daysLeft} days left`]
     : [`keeps your ${d.per}× a ${d.word} going`],
-  // "target", the date pill's own word: "planned for today" read as being
-  // in today's plan, and stayed after a plan was dropped (2026-10-15).
-  // "Planned" is the plan's word only.
-  target: (s, d) => [`target ${dateWords(effectiveDue(s.task), Math.max(0, d.days))}`],
   // Once the deadline has passed, "if late" is past tense: it's late now.
   stakes: (s, d, late = !!s.details.deadline?.passed) => isGuess(s.task, "stakes") ? null
     : d.kind === "money" ? [late ? "costing money now" : "costs money if late"]
@@ -617,8 +605,8 @@ export function rank(tasks, input = {}){
   const areas = [...new Set([...offer, ...out.map((o) => o.task)].map((t) => t.area).filter(Boolean))];
   const ctx = { batches: findBatches(offer, m), areas, dueWork: dueWorkOf([...offer, ...out.map((o) => o.task)], m) };
   // Background waits (Mor, 2026-10-08): behind every other offerable task,
-  // unless a deadline or target date gives it points.
-  const waits = (s) => tierOf(s.task, m) === "background" && !s.parts.deadline && !s.parts.target;
+  // unless a deadline gives it points.
+  const waits = (s) => tierOf(s.task, m) === "background" && !s.parts.deadline;
   // Focus before everything else, whatever the points (Mor, 2026-11-03: a
   // Job Hunt Videos and a BOBBA pick, both Keep going, filled the plan and
   // Monster Punk and Reprise, in Focus, got nothing). Only a real deadline

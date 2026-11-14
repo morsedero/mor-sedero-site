@@ -3,7 +3,7 @@
 // daisey-now-morning.js) all count the same questions. Moved out of needs.js
 // unchanged, 2026-10-06.
 import { nextOffer } from "./caltask.js";
-import { sweepList, isOverdue, shouldOffer } from "./triage.js";
+import { sweepList } from "./triage.js";
 import { localDate, logicalDate, notYet, PENDING_TODAY_WAIT } from "./model.js";
 import { deadlineWithin } from "./engine.js";
 import { STALE_SKIPS, SOMEDAY_DEADLINE_DAYS, PUSHES_ASK } from "./weights.js";
@@ -18,7 +18,7 @@ const DAY = 86400000;
 
 // Away catch-up (Mor approved 2026-10-08; user test 2026-10-11): after
 // AWAY_DAYS or more with nothing done in Daisey, Needs you opens with a
-// welcome back and goes through every old date first, passed targets too.
+// welcome back and goes through every old date first.
 export const AWAY_DAYS = 2;
 // Whole days since the user last did anything Daisey can see (as
 // miss.lastActivity, tasks only); 0 for a new user with no history.
@@ -94,12 +94,9 @@ export function collectNeeds({ tasks = [], events = [], calOk = false, settings 
     const t = somedayTop(tasks.filter((x) => !parked.includes(x) && !heldToday(x))); // a parked deadline is already asked about
     if (t) add({ key: "someday", kind: "someday", id: t.id });
   }
-  // Passed deadlines always; passed targets only once they pile up (the
-  // sweep's old threshold) — a target that slipped sits quietly under today.
-  // Back after days away: all of them, and first.
+  // Passed deadlines, always. Back after days away: first.
   const away = awayDays(tasks, now) >= AWAY_DAYS;
-  const targets = away || shouldOffer(tasks, now, {});
-  const sweeps = sweepList(tasks, now).filter((t) => isOverdue(t, now) || targets)
+  const sweeps = sweepList(tasks, now)
     .map((t) => ({ key: `sweep:${t.id}`, kind: "sweep", id: t.id })).filter((item) => !later.has(item.key));
   return away ? [...sweeps, ...out] : [...out, ...sweeps];
 }

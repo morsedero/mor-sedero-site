@@ -305,10 +305,6 @@ test("8 due today, tomorrow, this week; far dates say nothing", () => {
   assert.equal(reasonLine(task8({ due: "2026-12-01" }), { now: NOW8 }).text, "");
 });
 
-test("8 target dates are not deadlines: 'Target was Wed.' / 'Target today.'", () => {
-  assert.equal(reasonLine(task8({ dateKind: "target", due: "2026-10-14" }), { now: NOW8 }).text, "Target was Wed.");
-  assert.equal(reasonLine(task8({ dateKind: "target", due: "2026-10-18" }), { now: NOW8 }).text, "Target today.");
-});
 
 test("8 planned: 'Planned for today.' / tomorrow", () => {
   assert.equal(reasonLine(task8(), { now: NOW8, planned: "2026-10-18" }).text, "Planned for today.");

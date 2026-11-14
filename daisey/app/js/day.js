@@ -8,7 +8,6 @@
 // what was left worth keeping from it — the free stretches and the capacity
 // line — now bounded by the day hours.
 import * as W from "./weights.js";
-import { effectiveDue } from "./triage.js";
 import { localDate, getDayKey, notYet } from "./model.js";
 
 const MIN = 60000;
@@ -228,7 +227,7 @@ export function gapsToday(events, now = Date.now(), hours = W.DAY_HOURS){
 export function capacity(tasks, events, now = Date.now(), hours = W.DAY_HOURS){
   const free = gapsToday(events, now, hours).reduce((s, g) => s + g.minutes, 0);
   const today = getDayKey(now);
-  const open = tasks.filter((t) => t.status === "ready" && t.due && !notYet(t, now) && effectiveDue(t, now) <= today);
+  const open = tasks.filter((t) => t.status === "ready" && t.due && !notYet(t, now) && t.due <= today);
   const left = (t) => Math.max(5, (t.size || 0) - (t.spentMinutes || 0));
   const order = [...open].sort((a, b) => (b.dateKind === "deadline") - (a.dateKind === "deadline") || left(a) - left(b));
   const fit = [];

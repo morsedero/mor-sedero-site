@@ -58,7 +58,6 @@ const ACTION_FIELDS = {
   minutes: { type: "INTEGER", description: "add/update/event: how long it takes, only if the user said (\"15 min\" → 15, \"2 hours\" → 120). moment: how many minutes the user has free right now." },
   dateWords: str("Whenever you fill a date: the user's own words for that day, copied as said (\"tomorrow\", \"in 3 days\", \"by Friday\", \"on the 25th\", \"סוף השבוע\"). The app works the day out from them."),
   dueDate: str("YYYY-MM-DD the task is due (\"by Thursday\", \"עד יום רביעי\"). Only if the user gave one."),
-  dateKind: str("deadline only for a hard date with a cost if missed, else target.", { enum: ["deadline", "target"] }),
   startDate: str("YYYY-MM-DD before which the task shouldn't come up (\"next week\", \"after Sunday\")."),
   repeatDays: { type: "ARRAY", items: { type: "INTEGER" }, description: "add only, when the user says it repeats on set days: the weekdays, 0 = Sunday ... 6 = Saturday (\"every weekday\" → [0,1,2,3,4], the Israeli work week; \"every Monday and Thursday\" → [1,4])." },
   timesPerWeek: { type: "INTEGER", description: "add only, when it repeats with no set days: times a week (\"3 times a week\" → 3, \"every day\" → 7, \"weekly\" → 1)." },
@@ -286,7 +285,7 @@ function tidy(out, ids){
       const due = a.dueDate ?? a.due, start = a.startDate ?? a.notBefore;
       if (isDay(due)) x.due = due;
       if (isDay(start)) x.notBefore = start;
-      if (x.due && ["deadline", "target"].includes(a.dateKind)) x.dateKind = a.dateKind;
+      if (x.due) x.dateKind = "deadline"; // every due date is a deadline (2026-11-14)
     }
     if (kind === "add") {
       const days = [...new Set((Array.isArray(a.repeatDays) ? a.repeatDays : []).filter((d) => Number.isInteger(d) && d >= 0 && d <= 6))].sort();

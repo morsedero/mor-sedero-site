@@ -104,7 +104,7 @@ Only the title is required. Gemini guesses the rest from the title (area, type, 
 | Energy needed | No | Low · Medium · High | Guessed from type and size |
 | Stakes | No | Low · Costs money · Affects someone · Deadline penalty | Guessed; else Low |
 | Date | No | Date, optional time | None |
-| Date kind | No | Deadline (real) · Target (wish) | Target |
+| Date kind | No | Deadline — every due date (Mor, 2026-11-14: Target removed) | Deadline |
 | Status | Auto | Ready · Pending (stored as `waiting`) · Not now (stored as `someday`) · Done | Ready |
 | Waiting on | No | Free text ("Yuval confirms") | — |
 | Check again | Auto | Date: when Needs you asks "Still pending?" | 3 days after it went Pending |
@@ -152,7 +152,6 @@ The engine picks like a secretary, in three gates, every time the card is shown:
 | Factor | Points | How it's computed |
 | --- | --- | --- |
 | Real deadline | 0–35 | Past or today: 35 · within 2 days: 25 · within 7 days: 12. Big work counts early: one day closer per 2 h still to do past the first 2 h ("deadline Fri, 6 h still to do") |
-| Target date | 0–8 | Today or past: 8 · within 3 days: 4. A target is never shown as "overdue". |
 | Stakes | 0–15 | Deadline penalty: 15 · costs money: 12 · affects someone: 10 · low: 0 |
 | Area balance | 0–12 | The area furthest behind its weekly intent (or least touched this week) gets up to 12 |
 | Neglect | 0–8 | +1 per day since real work (start, time, done), or since added; skips and edits don't reset it. Max 8 |
@@ -191,7 +190,7 @@ The card and its alternatives never share the same why line. If two tasks lead w
 
 ## Overdue triage and weekly intents
 
-Only real deadlines can be overdue. Target dates that pass roll forward quietly and lose urgency, so a pile of old wish dates never floods the card.
+Every due date is a deadline (2026-11-14: Target, the wish date, was removed; old Targets migrated to Deadlines at task v6), so any passed due date is overdue and goes through the sweep.
 
 **The sweep.** When more than 3 deadlines or 5 targets have passed, Daisey offers a 2-minute sweep, at most once a day. One task at a time, four buttons: Today · This week · Someday · Drop. "Someday" tasks are never suggested until moved back.
 

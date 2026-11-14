@@ -99,11 +99,11 @@ export function proposeDay({ tasks = [], events = [], now = Date.now(), hours = 
   // a 3 h pick with 1 h 45 left didn't fit and went to No room).
   const take = (t) => { const left = leftOf(t), m = Math.min(left, biggest, t.canSplit && budget >= WORTH ? budget : Infinity);
     items.push({ taskId: t.id, minutes: m, ...(m < left ? { of: left } : {}) }); out.add(t.id); taken.add(t.id); budget -= m; };
-  // Background picks (the engine's "waits": no deadline, no target) go after
+  // Background picks (the engine's "waits": no deadline) go after
   // the rest of the plan, rides' picks included (Mor, 2026-10-19: a project
   // just moved to Background opened the fresh plan with 3 h of it).
   const later = new Set(), score = new Map();
-  const waits = (r) => tierOf(r.pick.task, r.moment) === "background" && !r.pick.parts.deadline && !r.pick.parts.target;
+  const waits = (r) => tierOf(r.pick.task, r.moment) === "background" && !r.pick.parts.deadline;
   const picked = (r) => { score.set(r.pick.task.id, r.pick.score - r.pick.parts.flow); if (waits(r)) later.add(r.pick.task.id); };
   const first = new Set(ask.first || []);
 
@@ -180,7 +180,6 @@ export function proposeDay({ tasks = [], events = [], now = Date.now(), hours = 
   if (!narrowed) for (const t of tasks) {
     if (out.has(t.id) || t.status !== "ready" || t.onHold || t.routine || notYet(t, now) || !t.due || t.due > today || booked[t.id] > now
       || waitsOnSiblings(t, tasks, taken, today)) continue; // a last step still waits for its project's other work
-    if (t.dateKind !== "deadline" && atCap(t)) continue; // a target date waits out the project's cap, a deadline doesn't
     items.push({ taskId: t.id, minutes: leftOf(t) }); out.add(t.id);
   }
   // A piece sized to the longest free stretch can still miss it by the break

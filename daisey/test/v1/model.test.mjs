@@ -47,7 +47,7 @@ test("given fields are kept, not marked as guesses", () => {
   assert.equal(t.size, 120);
   assert.equal(t.due, "2026-10-08");
   assert.equal(t.canSplit, true); // 60+ default
-  assert.equal(t.dateKind, "target"); // a date is a wish until called a deadline
+  assert.equal(t.dateKind, "deadline"); // every due date is a deadline
   assert.deepEqual(t.guessed, M.GUESSABLE.filter((k) => k !== "size"));
 });
 
@@ -307,15 +307,15 @@ test("edit: a picked field stays put; handing it back re-guesses", () => {
   assert.deepEqual(Object.keys(M.editTask(t, { notes: "hi" }, opts)).sort(), ["editedAt", "notes", "touchedAt"]);
 });
 
-test("edit: date kind is Target by default, Deadline on request, gone with the date", () => {
-  const t = { id: "a", ...M.createTask({ title: "x", due: "2026-10-06" }, opts) };
-  assert.equal(t.dateKind, "target");
-  assert.equal(M.editTask(t, { dateKind: "deadline" }, opts).dateKind, "deadline");
+test("edit: a due date is always a Deadline, gone with the date", () => {
+  const t = { id: "a", ...M.createTask({ title: "x", due: "2026-10-06", dateKind: "target" }, opts) };
+  assert.equal(t.dateKind, "deadline");
   assert.equal(M.editTask(t, { due: "" }, opts).dateKind, null);
-  assert.equal(M.editTask({ ...t, due: null, dateKind: null }, { due: "2026-10-09" }, opts).dateKind, "target");
+  assert.equal(M.editTask({ ...t, due: null, dateKind: null }, { due: "2026-10-09" }, opts).dateKind, "deadline");
+  assert.equal(M.editTask({ ...t, dateKind: "target" }, { title: "y" }, opts).dateKind, "deadline");
 });
 
-test("migrate: an old task gets every field, real guesses, Targets, and keeps touchedAt", () => {
+test("migrate: an old task gets every field, real guesses, Deadlines, and keeps touchedAt", () => {
   const old = { id: "o", project: "Inbox", title: "call the bank", size: 30, guessed: ["size", "canSplit"],
     canSplit: false, due: "2026-10-01", status: "ready", touchedAt: 123, createdAt: 100 };
   const p = M.migrateTask(old, [old]);
@@ -324,7 +324,7 @@ test("migrate: an old task gets every field, real guesses, Targets, and keeps to
   assert.equal(p.where, "anywhere");
   assert.equal(p.laptop, false);
   assert.equal(p.openHours, "office");
-  assert.equal(p.dateKind, "target");
+  assert.equal(p.dateKind, "deadline");
   assert.equal(p.nextStep, null);
   assert.equal(p.v, M.TASK_VERSION);
   assert.deepEqual(p.guessed, M.GUESSABLE);
@@ -414,12 +414,9 @@ test("pendingCheck: 3 days on, but the day before a real deadline, never before 
   assert.equal(M.editTask(t, { waitingOn: "Yuval" }, { now }).checkOn, "2026-10-06");
 });
 
-test("bringBack: a passed wish date goes, a deadline stays (2026-10-06)", () => {
+test("bringBack: the deadline stays", () => {
   const now = new Date(2026, 9, 6, 10).getTime();
-  assert.deepEqual(M.bringBack({ due: "2026-10-01", dateKind: "target" }, { now }),
-    { status: "ready", notBefore: null, touchedAt: now, due: null, dueTime: null, dateKind: null });
   assert.deepEqual(M.bringBack({ due: "2026-10-01", dateKind: "deadline" }, { now }), { status: "ready", notBefore: null, touchedAt: now });
-  assert.deepEqual(M.bringBack({ due: "2026-10-09", dateKind: "target" }, { now }), { status: "ready", notBefore: null, touchedAt: now });
   assert.deepEqual(M.pushedTo({ pushes: 1 }, { notBefore: "2026-10-07" }, { now }), { notBefore: "2026-10-07", startTime: null, pushes: 2, touchedAt: now });
   // A start hour: off the card till then that day, on after; a moved day drops it.
   const at = (h) => new Date(2026, 9, 7, h).getTime();

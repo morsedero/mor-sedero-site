@@ -72,7 +72,6 @@ export const DEADLINE_CURVE = [[0, DEADLINE.today], [2, DEADLINE.within2], [7, D
 // the first day's worth — 6 h left reads a deadline 2 days early. Before
 // this a 6-hour job due in 10 days scored nothing until 7 days out.
 export const DEADLINE_LEAD_PER_DAY = 120;
-export const TARGET = { today: 8, within3: 4 }; // today or past · ≤3 days; never "overdue"
 // A routine (routine.js) by how its week stands. last: every day left this
 // week is needed — miss today and the week can't be met (as strong as a
 // deadline in 2 days). behind: half the days left or more are needed, and
@@ -90,7 +89,7 @@ export const STAKES = { penalty: 15, money: 12, someone: 10, low: 0 };
 // steer the card. Since 2026-11-03 Focus is also a band of its own: every
 // Focus task ranks before every other one but a deadline today or passed
 // (engine rank). Background scores nothing, and more: it waits behind every
-// other offerable task unless a deadline or target date pulls it up (engine
+// other offerable task unless a deadline pulls it up (engine
 // rank). The Inbox isn't a tier anyone drags; its tasks score as "keep".
 export const TIER = { focus: 15, keep: 6, background: 0 };
 export const TIERS = ["focus", "keep", "background"];
@@ -171,8 +170,8 @@ export const PROGRESS_SAY_MIN = 25;
 export const WHY_PROGRESS_POINTS = 7;
 
 // Overdue triage (DAISEY_SPEC "Overdue triage"). The sweep is offered when
-// MORE than this many deadlines, or targets, have passed — once a day.
-export const SWEEP = { deadlines: 3, targets: 5 };
+// MORE than this many deadlines have passed — once a day.
+export const SWEEP = { deadlines: 3 };
 // "This week" in the sweep: the day with the most room, counted over the
 // day hours, from tomorrow to the end of the week (Saturday, getDay 6).
 export const WEEK_END_DAY = 6;

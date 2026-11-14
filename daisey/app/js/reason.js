@@ -32,13 +32,10 @@ export function dayWords(ymd, now = Date.now()){
 // the project's own due date }.
 export function reasonPieces(task, { now = Date.now(), planned = null, focus = false, projectDue = null } = {}){
   const out = [];
-  const due = task?.due, deadline = task?.dateKind === "deadline";
-  if (due && deadline) {
+  const due = task?.due;
+  if (due) {
     const over = daysOverdue(task, now);
     out.push(over > 0 ? ["Overdue since ", dayWords(due, now)] : daysTo(due, now) <= 7 ? ["Due ", dayWords(due, now)] : null);
-  } else if (due) {
-    const d = daysTo(due, now);
-    out.push(d < 0 ? ["Target was ", dayWords(due, now)] : d <= 7 ? ["Target ", dayWords(due, now)] : null);
   }
   if (planned) out.push(["Planned for ", dayWords(planned, now)]);
   const named = task?.project && task.project !== INBOX;

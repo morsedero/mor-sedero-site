@@ -23,7 +23,6 @@ const parts = (t, o) => E.scoreTask(t, moment(o)).parts;
 const pick = (ts, o) => E.rank(Array.isArray(ts) ? ts : [ts], { now: NOW, ...o }).pick;
 const why = (t, o) => pick(t, o).why;
 const dl = (due, o) => task({ due, dateKind: "deadline", ...o });
-const tg = (due, o) => task({ due, dateKind: "target", ...o });
 
 // ---------- Step 1: the moment ----------
 
@@ -149,16 +148,8 @@ test("gate 2 deadline: past or today 35, sloping through 25 at 2 days and 12 at 
   assert.equal(parts(dl("2026-10-19")).deadline, 0);
   assert.equal(parts(dl("2026-10-30")).deadline, 0);
   assert.equal(parts(task()).deadline, 0);
-  assert.equal(parts(tg("2026-10-05")).deadline, 0); // a target is never a deadline
 });
 
-test("gate 2 target: today or past 8, within 3 days 4, later 0 — never overdue", () => {
-  assert.equal(parts(tg("2026-10-05")).target, 8);
-  assert.equal(parts(tg("2026-09-20")).target, 8); // passed: rolls to today, no more
-  assert.equal(parts(tg("2026-10-08")).target, 4);
-  assert.equal(parts(tg("2026-10-09")).target, 0);
-  assert.equal(parts(dl("2026-10-05")).target, 0);
-});
 
 test("gate 2 stakes: penalty 15, money 12, someone 10, low 0", () => {
   assert.equal(parts(task({ stakes: "penalty" })).stakes, 15);
@@ -350,7 +341,7 @@ test("gate 1: stale doesn't hide a real deadline within a week (2026-10-06)", ()
   assert.equal(E.filterOut(dl("2026-10-12", { skipsSinceStart: W.STALE_SKIPS }), m), null);
   assert.equal(E.filterOut(dl("2026-10-01", { skipsSinceStart: W.STALE_SKIPS }), m), null); // passed
   assert.equal(E.filterOut(dl("2026-10-13", { skipsSinceStart: W.STALE_SKIPS }), m), "stale");
-  assert.equal(E.filterOut(tg("2026-10-06", { skipsSinceStart: W.STALE_SKIPS }), m), "stale"); // a target isn't a deadline
+  assert.equal(E.filterOut(task({ skipsSinceStart: W.STALE_SKIPS }), m), "stale");
 });
 
 test("time left, not full size: fits, scores and batches what's still to do (2026-10-06)", () => {
@@ -529,16 +520,6 @@ test("flow: workBase names the project stopped or finished in the last FLOW.gapM
   assert.equal(C.workBase([done(10, { project: "Inbox" })], NOW).flowProject, null);
 });
 
-// A target date is the user's date, not the plan: "planned for today" read
-// as being in today's plan and outlived a dropped plan (2026-10-15).
-test("a target date says target, never planned", () => {
-  const today = new Date(NOW).toLocaleDateString("en-CA"), past = new Date(at(3)).toLocaleDateString("en-CA");
-  for (const due of [today, past]) {
-    const s = E.whyText(pick(task({ due, dateKind: "target" })).whyParts);
-    assert.match(s, /target today/);
-    assert.doesNotMatch(s, /planned/i);
-  }
-});
 
 test("Focus comes before Keep going whatever the points; only a deadline today or passed joins it", () => {
   // Mor, 2026-11-03: Keep going picks filled the plan, Focus got nothing.

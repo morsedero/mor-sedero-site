@@ -22,7 +22,6 @@
 import { MISS } from "./weights.js";
 import { overruled, eventKey } from "./reality.js";
 import { localDate, logicalDate, leftMinutes, notYet } from "./model.js";
-import { effectiveDue } from "./triage.js";
 import { dayStartAt, dayEndAt } from "./day.js";
 
 const MIN = 60000;
@@ -109,7 +108,7 @@ export function missState({ tasks = [], events = [], now = Date.now(), hours, pl
   const today = hours?.late ? logicalDate(now) : localDate(now), act = lastActivity(tasks, planAt);
   const dayA = dayStartAt(now, hours), dayB = dayEndAt(now, hours), from = Math.max(act, dayA);
   const last = slots[slots.length - 1];
-  const need = tasks.filter((t) => t.status === "ready" && !notYet(t, now) && t.due && effectiveDue(t, now) <= today)
+  const need = tasks.filter((t) => t.status === "ready" && !notYet(t, now) && t.due && t.due <= today)
     .reduce((s, t) => s + leftMinutes(t), 0);
   const why = slots.length >= 2 ? "slots"
     : freeBetween(busy, from, now) >= MISS.share * freeBetween(busy, dayA, dayB) ? "time"

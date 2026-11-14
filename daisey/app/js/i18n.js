@@ -88,7 +88,7 @@ const HE_TEXT = {
   "Work": "עבודה", "Home": "בית", "Admin": "סידורים", "Social": "חברתי", "Deep": "ריכוז", "Call": "שיחה", "Errand": "סידור",
   "Anywhere": "בכל מקום", "Out": "בחוץ", "Anytime": "בכל שעה", "Office hours": "שעות משרד", "Evening": "ערב", "Morning": "בוקר", "Afternoon": "צהריים",
   "Low stakes": "לא דחוף", "Costs money": "עולה כסף", "Affects someone": "משפיע על מישהו", "Deadline penalty": "קנס על איחור",
-  "Deadline": "דדליין", "Target": "יעד", "Inbox": "דואר נכנס", "Job search": "חיפוש עבודה", "Job Hunt": "חיפוש עבודה",
+  "Deadline": "דדליין", "Inbox": "דואר נכנס", "Job search": "חיפוש עבודה", "Job Hunt": "חיפוש עבודה",
   "Blocked": "תקוע", "Again?": "שוב?", "More time?": "עוד זמן?", "A task needs a title.": "למשימה צריך שם.",
   "File": "קובץ", "Waiting on": "מחכה ל:", "check now": "לבדוק עכשיו", "this week": "השבוע", "this month": "החודש", "left": "נשארו", "done": "בוצעו", "Back to active": "חזרה לפעיל", "Planned": "מתוכנן", "Routine": "שגרה", "Routines": "שגרות",
 
@@ -204,9 +204,7 @@ const HE_TEXT = {
   // Brief, deadlines, misc
   "No free time today.": "אין זמן פנוי היום.", "Nothing due today.": "שום דבר לא להיום.", "Deadline passed": "הדדליין עבר", "Deadline today": "דדליין היום",
   "Deadline tomorrow, not started": "דדליין מחר, עוד לא התחיל", "1 thing needs you.": "דבר אחד מחכה לך.", "1 thing needs you": "דבר אחד מחכה לך",
-  "Which dates are real deadlines?": "אילו תאריכים הם דדליין אמיתי?",
-  "Tick the ones that really can't slip. The rest become targets: wish dates that move on quietly if they pass.": "סמנו את אלה שבאמת אי אפשר לדחות. השאר יהפכו ליעדים: תאריכים רצויים שזזים בשקט אם עברו.",
-  "None are": "אף אחד", "Question": "שאלה", "More answers": "עוד תשובות", "Move it to 18:00": "להעביר ל-18:00", "Keep current plan": "להשאיר את התוכנית הנוכחית",
+  "Question": "שאלה", "More answers": "עוד תשובות", "Move it to 18:00": "להעביר ל-18:00", "Keep current plan": "להשאיר את התוכנית הנוכחית",
   "Read the moment": "לקרוא את הרגע", "Worked on": "עבדת על", "View CV": "צפייה בקו״ח",
   "Nothing planted yet today. Start any task and it shows up here.": "עוד לא נשתל כלום היום. התחילו משימה והיא תופיע כאן.",
   "What's due today doesn't fit any more.": "מה שצריך להיום כבר לא נכנס.", "Nothing's started yet today.": "שום דבר עוד לא התחיל היום.",
@@ -344,7 +342,7 @@ const PATTERNS = [
   P(/^planned for (\d\d:\d\d), no Done yet$/, "מתוכנן ל-$1, עוד לא בוצע"), P(/^up since (\d\d:\d\d), no Done yet$/, "מאז $1, עוד לא בוצע"),
   P(/^Later \((.+)\):$/, "אחר כך ($1):"), P(/^This week \((.+)\):$/, "השבוע ($1):"),
   P(/^(.+) left\. Daisey picks a task again when it ends\.$/, "נשארו $1. Daisey תבחר משימה שוב כשזה ייגמר."),
-  P("^Overdue since {D}\\.?$", "באיחור מאז $1"), P("^Due {D}$", "עד $1"), P("^Target was {D}$", "היעד היה $1"), P("^Target {D}$", "יעד $1"), P("^Planned for {D}(\\.?)$", "מתוכנן ל$1$2"),
+  P("^Overdue since {D}\\.?$", "באיחור מאז $1"), P("^Due {D}$", "עד $1"), P("^Planned for {D}(\\.?)$", "מתוכנן ל$1$2"),
   P("^Starts {D}$", "מתחיל $1"), P("^(Was due|By|was due|due|by) {D}$", (m) => `${/was/i.test(m[1]) ? "היה עד" : "עד"} ${bit(m[2])}`),
   P("^The deadline (was|is) {D}\\.$", (m) => `הדדליין ${m[1] === "was" ? "היה" : "הוא"} ${bit(m[2])}.`),
   P("^It's on hold\\. The deadline (was|is) {D}\\.$", (m) => `זה מושהה. הדדליין ${m[1] === "was" ? "היה" : "הוא"} ${bit(m[2])}.`),

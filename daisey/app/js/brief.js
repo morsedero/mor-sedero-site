@@ -7,7 +7,7 @@
 //    arnona. First event: Teaching at 10:00."
 // PURE. The same sums as the app's day.js capacity() — free minutes left in
 // the day hours between busy calendar events; open = ready tasks dated today
-// or earlier (a passed target rolls to today), not held by a start date;
+// or earlier, not held by a start date;
 // fit = how many of those the free time holds, deadlines first, then
 // smallest, each counted by the time it still needs. Takes the time zone as
 // an argument because the server runs in UTC and must read "today" in the

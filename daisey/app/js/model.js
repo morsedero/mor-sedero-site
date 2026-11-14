@@ -11,8 +11,8 @@
 //   behaviour — a skip reason, past tasks — not by chips (Mor, 2026-10-07).
 //   Every field still a guess is listed in `guessed`.
 // - Energy is gone (Mor, 2026-10-07): "no one wants to deal with that".
-// - A date is a Deadline (real) or a Target (wish), never computed. New and
-//   migrated dates are Targets until the user says otherwise.
+// - A due date is always a Deadline (Mor, 2026-11-14: Target, the wish
+//   date, is gone; v6 turned every old Target into a Deadline).
 // - No repeating tasks — except routines (Mor, 2026-10-08): so many times a
 //   week, see routine.js. Done on one logs a session instead of closing it.
 // - Waiting is set by acting on an existing task, never when adding one.
@@ -31,7 +31,7 @@ export const INBOX = "Inbox";
 export const DEFAULT_SIZE = 30;
 export const SPLIT_FROM = 60; // "can split" defaults on from this size
 const SIMILAR = 0.5; // title word overlap that counts as "a similar past task"
-export const TASK_VERSION = 5; // tasks below this get migrateTask'd on load
+export const TASK_VERSION = 6; // tasks below this get migrateTask'd on load
 // Pending asks "still pending?" this many days after it was set (Mor,
 // 2026-10-05: 3 days, editable in the Pending ask).
 export const PENDING_CHECK_DAYS = 3;
@@ -49,7 +49,6 @@ export const placeOf = (t) => (WHERE.includes(t?.where) ? t.where : "anywhere");
 export const needsLaptop = (t) => (typeof t?.laptop === "boolean" ? t.laptop : t?.where === "computer");
 export const OPEN_HOURS = ["anytime", "office", "evening"];
 export const STAKES = ["low", "money", "someone", "penalty"];
-export const DATE_KINDS = ["deadline", "target"];
 // The single-choice fields guessed from the title, and what each may hold.
 export const CHOICES = { area: AREAS, type: TYPES, where: WHERE, openHours: OPEN_HOURS, stakes: STAKES };
 // Every field Daisey can guess, in the order the chips show them.
@@ -61,7 +60,7 @@ export const LABELS = {
   where: { anywhere: "Anywhere", home: "Home", out: "Out" },
   openHours: { anytime: "Anytime", office: "Office hours", evening: "Evening" },
   stakes: { low: "Low stakes", money: "Costs money", someone: "Affects someone", penalty: "Deadline penalty" },
-  dateKind: { deadline: "Deadline", target: "Target" },
+  dateKind: { deadline: "Deadline" },
 };
 
 // First-pass word hints, English + Hebrew. Session 10's learning refines
@@ -426,7 +425,7 @@ export function createTask(input, { now = Date.now(), history = [] } = {}){
     stakes: v.stakes,
     due,
     dueTime: due ? toTime(input.dueTime) : null,
-    dateKind: due ? (DATE_KINDS.includes(input.dateKind) ? input.dateKind : "target") : null,
+    dateKind: due ? "deadline" : null,
     // Not before: Daisey keeps the task off the card until this day. For
     // work that can't start yet — files not sent, venue not booked.
     notBefore: toDate(input.notBefore),
@@ -506,10 +505,8 @@ export function editTask(task, changes, { now = Date.now(), history = [] } = {})
   if (has("notBefore")) set("notBefore", toDate(changes.notBefore));
   if (has("dueTime") || !get("due")) set("dueTime", get("due") ? toTime(changes.dueTime ?? task.dueTime) : null);
   if (has("startTime") || !get("notBefore")) set("startTime", get("notBefore") ? toTime(changes.startTime ?? task.startTime) : null);
-  // A date is a Target unless the user calls it a Deadline; no date, no kind.
-  if (!get("due")) set("dateKind", null);
-  else if (has("dateKind") && DATE_KINDS.includes(changes.dateKind)) set("dateKind", changes.dateKind);
-  else if (!DATE_KINDS.includes(task.dateKind)) set("dateKind", "target");
+  // A due date is a Deadline; no date, no kind.
+  set("dateKind", get("due") ? "deadline" : null);
   if (has("nextStep")) set("nextStep", text(changes.nextStep) || null);
   if (has("steps")) {
     const steps = toSteps(changes.steps);
@@ -547,7 +544,7 @@ export function editTask(task, changes, { now = Date.now(), history = [] } = {})
 
 // Brings a task saved before TASK_VERSION up to the current fields. Fills
 // what's missing, re-guesses whatever is still a guess (the flat-30 sizes
-// most of all), and makes every existing date a Target. Never touches
+// most of all), and makes every existing date a Deadline (v6). Never touches
 // touchedAt: a migration isn't the user working on the task, and the
 // neglect score reads it. Returns {} once a task is current.
 export function migrateTask(task, history = []){
@@ -573,7 +570,7 @@ export function migrateTask(task, history = []){
   const v = guessFields(task.title, task.project, keep, others);
   const patch = {};
   for (const k of GUESSABLE) if (!same(task[k], v[k])) patch[k] = v[k];
-  const kind = task.due ? (DATE_KINDS.includes(task.dateKind) ? task.dateKind : "target") : null;
+  const kind = task.due ? "deadline" : null;
   if (task.dateKind !== kind) patch.dateKind = kind;
   if (task.nextStep === undefined) patch.nextStep = null;
   // v4 (2026-10-05): steps, links, and Pending's check date. A next step
@@ -668,12 +665,9 @@ export const pushedTo = (task, fields, { now = Date.now() } = {}) => ({
   ...("notBefore" in fields ? { startTime: null } : {}), ...("due" in fields ? { dueTime: null } : {}),
   ...fields, pushes: (task.pushes || 0) + 1, touchedAt: now });
 
-// Out of Not now and back on the list. A wish date that passed while it was
-// parked goes with it — otherwise it lands straight in the old-dates sweep.
-// A real deadline stays: it's still real.
+// Out of Not now and back on the list. Its deadline stays: it's still real.
 export function bringBack(task, { now = Date.now() } = {}){
-  const stale = task.dateKind !== "deadline" && task.due && task.due < logicalDate(now);
-  return { status: "ready", notBefore: null, touchedAt: now, ...(stale ? { due: null, dueTime: null, dateKind: null } : {}) };
+  return { status: "ready", notBefore: null, touchedAt: now };
 }
 
 // "Again?" after Done (Mor, 2026-10-06: no repeat engine; finishing offers

@@ -23,7 +23,6 @@ import { dayHours, dayStartAt, usualHours, answerDate } from "./day.js";
 import { watchSettings, saveSettings } from "./store.js";
 import { rank } from "./engine.js";
 import { workBase } from "./context.js";
-import { effectiveDue } from "./triage.js";
 import { h, bdi, dur, flash } from "./ui.js";
 import { setManual, RIDES } from "./where.js";
 import { withTrips, asPassenger } from "./trips.js";
@@ -189,8 +188,8 @@ export function mountTell(form, input, mic, uid, { openAdd, openTask, nowCard = 
       rows = rank(tasks, { realWindow: false, ...workBase(tasks) }).ranked.slice(0, 3).map((s) => [s.task.title, s.why]);
     } else if (q.query === "due") {
       const until = q.range === "week" ? dayAfter(6) : getDayKey();
-      rows = open.filter((t) => t.due && effectiveDue(t) <= until).sort((a, b) => effectiveDue(a).localeCompare(effectiveDue(b)))
-        .map((t) => [t.title, `${t.dateKind === "deadline" ? "deadline" : "planned"} ${day(effectiveDue(t))}`]);
+      rows = open.filter((t) => t.due && t.due <= until).sort((a, b) => a.due.localeCompare(b.due))
+        .map((t) => [t.title, `deadline ${day(t.due)}`]);
     } else {
       rows = open.filter((t) => t.status === "waiting").map((t) => [t.title, t.waitingOn ? `waiting on ${t.waitingOn}` : "pending"]);
     }
@@ -210,12 +209,12 @@ export function mountTell(form, input, mic, uid, { openAdd, openTask, nowCard = 
       if (a.size) bits.push(dur(a.size));
       if (a.routine) bits.push(repeatWords(a.routine) + (a.routine.until ? `, until ${day(a.routine.until)}` : ""));
       if (a.notBefore) bits.push(`starts ${day(a.notBefore)}`);
-      if (a.due) bits.push(`${a.dateKind === "deadline" ? "deadline" : "by"} ${day(a.due)}`);
+      if (a.due) bits.push(`deadline ${day(a.due)}`);
     } else if (a.kind === "update") {
       if (a.title) bits.push(`rename → ${a.title}`);
       if (a.project) bits.push(`project → ${a.project}`);
       if (a.size) bits.push(`size → ${dur(a.size)}`);
-      if (a.due) bits.push(`${a.dateKind === "deadline" ? "deadline" : "due"} → ${day(a.due)}`);
+      if (a.due) bits.push(`deadline → ${day(a.due)}`);
       if (a.notBefore) bits.push(`not before ${day(a.notBefore)}`);
     } else if (a.kind === "waiting") {
       bits.push(a.waitingOn ? `pending: waiting on ${a.waitingOn}` : "pending");

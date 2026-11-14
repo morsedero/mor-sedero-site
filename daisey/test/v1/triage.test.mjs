@@ -10,33 +10,25 @@ let seq = 0;
 const task = (o = {}) => ({ id: `t${++seq}`, project: "P", title: "Task", size: 30, status: "ready",
   due: null, dateKind: null, createdAt: 1, touchedAt: 1, ...o });
 const dl = (due, o) => task({ due, dateKind: "deadline", ...o });
-const tg = (due, o) => task({ due, dateKind: "target", ...o });
 const iso = (d, h, m = 0) => new Date(at(d, h, m)).toISOString();
 
-test("only a passed deadline is overdue; a passed target rolls to today", () => {
+test("a passed due date is overdue (every due date is a deadline)", () => {
   assert.equal(T.isOverdue(dl("2026-10-06"), NOW), true);
-  assert.equal(T.isOverdue(tg("2026-10-06"), NOW), false);
-  assert.equal(T.isRolled(tg("2026-10-06"), NOW), true);
-  assert.equal(T.effectiveDue(tg("2026-10-01"), NOW), "2026-10-07");
-  assert.equal(T.effectiveDue(dl("2026-10-01"), NOW), "2026-10-01");
   assert.equal(T.isOverdue(dl("2026-10-07"), NOW), false); // today isn't passed
   assert.equal(T.isOverdue(dl("2026-10-01", { status: "done" }), NOW), false);
   assert.equal(T.isOverdue(dl("2026-10-01", { status: "someday" }), NOW), false);
 });
 
-test("sweep list: deadlines first, then targets, oldest first", () => {
-  const a = tg("2026-10-02"), b = dl("2026-10-05"), c = dl("2026-10-01"), d = tg("2026-10-08");
-  assert.deepEqual(T.sweepList([a, b, c, d], NOW).map((t) => t.id), [c.id, b.id, a.id]);
+test("sweep list: passed deadlines, oldest first", () => {
+  const a = dl("2026-10-02"), b = dl("2026-10-05"), c = dl("2026-10-01"), d = dl("2026-10-08");
+  assert.deepEqual(T.sweepList([a, b, c, d], NOW).map((t) => t.id), [c.id, a.id, b.id]);
 });
 
-test("offer: more than 3 deadlines or more than 5 targets, once a day", () => {
+test("offer: more than 3 passed deadlines, once a day", () => {
   const four = [1, 2, 3, 4].map((i) => dl(`2026-10-0${i}`));
   const three = four.slice(0, 3);
-  const six = [1, 2, 3, 4, 5, 6].map((i) => tg(`2026-10-0${i}`));
   assert.equal(T.shouldOffer(four, NOW), true);
   assert.equal(T.shouldOffer(three, NOW), false);
-  assert.equal(T.shouldOffer(six, NOW), true);
-  assert.equal(T.shouldOffer(six.slice(1), NOW), false);
   assert.equal(T.shouldOffer(four, NOW, { sweepAnswered: "2026-10-07" }), false);
   assert.equal(T.shouldOffer(four, NOW, { sweepAnswered: "2026-10-06" }), true);
 });
@@ -52,7 +44,7 @@ test("this week: the roomiest day, counting events and tasks already dated", () 
   const events = [{ start: iso(8, 9), end: iso(8, 21) }]; // Thursday is nearly full
   const t = task();
   assert.equal(T.pickWeekDay(t, { events, now: NOW }), "2026-10-09"); // Friday
-  const busyFri = [tg("2026-10-09", { size: 600 })];
+  const busyFri = [dl("2026-10-09", { size: 600 })];
   assert.equal(T.pickWeekDay(t, { events, tasks: busyFri, now: NOW }), "2026-10-10");
   // An all-day or free event takes no room.
   assert.equal(T.pickWeekDay(t, { events: [{ start: iso(8, 0), end: iso(9, 0), allDay: true }], now: NOW }), "2026-10-08");
@@ -66,9 +58,8 @@ test("this week: a task needing office hours only lands Sun–Thu", () => {
 
 test("answers: today, week, someday, drop — and undo puts it back", () => {
   const t = dl("2026-10-01", { touchedAt: 5 });
-  // A passed deadline done "today" becomes a target (2026-10-06); a move is a push.
-  assert.deepEqual(T.answer("today", t, { now: NOW }), { due: "2026-10-07", touchedAt: NOW, dateKind: "target" });
-  assert.deepEqual(T.answer("today", tg("2026-10-01"), { now: NOW }), { due: "2026-10-07", touchedAt: NOW });
+  // "Today" moves the deadline to today; a move is a push.
+  assert.deepEqual(T.answer("today", t, { now: NOW }), { due: "2026-10-07", touchedAt: NOW });
   assert.deepEqual(T.answer("week", t, { now: NOW, week: "2026-10-09" }), { due: "2026-10-09", touchedAt: NOW, pushes: 1 });
   assert.equal(T.answer("someday", t, { now: NOW }).status, "someday");
   const dropped = { ...t, ...T.answer("drop", t, { now: NOW }) };
@@ -76,12 +67,9 @@ test("answers: today, week, someday, drop — and undo puts it back", () => {
   assert.deepEqual({ ...dropped, ...T.answerSnapshot(t) }, { ...t, droppedAt: null, pushes: 0 });
 });
 
-test("engine: someday and dropped never reach the card; a passed target isn't overdue", () => {
+test("engine: someday and dropped never reach the card; a passed deadline is overdue", () => {
   const r = E.rank([task({ status: "someday" }), task({ status: "dropped" })], { now: NOW });
   assert.equal(r.pick, null);
-  const late = E.rank([tg("2026-10-01")], { now: NOW }).pick;
-  assert.equal(late.parts.deadline, 0);
-  assert.equal(late.details.target.days, 0);
   assert.equal(E.rank([dl("2026-10-01")], { now: NOW }).pick.details.deadline.passed, true);
 });
 
@@ -99,7 +87,7 @@ test("pickWeekDay: the user's day hours and Israeli holidays (2026-10-06)", () =
 
 // ---- user test 2026-10-11, part B ----
 test("13: an old date tied to an event today, or overdue with money at stake, is suggested for today", async () => {
-  const prep = tg("2026-10-05", { title: "Prep questions for interview" });
+  const prep = dl("2026-10-05", { title: "Prep questions for interview" });
   const interview = { title: "Interview at Acme", start: iso(7, 11), end: iso(7, 12), busy: true };
   const a = T.sweepAdvice(prep, { events: [interview], tasks: [prep], now: at(7, 9) });
   assert.equal(a.kind, "today");
@@ -120,14 +108,14 @@ test("13: an old date tied to an event today, or overdue with money at stake, is
 
 test("14: back after 2+ days away, every old date is asked, first", async () => {
   const { collectNeeds, awayDays } = await import("../../app/js/needs-list.js");
-  const old = tg("2026-10-05", { touchedAt: at(4) }), late = dl("2026-10-05", { touchedAt: at(4) });
+  const old = dl("2026-10-04", { touchedAt: at(4) }), late = dl("2026-10-05", { touchedAt: at(4) });
   const stale = task({ skipsSinceStart: 9, touchedAt: at(4) });
   assert.equal(awayDays([old, late, stale], NOW), 3);
   const list = collectNeeds({ tasks: [old, late, stale], now: NOW });
-  assert.deepEqual(list.slice(0, 2).map((x) => x.id), [late.id, old.id]); // a passed target too, while away
+  assert.deepEqual(list.slice(0, 2).map((x) => x.id), [old.id, late.id]); // oldest first, while away
   assert.equal(list[2].kind, "stale");
-  // Here yesterday: a lone passed target sits quietly, the sweep comes last.
-  const here = [tg("2026-10-05", { touchedAt: at(6) }), dl("2026-10-05", { touchedAt: at(6) }), task({ skipsSinceStart: 9, touchedAt: at(6) })];
+  // Here yesterday: the sweep comes last.
+  const here = [dl("2026-10-05", { touchedAt: at(6) }), task({ skipsSinceStart: 9, touchedAt: at(6) })];
   const l2 = collectNeeds({ tasks: here, now: NOW });
   assert.equal(awayDays(here, NOW), 1);
   assert.deepEqual(l2.map((x) => x.kind), ["stale", "sweep"]);

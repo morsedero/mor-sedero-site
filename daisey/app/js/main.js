@@ -419,8 +419,8 @@ async function boot(){
     } else initial();
     show("signedin"); // no element of its own: just clears loading/sign-in views
 
-    Promise.all([import("./now.js"), import("./projects.js"), import("./addtask.js"), import("./needs.js"), import("./import-trello.js"), import("./addevent.js"), import("./store.js"), import("./deadlines.js"), import("./day.js"), import("./calendar.js"), import("./schedule.js"), import("./push.js"), import("./sample.js"), import("./ribbon.js"), import("./jobs-sync.js")])
-      .then(([{ mountNow }, { mountProjects }, { mountAddTask }, { mountNeeds }, { mountImport, connectTrello, finishTrelloConnect, trelloConnected }, { mountAddEvent }, { migrateTasks, watchSettings, saveSettings, watchTasks, watchDayPlan, resetAll, guestFresh, seedGuest, seedAccountOnce }, { mountDeadlines }, { dayHours, minText, mealPrefs, usualHours }, { watchCalendar, connectCalendar, setCalendarHint, listCalendars, saveCalendars }, { mountSchedule }, push, { sampleDay }, { mountRibbon }, { startJobs, JOBS_OWNER }]) => {
+    Promise.all([import("./now.js"), import("./projects.js"), import("./addtask.js"), import("./needs.js"), import("./import-trello.js"), import("./addevent.js"), import("./store.js"), import("./day.js"), import("./calendar.js"), import("./schedule.js"), import("./push.js"), import("./sample.js"), import("./ribbon.js"), import("./jobs-sync.js")])
+      .then(([{ mountNow }, { mountProjects }, { mountAddTask }, { mountNeeds }, { mountImport, connectTrello, finishTrelloConnect, trelloConnected }, { mountAddEvent }, { migrateTasks, watchSettings, saveSettings, watchTasks, watchDayPlan, resetAll, guestFresh, seedGuest, seedAccountOnce }, { dayHours, minText, mealPrefs, usualHours }, { watchCalendar, connectCalendar, setCalendarHint, listCalendars, saveCalendars }, { mountSchedule }, push, { sampleDay }, { mountRibbon }, { startJobs, JOBS_OWNER }]) => {
         if ((!isGuest && fb.currentUid() !== user.uid) || mounted) return;
         const m = mounted = {};
         // A new guest opens to a sample day, not an empty card (sample.js).
@@ -431,7 +431,6 @@ async function boot(){
         // Old tasks get the new fields first; then, once, which dates are real.
         const stopMigrate = migrateTasks(user.uid);
         m.migrate = { unmount: stopMigrate };
-        m.deadlines = mountDeadlines($("#deadlinedlg"), user.uid);
         m.event = mountAddEvent($("#eventdlg"), { localOnly: isGuest });
         m.importer = mountImport($("#importdlg"), user.uid);
         // Reset Daisey: erase this account's Daisey data (tasks and state),

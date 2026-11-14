@@ -3,9 +3,8 @@
 // PURE: no Firebase, no DOM; the clock is only read as a default argument,
 // so the node tests in daisey/test/v1/ drive it with fixed moments.
 //
-// Only a Deadline can be overdue. A Target that passes rolls forward
-// quietly: it counts as due today (effectiveDue), is never shown as late,
-// and never grows more urgent than a today-target (spec, "Overdue triage").
+// Every due date is a Deadline (2026-11-14: Target is gone), so any passed
+// due date is overdue.
 import * as W from "./weights.js";
 import { localDate, logicalDate } from "./model.js";
 import { officeDay as officeOpenDay } from "./holidays.js";
@@ -14,31 +13,24 @@ const MIN = 60000;
 
 export const isOpen = (t) => t.status === "ready" || t.status === "waiting";
 const passed = (t, now) => !!t.due && t.due < logicalDate(now);
-export const isOverdue = (t, now = Date.now()) => isOpen(t) && t.dateKind === "deadline" && passed(t, now);
-export const isRolled = (t, now = Date.now()) => isOpen(t) && t.dateKind !== "deadline" && passed(t, now);
+export const isOverdue = (t, now = Date.now()) => isOpen(t) && passed(t, now);
 
-// The day a task counts as dated: a passed target is today's.
-export const effectiveDue = (t, now = Date.now()) => (isRolled(t, now) ? logicalDate(now) : t.due);
-
-// What the sweep goes through: passed deadlines first, then passed targets,
-// oldest first in each. Not a pending task (Mor, 2026-10-19: Pending did
+// What the sweep goes through: passed deadlines, oldest first. Not a pending task (Mor, 2026-10-19: Pending did
 // nothing, the card came straight back): it's asked again by its own
 // "Still pending?" on checkOn.
 const unpended = (tasks) => tasks.filter((t) => t.status !== "waiting");
 export function sweepList(all, now = Date.now()){
   const tasks = unpended(all);
   const old = (a, b) => a.due.localeCompare(b.due) || (a.createdAt || 0) - (b.createdAt || 0);
-  return [...tasks.filter((t) => isOverdue(t, now)).sort(old), ...tasks.filter((t) => isRolled(t, now)).sort(old)];
+  return tasks.filter((t) => isOverdue(t, now)).sort(old);
 }
 
-// Offer the sweep? More than SWEEP.deadlines passed deadlines, or more than
-// SWEEP.targets passed targets, and not already answered today.
+// Offer the sweep? More than SWEEP.deadlines passed deadlines, and not
+// already answered today.
 export function shouldOffer(tasks, now = Date.now(), settings = {}){
   if (settings.sweepAnswered === logicalDate(now)) return false;
   tasks = unpended(tasks);
-  const deadlines = tasks.filter((t) => isOverdue(t, now)).length;
-  const targets = tasks.filter((t) => isRolled(t, now)).length;
-  return deadlines > W.SWEEP.deadlines || targets > W.SWEEP.targets;
+  return tasks.filter((t) => isOverdue(t, now)).length > W.SWEEP.deadlines;
 }
 
 // ---------- "This week": the day with the most room ----------
@@ -71,7 +63,7 @@ export function roomOn(day, { events = [], tasks = [], skip = null, now = Date.n
     busy += Math.max(0, Math.min(end, Date.parse(e.end)) - Math.max(start, Date.parse(e.start)));
   }
   const date = localDate(day.getTime());
-  const booked = tasks.filter((t) => t.id !== skip && isOpen(t) && effectiveDue(t, now) === date)
+  const booked = tasks.filter((t) => t.id !== skip && isOpen(t) && t.due === date)
     .reduce((sum, t) => sum + Math.max(0, (t.size || 0) - (t.spentMinutes || 0)), 0);
   return (end - start - busy) / MIN - booked;
 }
@@ -111,11 +103,7 @@ export const answerSnapshot = (t) => ({ due: t.due ?? null, dateKind: t.dateKind
 // today / week / someday / drop → the patch. `week` is the picked date.
 export function answer(kind, t, { now = Date.now(), week = null } = {}){
   switch (kind) {
-    // A passed deadline done "today" is a date you set yourself now, not the
-    // real one (that's gone): a target, so it doesn't come back as overdue
-    // every morning (2026-10-06).
-    case "today": return { due: logicalDate(now), touchedAt: now,
-      ...(t.dateKind === "deadline" && t.due && t.due < logicalDate(now) ? { dateKind: "target" } : {}) };
+    case "today": return { due: logicalDate(now), touchedAt: now };
     case "week": return { due: week, touchedAt: now, pushes: (t.pushes || 0) + 1 };
     case "someday": return { status: "someday", touchedAt: now };
     case "drop": return { status: "dropped", droppedAt: now, touchedAt: now };

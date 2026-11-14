@@ -27,7 +27,7 @@ import { watchTasks, watchSettings, saveSettings, restoreTask, addTask, removeTa
 import { dropSeries } from "./slots.js";
 import { watchCalendar, deleteEvent, retime } from "./calendar.js";
 import { draftFrom } from "./caltask.js";
-import { pickWeekDay, answer, answerSnapshot, effectiveDue, sweepAdvice, daysLate } from "./triage.js";
+import { pickWeekDay, answer, answerSnapshot, sweepAdvice, daysLate } from "./triage.js";
 import { localDate, logicalDate, pendingCheck, shrunk, shrinkPatch, dayAfter, notYet, pushedTo, bringBack, isGuess, estText } from "./model.js";
 import { sessionPatch, skipSlotPatch, weekState } from "./routine.js";
 import { dayHours, minText, usualHours, answerDate, planDate, dayWord } from "./day.js";
@@ -52,11 +52,10 @@ const clock = (ms) => new Date(ms).toLocaleTimeString([], { hour: "2-digit", min
 
 // The evening wrap (2026-10-06): opened from the end-of-day notification
 // (?open=wrap). Each ready task still dated today or earlier, deadlines
-// first: a deadline asks "tonight, or move it?", a target "tomorrow, or not
-// now?". Both can be deleted.
+// first: a deadline asks "tonight, or move it?". It can be deleted.
 export function wrapList(tasks = [], now = Date.now()){
   const today = logicalDate(now);
-  return tasks.filter((t) => t.status === "ready" && t.due && !notYet(t, now) && effectiveDue(t, now) <= today)
+  return tasks.filter((t) => t.status === "ready" && t.due && !notYet(t, now) && t.due <= today)
     .sort((a, b) => (b.dateKind === "deadline") - (a.dateKind === "deadline") || a.due.localeCompare(b.due))
     .map((t) => ({ key: `wrap:${t.id}`, kind: "wrap", id: t.id }));
 }
@@ -314,7 +313,7 @@ export function mountNeeds(root, uid, { onClose, onStart, extra, onAway } = {}){
       : adv.why === "stakes" ? `${mark(t)} I'd do it today.`.trim()
       : `I'd move it to ${weekday(week)}, the roomiest day this week.`;
     return { tone: "area-job", ico: "later", q: "Still doing this?",
-      sub: `${t.dateKind === "deadline" ? "The deadline was" : "It was planned for"} ${lateText}.`,
+      sub: `The deadline was ${lateText}.`,
       item: t.title, say,
       yes: ["Do it today", () => sweep(t, "today")],
       no: [`Move to ${weekday(week)}`, () => sweep(t, "week")],

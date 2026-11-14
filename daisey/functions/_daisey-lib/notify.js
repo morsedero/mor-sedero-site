@@ -50,7 +50,6 @@ const { workBase } = require("../../app/js/context.js");
 const { bookings } = require("../../app/js/day.js");
 const { routineCalendar } = require("../../app/js/routine.js");
 const { localDate, notYet, durText } = require("../../app/js/model.js");
-const { effectiveDue } = require("../../app/js/triage.js");
 const { waitingFor, personOf } = require("../../app/js/nudge.js");
 const { EVENT_BUFFER } = require("../../app/js/weights.js");
 const { overruled, eventKey } = require("../../app/js/reality.js");
@@ -118,7 +117,7 @@ function decide(rec, events, now = Date.now()) {
   if (types.wrap && rec.wrapOn !== date && minutes >= end - WRAP_BEFORE && !current) {
     patch.wrapOn = date;
     const done = tasks.filter((t) => t.status === "done" && t.doneAt && dayParts(t.doneAt, tz, end).date === date).length;
-    const open = tasks.filter((t) => t.status === "ready" && t.due && !notYet(t, now) && effectiveDue(t, now) <= date);
+    const open = tasks.filter((t) => t.status === "ready" && t.due && !notYet(t, now) && t.due <= date);
     const dl = open.filter((t) => t.dateKind === "deadline");
     if (done || open.length) {
       const parts = [];

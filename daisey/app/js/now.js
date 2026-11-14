@@ -280,8 +280,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
   }
 
   // A date the card has to say (Mor, 2026-10-12): due today or tomorrow, or a
-  // deadline already passed (red). Further off, the why line covers it. A
-  // passed target isn't late (triage.js), so it says nothing. A tab on the
+  // deadline already passed (red). Further off, the why line covers it. A tab on the
   // card's top edge, not in the top row, where it hid the project on a phone.
   function dueTag(t){
     if (!t.due || t.status === "done") return null;
