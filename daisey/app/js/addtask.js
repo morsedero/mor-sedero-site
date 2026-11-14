@@ -4,7 +4,7 @@
 //
 // Top to bottom: the project (dot + name, a list with "+ New project…"),
 // the title (26px, edited in place), two date boxes side by side — Start
-// (not before) FIRST, then Due with its Deadline/Target tag — "How long?",
+// (not before) FIRST, then Due (always a deadline) — "How long?",
 // one chip: Daisey's guess until you pick (no Details row any more),
 // Links & notes, "Worked N sessions · Xh so far", and the amber Start.
 //
@@ -62,7 +62,7 @@ export function mountAddTask(dialog, uid, { onStart, onDone } = {}){
   let editing = null; // the open task (kept fresh from the snapshot), or null for a new one
   let vals = {}, mine = new Set(), openChip = null;
   let links = [];
-  let kind = "target";
+  const kind = "deadline"; // a Due date is always a deadline (Mor, 2026-11-14: no Target)
   let settle = 0, armed = false, fieldN = 0;
   let onAdded = null; // open()'s: told once the new task is added (Tell Daisey drops its card)
   const fail = (e) => console.error("[daisey] task", e);
@@ -215,7 +215,7 @@ export function mountAddTask(dialog, uid, { onStart, onDone } = {}){
     let back = null;
     if (!per && dueAside) {
       back = dueAside; dueAside = null;
-      due.input.value = back.due; due.reset(back.time || ""); kind = back.kind;
+      due.input.value = back.due; due.reset(back.time || "");
     }
     paintDates(); paintOften();
     if (!per && editing) dropSeries(editing); // off: its weekly event goes now, while the task still names it
@@ -246,20 +246,9 @@ export function mountAddTask(dialog, uid, { onStart, onDone } = {}){
     if (document.activeElement !== atIn) atIn.value = at;
   }
   until.input.addEventListener("change", () => { fenceUntil(); paintDates(); if (editing && per) save({ routine: routineOf() }); });
-  // Target or Deadline: two visible pills with one line of help, shown once
-  // a date is set, under the Due box (user test 2026-10-11: the tag that
-  // toggled looked like a label).
-  const KIND_HELP = { target: "Would be nice by then.", deadline: "Missing it costs me." };
-  const kindHelp = h("span", { className: "ts-kind-help" });
-  const kindBtns = Object.keys(KIND_HELP).map((k) => h("button", { type: "button", className: "ts-kind " + k, textContent: k === "deadline" ? "Deadline" : "Target",
-    onclick: (e) => { e.preventDefault(); if (kind === k) return; kind = k; paintDates(); if (editing) save({ dateKind: kind }); } }));
-  const kindRow = h("div", { className: "ts-kinds", hidden: true }, h("div", { className: "ts-kind-seg", role: "group", ariaLabel: "What kind of date" }, ...kindBtns), kindHelp);
   function paintDates(){
     start.paint(); due.paint(); until.paint();
     due.box.hidden = !!per; until.box.hidden = !per;
-    kindRow.hidden = !due.input.value || !!per;
-    kindBtns.forEach((b, i) => { const on = Object.keys(KIND_HELP)[i] === kind; b.ariaPressed = String(on); b.classList.toggle("on", on); });
-    kindHelp.textContent = KIND_HELP[kind];
   }
 
   // How long you think it takes: Daisey's guess until you tap it.
@@ -327,7 +316,7 @@ export function mountAddTask(dialog, uid, { onStart, onDone } = {}){
   dialog.replaceChildren(h("div", { className: "now-head" }, heading, closeX),
     field("Project", projectSel, newProject),
     field("Task", title),
-    h("div", { className: "ts-dates" }, start.box, due.box, until.box, kindRow),
+    h("div", { className: "ts-dates" }, start.box, due.box, until.box),
     oftenRow, weekNow, // repeats by the dates it changes (Mor, 2026-10-12)
     field("How long?", chipRow), guessBox, laptopRow, pctBox, pendBox, holdBox, researchLine, stateLine,
     section("Links & notes", h("div", { className: "ts-group" }, linkRow, applyNote, notes)),
@@ -626,7 +615,7 @@ export function mountAddTask(dialog, uid, { onStart, onDone } = {}){
   function clear(){
     clearTimeout(settle);
     vals = {}; mine = new Set(); openChip = null;
-    links = []; adding = false; kind = "target"; onAdded = null; dueAside = null; repeatAside = null;
+    links = []; adding = false; onAdded = null; dueAside = null; repeatAside = null;
     title.value = ""; notes.value = ""; newProject.value = ""; waitingOn.value = ""; checkOn.value = "";
     start.input.value = ""; due.input.value = ""; until.input.value = ""; start.reset(); due.reset(); per = 0; every = "week"; on = ""; mode = "any"; days = []; at = DEFAULT_AT;
     msg.textContent = "";
@@ -740,7 +729,7 @@ export function mountAddTask(dialog, uid, { onStart, onDone } = {}){
         per = r.per; every = monthly(r) ? "month" : "week"; on = r.on || "";
         days = r.days ? [...r.days] : []; mode = days.length ? "set" : "any"; at = r.at || DEFAULT_AT;
         until.input.value = r.until || "";
-      } else if (pre.due) { due.input.value = pre.due; kind = pre.dateKind === "deadline" ? "deadline" : "target"; }
+      } else if (pre.due) { due.input.value = pre.due; }
       fenceDates([]);
       if (text) reguess();
       paintAll();
@@ -766,7 +755,6 @@ export function mountAddTask(dialog, uid, { onStart, onDone } = {}){
       on = every === "month" ? task.routine.on || task.notBefore || "" : "";
       at = task.routine?.at || DEFAULT_AT;
       fenceDates([]);
-      kind = task.dateKind === "deadline" ? "deadline" : "target";
       notes.value = task.notes || "";
       waitingOn.value = task.waitingOn || "";
       holdWho.value = task.onHold?.who || "";
