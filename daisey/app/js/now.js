@@ -17,6 +17,8 @@ import { DIR } from "./i18n.js";
 import { addTask, updateTask, watchTasks, watchSkips, saveSkips, skipNow, blockTask, restoreTask, finishTask, undoDone, watchSettings, saveSettings, watchMoment, saveMoment, watchLearn, bumpLearn, watchDayPlan, saveDayPlan, watchProjectNames, removeTask } from "./store.js";
 import { proposeDay, timeline, shownTaskCount, addableCount, withBreaks, trimBreaks, isBreak, planProgress, planStatus, unfitOf, refit, topUp, daySig, relayMeals } from "./proposal.js";
 import { rethink } from "./rethink.js";
+import { trackerHistory } from "./activity.js";
+import { buildProfile, whyHere } from "./profile.js";
 import { breakText, breakKind } from "./schedule.js";
 import { placeNow, workBase, watchProjectTiers, currentTiers } from "./context.js";
 import { watchWhere, setManual, setStill, saveSpot, whereAsk, homeAt } from "./where.js";
@@ -64,6 +66,16 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
   let settings = {}; // state/settings: when the sweep was last offered
   let momentDoc = {}, momentKnown = false; // state/moment: place corrections, cardSeen
   let learnStats = {}; // state/learn: starts and skips per type and time of day
+  // What the PC tracker says about how you really work (profile.js): read once
+  // and then every 15 min; nothing here (no tracker, a guest, an error) means
+  // the planner plans as it did before the tracker.
+  let trackerRaw = null, profMemo = { tasks: null, raw: null, p: null };
+  const profile = () => {
+    if (!trackerRaw) return null;
+    if (profMemo.tasks !== tasks || profMemo.raw !== trackerRaw) profMemo = { tasks, raw: trackerRaw, p: buildProfile({ days: trackerRaw.days, tasks: tasks || [], today: trackerRaw.today }) };
+    return profMemo.p;
+  };
+  const loadTracker = () => { if (guest) return; trackerHistory().then((h) => { if (h !== trackerRaw) { trackerRaw = h; render(); } }).catch(() => {}); };
   let located = null; // "home" | "out" from the phone's location (where.js), null = unknown
   let cal = { status: "loading", events: [] };
   // The calendar as fetched; cal is it with the travel legs added (trips.js),
@@ -862,6 +874,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
       place: f.place.value,
       spot: f.place.spot,
       learnStats,
+      profile: profile(),
       booked: Object.fromEntries([...booked()].map(([id, b]) => [id, b.start])),
       routineCal: routineCal(now),
       phoneOk: phoneNow(f.place.value),
@@ -916,6 +929,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
       projectDue,
       place: "home",
       learnStats,
+      profile: profile(),
       booked: Object.fromEntries([...booked()].map(([id, b]) => [id, b.start])),
       routineCal: routineCal(morning),
     });
@@ -1457,7 +1471,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
   // The day a plan on screen is laid against, taken when it's laid: taken
   // later, at the first render, a change made in between went unnoticed.
   const daySigNow = () => (cal.status === "ok" ? daySig(cal.events, dayHours(settings)) : null);
-  const planCtx = () => { phoneAhead(); return { tasks: tasks || [], events: cal.status === "ok" ? cal.events : [], now: Date.now(), hours: dayHours(settings), settings }; };
+  const planCtx = () => { phoneAhead(); return { tasks: tasks || [], events: cal.status === "ok" ? cal.events : [], now: Date.now(), hours: dayHours(settings), settings, profile: profile(), learnStats }; };
   // A bus or passenger ride still to come today: look for phone tasks now
   // (phone.js), so the plan can put them on it. A proposal nobody has
   // touched yet is laid again with the answer.
@@ -2602,6 +2616,8 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     watchDayPlan(uid, (d) => { dayPlan = d || null; planKnown = true; render(); }, fail),
   ];
   // Re-renders when the free window's minute changes.
+  loadTracker();
+  const trackerTimer = setInterval(loadTracker, 15 * 60 * 1000);
   const tick = setInterval(() => {
     if (document.hidden) return;
     // A way back still running (trips.stillRiding) is stretched from now:
@@ -2679,6 +2695,6 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     // and rebuilds carry on from there.
     breatheFromRest(){ breathEpoch = Date.now(); root.querySelectorAll(".deck > .now-card.main").forEach((c) => { c.style.animationDelay = "0ms"; }); },
     plan(){ if (prop.open) { closeProposal(); return; } openProposal(); },
-    unmount(){ showing(null); clearTimeout(toastTimer); clearTimeout(upTimer); document.body.classList.remove("focus", "focus-mode"); document.documentElement.classList.remove("night"); unsubs.forEach((u) => u()); clearInterval(tick); document.removeEventListener("visibilitychange", onVisible); root.replaceChildren(); planRoot?.replaceChildren(); root.hidden = true; },
+    unmount(){ showing(null); clearTimeout(toastTimer); clearTimeout(upTimer); document.body.classList.remove("focus", "focus-mode"); document.documentElement.classList.remove("night"); unsubs.forEach((u) => u()); clearInterval(tick); clearInterval(trackerTimer); document.removeEventListener("visibilitychange", onVisible); root.replaceChildren(); planRoot?.replaceChildren(); root.hidden = true; },
   };
 }

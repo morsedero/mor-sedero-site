@@ -19,6 +19,7 @@ import { overruled, eventKey } from "./reality.js";
 import { LABELS, INBOX, notYet, localDate, leftMinutes, durText } from "./model.js";
 import { officeDay } from "./holidays.js";
 import * as W from "./weights.js";
+import { estimate, capacityLeft, sizeFactor, depthOf, focusBand } from "./profile.js";
 
 const MIN = 60000;
 // When a task with set hours (openHours) can start at or after `from`, for
@@ -42,6 +43,11 @@ const MORE = 10;
 // is given, else the time already put in (model.leftMinutes). A 75%-done 2 h
 // task gets a 30 min slot, not 2 h (user test 2026-10-11).
 export const leftOf = (t) => leftMinutes(t);
+// What the plan reserves for a task: what's left, corrected by the item's k —
+// the tracker's real-time-over-guess factor for its project (profile.js) —
+// on a round five. Without k it's leftOf, as before the tracker.
+export const wholeOf = (t, it) => { const l = leftOf(t), k = it?.k > 0 ? it.k : 1;
+  return k === 1 ? l : Math.max(5, Math.round(l * k / 5) * 5); };
 
 // The free time left today, as gaps, with what reality overruled taken out
 // (a meeting you worked through isn't busy). rides: the trips (trips.js) as
@@ -68,7 +74,7 @@ function rideGaps(evs, now){
 // passenger seat they fit the ride.
 // planned: ids already in the plan (topUp, More), counted toward each
 // project's daily cap like the picks made here.
-export function proposeDay({ tasks = [], events = [], now = Date.now(), hours = W.DAY_HOURS, settings = {}, ask = {}, exclude = [], planned = [], phoneOk = phoneOkIds(tasks) } = {}){
+export function proposeDay({ tasks = [], events = [], now = Date.now(), hours = W.DAY_HOURS, settings = {}, ask = {}, exclude = [], planned = [], phoneOk = phoneOkIds(tasks), profile = null, learnStats = {} } = {}){
   const { evs, gaps: all } = freeGaps({ tasks, events, now, hours });
   const until = Number.isFinite(ask.until) ? atMin(now, ask.until) : Infinity;
   const cut = (gs) => gs.map((g) => ({ ...g, end: Math.min(g.end, until) })).filter((g) => g.end - g.start >= WORTH * MIN);
@@ -76,6 +82,11 @@ export function proposeDay({ tasks = [], events = [], now = Date.now(), hours = 
   if (!usable.length && !rides.length) return [];
   let budget = usable.reduce((s, g) => s + Math.floor((g.end - g.start) / MIN), 0);
   if (Number.isFinite(ask.maxMinutes)) budget = Math.min(budget, ask.maxMinutes);
+  // A day asks what a day of yours really holds (the tracker's median work
+  // day), not just what the calendar leaves free (2026-11-15). "More" lifts
+  // it by half. Nothing due today is held to it (below).
+  const capLeft = capacityLeft(profile, now);
+  if (capLeft != null) budget = Math.min(budget, Math.round(capLeft * (ask.more ? 1.5 : 1)));
   const biggest = usable.length ? Math.max(...usable.map((g) => Math.floor((g.end - g.start) / MIN))) : 0;
   // Fewer picks as usual, then keeps the FEWER most pressing (fewerFirst).
   const cap = ask.more ? MORE : MAX_ITEMS;
@@ -84,7 +95,11 @@ export function proposeDay({ tasks = [], events = [], now = Date.now(), hours = 
   // maxEach: only tasks this small (the lighter plan, miss.js) — a deadline due today still comes.
   const today = planDate(now, hours);
   const pool = tasks.filter((t) => !skipTypes.has(t.type)
-    && (!ask.maxEach || leftOf(t) <= ask.maxEach || (t.dateKind === "deadline" && t.due && t.due <= today)));
+    && (!ask.maxEach || leftOf(t) <= ask.maxEach || (t.dateKind === "deadline" && t.due && t.due <= today)))
+    // The engine sees the size you'd really need (profile.sizeFactor).
+    .map((t) => { const f = sizeFactor(profile, t); return f === 1 ? t : { ...t, size: Math.max(5, Math.round((t.size || 0) * f)) }; });
+  const kOf = (t) => { const f = sizeFactor(profile, t); return f === 1 ? {} : { k: f }; };
+  const est = (t) => estimate(profile, t, leftOf(t));
   const booked = Object.fromEntries([...bookings(tasks, evs, now)].map(([id, b]) => [id, b.start]));
   // A project's last step waits for its other open work (user test
   // 2026-10-11: "send rough mixes" came first, before any mix was done).
@@ -97,14 +112,14 @@ export function proposeDay({ tasks = [], events = [], now = Date.now(), hours = 
   // (of: its whole length): 2 h never quietly reads 1 h 27 min (2026-10-11).
   // A task that can split takes no more than the time left (Mor, 2026-10-19:
   // a 3 h pick with 1 h 45 left didn't fit and went to No room).
-  const take = (t) => { const left = leftOf(t), m = Math.min(left, biggest, t.canSplit && budget >= WORTH ? budget : Infinity);
-    items.push({ taskId: t.id, minutes: m, ...(m < left ? { of: left } : {}) }); out.add(t.id); taken.add(t.id); budget -= m; };
+  const take = (t) => { const left = est(t), m = Math.min(left, biggest, t.canSplit && budget >= WORTH ? budget : Infinity);
+    items.push({ taskId: t.id, minutes: m, ...kOf(t), ...(m < left ? { of: left } : {}) }); out.add(t.id); taken.add(t.id); budget -= m; };
   // Background picks (the engine's "waits": no deadline) go after
   // the rest of the plan, rides' picks included (Mor, 2026-10-19: a project
   // just moved to Background opened the fresh plan with 3 h of it).
   const later = new Set(), score = new Map();
   const waits = (r) => tierOf(r.pick.task, r.moment) === "background" && !r.pick.parts.deadline;
-  const picked = (r) => { score.set(r.pick.task.id, r.pick.score - r.pick.parts.flow); if (waits(r)) later.add(r.pick.task.id); };
+  const picked = (r, s = r.pick) => { score.set(s.task.id, s.score - s.parts.flow); if (tierOf(s.task, r.moment) === "background" && !s.parts.deadline) later.add(s.task.id); };
   const first = new Set(ask.first || []);
 
   // "Start with X": those go first, whatever the engine thinks, as long as
@@ -139,11 +154,11 @@ export function proposeDay({ tasks = [], events = [], now = Date.now(), hours = 
     let room = Math.floor((g.end - g.start) / MIN), flowProject = warm(g.start);
     while (items.length + onRide.length < cap && room >= WORTH) {
       const r = rank(pool, { now: g.start, window: room, place: g.place, nextEvent: null, ...base, flowProject,
-        sessionSkips: [...out, ...waiting()], booked, routineCal, phoneOk: [...phoneOk], projectDone: projectDone() });
+        sessionSkips: [...out, ...waiting()], booked, routineCal, phoneOk: [...phoneOk], projectDone: projectDone(), profile, learnStats });
       if (!r.pick) break;
       flowProject = projectOf(r.pick.task);
-      const m = Math.min(leftOf(r.pick.task), room);
-      onRide.push({ taskId: r.pick.task.id, minutes: m, ...(m < leftOf(r.pick.task) ? { of: leftOf(r.pick.task) } : {}) });
+      const m = Math.min(est(r.pick.task), room);
+      onRide.push({ at: g.start, taskId: r.pick.task.id, minutes: m, ...kOf(r.pick.task), ...(m < est(r.pick.task) ? { of: est(r.pick.task) } : {}) });
       picked(r); out.add(r.pick.task.id); taken.add(r.pick.task.id); room -= m;
     }
   }
@@ -152,23 +167,73 @@ export function proposeDay({ tasks = [], events = [], now = Date.now(), hours = 
   // "Start with X" counts as the previous pick.
   const lastFirst = items.length ? tasks.find((t) => t.id === items[items.length - 1].taskId) : null;
   let flowProject = lastFirst ? projectOf(lastFirst) : usable.length ? warm(usable[0].start) : null;
+  // The desk, walked in time order (2026-11-15). Before, every pick was
+  // scored as if it started at the first free minute, so time-of-day fit,
+  // learned fit, the focus hours and office hours judged the wrong hour for
+  // everything after the first. Now each pick is ranked AT the slot it would
+  // land in — `now` is that slot's start, the window is what's left of its
+  // free stretch — and the plan so far is laid on the clock to find the next
+  // slot. A pick the timeline can't land in that stretch (a break takes the
+  // room) is passed over for the next best, never forced.
+  const deskCtx = { tasks, events, now, hours, phoneOk, rides: false };
+  const ranges = [10, 20];
+  let floor = 0; // after a stretch nothing fit: the next slot starts past it
+  let holdAt = 0; // the peak a deep task was left for: it's laid not before then (item.at)
+  // Deep work waits for your focus peak (profile.js): in one of the thin hours
+  // it's left for a peak hour that has room for it, up to FOCUS.deferMax
+  // minutes on — the thin hour takes quick work, or stays free. A deadline
+  // due today is never held back.
+  const peakStart = (need, from) => {
+    for (let t = from + 15 * MIN; t <= from + W.FOCUS.deferMax * MIN; t += 15 * MIN) {
+      if (focusBand(profile, t) === "peak" && budget >= need && usable.some((g) => g.start <= t && t + need * MIN <= g.end)) return up5(t);
+    }
+    return null;
+  };
+  const urgent = (t) => t.dateKind === "deadline" && t.due && t.due <= today;
   while (usable.length && items.length + onRide.length < cap && budget >= 5) {
+    const rows = items.length ? timeline(items, deskCtx).rows : [];
+    const cursor = Math.max(floor, rows.length ? Math.max(...rows.map((r) => r.end)) : usable[0].start);
+    const g = usable.find((x) => x.end - Math.max(cursor, x.start) >= WORTH * MIN);
+    if (!g) break;
+    const slot = up5(Math.max(cursor, g.start)), room = Math.floor((g.end - slot) / MIN);
+    if (room < 5) { floor = g.end; continue; }
     const r = rank(pool, {
-      now: usable[0].start, window: Math.min(biggest, budget), nextEvent: null, ...base, flowProject,
-      sessionSkips: [...out, ...waiting()], booked, routineCal, projectDone: projectDone(),
+      now: slot, window: Math.min(room, budget), nextEvent: null, ...base, flowProject,
+      sessionSkips: [...out, ...waiting()], booked, routineCal, projectDone: projectDone(), profile, learnStats,
     });
-    if (!r.pick) break;
-    take(r.pick.task);
-    picked(r);
-    flowProject = projectOf(r.pick.task);
+    let landed = null, peakAt = null;
+    for (const s of r.ranked.slice(0, 12)) {
+      const t = byTask.get(s.task.id), left = est(t);
+      if (profile && !urgent(t) && depthOf(t, left) >= 0.7 && focusBand(profile, slot) === "low") {
+        const ps = peakStart(left, slot);
+        if (ps != null) { peakAt = Math.min(peakAt ?? ps, ps); continue; }
+      }
+      const m = Math.min(left, room, t.canSplit ? budget : Infinity);
+      // A split task that misses the stretch by its break gives up ten minutes at a time.
+      for (const cut of t.canSplit ? [0, ...ranges] : [0]) {
+        const mm = m - cut;
+        if (mm < (cut ? WORTH : 5) || mm > budget) continue;
+        const it = { taskId: t.id, minutes: mm, ...kOf(t), ...(mm < left ? { of: left } : {}) };
+        const tl = timeline([...items, it], deskCtx), row = tl.rows.find((x) => x.taskId === it.taskId);
+        if (row && row.start < g.end && row.end <= until && !tl.over.some((o) => o.taskId === it.taskId)) { landed = { it, t, s }; break; }
+      }
+      if (landed) break;
+    }
+    if (!landed) { floor = peakAt != null ? peakAt : g.end; if (peakAt != null) holdAt = peakAt; continue; }
+    if (holdAt && slot >= holdAt) { landed.it.at = slot; holdAt = 0; }
+    items.push(landed.it); out.add(landed.t.id); taken.add(landed.t.id); budget -= landed.it.minutes;
+    picked(r, landed.s);
+    flowProject = projectOf(landed.t);
   }
-  // Most pressing first, the ride's picks with the rest (Mor, 2026-10-19: a
-  // Keep going task opened the plan, the Focus ones picked for the train
-  // came after it): the two lists merged by the engine's score, each keeping
-  // its own order so a project's run (flow) stays whole; "start with X" first.
-  const pri = (it) => (first.has(it.taskId) ? Infinity : score.get(it.taskId) ?? 0);
-  const desk = items.splice(0), ride = [...onRide];
-  while (desk.length || ride.length) items.push((!ride.length || (desk.length && pri(desk[0]) >= pri(ride[0])) ? desk : ride).shift());
+  // The ride's picks go where their ride falls in the day's order; the
+  // timeline puts them on the ride when that comes sooner.
+  if (onRide.length) {
+    const rows = timeline(items, deskCtx).rows;
+    for (const { at, ...it } of onRide) {
+      const next = rows.find((x) => x.start >= at), i = next ? items.findIndex((x) => x.taskId === next.taskId) : items.length;
+      items.splice(i < 0 ? items.length : i, 0, it);
+    }
+  }
   if (ask.fewer) fewerFirst(items, tasks, today, first);
   if (ask.quickFirst) items.sort((a, b) => a.minutes - b.minutes);
   inProjectOrder(items, tasks, first);
@@ -180,7 +245,7 @@ export function proposeDay({ tasks = [], events = [], now = Date.now(), hours = 
   if (!narrowed) for (const t of tasks) {
     if (out.has(t.id) || t.status !== "ready" || t.onHold || t.routine || notYet(t, now) || !t.due || t.due > today || booked[t.id] > now
       || waitsOnSiblings(t, tasks, taken, today)) continue; // a last step still waits for its project's other work
-    items.push({ taskId: t.id, minutes: leftOf(t) }); out.add(t.id);
+    items.push({ taskId: t.id, minutes: est(t), ...kOf(t) }); out.add(t.id);
   }
   // A piece sized to the longest free stretch can still miss it by the break
   // the stretch opens with (Mor, 2026-11-03: 3 h of Monster Punk for
@@ -196,9 +261,9 @@ export function proposeDay({ tasks = [], events = [], now = Date.now(), hours = 
       if (!o) break;
       const i = items.findIndex((it) => it.taskId === o.taskId), m = items[i].of ? items[i].minutes - 10 : o.room;
       if (m < WORTH) cant.add(o.taskId);
-      else items[i] = { ...items[i], minutes: m, of: leftOf(o.task) };
+      else items[i] = { ...items[i], minutes: m, of: wholeOf(o.task, items[i]) };
     } };
-  fillHoles(items, fit, later); shrink(); fillHoles(items, fit, later); shrink();
+  fillHoles(items, fit, later); shrink();
   const plan = [...items.filter((it) => !later.has(it.taskId)), ...items.filter((it) => later.has(it.taskId))];
   const ctx = { tasks, events, now, hours, phoneOk }, byId = new Map(tasks.map((t) => [t.id, t]));
   // Desk time short for the plan's own work (not for Background: all of it
@@ -209,7 +274,7 @@ export function proposeDay({ tasks = [], events = [], now = Date.now(), hours = 
   }
   // Background is filler: whatever room is left, a piece of it if it can
   // split, else it stays out — never a No room row (Mor, 2026-10-19).
-  for (const it of plan) if (later.has(it.taskId)) { it.minutes = leftOf(byId.get(it.taskId)); delete it.of; }
+  for (const it of plan) if (later.has(it.taskId)) { it.minutes = wholeOf(byId.get(it.taskId), it); delete it.of; }
   for (let n = 0; n < 4 * later.size; n++) {
     const o = timeline(plan, ctx).over.find((x) => later.has(x.taskId));
     if (!o) break;
@@ -217,7 +282,7 @@ export function proposeDay({ tasks = [], events = [], now = Date.now(), hours = 
     // A second try leaves room for the break the first one ran into.
     const m = !t.canSplit ? 0 : plan[i].of ? plan[i].minutes - 10 : o.room;
     if (m < WORTH) plan.splice(i, 1);
-    else plan[i] = { ...plan[i], minutes: m, of: leftOf(t) };
+    else plan[i] = { ...plan[i], minutes: m, of: wholeOf(t, plan[i]) };
   }
   return plan;
 }
@@ -536,7 +601,8 @@ function lay(items = [], { tasks = [], events = [], now = Date.now(), hours = W.
     // more than is left: progress made since the plan was saved shrinks it.
     // A whole task follows its size both ways (Mor, 2026-10-14: a 30-min task
     // made 4 h in the sheet kept its 30-min slot).
-    const need = Math.max(5, it.of ? Math.min(it.minutes || Infinity, leftOf(task)) : leftOf(task)) * MIN;
+    const whole = wholeOf(task, it);
+    const need = Math.max(5, it.of ? Math.min(it.minutes || Infinity, whole) : whole) * MIN;
     let placed = false;
     // Where the waiting break item fits right after the work before it.
     const len = pend ? Math.max(5, pend.it.minutes || 10) * MIN : 0;
@@ -579,7 +645,7 @@ function lay(items = [], { tasks = [], events = [], now = Date.now(), hours = W.
           if (brk.name) mealsDone.add(brk.name);
         }
         const s = from + (brk ? brk.minutes * MIN : 0);
-        rows.push({ taskId: it.taskId, task, minutes: need / MIN, start: s, end: s + need, i, ...(leftOf(task) > need / MIN ? { of: leftOf(task) } : {}) });
+        rows.push({ taskId: it.taskId, task, minutes: need / MIN, start: s, end: s + need, i, ...(whole > need / MIN ? { of: whole } : {}), ...(it.k > 0 && it.k !== 1 ? { k: it.k } : {}) });
         worked = (brk ? 0 : w) + need / MIN;
         sinceLong = (brk && brk.type !== "short" ? 0 : sl) + need / MIN;
         lastEnd = s + need; lastStart = s;
@@ -592,7 +658,7 @@ function lay(items = [], { tasks = [], events = [], now = Date.now(), hours = W.
     // On the ride: its own clock, and the rest of the plan carries on as if
     // it weren't there (no break on a ride: the ride is one).
     if (!placed && ride) {
-      rows.push({ taskId: it.taskId, task, minutes: need / MIN, start: ride.from, end: ride.from + need, i, ...(leftOf(task) > need / MIN ? { of: leftOf(task) } : {}), ride: ride.g.mode === "car" && ride.g.place !== "car" ? "passenger" : ride.g.mode });
+      rows.push({ taskId: it.taskId, task, minutes: need / MIN, start: ride.from, end: ride.from + need, i, ...(whole > need / MIN ? { of: whole } : {}), ...(it.k > 0 && it.k !== 1 ? { k: it.k } : {}), ride: ride.g.mode === "car" && ride.g.place !== "car" ? "passenger" : ride.g.mode });
       rideAt[ride.k] = ride.from + need; placed = true;
     }
     if (!placed) {

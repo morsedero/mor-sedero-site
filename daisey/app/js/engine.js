@@ -10,11 +10,12 @@ import * as W from "./weights.js";
 import { localDate, logicalDate, durText, notYet, leftMinutes, progressOf, LABELS, isGuess, estText, INBOX, placeOf, needsLaptop } from "./model.js";
 import { officeOpen, officeMinutesLeft } from "./holidays.js";
 import { cleanRoutine, weekState } from "./routine.js";
+import { focusFit, focusBand } from "./profile.js";
 
 const MIN = 60000;
 const DAY = 86400000;
 // Every scoring factor, in why-line tie order (earlier wins a tie).
-const FACTORS = ["deadline", "routine", "fit", "stakes", "office", "progress", "flow", "batch", "spot", "priority", "area", "window", "momentum", "neglect", "learned"];
+const FACTORS = ["deadline", "routine", "fit", "stakes", "office", "progress", "flow", "batch", "spot", "priority", "area", "window", "momentum", "neglect", "learned", "focus"];
 const DAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
@@ -125,6 +126,8 @@ export function readMoment(input = {}){
     sessionSkips: new Set(input.sessionSkips || []),
     skipsToday: input.skipsToday || {},
     learnStats: input.learnStats || {},
+    // The tracker profile (profile.js): focus hours, how much you hop between projects. null: none.
+    profile: input.profile?.ok ? input.profile : null,
     booked: input.booked || {},
     // Routines' sessions already on the calendar (routine.routineCalendar).
     routineCal: input.routineCal || {},
@@ -330,7 +333,8 @@ function flowOn(task, m){
     && (!m.realWindow || leftMinutes(task) <= windowFor(task, m));
 }
 function flow(task, m){
-  return flowOn(task, m) ? { points: W.FLOW.points, detail: { project: task.project } } : { points: 0, detail: null };
+  // Someone who hops between projects a lot gains more from a run (profile.switchCost).
+  return flowOn(task, m) ? { points: Math.round(W.FLOW.points * (1 + W.FLOW.switch * (m.profile?.switchCost || 0))), detail: { project: task.project } } : { points: 0, detail: null };
 }
 
 // Flow keeps you in a project, never ahead of a higher tier (Mor, 2026-10-21:
@@ -397,6 +401,13 @@ function learned(task, m){
   return { points: clamp(Math.round(v), W.LEARNED_MIN, W.LEARNED_MAX), detail: { bucket: m.bucket.part, type: task.type } };
 }
 
+// Deep work in the hours the tracker shows you work, quick work in the thin
+// ones (profile.focusFit). Nothing without a profile.
+function focus(task, m){
+  const points = focusFit(m.profile, task, m.now, leftMinutes(task));
+  return points ? { points, detail: { band: focusBand(m.profile, m.now) } } : { points: 0, detail: null };
+}
+
 // Not a score: office-hours tasks get "offices close at 16:00" in the why
 // line when closing is near.
 function office(task, m){
@@ -416,7 +427,7 @@ function progress(task){
 export function scoreTask(task, m, ctx = { batches: new Map(), areas: [] }){
   const f = {
     deadline: deadline(task, m, ctx), routine: routine(task, m), fit: fit(task), stakes: stakes(task), priority: priority(task, m), area: areaBalance(task, m, ctx.areas), neglect: neglect(task, m),
-    window: windowFit(task, m), flow: flow(task, m), momentum: momentum(task, m), batch: batch(task, ctx.batches), learned: learned(task, m),
+    window: windowFit(task, m), flow: flow(task, m), momentum: momentum(task, m), batch: batch(task, ctx.batches), learned: learned(task, m), focus: focus(task, m),
     office: office(task, m), spot: spot(task, m), progress: progress(task),
   };
   const parts = Object.fromEntries(FACTORS.map((k) => [k, f[k].points]));
@@ -501,6 +512,7 @@ const PHRASES = {
   flow: (s, d) => ["keeps you in ", { name: d.project }, ", no switching"],
   neglect: (s, d) => [`untouched for ${d.days} days`],
   spot: (s, d) => ["you're at ", { name: d.name }],
+  focus: (s, d) => (s.parts.focus > 0 ? [d.band === "peak" ? "your focus peak" : "a light hour, a light task"] : null),
   learned: (s, d) => s.parts.learned > 0 ? [`you usually do these in the ${d.bucket}`] : null,
 };
 

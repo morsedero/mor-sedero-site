@@ -100,7 +100,7 @@ export const NEGLECT_MAX = 8;
 // The nudges (area, window, batch, spot, momentum, neglect, learned) add up
 // to at most this together (2026-10-12): stacked, they reached ~70 and beat
 // a deadline today (35). Below it they still split a close call.
-export const SOFT = ["area", "window", "batch", "spot", "momentum", "neglect", "learned"];
+export const SOFT = ["area", "window", "batch", "spot", "momentum", "neglect", "learned", "focus"];
 export const SOFT_MAX = 20;
 
 // ---------- Gate 3 — does it fit this gap? ----------
@@ -120,7 +120,16 @@ export const MOMENTUM = {
 // Not a nudge (not in SOFT, so the cap can't eat it): it beats area balance
 // and a Focus tier on its own, but a deadline today (35) still comes first.
 // gapMinutes: how long after the last stop/finish it still counts as flow.
-export const FLOW = { points: 15, gapMinutes: 30 };
+// switch: how much more flow is worth for someone the tracker shows hopping
+// between projects a lot (profile.switchCost 0..1): up to this share more.
+export const FLOW = { points: 15, gapMinutes: 30, switch: 0.5 };
+// Focus fit (2026-11-15, the tracker profile): deep work in the hours the
+// tracker shows you really work, quick tasks in the thin hours at the edges.
+// points: the most it moves a score (a soft nudge, inside SOFT_MAX). A task is
+// "deep" from deepFrom minutes up, "quick" at quickTo or under, in between by
+// the slope. peak/low: how the focus level (0..1, the hour's share of your
+// busiest hour) is called in a why line.
+export const FOCUS = { points: 8, quickTo: 15, deepFrom: 60, peak: 0.75, low: 0.35, deferMax: 360 };
 // The why line calls a task a "quick win" only up to this many minutes.
 export const QUICK_WIN_MAX = 15;
 // A task naming the saved place you're at (engine spot()).
@@ -197,4 +206,25 @@ export const BREAKS = {
   ],
   mealSlack: 60,
   lunchAfter: 30, // a meal waits until this much work, unless its window is closing
+};
+
+// ---------- The tracker profile (profile.js, 2026-11-15) ----------
+// What Daisey learns from the PC tracker's last two weeks. All of it degrades
+// to nothing: with less data than minDays/minActive, the planner behaves as it
+// did before the tracker existed.
+export const PROFILE = {
+  days: 14, // days of tracker summaries read
+  minDays: 3, // days with real work before the profile says anything
+  minActive: 45, // minutes of real work for a day to count as a work day
+  smooth: [0.25, 0.5, 0.25], // the hour curve blends with its neighbours
+  dowMinDays: 3, // same-weekday days needed before the weekday's own curve/capacity is used
+  // Capacity: the median work day, stretched a little (a plan is a reach, not a
+  // forecast), never under floor, and always at least left minutes of room.
+  stretch: 1.15, floor: 120, left: 45,
+  // Size correction: real minutes / the size you gave, per project. Needs
+  // sizeSamples finished tasks (or sizeTrackerMin minutes seen by the tracker
+  // against that many finished tasks), shrinks toward 1 with few, and clamps.
+  sizeSamples: 3, sizeTrackerMin: 60, sizeClamp: [0.7, 1.6], sizeNoise: 0.1, sizeDays: 30,
+  // Project hops per work hour that count as "switches a lot" (switchCost 1).
+  switchPerHour: 6, switchMinHours: 3,
 };

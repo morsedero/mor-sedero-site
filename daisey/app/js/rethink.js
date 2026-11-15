@@ -11,7 +11,7 @@ import { proposeDay, parseAsk, leftOf, fewerOf, moreOf } from "./proposal.js";
 const URL_ = "/.netlify/functions/daisey-now-chat";
 
 // → { items, note, via: "ai" | "local" }
-export async function rethink(text, { tasks, events, now = Date.now(), hours, settings, run, current = [], exclude = [], freeMinutes = 0, guest = false }){
+export async function rethink(text, { tasks, events, now = Date.now(), hours, settings, run, current = [], exclude = [], freeMinutes = 0, guest = false, profile = null, learnStats = {} }){
   const open = tasks.filter((t) => t.status === "ready" && !t.onHold && !exclude.includes(t.id) && t.id !== run?.taskId);
   // Fewer / More — the buttons, or typed ("lighter", "I'm tired", "more
   // tasks") with nothing else asked: a step from the plan as it is, here,
@@ -44,6 +44,6 @@ export async function rethink(text, { tasks, events, now = Date.now(), hours, se
     }
   } catch { /* offline, or no token: read it here */ }
   const ask = parseAsk(text, tasks);
-  const items = proposeDay({ tasks, events, now, hours, settings, run, ask, exclude });
+  const items = proposeDay({ tasks, events, now, hours, settings, run, ask, exclude, profile, learnStats });
   return { items, via: "local", note: ask.understood ? "" : "I didn't catch that, so here's a fresh take. Try “lighter”, “no calls”, “start with …” or “until 5”." };
 }

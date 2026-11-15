@@ -33,6 +33,18 @@ const SCENARIOS = {
     { id: "j2", stage: "review", company: "סאונד בע״מ", title: "מעצב סאונד", fit: 7, gaps: ["Wwise", "מיקס לטריילר"], cv: "https://docs.google.com/document/d/cv2/edit", effort_min: 20 },
     { id: "j3", stage: "pending", company: "Softgames", stage_at: "2026-10-10T09:00:00Z" },
   ], status: { queue: { j9: [{ event: "done", from: "review", at: "2026-10-24T08:00:00Z", failed: true }] }, dismissed: [] } } },
+  // A full day to plan (--cal day --at 08:30 --click "#planChip"): the proposed schedule
+  // with several projects, a deadline, quick admin and a long deep task.
+  planday: { projects: ["Reprise", "Monster Punk", "Admin", "Teaching"], dayplan: null, tasks: [
+    { title: "Mix review for Reprise", project: "Reprise", size: 90, type: "deep", due: day(2) },
+    { title: "Master the EP", project: "Reprise", size: 60, type: "deep", due: day(5) },
+    { title: "Fix the boss loop", project: "Monster Punk", size: 60, type: "deep", over: ago(6) },
+    { title: "Pre-attack cue", project: "Monster Punk", size: 45, type: "deep" },
+    { title: "Send invoice to Uri", project: "Admin", size: 10, type: "admin", due: day(0), dateKind: "deadline" },
+    { title: "Reply to Yuval", project: "Admin", size: 10, type: "admin" },
+    { title: "Lesson prep", project: "Teaching", size: 30, type: "admin", due: day(1) },
+    { title: "Call the accountant", project: "Admin", size: 15, type: "call" },
+  ] },
   // A missed slot (--cal none): nothing done for 25 minutes.
   miss: { tasks: missTasks(25), dayplan: { date: day(0), status: "dismissed", items: [] } },
   // Two slots ignored (--cal none): nothing done for 75 minutes.
