@@ -75,7 +75,13 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     if (profMemo.tasks !== tasks || profMemo.raw !== trackerRaw) profMemo = { tasks, raw: trackerRaw, p: buildProfile({ days: trackerRaw.days, tasks: tasks || [], today: trackerRaw.today }) };
     return profMemo.p;
   };
-  const loadTracker = () => { if (guest) return; trackerHistory().then((h) => { if (h !== trackerRaw) { trackerRaw = h; render(); } }).catch(() => {}); };
+  const loadTracker = () => { if (guest) return; trackerHistory().then((h) => {
+    if (h === trackerRaw) return;
+    trackerRaw = h;
+    // A proposal still open and untouched is laid again with what the tracker says.
+    if (prop.open && !prop.touched && !prop.busy && !todaysPlan()?.items?.length) prop.items = withBreaks(proposeDay({ ...planCtx(), exclude: prop.exclude }), planCtx());
+    render();
+  }).catch(() => {}); };
   let located = null; // "home" | "out" from the phone's location (where.js), null = unknown
   let cal = { status: "loading", events: [] };
   // The calendar as fetched; cal is it with the travel legs added (trips.js),

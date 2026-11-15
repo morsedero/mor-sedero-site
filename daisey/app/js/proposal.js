@@ -19,7 +19,7 @@ import { overruled, eventKey } from "./reality.js";
 import { LABELS, INBOX, notYet, localDate, leftMinutes, durText } from "./model.js";
 import { officeDay } from "./holidays.js";
 import * as W from "./weights.js";
-import { estimate, capacityLeft, sizeFactor, depthOf, focusBand } from "./profile.js";
+import { estimate, capacityLeft, sizeFactor, depthOf, focusBand, focusFit } from "./profile.js";
 
 const MIN = 60000;
 // When a task with set hours (openHours) can start at or after `from`, for
@@ -193,7 +193,7 @@ export function proposeDay({ tasks = [], events = [], now = Date.now(), hours = 
   while (usable.length && items.length + onRide.length < cap && budget >= 5) {
     const rows = items.length ? timeline(items, deskCtx).rows : [];
     const cursor = Math.max(floor, rows.length ? Math.max(...rows.map((r) => r.end)) : usable[0].start);
-    const g = usable.find((x) => x.end - Math.max(cursor, x.start) >= WORTH * MIN);
+    const g = usable.find((x) => x.end - Math.max(cursor, x.start) >= 5 * MIN); // down to the last minutes (2026-10-11)
     if (!g) break;
     const slot = up5(Math.max(cursor, g.start)), room = Math.floor((g.end - slot) / MIN);
     if (room < 5) { floor = g.end; continue; }
@@ -214,13 +214,14 @@ export function proposeDay({ tasks = [], events = [], now = Date.now(), hours = 
         const mm = m - cut;
         if (mm < (cut ? WORTH : 5) || mm > budget) continue;
         const it = { taskId: t.id, minutes: mm, ...kOf(t), ...(mm < left ? { of: left } : {}) };
+        if (holdAt && slot >= holdAt) it.at = slot; // the peak it was left for, not the hole before it
         const tl = timeline([...items, it], deskCtx), row = tl.rows.find((x) => x.taskId === it.taskId);
-        if (row && row.start < g.end && row.end <= until && !tl.over.some((o) => o.taskId === it.taskId)) { landed = { it, t, s }; break; }
+        if (row && row.start >= slot && row.start < g.end && row.end <= until && !tl.over.some((o) => o.taskId === it.taskId)) { landed = { it, t, s }; break; }
       }
       if (landed) break;
     }
     if (!landed) { floor = peakAt != null ? peakAt : g.end; if (peakAt != null) holdAt = peakAt; continue; }
-    if (holdAt && slot >= holdAt) { landed.it.at = slot; holdAt = 0; }
+    if (landed.it.at) holdAt = 0;
     items.push(landed.it); out.add(landed.t.id); taken.add(landed.t.id); budget -= landed.it.minutes;
     picked(r, landed.s);
     flowProject = projectOf(landed.t);
@@ -236,7 +237,13 @@ export function proposeDay({ tasks = [], events = [], now = Date.now(), hours = 
   }
   if (ask.fewer) fewerFirst(items, tasks, today, first);
   if (ask.quickFirst) items.sort((a, b) => a.minutes - b.minutes);
-  inProjectOrder(items, tasks, first);
+  // A project's own order (pos, createdAt, last step last) swaps its items among
+  // the places they hold — unless that costs a task its room or its focus hour
+  // (a 90 min task swapped into a 70 min peak stretch pushes both to the evening).
+  const arranged = inProjectOrder(items.map((x) => ({ ...x })), tasks, first);
+  const quality = (list) => { const tl = timeline(list, { tasks, events, now, hours, phoneOk });
+    return -1e4 * tl.over.length + tl.rows.reduce((a, r) => a + focusFit(profile, r.task, r.start, r.minutes), 0); };
+  if (quality(arranged) >= quality(items)) items.splice(0, items.length, ...arranged);
   hoursFirst(items, { tasks, events, now, hours, rides: false });
   // Nothing due today is dropped without a word (2026-10-11): what the picks
   // left out goes on the end, laid if it fits after all, else No room with
