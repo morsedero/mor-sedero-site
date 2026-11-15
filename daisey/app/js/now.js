@@ -1909,7 +1909,13 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     onPlanApproved?.();
     flash(`Plan set: ${n} ${n === 1 ? "task" : "tasks"}. The card follows it.`);
   }
-  function dismiss(){ savePlan("dismissed", []); closeProposal(); }
+  // Cancel on an unanswered proposal: saved as dismissed, then a FULL repaint.
+  // (closeProposal alone saw the plan as already decided, since savePlan ran
+  // first, and only repainted the plan screen, so the proposal stayed up.)
+  function dismiss(){
+    savePlan("dismissed", []); prop.open = false; prop.replan = false; prop.ask = false; prop.note = ""; prop.parked = null;
+    render();
+  }
   // Take an approved plan off today (Mor, 2026-10-10): the Schedule goes back
   // to just the calendar, which isn't touched. Undo puts the same plan back.
   function removePlan(){
