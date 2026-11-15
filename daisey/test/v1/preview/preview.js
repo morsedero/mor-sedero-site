@@ -33,6 +33,18 @@ const SCENARIOS = {
     { id: "j2", stage: "review", company: "סאונד בע״מ", title: "מעצב סאונד", fit: 7, gaps: ["Wwise", "מיקס לטריילר"], cv: "https://docs.google.com/document/d/cv2/edit", effort_min: 20 },
     { id: "j3", stage: "pending", company: "Softgames", stage_at: "2026-10-10T09:00:00Z" },
   ], status: { queue: { j9: [{ event: "done", from: "review", at: "2026-10-24T08:00:00Z", failed: true }] }, dismissed: [] } } },
+  // A full day to plan (--cal day --at 08:30 --click "#planChip"): the proposed schedule
+  // with several projects, a deadline, quick admin and a long deep task.
+  planday: { projects: ["Reprise", "Monster Punk", "Admin", "Teaching"], dayplan: null, tasks: [
+    { title: "Mix review for Reprise", project: "Reprise", size: 90, type: "deep", due: day(2) },
+    { title: "Master the EP", project: "Reprise", size: 60, type: "deep", due: day(5) },
+    { title: "Fix the boss loop", project: "Monster Punk", size: 60, type: "deep", over: ago(6) },
+    { title: "Pre-attack cue", project: "Monster Punk", size: 45, type: "deep" },
+    { title: "Invoice for Uri", project: "Admin", size: 10, type: "admin", due: day(0), dateKind: "deadline" },
+    { title: "Reply to Yuval", project: "Admin", size: 10, type: "admin" },
+    { title: "Lesson prep", project: "Teaching", size: 30, type: "admin", due: day(1) },
+    { title: "Call the accountant", project: "Admin", size: 15, type: "call" },
+  ] },
   // A missed slot (--cal none): nothing done for 25 minutes.
   miss: { tasks: missTasks(25), dayplan: { date: day(0), status: "dismissed", items: [] } },
   // Two slots ignored (--cal none): nothing done for 75 minutes.
@@ -404,6 +416,9 @@ const FAKES = {
   // --day-start HH:MM: My day start (Settings), for the day-hours checks.
   const dayStartFlag = flag("--day-start");
   if (dayStartFlag) scenario.settings = { ...(scenario.settings || { deadlinesAsked: true, somedayAsked: day(0) }), dayStart: dayStartFlag, dayEnd: "22:00" };
+  // --lang he: Hebrew (localStorage "daisey.lang"); --theme dark|light: the account-menu choice (data-theme), beyond --dark's OS scheme.
+  const langFlag = flag("--lang"), themeFlag = flag("--theme");
+  if (langFlag || themeFlag) await page.addInitScript(([l, th]) => { try { if (l === "he") localStorage.setItem("daisey.lang", "he"); if (th) localStorage.setItem("daisey.theme", th); } catch {} }, [langFlag, themeFlag]);
   await page.addInitScript((s) => { window.__FAKE = s; }, args.includes("--ask-deadlines") ? { ...scenario, settings: {} } : scenario);
   if (speedFlag) await page.addInitScript((v) => {
     const fix = () => ({ coords: { latitude: 32.08, longitude: 34.78, accuracy: 10, speed: v }, timestamp: Date.now() });
@@ -446,7 +461,7 @@ const FAKES = {
       const b = JSON.parse(route.request().postData() || "{}"), src = process.env.DAISEY_TRACKER;
       const one = src ? JSON.parse(fs.readFileSync(src, "utf8")) : null;
       const days = {};
-      for (const d of b.dates || []) days[d] = one && d === new Date(Date.now() - 6 * 36e5).toLocaleDateString("en-CA") ? [
+      for (const d of b.dates || []) days[d] = one && (process.env.DAISEY_TRACKER_ALL ? d !== new Date(Date.now() - 6 * 36e5).toLocaleDateString("en-CA") : d === new Date(Date.now() - 6 * 36e5).toLocaleDateString("en-CA")) ? [
         { ...one, date: d, device: "MOR-PC", updatedAt: Date.now() - 60000 },
         { ...one, date: d, device: "LAPTOP", updatedAt: Date.now() - 120000, timeline: [[700, 760, "Code.exe", "daisey"]], appMinutes: { "Code.exe": 60 }, activeMinutes: 60 }] : [];
       const body = b.action === "info" ? { device: "MOR-PC" } : b.action === "approve" ? { ok: true }

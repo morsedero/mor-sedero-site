@@ -22,6 +22,21 @@ export const trackerDisconnect = (deviceId) => api({ action: "disconnect", ...(d
 export const trackerInfo = (req) => api({ action: "info", req });
 export const trackerApprove = (req) => api({ action: "approve", req });
 
+// The last `days` days (today included) for the planner (profile.js). Cached:
+// the planner asks on every render, the tracker uploads every few minutes.
+// → { days: { date: [summary per PC] }, today } ; rejects when no PC is linked
+// or the read fails (the planner then plans without it).
+let history = { at: 0, value: null, pending: null };
+export function trackerHistory({ days = 14, maxAge = 10 * 60 * 1000 } = {}){
+  if (history.value && Date.now() - history.at < maxAge) return Promise.resolve(history.value);
+  if (history.pending) return history.pending;
+  const today = todayIso(), dates = [...Array(days)].map((_, i) => iso(addDays(logicalToday(), -i)));
+  history.pending = api({ action: "read", dates, icons: false })
+    .then((r) => { history.value = { days: r.days || {}, today }; history.at = Date.now(); return history.value; })
+    .finally(() => { history.pending = null; });
+  return history.pending;
+}
+
 // ---------- shared ----------
 const NAMES = { "chrome":"Chrome","msedge":"Edge","firefox":"Firefox","code":"VS Code","devenv":"Visual Studio","windowsterminal":"Terminal",
   "explorer":"File Explorer","claude":"Claude","spotify":"Spotify","discord":"Discord","slack":"Slack","ms-teams":"Teams","outlook":"Outlook",
