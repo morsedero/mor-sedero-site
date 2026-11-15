@@ -2194,6 +2194,8 @@ body.focus .shell { block-size: auto; min-block-size: 100dvh; overflow: visible;
    swaps into the same slot (now.js rethinkRow). */
 .pp-actions { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr) minmax(0, 1.35fr); gap: 6px; margin-block-start: 6px; padding-block: 6px 0; position: sticky; inset-block-end: 0; z-index: 2; background: var(--card); }
 /* Rethink (2026-10-10): one-tap Fewer | More | ✕, then a field with its own send. */
+/* Hebrew: "לחשוב מחדש" is the long label, so Rethink gets the widest column. */
+html[lang="he"] .pp-actions:not(.h-four):not(.pp-ask) { grid-template-columns: minmax(0, 1.05fr) minmax(0, 1.5fr) minmax(0, 1fr); }
 .pp-actions.h-four { grid-template-columns: minmax(0, 1.1fr) minmax(0, 1.1fr) minmax(0, 1fr) minmax(0, 1fr); }
 .pp-actions.h-four .btn.start svg { display: none; }
 .pp-actions.pp-ask { display: flex; flex-direction: column; gap: 8px; }

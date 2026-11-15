@@ -129,7 +129,7 @@ export const FLOW = { points: 15, gapMinutes: 30, switch: 0.5 };
 // "deep" from deepFrom minutes up, "quick" at quickTo or under, in between by
 // the slope. peak/low: how the focus level (0..1, the hour's share of your
 // busiest hour) is called in a why line.
-export const FOCUS = { points: 8, quickTo: 15, deepFrom: 60, peak: 0.75, low: 0.35, deferMax: 360 };
+export const FOCUS = { points: 8, quickTo: 15, deepFrom: 60, peak: 0.75, low: 0.35, deferMax: 0 };
 // The why line calls a task a "quick win" only up to this many minutes.
 export const QUICK_WIN_MAX = 15;
 // A task naming the saved place you're at (engine spot()).

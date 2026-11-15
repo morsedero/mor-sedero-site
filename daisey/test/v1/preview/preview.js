@@ -416,6 +416,9 @@ const FAKES = {
   // --day-start HH:MM: My day start (Settings), for the day-hours checks.
   const dayStartFlag = flag("--day-start");
   if (dayStartFlag) scenario.settings = { ...(scenario.settings || { deadlinesAsked: true, somedayAsked: day(0) }), dayStart: dayStartFlag, dayEnd: "22:00" };
+  // --lang he: Hebrew (localStorage "daisey.lang"); --theme dark|light: the account-menu choice (data-theme), beyond --dark's OS scheme.
+  const langFlag = flag("--lang"), themeFlag = flag("--theme");
+  if (langFlag || themeFlag) await page.addInitScript(([l, th]) => { try { if (l === "he") localStorage.setItem("daisey.lang", "he"); if (th) localStorage.setItem("daisey.theme", th); } catch {} }, [langFlag, themeFlag]);
   await page.addInitScript((s) => { window.__FAKE = s; }, args.includes("--ask-deadlines") ? { ...scenario, settings: {} } : scenario);
   if (speedFlag) await page.addInitScript((v) => {
     const fix = () => ({ coords: { latitude: 32.08, longitude: 34.78, accuracy: 10, speed: v }, timestamp: Date.now() });

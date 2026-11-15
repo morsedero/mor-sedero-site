@@ -363,6 +363,9 @@ const PATTERNS = [
   P(/^(\d+) (\w+) moved to (.+), so this is a fresh plan\.$/, null),
   P(/^Moved to (.+)\.$/, "הועבר ל$1."), P(/^Every month on the (.+?)(, from Start)?\.$/, (m) => `כל חודש ב-${bit(m[1])}${m[2] ? ", מתאריך ההתחלה" : ""}.`),
   P(/^(Today|Tomorrow|Yesterday) · (.+)$/, "$1 · $2"), P(/^(.+) — back to today$/, "$1 — חזרה להיום"), P(/^(.+) — open the day$/, "$1 — לפתוח את היום"),
+  // The plan screen's head: "Proposed for today", "5 h 20 min · until 19:10".
+  P(/^Proposed for (today|tomorrow)$/, (m) => `מוצע ${m[1] === "today" ? "להיום" : "למחר"}`),
+  P(/^(\d+ (?:h|min)(?: \d+ min)?) · until (\d\d:\d\d)$/, (m) => `${translate(m[1]) ?? m[1]} · עד ${m[2]}`),
   P(/^Take five · (.+)$/, "הפסקה קצרה · $1"), P(/^Lunch time · (.+)$/, "זמן צהריים · $1"), P(/^Open space · (.+)$/, "זמן פתוח · $1"), P(/^Next · (.+)$/, "הבא · $1"),
   P(/^(.+) of (.+), shortened to fit$/, "$1 מתוך $2, קוצר כדי להיכנס"), P(/^No free time to eat then\. Eating there, or (.+) at (\d\d:\d\d)\?$/, null),
   P(/^Were you home at (\d\d:\d\d)\?$/, "היית בבית ב-$1?"), P(/^Where were you at (.+)\?$/, "איפה היית ב-$1?"),

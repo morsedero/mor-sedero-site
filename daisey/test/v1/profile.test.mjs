@@ -111,18 +111,19 @@ test("each pick is ranked at the slot it lands in: a type you do in the evening 
   assert.ok(rows[1].start >= at(18));
 });
 
-test("deep work waits for the focus peak; quick work takes the thin morning", () => {
+test("the morning is filled: deep work isn't held back for the focus peak, and fits whole", () => {
   const p = build(week(AFTERNOONER));
   const tasks = [t({ id: "deep", size: 90, title: "Mix review" }), t({ id: "q1", size: 10, type: "admin" }), t({ id: "q2", size: 15, type: "admin" })];
   const items = proposeDay({ tasks, events: [], now: at(9), profile: p });
   const rows = timeline(items, { tasks, events: [], now: at(9) }).rows;
-  const deep = rows.find((r) => r.taskId === "deep");
-  assert.ok(deep && deep.start >= at(13), `deep at ${new Date(deep.start).toISOString()}`);
-  for (const q of ["q1", "q2"]) assert.ok(rows.find((r) => r.taskId === q).start < at(11));
-  // …but never a deadline due today.
-  const due = [t({ id: "deep", size: 90, due: "2026-10-07", dateKind: "deadline" })];
-  const first = timeline(proposeDay({ tasks: due, events: [], now: at(9), profile: p }), { tasks: due, events: [], now: at(9) }).rows[0];
-  assert.ok(first.start < at(10));
+  // No hole at the start: the first task begins right at the first free minute.
+  assert.ok(Math.min(...rows.map((r) => r.start)) <= at(9) + 5 * 60000, "morning not left empty");
+  // Every task is laid back to back, none left for later: no gap between rows beyond a break.
+  const sorted = [...rows].sort((a, b) => a.start - b.start);
+  for (let i = 1; i < sorted.length; i++) assert.ok(sorted[i].start - sorted[i - 1].end <= 15 * 60000, "no hole between tasks");
+  // The deep task is whole, not cut to a piece.
+  const deep = items.find((i) => i.taskId === "deep");
+  assert.ok(deep && deep.minutes === 90 && !deep.of, "deep task whole");
 });
 
 test("a plan asks no more than a day of yours holds", () => {
