@@ -36,6 +36,7 @@ import { daysUntil } from "./engine.js";
 import { collectNeeds, somedayDue, awayDays, AWAY_DAYS } from "./needs-list.js";
 export { collectNeeds, somedayDue }; // now.js counts them for the header chip
 import { h, icon, dur, flash } from "./ui.js";
+import { dateBox } from "./datebox.js";
 import { decisionCard } from "./decision.js";
 import { whereAsk, placeAskInfo, setRide, setStill, saveSpot, notHomeHere, quietHere, reservedName, homeAt } from "./where.js";
 import { estimate, answer as tripAnswer, noTrip } from "./trips.js";
@@ -68,7 +69,7 @@ export function wrapList(tasks = [], now = Date.now()){
 export function mountNeeds(root, uid, { onClose, onStart, extra, onAway } = {}){
   let tasks = [], settings = {}, cal = { status: "loading", events: [] }, dayPlan = null;
   let setLoaded = false, awayChecked = false; // the away catch-up looks once per app load
-  let list = [], i = 0, mode = "needs", loaded = false, waiting = null;
+  let list = [], i = 0, picking = null, mode = "needs", loaded = false, waiting = null;
   const fail = (e) => console.error("[daisey] needs", e);
   const find = (id) => tasks.find((t) => t.id === id);
   // Every answer about a task stamps askedAt: its follow-on asks stay quiet
@@ -76,7 +77,7 @@ export function mountNeeds(root, uid, { onClose, onStart, extra, onAway } = {}){
   const answerTask = (id, fields) => restoreTask(uid, id, { ...fields, askedAt: Date.now() });
 
   let moreOpen = false; // the card's More list (decision.js)
-  const next = () => { moreOpen = false; i++; paint(); };
+  const next = () => { picking = null; moreOpen = false; i++; paint(); };
   const later = (key) => {
     const today = logicalDate();
     const keys = settings.needsLater?.date === today ? [...(settings.needsLater.keys || [])] : [];
@@ -103,6 +104,14 @@ export function mountNeeds(root, uid, { onClose, onStart, extra, onAway } = {}){
   // Waiting on a reply (Mor, 2026-10-18): the answer for a task that is stuck
   // on someone else. Pending, asked again later like any other pending task.
   const pend = (t) => ["Pending, waiting on a reply", () => { answerTask(t.id, { status: "waiting", notBefore: null, checkOn: pendingCheck(t), touchedAt: Date.now() }).catch(fail); next(); }];
+  // Postpone = pick a day (Mor, 2026-11-15: "if user wants to postpone give
+  // him a date pick"). The button opens a date box on the card, set to `def`;
+  // `go(day)` answers. Out of sight until that day (notBefore); a deadline
+  // before it moves to it, so it can't pass while hidden.
+  const postpone = (go, { def = dayAfter(1), label = "Postpone", title = "Postpone to", act = "Postpone" } = {}) =>
+    [label, () => { picking = { go, def, title, act }; moreOpen = false; paint(); }];
+  const putOff = (t) => postpone((day) => { answerTask(t.id, pushedTo(t, { status: "ready", notBefore: day,
+    ...(t.due && t.due < day ? { due: day } : {}) })).catch(fail); next(); });
   // Ids in today's plan (proposed or approved): the sweep keeps those today.
   const planned = () => new Set(dayPlan?.date === planDate(Date.now(), dayHours(settings)) && dayPlan.status !== "dismissed" ? (dayPlan.items || []).map((it) => it.taskId).filter(Boolean) : []);
   const sweep = (t, kind) => {
@@ -246,20 +255,20 @@ export function mountNeeds(root, uid, { onClose, onStart, extra, onAway } = {}){
         no: ["Skipped it", () => { answerTask(t.id, skipSlotPatch(t, e.id)).catch(fail); next(); }] };
     }
     if (item.kind === "wrap") {
-      const tomorrow = () => { answerTask(t.id, pushedTo(t, { due: dayAfter(1) })).catch(fail); next(); };
       const drop = del(t);
       if (t.dateKind === "deadline") {
         const past = t.due < logicalDate();
         return { tone: "area-job", ico: "later", q: past ? "Deadline passed" : "Deadline today",
           sub: past ? `It was ${shortDay(t.due)}.` : "It's still open.", item: t.title, say: "Tonight, or does the date move?",
-          yes: ["I'll do it tonight", () => next()], no: ["Move it to tomorrow", tomorrow], more: [pend(t), drop], noLater: true };
+          yes: ["I'll do it tonight", () => next()], no: postpone((day) => { answerTask(t.id, pushedTo(t, { due: day })).catch(fail); next(); }, { title: "Move the deadline to" }),
+          more: [pend(t), drop], noLater: true };
       }
       return { tone: areaClass(t).trim() || "area-home", ico: "later", q: "Still for today?",
         sub: t.due < logicalDate() ? `It was planned for ${shortDay(t.due)}.` : "It was planned for today.", item: t.title,
-        say: "I'd move it to tomorrow.", yes: ["Move to tomorrow", tomorrow],
+        say: "I'd move it to tomorrow.", yes: postpone((day) => { answerTask(t.id, pushedTo(t, { due: day })).catch(fail); next(); }, { title: "Move it to" }),
         no: ["On hold", () => { answerTask(t.id, { status: "someday", touchedAt: Date.now() }).catch(fail); next(); }],
         // Do it now (Mor, 2026-10-13): whoever opened the app may want to work.
-        more: [...(onStart ? [["Do it now", () => onStart(t.id)]] : []), pend(t), drop], noLater: true };
+        more: [...(onStart ? [["Do it now", () => onStart(t.id)]] : []), drop], noLater: true };
     }
     if (item.kind === "parked") {
       const days = daysUntil(t.due, Date.now());
@@ -267,7 +276,7 @@ export function mountNeeds(root, uid, { onClose, onStart, extra, onAway } = {}){
         sub: `It's on hold. ${days < 0 ? "The deadline was" : "The deadline is"} ${days === 0 ? "today" : days === 1 ? "tomorrow" : shortDay(t.due)}.`,
         item: t.title, say: days < 0 ? "Bring it back, or delete it?" : "I'd bring it back before it's too late.",
         yes: ["Bring it back", () => { answerTask(t.id, { status: "ready", notBefore: null, touchedAt: Date.now() }).catch(fail); next(); }],
-        no: del(t), more: [pend(t)] };
+        no: putOff(t), more: [del(t)], noLater: true };
     }
     if (item.kind === "stale") {
       const small = shrunk(t.size);
@@ -276,34 +285,34 @@ export function mountNeeds(root, uid, { onClose, onStart, extra, onAway } = {}){
       const canShrink = small < (t.size || 0);
       return { tone: areaClass(t).trim() || "area-work", ico: "later", q: "Still want this?",
         sub: `Put off ${t.skipsSinceStart} times without starting.`,
-        item: t.title, say: canShrink ? `I'd make it a ${sizeWords(small)} task: a first piece is easier to start.` : "Keep it, or delete it?",
+        item: t.title, say: canShrink ? `I'd make it a ${sizeWords(small)} task: a first piece is easier to start.` : "Keep it, postpone it, or delete it?",
         ...(canShrink
-          ? { yes: [`Shrink to ${dur(small)}`, () => { answerTask(t.id, shrinkPatch(t)).catch(fail); next(); }], no: keep, more: [drop] }
-          : { yes: keep, no: drop }) };
+          ? { yes: [`Shrink to ${dur(small)}`, () => { answerTask(t.id, shrinkPatch(t)).catch(fail); next(); }], no: putOff(t), more: [keep, drop] }
+          : { yes: keep, no: putOff(t), more: [drop] }), noLater: true };
     }
     if (item.kind === "pushed") {
       const small = shrunk(t.size);
       const canShrink = small < (t.size || 0);
       const keep = ["Keep it", () => { answerTask(t.id, { pushes: 0, touchedAt: Date.now() }).catch(fail); next(); }];
       const drop = del(t);
-      const park = ["On hold", () => { answerTask(t.id, { status: "someday", pushes: 0, touchedAt: Date.now() }).catch(fail); next(); }];
       return { tone: areaClass(t).trim() || "area-work", ico: "later", q: "Keeps sliding",
         sub: `Pushed to a later day ${t.pushes} times.`, item: t.title,
-        say: canShrink ? `I'd make it a ${sizeWords(small)} first piece, so it's easy to start.` : "Keep it, park it, or delete it?",
+        say: canShrink ? `I'd make it a ${sizeWords(small)} first piece, so it's easy to start.` : "Keep it, postpone it, or delete it?",
         ...(canShrink
-          ? { yes: [`Shrink to ${dur(small)}`, () => { answerTask(t.id, { ...shrinkPatch(t), pushes: 0 }).catch(fail); next(); }], no: keep, more: [park, drop] }
-          : { yes: keep, no: park, more: [drop] }) };
+          ? { yes: [`Shrink to ${dur(small)}`, () => { answerTask(t.id, { ...shrinkPatch(t), pushes: 0 }).catch(fail); next(); }], no: putOff(t), more: [keep, drop] }
+          : { yes: keep, no: putOff(t), more: [drop] }), noLater: true };
     }
     if (item.kind === "pending") {
       const since = t.touchedAt ? ` since ${new Date(t.touchedAt).toLocaleDateString(undefined, { day: "numeric", month: "short" })}` : "";
       return { tone: areaClass(t).trim() || "area-social", ico: "pending", q: "Still pending?",
         sub: t.waitingOn ? `Waiting on ${t.waitingOn}${since}.` : `Pending${since}.`,
         item: t.title, say: `If it's still stuck, I'll ask again ${weekday(pendingCheck(t))}.`,
-        yes: ["Yes, still pending", () => { answerTask(t.id, { checkOn: pendingCheck(t), touchedAt: Date.now() }).catch(fail); next(); }],
+        yes: postpone((day) => { answerTask(t.id, { checkOn: day, touchedAt: Date.now() }).catch(fail); next(); },
+          { label: "Yes, still pending", def: pendingCheck(t), title: "Ask me again on", act: "Ask then" }),
         no: ["No, it's ready", () => { answerTask(t.id, { status: "ready", waitingOn: null, checkOn: null, touchedAt: Date.now() }).catch(fail); next(); }],
         // Nudge: WhatsApp with a short check-in typed in; asked again later, as for "still pending".
         more: [["Nudge on WhatsApp", () => { window.open(waLink(nudgeText(t)), "_blank", "noopener");
-          answerTask(t.id, { checkOn: pendingCheck(t), touchedAt: Date.now() }).catch(fail); next(); }]] };
+          answerTask(t.id, { checkOn: pendingCheck(t), touchedAt: Date.now() }).catch(fail); next(); }]], noLater: true };
     }
     if (item.kind === "someday") {
       return { tone: "area-home", ico: "someday", q: "Bring one back?", sub: "From On hold, for this week.",
@@ -323,8 +332,9 @@ export function mountNeeds(root, uid, { onClose, onStart, extra, onAway } = {}){
       sub: `The deadline was ${lateText}.`,
       item: t.title, say,
       yes: ["Do it today", () => sweep(t, "today")],
-      no: [`Move to ${weekday(week)}`, () => sweep(t, "week")],
-      more: [["On hold", () => sweep(t, "someday")], pend(t), del(t)] };
+      no: postpone((day) => { answerTask(t.id, { ...answerSnapshot(t), ...answer("week", t, { week: day }) }).catch(fail); next(); },
+        { def: week > logicalDate() ? week : dayAfter(1), title: "Move the deadline to" }),
+      more: [pend(t), del(t)], noLater: true };
   }
 
   // An ext question answered in part from its own card (a slipped task's
@@ -351,6 +361,17 @@ export function mountNeeds(root, uid, { onClose, onStart, extra, onAway } = {}){
     }
     let q, field = null;
     q = question(list[i]);
+    // Postpone's day pick, on the same card: the date box (set to the
+    // suggestion, so one tap confirms), the answer, and Back.
+    if (picking) {
+      const p = picking, input = h("input", { type: "date", min: dayAfter(1), value: p.def, ariaLabel: p.title });
+      const go = big(p.act, "primary big", () => { if (input.value) p.go(input.value); });
+      input.addEventListener("change", () => { go.disabled = !input.value; });
+      root.replaceChildren(top, h("div", { className: "ny-stage" }, decisionCard({ tone: q.tone, ico: "calendar", q: p.title, item: q.item,
+        field: h("div", { className: "ny-pick" }, dateBox(input, { empty: "Pick a day", label: "day", clearable: false })),
+        yes: go, no: big("Back", "line big", () => { picking = null; paint(); }) })));
+      return;
+    }
     // The field (a place name, a trip time…) answers with the main key.
     if (q.field) {
       field = h("input", { id: q.field.id, className: "ny-field", dir: "auto", autocomplete: "off", enterkeyhint: "done", placeholder: q.field.placeholder, ariaLabel: q.field.placeholder || q.sub,

@@ -228,6 +228,7 @@ const HE_TEXT = {
   "Still for today?": "עדיין להיום?", "It was planned for today.": "זה תוכנן להיום.", "I'd move it to tomorrow.": "הייתי מעבירה למחר.", "Move to tomorrow": "להעביר למחר",
   "On hold": "מושהה", "Deadline coming up": "דדליין מתקרב", "Bring it back, or delete it?": "להחזיר, או למחוק?", "I'd bring it back before it's too late.": "הייתי מחזירה לפני שיהיה מאוחר.",
   "Bring it back": "להחזיר", "Keep it": "להשאיר", "Still want this?": "עדיין רוצים את זה?", "Keep it, or delete it?": "להשאיר, או למחוק?", "Keeps sliding": "ממשיך להידחות",
+  "Keep it, postpone it, or delete it?": "להשאיר, לדחות או למחוק?", "Postpone": "לדחות", "Postpone to": "לדחות ל", "Move the deadline to": "להזיז את הדדליין ל", "Move it to": "להזיז ל", "Ask me again on": "לשאול שוב ב", "Ask then": "לשאול אז",
   "Keep it, park it, or delete it?": "להשאיר, להשהות, או למחוק?", "Still pending?": "עדיין ממתין?", "Yes, still pending": "כן, עדיין ממתין", "No, it's ready": "לא, זה מוכן",
   "Bring one back?": "להחזיר אחת?", "From On hold, for this week.": "מהמושהות, לשבוע הזה.", "Leave it there": "להשאיר שם",
   "It's in today's plan. I'd keep it today.": "זה בתוכנית של היום. הייתי משאירה להיום.", "Still doing this?": "עדיין עושים את זה?", "Do it today": "לעשות היום",
