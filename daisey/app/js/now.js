@@ -2282,7 +2282,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
           textContent: prop.busy ? "Thinking…" : "Rethink", onclick: () => { prop.ask = true; render(); } }),
         // Approved: Save, Rethink, Remove, Cancel (Mor, 2026-10-12); no ✕ in the header.
         approved ? h("button", { className: "btn no-plan", type: "button", textContent: "Remove", ariaLabel: `Remove ${planWord()}'s plan`, disabled: prop.busy, onclick: removePlan })
-          : h("button", { className: "btn no-plan", type: "button", textContent: "No plan", onclick: dismiss }),
+          : h("button", { className: "btn no-plan", type: "button", textContent: "Cancel", onclick: dismiss }),
         approved && h("button", { className: "btn line", type: "button", textContent: "Cancel", disabled: prop.busy, onclick: closeProposal })));
   }
   // Once a plan is approved, how far along it is goes to the header chip

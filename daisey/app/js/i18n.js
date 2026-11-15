@@ -152,7 +152,7 @@ const HE_TEXT = {
   "Or tell Daisey what to change…": "או ספרו ל-Daisey מה לשנות…", "What should change?": "מה לשנות?", "Thinking": "חושבת", "Thinking…": "חושבת…",
   "Rethink with this": "לחשוב מחדש עם זה", "Fewer tasks": "פחות משימות", "More tasks": "יותר משימות", "Never mind": "לא משנה", "No room": "אין מקום",
   "Do first": "קודם זה", "Proposed schedule": "לו״ז מוצע", "Approve": "לאשר", "Running late: rethink for what's left": "מאחרים: לחשוב מחדש על מה שנשאר",
-  "Rethink": "לחשוב מחדש", "No plan": "אין תוכנית", "Example day: these tasks are samples to try Daisey with.": "יום לדוגמה: אלה משימות לדוגמה לנסות איתן את Daisey.",
+  "Rethink": "לחשוב מחדש", "Example day: these tasks are samples to try Daisey with.": "יום לדוגמה: אלה משימות לדוגמה לנסות איתן את Daisey.",
   "Clear examples": "לנקות דוגמאות", "Ignoring": "מתעלמת מ-", "put it back": "להחזיר", "Loading tasks…": "טוען משימות…",
   "Nothing else needs you today.": "שום דבר אחר לא מחכה לך היום.", "No tasks yet": "עוד אין משימות", "Add a few and Daisey will pick.": "הוסיפו כמה ו-Daisey תבחר.",
   "Nothing fits right now": "שום דבר לא מתאים עכשיו", "Not synced to Drive yet": "עוד לא סונכרן ל-Drive", "I've arrived": "הגעתי",
