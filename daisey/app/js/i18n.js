@@ -190,6 +190,7 @@ const HE_TEXT = {
   "Done today": "בוצע היום", "Proposed for …": "מוצע ל…", "No open task fits the free time left today.": "אין משימה פתוחה שמתאימה לזמן הפנוי שנשאר היום.",
   "No open task fits tomorrow.": "אין משימה פתוחה שמתאימה למחר.", "Nothing fits what's left of today.": "שום דבר לא מתאים למה שנשאר מהיום.",
   "Nothing fits tomorrow.": "שום דבר לא מתאים למחר.", "Move the rest": "להעביר את השאר", "Nothing scheduled": "שום דבר לא מתוכנן", "Day or Week": "יום או שבוע",
+  "your focus peak": "שעת השיא שלך", "a light hour, a light task": "שעה שקטה, משימה קלה", "planned at your real pace": "בקצב האמיתי שלך",
   "Take five": "הפסקה קצרה", "Loading the calendar…": "טוען את היומן…",
   "Connect Google Calendar to see your day here, and so Daisey plans around your events.": "חברו את יומן Google כדי לראות כאן את היום, וכדי ש-Daisey תתכנן סביב האירועים.",
   "The calendar connection expired.": "החיבור ליומן פג.", "Couldn't load the calendar.": "לא הצלחנו לטעון את היומן.", "Reconnect Google Calendar": "חיבור מחדש ליומן Google",

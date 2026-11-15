@@ -2200,41 +2200,49 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     const last = rows[rows.length - 1];
     // One word for the plan's day: label, notes, reasons and the x all say it (day.js planWords).
     const words = planWords(planLabelDay({ rows, now: Date.now(), hours: dayHours(settings), nightFree, fallback: planWordBase() }), approved);
+    // The fixed time column every kind of row starts with: start over end.
+    const timeCol = (s, e) => h("span", { className: "pp-time", ariaLabel: `${clock(s)} to ${clock(e)}` }, clock(s), h("small", { textContent: clock(e) }));
+    // Where Daisey's own picks are laid, one short reason when what it learned
+    // from your PC moved a pick ("your focus peak"); else none, no clutter.
+    const WHY = { peak: "your focus peak" }; // the thin-hour case stays unsaid: it would repeat on every quick task
+    const whyOf = (r) => (r.ride ? "" : WHY[whyHere(profile(), r.task, r.start, r.minutes)] || (r.k > 1.1 ? "planned at your real pace" : ""));
     const row = (r, isOver) => {
       const i = r.i, t = r.task;
       const ctl = (text, label, disabled, onclick) => h("button", { type: "button", className: "pp-ctl", textContent: text, title: label, ariaLabel: `${label}: ${t.title}`, disabled, onclick });
+      const why = isOver ? "" : whyOf(r);
       return h("li", { className: "pp-row pp-drag" + areaClass(t) + (isOver ? " over" : r.missed ? " missed" : ""), _i: i },
-        isOver ? h("span", { className: "pp-time", textContent: "No room" })
-          : h("span", { className: "pp-time", ariaLabel: `${clock(r.start)} to ${clock(r.end)}` }, clock(r.start), h("small", { textContent: clock(r.end) })),
-        h("button", { type: "button", className: "pp-task", ariaLabel: `Edit ${t.title}`, onclick: () => onOpen?.(t) },
-          h("span", { className: "pp-title", dir: "auto", textContent: t.title }),
-          // The slot's times already say how long; "not started" is Rethink's
-          // job; No room says only the first clause of why (Mor, 2026-10-12).
-          h("span", { className: "pp-meta" }, ...pieces(projectShown(t) ? t.project : "", isOver ? words.why((r.why || "").split(",")[0]) || estText(t, r.minutes) : r.of ? `shortened from ${dur(r.of)}` : "", r.ride ? RIDE_ROW[r.ride] : "", !isOver && r.missed ? "how did it go?" : ""))),
-        h("span", { className: "pp-ctls" },
-          isOver && !r.never && ctl("↑", "Do first", false, () => toFront(i)),
-          ctl("✕", words.takeOff, false, () => dropItem(i))));
+        isOver ? h("span", { className: "pp-time", textContent: "No room" }) : timeCol(r.start, r.end),
+        h("div", { className: "pp-body pp-card" },
+          h("button", { type: "button", className: "pp-task", ariaLabel: `Edit ${t.title}`, onclick: () => onOpen?.(t) },
+            h("span", { className: "pp-title", dir: "auto", textContent: t.title }),
+            // The slot's times already say how long; "not started" is Rethink's
+            // job; No room says only the first clause of why (Mor, 2026-10-12).
+            h("span", { className: "pp-meta" }, ...pieces(projectShown(t) ? t.project : "", isOver ? words.why((r.why || "").split(",")[0]) || estText(t, r.minutes) : r.of ? `shortened from ${dur(r.of)}` : "", r.ride ? RIDE_ROW[r.ride] : "", !isOver && r.missed ? "how did it go?" : "")),
+            why && h("span", { className: "pp-why", textContent: why })),
+          h("span", { className: "pp-ctls" },
+            isOver && !r.never && ctl("↑", "Do first", false, () => toFront(i)),
+            ctl("✕", words.takeOff, false, () => dropItem(i)))));
     };
     // A break is the plan's own item: it drags and comes off like a task.
     const breakRow = (b) => {
       const name = b.type === "meal" ? b.name || "Meal" : "Break", own = b.i != null;
       return h("li", { className: `pp-row pp-break sc-${breakKind(b)}` + (own ? " pp-drag" : ""), _i: b.i },
-        h("span", { className: "pp-time", ariaLabel: `${clock(b.start)} to ${clock(b.end)}` }, clock(b.start), h("small", { textContent: clock(b.end) })),
-        h("span", { className: "pp-task" }, h("span", { className: "pp-title", textContent: breakText(b, dur(Math.round((b.end - b.start) / 60000))) })),
-        own && h("span", { className: "pp-ctls" },
-          h("button", { type: "button", className: "pp-ctl", textContent: "✕", title: `Take the ${name.toLowerCase()} off`, ariaLabel: `Take the ${name.toLowerCase()} off`, onclick: () => dropItem(b.i) })));
+        timeCol(b.start, b.end),
+        h("div", { className: "pp-body" },
+          h("span", { className: "pp-task" }, h("span", { className: "pp-title", textContent: breakText(b, dur(Math.round((b.end - b.start) / 60000))) })),
+          own && h("span", { className: "pp-ctls" },
+            h("button", { type: "button", className: "pp-ctl", textContent: "✕", title: `Take the ${name.toLowerCase()} off`, ariaLabel: `Take the ${name.toLowerCase()} off`, onclick: () => dropItem(b.i) }))));
     };
     // Today's events still to come, as the Schedule draws them (Mor,
     // 2026-10-10): the plan is laid around them. A tap opens the event like
     // on the Schedule; they're not the plan's, so they don't drag or come off.
     const evRow = (ev) => {
-      const s = Date.parse(ev.start), e = Date.parse(ev.end), t = ev.taskId && tasks?.find((x) => x.id === ev.taskId);
-      const tone = t ? areaClass(t) : "", time = h("span", { className: "pp-time", ariaLabel: `${clock(s)} to ${clock(e)}` }, clock(s), h("small", { textContent: clock(e) }));
-      if (ev.trip) return h("li", { className: "pp-row pp-event" }, time,
-        h("span", { className: "sc-ev sc-trip", ariaLabel: `${ev.title}, ${clock(s)} to ${clock(e)}` }, h("span", { className: "sc-evi" }, icon("later")), ev.title));
-      return h("li", { className: "pp-row pp-event" }, time,
-        h("button", { type: "button", className: "sc-ev" + tone, style: ev.color ? `--ev:${ev.color}` : "", ariaLabel: `${ev.title}, ${clock(s)} to ${clock(e)}`,
-          onclick: () => onEvent?.(ev) }, h("span", { className: "sc-evi" }, icon("calendar")), bdi(ev.title)));
+      const s = Date.parse(ev.start), e = Date.parse(ev.end), time = timeCol(s, e);
+      if (ev.trip) return h("li", { className: "pp-row pp-event" }, time, h("div", { className: "pp-body" },
+        h("span", { className: "sc-ev sc-trip", ariaLabel: `${ev.title}, ${clock(s)} to ${clock(e)}` }, h("span", { className: "sc-evi" }, icon("later")), ev.title)));
+      return h("li", { className: "pp-row pp-event" }, time, h("div", { className: "pp-body" },
+        h("button", { type: "button", className: "sc-ev", style: ev.color ? `--ev:${ev.color}` : "", ariaLabel: `${ev.title}, ${clock(s)} to ${clock(e)}`,
+          onclick: () => onEvent?.(ev) }, h("span", { className: "sc-evi" }, icon("calendar")), bdi(ev.title))));
     };
     // Until midnight, or the day's end when it runs past it; after midnight in
     // a late day only until that end, not into the calendar's new day (Mor, 2026-10-11).
