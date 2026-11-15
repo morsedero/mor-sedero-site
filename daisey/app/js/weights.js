@@ -43,6 +43,12 @@ export const SOMEDAY_DEADLINE_DAYS = 3;
 // many times without a start → Needs you asks shrink, keep or let go (Mor,
 // 2026-10-06: 2). A plan made twice and kept twice is a task in trouble.
 export const PUSHES_ASK = 2;
+// An answer buys quiet (Mor, 2026-11-15: "you answer them, and from that
+// answers give you more questions"). After a Needs you answer about a task
+// (askedAt), its follow-on asks (keeps sliding, still want this, bring one
+// back, a parked deadline not yet passed) wait this many days. A passed
+// deadline (sweep) and a Pending check date the user asked for still come.
+export const ANSWER_QUIET_DAYS = 7;
 // Which task places can't happen where you are. Anywhere (as the moment)
 // filters nothing. (Mor approved, 2026-10-04.) The moving ones come from
 // the phone's location (where.js, 2026-10-05): walking takes calls and

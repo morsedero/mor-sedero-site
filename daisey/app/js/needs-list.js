@@ -6,7 +6,7 @@ import { nextOffer } from "./caltask.js";
 import { sweepList } from "./triage.js";
 import { localDate, logicalDate, notYet, PENDING_TODAY_WAIT } from "./model.js";
 import { deadlineWithin } from "./engine.js";
-import { STALE_SKIPS, SOMEDAY_DEADLINE_DAYS, PUSHES_ASK } from "./weights.js";
+import { STALE_SKIPS, SOMEDAY_DEADLINE_DAYS, PUSHES_ASK, ANSWER_QUIET_DAYS } from "./weights.js";
 import { slotClashes } from "./clash.js";
 import { slotsToAsk } from "./routine.js";
 import { tripAsks, withTrips } from "./trips.js";
@@ -50,7 +50,10 @@ export function collectNeeds({ tasks = [], events = [], calOk = false, settings 
   // Not one put on hold today (Mor, 2026-10-19): On hold used to ask
   // "Bring it back?" straight after, here and in the someday ask below.
   const heldToday = (t) => !!t.touchedAt && logicalDate(t.touchedAt) === logicalDate(now);
-  const parked = tasks.filter((t) => t.status === "someday" && deadlineWithin(t, now, SOMEDAY_DEADLINE_DAYS) && !heldToday(t))
+  // Answered in Needs you lately (weights ANSWER_QUIET_DAYS): no follow-on ask.
+  const quiet = (t) => !!t.askedAt && now - t.askedAt < ANSWER_QUIET_DAYS * DAY;
+  const parked = tasks.filter((t) => t.status === "someday" && deadlineWithin(t, now, SOMEDAY_DEADLINE_DAYS) && !heldToday(t)
+      && !(quiet(t) && t.due >= logicalDate(now)))
     .sort((a, b) => a.due.localeCompare(b.due));
   parked.forEach((t) => add({ key: `parked:${t.id}`, kind: "parked", id: t.id }));
   // An event in another city (trips.js): how do you get there? Once per
@@ -85,13 +88,13 @@ export function collectNeeds({ tasks = [], events = [], calOk = false, settings 
       && !(t.checkOn === today && now - (t.touchedAt || 0) < PENDING_TODAY_WAIT))
     .sort((a, b) => a.checkOn.localeCompare(b.checkOn))
     .forEach((t) => add({ key: `pend:${t.id}`, kind: "pending", id: t.id }));
-  tasks.filter((t) => t.status === "ready" && (t.skipsSinceStart || 0) >= STALE_SKIPS)
+  tasks.filter((t) => t.status === "ready" && (t.skipsSinceStart || 0) >= STALE_SKIPS && !quiet(t))
     .forEach((t) => add({ key: `stale:${t.id}`, kind: "stale", id: t.id }));
   // Pushed to a later day PUSHES_ASK times without a start (2026-10-06).
-  tasks.filter((t) => t.status === "ready" && (t.pushes || 0) >= PUSHES_ASK && (t.skipsSinceStart || 0) < STALE_SKIPS)
+  tasks.filter((t) => t.status === "ready" && (t.pushes || 0) >= PUSHES_ASK && (t.skipsSinceStart || 0) < STALE_SKIPS && !quiet(t))
     .forEach((t) => add({ key: `pushed:${t.id}`, kind: "pushed", id: t.id }));
   if (somedayDue(tasks, settings, now)) {
-    const t = somedayTop(tasks.filter((x) => !parked.includes(x) && !heldToday(x))); // a parked deadline is already asked about
+    const t = somedayTop(tasks.filter((x) => !parked.includes(x) && !heldToday(x) && !quiet(x))); // a parked deadline is already asked about
     if (t) add({ key: "someday", kind: "someday", id: t.id });
   }
   // Passed deadlines, always. Back after days away: first.

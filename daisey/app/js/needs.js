@@ -68,12 +68,15 @@ export function wrapList(tasks = [], now = Date.now()){
 export function mountNeeds(root, uid, { onClose, onStart, extra, onAway } = {}){
   let tasks = [], settings = {}, cal = { status: "loading", events: [] }, dayPlan = null;
   let setLoaded = false, awayChecked = false; // the away catch-up looks once per app load
-  let list = [], i = 0, follow = null, mode = "needs", loaded = false, waiting = null; // follow: the "keep the event?" step after making one a task
+  let list = [], i = 0, mode = "needs", loaded = false, waiting = null;
   const fail = (e) => console.error("[daisey] needs", e);
   const find = (id) => tasks.find((t) => t.id === id);
+  // Every answer about a task stamps askedAt: its follow-on asks stay quiet
+  // for a while (needs-list quiet, weights ANSWER_QUIET_DAYS).
+  const answerTask = (id, fields) => restoreTask(uid, id, { ...fields, askedAt: Date.now() });
 
   let moreOpen = false; // the card's More list (decision.js)
-  const next = () => { follow = null; moreOpen = false; i++; paint(); };
+  const next = () => { moreOpen = false; i++; paint(); };
   const later = (key) => {
     const today = logicalDate();
     const keys = settings.needsLater?.date === today ? [...(settings.needsLater.keys || [])] : [];
@@ -99,13 +102,13 @@ export function mountNeeds(root, uid, { onClose, onStart, extra, onAway } = {}){
   const del = (t) => ["Delete task", () => { dropSeries(t); removeTask(uid, t.id, t).catch(fail); flash("Deleted ", t.title); next(); }, "Really delete?"];
   // Waiting on a reply (Mor, 2026-10-18): the answer for a task that is stuck
   // on someone else. Pending, asked again later like any other pending task.
-  const pend = (t) => ["Pending, waiting on a reply", () => { restoreTask(uid, t.id, { status: "waiting", notBefore: null, checkOn: pendingCheck(t), touchedAt: Date.now() }).catch(fail); next(); }];
+  const pend = (t) => ["Pending, waiting on a reply", () => { answerTask(t.id, { status: "waiting", notBefore: null, checkOn: pendingCheck(t), touchedAt: Date.now() }).catch(fail); next(); }];
   // Ids in today's plan (proposed or approved): the sweep keeps those today.
   const planned = () => new Set(dayPlan?.date === planDate(Date.now(), dayHours(settings)) && dayPlan.status !== "dismissed" ? (dayPlan.items || []).map((it) => it.taskId).filter(Boolean) : []);
   const sweep = (t, kind) => {
     const now = Date.now();
     const week = kind === "week" ? pickWeekDay(t, { events: cal.events || [], tasks, now, hours: usualHours(settings) }) : null;
-    restoreTask(uid, t.id, { ...answerSnapshot(t), ...answer(kind, t, { now, week }) }).catch(fail);
+    answerTask(t.id, { ...answerSnapshot(t), ...answer(kind, t, { now, week }) }).catch(fail);
     next();
   };
 
@@ -126,8 +129,12 @@ export function mountNeeds(root, uid, { onClose, onStart, extra, onAway } = {}){
       const due = d.input.due ? `, due ${new Date(`${d.input.due}T12:00`).toLocaleDateString(undefined, { day: "numeric", month: "short" })}` : "";
       return { tone: "area-admin", ico: "calendar", q: "Is this a task?", sub: `It's in your calendar on ${when}.`,
         item: ev.title, say: `I'd make it a ${sizeWords(d.guess.size)} task${due}.`,
-        yes: ["Yes, make it a task", () => { markOffered(ev); addTask(uid, d.input, tasks).catch(fail); follow = ev; paint(); }],
-        no: ["No, it's an event", () => { markOffered(ev); next(); }] };
+        // One card, no "Keep the event?" after it (Mor, 2026-11-15: an answer
+        // shouldn't bring another question). Yes keeps the event; deleting it
+        // is under More.
+        yes: ["Yes, make it a task", () => { markOffered(ev); addTask(uid, d.input, tasks).catch(fail); next(); }],
+        no: ["No, it's an event", () => { markOffered(ev); next(); }],
+        more: ev.editable !== false ? [["Make it a task, delete the event", () => { markOffered(ev); addTask(uid, d.input, tasks).catch(fail); deleteEvent(ev).catch(fail); next(); }]] : [] };
     }
     // Device questions (where.js): about where you are, not about a task.
     if (item.kind === "ride") return { tone: "area-home", ico: "later", q: "How are you travelling?", sub: "You're moving fast.",
@@ -235,11 +242,11 @@ export function mountNeeds(root, uid, { onClose, onStart, extra, onAway } = {}){
       return { tone: areaClass(t).trim() || "area-personal", ico: "check", q: "Did it?",
         sub: `${clock(e.start)}–${clock(e.end)}${["today", "tomorrow"].includes(dayWord(e.day)) ? ` ${dayWord(e.day)}` : `, ${weekday(e.day)}`}.`, item: t.title,
         say: s.done ? `${s.done} of ${s.per} this ${s.word} so far.` : `Your ${s.per}× a ${s.word}.`,
-        yes: ["Did it", () => { restoreTask(uid, t.id, sessionPatch(t, { ev: e })).catch(fail); next(); }],
-        no: ["Skipped it", () => { restoreTask(uid, t.id, skipSlotPatch(t, e.id)).catch(fail); next(); }] };
+        yes: ["Did it", () => { answerTask(t.id, sessionPatch(t, { ev: e })).catch(fail); next(); }],
+        no: ["Skipped it", () => { answerTask(t.id, skipSlotPatch(t, e.id)).catch(fail); next(); }] };
     }
     if (item.kind === "wrap") {
-      const tomorrow = () => { restoreTask(uid, t.id, pushedTo(t, { due: dayAfter(1) })).catch(fail); next(); };
+      const tomorrow = () => { answerTask(t.id, pushedTo(t, { due: dayAfter(1) })).catch(fail); next(); };
       const drop = del(t);
       if (t.dateKind === "deadline") {
         const past = t.due < logicalDate();
@@ -250,7 +257,7 @@ export function mountNeeds(root, uid, { onClose, onStart, extra, onAway } = {}){
       return { tone: areaClass(t).trim() || "area-home", ico: "later", q: "Still for today?",
         sub: t.due < logicalDate() ? `It was planned for ${shortDay(t.due)}.` : "It was planned for today.", item: t.title,
         say: "I'd move it to tomorrow.", yes: ["Move to tomorrow", tomorrow],
-        no: ["On hold", () => { restoreTask(uid, t.id, { status: "someday", touchedAt: Date.now() }).catch(fail); next(); }],
+        no: ["On hold", () => { answerTask(t.id, { status: "someday", touchedAt: Date.now() }).catch(fail); next(); }],
         // Do it now (Mor, 2026-10-13): whoever opened the app may want to work.
         more: [...(onStart ? [["Do it now", () => onStart(t.id)]] : []), pend(t), drop], noLater: true };
     }
@@ -259,32 +266,32 @@ export function mountNeeds(root, uid, { onClose, onStart, extra, onAway } = {}){
       return { tone: "area-job", ico: "someday", q: days < 0 ? "Deadline passed" : "Deadline coming up",
         sub: `It's on hold. ${days < 0 ? "The deadline was" : "The deadline is"} ${days === 0 ? "today" : days === 1 ? "tomorrow" : shortDay(t.due)}.`,
         item: t.title, say: days < 0 ? "Bring it back, or delete it?" : "I'd bring it back before it's too late.",
-        yes: ["Bring it back", () => { restoreTask(uid, t.id, { status: "ready", notBefore: null, touchedAt: Date.now() }).catch(fail); next(); }],
+        yes: ["Bring it back", () => { answerTask(t.id, { status: "ready", notBefore: null, touchedAt: Date.now() }).catch(fail); next(); }],
         no: del(t), more: [pend(t)] };
     }
     if (item.kind === "stale") {
       const small = shrunk(t.size);
-      const keep = ["Keep it", () => { restoreTask(uid, t.id, { skipsSinceStart: 0, touchedAt: Date.now() }).catch(fail); next(); }];
+      const keep = ["Keep it", () => { answerTask(t.id, { skipsSinceStart: 0, touchedAt: Date.now() }).catch(fail); next(); }];
       const drop = del(t);
       const canShrink = small < (t.size || 0);
       return { tone: areaClass(t).trim() || "area-work", ico: "later", q: "Still want this?",
         sub: `Put off ${t.skipsSinceStart} times without starting.`,
         item: t.title, say: canShrink ? `I'd make it a ${sizeWords(small)} task: a first piece is easier to start.` : "Keep it, or delete it?",
         ...(canShrink
-          ? { yes: [`Shrink to ${dur(small)}`, () => { restoreTask(uid, t.id, shrinkPatch(t)).catch(fail); next(); }], no: keep, more: [drop] }
+          ? { yes: [`Shrink to ${dur(small)}`, () => { answerTask(t.id, shrinkPatch(t)).catch(fail); next(); }], no: keep, more: [drop] }
           : { yes: keep, no: drop }) };
     }
     if (item.kind === "pushed") {
       const small = shrunk(t.size);
       const canShrink = small < (t.size || 0);
-      const keep = ["Keep it", () => { restoreTask(uid, t.id, { pushes: 0, touchedAt: Date.now() }).catch(fail); next(); }];
+      const keep = ["Keep it", () => { answerTask(t.id, { pushes: 0, touchedAt: Date.now() }).catch(fail); next(); }];
       const drop = del(t);
-      const park = ["On hold", () => { restoreTask(uid, t.id, { status: "someday", pushes: 0, touchedAt: Date.now() }).catch(fail); next(); }];
+      const park = ["On hold", () => { answerTask(t.id, { status: "someday", pushes: 0, touchedAt: Date.now() }).catch(fail); next(); }];
       return { tone: areaClass(t).trim() || "area-work", ico: "later", q: "Keeps sliding",
         sub: `Pushed to a later day ${t.pushes} times.`, item: t.title,
         say: canShrink ? `I'd make it a ${sizeWords(small)} first piece, so it's easy to start.` : "Keep it, park it, or delete it?",
         ...(canShrink
-          ? { yes: [`Shrink to ${dur(small)}`, () => { restoreTask(uid, t.id, { ...shrinkPatch(t), pushes: 0 }).catch(fail); next(); }], no: keep, more: [park, drop] }
+          ? { yes: [`Shrink to ${dur(small)}`, () => { answerTask(t.id, { ...shrinkPatch(t), pushes: 0 }).catch(fail); next(); }], no: keep, more: [park, drop] }
           : { yes: keep, no: park, more: [drop] }) };
     }
     if (item.kind === "pending") {
@@ -292,16 +299,16 @@ export function mountNeeds(root, uid, { onClose, onStart, extra, onAway } = {}){
       return { tone: areaClass(t).trim() || "area-social", ico: "pending", q: "Still pending?",
         sub: t.waitingOn ? `Waiting on ${t.waitingOn}${since}.` : `Pending${since}.`,
         item: t.title, say: `If it's still stuck, I'll ask again ${weekday(pendingCheck(t))}.`,
-        yes: ["Yes, still pending", () => { restoreTask(uid, t.id, { checkOn: pendingCheck(t), touchedAt: Date.now() }).catch(fail); next(); }],
-        no: ["No, it's ready", () => { restoreTask(uid, t.id, { status: "ready", waitingOn: null, checkOn: null, touchedAt: Date.now() }).catch(fail); next(); }],
+        yes: ["Yes, still pending", () => { answerTask(t.id, { checkOn: pendingCheck(t), touchedAt: Date.now() }).catch(fail); next(); }],
+        no: ["No, it's ready", () => { answerTask(t.id, { status: "ready", waitingOn: null, checkOn: null, touchedAt: Date.now() }).catch(fail); next(); }],
         // Nudge: WhatsApp with a short check-in typed in; asked again later, as for "still pending".
         more: [["Nudge on WhatsApp", () => { window.open(waLink(nudgeText(t)), "_blank", "noopener");
-          restoreTask(uid, t.id, { checkOn: pendingCheck(t), touchedAt: Date.now() }).catch(fail); next(); }]] };
+          answerTask(t.id, { checkOn: pendingCheck(t), touchedAt: Date.now() }).catch(fail); next(); }]] };
     }
     if (item.kind === "someday") {
       return { tone: "area-home", ico: "someday", q: "Bring one back?", sub: "From On hold, for this week.",
         item: t.title, say: mark(t) || `It's ${estText(t, t.size)}, and the week has room.`,
-        yes: ["Bring it back", () => { somedayDone(); restoreTask(uid, t.id, bringBack(t)).catch(fail); next(); }],
+        yes: ["Bring it back", () => { somedayDone(); answerTask(t.id, bringBack(t)).catch(fail); next(); }],
         no: ["Leave it there", () => { somedayDone(); next(); }] };
     }
     // sweep: today when today needs it (triage.sweepAdvice), else the roomiest day.
@@ -323,13 +330,13 @@ export function mountNeeds(root, uid, { onClose, onStart, extra, onAway } = {}){
   // An ext question answered in part from its own card (a slipped task's
   // "?"): asked again when the tasks or the plan change, a tick later so
   // now.js has them first. Gone by then, paint moves on to the next.
-  const fresh = () => setTimeout(() => { if (!root.hidden && list[i]?.kind === "ext" && !follow) paint(); }, 0);
+  const fresh = () => setTimeout(() => { if (!root.hidden && list[i]?.kind === "ext") paint(); }, 0);
 
   const big = (text, cls, onclick) => h("button", { className: `btn ${cls}`, type: "button", textContent: text, onclick });
 
   function paint(){
     // Skip anything that went away while the screen was open.
-    while (i < list.length && !follow && !question(list[i])) i++;
+    while (i < list.length && !question(list[i])) i++;
     const top = h("div", { className: "ny-top" },
       h("button", { className: "ny-x", type: "button", ariaLabel: "Close", onclick: () => onClose?.() }, icon("close")),
       // The pager says where you are (design round 4): "1 of 3".
@@ -343,13 +350,7 @@ export function mountNeeds(root, uid, { onClose, onStart, extra, onAway } = {}){
       return;
     }
     let q, field = null;
-    if (follow) {
-      const ev = follow;
-      q = { tone: "area-admin", ico: "calendar", q: "Keep the event?", sub: "Added as a task.", item: ev.title,
-        say: "The task is in your list either way.",
-        yes: ["Keep it in the calendar", () => next()],
-        no: ev.editable !== false && ["Delete the event", () => { deleteEvent(ev).catch(fail); next(); }], noLater: true };
-    } else q = question(list[i]);
+    q = question(list[i]);
     // The field (a place name, a trip time…) answers with the main key.
     if (q.field) {
       field = h("input", { id: q.field.id, className: "ny-field", dir: "auto", autocomplete: "off", enterkeyhint: "done", placeholder: q.field.placeholder, ariaLabel: q.field.placeholder || q.sub,
@@ -414,7 +415,7 @@ export function mountNeeds(root, uid, { onClose, onStart, extra, onAway } = {}){
       // Back after days away: the hello and the old dates come first.
       const away = which === "wrap" ? 0 : awayDays(tasks), sweeps = list.filter((x) => x.kind === "sweep");
       if (away >= AWAY_DAYS && sweeps.length) list = [{ key: "away", kind: "away", days: away, count: sweeps.length }, ...sweeps, ...list.filter((x) => x.kind !== "sweep")];
-      i = 0; follow = null;
+      i = 0;
       paint();
       root.hidden = false;
       root.querySelector(".btn.primary, .btn")?.focus({ preventScroll: true });

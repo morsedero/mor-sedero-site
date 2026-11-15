@@ -25,3 +25,21 @@ test("On hold today: not asked to bring it back the same day", () => {
   assert.deepEqual(ids([{ ...base, status: "someday", touchedAt: NOW }]), []);
   assert.ok(ids([{ ...base, status: "someday", touchedAt: NOW - 2 * 864e5 }]).length > 0);
 });
+
+// An answer buys quiet (Mor, 2026-11-15: answering brought more questions).
+test("Answered lately: no follow-on asks about the same task", () => {
+  const asked = NOW - 864e5;
+  const ready = { ...base, due: "2026-10-25", status: "ready", touchedAt: asked };
+  assert.deepEqual(ids([{ ...ready, pushes: 2 }]), ["pushed"]);
+  assert.deepEqual(ids([{ ...ready, pushes: 2, askedAt: asked }]), []);
+  assert.deepEqual(ids([{ ...ready, skipsSinceStart: 5, askedAt: asked }]), []);
+  const held = { ...base, due: "2026-10-21", status: "someday", touchedAt: asked };
+  assert.deepEqual(ids([held]), ["parked"]);
+  assert.deepEqual(ids([{ ...held, askedAt: asked }]), []);
+});
+test("Quiet ends after a week; a passed deadline still asks", () => {
+  const ready = { ...base, due: "2026-10-25", status: "ready", pushes: 2, touchedAt: NOW };
+  assert.deepEqual(ids([{ ...ready, askedAt: NOW - 8 * 864e5 }]), ["pushed"]);
+  assert.deepEqual(ids([{ ...base, status: "ready", touchedAt: NOW, askedAt: NOW }]), ["sweep"]);
+  assert.deepEqual(ids([{ ...base, status: "someday", touchedAt: NOW - 864e5, askedAt: NOW - 864e5 }]), ["parked"]);
+});

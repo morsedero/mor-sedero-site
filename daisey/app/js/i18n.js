@@ -233,7 +233,7 @@ const HE_TEXT = {
   "It's in today's plan. I'd keep it today.": "זה בתוכנית של היום. הייתי משאירה להיום.", "Still doing this?": "עדיין עושים את זה?", "Do it today": "לעשות היום",
   "That's the day.": "זה היום.", "That's everything.": "זה הכול.", "Tomorrow's sorted. Sleep well.": "מחר מסודר. לילה טוב.", "Nothing else needs you.": "שום דבר אחר לא מחכה לך.",
   "Keep the event?": "להשאיר את האירוע?", "Added as a task.": "נוסף כמשימה.", "The task is in your list either way.": "המשימה ברשימה בכל מקרה.",
-  "Keep it in the calendar": "להשאיר ביומן", "Delete the event": "למחוק את האירוע", "Needs you: 3 quick decisions": "מחכה לך: 3 החלטות קצרות",
+  "Keep it in the calendar": "להשאיר ביומן", "Make it a task, delete the event": "להפוך למשימה ולמחוק את האירוע", "Delete the event": "למחוק את האירוע", "Needs you: 3 quick decisions": "מחכה לך: 3 החלטות קצרות",
 
   // Projects (projects.js)
   "+ New": "+ חדש", "Next: pick one": "הבא: לבחור אחת", "pick one": "לבחור אחת", "needs you": "מחכה לך", "All done": "הכול בוצע", "This week's Daisey": "ה-Daisey של השבוע",
