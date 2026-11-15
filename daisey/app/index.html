@@ -92,6 +92,7 @@
           </div>
           <button id="settingsBtn" class="menu-item" type="button"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z"/></svg><span>Settings</span></button>
           <!-- An action, not a setting, so it sits here (Mor, 2026-10-10); only while this device gets notifications. -->
+          <button id="activityBtn" class="menu-item" type="button" hidden><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></svg><span>PC activity</span></button>
           <button id="pushTest" class="menu-item" type="button" hidden><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.9 1.9 0 0 0 3.4 0"/></svg><span>Send the brief now</span></button>
           <button id="signout" class="menu-item quiet" type="button">Sign out</button>
         </div>
@@ -189,6 +190,8 @@
   <dialog id="missdlg" class="now miss-dlg" aria-labelledby="missTitle" autofocus></dialog>
   <dialog id="projdlg" class="now" aria-labelledby="npTitle"></dialog>
   <!-- Settings (Mor, 2026-10-06): opened from the avatar menu. -->
+  <dialog id="activitydlg" class="now" aria-labelledby="actTitle"></dialog>
+  <dialog id="trackerdlg" class="now" aria-labelledby="trkTitle"></dialog>
   <dialog id="settingsdlg" class="now settings" aria-labelledby="setTitle" autofocus>
     <div class="now-head"><h2 id="setTitle">Settings</h2><button id="settingsX" class="now-x" type="button" aria-label="Close">✕</button></div>
     <!-- Grouped as the master spec asks (2026-10-06): Personal, Notifications, Integrations, Appearance, Data. Ids unchanged. -->
@@ -268,6 +271,13 @@
         <span class="menu-stat"><span id="jobsNote"></span><button id="connectJobs" class="menu-link" type="button" hidden>Reconnect Google Drive</button></span></div>
       <div class="menu-row"><span class="menu-ico logo"><svg viewBox="0 0 24 24" width="28" height="28" aria-hidden="true"><path fill="#0052CC" d="M21.147 0H2.853A2.86 2.86 0 000 2.853v18.294A2.86 2.86 0 002.853 24h18.294A2.86 2.86 0 0024 21.147V2.853A2.86 2.86 0 0021.147 0zM10.34 17.287a.953.953 0 01-.953.953h-4a.954.954 0 01-.954-.953V5.38a.953.953 0 01.954-.953h4a.954.954 0 01.953.953zm9.233-5.467a.944.944 0 01-.953.947h-4a.947.947 0 01-.953-.947V5.38a.953.953 0 01.953-.953h4a.954.954 0 01.953.953z"/></svg></span><span class="menu-label menu-stack">Trello<button id="importTrello" class="menu-link menu-sub" type="button" hidden>Import cards…</button></span>
         <span class="menu-stat"><span id="trelloNote"></span><button id="connectTrello" class="menu-link" type="button">Connect</button></span></div>
+    </div>
+    <!-- PC activity (activity.js): the Daisey Tracker tray app. Get it downloads it; it opens Daisey to be approved. -->
+    <div class="menu-sec">
+      <h3 class="menu-h">Computer</h3>
+      <div class="menu-row"><span class="menu-ico logo"><svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></svg></span><span class="menu-label menu-stack">Daisey Tracker<span class="menu-note menu-sub" id="trackerPcs"></span><button id="openActivity" class="menu-link menu-sub" type="button" hidden>See activity…</button></span>
+        <span class="menu-stat"><span id="trackerNote"></span><a id="getTracker" class="menu-link" download>Get it</a><button id="dropTracker" class="menu-link" type="button" hidden>Disconnect</button></span></div>
+      <p class="menu-note">Tracks which apps you use on a Windows PC, and for how long. Run it once, approve it here, and it starts with Windows.</p>
     </div>
     <div class="menu-sec">
       <h3 class="menu-h">More</h3>

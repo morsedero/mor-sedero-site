@@ -386,7 +386,8 @@ const FAKES = {
 };
 
 (async () => {
-  const browser = await pw[engine].launch();
+  // PW_EXECUTABLE: a browser already on the machine, when its version isn't the one this playwright expects.
+  const browser = await pw[engine].launch(process.env.PW_EXECUTABLE ? { executablePath: process.env.PW_EXECUTABLE } : {});
   // --mobile: a touch phone (isMobile, hasTouch, a phone UA for the engine), not a narrow desktop window.
   const mobile = args.includes("--mobile") ? { isMobile: true, hasTouch: true, userAgent: engine === "webkit"
     ? "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1"
@@ -438,6 +439,19 @@ const FAKES = {
         : wait && tasks[0] ? [{ kind: "waiting", taskId: tasks[0].id, waitingOn: wait[1] }]
         : text.split(",").map((s) => s.trim()).filter(Boolean).map((title) => ({ kind: "add", title, size: 30 }));
       return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ reply: "Got it.", actions }) });
+    }
+    // PC activity (activity.js): DAISEY_TRACKER=<a tracker summary .json> is today on two PCs
+    // (the second shifted 9 h later); without it no PC is linked. ?tracker=x shows the Approve screen.
+    if (rel === ".netlify/functions/daisey-now-tracker") {
+      const b = JSON.parse(route.request().postData() || "{}"), src = process.env.DAISEY_TRACKER;
+      const one = src ? JSON.parse(fs.readFileSync(src, "utf8")) : null;
+      const days = {};
+      for (const d of b.dates || []) days[d] = one && d === new Date(Date.now() - 6 * 36e5).toLocaleDateString("en-CA") ? [
+        { ...one, date: d, device: "MOR-PC", updatedAt: Date.now() - 60000 },
+        { ...one, date: d, device: "LAPTOP", updatedAt: Date.now() - 120000, timeline: [[700, 760, "Code.exe", "daisey"]], appMinutes: { "Code.exe": 60 }, activeMinutes: 60 }] : [];
+      const body = b.action === "info" ? { device: "MOR-PC" } : b.action === "approve" ? { ok: true }
+        : { days, icons: one?.icons || {}, devices: one ? [{ id: "a", name: "MOR-PC" }, { id: "b", name: "LAPTOP" }] : [] };
+      return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(body) });
     }
     if (rel === ".netlify/functions/daisey-now-calendar-write") return route.fulfill({ status: 200, contentType: "application/json", body: '{"ok":true,"id":"series1"}' });
     if (rel === ".netlify/functions/daisey-now-calendar" && route.request().method() === "POST") return route.fulfill({ status: 200, contentType: "application/json", body: '{"ok":true}' });
