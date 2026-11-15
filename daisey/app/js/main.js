@@ -482,6 +482,32 @@ async function boot(){
         const checkTrello = () => { if (!isGuest) trelloConnected().then(paintTrello); else paintTrello(false); };
         $("#settingsBtn").addEventListener("click", checkTrello);
         checkTrello();
+        // PC activity (activity.js): the Daisey Tracker tray app. Its row says
+        // which PCs are linked; the menu item shows once one is. The tray app
+        // opens Daisey with ?tracker=… to be approved, handled right here.
+        const trkNote = $("#trackerNote"), trkPcs = $("#trackerPcs"), trkGet = $("#getTracker"), trkDrop = $("#dropTracker"), trkOpen = $("#openActivity"), actBtn = $("#activityBtn");
+        let activity = null, trk = null;
+        const trackerMod = () => (trk ??= import("./activity.js"));
+        const openActivity = () => trackerMod().then((a) => { activity ??= a.mountActivity($("#activitydlg")); setMenu(false); settingsDlg.close(); activity.open(); });
+        const paintTracker = (pcs) => {
+          const on = pcs.length > 0;
+          actBtn.hidden = isGuest || !on; trkOpen.hidden = isGuest || !on; trkDrop.hidden = isGuest || !on;
+          trkGet.hidden = isGuest;
+          trkGet.textContent = on ? "Add a PC" : "Get it";
+          trkPcs.textContent = pcs.map((p) => p.name).join(", ");
+          connNote(trkNote, isGuest ? "Sign in first" : on ? "Connected" : "Not connected");
+        };
+        const checkTracker = () => { if (isGuest) return paintTracker([]); trackerMod().then((a) => a.trackerDevices()).then(paintTracker).catch((e) => console.warn("[daisey] tracker", e.message || e)); };
+        trackerMod().then((a) => { trkGet.href = a.TRACKER_DOWNLOAD; if (!isGuest) a.approveTrackerFromUrl($("#trackerdlg")).then(checkTracker); });
+        actBtn.onclick = trkOpen.onclick = openActivity;
+        trkDrop.onclick = async () => {
+          if (!confirm("Disconnect every PC and delete the activity Daisey has? The tray app stops sending.")) return;
+          try { await (await trackerMod()).trackerDisconnect(); flash("PC tracker disconnected."); } catch (e) { console.error("[daisey] tracker", e); flash("Couldn't disconnect. Try again."); }
+          checkTracker();
+        };
+        $("#settingsBtn").addEventListener("click", checkTracker);
+        $("#trackerdlg").addEventListener("close", checkTracker);
+        checkTracker();
         const fail = (e) => console.error("[daisey] menu", e);
         // Status is a dot (Mor, 2026-10-10): green connected, amber expired,
         // grey not connected; the words are its label, and the button beside it acts.
@@ -1075,6 +1101,7 @@ async function boot(){
         const openFrom = (what) => {
           if (what === "wrap" || what === "needs") { m.needs.open(what); }
           if (what === "lighter") { closeScreens(); m.now.lighter(); }
+          if (what === "activity" && !isGuest) openActivity(); // the tray app's "Open dashboard"
         };
         const params = new URL(location.href).searchParams;
         const asked = params.get("open"), startId = params.get("start");
