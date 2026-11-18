@@ -1,7 +1,7 @@
 // PC activity (2026-11-15): what the Daisey Tracker tray app saw on your
 // computers, read back from daisey-now-tracker. Ported from the tracker's own
 // dashboard (github.com/morsedero/Daisey-Tracker, dashboard/daisey.html).
-// Day = a journal of work sessions, newest first; week = seven day stripes on
+// Day = a journal of work sessions, top to bottom (oldest first); week = seven day stripes on
 // one hour scale. A day runs 06:00 to 05:59, like the tracker's files.
 // Also the link screen: the tray app opens Daisey with ?tracker=<req> and the
 // person approves it here, with one click.
@@ -151,14 +151,11 @@ export function mountActivity(dialog){
     const color = colorsFor(Object.fromEntries(Object.entries(d.appMinutes || {}).map(([k, v]) => [k, num(v)])));
     const runs = cleanRuns(d);
     if (!runs.length){ cal.replaceChildren(el("p", "act-empty", "Nothing tracked yet.")); return; }
-    const list = sessionsOf(runs).reverse(), out = [];
-    if (isToday && nowClock() - list[0].e > 3){
-      const aw = el("div", "act-away"); aw.append(el("i", "act-pulse"), el("span", null, `away for ${fmt(nowClock() - list[0].e)}`)); out.push(aw);
-    }
+    const list = sessionsOf(runs), out = [], last = list.length - 1;
     list.forEach((ses, i) => {
-      if (i) out.push(el("div", "act-gap", `${fmt(list[i - 1].s - ses.e)} away`));
+      if (i) out.push(el("div", "act-gap", `${fmt(ses.s - list[i - 1].e)} away`));
       const row = el("article", "act-ses"), when = el("div", "act-when");
-      const live = isToday && i === 0 && nowClock() - ses.e <= 3;
+      const live = isToday && i === last && nowClock() - ses.e <= 3;
       when.append(el("span", null, hm(ses.s)));
       if (live){ const n = el("span"); n.append(el("i", "act-pulse"), "now"); when.append(n); row.classList.add("live"); row.style.setProperty("--c", `var(${color[ses.main] || "--act-so"})`); }
       else when.append(el("span", null, hm(ses.e)));
@@ -183,15 +180,15 @@ export function mountActivity(dialog){
       if (labs.childElementCount) body.append(labs);
       if (ses.apps.length > 1 || ses.breaks.length){
         const more = el("div", "act-more");
-        const light = (test) => { st.classList.add("focus"); st.querySelectorAll("i").forEach((x) => x.classList.toggle("on", test(x))); };
+        const light = (test) => { st.classList.add("act-dim"); st.querySelectorAll("i").forEach((x) => x.classList.toggle("on", test(x))); };
         ses.breaks.forEach(([bs, be], bi) => {
           const c = el("span", "bnote", `${fmt(be - bs)} break`); c.dataset.tip = `Break  ${hm(bs)}–${hm(be)} (${fmt(be - bs)})`;
-          c.onmouseenter = () => light((x) => x.dataset.brk === String(bi)); c.onmouseleave = () => st.classList.remove("focus"); more.append(c);
+          c.onmouseenter = () => light((x) => x.dataset.brk === String(bi)); c.onmouseleave = () => st.classList.remove("act-dim"); more.append(c);
         });
         for (const [app, m] of ses.apps.slice(1, 7)){
           const c = el("span", "act-chip"); c.title = nice(app);
           c.onmouseenter = () => { light((x) => x.dataset.app === app); c.classList.add("sel"); };
-          c.onmouseleave = () => { st.classList.remove("focus"); c.classList.remove("sel"); };
+          c.onmouseleave = () => { st.classList.remove("act-dim"); c.classList.remove("sel"); };
           const im = iconImg(icons, app); if (im) c.append(im); else c.append(el("em", null, nice(app)));
           c.append(fmt(m)); more.append(c);
         }
@@ -199,6 +196,9 @@ export function mountActivity(dialog){
       }
       row.append(when, body); out.push(row);
     });
+    if (isToday && nowClock() - list[last].e > 3){
+      const aw = el("div", "act-away"); aw.append(el("i", "act-pulse"), el("span", null, `away for ${fmt(nowClock() - list[last].e)}`)); out.push(aw);
+    }
     cal.replaceChildren(...out);
     fitLabels();
   }

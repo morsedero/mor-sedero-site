@@ -3047,7 +3047,7 @@ dialog.activity { inline-size: min(640px, calc(100vw - 18px)); }
 .act-strip, .act-wstrip { position: relative; block-size: 6px; border-radius: 3px; background: var(--line); overflow: hidden; }
 .act-wstrip { block-size: 16px; border-radius: 4px; cursor: pointer; }
 .act-strip i, .act-wstrip i { position: absolute; inset-block: 0; min-inline-size: 2px; cursor: pointer; transition: opacity .15s; }
-.act-strip.focus i:not(.on) { opacity: .15; }
+.act-strip.act-dim i:not(.on) { opacity: .15; }
 .act-strip i.brk { background: repeating-linear-gradient(135deg, var(--ink-2) 0 2px, var(--card) 2px 4px); opacity: .7; }
 .act-labs { position: relative; block-size: 16px; margin-block-start: -4px; }
 .act-labs.none { block-size: 0; margin-block-start: -10px; }
