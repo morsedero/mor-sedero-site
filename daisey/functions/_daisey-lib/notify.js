@@ -69,10 +69,10 @@ const MEETING_LEAD = 10; // minutes before a meeting, unless the menu says other
 const GAP_TTL = 30 * 60, BOOKED_TTL = 15 * 60; // seconds a suggestion stays worth delivering
 const MISS_TTL = 30 * 60, SILENCE_TTL = 60 * 60;
 const DEFAULT_TYPES = { brief: true, wrap: true, gap: true, booked: true, people: true, meeting: true, miss: true };
-// Mor, 2026-11-20: fewer notifications. Only meeting, booked, brief, wrap go
-// out; gap, people, miss (and its silence check) are forced off, whatever the
+// Mor, 2026-11-20: fewer notifications. Only meeting, booked, brief go
+// out; wrap, gap, people, miss (and its silence check) are forced off, whatever the
 // stored settings say. Code stays; delete a key here to bring a kind back.
-const FORCED_OFF = { gap: false, people: false, miss: false };
+const FORCED_OFF = { wrap: false, gap: false, people: false, miss: false };
 
 const isBusy = (e) => !e.allDay && e.busy !== false && e.start && e.end;
 const clockIn = (ms, tz) => { const m = localParts(ms, tz).minutes; return `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`; };
