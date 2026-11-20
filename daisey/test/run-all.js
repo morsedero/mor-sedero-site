@@ -70,7 +70,7 @@ function run(file) {
     const started = Date.now();
     /* cwd is the test dir: several files read "harness.js"/"daisey.html" as
        bare relative paths rather than via __dirname. */
-    const ch = spawn(process.execPath, [file], { cwd: DIR });
+    const ch = spawn(process.execPath, [file], { cwd: DIR, env: { ...process.env, NODE_OPTIONS: `${process.env.NODE_OPTIONS || ""} --require ${path.join(DIR, "ls-shim.js")}`.trim() } });
     let out = "";
     ch.stdout.on("data", d => (out += d));
     ch.stderr.on("data", d => (out += d));
