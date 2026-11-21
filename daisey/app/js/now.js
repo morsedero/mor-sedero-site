@@ -911,6 +911,9 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
   const needsNow = () => needsCount({ tasks: tasks || [], events: cal.events || [], calOk: cal.status === "ok", settings, home: homeAt() },
     { where: !!whereAsk(), plan: !!planAsk() + !!tierAsk(), meal: !!mealLateAsk() });
   function nightView(hrs){
+    // A day off (day.js daysOff) has no hours of its own: the screen reads the
+    // usual day's, and the next morning steps past every day off.
+    if (hrs.off) hrs = { ...usualHours(settings), off: true };
     const now = Date.now(), morning = nextMorning(now, hrs);
     const evs = cal.status === "ok" ? cal.events.filter((e) => e.busy !== false && !e.allDay) : [];
     const fw = cal.status === "ok" ? freeWindow(evs, morning, dayEndAt(morning, hrs)) : null;
@@ -918,6 +921,9 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     // day boundary, day.js dayWord); after that the morning's
     // plan is today's, not tomorrow's.
     const early = dayWord(localDate(morning), now) === "today";
+    // After a day off the next morning can be days away: name it ("Monday first").
+    const firstLabel = early ? "First today" : dayWord(localDate(morning), now) === "tomorrow" ? "Tomorrow first"
+      : `${new Date(morning).toLocaleDateString(undefined, { weekday: "long" })} first`;
     // A real deadline that's today and still open (2026-10-06): the night
     // screen said "Nothing needs you tonight" over it, and by morning it read
     // "deadline passed". It gets named, with a Start — the one thing night
@@ -970,8 +976,8 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
     return [
       h("div", { className: "stars", ariaHidden: "true" }, ...[0, 1, 2, 3].map(() => h("span"))),
       h("div", { className: "night-hero" }, moonDaisy(), h("div", { className: "night-txt" },
-        h("h2", { className: "night-h", textContent: early ? `Early${who}.` : `Late${who}.` }),
-        h("p", { className: "night-p", textContent: nightLine({ needs: needsNow(), early, dueTonight: dueTonight.length, ask: !!ask, askDay: early ? "today" : "tomorrow" }) }))),
+        h("h2", { className: "night-h", textContent: hrs.off ? `Day off${who}.` : early ? `Early${who}.` : `Late${who}.` }),
+        hrs.off ? h("p", { className: "night-p", textContent: "Everything's blocked today. Nothing gets planned." }) : h("p", { className: "night-p", textContent: nightLine({ needs: needsNow(), early, dueTonight: dueTonight.length, ask: !!ask, askDay: early ? "today" : "tomorrow" }) }))),
       todayView,
       // Both cards wear the main card's design (Mor, 2026-10-07): hero top row,
       // big title, why line, the same actions. The label is the eyebrow above.
@@ -982,8 +988,8 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
         h("p", { className: "now-why", textContent: dur(Math.max(5, (dueTonight[0].size || 0) - (dueTonight[0].spentMinutes || 0))) + " left" }),
         dueTonight.length > 1 && h("p", { className: "now-why" }, "Also due: ", ...dueTonight.slice(1).flatMap((t, i) => (i ? [", ", bdi(t.title)] : [bdi(t.title)]))),
         ...cardActions(dueTonight[0], [])),
-      h("section", { className: "now-card main hero night" + (p ? areaClass(p.task) : ""), ariaLabel: early ? "First today" : "Tomorrow first" },
-        h("div", { className: "night-label", textContent: early ? "First today" : "Tomorrow first" }),
+      h("section", { className: "now-card main hero night" + (p ? areaClass(p.task) : ""), ariaLabel: firstLabel },
+        h("div", { className: "night-label", textContent: firstLabel }),
         ...(p ? [
           heroTop(p.task, [heroChip(p.task), mark(p.task)].filter(Boolean).join(" · ")),
           onOpen ? titleButton(p.task) : h("div", { className: "now-title", dir: "auto", textContent: p.task.title }),
@@ -1010,7 +1016,7 @@ export function mountNow(root, uid, { onCard, onProject, onOpen, onEvent, onWrap
       h("div", { className: "night-foot" },
         h("button", { className: "pill-btn", type: "button", textContent: "I'm free now, show me something",
           ariaLabel: "I'm free now: pick a task anyway", onclick: () => { nightFree = true; render(); } }),
-        nightDivider(...nightRange(hrs))),
+        !hrs.off && nightDivider(...nightRange(hrs))),
     ];
   }
 

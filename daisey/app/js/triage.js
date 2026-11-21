@@ -72,6 +72,9 @@ export function roomOn(day, { events = [], tasks = [], skip = null, now = Date.n
 // that needs office hours only looks at days offices open.
 export function pickWeekDay(task, { events = [], tasks = [], now = Date.now(), officeDay = defaultOfficeDay, hours = W.DAY_HOURS } = {}){
   let days = weekDays(now);
+  // Never onto a day off (day.js daysOff); a week of nothing else keeps them all.
+  const off = hours.daysOff || [];
+  if (days.some((d) => !off.includes(d.getDay()))) days = days.filter((d) => !off.includes(d.getDay()));
   if (task.openHours === "office") {
     // Thursday's "this week" for a call is Friday–Saturday: all closed. Then
     // it means next week's office days.

@@ -212,6 +212,9 @@
           <button id="dayEnd" class="db-thumb" type="button" role="slider" aria-label="Day ends" aria-valuemin="240" aria-valuemax="1680"></button>
         </div>
       </div>
+      <!-- Days off (main.js, day.js daysOff, Mor 2026-11-21): weekdays blocked whole. Saturday by default. -->
+      <span class="menu-label"><span class="ichip area-home" aria-hidden="true"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4M9 15l6 0"/></svg></span>Days off</span>
+      <div id="daysOff" class="ts-days days-off" role="group" aria-label="Days off"></div>
       <!-- Meal breaks (main.js, Mor 2026-10-08): Breakfast, Lunch, Dinner — each on or off, its window and length. -->
       <span class="menu-label"><span class="ichip area-home" aria-hidden="true"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 3v18M4.5 3v5a2.5 2.5 0 0 0 5 0V3M17 21V3c-2 1.5-3 4-3 7h3"/></svg></span>Meal breaks</span>
       <div id="mealList" class="meal-list"></div>

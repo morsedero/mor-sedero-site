@@ -24,7 +24,7 @@ import { watchSettings, watchTasks, watchDayPlan } from "./store.js";
 import { timeline } from "./proposal.js";
 import { planActivity } from "./miss.js";
 import { areaClass, watchProjectColors } from "./look.js";
-import { dayHours, minText, planDate, usualHours, dayEndAt, nightRange, dayWord, gridSpan } from "./day.js";
+import { dayHours, minText, planDate, usualHours, dayEndAt, nightRange, dayWord, gridSpan, isDayOff } from "./day.js";
 import { localDate, logicalDate, durText } from "./model.js";
 import { h, bdi, nightDivider, icon } from "./ui.js";
 import { withTrips } from "./trips.js";
@@ -286,7 +286,7 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onMissed, onPro
     const rel = Math.abs(Math.round((at - named) / 864e5)) <= 1;
     // A weekday title already names the day, so its date line drops it (Mor, 2026-10-12).
     const sub = view === "week" ? (isNow ? span : "") : tonight ? `until ${minText(real.end)}`
-      : rel ? short(at) : at.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+      : (rel ? short(at) : at.toLocaleDateString("en-GB", { day: "numeric", month: "short" })) + (isDayOff(settings, at.getTime()) ? " · Day off" : "");
     // A phone drops the date line, so a plain weekday carries its date ("Wed 15").
     const narrow = view === "week" || rel ? title : `${at.toLocaleDateString("en-GB", { weekday: "short" })} ${at.getDate()}`;
 
@@ -470,8 +470,8 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onMissed, onPro
     // Weekday headings ride in the sticky header, under the bar.
     head.append(h("div", { className: "wk-heads" }, h("span"), ...cols.map((c) => {
       const t = c.d.getTime();
-      return h("button", { type: "button", className: "wk-hd" + (t === t0 ? " today" : "") + (t < t0 ? " past" : "") + (c.d.getDay() === 6 ? " sat" : ""),
-        ariaLabel: `${short(c.d)} — open the day`, onclick: () => onDay?.(c.ymd) },
+      return h("button", { type: "button", className: "wk-hd" + (t === t0 ? " today" : "") + (t < t0 ? " past" : "") + (isDayOff(settings, t) ? " sat" : ""),
+        ariaLabel: `${short(c.d)}${isDayOff(settings, t) ? ", day off" : ""} — open the day`, onclick: () => onDay?.(c.ymd) },
         h("span", { className: "wk-wd", textContent: c.d.toLocaleDateString("en-GB", { weekday: "narrow" }) }),
         h("span", { className: "wk-n", textContent: c.d.getDate() }));
     })));
@@ -483,7 +483,7 @@ export function mountSchedule(el, uid, { onEvent, onNew, onOpen, onMissed, onPro
       ...Array.from({ length: h1 - h0 }, (_, i) => h("span", { style: `top:${i * HOUR_PX}px` + (i ? "" : ";transform:none"), textContent: pad(h0 + i) + (PC ? ":00" : "") })));
     const grid = h("div", { className: "wk-grid", style: `--hour:${HOUR_PX}px;block-size:${(h1 - h0) * HOUR_PX}px` }, hours, ...cols.map((c) => {
       const t = c.d.getTime();
-      const col = h("div", { className: "wk-col" + (t === t0 ? " today" : "") + (t < t0 ? " past" : ""),
+      const col = h("div", { className: "wk-col" + (t === t0 ? " today" : "") + (t < t0 ? " past" : "") + (isDayOff(settings, t) ? " off" : ""),
         // An empty spot: a new event there, on the half hour above.
         onclick: (e) => {
           if (e.target !== col) return;

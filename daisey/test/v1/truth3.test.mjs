@@ -160,7 +160,7 @@ test("4 planning slots follow My day start, not the boundary", () => {
 });
 
 test("4 the Night pill follows My day, not the boundary", () => {
-  assert.deepEqual(nightRange(dayHours({ dayStart: "09:00", dayEnd: "22:30" })), ["22:30", "09:00"]);
-  assert.deepEqual(nightRange(dayHours({ dayStart: "07:00", dayEnd: "23:00" })), ["23:00", "07:00"]);
-  assert.deepEqual(nightRange(dayHours({})), ["22:00", "08:00"]);
+  assert.deepEqual(nightRange(dayHours({ daysOff: [], dayStart: "09:00", dayEnd: "22:30" })), ["22:30", "09:00"]);
+  assert.deepEqual(nightRange(dayHours({ daysOff: [], dayStart: "07:00", dayEnd: "23:00" })), ["23:00", "07:00"]);
+  assert.deepEqual(nightRange(dayHours({ daysOff: [] })), ["22:00", "08:00"]);
 });

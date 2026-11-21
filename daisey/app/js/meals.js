@@ -43,7 +43,7 @@ export function mealAsks(events = [], settings = {}, now = Date.now()){
     if (!by.length) continue;
     // The nearest free time that holds it, before or after, on a round five.
     let move = null;
-    for (const g of gapsToday(events, now, dayHours(settings))) {
+    for (const g of gapsToday(events, now, dayHours(settings, now))) {
       const after = Math.ceil(g.start / (5 * MIN)) * 5 * MIN, before = Math.floor((g.end - need) / (5 * MIN)) * 5 * MIN;
       for (const s of [after, before]) {
         if (s < g.start || s + need > g.end || Math.abs(s - from) > MEAL_MOVE_MAX * MIN) continue;

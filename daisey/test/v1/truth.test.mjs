@@ -58,7 +58,7 @@ test("2 the day key is a fixed 04:00: 'My day' start 04:00, 05:00, 08:00 and 09:
   for (const [h, m, key] of [[1, 10, "2026-10-17"], [3, 59, "2026-10-17"], [4, 0, "2026-10-18"], [4, 1, "2026-10-18"], [8, 30, "2026-10-18"]]) {
     for (const dayStart of ["04:00", "05:00", "08:00", "09:00"]) {
       const now = at(18, h, m);
-      assert.equal(dayHours({ dayStart, dayEnd: "22:30" }, now).start, { "04:00": 240, "05:00": 300, "08:00": 480, "09:00": 540 }[dayStart]);
+      assert.equal(dayHours({ daysOff: [], dayStart, dayEnd: "22:30" }, now).start, { "04:00": 240, "05:00": 300, "08:00": 480, "09:00": 540 }[dayStart]);
       assert.equal(getDayKey(now), key, `${h}:${m} with My day ${dayStart}`);
     }
   }
@@ -70,15 +70,15 @@ test("2 My day = 09:00 at 08:30 is still the new day (the day key is not My day'
   assert.equal(dayWord("2026-10-18", now), "today");
   assert.equal(dayWord("2026-10-19", now), "tomorrow");
   // …while the planning window and the Night pill do follow My day.
-  const hrs = dayHours({ dayStart: "09:00", dayEnd: "22:30" }, now);
+  const hrs = dayHours({ daysOff: [], dayStart: "09:00", dayEnd: "22:30" }, now);
   assert.equal(hrs.start, 540);
   assert.deepEqual(nightRange(hrs), ["22:30", "09:00"]);
 });
 
 test("2 the Night pill is derived: starts at 'My day' end, ends at its start", () => {
-  assert.deepEqual(nightRange(dayHours({ dayStart: "09:00", dayEnd: "22:30" })), ["22:30", "09:00"]);
-  assert.deepEqual(nightRange(dayHours({})), ["22:00", "08:00"]);
-  assert.deepEqual(nightRange(dayHours({ dayStart: "07:30", dayEnd: "23:15" })), ["23:15", "07:30"]);
+  assert.deepEqual(nightRange(dayHours({ daysOff: [], dayStart: "09:00", dayEnd: "22:30" })), ["22:30", "09:00"]);
+  assert.deepEqual(nightRange(dayHours({ daysOff: [] })), ["22:00", "08:00"]);
+  assert.deepEqual(nightRange(dayHours({ daysOff: [], dayStart: "07:30", dayEnd: "23:15" })), ["23:15", "07:30"]);
 });
 
 test("2 existing saved settings keep the user's values: no rewrite, same hours", () => {

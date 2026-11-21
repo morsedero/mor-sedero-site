@@ -48,7 +48,7 @@ test("the answer rearranges a plan that already has its breaks: lunch moves to 1
   // Laid before the answer: no room for lunch, so the plan has none, only a long break after the drive.
   const items = [{ taskId: "a", minutes: 30 }, { brk: "long", minutes: 30 }, { taskId: "b", minutes: 60 }, { brk: "short", minutes: 10 }, { taskId: "c", minutes: 60 }];
   const settings = { mealToday: { date: "2026-10-09", Lunch: "14:20" } };
-  const ctx = { tasks, events, now, settings, hours: dayHours(settings) };
+  const ctx = { tasks, events, now, settings, hours: dayHours(settings, now) };
   const re = relayMeals(items, ctx);
   assert.deepEqual(re.items.map((it) => it.taskId || it.brk), ["a", "meal", "b", "short", "c"]); // the meal takes the long break's place
   const brk = timeline(re.items, ctx).breaks.find((b) => b.type === "meal");

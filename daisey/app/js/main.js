@@ -420,7 +420,7 @@ async function boot(){
     show("signedin"); // no element of its own: just clears loading/sign-in views
 
     Promise.all([import("./now.js"), import("./projects.js"), import("./addtask.js"), import("./needs.js"), import("./import-trello.js"), import("./addevent.js"), import("./store.js"), import("./day.js"), import("./calendar.js"), import("./schedule.js"), import("./push.js"), import("./sample.js"), import("./ribbon.js"), import("./jobs-sync.js")])
-      .then(([{ mountNow }, { mountProjects }, { mountAddTask }, { mountNeeds }, { mountImport, connectTrello, finishTrelloConnect, trelloConnected }, { mountAddEvent }, { migrateTasks, watchSettings, saveSettings, watchTasks, watchDayPlan, resetAll, guestFresh, seedGuest, seedAccountOnce }, { dayHours, minText, mealPrefs, usualHours }, { watchCalendar, connectCalendar, setCalendarHint, listCalendars, saveCalendars }, { mountSchedule }, push, { sampleDay }, { mountRibbon }, { startJobs, JOBS_OWNER }]) => {
+      .then(([{ mountNow }, { mountProjects }, { mountAddTask }, { mountNeeds }, { mountImport, connectTrello, finishTrelloConnect, trelloConnected }, { mountAddEvent }, { migrateTasks, watchSettings, saveSettings, watchTasks, watchDayPlan, resetAll, guestFresh, seedGuest, seedAccountOnce }, { dayHours, minText, mealPrefs, usualHours, daysOff }, { watchCalendar, connectCalendar, setCalendarHint, listCalendars, saveCalendars }, { mountSchedule }, push, { sampleDay }, { mountRibbon }, { startJobs, JOBS_OWNER }]) => {
         if ((!isGuest && fb.currentUid() !== user.uid) || mounted) return;
         const m = mounted = {};
         // A new guest opens to a sample day, not an empty card (sample.js).
@@ -689,6 +689,20 @@ async function boot(){
           saveHours();
         }));
         paintDay(dayS, dayE);
+        // Days off (day.js daysOff, Mor 2026-11-21): tap a weekday to block it whole. Saturday by default.
+        const offRow = $("#daysOff");
+        let offNow = daysOff({});
+        const offName = (i) => new Date(2026, 9, 4 + i).toLocaleDateString(undefined, { weekday: "long" });
+        const paintOff = (list) => { offNow = list; offRow.querySelectorAll("button").forEach((b, i) => b.setAttribute("aria-pressed", String(list.includes(i)))); };
+        offRow.replaceChildren(...Array.from({ length: 7 }, (_, i) => h("button", { type: "button", className: "ts-day",
+          textContent: new Date(2026, 9, 4 + i).toLocaleDateString(undefined, { weekday: "narrow" }), ariaLabel: offName(i), title: offName(i),
+          onclick: () => {
+            const next = offNow.includes(i) ? offNow.filter((d) => d !== i) : [...offNow, i].sort();
+            if (next.length === 7) { flash("Keep at least one day on."); return; }
+            paintOff(next);
+            saveSettings(user.uid, { daysOff: next }).catch(fail);
+          } })));
+        paintOff(offNow);
         // Watched only now: a guest store answers at once, and the callback reads
         // dayDrag, paintMeals and the meal state declared above.
         const stopSettings = watchSettings(user.uid, (s) => {
@@ -697,11 +711,13 @@ async function boot(){
           if (!dayDrag) paintDay(usual.start, usual.end);
           $("#dayTrack").dataset.end = usual.end; // saveHours: did the end move?
           paintMeals(s || {});
+          paintOff(daysOff(s || {}));
           logSwitch.checked = !isGuest && s?.logDone !== false;
           logSwitch.disabled = isGuest;
           focusPick.value = String(s?.focusMax ?? 3);
           // After midnight a late day reads { start: 0 }; the server gets the usual one.
-          hours = hrs.late ? usual : hrs;
+          // A day off reads { start = end }; the server gets the usual day and the days off.
+          hours = hrs.late || hrs.off ? usual : hrs;
           lastSettings = s || {};
           briefOn = !!s?.morningBrief;
           seen();

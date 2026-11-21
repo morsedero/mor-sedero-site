@@ -22,6 +22,9 @@ exports.handler = async () => {
       const { date, minutes } = dayParts(now, tz, rec.dayEnd ?? 1320); // a day past midnight is still on
       // "Done for today" (now.js restButton): quiet until tomorrow.
       if (rec.settings?.restDay === date) continue;
+      // A day off (app day.js daysOff; unset = Saturday): quiet all day.
+      const off = Array.isArray(rec.settings?.daysOff) ? rec.settings.daysOff : [6];
+      if (off.includes(new Date(`${date}T12:00:00Z`).getUTCDay())) continue;
       // Night: no calendar read either. Opens a meeting reminder's lead early (notify.js).
       const early = rec.notify?.meeting === false ? 0 : (rec.meetingLead ?? 10);
       if (minutes < (rec.dayStart ?? 480) - early || minutes >= (rec.dayEnd ?? 1320)) continue;

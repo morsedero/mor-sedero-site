@@ -318,6 +318,8 @@ Daisey only plans inside your waking day, never pushes a task that already has a
 
 **Day hours.** Default 08:00–22:00, set once in settings. "My day can run until 11 pm today" in Tell Daisey stretches (or shortens) today's end only (`settings.dayEndToday`, read by `dayHours`); tomorrow the usual hours are back. Free time is counted only inside them. Outside them, the card switches to night mode: "Late. Tomorrow first: <task> — <why>." with no Start button; "I'm free now" still overrides. The day's free-time line counts from now (or 08:00) to 22:00.
 
+**Days off** (Mor, 2026-11-21). Settings → Personal → Days off: tap any weekdays to block them whole; Saturday by default (`settings.daysOff`, 0 = Sunday; unset = `[6]`; all seven is refused). On a day off `dayHours` returns no hours (`start = end`, `off: true`): night screen all day ("Day off. Everything's blocked today."), no free time, no plan, no meals; the next morning (`nextMorning`) and "this week" (`pickWeekDay`) step over days off; Schedule hatches the column and says "Day off"; the server sends no notifications that day. The night before still runs to its own late end. "I'm free now" still overrides.
+
 **Booked tasks.** A task linked to a calendar event (created from Daisey, or matched by title) is not suggested before its slot. The card shows it as "Booked for 19:00" only when nothing else fits. When its slot starts, it becomes the card.
 
 **Calendar events that are really tasks.** When an event title reads like a task (a verb plus an object, or words like "לבטל", "להתקשר", "לשלם", "until the 20th"), Daisey offers once: "Make this a task? Cancel LinkedIn Premium · 10 min · deadline 20 Oct". On ✓ it creates the task with guessed fields and asks whether to keep or delete the event.

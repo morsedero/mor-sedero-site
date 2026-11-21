@@ -39,7 +39,21 @@ export const minText = (min) => { const m = ((min % 1440) + 1440) % 1440; return
 // The usual day can run past midnight too (night owls, Mor 2026-10-11): a
 // dayEnd before 04:00 and before the start ("02:00") reads 26:00, the
 // same way.
-export function dayHours(settings = {}, now = Date.now()){
+// Days off (Mor, 2026-11-21): weekdays (0 Sunday … 6 Saturday) with no day
+// at all — every hour blocked, nothing planned, the night screen all day.
+// settings.daysOff = [6, …]; unset means Saturday. An empty list means none.
+export const DAYS_OFF_DEFAULT = [6];
+export function daysOff(settings = {}){
+  const v = settings?.daysOff;
+  if (!Array.isArray(v)) return [...DAYS_OFF_DEFAULT];
+  const out = [...new Set(v.map(Number).filter((d) => Number.isInteger(d) && d >= 0 && d <= 6))].sort();
+  return out.length === 7 ? [] : out; // a week with no day in it is a mistake, not a rest
+}
+// Is the calendar day `ms` falls on a day off? ymd ("2026-11-21") works too.
+export const isDayOff = (settings = {}, ms = Date.now()) =>
+  daysOff(settings).includes(new Date(typeof ms === "string" ? `${ms}T12:00` : ms).getDay());
+
+export function dayHours(settings = {}, now = Date.now(), { ignoreOff = false } = {}){
   // The start never goes below the day boundary (Settings' bar runs 04:00 to 03:59).
   const late = LATE_END_MAX, s0 = toMin(settings.dayStart), s = s0 == null ? null : Math.max(s0, LATE_END_MAX);
   let e = toMin(settings.dayEnd);
@@ -53,16 +67,22 @@ export function dayHours(settings = {}, now = Date.now()){
   } else if (end != null && end < late && m < end && today?.date === getDayKey(now)) {
     return { start: 0, end, late: true, meals: [] }; // last night's "until 1am", still on
   }
+  const off = daysOff(settings);
   if (m < late && base.end > 1440) {
-    if (m < base.end - 1440) return { start: 0, end: base.end - 1440, late: true, meals: [] };
+    if (m < base.end - 1440) return { start: 0, end: base.end - 1440, late: true, meals: [], daysOff: off };
   }
+  // A day off: no hours at all (start = end), so it reads as night all day,
+  // no free time, nothing to plan. The night before still runs its own late end (above).
+  if (!ignoreOff && off.includes(d.getDay())) return { start: base.start, end: base.start, off: true, meals: [], daysOff: off };
   base.meals = mealsToday(settings, now);
+  base.daysOff = off;
   return base;
 }
 
 // The usual day, without today's stretch and not in its after-midnight form
 // ({ start: 0, late }): what Settings shows and other days use. Read at noon.
-export const usualHours = (settings = {}) => dayHours({ ...settings, dayEndToday: null }, new Date().setHours(12, 0, 0, 0));
+// A day off doesn't change what the usual day is (its daysOff still ride along).
+export const usualHours = (settings = {}) => dayHours({ ...settings, dayEndToday: null }, new Date().setHours(12, 0, 0, 0), { ignoreOff: true });
 
 // ONE day model (Mor, 2026-10-18). The day key switches at a FIXED 04:00
 // (model.js getDayKey), whatever "My day" says. "My day" start/end only set
@@ -189,10 +209,12 @@ export function isNight(now = Date.now(), hours = W.DAY_HOURS){
 }
 
 // When the day next starts: this morning if it hasn't yet, else tomorrow's.
+// Days off are stepped over (hours.daysOff): Friday night's next morning is Sunday's.
 export function nextMorning(now = Date.now(), hours = W.DAY_HOURS){
-  const today = dayStartAt(now, hours);
-  if (now < today) return today;
-  const d = new Date(now); d.setDate(d.getDate() + 1); d.setHours(0, hours.start, 0, 0);
+  const off = hours.daysOff || [], d = new Date(now);
+  if (!hours.off && !off.includes(d.getDay()) && now < dayStartAt(now, hours)) return dayStartAt(now, hours);
+  for (let i = 0; i < 7; i++) { d.setDate(d.getDate() + 1); if (!off.includes(d.getDay())) break; }
+  d.setHours(0, hours.start, 0, 0);
   return d.getTime();
 }
 

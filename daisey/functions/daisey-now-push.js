@@ -66,6 +66,8 @@ const cleanSettings = (s) => ({
   somedayAsked: day(s?.somedayAsked),
   silenceOn: day(s?.silenceOn), // the silence check answered that day (miss.js)
   restDay: day(s?.restDay), // "Done for today" (now.js): nothing more sent that day
+  // Weekdays off (app day.js daysOff, 0 = Sunday): nothing sent those days. null = unset (Saturday).
+  daysOff: Array.isArray(s?.daysOff) ? [...new Set(s.daysOff.filter((d) => Number.isInteger(d) && d >= 0 && d <= 6))] : null,
   // How you get to events in other cities (app/js/trips.js): the travel legs
   // count as busy here too, and "starts in 15 min" names the train, not the meeting.
   trips: cleanTrips(s?.trips),

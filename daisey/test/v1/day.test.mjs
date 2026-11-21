@@ -17,9 +17,9 @@ const task = (o = {}) => ({ id: `t${++seq}`, project: "P", title: "Task", size: 
   openHours: "anytime", stakes: "low", status: "ready", canSplit: false, createdAt: 1, touchedAt: NOW, ...o });
 
 test("day hours: default 08–22, settings override, nonsense falls back", () => {
-  { const { start, end } = D.dayHours({}); assert.deepEqual({ start, end }, { start: 480, end: 1320 }); }
-  { const { start, end } = D.dayHours({ dayStart: "07:30", dayEnd: "23:00" }); assert.deepEqual({ start, end }, { start: 450, end: 1380 }); }
-  { const { start, end } = D.dayHours({ dayStart: "23:00", dayEnd: "07:00" }); assert.deepEqual({ start, end }, { start: 480, end: 1320 }); }
+  { const { start, end } = D.dayHours({ daysOff: [] }); assert.deepEqual({ start, end }, { start: 480, end: 1320 }); }
+  { const { start, end } = D.dayHours({ daysOff: [], dayStart: "07:30", dayEnd: "23:00" }); assert.deepEqual({ start, end }, { start: 450, end: 1380 }); }
+  { const { start, end } = D.dayHours({ daysOff: [], dayStart: "23:00", dayEnd: "07:00" }); assert.deepEqual({ start, end }, { start: 480, end: 1320 }); }
   assert.equal(D.isNight(at(5, 1, 19)), true);
   assert.equal(D.isNight(at(5, 8)), false);
   assert.equal(D.isNight(at(5, 22)), true);
@@ -124,16 +124,16 @@ test("dayEndToday stretches today's end only", async () => {
   const { dayHours } = await import("../../app/js/day.js");
   const { logicalDate } = await import("../../app/js/model.js");
   const noon = new Date(2026, 9, 10, 12).getTime(); // tell.js saves the logical date; noon keeps it the calendar's
-  assert.equal(dayHours({ dayEndToday: { date: logicalDate(noon), end: "23:00" } }, noon).end, 23 * 60);
-  assert.equal(dayHours({ dayEndToday: { date: "2020-01-01", end: "23:00" } }, noon).end, 22 * 60); // yesterday's is gone
-  assert.equal(dayHours({ dayEndToday: { date: logicalDate(noon), end: "06:00" } }, noon).end, 22 * 60); // before the start: ignored
+  assert.equal(dayHours({ daysOff: [], dayEndToday: { date: logicalDate(noon), end: "23:00" } }, noon).end, 23 * 60);
+  assert.equal(dayHours({ daysOff: [], dayEndToday: { date: "2020-01-01", end: "23:00" } }, noon).end, 22 * 60); // yesterday's is gone
+  assert.equal(dayHours({ daysOff: [], dayEndToday: { date: logicalDate(noon), end: "06:00" } }, noon).end, 22 * 60); // before the start: ignored
 });
 
 test("night owls: a usual day end past midnight runs on, and 'today' flips at the 04:00 day boundary (Mor, 2026-10-11/12, boundary 2026-10-18)", async () => {
   const { dayHours, isNight, dayEndAt, minText, gapsToday, planDate } = await import("../../app/js/day.js");
   const { logicalDate, dayAfter, notYet } = await import("../../app/js/model.js");
   const at = (d, h, m = 0) => new Date(2026, 9, d, h, m).getTime();
-  const s = { dayStart: "10:00", dayEnd: "02:00" };
+  const s = { daysOff: [], dayStart: "10:00", dayEnd: "02:00" };
   // 23:00 on the 10th: the day ends 02:00 on the 11th, three hours free.
   const eve = dayHours(s, at(10, 23));
   assert.equal(eve.end, 26 * 60); assert.equal(minText(eve.end), "02:00");
@@ -149,8 +149,8 @@ test("night owls: a usual day end past midnight runs on, and 'today' flips at th
   const over = dayHours(s, at(11, 3));
   assert.equal(isNight(at(11, 3), over), true); assert.equal(planDate(at(11, 3), over), "2026-10-11");
   // An ordinary day (22:00) at 01:00: night, the plan is for the day you wake into.
-  assert.equal(isNight(at(11, 1), dayHours({}, at(11, 1))), true);
-  assert.equal(planDate(at(11, 1), dayHours({}, at(11, 1))), "2026-10-11");
+  assert.equal(isNight(at(11, 1), dayHours({ daysOff: [] }, at(11, 1))), true);
+  assert.equal(planDate(at(11, 1), dayHours({ daysOff: [] }, at(11, 1))), "2026-10-11");
   // Dates: before 04:00 it's still yesterday, so tomorrow is the calendar's today.
   assert.equal(logicalDate(at(11, 1)), "2026-10-10");
   assert.equal(dayAfter(1, at(11, 1)), "2026-10-11");
@@ -160,14 +160,14 @@ test("night owls: a usual day end past midnight runs on, and 'today' flips at th
   assert.equal(notYet({ notBefore: "2026-10-11" }, at(11, 3, 59)), true);
   assert.equal(notYet({ notBefore: "2026-10-11" }, at(11, 4)), false);
   // An end before the start but past 04:00 is nonsense: the default day.
-  assert.equal(dayHours({ dayStart: "10:00", dayEnd: "05:00" }, at(10, 12)).end, 22 * 60);
+  assert.equal(dayHours({ daysOff: [], dayStart: "10:00", dayEnd: "05:00" }, at(10, 12)).end, 22 * 60);
 });
 
 test("dayEndToday past midnight: 'until 1am' runs on, then it's night (BEHAVIOR_REVIEW #4)", async () => {
   const { dayHours, isNight, dayEndAt, minText } = await import("../../app/js/day.js");
   const { logicalDate } = await import("../../app/js/model.js");
   const at = (d, h, m = 0) => new Date(2026, 9, d, h, m).getTime();
-  const s = { dayEndToday: { date: "2026-10-10", end: "01:00" } };
+  const s = { daysOff: [], dayEndToday: { date: "2026-10-10", end: "01:00" } };
   // 23:30 on the 10th: the day ends 01:00 on the 11th.
   const eve = dayHours(s, at(10, 23, 30));
   assert.equal(eve.end, 25 * 60); assert.equal(minText(eve.end), "01:00");
@@ -183,14 +183,14 @@ test("dayEndToday past midnight: 'until 1am' runs on, then it's night (BEHAVIOR_
   const next = dayHours(s, at(11, 9));
   assert.equal(next.end, 22 * 60); assert.equal(next.late, undefined);
   // Said after midnight (date = the logical day): same.
-  assert.equal(dayHours({ dayEndToday: { date: "2026-10-10", end: "02:00" } }, at(11, 1)).late, true);
+  assert.equal(dayHours({ daysOff: [], dayEndToday: { date: "2026-10-10", end: "02:00" } }, at(11, 1)).late, true);
 });
 
 test("meals: Breakfast, Lunch, Dinner; only Lunch on by default, 13-14; one time each, saved ones override", async () => {
   const { mealsOf, mealPrefs, dayHours } = await import("../../app/js/day.js");
   assert.deepEqual(mealPrefs({}).map((m) => [m.name, m.on]), [["Breakfast", false], ["Lunch", true], ["Dinner", false]]);
   assert.deepEqual(mealsOf({}), [{ name: "Lunch", from: 780, to: 840, minutes: 45 }]);
-  const s = { meals: [{ name: "Lunch", on: false, at: "13:00", minutes: 45 }, { name: "Dinner", on: true, at: "19:30", minutes: 999 }, { name: "Breakfast", on: true, at: "nope", minutes: 20 }, { name: "Snack", on: true, at: "16:00", minutes: 10 }] };
+  const s = { daysOff: [], meals: [{ name: "Lunch", on: false, at: "13:00", minutes: 45 }, { name: "Dinner", on: true, at: "19:30", minutes: 999 }, { name: "Breakfast", on: true, at: "nope", minutes: 20 }, { name: "Snack", on: true, at: "16:00", minutes: 10 }] };
   assert.deepEqual(mealsOf(s), [{ name: "Breakfast", from: 480, to: 540, minutes: 20 }, { name: "Dinner", from: 1170, to: 1230, minutes: 180 }]); // bad time → default; no other names
   assert.deepEqual(dayHours(s).meals, mealsOf(s));
 });
